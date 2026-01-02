@@ -1,4 +1,4 @@
-package template
+package tpl
 
 import (
 	"github.com/gofiber/fiber/v2"
