@@ -236,6 +236,44 @@ func SoftDeletePost(db *DB, id int64) error {
 	return err
 }
 
+func RestorePost(db *DB, id int64) error {
+	_, err := db.Exec(
+		`UPDATE posts SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
+		id,
+	)
+	return err
+}
+
+func ListDeletedPosts(db *DB) ([]Post, error) {
+	rows, err := db.Query(`
+		SELECT id, title, slug, content, status, created_at, updated_at, deleted_at
+		FROM posts
+		WHERE deleted_at IS NOT NULL
+		ORDER BY deleted_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []Post
+	for rows.Next() {
+		var p Post
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status,
+			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, p)
+	}
+	return res, nil
+}
+
 type EncryptedPost struct {
 	ID        int64
 	Title     string
@@ -291,6 +329,48 @@ func SoftDeleteEncryptedPost(db *DB, id int64) error {
 		ts, id,
 	)
 	return err
+}
+
+func RestoreEncryptedPost(db *DB, id int64) error {
+	_, err := db.Exec(
+		`UPDATE encrypted_posts SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
+		id,
+	)
+	return err
+}
+
+func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
+	rows, err := db.Query(`
+		SELECT id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at
+		FROM encrypted_posts
+		WHERE deleted_at IS NOT NULL
+		ORDER BY deleted_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []EncryptedPost
+	for rows.Next() {
+		var p EncryptedPost
+		var deletedAt sql.NullInt64
+		var expiresAt sql.NullInt64
+		if err := rows.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Password,
+			&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if expiresAt.Valid {
+			p.ExpiresAt = &expiresAt.Int64
+		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, p)
+	}
+	return res, nil
 }
 
 func CreateEncryptedPost(db *DB, p *EncryptedPost) error {
@@ -385,6 +465,44 @@ func SoftDeleteTag(db *DB, id int64) error {
 		ts, id,
 	)
 	return err
+}
+
+func RestoreTag(db *DB, id int64) error {
+	_, err := db.Exec(
+		`UPDATE tags SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
+		id,
+	)
+	return err
+}
+
+func ListDeletedTags(db *DB) ([]Tag, error) {
+	rows, err := db.Query(`
+		SELECT id, name, slug, created_at, updated_at, deleted_at
+		FROM tags
+		WHERE deleted_at IS NOT NULL
+		ORDER BY deleted_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []Tag
+	for rows.Next() {
+		var t Tag
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&t.ID, &t.Name, &t.Slug,
+			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, t)
+	}
+	return res, nil
 }
 
 func GetPostTags(db *DB, postID int64) ([]Tag, error) {
@@ -524,6 +642,44 @@ func SoftDeleteRedirect(db *DB, id int64) error {
 		ts, id,
 	)
 	return err
+}
+
+func RestoreRedirect(db *DB, id int64) error {
+	_, err := db.Exec(
+		`UPDATE redirects SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
+		id,
+	)
+	return err
+}
+
+func ListDeletedRedirects(db *DB) ([]Redirect, error) {
+	rows, err := db.Query(`
+		SELECT id, from_path, to_path, created_at, updated_at, deleted_at
+		FROM redirects
+		WHERE deleted_at IS NOT NULL
+		ORDER BY deleted_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []Redirect
+	for rows.Next() {
+		var r Redirect
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&r.ID, &r.From, &r.To,
+			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			r.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, r)
+	}
+	return res, nil
 }
 
 func CreateRedirect(db *DB, r *Redirect) error {

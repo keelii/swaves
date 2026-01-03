@@ -509,3 +509,67 @@ func (h *Handler) PostUpdateConfigsHandler(c *fiber.Ctx) error {
 
 	return c.Redirect("/admin/configs")
 }
+
+// Trash
+func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
+	trashData, err := GetTrashData(h.DB)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("trash_index", fiber.Map{
+		"Trash": trashData,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostRestorePostHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := RestorePostService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
+func (h *Handler) PostRestoreEncryptedPostHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := RestoreEncryptedPostService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
+func (h *Handler) PostRestoreTagHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := RestoreTagService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
+func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := RestoreRedirectService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
