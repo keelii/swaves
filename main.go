@@ -2,9 +2,9 @@ package main
 
 import (
 	"log"
+	"swaves/internal/admin"
 	"swaves/internal/tpl"
 
-	"swaves/internal/admin"
 	"swaves/internal/db"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,34 +13,27 @@ import (
 func main() {
 	tpl.LoadTemplatesDir("web/templates")
 
-	// 1. 打开数据库
-	dbConn, err := db.Open(db.Options{
+	conn := db.Open(db.Options{
 		DSN: "data.sqlite",
 	})
-	if err != nil {
-		log.Fatalf("open db failed: %v", err)
-	}
-	defer dbConn.Close()
+	defer conn.Close()
 
-	// 2. migrate
-	if err := db.Migrate(dbConn); err != nil {
-		log.Fatalf("migrate failed: %v", err)
-	}
-
-	// 3. Fiber app
 	app := fiber.New(fiber.Config{
-		AppName: "swaves",
+		AppName:               "swaves",
+		DisableStartupMessage: true,
 	})
-	// 注册后台登录路由
-	admin.RegisterAdminRoutes(app, dbConn)
 
-	// 注册后台受保护路由
-	adminGroup := app.Group("/admin", admin.RequireAdminLogin)
-	adminGroup.Get("/dashboard", func(c *fiber.Ctx) error {
-		return tpl.RenderTemplate(c, "admin_dashboard", map[string]string{
-			"Title": "Admin Dashboard",
-		})
-	})
+	handler := admin.NewHandler(
+		admin.NewService(conn),
+		admin.NewSessionStore(conn),
+	)
+
+	adminGroup := app.Group("/admin")
+
+	adminGroup.Get("/", handler.GetHome)
+	adminGroup.Get("/login", handler.GetLoginHandler)
+	adminGroup.Post("/login", handler.PostLoginHandler)
+	adminGroup.Get("/logout", handler.GetLogoutHandler)
 
 	log.Println("swaves listening on :3000")
 	log.Fatal(app.Listen(":3000"))

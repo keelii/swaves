@@ -1,48 +1,82 @@
 package admin
 
 import (
-	"swaves/internal/db"
 	"swaves/internal/tpl"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-// GetLoginHandler GET /admin/login
-func GetLoginHandler(c *fiber.Ctx) error {
+type Handler struct {
+	Auth  *Service
+	Store *SessionStore
+}
+
+func NewHandler(auth *Service, store *SessionStore) *Handler {
+	return &Handler{
+		Auth:  auth,
+		Store: store,
+	}
+}
+
+/* ---------- GET /admin/login ---------- */
+
+func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
 	return tpl.RenderTemplate(c, "admin_login", map[string]string{
 		"Title": "Admin Login",
 		"Error": "",
 	})
 }
 
-// PostLoginHandler POST /admin/login
-func PostLoginHandler(dbConn *db.DB) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		password := c.FormValue("password")
-		config, err := db.GetConfig(dbConn)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("internal error")
-		}
+/* ---------- POST /admin/login ---------- */
 
-		if err := config.CheckPassword(password); err != nil {
-			return tpl.RenderTemplate(c, "admin_login", map[string]string{
-				"Title": "Admin Login",
-				"Error": "Invalid password",
-			})
-		}
-
-		// 登录成功，设置 cookie
-		c.Cookie(&fiber.Cookie{
-			Name:  LoginCookieName,
-			Value: "1",
-			Path:  "/",
+func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
+	password := c.FormValue("password")
+	if password == "" {
+		return tpl.RenderTemplate(c, "admin_login", map[string]string{
+			"Error": "password is empty",
 		})
-		return c.Redirect("/admin/dashboard")
 	}
+
+	if err := h.Auth.CheckPassword(password); err != nil {
+		return tpl.RenderTemplate(c, "admin_login", map[string]string{
+			"Title": "Admin Login",
+			"Error": "Invalid password",
+		})
+	}
+
+	sess, err := h.Store.Get(c)
+	if err != nil {
+		return err
+	}
+
+	sess.Set("admin", true)
+
+	if err := sess.Save(); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin")
 }
 
-// RegisterAdminRoutes 注册后台登录路由
-func RegisterAdminRoutes(app *fiber.App, dbConn *db.DB) {
-	app.Get("/admin/login", GetLoginHandler)
-	app.Post("/admin/login", PostLoginHandler(dbConn))
+/* ---------- POST /admin/logout ---------- */
+
+func (h *Handler) GetLogoutHandler(c *fiber.Ctx) error {
+	sess, err := h.Store.Get(c)
+	if err == nil {
+		sess.Destroy()
+	}
+
+	return c.Redirect("/admin/login")
+}
+
+func (h *Handler) GetHome(c *fiber.Ctx) error {
+	sess, err := h.Store.Get(c)
+	if err != nil {
+		return err
+	}
+	logined := sess.Get("admin")
+	return tpl.RenderTemplate(c, "admin_home", map[string]interface{}{
+		"Title":   "Admin Home",
+		"IsLogin": logined,
+	})
 }

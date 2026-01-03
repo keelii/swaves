@@ -20,16 +20,22 @@ type Options struct {
 	DSN string
 }
 
-func Open(opts Options) (*DB, error) {
-	sqlDB, err := sql.Open("sqlite3", opts.DSN)
-	if err != nil {
-		return nil, err
+func Open(opts Options) *DB {
+	sqlDB, e1 := sql.Open("sqlite3", opts.DSN)
+	if e1 != nil {
+		log.Fatalf("open sqlite failed: %v", e1)
 	}
 
 	sqlDB.Exec(`PRAGMA journal_mode = WAL;`)
 	sqlDB.Exec(`PRAGMA busy_timeout = 5000;`)
 
-	return &DB{DB: sqlDB}, nil
+	conn := &DB{DB: sqlDB}
+
+	if r2 := Migrate(conn); r2 != nil {
+		log.Fatalf("migrate failed: %v", r2)
+	}
+
+	return conn
 }
 
 func Migrate(db *DB) error {
@@ -98,6 +104,15 @@ func Migrate(db *DB) error {
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
 			deleted_at INTEGER
+		);`,
+
+		`CREATE TABLE IF NOT EXISTS admin_sessions (
+		  id TEXT PRIMARY KEY,
+		  sid TEXT NOT NULL UNIQUE,
+		  expires_at INTEGER NOT NULL,
+		  created_at INTEGER NOT NULL,
+		  updated_at INTEGER NOT NULL,
+		  deleted_at INTEGER
 		);`,
 	}
 
@@ -439,6 +454,37 @@ func (c *Configs) CheckPassword(raw string) error {
 	}
 	fmt.Printf("%s\n%s\n%s\n", c.AdminPasswordHash, raw, bcrypt.CompareHashAndPassword([]byte(c.AdminPasswordHash), []byte(raw)))
 	return bcrypt.CompareHashAndPassword([]byte(c.AdminPasswordHash), []byte(raw))
+}
+
+type AdminSession struct {
+	ID        string
+	Sid       string
+	ExpiresAt int64
+	CreatedAt int64
+	UpdatedAt int64
+	DeletedAt *int64
+}
+
+func CreateAdminSession(db *DB, ttl time.Duration) (*AdminSession, error) {
+	now := time.Now().Unix()
+	expiresAt := now + int64(ttl.Seconds())
+
+	uuid := uuid.NewString()
+
+	_, err := db.Exec(`
+		INSERT INTO admin_sessions (
+			sid, created_at, expires_at
+		) VALUES (?, ?, ?)
+	`, uuid, now, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AdminSession{
+		Sid:       uuid,
+		CreatedAt: now,
+		ExpiresAt: expiresAt,
+	}, nil
 }
 
 var ErrNotFound = errors.New("not found")
