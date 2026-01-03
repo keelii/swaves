@@ -28,6 +28,22 @@
 
   <p>
     <label>
+      Tags<br>
+      {{ if .Tags }}
+        {{ range .Tags }}
+        <label style="display:inline-block; margin-right:10px;">
+          <input type="checkbox" class="tag-checkbox" value="{{ .ID }}"> {{ .Name }}
+        </label>
+        {{ end }}
+      {{ else }}
+        <span>No tags available. <a href="/admin/tags/new">Create a tag</a></span>
+      {{ end }}
+      <input type="hidden" name="tags" id="tags-input">
+    </label>
+  </p>
+
+  <p>
+    <label>
       Content<br>
       <textarea name="content" rows="10" cols="80"></textarea>
     </label>
@@ -39,3 +55,11 @@
   </p>
 
 </form>
+
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+  const checkboxes = document.querySelectorAll('.tag-checkbox:checked');
+  const tagIDs = Array.from(checkboxes).map(cb => cb.value);
+  document.getElementById('tags-input').value = tagIDs.join(',');
+});
+</script>

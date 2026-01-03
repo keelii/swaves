@@ -10,7 +10,10 @@
     <th>ID</th>
     <th>Title</th>
     <th>Slug</th>
+    <th>Tags</th>
     <th>Status</th>
+    <th>Created At</th>
+    <th>Updated At</th>
     <th>Actions</th>
   </tr>
   </thead>
@@ -18,28 +21,37 @@
   <tbody>
   {{ range .Posts }}
   <tr>
-    <td>{{ .ID }}</td>
-    <td>{{ .Title }}</td>
-    <td>{{ .Slug }}</td>
-    <td>{{ .Status }}</td>
+    <td>{{ .Post.ID }}</td>
+    <td>{{ .Post.Title }}</td>
+    <td>{{ .Post.Slug }}</td>
     <td>
-      <a href="/admin/posts/{{ .ID }}/edit">Edit</a>
+      {{ if .Tags }}
+        {{ range $index, $tag := .Tags }}{{ if $index }}, {{ end }}{{ $tag.Name }}{{ end }}
+      {{ else }}
+        <span>-</span>
+      {{ end }}
+    </td>
+    <td>{{ .Post.Status }}</td>
+    <td>{{ formatTime .Post.CreatedAt }}</td>
+    <td>{{ formatTime .Post.UpdatedAt }}</td>
+    <td>
+      <a href="/admin/posts/{{ .Post.ID }}/edit">Edit</a>
 
-      <form method="post" style="display:inline" action="/admin/posts/{{ .ID }}/delete">
+      <form method="post" style="display:inline" action="/admin/posts/{{ .Post.ID }}/delete">
         <button type="submit">Delete</button>
       </form>
     </td>
   </tr>
   {{ else }}
   <tr>
-    <td colspan="5">No posts</td>
+    <td colspan="8">No posts</td>
   </tr>
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="5">
+    <td colspan="8">
       {{template "partials/pagination" .}}
     </td>
   </tr>

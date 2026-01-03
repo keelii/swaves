@@ -11,6 +11,8 @@
     <th>Title</th>
     <th>Slug</th>
     <th>Expires At</th>
+    <th>Created At</th>
+    <th>Updated At</th>
     <th>Actions</th>
   </tr>
   </thead>
@@ -21,7 +23,9 @@
     <td>{{ .ID }}</td>
     <td>{{ .Title }}</td>
     <td>{{ .Slug }}</td>
-    <td>{{ if .ExpiresAt }}{{ .ExpiresAt }}{{ else }}Never{{ end }}</td>
+    <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}Never{{ end }}</td>
+    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ formatTime .UpdatedAt }}</td>
     <td>
       <a href="/admin/encrypted-posts/{{ .ID }}/edit">Edit</a>
 
@@ -32,14 +36,14 @@
   </tr>
   {{ else }}
   <tr>
-    <td colspan="5">No encrypted posts</td>
+    <td colspan="7">No encrypted posts</td>
   </tr>
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="5">
+    <td colspan="7">
       {{template "partials/pagination" .}}
     </td>
   </tr>

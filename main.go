@@ -4,6 +4,7 @@ import (
 	"log"
 	"swaves/internal/admin"
 	"swaves/internal/middleware"
+	"time"
 
 	"swaves/internal/db"
 
@@ -27,6 +28,12 @@ func main() {
 			step = append(step, i)
 		}
 		return step
+	})
+	engine.AddFunc("formatTime", func(ts int64) string {
+		if ts == 0 {
+			return "-"
+		}
+		return time.Unix(ts, 0).Format("2006-01-02 15:04:05")
 	})
 	engine.Reload(true)
 	app := fiber.New(fiber.Config{

@@ -38,14 +38,22 @@ type CreatePostInput struct {
 	Slug    string
 	Content string
 	Status  string
+	TagIDs  []int64
 }
+
 type UpdatePostInput struct {
 	Title   string
 	Content string
 	Status  string
+	TagIDs  []int64
 }
 
-func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.Post, error) {
+type PostWithTags struct {
+	Post *db.Post
+	Tags []db.Tag
+}
+
+func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]PostWithTags, error) {
 	// 先查询总数
 	var total int
 	row := dbx.QueryRow(`SELECT COUNT(*) FROM posts WHERE deleted_at IS NULL`)
@@ -66,7 +74,7 @@ func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.Post, error) {
 	}
 	defer rows.Close()
 
-	var res []db.Post
+	var res []PostWithTags
 	for rows.Next() {
 		var p db.Post
 		if err := rows.Scan(
@@ -81,7 +89,17 @@ func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.Post, error) {
 		); err != nil {
 			return nil, err
 		}
-		res = append(res, p)
+
+		// 获取该 post 的 tags
+		tags, err := db.GetPostTags(dbx, p.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, PostWithTags{
+			Post: &p,
+			Tags: tags,
+		})
 	}
 
 	pager.Total = total
@@ -89,6 +107,40 @@ func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.Post, error) {
 
 	return res, nil
 }
+func GetAllTags(dbx *db.DB) ([]db.Tag, error) {
+	rows, err := dbx.Query(`
+		SELECT id, name, slug, created_at, updated_at, deleted_at
+		FROM tags
+		WHERE deleted_at IS NULL
+		ORDER BY name
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []db.Tag
+	for rows.Next() {
+		var t db.Tag
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&t.ID,
+			&t.Name,
+			&t.Slug,
+			&t.CreatedAt,
+			&t.UpdatedAt,
+			&t.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, t)
+	}
+	return res, nil
+}
+
 func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 	if in.Title == "" || in.Slug == "" {
 		return errors.New("title and slug required")
@@ -100,11 +152,37 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		Content: in.Content,
 		Status:  in.Status,
 	}
-	return db.CreatePost(dbx, p)
+	if err := db.CreatePost(dbx, p); err != nil {
+		return err
+	}
+
+	// 关联标签
+	if len(in.TagIDs) > 0 {
+		if err := db.SetPostTags(dbx, p.ID, in.TagIDs); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
-func GetPostForEdit(dbx *db.DB, id int64) (*db.Post, error) {
-	return db.GetPostByID(dbx, id)
+
+func GetPostForEdit(dbx *db.DB, id int64) (*PostWithTags, error) {
+	post, err := db.GetPostByID(dbx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	tags, err := db.GetPostTags(dbx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PostWithTags{
+		Post: post,
+		Tags: tags,
+	}, nil
 }
+
 func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 	p, err := db.GetPostByID(dbx, id)
 	if err != nil {
@@ -115,7 +193,16 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 	p.Content = in.Content
 	p.Status = in.Status
 
-	return db.UpdatePost(dbx, p)
+	if err := db.UpdatePost(dbx, p); err != nil {
+		return err
+	}
+
+	// 更新标签关联
+	if err := db.SetPostTags(dbx, id, in.TagIDs); err != nil {
+		return err
+	}
+
+	return nil
 }
 func DeletePostService(dbx *db.DB, id int64) error {
 	return db.SoftDeletePost(dbx, id)

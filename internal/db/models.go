@@ -387,6 +387,37 @@ func SoftDeleteTag(db *DB, id int64) error {
 	return err
 }
 
+func GetPostTags(db *DB, postID int64) ([]Tag, error) {
+	rows, err := db.Query(`
+		SELECT t.id, t.name, t.slug, t.created_at, t.updated_at, t.deleted_at
+		FROM tags t
+		INNER JOIN post_tags pt ON t.id = pt.tag_id
+		WHERE pt.post_id = ? AND pt.deleted_at IS NULL AND t.deleted_at IS NULL
+		ORDER BY t.name
+	`, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tags []Tag
+	for rows.Next() {
+		var t Tag
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&t.ID, &t.Name, &t.Slug,
+			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		tags = append(tags, t)
+	}
+	return tags, nil
+}
+
 func AttachTagToPost(db *DB, postID, tagID int64) error {
 	ts := now()
 	_, err := db.Exec(
@@ -396,6 +427,53 @@ func AttachTagToPost(db *DB, postID, tagID int64) error {
 		postID, tagID, ts, ts,
 	)
 	return err
+}
+
+func DetachTagFromPost(db *DB, postID, tagID int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE post_tags SET deleted_at=? WHERE post_id=? AND tag_id=? AND deleted_at IS NULL`,
+		ts, postID, tagID,
+	)
+	return err
+}
+
+func SetPostTags(db *DB, postID int64, tagIDs []int64) error {
+	// 先获取当前关联的标签
+	currentTags, err := GetPostTags(db, postID)
+	if err != nil {
+		return err
+	}
+
+	currentTagIDs := make(map[int64]bool)
+	for _, tag := range currentTags {
+		currentTagIDs[tag.ID] = true
+	}
+
+	newTagIDs := make(map[int64]bool)
+	for _, tagID := range tagIDs {
+		newTagIDs[tagID] = true
+	}
+
+	// 删除不再需要的标签关联
+	for _, tag := range currentTags {
+		if !newTagIDs[tag.ID] {
+			if err := DetachTagFromPost(db, postID, tag.ID); err != nil {
+				return err
+			}
+		}
+	}
+
+	// 添加新的标签关联
+	for _, tagID := range tagIDs {
+		if !currentTagIDs[tagID] {
+			if err := AttachTagToPost(db, postID, tagID); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 type Redirect struct {

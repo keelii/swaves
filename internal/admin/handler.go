@@ -2,6 +2,7 @@ package admin
 
 import (
 	"strconv"
+	"strings"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
 
@@ -100,15 +101,39 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	}, "admin_layout")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
-	return c.Render("posts_new", nil, "admin_layout")
+	tags, err := GetAllTags(h.DB)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("posts_new", fiber.Map{
+		"Tags": tags,
+	}, "admin_layout")
 }
 
 func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
+	// 解析标签 ID（逗号分割）
+	var tagIDs []int64
+	tagsStr := c.FormValue("tags")
+	if tagsStr != "" {
+		// 按逗号分割
+		tagIDStrs := strings.Split(tagsStr, ",")
+		for _, tagIDStr := range tagIDStrs {
+			tagIDStr = strings.TrimSpace(tagIDStr)
+			if tagIDStr != "" {
+				if tagID, err := strconv.ParseInt(tagIDStr, 10, 64); err == nil {
+					tagIDs = append(tagIDs, tagID)
+				}
+			}
+		}
+	}
+
 	in := CreatePostInput{
 		Title:   c.FormValue("title"),
 		Slug:    c.FormValue("slug"),
 		Content: c.FormValue("content"),
 		Status:  c.FormValue("status"),
+		TagIDs:  tagIDs,
 	}
 
 	if err := CreatePostService(h.DB, in); err != nil {
@@ -124,13 +149,27 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	post, err := GetPostForEdit(h.DB, id)
+	postWithTags, err := GetPostForEdit(h.DB, id)
 	if err != nil {
 		return err
 	}
 
+	allTags, err := GetAllTags(h.DB)
+	if err != nil {
+		return err
+	}
+
+	// 创建已选标签的 map 以便在模板中快速查找
+	selectedTagIDs := make(map[int64]bool)
+	for _, tag := range postWithTags.Tags {
+		selectedTagIDs[tag.ID] = true
+	}
+
 	return c.Render("posts_edit", fiber.Map{
-		"Post": post,
+		"Post":           postWithTags.Post,
+		"Tags":           allTags,
+		"SelectedTags":   postWithTags.Tags,
+		"SelectedTagIDs": selectedTagIDs,
 	}, "admin_layout")
 }
 
@@ -140,10 +179,27 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
+	// 解析标签 ID（逗号分割）
+	var tagIDs []int64
+	tagsStr := c.FormValue("tags")
+	if tagsStr != "" {
+		// 按逗号分割
+		tagIDStrs := strings.Split(tagsStr, ",")
+		for _, tagIDStr := range tagIDStrs {
+			tagIDStr = strings.TrimSpace(tagIDStr)
+			if tagIDStr != "" {
+				if tagID, err := strconv.ParseInt(tagIDStr, 10, 64); err == nil {
+					tagIDs = append(tagIDs, tagID)
+				}
+			}
+		}
+	}
+
 	in := UpdatePostInput{
 		Title:   c.FormValue("title"),
 		Content: c.FormValue("content"),
 		Status:  c.FormValue("status"),
+		TagIDs:  tagIDs,
 	}
 
 	if err := UpdatePostService(h.DB, id, in); err != nil {
