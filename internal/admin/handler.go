@@ -3,6 +3,7 @@ package admin
 import (
 	"strconv"
 	"swaves/internal/db"
+	"swaves/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -86,13 +87,16 @@ func (h *Handler) GetLogoutHandler(c *fiber.Ctx) error {
 
 // Posts
 func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
-	posts, err := ListPosts(h.DB)
+	pager := middleware.GetPagination(c)
+
+	posts, err := ListPosts(h.DB, &pager)
 	if err != nil {
 		return err
 	}
 
 	return c.Render("posts_index", fiber.Map{
 		"Posts": posts,
+		"Pager": pager,
 	}, "admin_layout")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {

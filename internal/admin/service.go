@@ -2,6 +2,7 @@ package admin
 
 import (
 	"errors"
+	"swaves/internal/middleware"
 
 	"swaves/internal/db"
 
@@ -42,13 +43,22 @@ type UpdatePostInput struct {
 	Status  string
 }
 
-func ListPosts(dbx *db.DB) ([]db.Post, error) {
+func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.Post, error) {
+	// 先查询总数
+	var total int
+	row := dbx.QueryRow(`SELECT COUNT(*) FROM posts WHERE deleted_at IS NULL`)
+	if err := row.Scan(&total); err != nil {
+		return nil, err
+	}
+
+	offset := (pager.Page - 1) * pager.PageSize
 	rows, err := dbx.Query(`
 		SELECT id, title, slug, content, status, created_at, updated_at, deleted_at
 		FROM posts
 		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
-	`)
+		LIMIT ? OFFSET ?
+	`, pager.PageSize, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +81,10 @@ func ListPosts(dbx *db.DB) ([]db.Post, error) {
 		}
 		res = append(res, p)
 	}
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+
 	return res, nil
 }
 func CreatePostService(dbx *db.DB, in CreatePostInput) error {

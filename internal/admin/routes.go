@@ -37,7 +37,7 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	adminGroup.Get("/posts/new", handler.GetPostNewHandler)
 	adminGroup.Post("/posts/new", handler.PostCreatePostHandler)
 	adminGroup.Get("/posts/:id/edit", handler.GetPostEditHandler)
-	adminGroup.Post("/posts/:id", handler.PostUpdatePostHandler)
+	adminGroup.Post("/posts/:id/edit", handler.PostUpdatePostHandler)
 	adminGroup.Post("/posts/:id/delete", handler.PostDeletePostHandler)
 
 	//admin.Get("/encrypted-posts", GetEncryptedPostListHandler(deps))

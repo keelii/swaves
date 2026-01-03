@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"swaves/internal/admin"
+	"swaves/internal/middleware"
 
 	"swaves/internal/db"
 
@@ -17,12 +18,24 @@ func main() {
 	defer conn.Close()
 
 	engine := html.New("./web/templates", ".html")
+	engine.AddFunc("add", func(a, b int) int {
+		return a + b
+	})
+	engine.AddFunc("until", func(count int) []int {
+		var step []int
+		for i := 0; i < count; i++ {
+			step = append(step, i)
+		}
+		return step
+	})
 	engine.Reload(true)
 	app := fiber.New(fiber.Config{
 		AppName:               "swaves",
 		DisableStartupMessage: true,
 		Views:                 engine,
 	})
+
+	app.Use(middleware.PaginationMiddleware())
 
 	admin.RegisterRoutes(app, conn)
 

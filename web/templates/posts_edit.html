@@ -3,36 +3,33 @@
 <form method="post" action="/admin/posts/{{ .Post.ID }}/edit">
 
   <p>
-    <strong>ID:</strong> {{ .Post.ID }}
+    <label>ID:</label> {{ .Post.ID }}
   </p>
 
   <p>
-    <strong>Slug:</strong> {{ .Post.Slug }}
+    <label>Title</label>
+    <input type="text" name="title" value="{{ .Post.Title }}" required>
   </p>
 
   <p>
-    <label>
-      Title<br>
-      <input type="text" name="title" value="{{ .Post.Title }}" required>
-    </label>
+    <label>Slug</label>
+    <input type="text" name="slug" value="{{ .Post.Slug }}" disabled>
   </p>
 
   <p>
-    <label>
-      Status<br>
-      <select name="status">
-        <option value="draft" {{ if eq .Post.Status "draft" }}selected{{ end }}>Draft</option>
-        <option value="published" {{ if eq .Post.Status "published" }}selected{{ end }}>Published</option>
-      </select>
-    </label>
+    <label>Status</label>
+    <select name="status">
+      <option value="draft" {{ if eq .Post.Status "draft" }}selected{{ end }}>Draft</option>
+      <option value="published" {{ if eq .Post.Status "published" }}selected{{ end }}>Published</option>
+    </select>
   </p>
 
-  <p>
-    <label>
-      Content<br>
+  <div>
+    <label>Content</label>
+    <div>
       <textarea name="content" rows="10" cols="80">{{ .Post.Content }}</textarea>
-    </label>
-  </p>
+    </div>
+  </div>
 
   <p>
     <button type="submit">Save</button>
