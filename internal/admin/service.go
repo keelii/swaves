@@ -612,40 +612,20 @@ func UpdateConfigService(dbx *db.DB, in UpdateConfigInput) error {
 }
 
 // Trash
-type TrashData struct {
-	Posts          []db.Post
-	EncryptedPosts []db.EncryptedPost
-	Tags           []db.Tag
-	Redirects      []db.Redirect
+func GetTrashPosts(dbx *db.DB) ([]db.Post, error) {
+	return db.ListDeletedPosts(dbx)
 }
 
-func GetTrashData(dbx *db.DB) (*TrashData, error) {
-	posts, err := db.ListDeletedPosts(dbx)
-	if err != nil {
-		return nil, err
-	}
+func GetTrashEncryptedPosts(dbx *db.DB) ([]db.EncryptedPost, error) {
+	return db.ListDeletedEncryptedPosts(dbx)
+}
 
-	encryptedPosts, err := db.ListDeletedEncryptedPosts(dbx)
-	if err != nil {
-		return nil, err
-	}
+func GetTrashTags(dbx *db.DB) ([]db.Tag, error) {
+	return db.ListDeletedTags(dbx)
+}
 
-	tags, err := db.ListDeletedTags(dbx)
-	if err != nil {
-		return nil, err
-	}
-
-	redirects, err := db.ListDeletedRedirects(dbx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TrashData{
-		Posts:          posts,
-		EncryptedPosts: encryptedPosts,
-		Tags:           tags,
-		Redirects:      redirects,
-	}, nil
+func GetTrashRedirects(dbx *db.DB) ([]db.Redirect, error) {
+	return db.ListDeletedRedirects(dbx)
 }
 
 func RestorePostService(dbx *db.DB, id int64) error {

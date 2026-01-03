@@ -1,130 +1,150 @@
 <h1>Trash</h1>
 
-{{ if or .Trash.Posts .Trash.EncryptedPosts .Trash.Tags .Trash.Redirects }}
+<nav>
+  <a href="/admin/trash?type=posts">Posts</a>
+  |
+  <a href="/admin/trash?type=encrypted-posts">Encrypted Posts</a>
+  |
+  <a href="/admin/trash?type=tags">Tags</a>
+  |
+  <a href="/admin/trash?type=redirects">Redirects</a>
+</nav>
 
-{{ if .Trash.Posts }}
-<h2>Deleted Posts</h2>
-<table>
-  <thead>
-  <tr>
-    <th>ID</th>
-    <th>Title</th>
-    <th>Slug</th>
-    <th>Status</th>
-    <th>Deleted At</th>
-    <th>Actions</th>
-  </tr>
-  </thead>
-  <tbody>
-  {{ range .Trash.Posts }}
-  <tr>
-    <td>{{ .ID }}</td>
-    <td>{{ .Title }}</td>
-    <td>{{ .Slug }}</td>
-    <td>{{ .Status }}</td>
-    <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
-    <td>
-      <form method="post" style="display:inline" action="/admin/trash/posts/{{ .ID }}/restore">
-        <button type="submit">Restore</button>
-      </form>
-    </td>
-  </tr>
+{{ if eq .ModelType "posts" }}
+  {{ $posts := .Data }}
+  {{ if $posts }}
+  <table>
+    <thead>
+    <tr>
+      <th>ID</th>
+      <th>Title</th>
+      <th>Slug</th>
+      <th>Status</th>
+      <th>Deleted At</th>
+      <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range $posts }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .Title }}</td>
+      <td>{{ .Slug }}</td>
+      <td>{{ .Status }}</td>
+      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>
+        <form method="post" style="display:inline" action="/admin/trash/posts/{{ .ID }}/restore">
+          <button type="submit">Restore</button>
+        </form>
+      </td>
+    </tr>
+    {{ end }}
+    </tbody>
+  </table>
+  {{ else }}
+  <p>No deleted posts.</p>
   {{ end }}
-  </tbody>
-</table>
 {{ end }}
 
-{{ if .Trash.EncryptedPosts }}
-<h2>Deleted Encrypted Posts</h2>
-<table>
-  <thead>
-  <tr>
-    <th>ID</th>
-    <th>Title</th>
-    <th>Slug</th>
-    <th>Deleted At</th>
-    <th>Actions</th>
-  </tr>
-  </thead>
-  <tbody>
-  {{ range .Trash.EncryptedPosts }}
-  <tr>
-    <td>{{ .ID }}</td>
-    <td>{{ .Title }}</td>
-    <td>{{ .Slug }}</td>
-    <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
-    <td>
-      <form method="post" style="display:inline" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
-        <button type="submit">Restore</button>
-      </form>
-    </td>
-  </tr>
+{{ if eq .ModelType "encrypted-posts" }}
+  {{ $posts := .Data }}
+  {{ if $posts }}
+  <table>
+    <thead>
+    <tr>
+      <th>ID</th>
+      <th>Title</th>
+      <th>Slug</th>
+      <th>Deleted At</th>
+      <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range $posts }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .Title }}</td>
+      <td>{{ .Slug }}</td>
+      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>
+        <form method="post" style="display:inline" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
+          <button type="submit">Restore</button>
+        </form>
+      </td>
+    </tr>
+    {{ end }}
+    </tbody>
+  </table>
+  {{ else }}
+  <p>No deleted encrypted posts.</p>
   {{ end }}
-  </tbody>
-</table>
 {{ end }}
 
-{{ if .Trash.Tags }}
-<h2>Deleted Tags</h2>
-<table>
-  <thead>
-  <tr>
-    <th>ID</th>
-    <th>Name</th>
-    <th>Slug</th>
-    <th>Deleted At</th>
-    <th>Actions</th>
-  </tr>
-  </thead>
-  <tbody>
-  {{ range .Trash.Tags }}
-  <tr>
-    <td>{{ .ID }}</td>
-    <td>{{ .Name }}</td>
-    <td>{{ .Slug }}</td>
-    <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
-    <td>
-      <form method="post" style="display:inline" action="/admin/trash/tags/{{ .ID }}/restore">
-        <button type="submit">Restore</button>
-      </form>
-    </td>
-  </tr>
+{{ if eq .ModelType "tags" }}
+  {{ $tags := .Data }}
+  {{ if $tags }}
+  <table>
+    <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Slug</th>
+      <th>Deleted At</th>
+      <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range $tags }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .Name }}</td>
+      <td>{{ .Slug }}</td>
+      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>
+        <form method="post" style="display:inline" action="/admin/trash/tags/{{ .ID }}/restore">
+          <button type="submit">Restore</button>
+        </form>
+      </td>
+    </tr>
+    {{ end }}
+    </tbody>
+  </table>
+  {{ else }}
+  <p>No deleted tags.</p>
   {{ end }}
-  </tbody>
-</table>
 {{ end }}
 
-{{ if .Trash.Redirects }}
-<h2>Deleted Redirects</h2>
-<table>
-  <thead>
-  <tr>
-    <th>ID</th>
-    <th>From</th>
-    <th>To</th>
-    <th>Deleted At</th>
-    <th>Actions</th>
-  </tr>
-  </thead>
-  <tbody>
-  {{ range .Trash.Redirects }}
-  <tr>
-    <td>{{ .ID }}</td>
-    <td>{{ .From }}</td>
-    <td>{{ .To }}</td>
-    <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
-    <td>
-      <form method="post" style="display:inline" action="/admin/trash/redirects/{{ .ID }}/restore">
-        <button type="submit">Restore</button>
-      </form>
-    </td>
-  </tr>
+{{ if eq .ModelType "redirects" }}
+  {{ $redirects := .Data }}
+  {{ if $redirects }}
+  <table>
+    <thead>
+    <tr>
+      <th>ID</th>
+      <th>From</th>
+      <th>To</th>
+      <th>Deleted At</th>
+      <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range $redirects }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .From }}</td>
+      <td>{{ .To }}</td>
+      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>
+        <form method="post" style="display:inline" action="/admin/trash/redirects/{{ .ID }}/restore">
+          <button type="submit">Restore</button>
+        </form>
+      </td>
+    </tr>
+    {{ end }}
+    </tbody>
+  </table>
+  {{ else }}
+  <p>No deleted redirects.</p>
   {{ end }}
-  </tbody>
-</table>
-{{ end }}
-
-{{ else }}
-<p>Trash is empty.</p>
 {{ end }}
 

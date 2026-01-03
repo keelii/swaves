@@ -512,13 +512,33 @@ func (h *Handler) PostUpdateConfigsHandler(c *fiber.Ctx) error {
 
 // Trash
 func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
-	trashData, err := GetTrashData(h.DB)
+	// 获取当前选中的类型，默认为 posts
+	modelType := c.Query("type", "posts")
+
+	var data interface{}
+	var err error
+
+	switch modelType {
+	case "posts":
+		data, err = GetTrashPosts(h.DB)
+	case "encrypted-posts":
+		data, err = GetTrashEncryptedPosts(h.DB)
+	case "tags":
+		data, err = GetTrashTags(h.DB)
+	case "redirects":
+		data, err = GetTrashRedirects(h.DB)
+	default:
+		data, err = GetTrashPosts(h.DB)
+		modelType = "posts"
+	}
+
 	if err != nil {
 		return err
 	}
 
 	return c.Render("trash_index", fiber.Map{
-		"Trash": trashData,
+		"Data":      data,
+		"ModelType": modelType,
 	}, "admin_layout")
 }
 
