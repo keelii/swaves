@@ -40,14 +40,29 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	adminGroup.Post("/posts/:id/edit", handler.PostUpdatePostHandler)
 	adminGroup.Post("/posts/:id/delete", handler.PostDeletePostHandler)
 
-	//admin.Get("/encrypted-posts", GetEncryptedPostListHandler(deps))
-	//// ...
-	//
-	//admin.Get("/tags", GetTagListHandler(deps))
-	//// ...
-	//
-	//admin.Get("/redirects", GetRedirectListHandler(deps))
-	//// ...
+	adminGroup.Get("/tags", handler.GetTagListHandler)
+	adminGroup.Get("/tags/new", handler.GetTagNewHandler)
+	adminGroup.Post("/tags/new", handler.PostCreateTagHandler)
+	adminGroup.Get("/tags/:id/edit", handler.GetTagEditHandler)
+	adminGroup.Post("/tags/:id/edit", handler.PostUpdateTagHandler)
+	adminGroup.Post("/tags/:id/delete", handler.PostDeleteTagHandler)
+
+	adminGroup.Get("/redirects", handler.GetRedirectListHandler)
+	adminGroup.Get("/redirects/new", handler.GetRedirectNewHandler)
+	adminGroup.Post("/redirects/new", handler.PostCreateRedirectHandler)
+	adminGroup.Get("/redirects/:id/edit", handler.GetRedirectEditHandler)
+	adminGroup.Post("/redirects/:id/edit", handler.PostUpdateRedirectHandler)
+	adminGroup.Post("/redirects/:id/delete", handler.PostDeleteRedirectHandler)
+
+	adminGroup.Get("/encrypted-posts", handler.GetEncryptedPostListHandler)
+	adminGroup.Get("/encrypted-posts/new", handler.GetEncryptedPostNewHandler)
+	adminGroup.Post("/encrypted-posts/new", handler.PostCreateEncryptedPostHandler)
+	adminGroup.Get("/encrypted-posts/:id/edit", handler.GetEncryptedPostEditHandler)
+	adminGroup.Post("/encrypted-posts/:id/edit", handler.PostUpdateEncryptedPostHandler)
+	adminGroup.Post("/encrypted-posts/:id/delete", handler.PostDeleteEncryptedPostHandler)
+
+	adminGroup.Get("/configs", handler.GetConfigsHandler)
+	adminGroup.Post("/configs", handler.PostUpdateConfigsHandler)
 	//
 	//admin.Get("/configs", GetConfigsHandler(deps))
 	//admin.Post("/configs", PostUpdateConfigsHandler(deps))

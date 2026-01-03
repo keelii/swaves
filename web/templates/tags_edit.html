@@ -1,0 +1,25 @@
+<h1>Edit Tag</h1>
+
+<form method="post" action="/admin/tags/{{ .Tag.ID }}/edit">
+
+  <p>
+    <label>ID:</label> {{ .Tag.ID }}
+  </p>
+
+  <p>
+    <label>Name</label>
+    <input type="text" name="name" value="{{ .Tag.Name }}" required>
+  </p>
+
+  <p>
+    <label>Slug</label>
+    <input type="text" name="slug" value="{{ .Tag.Slug }}" required>
+  </p>
+
+  <p>
+    <button type="submit">Save</button>
+    <a href="/admin/tags">Back</a>
+  </p>
+
+</form>
+

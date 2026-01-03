@@ -1,0 +1,42 @@
+<h1>Edit Encrypted Post</h1>
+
+<form method="post" action="/admin/encrypted-posts/{{ .Post.ID }}/edit">
+
+  <p>
+    <label>ID:</label> {{ .Post.ID }}
+  </p>
+
+  <p>
+    <label>Title</label>
+    <input type="text" name="title" value="{{ .Post.Title }}" required>
+  </p>
+
+  <p>
+    <label>Slug</label>
+    <input type="text" name="slug" value="{{ .Post.Slug }}" disabled>
+  </p>
+
+  <p>
+    <label>Password (leave empty to keep current)</label>
+    <input type="password" name="password">
+  </p>
+
+  <p>
+    <label>Expires At (Unix timestamp, leave empty for no expiration)</label>
+    <input type="text" name="expires_at" value="{{ if .Post.ExpiresAt }}{{ .Post.ExpiresAt }}{{ end }}" placeholder="Unix timestamp">
+  </p>
+
+  <div>
+    <label>Content</label>
+    <div>
+      <textarea name="content" rows="10" cols="80">{{ .Post.Content }}</textarea>
+    </div>
+  </div>
+
+  <p>
+    <button type="submit">Save</button>
+    <a href="/admin/encrypted-posts">Back</a>
+  </p>
+
+</form>
+

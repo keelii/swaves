@@ -1,0 +1,25 @@
+<h1>Edit Redirect</h1>
+
+<form method="post" action="/admin/redirects/{{ .Redirect.ID }}/edit">
+
+  <p>
+    <label>ID:</label> {{ .Redirect.ID }}
+  </p>
+
+  <p>
+    <label>From Path</label>
+    <input type="text" name="from" value="{{ .Redirect.From }}" required>
+  </p>
+
+  <p>
+    <label>To Path</label>
+    <input type="text" name="to" value="{{ .Redirect.To }}" required>
+  </p>
+
+  <p>
+    <button type="submit">Save</button>
+    <a href="/admin/redirects">Back</a>
+  </p>
+
+</form>
+

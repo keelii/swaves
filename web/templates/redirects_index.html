@@ -1,0 +1,46 @@
+<h1>Redirects</h1>
+
+<p>
+  <a href="/admin/redirects/new">New Redirect</a>
+</p>
+
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>From</th>
+    <th>To</th>
+    <th>Actions</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {{ range .Redirects }}
+  <tr>
+    <td>{{ .ID }}</td>
+    <td>{{ .From }}</td>
+    <td>{{ .To }}</td>
+    <td>
+      <a href="/admin/redirects/{{ .ID }}/edit">Edit</a>
+
+      <form method="post" style="display:inline" action="/admin/redirects/{{ .ID }}/delete">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {{ else }}
+  <tr>
+    <td colspan="4">No redirects</td>
+  </tr>
+  {{ end }}
+  </tbody>
+
+  <tfoot>
+  <tr>
+    <td colspan="4">
+      {{template "partials/pagination" .}}
+    </td>
+  </tr>
+  </tfoot>
+</table>
+

@@ -248,6 +248,51 @@ type EncryptedPost struct {
 	DeletedAt *int64
 }
 
+func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
+	row := db.QueryRow(
+		`SELECT id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at
+		 FROM encrypted_posts WHERE id=? AND deleted_at IS NULL`,
+		id,
+	)
+
+	var p EncryptedPost
+	var deletedAt sql.NullInt64
+	var expiresAt sql.NullInt64
+	if err := row.Scan(
+		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Password,
+		&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
+	); err != nil {
+		return nil, err
+	}
+	if expiresAt.Valid {
+		p.ExpiresAt = &expiresAt.Int64
+	}
+	if deletedAt.Valid {
+		p.DeletedAt = &deletedAt.Int64
+	}
+	return &p, nil
+}
+
+func UpdateEncryptedPost(db *DB, p *EncryptedPost) error {
+	p.UpdatedAt = now()
+	_, err := db.Exec(
+		`UPDATE encrypted_posts
+		 SET title=?, content=?, password=?, expires_at=?, updated_at=?
+		 WHERE id=? AND deleted_at IS NULL`,
+		p.Title, p.Content, p.Password, p.ExpiresAt, p.UpdatedAt, p.ID,
+	)
+	return err
+}
+
+func SoftDeleteEncryptedPost(db *DB, id int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE encrypted_posts SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
+		ts, id,
+	)
+	return err
+}
+
 func CreateEncryptedPost(db *DB, p *EncryptedPost) error {
 	if p.Slug == "" {
 		p.Slug = uuid.NewString()
@@ -301,6 +346,47 @@ func CreateTag(db *DB, t *Tag) error {
 	return nil
 }
 
+func GetTagByID(db *DB, id int64) (*Tag, error) {
+	row := db.QueryRow(
+		`SELECT id, name, slug, created_at, updated_at, deleted_at
+		 FROM tags WHERE id=? AND deleted_at IS NULL`,
+		id,
+	)
+
+	var t Tag
+	var deletedAt sql.NullInt64
+	if err := row.Scan(
+		&t.ID, &t.Name, &t.Slug,
+		&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+	); err != nil {
+		return nil, err
+	}
+	if deletedAt.Valid {
+		t.DeletedAt = &deletedAt.Int64
+	}
+	return &t, nil
+}
+
+func UpdateTag(db *DB, t *Tag) error {
+	t.UpdatedAt = now()
+	_, err := db.Exec(
+		`UPDATE tags
+		 SET name=?, slug=?, updated_at=?
+		 WHERE id=? AND deleted_at IS NULL`,
+		t.Name, t.Slug, t.UpdatedAt, t.ID,
+	)
+	return err
+}
+
+func SoftDeleteTag(db *DB, id int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE tags SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
+		ts, id,
+	)
+	return err
+}
+
 func AttachTagToPost(db *DB, postID, tagID int64) error {
 	ts := now()
 	_, err := db.Exec(
@@ -319,6 +405,47 @@ type Redirect struct {
 	CreatedAt int64
 	UpdatedAt int64
 	DeletedAt *int64
+}
+
+func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
+	row := db.QueryRow(
+		`SELECT id, from_path, to_path, created_at, updated_at, deleted_at
+		 FROM redirects WHERE id=? AND deleted_at IS NULL`,
+		id,
+	)
+
+	var r Redirect
+	var deletedAt sql.NullInt64
+	if err := row.Scan(
+		&r.ID, &r.From, &r.To,
+		&r.CreatedAt, &r.UpdatedAt, &deletedAt,
+	); err != nil {
+		return nil, err
+	}
+	if deletedAt.Valid {
+		r.DeletedAt = &deletedAt.Int64
+	}
+	return &r, nil
+}
+
+func UpdateRedirect(db *DB, r *Redirect) error {
+	r.UpdatedAt = now()
+	_, err := db.Exec(
+		`UPDATE redirects
+		 SET from_path=?, to_path=?, updated_at=?
+		 WHERE id=? AND deleted_at IS NULL`,
+		r.From, r.To, r.UpdatedAt, r.ID,
+	)
+	return err
+}
+
+func SoftDeleteRedirect(db *DB, id int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE redirects SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
+		ts, id,
+	)
+	return err
 }
 
 func CreateRedirect(db *DB, r *Redirect) error {
@@ -446,6 +573,44 @@ func GetConfig(db *DB) (*Configs, error) {
 		c.DeletedAt = &deletedAt.Int64
 	}
 	return &c, nil
+}
+
+func UpdateConfig(db *DB, c *Configs) error {
+	c.UpdatedAt = now()
+
+	// 如果提供了新密码，需要重新加密
+	if c.AdminPasswordHash != "" && len(c.AdminPasswordHash) < 60 {
+		// 如果密码看起来不是 bcrypt hash（长度小于60），则加密它
+		hashed, err := bcrypt.GenerateFromPassword(
+			[]byte(c.AdminPasswordHash),
+			bcrypt.DefaultCost,
+		)
+		if err != nil {
+			return err
+		}
+		c.AdminPasswordHash = string(hashed)
+	}
+
+	_, err := db.Exec(
+		`UPDATE configs
+		 SET name=?, language=?, timezone=?,
+		     post_slug_pattern=?, tag_slug_pattern=?, tags_pattern=?,
+		     giscus_config=?, ga4_id=?,
+		     admin_password_hash=?, updated_at=?
+		 WHERE id=? AND deleted_at IS NULL`,
+		c.Name,
+		c.Language,
+		c.Timezone,
+		c.PostSlugPattern,
+		c.TagSlugPattern,
+		c.TagsPattern,
+		c.GiscusConfig,
+		c.GA4ID,
+		c.AdminPasswordHash,
+		c.UpdatedAt,
+		c.ID,
+	)
+	return err
 }
 
 func (c *Configs) CheckPassword(raw string) error {

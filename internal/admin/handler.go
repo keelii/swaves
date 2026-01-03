@@ -165,3 +165,276 @@ func (h *Handler) PostDeletePostHandler(c *fiber.Ctx) error {
 
 	return c.Redirect("/admin/posts")
 }
+
+// Tags
+func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
+	pager := middleware.GetPagination(c)
+
+	tags, err := ListTags(h.DB, &pager)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("tags_index", fiber.Map{
+		"Tags":  tags,
+		"Pager": pager,
+	}, "admin_layout")
+}
+
+func (h *Handler) GetTagNewHandler(c *fiber.Ctx) error {
+	return c.Render("tags_new", nil, "admin_layout")
+}
+
+func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
+	in := CreateTagInput{
+		Name: c.FormValue("name"),
+		Slug: c.FormValue("slug"),
+	}
+
+	if err := CreateTagService(h.DB, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/tags")
+}
+
+func (h *Handler) GetTagEditHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	tag, err := GetTagForEdit(h.DB, id)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("tags_edit", fiber.Map{
+		"Tag": tag,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	in := UpdateTagInput{
+		Name: c.FormValue("name"),
+		Slug: c.FormValue("slug"),
+	}
+
+	if err := UpdateTagService(h.DB, id, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/tags")
+}
+
+func (h *Handler) PostDeleteTagHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := DeleteTagService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/tags")
+}
+
+// Redirects
+func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
+	pager := middleware.GetPagination(c)
+
+	redirects, err := ListRedirects(h.DB, &pager)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("redirects_index", fiber.Map{
+		"Redirects": redirects,
+		"Pager":     pager,
+	}, "admin_layout")
+}
+
+func (h *Handler) GetRedirectNewHandler(c *fiber.Ctx) error {
+	return c.Render("redirects_new", nil, "admin_layout")
+}
+
+func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
+	in := CreateRedirectInput{
+		From: c.FormValue("from"),
+		To:   c.FormValue("to"),
+	}
+
+	if err := CreateRedirectService(h.DB, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/redirects")
+}
+
+func (h *Handler) GetRedirectEditHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	redirect, err := GetRedirectForEdit(h.DB, id)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("redirects_edit", fiber.Map{
+		"Redirect": redirect,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostUpdateRedirectHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	in := UpdateRedirectInput{
+		From: c.FormValue("from"),
+		To:   c.FormValue("to"),
+	}
+
+	if err := UpdateRedirectService(h.DB, id, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/redirects")
+}
+
+func (h *Handler) PostDeleteRedirectHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := DeleteRedirectService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/redirects")
+}
+
+// Encrypted Posts
+func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
+	pager := middleware.GetPagination(c)
+
+	posts, err := ListEncryptedPosts(h.DB, &pager)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("encrypted_posts_index", fiber.Map{
+		"Posts": posts,
+		"Pager": pager,
+	}, "admin_layout")
+}
+
+func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
+	return c.Render("encrypted_posts_new", nil, "admin_layout")
+}
+
+func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
+	in := CreateEncryptedPostInput{
+		Title:     c.FormValue("title"),
+		Content:   c.FormValue("content"),
+		Password:  c.FormValue("password"),
+		ExpiresAt: c.FormValue("expires_at"),
+	}
+
+	if err := CreateEncryptedPostService(h.DB, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/encrypted-posts")
+}
+
+func (h *Handler) GetEncryptedPostEditHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	post, err := GetEncryptedPostForEdit(h.DB, id)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("encrypted_posts_edit", fiber.Map{
+		"Post": post,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostUpdateEncryptedPostHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	in := UpdateEncryptedPostInput{
+		Title:     c.FormValue("title"),
+		Content:   c.FormValue("content"),
+		Password:  c.FormValue("password"),
+		ExpiresAt: c.FormValue("expires_at"),
+	}
+
+	if err := UpdateEncryptedPostService(h.DB, id, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/encrypted-posts")
+}
+
+func (h *Handler) PostDeleteEncryptedPostHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := DeleteEncryptedPostService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/encrypted-posts")
+}
+
+// Configs
+func (h *Handler) GetConfigsHandler(c *fiber.Ctx) error {
+	config, err := GetConfigForEdit(h.DB)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("configs_edit", fiber.Map{
+		"Config": config,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostUpdateConfigsHandler(c *fiber.Ctx) error {
+	in := UpdateConfigInput{
+		Name:            c.FormValue("name"),
+		Language:        c.FormValue("language"),
+		Timezone:        c.FormValue("timezone"),
+		PostSlugPattern: c.FormValue("post_slug_pattern"),
+		TagSlugPattern:  c.FormValue("tag_slug_pattern"),
+		TagsPattern:     c.FormValue("tags_pattern"),
+		GiscusConfig:    c.FormValue("giscus_config"),
+		GA4ID:           c.FormValue("ga4_id"),
+		AdminPassword:   c.FormValue("admin_password"),
+	}
+
+	if err := UpdateConfigService(h.DB, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/configs")
+}

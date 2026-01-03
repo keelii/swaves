@@ -16,7 +16,7 @@ type Pagination struct {
 
 const (
 	DefaultPage     = 1
-	DefaultPageSize = 10
+	DefaultPageSize = 5
 	MaxPageSize     = 100
 )
 

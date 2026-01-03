@@ -1,0 +1,40 @@
+<h1>New Encrypted Post</h1>
+
+<form method="post" action="/admin/encrypted-posts/new">
+
+  <p>
+    <label>
+      Title<br>
+      <input type="text" name="title" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Password<br>
+      <input type="password" name="password" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Expires At (Unix timestamp, optional)<br>
+      <input type="text" name="expires_at" placeholder="Leave empty for no expiration">
+      <button>after 1 minutes</button>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Content<br>
+      <textarea name="content" rows="10" cols="80"></textarea>
+    </label>
+  </p>
+
+  <p>
+    <button type="submit">Create</button>
+    <a href="/admin/encrypted-posts">Cancel</a>
+  </p>
+
+</form>
+
