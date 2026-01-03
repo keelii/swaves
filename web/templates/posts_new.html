@@ -1,0 +1,41 @@
+<h1>New Post2</h1>
+
+<form method="post" action="/admin/posts/new">
+
+  <p>
+    <label>
+      Title<br>
+      <input type="text" name="title" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Slug<br>
+      <input type="text" name="slug" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Status<br>
+      <select name="status">
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+      </select>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Content<br>
+      <textarea name="content" rows="10" cols="80"></textarea>
+    </label>
+  </p>
+
+  <p>
+    <button type="submit">Create</button>
+    <a href="/admin/posts">Cancel</a>
+  </p>
+
+</form>

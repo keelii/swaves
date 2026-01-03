@@ -1,0 +1,42 @@
+<h1>Edit Post</h1>
+
+<form method="post" action="/admin/posts/{{ .Post.ID }}/edit">
+
+  <p>
+    <strong>ID:</strong> {{ .Post.ID }}
+  </p>
+
+  <p>
+    <strong>Slug:</strong> {{ .Post.Slug }}
+  </p>
+
+  <p>
+    <label>
+      Title<br>
+      <input type="text" name="title" value="{{ .Post.Title }}" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Status<br>
+      <select name="status">
+        <option value="draft" {{ if eq .Post.Status "draft" }}selected{{ end }}>Draft</option>
+        <option value="published" {{ if eq .Post.Status "published" }}selected{{ end }}>Published</option>
+      </select>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Content<br>
+      <textarea name="content" rows="10" cols="80">{{ .Post.Content }}</textarea>
+    </label>
+  </p>
+
+  <p>
+    <button type="submit">Save</button>
+    <a href="/admin/posts">Back</a>
+  </p>
+
+</form>

@@ -3,37 +3,28 @@ package main
 import (
 	"log"
 	"swaves/internal/admin"
-	"swaves/internal/tpl"
 
 	"swaves/internal/db"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/template/html/v3"
 )
 
 func main() {
-	tpl.LoadTemplatesDir("web/templates")
-
 	conn := db.Open(db.Options{
 		DSN: "data.sqlite",
 	})
 	defer conn.Close()
 
+	engine := html.New("./web/templates", ".html")
+	engine.Reload(true)
 	app := fiber.New(fiber.Config{
 		AppName:               "swaves",
 		DisableStartupMessage: true,
+		Views:                 engine,
 	})
 
-	handler := admin.NewHandler(
-		admin.NewService(conn),
-		admin.NewSessionStore(conn),
-	)
-
-	adminGroup := app.Group("/admin")
-
-	adminGroup.Get("/", handler.GetHome)
-	adminGroup.Get("/login", handler.GetLoginHandler)
-	adminGroup.Post("/login", handler.PostLoginHandler)
-	adminGroup.Get("/logout", handler.GetLogoutHandler)
+	admin.RegisterRoutes(app, conn)
 
 	log.Println("swaves listening on :3000")
 	log.Fatal(app.Listen(":3000"))
