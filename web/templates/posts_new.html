@@ -36,8 +36,11 @@
         </label>
         {{ end }}
       {{ else }}
-        <span>No tags available. <a href="/admin/tags/new">Create a tag</a></span>
+        <span>No tags available.</span>
       {{ end }}
+      <label>
+        <input type="text" name="new_tags" placeholder="New tags: comma separated">
+      </label>
       <input type="hidden" name="tags" id="tags-input">
     </label>
   </p>

@@ -128,6 +128,21 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	// 处理新标签（逗号分割的标签名称）
+	newTagsStr := c.FormValue("new_tags")
+	if newTagsStr != "" {
+		tagNames := strings.Split(newTagsStr, ",")
+		for _, tagName := range tagNames {
+			tagName = strings.TrimSpace(tagName)
+			if tagName != "" {
+				tag, err := CreateTagByName(h.DB, tagName)
+				if err == nil {
+					tagIDs = append(tagIDs, tag.ID)
+				}
+			}
+		}
+	}
+
 	in := CreatePostInput{
 		Title:   c.FormValue("title"),
 		Slug:    c.FormValue("slug"),

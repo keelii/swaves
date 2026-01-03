@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"strings"
 	"swaves/internal/middleware"
 
 	"swaves/internal/db"
@@ -261,16 +262,83 @@ func ListTags(dbx *db.DB, pager *middleware.Pagination) ([]db.Tag, error) {
 	return res, nil
 }
 
+func generateSlug(name string) string {
+	// 简单的 slug 生成：转换为小写，替换空格为连字符
+	slug := strings.ToLower(name)
+	slug = strings.ReplaceAll(slug, " ", "-")
+	// 移除其他特殊字符，只保留字母、数字和连字符
+	var result strings.Builder
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
+}
+
 func CreateTagService(dbx *db.DB, in CreateTagInput) error {
-	if in.Name == "" || in.Slug == "" {
-		return errors.New("name and slug required")
+	if in.Name == "" {
+		return errors.New("name required")
+	}
+
+	slug := in.Slug
+	if slug == "" {
+		slug = generateSlug(in.Name)
 	}
 
 	t := &db.Tag{
 		Name: in.Name,
-		Slug: in.Slug,
+		Slug: slug,
 	}
 	return db.CreateTag(dbx, t)
+}
+
+func CreateTagByName(dbx *db.DB, name string) (*db.Tag, error) {
+	if name == "" {
+		return nil, errors.New("name required")
+	}
+
+	// 检查标签是否已存在
+	slug := generateSlug(name)
+	rows, err := dbx.Query(`
+		SELECT id, name, slug, created_at, updated_at, deleted_at
+		FROM tags
+		WHERE slug = ? AND deleted_at IS NULL
+		LIMIT 1
+	`, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		var t db.Tag
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&t.ID,
+			&t.Name,
+			&t.Slug,
+			&t.CreatedAt,
+			&t.UpdatedAt,
+			&t.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		return &t, nil
+	}
+
+	// 如果不存在，创建新标签
+	t := &db.Tag{
+		Name: name,
+		Slug: slug,
+	}
+	if err := db.CreateTag(dbx, t); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func GetTagForEdit(dbx *db.DB, id int64) (*db.Tag, error) {
