@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"log"
 	"strings"
 	"swaves/internal/db"
@@ -18,7 +17,7 @@ func HttpErrorLogMiddleware(dbx *db.DB) fiber.Handler {
 
 		status := c.Response().StatusCode()
 		if status != 200 {
-			//return err
+			return err
 		}
 
 		reqID, _ := c.Locals("reqId").(string)
@@ -36,7 +35,6 @@ func HttpErrorLogMiddleware(dbx *db.DB) fiber.Handler {
 		}
 
 		go func(l *db.HttpErrorLog) {
-			fmt.Println("write log", logItem)
 			if err := db.CreateHttpErrorLog(dbx, l); err != nil {
 				log.Printf("insert http_error_log failed: %v", err)
 			}

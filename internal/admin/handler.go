@@ -593,3 +593,31 @@ func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
 
 	return c.Redirect("/admin/trash")
 }
+
+// HttpErrorLogs
+func (h *Handler) GetHttpErrorLogListHandler(c *fiber.Ctx) error {
+	pager := middleware.GetPagination(c)
+
+	logs, err := ListHttpErrorLogs(h.DB, &pager)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("http_error_logs_index", fiber.Map{
+		"Logs":  logs,
+		"Pager": pager,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := DeleteHttpErrorLogService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/http-error-logs")
+}

@@ -69,6 +69,9 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	adminGroup.Post("/trash/encrypted-posts/:id/restore", handler.PostRestoreEncryptedPostHandler)
 	adminGroup.Post("/trash/tags/:id/restore", handler.PostRestoreTagHandler)
 	adminGroup.Post("/trash/redirects/:id/restore", handler.PostRestoreRedirectHandler)
+
+	adminGroup.Get("/http-error-logs", handler.GetHttpErrorLogListHandler)
+	adminGroup.Post("/http-error-logs/:id/delete", handler.PostDeleteHttpErrorLogHandler)
 	//
 	//admin.Get("/configs", GetConfigsHandler(deps))
 	//admin.Post("/configs", PostUpdateConfigsHandler(deps))

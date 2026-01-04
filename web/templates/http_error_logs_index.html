@@ -1,0 +1,56 @@
+<h1>Http Error Logs</h1>
+
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>ReqID</th>
+    <th>ClientIP</th>
+    <th>Method</th>
+    <th>Path</th>
+    <th>Status</th>
+    <th>UserAgent</th>
+    <th>Query</th>
+    <th>Body</th>
+    <th>Created At</th>
+    <th>Actions</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {{ range .Logs }}
+  <tr>
+    <td>{{ .ID }}</td>
+    <td>{{ .ReqID }}</td>
+    <td>{{ .ClientIP }}</td>
+    <td>{{ .Method }}</td>
+    <td>{{ .Path }}</td>
+    <td>{{ .Status }}</td>
+    <td>
+      <span style="display: block;height:1.5em;width:20em;text-overflow: ellipsis;overflow: hidden">{{ if .UserAgent }}{{ .UserAgent }}{{ else }}-{{ end }}</span>
+    </td>
+    <td>{{ if .QueryParams }}{{ .QueryParams }}{{ else }}-{{ end }}</td>
+    <td>{{ if .BodyParams }}{{ .BodyParams }}{{ else }}-{{ end }}</td>
+    <td>{{ formatTime .CreatedAt }}</td>
+    <td>
+      <form method="post" style="display:inline" action="/admin/http-error-logs/{{ .ID }}/delete">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {{ else }}
+  <tr>
+    <td colspan="12">No logs</td>
+  </tr>
+  {{ end }}
+  </tbody>
+
+  <tfoot>
+  <tr>
+    <td colspan="12">
+      {{template "partials/pagination" .}}
+    </td>
+  </tr>
+  </tfoot>
+</table>
+

@@ -643,3 +643,27 @@ func RestoreTagService(dbx *db.DB, id int64) error {
 func RestoreRedirectService(dbx *db.DB, id int64) error {
 	return db.RestoreRedirect(dbx, id)
 }
+
+// HttpErrorLogs
+func ListHttpErrorLogs(dbx *db.DB, pager *middleware.Pagination) ([]db.HttpErrorLog, error) {
+	var total int
+	total, err := db.CountHttpErrorLogs(dbx)
+	if err != nil {
+		return nil, err
+	}
+
+	offset := (pager.Page - 1) * pager.PageSize
+	logs, err := db.ListHttpErrorLogs(dbx, pager.PageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+
+	return logs, nil
+}
+
+func DeleteHttpErrorLogService(dbx *db.DB, id int64) error {
+	return db.DeleteHttpErrorLog(dbx, id)
+}

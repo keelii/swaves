@@ -971,4 +971,54 @@ func CreateHttpErrorLog(db *DB, l *HttpErrorLog) error {
 	return nil
 }
 
+func ListHttpErrorLogs(db *DB, limit, offset int) ([]HttpErrorLog, error) {
+	rows, err := db.Query(`
+		SELECT id, req_id, client_ip, method, path, status, user_agent,
+		       query_params, body_params, created_at, expired_at
+		FROM http_error_logs
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []HttpErrorLog
+	for rows.Next() {
+		var l HttpErrorLog
+		if err := rows.Scan(
+			&l.ID,
+			&l.ReqID,
+			&l.ClientIP,
+			&l.Method,
+			&l.Path,
+			&l.Status,
+			&l.UserAgent,
+			&l.QueryParams,
+			&l.BodyParams,
+			&l.CreatedAt,
+			&l.ExpiredAt,
+		); err != nil {
+			return nil, err
+		}
+		res = append(res, l)
+	}
+	return res, nil
+}
+
+func CountHttpErrorLogs(db *DB) (int, error) {
+	var total int
+	row := db.QueryRow(`SELECT COUNT(*) FROM http_error_logs`)
+	if err := row.Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func DeleteHttpErrorLog(db *DB, id int64) error {
+	_, err := db.Exec(`DELETE FROM http_error_logs WHERE id=?`, id)
+	return err
+}
+
 var ErrNotFound = errors.New("not found")
