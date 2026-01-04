@@ -14,10 +14,14 @@
       Slug<br>
       <input type="text" name="slug" id="slug" required>
       <button onclick="autoSetSlug()" type="button">Auto</button>
-{#      <button onclick="autoTranslate()" type="button">Translate</button>#}
+      <button onclick="autoTranslate()" type="button">Translate</button>
       <script>
           async function autoTranslate() {
-
+              const ret = await fetch(`/api/translate?name=${document.querySelector("#title").value}`)
+              const json = await ret.json()
+              if (json && json.data) {
+                  document.querySelector("#slug").value = json.data
+              }
           }
           async function autoSetSlug() {
               const ret = await fetch(`/api/slug?name=${document.querySelector("#title").value}`)
