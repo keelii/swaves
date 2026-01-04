@@ -5,14 +5,28 @@
   <p>
     <label>
       Title<br>
-      <input type="text" name="title" required>
+      <input type="text" name="title" id="title" required>
     </label>
   </p>
 
   <p>
     <label>
       Slug<br>
-      <input type="text" name="slug" required>
+      <input type="text" name="slug" id="slug" required>
+      <button onclick="autoSetSlug()" type="button">Auto</button>
+{#      <button onclick="autoTranslate()" type="button">Translate</button>#}
+      <script>
+          async function autoTranslate() {
+
+          }
+          async function autoSetSlug() {
+              const ret = await fetch(`/api/slug?name=${document.querySelector("#title").value}`)
+              const json = await ret.json()
+              if (json && json.data) {
+                  document.querySelector("#slug").value = json.data
+              }
+          }
+      </script>
     </label>
   </p>
 
@@ -35,8 +49,6 @@
           <input type="checkbox" class="tag-checkbox" value="{{ .ID }}"> {{ .Name }}
         </label>
         {{ end }}
-      {{ else }}
-        <span>No tags available.</span>
       {{ end }}
       <label>
         <input type="text" name="new_tags" placeholder="New tags: comma separated">

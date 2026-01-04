@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"swaves/internal/admin"
+	"swaves/internal/api"
 	"swaves/internal/middleware"
 	"time"
 
@@ -45,6 +46,7 @@ func main() {
 	app.Use(middleware.PaginationMiddleware())
 
 	admin.RegisterRoutes(app, conn)
+	api.RegisterRoutes(app, conn)
 
 	log.Println("swaves listening on :3000")
 	log.Fatal(app.Listen(":3000"))
