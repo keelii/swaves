@@ -114,6 +114,35 @@ func Migrate(db *DB) error {
 		  updated_at INTEGER NOT NULL,
 		  deleted_at INTEGER
 		);`,
+
+		`CREATE TABLE IF NOT EXISTS http_error_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+			req_id TEXT NOT NULL,
+			client_ip TEXT NOT NULL,
+			method TEXT NOT NULL,
+			path TEXT NOT NULL,
+			status INTEGER NOT NULL,
+			user_agent TEXT NOT NULL,
+
+			query_params TEXT,
+			body_params TEXT,
+
+			created_at INTEGER NOT NULL,
+			expired_at INTEGER NOT NULL
+		);`,
+
+		`CREATE INDEX IF NOT EXISTS idx_http_error_logs_created_at
+		 ON http_error_logs(created_at);`,
+
+		`CREATE INDEX IF NOT EXISTS idx_http_error_logs_expired_at
+		 ON http_error_logs(expired_at);`,
+
+		`CREATE INDEX IF NOT EXISTS idx_http_error_logs_path
+		 ON http_error_logs(path);`,
+
+		`CREATE INDEX IF NOT EXISTS idx_http_error_logs_status
+		 ON http_error_logs(status);`,
 	}
 
 	for _, stmt := range stmts {
@@ -884,6 +913,62 @@ func CreateAdminSession(db *DB, ttl time.Duration) (*AdminSession, error) {
 		CreatedAt: now,
 		ExpiresAt: expiresAt,
 	}, nil
+}
+
+type HttpErrorLog struct {
+	ID          int64
+	ReqID       string
+	ClientIP    string
+	Method      string
+	Path        string
+	Status      int
+	UserAgent   string
+	QueryParams string
+	BodyParams  string
+	CreatedAt   int64
+	ExpiredAt   int64
+}
+
+func CreateHttpErrorLog(db *DB, l *HttpErrorLog) error {
+	if l.CreatedAt == 0 {
+		l.CreatedAt = now()
+	}
+	if l.ExpiredAt == 0 {
+		// 默认 7 天
+		l.ExpiredAt = l.CreatedAt + 7*24*60*60
+	}
+
+	res, err := db.Exec(`
+		INSERT INTO http_error_logs (
+			req_id,
+			client_ip,
+			method,
+			path,
+			status,
+			user_agent,
+			query_params,
+			body_params,
+			created_at,
+			expired_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`,
+		l.ReqID,
+		l.ClientIP,
+		l.Method,
+		l.Path,
+		l.Status,
+		l.UserAgent,
+		l.QueryParams,
+		l.BodyParams,
+		l.CreatedAt,
+		l.ExpiredAt,
+	)
+	if err != nil {
+		return err
+	}
+
+	l.ID, _ = res.LastInsertId()
+	return nil
 }
 
 var ErrNotFound = errors.New("not found")
