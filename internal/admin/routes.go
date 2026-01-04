@@ -61,8 +61,8 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	adminGroup.Post("/encrypted-posts/:id/edit", handler.PostUpdateEncryptedPostHandler)
 	adminGroup.Post("/encrypted-posts/:id/delete", handler.PostDeleteEncryptedPostHandler)
 
-	adminGroup.Get("/configs", handler.GetConfigsHandler)
-	adminGroup.Post("/configs", handler.PostUpdateConfigsHandler)
+	adminGroup.Get("/settings", handler.GetSettingsHandler)
+	adminGroup.Post("/settings", handler.PostUpdateSettingsHandler)
 
 	adminGroup.Get("/trash", handler.GetTrashHandler)
 	adminGroup.Post("/trash/posts/:id/restore", handler.PostRestorePostHandler)
@@ -72,7 +72,4 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 
 	adminGroup.Get("/http-error-logs", handler.GetHttpErrorLogListHandler)
 	adminGroup.Post("/http-error-logs/:id/delete", handler.PostDeleteHttpErrorLogHandler)
-	//
-	//admin.Get("/configs", GetConfigsHandler(deps))
-	//admin.Post("/configs", PostUpdateConfigsHandler(deps))
 }

@@ -23,7 +23,7 @@ func NewService(db *db.DB) *Service {
 }
 
 func (a *Service) CheckPassword(raw string) error {
-	cfg, err := db.GetConfig(a.DB)
+	cfg, err := db.GetSettings(a.DB)
 	if err != nil {
 		return err
 	}
@@ -571,8 +571,8 @@ func DeleteEncryptedPostService(dbx *db.DB, id int64) error {
 	return db.SoftDeleteEncryptedPost(dbx, id)
 }
 
-// Configs
-type UpdateConfigInput struct {
+// Settings
+type UpdateSettingsInput struct {
 	Name            string
 	Language        string
 	Timezone        string
@@ -584,12 +584,12 @@ type UpdateConfigInput struct {
 	AdminPassword   string
 }
 
-func GetConfigForEdit(dbx *db.DB) (*db.Configs, error) {
-	return db.GetConfig(dbx)
+func GetSettingsForEdit(dbx *db.DB) (*db.Settings, error) {
+	return db.GetSettings(dbx)
 }
 
-func UpdateConfigService(dbx *db.DB, in UpdateConfigInput) error {
-	cfg, err := db.GetConfig(dbx)
+func UpdateSettingsService(dbx *db.DB, in UpdateSettingsInput) error {
+	cfg, err := db.GetSettings(dbx)
 	if err != nil {
 		return err
 	}
@@ -608,7 +608,7 @@ func UpdateConfigService(dbx *db.DB, in UpdateConfigInput) error {
 		cfg.AdminPasswordHash = in.AdminPassword
 	}
 
-	return db.UpdateConfig(dbx, cfg)
+	return db.UpdateSettings(dbx, cfg)
 }
 
 // Trash

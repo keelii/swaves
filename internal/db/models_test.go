@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -10,12 +11,9 @@ import (
 func openTestDB(t *testing.T) *DB {
 	t.Helper()
 
-	db, err := Open(Options{
+	db := Open(Options{
 		DSN: ":memory:",
 	})
-	if err != nil {
-		t.Fatalf("open db failed: %v", err)
-	}
 
 	if err := Migrate(db); err != nil {
 		t.Fatalf("migrate failed: %v", err)
@@ -368,10 +366,10 @@ func TestRedirects_SoftDelete(t *testing.T) {
 	}
 }
 
-func TestCreateConfig(t *testing.T) {
+func TestCreateSettings(t *testing.T) {
 	db := openTestDB(t)
 
-	c := &Configs{
+	c := &Settings{
 		Name:              "My Blog",
 		Language:          "zh-CN",
 		Timezone:          "Asia/Shanghai",
@@ -383,17 +381,17 @@ func TestCreateConfig(t *testing.T) {
 		AdminPasswordHash: "raw_password",
 	}
 
-	if err := CreateConfig(db, c); err != nil {
-		t.Fatalf("CreateConfig failed: %v", err)
+	if err := CreateSettings(db, c); err != nil {
+		t.Fatalf("CreateSettings failed: %v", err)
 	}
 	if c.ID == 0 {
-		t.Fatal("config id not set")
+		t.Fatal("settings id not set")
 	}
 }
-func TestConfigs_SoftDelete(t *testing.T) {
+func TestSettings_SoftDelete(t *testing.T) {
 	db := openTestDB(t)
 
-	c := &Configs{
+	c := &Settings{
 		Name:              "Blog",
 		Language:          "en",
 		Timezone:          "UTC",
@@ -402,12 +400,12 @@ func TestConfigs_SoftDelete(t *testing.T) {
 		TagsPattern:       ",",
 		AdminPasswordHash: "raw_password",
 	}
-	CreateConfig(db, c)
+	CreateSettings(db, c)
 
-	softDeleteByTable(db, t, "configs", c.ID)
+	softDeleteByTable(db, t, "settings", c.ID)
 
-	// 允许再次创建（configs 无唯一约束）
-	c2 := &Configs{
+	// 允许再次创建（settings 无唯一约束）
+	c2 := &Settings{
 		Name:              "Blog2",
 		Language:          "zh",
 		Timezone:          "Asia/Shanghai",
@@ -416,12 +414,12 @@ func TestConfigs_SoftDelete(t *testing.T) {
 		TagsPattern:       "|",
 		AdminPasswordHash: "raw_password",
 	}
-	if err := CreateConfig(db, c2); err != nil {
+	if err := CreateSettings(db, c2); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func GetConfig(db *DB) (*Configs, error) {
+func GetSettingsForTest(db *DB) (*Settings, error) {
 	row := db.QueryRow(`
 		SELECT
 			id,
@@ -437,13 +435,13 @@ func GetConfig(db *DB) (*Configs, error) {
 			created_at,
 			updated_at,
 			deleted_at
-		FROM configs
+		FROM settings
 		WHERE deleted_at IS NULL
 		ORDER BY id ASC
 		LIMIT 1
 	`)
 
-	var c Configs
+	var c Settings
 	var deletedAt sql.NullInt64
 
 	err := row.Scan(
@@ -475,11 +473,14 @@ func GetConfig(db *DB) (*Configs, error) {
 	return &c, nil
 }
 
-func TestCreateConfig_AdminPasswordIsBcrypt(t *testing.T) {
+func TestCreateSettings_AdminPasswordIsBcrypt(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
 
-	cfg := &Configs{
+	db.Exec(`DELETE FROM settings where deleted_at IS NULL`)
+	g, err := GetSettingsForTest(db)
+
+	cfg := &Settings{
 		Name:              "swaves",
 		Language:          "zh-CN",
 		Timezone:          "Asia/Shanghai",
@@ -489,13 +490,13 @@ func TestCreateConfig_AdminPasswordIsBcrypt(t *testing.T) {
 		AdminPasswordHash: "plain-password",
 	}
 
-	if err := CreateConfig(db, cfg); err != nil {
-		t.Fatalf("CreateConfig failed: %v", err)
+	if err := CreateSettings(db, cfg); err != nil {
+		t.Fatalf("CreateSettings failed: %v", err)
 	}
 
-	got, err := GetConfig(db)
+	got, err := GetSettingsForTest(db)
 	if err != nil {
-		t.Fatalf("GetConfig failed: %v", err)
+		t.Fatalf("GetSettingsForTest failed: %v", err)
 	}
 
 	if got.AdminPasswordHash == "plain-password" {

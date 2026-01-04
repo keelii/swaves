@@ -90,7 +90,7 @@ func Migrate(db *DB) error {
 			deleted_at INTEGER
 		);`,
 
-		`CREATE TABLE IF NOT EXISTS configs (
+		`CREATE TABLE IF NOT EXISTS settings (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
 			language TEXT NOT NULL,
@@ -151,15 +151,15 @@ func Migrate(db *DB) error {
 		}
 	}
 
-	if _, err := EnsureConfigExists(db); err != nil {
-		log.Fatalf("ensure config exists failed: %v", err)
+	if _, err := EnsureSettingsExists(db); err != nil {
+		log.Fatalf("ensure settings exists failed: %v", err)
 	}
 
 	return nil
 }
 
-func EnsureConfigExists(db *DB) (*Configs, error) {
-	_, err := GetConfig(db)
+func EnsureSettingsExists(db *DB) (*Settings, error) {
+	_, err := GetSettings(db)
 	if err == nil {
 		// 已经存在
 		return nil, nil
@@ -170,7 +170,7 @@ func EnsureConfigExists(db *DB) (*Configs, error) {
 
 	// 创建默认配置
 	now := time.Now().Unix()
-	cfg := &Configs{
+	cfg := &Settings{
 		Name:              "swaves",
 		Language:          "zh-CN",
 		Timezone:          "Asia/Shanghai",
@@ -182,7 +182,7 @@ func EnsureConfigExists(db *DB) (*Configs, error) {
 		UpdatedAt:         now,
 	}
 
-	if err := CreateConfig(db, cfg); err != nil {
+	if err := CreateSettings(db, cfg); err != nil {
 		return nil, err
 	}
 
@@ -731,7 +731,7 @@ func CreateRedirect(db *DB, r *Redirect) error {
 	return nil
 }
 
-type Configs struct {
+type Settings struct {
 	ID                int64
 	Name              string
 	Language          string
@@ -747,7 +747,7 @@ type Configs struct {
 	DeletedAt         *int64
 }
 
-func CreateConfig(db *DB, c *Configs) error {
+func CreateSettings(db *DB, c *Settings) error {
 	if c.AdminPasswordHash == "" {
 		return errors.New("admin password required")
 	}
@@ -770,7 +770,7 @@ func CreateConfig(db *DB, c *Configs) error {
 	}
 
 	res, err := db.Exec(
-		`INSERT INTO configs
+		`INSERT INTO settings
 		 (name, language, timezone,
 		  post_slug_pattern, tag_slug_pattern, tags_pattern,
 		  giscus_config, ga4_id, admin_password_hash,
@@ -796,18 +796,18 @@ func CreateConfig(db *DB, c *Configs) error {
 	return nil
 }
 
-func GetConfig(db *DB) (*Configs, error) {
+func GetSettings(db *DB) (*Settings, error) {
 	row := db.QueryRow(`
 		SELECT id, name, language, timezone,
 		       post_slug_pattern, tag_slug_pattern, tags_pattern,
 		       giscus_config, ga4_id, admin_password_hash,
 		       created_at, updated_at, deleted_at
-		FROM configs
+		FROM settings
 		WHERE deleted_at IS NULL
 		LIMIT 1
 	`)
 
-	var c Configs
+	var c Settings
 	var deletedAt sql.NullInt64
 
 	err := row.Scan(
@@ -838,7 +838,7 @@ func GetConfig(db *DB) (*Configs, error) {
 	return &c, nil
 }
 
-func UpdateConfig(db *DB, c *Configs) error {
+func UpdateSettings(db *DB, c *Settings) error {
 	c.UpdatedAt = now()
 
 	// 如果提供了新密码，需要重新加密
@@ -855,7 +855,7 @@ func UpdateConfig(db *DB, c *Configs) error {
 	}
 
 	_, err := db.Exec(
-		`UPDATE configs
+		`UPDATE settings
 		 SET name=?, language=?, timezone=?,
 		     post_slug_pattern=?, tag_slug_pattern=?, tags_pattern=?,
 		     giscus_config=?, ga4_id=?,
@@ -876,7 +876,7 @@ func UpdateConfig(db *DB, c *Configs) error {
 	return err
 }
 
-func (c *Configs) CheckPassword(raw string) error {
+func (c *Settings) CheckPassword(raw string) error {
 	if c.AdminPasswordHash == "" {
 		return ErrNotFound
 	}

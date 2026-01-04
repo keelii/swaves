@@ -478,20 +478,20 @@ func (h *Handler) PostDeleteEncryptedPostHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/encrypted-posts")
 }
 
-// Configs
-func (h *Handler) GetConfigsHandler(c *fiber.Ctx) error {
-	config, err := GetConfigForEdit(h.DB)
+// Settings
+func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
+	settings, err := GetSettingsForEdit(h.DB)
 	if err != nil {
 		return err
 	}
 
-	return c.Render("configs_edit", fiber.Map{
-		"Config": config,
+	return c.Render("settings_edit", fiber.Map{
+		"Settings": settings,
 	}, "admin_layout")
 }
 
-func (h *Handler) PostUpdateConfigsHandler(c *fiber.Ctx) error {
-	in := UpdateConfigInput{
+func (h *Handler) PostUpdateSettingsHandler(c *fiber.Ctx) error {
+	in := UpdateSettingsInput{
 		Name:            c.FormValue("name"),
 		Language:        c.FormValue("language"),
 		Timezone:        c.FormValue("timezone"),
@@ -503,11 +503,11 @@ func (h *Handler) PostUpdateConfigsHandler(c *fiber.Ctx) error {
 		AdminPassword:   c.FormValue("admin_password"),
 	}
 
-	if err := UpdateConfigService(h.DB, in); err != nil {
+	if err := UpdateSettingsService(h.DB, in); err != nil {
 		return err
 	}
 
-	return c.Redirect("/admin/configs")
+	return c.Redirect("/admin/settings")
 }
 
 // Trash
