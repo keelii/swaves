@@ -63,6 +63,8 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 
 	adminGroup.Get("/settings", handler.GetSettingsHandler)
 	adminGroup.Post("/settings", handler.PostUpdateSettingsHandler)
+	adminGroup.Get("/settings/new", handler.GetSettingNewHandler)
+	adminGroup.Post("/settings/new", handler.PostCreateSettingHandler)
 
 	adminGroup.Get("/trash", handler.GetTrashHandler)
 	adminGroup.Post("/trash/posts/:id/restore", handler.PostRestorePostHandler)

@@ -3,6 +3,7 @@ package admin
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
@@ -524,10 +525,13 @@ func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 		view := SettingView{Setting: s}
 
 		// 解析 options（如果是 radio 或 checkbox）
-		if (s.Type == "radio" || s.Type == "checkbox") && s.Options != "" {
+		if (s.Type == "select" || s.Type == "radio" || s.Type == "checkbox") && s.Options != "" {
 			var options []map[string]string
-			if err := json.Unmarshal([]byte(s.Options), &options); err == nil {
+			err := json.Unmarshal([]byte(s.Options), &options)
+			if err == nil {
 				view.OptionsParsed = options
+			} else {
+				log.Println("Error parsing options for setting", s.Options, err)
 			}
 		}
 
@@ -564,10 +568,15 @@ func (h *Handler) PostUpdateSettingsHandler(c *fiber.Ctx) error {
 
 		// checkbox 类型需要特殊处理，可能有多个值
 		if setting.Type == "checkbox" {
-			// 获取所有同名的 checkbox 值
-			values := c.FormValue(fieldName)
-			//value := strings.Join(values, ",")
-			if err := UpdateSettingValueService(h.DB, setting.Code, values); err != nil {
+			valuesBytes := c.Request().PostArgs().PeekMulti(fieldName)
+
+			var values []string
+			for _, v := range valuesBytes {
+				values = append(values, string(v))
+			}
+
+			value := strings.Join(values, ",")
+			if err := UpdateSettingValueService(h.DB, setting.Code, value); err != nil {
 				return err
 			}
 		} else {
@@ -581,6 +590,45 @@ func (h *Handler) PostUpdateSettingsHandler(c *fiber.Ctx) error {
 				return err
 			}
 		}
+	}
+
+	return c.Redirect("/admin/settings")
+}
+
+func (h *Handler) GetSettingNewHandler(c *fiber.Ctx) error {
+	return c.Render("settings_new", fiber.Map{
+		"Title": "New Setting",
+	}, "admin_layout")
+}
+
+func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
+	s := &db.Setting{
+		Category:    c.FormValue("category"),
+		Name:        c.FormValue("name"),
+		Code:        c.FormValue("code"),
+		Type:        c.FormValue("type"),
+		Options:     c.FormValue("options"),
+		Attrs:       c.FormValue("attrs"),
+		Value:       c.FormValue("value"),
+		Description: c.FormValue("description"),
+	}
+
+	if sortStr := c.FormValue("sort"); sortStr != "" {
+		if sort, err := strconv.ParseInt(sortStr, 10, 64); err == nil {
+			s.Sort = sort
+		}
+	}
+
+	if s.Category == "" {
+		s.Category = "default"
+	}
+
+	if err := CreateSettingService(h.DB, s); err != nil {
+		return c.Render("settings_new", fiber.Map{
+			"Title":   "New Setting",
+			"Error":   err.Error(),
+			"Setting": s,
+		}, "admin_layout")
 	}
 
 	return c.Redirect("/admin/settings")

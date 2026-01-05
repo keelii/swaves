@@ -1,3 +1,7 @@
+<p>
+  <a href="/admin/settings/new">New Setting</a>
+</p>
+
 <form method="post" action="/admin/settings">
 
   {{ range $category, $settings := .SettingsByCategory }}
@@ -41,6 +45,12 @@
             {{ .label }}
           </label>
         {{ end }}
+      {{ else if eq .Type "select" }}
+        <select name="setting_{{ .Code }}">
+          {{ range .OptionsParsed }}
+            <option value="{{ .value }}" {{ if eq $.Value .value }}selected{{ end }}>{{ .label }}</option>
+          {{ end }}
+        </select>
       {{ end }}
     </label>
   </p>
