@@ -77,4 +77,7 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	adminGroup.Get("/cron-jobs/new", handler.GetCronJobNewHandler)
 	adminGroup.Post("/cron-jobs/new", handler.PostCreateCronJobHandler)
 	adminGroup.Get("/cron-jobs/:job_id/logs", handler.GetCronJobLogListHandler)
+
+	adminGroup.Get("/import", handler.GetImportHandler)
+	adminGroup.Post("/import", handler.PostImportHandler)
 }

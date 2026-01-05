@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"io"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
@@ -678,4 +679,95 @@ func (h *Handler) GetCronJobLogListHandler(c *fiber.Ctx) error {
 		"Job":  job,
 		"Logs": logs,
 	}, "admin_layout")
+}
+
+// Import/Export
+func (h *Handler) GetImportHandler(c *fiber.Ctx) error {
+	return c.Render("import", fiber.Map{
+		"Title": "Import Markdown",
+	}, "admin_layout")
+}
+
+func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
+	// 获取上传的文件
+	form, err := c.MultipartForm()
+	if err != nil {
+		return c.Render("import", fiber.Map{
+			"Title": "Import Markdown",
+			"Error": "Failed to parse form: " + err.Error(),
+		}, "admin_layout")
+	}
+
+	files := form.File["files"]
+	if len(files) == 0 {
+		return c.Render("import", fiber.Map{
+			"Title": "Import Markdown",
+			"Error": "Please select at least one file to import",
+		}, "admin_layout")
+	}
+
+	// 获取 slug 来源选择
+	slugSourceStr := c.FormValue("slug_source")
+	slugSource := SlugFromTitle // 默认从 title 生成
+	switch slugSourceStr {
+	case "filename":
+		slugSource = SlugFromFilename
+	case "frontmatter":
+		slugSource = SlugFromFrontmatter
+	case "title":
+		slugSource = SlugFromTitle
+	}
+
+	// 如果是从 frontmatter，获取字段名
+	slugField := c.FormValue("slug_field")
+	if slugField == "" {
+		slugField = "slug"
+	}
+
+	// 读取所有文件
+	var importFiles []ImportFile
+	for _, fileHeader := range files {
+		src, err := fileHeader.Open()
+		if err != nil {
+			return c.Render("import", fiber.Map{
+				"Title": "Import Markdown",
+				"Error": "Failed to open file " + fileHeader.Filename + ": " + err.Error(),
+			}, "admin_layout")
+		}
+
+		content, err := io.ReadAll(src)
+		src.Close()
+		if err != nil {
+			return c.Render("import", fiber.Map{
+				"Title": "Import Markdown",
+				"Error": "Failed to read file " + fileHeader.Filename + ": " + err.Error(),
+			}, "admin_layout")
+		}
+
+		// 提取文件名（不含扩展名）
+		filename := fileHeader.Filename
+		if idx := strings.LastIndex(filename, "."); idx > 0 {
+			filename = filename[:idx]
+		}
+
+		importFiles = append(importFiles, ImportFile{
+			Filename: filename,
+			Content:  string(content),
+		})
+	}
+
+	in := ImportMarkdownInput{
+		Files:      importFiles,
+		SlugSource: slugSource,
+		SlugField:  slugField,
+	}
+
+	if err := ImportMarkdownService(h.DB, in); err != nil {
+		return c.Render("import", fiber.Map{
+			"Title": "Import Markdown",
+			"Error": err.Error(),
+		}, "admin_layout")
+	}
+
+	return c.Redirect("/admin/posts")
 }

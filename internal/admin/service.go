@@ -5,10 +5,13 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"swaves/internal/md"
 	"swaves/internal/middleware"
+	"time"
 
 	"swaves/internal/db"
 
+	slg "github.com/gosimple/slug"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -705,4 +708,181 @@ func GetCronJobForEdit(dbx *db.DB, id int64) (*db.CronJob, error) {
 // CronJobLogs
 func ListCronJobLogs(dbx *db.DB, jobID int64, limit int) ([]*db.CronJobLog, error) {
 	return db.ListCronJobLogs(dbx, jobID, limit)
+}
+
+// Import/Export
+type SlugSource int
+
+const (
+	SlugFromFilename    SlugSource = iota // 从文件名
+	SlugFromFrontmatter                   // 从 frontmatter 指定字段（默认 slug）
+	SlugFromTitle                         // 从 title 生成
+)
+
+type ImportFile struct {
+	Filename string // 文件名（不含扩展名）
+	Content  string // markdown 内容
+}
+
+type ImportMarkdownInput struct {
+	Files      []ImportFile
+	SlugSource SlugSource // slug 来源
+	SlugField  string     // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
+}
+
+// importSingleMarkdown 导入单个 markdown 文件
+func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, slugField string) error {
+	if file.Content == "" {
+		return errors.New("markdown content is required")
+	}
+
+	// 解析 markdown
+	result := md.ParseMarkdown(file.Content)
+
+	// 从 meta 中提取信息
+	title := ""
+	if val, ok := result.Meta["title"]; ok {
+		if str, ok := val.(string); ok {
+			title = str
+		}
+	}
+	if title == "" {
+		return errors.New("title is required in frontmatter")
+	}
+
+	// 根据 slug 来源确定 slug
+	slug := ""
+	switch slugSource {
+	case SlugFromFilename:
+		// 从文件名生成 slug
+		if file.Filename != "" {
+			slug = slg.Make(file.Filename)
+		} else {
+			// 如果文件名不存在，回退到从 title 生成
+			slug = slg.Make(title)
+		}
+	case SlugFromFrontmatter:
+		// 从 frontmatter 指定字段获取
+		fieldName := slugField
+		if fieldName == "" {
+			fieldName = "slug"
+		}
+		if val, ok := result.Meta[fieldName]; ok {
+			if str, ok := val.(string); ok {
+				slug = str
+			}
+		}
+		// 如果 frontmatter 中没有找到，回退到从 title 生成
+		if slug == "" {
+			slug = slg.Make(title)
+		}
+	case SlugFromTitle:
+		// 从 title 生成
+		slug = slg.Make(title)
+	default:
+		// 默认从 title 生成
+		slug = slg.Make(title)
+	}
+
+	status := "draft"
+	if val, ok := result.Meta["status"]; ok {
+		if str, ok := val.(string); ok {
+			status = str
+		}
+	}
+
+	// 获取 HTML 内容作为 post content
+	content := result.Markdown
+
+	// 解析 date 字段并转换为东8区时间戳
+	// 格式固定为: 2011-05-12T02:20:04.000Z
+	var createdAt int64
+	if val, ok := result.Meta["date"]; ok {
+		if dateStr, ok := val.(string); ok && dateStr != "" {
+			t, err := time.Parse("2006-01-02T15:04:05.000Z", dateStr)
+			if err == nil {
+				// 加载东8区时区
+				loc, _ := time.LoadLocation("Asia/Shanghai")
+				// 将 UTC 时间转换为东8区时间戳
+				createdAt = t.In(loc).Unix()
+			}
+		}
+	}
+
+	// 如果没有解析到 date 或解析失败，使用当前时间
+	if createdAt == 0 {
+		createdAt = time.Now().Unix()
+	}
+
+	// 创建 post
+	post := &db.Post{
+		Title:     title,
+		Slug:      slug,
+		Content:   content,
+		Status:    status,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now().Unix(),
+	}
+
+	if err := db.CreatePost(dbx, post); err != nil {
+		return err
+	}
+
+	// 处理 tags（如果有）
+	if val, ok := result.Meta["tags"]; ok {
+		var tagNames []string
+		switch v := val.(type) {
+		case string:
+			// 如果是字符串，可能是逗号分隔的
+			if v != "" {
+				tagNames = strings.Split(v, ",")
+			}
+		case []interface{}:
+			// 如果是数组
+			for _, item := range v {
+				if str, ok := item.(string); ok {
+					tagNames = append(tagNames, str)
+				}
+			}
+		}
+
+		// 创建或获取 tags 并关联
+		var tagIDs []int64
+		for _, tagName := range tagNames {
+			tagName = strings.TrimSpace(tagName)
+			if tagName != "" {
+				tag, err := CreateTagByName(dbx, tagName)
+				if err == nil {
+					tagIDs = append(tagIDs, tag.ID)
+				}
+			}
+		}
+
+		if len(tagIDs) > 0 {
+			if err := db.SetPostTags(dbx, post.ID, tagIDs); err != nil {
+				// tag 关联失败不影响主流程
+			}
+		}
+	}
+
+	return nil
+}
+
+func ImportMarkdownService(dbx *db.DB, in ImportMarkdownInput) error {
+	if len(in.Files) == 0 {
+		return errors.New("no files to import")
+	}
+
+	var errList []string
+	for _, file := range in.Files {
+		if err := importSingleMarkdown(dbx, file, in.SlugSource, in.SlugField); err != nil {
+			errList = append(errList, file.Filename+": "+err.Error())
+		}
+	}
+
+	if len(errList) > 0 {
+		return errors.New(strings.Join(errList, "; "))
+	}
+
+	return nil
 }

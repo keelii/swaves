@@ -1,0 +1,76 @@
+<h1>Import Markdown</h1>
+
+{{ if .Error }}
+<p style="color: red;">Error: {{ .Error }}</p>
+{{ end }}
+
+<form method="post" action="/admin/import" enctype="multipart/form-data">
+
+  <p>
+    <label>
+      Select Markdown Files<br>
+      <input type="file" name="files" accept=".md,.markdown,text/markdown" multiple required>
+      <small>(You can select multiple files)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Slug Source<br>
+      <select name="slug_source" required>
+        <option value="filename">From Filename</option>
+        <option value="frontmatter" selected>From Frontmatter Field (default: slug)</option>
+        <option value="title">From Title (generated)</option>
+      </select>
+    </label>
+  </p>
+
+  <p id="slug_field_container" style="display: none;">
+    <label>
+      Frontmatter Field Name<br>
+      <input type="text" name="slug_field" value="slug" placeholder="slug">
+      <small>(The field name in frontmatter to use as slug, default: slug)</small>
+    </label>
+  </p>
+
+  <p>
+    <small>
+      Markdown 文件应包含 frontmatter，例如：<br>
+      <pre>---
+title: 文章标题
+slug: article-slug
+date: 2011-05-12T02:20:04.000Z
+status: draft
+tags:
+  - tag1
+  - tag2
+---
+
+文章内容...</pre>
+    </small>
+  </p>
+
+  <p>
+    <button type="submit">Import</button>
+    <a href="/admin/posts">Cancel</a>
+  </p>
+
+</form>
+
+<script>
+(function() {
+  const select = document.querySelector('select[name="slug_source"]');
+  const slugFieldContainer = document.getElementById('slug_field_container');
+  
+  function updateSlugFieldVisibility() {
+    if (select.value === 'frontmatter') {
+      slugFieldContainer.style.display = 'block';
+    } else {
+      slugFieldContainer.style.display = 'none';
+    }
+  }
+  
+  select.addEventListener('change', updateSlugFieldVisibility);
+  updateSlugFieldVisibility(); // 初始化
+})();
+</script>
