@@ -2,8 +2,8 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -478,7 +478,7 @@ func TestCreateSettings_AdminPasswordIsBcrypt(t *testing.T) {
 	defer db.Close()
 
 	db.Exec(`DELETE FROM settings where deleted_at IS NULL`)
-	g, err := GetSettingsForTest(db)
+	//_, err := GetSettingsForTest(db)
 
 	cfg := &Settings{
 		Name:              "swaves",
@@ -508,5 +508,111 @@ func TestCreateSettings_AdminPasswordIsBcrypt(t *testing.T) {
 		[]byte("plain-password"),
 	); err != nil {
 		t.Fatalf("bcrypt compare failed: %v", err)
+	}
+}
+
+func TestCreateAndListCronJobs(t *testing.T) {
+	dbx := openTestDB(t)
+
+	job := &CronJob{
+		Name:     "test_job",
+		Schedule: "*/5 * * * *",
+		Enabled:  true,
+	}
+
+	if err := CreateCronJob(dbx, job); err != nil {
+		t.Fatalf("CreateCronJob failed: %v", err)
+	}
+
+	if job.ID == 0 {
+		t.Fatal("job ID not set")
+	}
+
+	list, err := ListCronJobs(dbx)
+	if err != nil {
+		t.Fatalf("ListCronJobs failed: %v", err)
+	}
+
+	if len(list) != 1 {
+		t.Fatalf("expected 1 job, got %d", len(list))
+	}
+
+	if list[0].Name != "test_job" {
+		t.Fatalf("unexpected job name: %s", list[0].Name)
+	}
+}
+
+func TestCreateCronJobLogSuccess(t *testing.T) {
+	dbx := openTestDB(t)
+
+	job := &CronJob{
+		Name:     "success_job",
+		Schedule: "* * * * *",
+		Enabled:  true,
+	}
+	if err := CreateCronJob(dbx, job); err != nil {
+		t.Fatal(err)
+	}
+
+	start := time.Now().Unix()
+	end := start + 2
+
+	log := &CronJobLog{
+		JobID:      job.ID,
+		Status:     "success",
+		Message:    "ok",
+		StartedAt:  start,
+		FinishedAt: end,
+		Duration:   end - start,
+	}
+
+	if err := CreateCronJobLog(dbx, log); err != nil {
+		t.Fatalf("CreateCronJobLog failed: %v", err)
+	}
+
+	if log.ID == 0 {
+		t.Fatal("log ID not set")
+	}
+	if log.RunID == "" {
+		t.Fatal("run_id should be generated")
+	}
+}
+
+func TestCreateCronJobLogErrorUpdatesJob(t *testing.T) {
+	dbx := openTestDB(t)
+
+	job := &CronJob{
+		Name:     "error_job",
+		Schedule: "* * * * *",
+		Enabled:  true,
+	}
+	if err := CreateCronJob(dbx, job); err != nil {
+		t.Fatal(err)
+	}
+
+	start := time.Now().Unix()
+	end := start + 1
+
+	log := &CronJobLog{
+		JobID:      job.ID,
+		Status:     "error",
+		Message:    "failed",
+		StartedAt:  start,
+		FinishedAt: end,
+		Duration:   end - start,
+	}
+
+	if err := CreateCronJobLog(dbx, log); err != nil {
+		t.Fatal(err)
+	}
+
+	// 重新查询 job
+	jobs, err := ListCronJobs(dbx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if jobs[0].LastErrorAt == nil {
+		t.Fatal("LastErrorAt should be set")
 	}
 }
