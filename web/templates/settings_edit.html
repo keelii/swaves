@@ -1,56 +1,56 @@
-<h1>Settings</h1>
-
 <form method="post" action="/admin/settings">
 
-  <p>
-    <label>Name</label>
-    <input type="text" name="name" value="{{ .Settings.Name }}" required>
-  </p>
+  {{ range $category, $settings := .SettingsByCategory }}
+  <h2>{{ $category }}</h2>
 
+  {{ range $settings }}
   <p>
-    <label>Language</label>
-    <input type="text" name="language" value="{{ .Settings.Language }}" required>
-  </p>
+    <label>
+      {{ .Name }}<br>
+      {{ if .Description }}
+      <small>{{ .Description }}</small><br>
+      {{ end }}
 
-  <p>
-    <label>Timezone</label>
-    <input type="text" name="timezone" value="{{ .Settings.Timezone }}" required>
+      {{ if eq .Type "text" }}
+        <input type="text" name="setting_{{ .Code }}" value="{{ .Value }}">
+      {{ else if eq .Type "number" }}
+        <input type="number" name="setting_{{ .Code }}" value="{{ .Value }}">
+      {{ else if eq .Type "date" }}
+        <input type="date" name="setting_{{ .Code }}" value="{{ .Value }}">
+      {{ else if eq .Type "time" }}
+        <input type="time" name="setting_{{ .Code }}" value="{{ .Value }}">
+      {{ else if eq .Type "datetime" }}
+        <input type="datetime-local" name="setting_{{ .Code }}" value="{{ .Value }}">
+      {{ else if eq .Type "url" }}
+        <input type="url" name="setting_{{ .Code }}" value="{{ .Value }}">
+      {{ else if eq .Type "range" }}
+        <input type="range" name="setting_{{ .Code }}" value="{{ .Value }}">
+      {{ else if eq .Type "password" }}
+        <input type="password" name="setting_{{ .Code }}" placeholder="Leave empty to keep current">
+      {{ else if eq .Type "radio" }}
+        {{ range .OptionsParsed }}
+          <label style="display:inline-block; margin-right:10px;">
+            <input type="radio" name="setting_{{ $.Code }}" value="{{ .value }}" {{ if eq $.Value .value }}checked{{ end }}>
+            {{ .label }}
+          </label>
+        {{ end }}
+      {{ else if eq .Type "checkbox" }}
+        {{ range .OptionsParsed }}
+          <label style="display:inline-block; margin-right:10px;">
+            <input type="checkbox" name="setting_{{ $.Code }}" value="{{ .value }}" {{ if index $.CheckboxValues .value }}checked{{ end }}>
+            {{ .label }}
+          </label>
+        {{ end }}
+      {{ end }}
+    </label>
   </p>
+  {{ end }}
 
-  <p>
-    <label>Post Slug Pattern</label>
-    <input type="text" name="post_slug_pattern" value="{{ .Settings.PostSlugPattern }}" required>
-  </p>
-
-  <p>
-    <label>Tag Slug Pattern</label>
-    <input type="text" name="tag_slug_pattern" value="{{ .Settings.TagSlugPattern }}" required>
-  </p>
-
-  <p>
-    <label>Tags Pattern</label>
-    <input type="text" name="tags_pattern" value="{{ .Settings.TagsPattern }}" required>
-  </p>
-
-  <p>
-    <label>Giscus Config (JSON)</label>
-    <textarea name="giscus_config" rows="5" cols="80">{{ .Settings.GiscusConfig }}</textarea>
-  </p>
-
-  <p>
-    <label>GA4 ID</label>
-    <input type="text" name="ga4_id" value="{{ .Settings.GA4ID }}">
-  </p>
-
-  <p>
-    <label>Admin Password (leave empty to keep current)</label>
-    <input type="password" name="admin_password">
-  </p>
+  <hr>
+  {{ end }}
 
   <p>
     <button type="submit">Save</button>
   </p>
 
 </form>
-
-

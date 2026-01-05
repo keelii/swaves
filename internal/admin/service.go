@@ -12,7 +12,6 @@ import (
 	"swaves/internal/db"
 
 	slg "github.com/gosimple/slug"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var ErrInvalidPassword = errors.New("invalid password")
@@ -26,15 +25,7 @@ func NewService(db *db.DB) *Service {
 }
 
 func (a *Service) CheckPassword(raw string) error {
-	cfg, err := db.GetSettings(a.DB)
-	if err != nil {
-		return err
-	}
-
-	return bcrypt.CompareHashAndPassword(
-		[]byte(cfg.AdminPasswordHash),
-		[]byte(raw),
-	)
+	return db.CheckPassword(a.DB, raw)
 }
 
 type CreatePostInput struct {
@@ -575,43 +566,36 @@ func DeleteEncryptedPostService(dbx *db.DB, id int64) error {
 }
 
 // Settings
-type UpdateSettingsInput struct {
-	Name            string
-	Language        string
-	Timezone        string
-	PostSlugPattern string
-	TagSlugPattern  string
-	TagsPattern     string
-	GiscusConfig    string
-	GA4ID           string
-	AdminPassword   string
+func ListSettingsByCategory(dbx *db.DB, category string) ([]db.Setting, error) {
+	return db.ListSettingsByCategory(dbx, category)
 }
 
-func GetSettingsForEdit(dbx *db.DB) (*db.Settings, error) {
-	return db.GetSettings(dbx)
+func ListAllSettings(dbx *db.DB) ([]db.Setting, error) {
+	return db.ListAllSettings(dbx)
 }
 
-func UpdateSettingsService(dbx *db.DB, in UpdateSettingsInput) error {
-	cfg, err := db.GetSettings(dbx)
-	if err != nil {
-		return err
-	}
+func GetSettingByCode(dbx *db.DB, code string) (*db.Setting, error) {
+	return db.GetSettingByCode(dbx, code)
+}
 
-	cfg.Name = in.Name
-	cfg.Language = in.Language
-	cfg.Timezone = in.Timezone
-	cfg.PostSlugPattern = in.PostSlugPattern
-	cfg.TagSlugPattern = in.TagSlugPattern
-	cfg.TagsPattern = in.TagsPattern
-	cfg.GiscusConfig = in.GiscusConfig
-	cfg.GA4ID = in.GA4ID
+func GetSettingByID(dbx *db.DB, id int64) (*db.Setting, error) {
+	return db.GetSettingByID(dbx, id)
+}
 
-	// 只有提供了新密码时才更新
-	if in.AdminPassword != "" {
-		cfg.AdminPasswordHash = in.AdminPassword
-	}
+func CreateSettingService(dbx *db.DB, s *db.Setting) error {
+	return db.CreateSetting(dbx, s)
+}
 
-	return db.UpdateSettings(dbx, cfg)
+func UpdateSettingService(dbx *db.DB, s *db.Setting) error {
+	return db.UpdateSetting(dbx, s)
+}
+
+func UpdateSettingValueService(dbx *db.DB, code string, value string) error {
+	return db.UpdateSettingByCode(dbx, code, value)
+}
+
+func DeleteSettingService(dbx *db.DB, id int64) error {
+	return db.DeleteSetting(dbx, id)
 }
 
 // Trash

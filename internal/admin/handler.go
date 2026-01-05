@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"io"
 	"strconv"
 	"strings"
@@ -97,6 +98,7 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("posts_index", fiber.Map{
+		"Title": "Posts",
 		"Posts": posts,
 		"Pager": pager,
 	}, "admin_layout")
@@ -108,7 +110,8 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("posts_new", fiber.Map{
-		"Tags": tags,
+		"Title": "New Post",
+		"Tags":  tags,
 	}, "admin_layout")
 }
 
@@ -182,6 +185,7 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("posts_edit", fiber.Map{
+		"Title":          "Edit Post",
 		"Post":           postWithTags.Post,
 		"Tags":           allTags,
 		"SelectedTags":   postWithTags.Tags,
@@ -248,13 +252,16 @@ func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("tags_index", fiber.Map{
+		"Title": "Tags",
 		"Tags":  tags,
 		"Pager": pager,
 	}, "admin_layout")
 }
 
 func (h *Handler) GetTagNewHandler(c *fiber.Ctx) error {
-	return c.Render("tags_new", nil, "admin_layout")
+	return c.Render("tags_new", fiber.Map{
+		"Title": "New Tag",
+	}, "admin_layout")
 }
 
 func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
@@ -282,7 +289,8 @@ func (h *Handler) GetTagEditHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("tags_edit", fiber.Map{
-		"Tag": tag,
+		"Title": "Edit Tag",
+		"Tag":   tag,
 	}, "admin_layout")
 }
 
@@ -327,13 +335,16 @@ func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("redirects_index", fiber.Map{
+		"Title":     "Redirects",
 		"Redirects": redirects,
 		"Pager":     pager,
 	}, "admin_layout")
 }
 
 func (h *Handler) GetRedirectNewHandler(c *fiber.Ctx) error {
-	return c.Render("redirects_new", nil, "admin_layout")
+	return c.Render("redirects_new", fiber.Map{
+		"Title": "New Redirect",
+	}, "admin_layout")
 }
 
 func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
@@ -361,6 +372,7 @@ func (h *Handler) GetRedirectEditHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("redirects_edit", fiber.Map{
+		"Title":    "Edit Redirect",
 		"Redirect": redirect,
 	}, "admin_layout")
 }
@@ -406,13 +418,16 @@ func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("encrypted_posts_index", fiber.Map{
+		"Title": "Encrypted Posts",
 		"Posts": posts,
 		"Pager": pager,
 	}, "admin_layout")
 }
 
 func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
-	return c.Render("encrypted_posts_new", nil, "admin_layout")
+	return c.Render("encrypted_posts_new", fiber.Map{
+		"Title": "New Encrypted Post",
+	}, "admin_layout")
 }
 
 func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
@@ -442,7 +457,8 @@ func (h *Handler) GetEncryptedPostEditHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("encrypted_posts_edit", fiber.Map{
-		"Post": post,
+		"Title": "Edit Encrypted Post",
+		"Post":  post,
 	}, "admin_layout")
 }
 
@@ -479,33 +495,92 @@ func (h *Handler) PostDeleteEncryptedPostHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/encrypted-posts")
 }
 
+// SettingView 用于模板展示的设置视图
+type SettingView struct {
+	db.Setting
+	OptionsParsed  []map[string]string // 解析后的 options（用于 radio/checkbox）
+	CheckboxValues map[string]bool     // checkbox 的选中状态
+}
+
 // Settings
 func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
-	settings, err := GetSettingsForEdit(h.DB)
+	// 获取分类参数，如果没有则显示所有
+	category := c.Query("category", "")
+
+	var settings []db.Setting
+	var err error
+	if category == "" {
+		settings, err = ListAllSettings(h.DB)
+	} else {
+		settings, err = ListSettingsByCategory(h.DB, category)
+	}
 	if err != nil {
 		return err
 	}
 
+	// 转换为视图结构，解析 options
+	settingsByCategory := make(map[string][]SettingView)
+	for _, s := range settings {
+		view := SettingView{Setting: s}
+
+		// 解析 options（如果是 radio 或 checkbox）
+		if (s.Type == "radio" || s.Type == "checkbox") && s.Options != "" {
+			var options []map[string]string
+			if err := json.Unmarshal([]byte(s.Options), &options); err == nil {
+				view.OptionsParsed = options
+			}
+		}
+
+		// 对于 checkbox，解析当前值并创建选中状态映射
+		if s.Type == "checkbox" {
+			view.CheckboxValues = make(map[string]bool)
+			if s.Value != "" {
+				values := strings.Split(s.Value, ",")
+				for _, v := range values {
+					view.CheckboxValues[strings.TrimSpace(v)] = true
+				}
+			}
+		}
+
+		settingsByCategory[s.Category] = append(settingsByCategory[s.Category], view)
+	}
+
 	return c.Render("settings_edit", fiber.Map{
-		"Settings": settings,
+		"Title":              "Settings",
+		"SettingsByCategory": settingsByCategory,
+		"Category":           category,
 	}, "admin_layout")
 }
 
 func (h *Handler) PostUpdateSettingsHandler(c *fiber.Ctx) error {
-	in := UpdateSettingsInput{
-		Name:            c.FormValue("name"),
-		Language:        c.FormValue("language"),
-		Timezone:        c.FormValue("timezone"),
-		PostSlugPattern: c.FormValue("post_slug_pattern"),
-		TagSlugPattern:  c.FormValue("tag_slug_pattern"),
-		TagsPattern:     c.FormValue("tags_pattern"),
-		GiscusConfig:    c.FormValue("giscus_config"),
-		GA4ID:           c.FormValue("ga4_id"),
-		AdminPassword:   c.FormValue("admin_password"),
+	// 获取所有配置项，然后更新每个的值
+	settings, err := ListAllSettings(h.DB)
+	if err != nil {
+		return err
 	}
 
-	if err := UpdateSettingsService(h.DB, in); err != nil {
-		return err
+	for _, setting := range settings {
+		fieldName := "setting_" + setting.Code
+
+		// checkbox 类型需要特殊处理，可能有多个值
+		if setting.Type == "checkbox" {
+			// 获取所有同名的 checkbox 值
+			values := c.FormValue(fieldName)
+			//value := strings.Join(values, ",")
+			if err := UpdateSettingValueService(h.DB, setting.Code, values); err != nil {
+				return err
+			}
+		} else {
+			// 其他类型直接获取单个值
+			value := c.FormValue(fieldName)
+			// 对于 password 类型，如果为空则不更新（保持原值）
+			if setting.Type == "password" && value == "" {
+				continue
+			}
+			if err := UpdateSettingValueService(h.DB, setting.Code, value); err != nil {
+				return err
+			}
+		}
 	}
 
 	return c.Redirect("/admin/settings")
@@ -538,6 +613,7 @@ func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("trash_index", fiber.Map{
+		"Title":     "Trash",
 		"Data":      data,
 		"ModelType": modelType,
 	}, "admin_layout")
@@ -605,6 +681,7 @@ func (h *Handler) GetHttpErrorLogListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("http_error_logs_index", fiber.Map{
+		"Title": "Http Error Logs",
 		"Logs":  logs,
 		"Pager": pager,
 	}, "admin_layout")
@@ -631,12 +708,15 @@ func (h *Handler) GetCronJobListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("cron_jobs_index", fiber.Map{
-		"Jobs": jobs,
+		"Title": "Cron Jobs",
+		"Jobs":  jobs,
 	}, "admin_layout")
 }
 
 func (h *Handler) GetCronJobNewHandler(c *fiber.Ctx) error {
-	return c.Render("cron_jobs_new", nil, "admin_layout")
+	return c.Render("cron_jobs_new", fiber.Map{
+		"Title": "New Cron Job",
+	}, "admin_layout")
 }
 
 func (h *Handler) PostCreateCronJobHandler(c *fiber.Ctx) error {
@@ -676,8 +756,9 @@ func (h *Handler) GetCronJobLogListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("cron_job_logs_index", fiber.Map{
-		"Job":  job,
-		"Logs": logs,
+		"Title": "Cron Job Logs: " + job.Name,
+		"Job":   job,
+		"Logs":  logs,
 	}, "admin_layout")
 }
 

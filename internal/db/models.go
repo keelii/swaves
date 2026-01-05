@@ -92,19 +92,24 @@ func Migrate(db *DB) error {
 
 		`CREATE TABLE IF NOT EXISTS settings (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+			category TEXT NOT NULL DEFAULT 'default',
 			name TEXT NOT NULL,
-			language TEXT NOT NULL,
-			timezone TEXT NOT NULL,
-			post_slug_pattern TEXT NOT NULL,
-			tag_slug_pattern TEXT NOT NULL,
-			tags_pattern TEXT NOT NULL,
-			giscus_config TEXT,
-			ga4_id TEXT,
-			admin_password_hash TEXT NOT NULL,
+			code TEXT NOT NULL UNIQUE,
+			type TEXT NOT NULL,
+			options TEXT,
+			attrs TEXT,
+			value TEXT,
+			description TEXT,
+			sort INTEGER NOT NULL DEFAULT 0,
+
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
 			deleted_at INTEGER
-		);`,
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category);
+		CREATE INDEX IF NOT EXISTS idx_settings_code ON settings(code);`,
 
 		`CREATE TABLE IF NOT EXISTS admin_sessions (
 		  id TEXT PRIMARY KEY,
@@ -197,42 +202,11 @@ func Migrate(db *DB) error {
 		}
 	}
 
-	if _, err := EnsureSettingsExists(db); err != nil {
-		log.Fatalf("ensure settings exists failed: %v", err)
+	if err := EnsureDefaultSettings(db); err != nil {
+		log.Fatalf("ensure default settings failed: %v", err)
 	}
 
 	return nil
-}
-
-func EnsureSettingsExists(db *DB) (*Settings, error) {
-	_, err := GetSettings(db)
-	if err == nil {
-		// 已经存在
-		return nil, nil
-	}
-	if err != ErrNotFound {
-		return nil, err
-	}
-
-	// 创建默认配置
-	now := time.Now().Unix()
-	cfg := &Settings{
-		Name:              "swaves",
-		Language:          "zh-CN",
-		Timezone:          "Asia/Shanghai",
-		PostSlugPattern:   "/{yyyy}/{MM}/{dd}/{name}",
-		TagSlugPattern:    "/tags/{name}",
-		TagsPattern:       "/tags",
-		AdminPasswordHash: "admin",
-		CreatedAt:         now,
-		UpdatedAt:         now,
-	}
-
-	if err := CreateSettings(db, cfg); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
 }
 
 func now() int64 {
@@ -777,98 +751,100 @@ func CreateRedirect(db *DB, r *Redirect) error {
 	return nil
 }
 
-type Settings struct {
-	ID                int64
-	Name              string
-	Language          string
-	Timezone          string
-	PostSlugPattern   string
-	TagSlugPattern    string
-	TagsPattern       string
-	GiscusConfig      string
-	GA4ID             string
-	AdminPasswordHash string
-	CreatedAt         int64
-	UpdatedAt         int64
-	DeletedAt         *int64
+type Setting struct {
+	ID          int64
+	Category    string
+	Name        string
+	Code        string
+	Type        string
+	Options     string // JSON string
+	Attrs       string // JSON string
+	Value       string
+	Description string
+	Sort        int64
+	CreatedAt   int64
+	UpdatedAt   int64
+	DeletedAt   *int64
 }
 
-func CreateSettings(db *DB, c *Settings) error {
-	if c.AdminPasswordHash == "" {
-		return errors.New("admin password required")
+func CreateSetting(db *DB, s *Setting) error {
+	if s.Code == "" {
+		return errors.New("code is required")
+	}
+	if s.Type == "" {
+		return errors.New("type is required")
+	}
+	if s.Category == "" {
+		s.Category = "default"
 	}
 
-	// bcrypt 原始密码
-	hashed, err := bcrypt.GenerateFromPassword(
-		[]byte(c.AdminPasswordHash),
-		bcrypt.DefaultCost,
-	)
-	if err != nil {
-		return err
+	if s.CreatedAt == 0 {
+		s.CreatedAt = now()
 	}
-	c.AdminPasswordHash = string(hashed)
+	if s.UpdatedAt == 0 {
+		s.UpdatedAt = s.CreatedAt
+	}
 
-	if c.CreatedAt == 0 {
-		c.CreatedAt = now()
-	}
-	if c.UpdatedAt == 0 {
-		c.UpdatedAt = c.CreatedAt
+	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
+	if s.Type == "password" && s.Value != "" && len(s.Value) < 60 {
+		hashed, err := bcrypt.GenerateFromPassword(
+			[]byte(s.Value),
+			bcrypt.DefaultCost,
+		)
+		if err != nil {
+			return err
+		}
+		s.Value = string(hashed)
 	}
 
 	res, err := db.Exec(
 		`INSERT INTO settings
-		 (name, language, timezone,
-		  post_slug_pattern, tag_slug_pattern, tags_pattern,
-		  giscus_config, ga4_id, admin_password_hash,
-		  created_at, updated_at)
+		 (category, name, code, type, options, attrs, value, description, sort, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.Name,
-		c.Language,
-		c.Timezone,
-		c.PostSlugPattern,
-		c.TagSlugPattern,
-		c.TagsPattern,
-		c.GiscusConfig,
-		c.GA4ID,
-		c.AdminPasswordHash,
-		c.CreatedAt,
-		c.UpdatedAt,
+		s.Category,
+		s.Name,
+		s.Code,
+		s.Type,
+		s.Options,
+		s.Attrs,
+		s.Value,
+		s.Description,
+		s.Sort,
+		s.CreatedAt,
+		s.UpdatedAt,
 	)
 	if err != nil {
 		return err
 	}
 
-	c.ID, _ = res.LastInsertId()
+	s.ID, _ = res.LastInsertId()
 	return nil
 }
 
-func GetSettings(db *DB) (*Settings, error) {
+func GetSettingByCode(db *DB, code string) (*Setting, error) {
 	row := db.QueryRow(`
-		SELECT id, name, language, timezone,
-		       post_slug_pattern, tag_slug_pattern, tags_pattern,
-		       giscus_config, ga4_id, admin_password_hash,
+		SELECT id, category, name, code, type, options, attrs, value, description, sort,
 		       created_at, updated_at, deleted_at
 		FROM settings
-		WHERE deleted_at IS NULL
-		LIMIT 1
-	`)
+		WHERE code=? AND deleted_at IS NULL
+	`, code)
 
-	var c Settings
+	var s Setting
 	var deletedAt sql.NullInt64
 
 	err := row.Scan(
-		&c.ID,
-		&c.Name,
-		&c.Language,
-		&c.Timezone,
-		&c.PostSlugPattern,
-		&c.TagSlugPattern,
-		&c.TagsPattern,
-		&c.GiscusConfig,
-		&c.GA4ID,
-		&c.AdminPasswordHash,
-		&c.CreatedAt,
-		&c.UpdatedAt,
+		&s.ID,
+		&s.Category,
+		&s.Name,
+		&s.Code,
+		&s.Type,
+		&s.Options,
+		&s.Attrs,
+		&s.Value,
+		&s.Description,
+		&s.Sort,
+		&s.CreatedAt,
+		&s.UpdatedAt,
 		&deletedAt,
 	)
 	if err != nil {
@@ -879,55 +855,227 @@ func GetSettings(db *DB) (*Settings, error) {
 	}
 
 	if deletedAt.Valid {
-		c.DeletedAt = &deletedAt.Int64
+		s.DeletedAt = &deletedAt.Int64
 	}
-	return &c, nil
+	return &s, nil
 }
 
-func UpdateSettings(db *DB, c *Settings) error {
-	c.UpdatedAt = now()
+func GetSettingByID(db *DB, id int64) (*Setting, error) {
+	row := db.QueryRow(`
+		SELECT id, category, name, code, type, options, attrs, value, description, sort,
+		       created_at, updated_at, deleted_at
+		FROM settings
+		WHERE id=? AND deleted_at IS NULL
+	`, id)
 
-	// 如果提供了新密码，需要重新加密
-	if c.AdminPasswordHash != "" && len(c.AdminPasswordHash) < 60 {
-		// 如果密码看起来不是 bcrypt hash（长度小于60），则加密它
+	var s Setting
+	var deletedAt sql.NullInt64
+
+	err := row.Scan(
+		&s.ID,
+		&s.Category,
+		&s.Name,
+		&s.Code,
+		&s.Type,
+		&s.Options,
+		&s.Attrs,
+		&s.Value,
+		&s.Description,
+		&s.Sort,
+		&s.CreatedAt,
+		&s.UpdatedAt,
+		&deletedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	if deletedAt.Valid {
+		s.DeletedAt = &deletedAt.Int64
+	}
+	return &s, nil
+}
+
+func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
+	query := `
+		SELECT id, category, name, code, type, options, attrs, value, description, sort,
+		       created_at, updated_at, deleted_at
+		FROM settings
+		WHERE deleted_at IS NULL
+	`
+	args := []interface{}{}
+
+	if category != "" {
+		query += ` AND category=?`
+		args = append(args, category)
+	}
+
+	query += ` ORDER BY category, sort, id`
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var settings []Setting
+	for rows.Next() {
+		var s Setting
+		var deletedAt sql.NullInt64
+
+		if err := rows.Scan(
+			&s.ID,
+			&s.Category,
+			&s.Name,
+			&s.Code,
+			&s.Type,
+			&s.Options,
+			&s.Attrs,
+			&s.Value,
+			&s.Description,
+			&s.Sort,
+			&s.CreatedAt,
+			&s.UpdatedAt,
+			&deletedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		if deletedAt.Valid {
+			s.DeletedAt = &deletedAt.Int64
+		}
+		settings = append(settings, s)
+	}
+
+	return settings, nil
+}
+
+func ListAllSettings(db *DB) ([]Setting, error) {
+	return ListSettingsByCategory(db, "")
+}
+
+func UpdateSetting(db *DB, s *Setting) error {
+	s.UpdatedAt = now()
+
+	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
+	if s.Type == "password" && s.Value != "" && len(s.Value) < 60 {
 		hashed, err := bcrypt.GenerateFromPassword(
-			[]byte(c.AdminPasswordHash),
+			[]byte(s.Value),
 			bcrypt.DefaultCost,
 		)
 		if err != nil {
 			return err
 		}
-		c.AdminPasswordHash = string(hashed)
+		s.Value = string(hashed)
 	}
 
 	_, err := db.Exec(
 		`UPDATE settings
-		 SET name=?, language=?, timezone=?,
-		     post_slug_pattern=?, tag_slug_pattern=?, tags_pattern=?,
-		     giscus_config=?, ga4_id=?,
-		     admin_password_hash=?, updated_at=?
+		 SET category=?, name=?, type=?, options=?, attrs=?, value=?, description=?, sort=?, updated_at=?
 		 WHERE id=? AND deleted_at IS NULL`,
-		c.Name,
-		c.Language,
-		c.Timezone,
-		c.PostSlugPattern,
-		c.TagSlugPattern,
-		c.TagsPattern,
-		c.GiscusConfig,
-		c.GA4ID,
-		c.AdminPasswordHash,
-		c.UpdatedAt,
-		c.ID,
+		s.Category,
+		s.Name,
+		s.Type,
+		s.Options,
+		s.Attrs,
+		s.Value,
+		s.Description,
+		s.Sort,
+		s.UpdatedAt,
+		s.ID,
 	)
 	return err
 }
 
-func (c *Settings) CheckPassword(raw string) error {
-	if c.AdminPasswordHash == "" {
+func UpdateSettingByCode(db *DB, code string, value string) error {
+	// 获取原有设置
+	setting, err := GetSettingByCode(db, code)
+	if err != nil {
+		return err
+	}
+
+	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
+	if setting.Type == "password" && value != "" && len(value) < 60 {
+		hashed, err := bcrypt.GenerateFromPassword(
+			[]byte(value),
+			bcrypt.DefaultCost,
+		)
+		if err != nil {
+			return err
+		}
+		value = string(hashed)
+	}
+
+	_, err = db.Exec(
+		`UPDATE settings
+		 SET value=?, updated_at=?
+		 WHERE code=? AND deleted_at IS NULL`,
+		value,
+		now(),
+		code,
+	)
+	return err
+}
+
+func DeleteSetting(db *DB, id int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE settings SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
+		ts, id,
+	)
+	return err
+}
+
+// CheckPassword 检查管理员密码
+func CheckPassword(db *DB, raw string) error {
+	setting, err := GetSettingByCode(db, "admin_password")
+	if err != nil {
+		return err
+	}
+	if setting.Value == "" {
 		return ErrNotFound
 	}
-	fmt.Printf("%s\n%s\n%s\n", c.AdminPasswordHash, raw, bcrypt.CompareHashAndPassword([]byte(c.AdminPasswordHash), []byte(raw)))
-	return bcrypt.CompareHashAndPassword([]byte(c.AdminPasswordHash), []byte(raw))
+	return bcrypt.CompareHashAndPassword([]byte(setting.Value), []byte(raw))
+}
+
+// EnsureDefaultSettings 确保存在默认配置项
+func EnsureDefaultSettings(db *DB) error {
+	now := time.Now().Unix()
+
+	defaultSettings := []Setting{
+		{Category: "system", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称", Sort: 1, CreatedAt: now, UpdatedAt: now},
+		{Category: "system", Name: "Language", Code: "language", Type: "text", Value: "zh-CN", Description: "语言", Sort: 2, CreatedAt: now, UpdatedAt: now},
+		{Category: "system", Name: "Timezone", Code: "timezone", Type: "text", Value: "Asia/Shanghai", Description: "时区", Sort: 3, CreatedAt: now, UpdatedAt: now},
+		{Category: "system", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Sort: 100, CreatedAt: now, UpdatedAt: now},
+		{Category: "url", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式", Sort: 1, CreatedAt: now, UpdatedAt: now},
+		{Category: "url", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式", Sort: 2, CreatedAt: now, UpdatedAt: now},
+		{Category: "url", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式", Sort: 3, CreatedAt: now, UpdatedAt: now},
+		{Category: "integration", Name: "Giscus Config", Code: "giscus_config", Type: "text", Value: "", Description: "Giscus 配置 (JSON)", Sort: 1, CreatedAt: now, UpdatedAt: now},
+		{Category: "integration", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID", Sort: 2, CreatedAt: now, UpdatedAt: now},
+	}
+
+	for _, s := range defaultSettings {
+		// 检查是否已存在
+		_, err := GetSettingByCode(db, s.Code)
+		if err == nil {
+			// 已存在，跳过
+			continue
+		}
+		if err != ErrNotFound {
+			// 其他错误，返回
+			return err
+		}
+
+		// 不存在，创建
+		if err := CreateSetting(db, &s); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type AdminSession struct {
