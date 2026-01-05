@@ -1,0 +1,38 @@
+<h1>Cron Job Logs: {{ .Job.Name }}</h1>
+
+<p>
+  <a href="/admin/cron-jobs">返回 Cron Jobs</a>
+</p>
+
+<table>
+  <thead>
+  <tr>
+    <th>RunID</th>
+    <th>Status</th>
+    <th>Message</th>
+    <th>Started At</th>
+    <th>Finished At</th>
+    <th>Duration (ms)</th>
+    <th>Created At</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {{ range .Logs }}
+  <tr>
+    <td>{{ .RunID }}</td>
+    <td>{{ .Status }}</td>
+    <td>{{ .Message }}</td>
+    <td>{{ formatTime .StartedAt }}</td>
+    <td>{{ formatTime .FinishedAt }}</td>
+    <td>{{ .Duration }}</td>
+    <td>{{ formatTime .CreatedAt }}</td>
+  </tr>
+  {{ else }}
+  <tr>
+    <td colspan="7">No logs</td>
+  </tr>
+  {{ end }}
+  </tbody>
+</table>
+

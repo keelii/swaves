@@ -1115,6 +1115,55 @@ func CreateCronJob(db *DB, job *CronJob) error {
 	job.ID, _ = res.LastInsertId()
 	return nil
 }
+
+func GetCronJobByID(db *DB, id int64) (*CronJob, error) {
+	row := db.QueryRow(`
+		SELECT
+			id, name, description, schedule, enabled,
+			last_run_at, last_success_at, last_error_at,
+			created_at, updated_at, deleted_at
+		FROM cron_jobs
+		WHERE id=? AND deleted_at IS NULL
+	`, id)
+
+	var job CronJob
+	var enabled int
+	var lastRun, lastSuccess, lastError sql.NullInt64
+	var deletedAt sql.NullInt64
+
+	if err := row.Scan(
+		&job.ID,
+		&job.Name,
+		&job.Description,
+		&job.Schedule,
+		&enabled,
+		&lastRun,
+		&lastSuccess,
+		&lastError,
+		&job.CreatedAt,
+		&job.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		return nil, err
+	}
+
+	job.Enabled = enabled == 1
+	if lastRun.Valid {
+		job.LastRunAt = &lastRun.Int64
+	}
+	if lastSuccess.Valid {
+		job.LastSuccessAt = &lastSuccess.Int64
+	}
+	if lastError.Valid {
+		job.LastErrorAt = &lastError.Int64
+	}
+	if deletedAt.Valid {
+		job.DeletedAt = &deletedAt.Int64
+	}
+
+	return &job, nil
+}
+
 func ListCronJobs(db *DB) ([]CronJob, error) {
 	rows, err := db.Query(`
 		SELECT
@@ -1269,16 +1318,22 @@ func trimCronJobLogs(db *DB, jobID int64, status string, limit int) error {
 var DefaultCronJobLogLimit = 100 // 默认最大条数，可以放到 settings 中
 
 // ListCronJobLogs 返回指定 job 的最近日志
-// status: "success" / "error"
-// limit: 最大返回条数
-func ListCronJobLogs(db *DB, jobID int64) ([]*CronJobLog, error) {
-	rows, err := db.Query(`
-		SELECT run_id, job_id, status, message, duration, created_at, expire_at
+// limit: 最大返回条数，如果为 0 则返回所有
+func ListCronJobLogs(db *DB, jobID int64, limit int) ([]*CronJobLog, error) {
+	query := `
+		SELECT id, run_id, job_id, status, message, started_at, finished_at, duration, created_at, expire_at
 		FROM cron_job_logs
 		WHERE job_id = ?
 		ORDER BY created_at DESC
-		LIMIT ?
-	`, jobID)
+	`
+	args := []interface{}{jobID}
+
+	if limit > 0 {
+		query += ` LIMIT ?`
+		args = append(args, limit)
+	}
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1289,10 +1344,13 @@ func ListCronJobLogs(db *DB, jobID int64) ([]*CronJobLog, error) {
 		var l CronJobLog
 		var expireAt sql.NullInt64
 		if err := rows.Scan(
+			&l.ID,
 			&l.RunID,
 			&l.JobID,
 			&l.Status,
 			&l.Message,
+			&l.StartedAt,
+			&l.FinishedAt,
 			&l.Duration,
 			&l.CreatedAt,
 			&expireAt,

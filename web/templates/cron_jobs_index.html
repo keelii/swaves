@@ -1,0 +1,46 @@
+<h1>Cron Jobs</h1>
+
+<p>
+  <a href="/admin/cron-jobs/new">New Cron Job</a>
+</p>
+
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Description</th>
+    <th>Schedule</th>
+    <th>Enabled</th>
+    <th>Last Run At</th>
+    <th>Last Success At</th>
+    <th>Last Error At</th>
+    <th>Created At</th>
+    <th>Actions</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {{ range .Jobs }}
+  <tr>
+    <td>{{ .ID }}</td>
+    <td>{{ .Name }}</td>
+    <td>{{ .Description }}</td>
+    <td>{{ .Schedule }}</td>
+    <td>{{ if .Enabled }}是{{ else }}否{{ end }}</td>
+    <td>{{ if .LastRunAt }}{{ formatTime .LastRunAt }}{{ else }}-{{ end }}</td>
+    <td>{{ if .LastSuccessAt }}{{ formatTime .LastSuccessAt }}{{ else }}-{{ end }}</td>
+    <td>{{ if .LastErrorAt }}{{ formatTime .LastErrorAt }}{{ else }}-{{ end }}</td>
+    <td>{{ formatTime .CreatedAt }}</td>
+    <td>
+      <a href="/admin/cron-jobs/{{ .ID }}/logs">执行日志</a>
+    </td>
+  </tr>
+  {{ else }}
+  <tr>
+    <td colspan="10">No cron jobs</td>
+  </tr>
+  {{ end }}
+  </tbody>
+</table>
+

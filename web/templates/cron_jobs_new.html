@@ -1,0 +1,40 @@
+<h1>New Cron Job</h1>
+
+<form method="post" action="/admin/cron-jobs/new">
+
+  <p>
+    <label>
+      Name<br>
+      <input type="text" name="name" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Description<br>
+      <textarea name="description" rows="3" cols="50"></textarea>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Schedule (Cron Expression)<br>
+      <input type="text" name="schedule" placeholder="0 */5 * * *" required>
+      <small>例如: 0 */5 * * * (每5分钟执行一次)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      <input type="checkbox" name="enabled" value="1" checked>
+      Enabled
+    </label>
+  </p>
+
+  <p>
+    <button type="submit">Create</button>
+    <a href="/admin/cron-jobs">Cancel</a>
+  </p>
+
+</form>
+

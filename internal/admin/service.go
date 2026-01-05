@@ -667,3 +667,42 @@ func ListHttpErrorLogs(dbx *db.DB, pager *middleware.Pagination) ([]db.HttpError
 func DeleteHttpErrorLogService(dbx *db.DB, id int64) error {
 	return db.DeleteHttpErrorLog(dbx, id)
 }
+
+// CronJobs
+type CreateCronJobInput struct {
+	Name        string
+	Description string
+	Schedule    string
+	Enabled     bool
+}
+
+func CreateCronJobService(dbx *db.DB, in CreateCronJobInput) error {
+	if in.Name == "" {
+		return errors.New("name required")
+	}
+	if in.Schedule == "" {
+		return errors.New("schedule required")
+	}
+
+	job := &db.CronJob{
+		Name:        in.Name,
+		Description: in.Description,
+		Schedule:    in.Schedule,
+		Enabled:     in.Enabled,
+	}
+
+	return db.CreateCronJob(dbx, job)
+}
+
+func ListCronJobs(dbx *db.DB) ([]db.CronJob, error) {
+	return db.ListCronJobs(dbx)
+}
+
+func GetCronJobForEdit(dbx *db.DB, id int64) (*db.CronJob, error) {
+	return db.GetCronJobByID(dbx, id)
+}
+
+// CronJobLogs
+func ListCronJobLogs(dbx *db.DB, jobID int64, limit int) ([]*db.CronJobLog, error) {
+	return db.ListCronJobLogs(dbx, jobID, limit)
+}
