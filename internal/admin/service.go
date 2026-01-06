@@ -703,15 +703,26 @@ const (
 	SlugFromTitle                         // 从 title 生成
 )
 
+type TitleSource int
+
+const (
+	TitleFromFilename    TitleSource = iota // 从文件名
+	TitleFromFrontmatter                    // 从 frontmatter 指定字段（默认 title）
+	TitleFromMarkdown                       // 从 markdown 标题中提取（H1/H2/H3）
+)
+
 type ImportFile struct {
 	Filename string // 文件名（不含扩展名）
 	Content  string // markdown 内容
 }
 
 type ImportMarkdownInput struct {
-	Files      []ImportFile
-	SlugSource SlugSource // slug 来源
-	SlugField  string     // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
+	Files       []ImportFile
+	SlugSource  SlugSource  // slug 来源
+	SlugField   string      // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
+	TitleSource TitleSource // title 来源
+	TitleField  string      // 如果 TitleSource 是 TitleFromFrontmatter，指定字段名（默认 "title"）
+	TitleLevel  int         // 如果 TitleSource 是 TitleFromMarkdown，指定标题级别（1/2/3）
 }
 
 // PreviewPostItem 预览页面的 post 数据
@@ -728,8 +739,25 @@ type PreviewPostItem struct {
 	TagsList      []string // 标签列表
 }
 
+// extractTitleFromMarkdown 从 markdown 内容中提取指定级别的标题
+func extractTitleFromMarkdown(content string, level int) string {
+	lines := strings.Split(content, "\n")
+	prefix := strings.Repeat("#", level)
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, prefix+" ") {
+			// 提取标题文本（去除 # 前缀和空格）
+			title := strings.TrimSpace(strings.TrimPrefix(line, prefix))
+			if title != "" {
+				return title
+			}
+		}
+	}
+	return ""
+}
+
 // ParseImportFiles 解析导入文件但不入库，返回预览数据
-func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string) ([]PreviewPostItem, error) {
+func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int) ([]PreviewPostItem, error) {
 	var items []PreviewPostItem
 	var errList []string
 
@@ -742,15 +770,57 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 		// 解析 markdown
 		result := md.ParseMarkdown(file.Content)
 
-		// 从 meta 中提取信息
+		// 根据 title 来源确定 title
 		title := ""
-		if val, ok := result.Meta["title"]; ok {
-			if str, ok := val.(string); ok {
-				title = str
+		switch titleSource {
+		case TitleFromFilename:
+			// 从文件名生成 title（去除扩展名，作为标题）
+			if file.Filename != "" {
+				title = file.Filename
+			} else {
+				// 如果文件名不存在，尝试从 frontmatter 获取
+				if val, ok := result.Meta["title"]; ok {
+					if str, ok := val.(string); ok {
+						title = str
+					}
+				}
+			}
+		case TitleFromFrontmatter:
+			// 从 frontmatter 指定字段获取
+			fieldName := titleField
+			if fieldName == "" {
+				fieldName = "title"
+			}
+			if val, ok := result.Meta[fieldName]; ok {
+				if str, ok := val.(string); ok {
+					title = str
+				}
+			}
+		case TitleFromMarkdown:
+			// 从 markdown 标题中提取
+			if titleLevel < 1 || titleLevel > 3 {
+				titleLevel = 1 // 默认使用 H1
+			}
+			title = extractTitleFromMarkdown(result.Markdown, titleLevel)
+			// 如果没找到，尝试从 frontmatter 获取
+			if title == "" {
+				if val, ok := result.Meta["title"]; ok {
+					if str, ok := val.(string); ok {
+						title = str
+					}
+				}
+			}
+		default:
+			// 默认从 frontmatter 的 title 字段获取
+			if val, ok := result.Meta["title"]; ok {
+				if str, ok := val.(string); ok {
+					title = str
+				}
 			}
 		}
+
 		if title == "" {
-			errList = append(errList, file.Filename+": title is required in frontmatter")
+			errList = append(errList, file.Filename+": title is required")
 			continue
 		}
 

@@ -15,10 +15,41 @@
 
   <p>
     <label>
+      Title Source<br>
+      <select name="title_source" required>
+        <option value="frontmatter" selected>From Frontmatter Field (default: title)</option>
+        <option value="filename">From Filename</option>
+        <option value="markdown">From Markdown Heading</option>
+      </select>
+    </label>
+  </p>
+
+  <p id="title_field_container" style="display: none;">
+    <label>
+      Frontmatter Field Name<br>
+      <input type="text" name="title_field" value="title" placeholder="title">
+      <small>(The field name in frontmatter to use as title, default: title)</small>
+    </label>
+  </p>
+
+  <p id="title_level_container" style="display: none;">
+    <label>
+      Heading Level<br>
+      <select name="title_level">
+        <option value="1" selected>H1 (# Title)</option>
+        <option value="2">H2 (## Title)</option>
+        <option value="3">H3 (### Title)</option>
+      </select>
+      <small>(The heading level to extract from markdown)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
       Slug Source<br>
       <select name="slug_source" required>
         <option value="filename" selected>From Filename</option>
-        <option value="frontmatter">From frontmatter Field (default: slug)</option>
+        <option value="frontmatter">From Frontmatter Field (default: slug)</option>
         <option value="title">From Title (generated)</option>
       </select>
     </label>
@@ -58,18 +89,38 @@ tags:
 
 <script>
 (function() {
-  const select = document.querySelector('select[name="slug_source"]');
+  const titleSourceSelect = document.querySelector('select[name="title_source"]');
+  const titleFieldContainer = document.getElementById('title_field_container');
+  const titleLevelContainer = document.getElementById('title_level_container');
+  
+  const slugSourceSelect = document.querySelector('select[name="slug_source"]');
   const slugFieldContainer = document.getElementById('slug_field_container');
   
+  function updateTitleFieldVisibility() {
+    if (titleSourceSelect.value === 'frontmatter') {
+      titleFieldContainer.style.display = 'block';
+      titleLevelContainer.style.display = 'none';
+    } else if (titleSourceSelect.value === 'markdown') {
+      titleFieldContainer.style.display = 'none';
+      titleLevelContainer.style.display = 'block';
+    } else {
+      titleFieldContainer.style.display = 'none';
+      titleLevelContainer.style.display = 'none';
+    }
+  }
+  
   function updateSlugFieldVisibility() {
-    if (select.value === 'frontmatter') {
+    if (slugSourceSelect.value === 'frontmatter') {
       slugFieldContainer.style.display = 'block';
     } else {
       slugFieldContainer.style.display = 'none';
     }
   }
   
-  select.addEventListener('change', updateSlugFieldVisibility);
+  titleSourceSelect.addEventListener('change', updateTitleFieldVisibility);
+  slugSourceSelect.addEventListener('change', updateSlugFieldVisibility);
+  
+  updateTitleFieldVisibility(); // 初始化
   updateSlugFieldVisibility(); // 初始化
 })();
 </script>

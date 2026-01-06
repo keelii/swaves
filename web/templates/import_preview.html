@@ -1,5 +1,3 @@
-<h1>{{ .Title }}</h1>
-
 {{ if .Error }}
 <p style="color: orange;">Warning: {{ .Error }}</p>
 {{ end }}
@@ -8,45 +6,45 @@
 
   <input type="hidden" name="items_count" value="{{ len .Items }}">
 
-  <table style="width: 100%; border-collapse: collapse;">
+  <table>
     <thead>
     <tr>
-      <th style="border: 1px solid #ccc; padding: 8px;">Filename</th>
-      <th style="border: 1px solid #ccc; padding: 8px;">Title</th>
-      <th style="border: 1px solid #ccc; padding: 8px;">Slug</th>
-      <th style="border: 1px solid #ccc; padding: 8px;">Status</th>
-      <th style="border: 1px solid #ccc; padding: 8px;">Created At</th>
-      <th style="border: 1px solid #ccc; padding: 8px;">Tags</th>
-      <th style="border: 1px solid #ccc; padding: 8px;">Content</th>
+      <th>Filename</th>
+      <th>Title (from {{ .TitleSourceDesc }})</th>
+      <th>Slug (from {{ .SlugSourceDesc }})</th>
+      <th>Status</th>
+      <th>Created At</th>
+      <th>Tags</th>
+      <th>Content</th>
     </tr>
     </thead>
     <tbody>
     {{ range .Items }}
     <tr>
-      <td style="border: 1px solid #ccc; padding: 8px;">
+      <td>
         <input type="hidden" name="items[{{ .Index }}][filename]" value="{{ .Filename }}">
         {{ .Filename }}
       </td>
-      <td style="border: 1px solid #ccc; padding: 8px;">
+      <td>
         <input type="text" name="items[{{ .Index }}][title]" value="{{ .Title }}" required style="width: 100%;">
       </td>
-      <td style="border: 1px solid #ccc; padding: 8px;">
+      <td>
         <input type="text" name="items[{{ .Index }}][slug]" value="{{ .Slug }}" required style="width: 100%;">
       </td>
-      <td style="border: 1px solid #ccc; padding: 8px;">
+      <td>
         <select name="items[{{ .Index }}][status]" style="width: 100%;">
           <option value="draft" {{ if eq .Status "draft" }}selected{{ end }}>draft</option>
           <option value="published" {{ if eq .Status "published" }}selected{{ end }}>published</option>
         </select>
       </td>
-      <td style="border: 1px solid #ccc; padding: 8px;">
+      <td>
         <input type="hidden" name="items[{{ .Index }}][created_at_unix]" value="{{ .CreatedAtUnix }}">
         <input type="text" name="items[{{ .Index }}][created_at]" value="{{ .CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">
       </td>
-      <td style="border: 1px solid #ccc; padding: 8px;">
+      <td>
         <input type="text" name="items[{{ .Index }}][tags]" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
       </td>
-      <td style="border: 1px solid #ccc; padding: 8px;">
+      <td>
         <textarea name="items[{{ .Index }}][content]" rows="5" style="width: 100%;">{{ .Content }}</textarea>
       </td>
     </tr>

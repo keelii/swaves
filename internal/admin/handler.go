@@ -1022,6 +1022,34 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		slugField = "slug"
 	}
 
+	// 获取 title 来源选择
+	titleSourceStr := c.FormValue("title_source")
+	titleSource := TitleFromFrontmatter // 默认从 frontmatter 获取
+	switch titleSourceStr {
+	case "filename":
+		titleSource = TitleFromFilename
+	case "frontmatter":
+		titleSource = TitleFromFrontmatter
+	case "markdown":
+		titleSource = TitleFromMarkdown
+	}
+
+	// 如果是从 frontmatter，获取字段名
+	titleField := c.FormValue("title_field")
+	if titleField == "" {
+		titleField = "title"
+	}
+
+	// 如果是从 markdown，获取标题级别
+	titleLevel := 1 // 默认 H1
+	if titleSourceStr == "markdown" {
+		if levelStr := c.FormValue("title_level"); levelStr != "" {
+			if level, err := strconv.Atoi(levelStr); err == nil && level >= 1 && level <= 3 {
+				titleLevel = level
+			}
+		}
+	}
+
 	// 读取所有文件
 	var importFiles []ImportFile
 	for _, fileHeader := range files {
@@ -1055,7 +1083,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	}
 
 	// 解析文件但不入库，返回预览数据
-	items, err := ParseImportFiles(importFiles, slugSource, slugField)
+	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel)
 	if err != nil && len(items) == 0 {
 		// 如果全部解析失败，返回错误
 		return c.Render("import", fiber.Map{
@@ -1064,11 +1092,44 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		}, "admin_layout")
 	}
 
+	// 构建 title 来源描述
+	titleSourceDesc := ""
+	switch titleSourceStr {
+	case "filename":
+		titleSourceDesc = "filename"
+	case "frontmatter":
+		titleSourceDesc = fmt.Sprintf("frontmatter(%s)", titleField)
+	case "markdown":
+		levelMap := map[int]string{1: "H1", 2: "H2", 3: "H3"}
+		levelName := levelMap[titleLevel]
+		if levelName == "" {
+			levelName = fmt.Sprintf("H%d", titleLevel)
+		}
+		titleSourceDesc = fmt.Sprintf("markdown(%s)", levelName)
+	default:
+		titleSourceDesc = "frontmatter(title)"
+	}
+
+	// 构建 slug 来源描述
+	slugSourceDesc := ""
+	switch slugSourceStr {
+	case "filename":
+		slugSourceDesc = "filename"
+	case "frontmatter":
+		slugSourceDesc = fmt.Sprintf("frontmatter(%s)", slugField)
+	case "title":
+		slugSourceDesc = "title"
+	default:
+		slugSourceDesc = "title"
+	}
+
 	// 即使有部分错误，也显示预览页面（有警告信息）
 	return c.Render("import_preview", fiber.Map{
-		"Title": "Import Preview",
-		"Items": items,
-		"Error": err, // 如果有错误，显示警告信息
+		"Title":           "Import Preview",
+		"Items":           items,
+		"Error":           err, // 如果有错误，显示警告信息
+		"TitleSourceDesc": titleSourceDesc,
+		"SlugSourceDesc":  slugSourceDesc,
 	}, "admin_layout")
 }
 
