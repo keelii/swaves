@@ -43,6 +43,7 @@
         <option value="radio" {{ if and .Setting (eq .Setting.Type "radio") }}selected{{ end }}>radio</option>
         <option value="checkbox" {{ if and .Setting (eq .Setting.Type "checkbox") }}selected{{ end }}>checkbox</option>
         <option value="select" {{ if and .Setting (eq .Setting.Type "select") }}selected{{ end }}>select</option>
+        <option value="textarea" {{ if and .Setting (eq .Setting.Type "textarea") }}selected{{ end }}>textarea</option>
       </select>
     </label>
   </p>
@@ -50,7 +51,7 @@
   <p>
     <label>
       Options (JSON)<br>
-      <textarea name="options" rows="5" cols="80" placeholder='[{"label": "Option 1", "value": "value1"}, {"label": "Option 2", "value": "value2"}]'>{{ if .Setting }}{{ .Setting.Options }}{{ end }}</textarea>
+      <textarea name="options" rows="3" cols="80" placeholder='[{"label": "Option 1", "value": "value1"}, {"label": "Option 2", "value": "value2"}]'>{{ if .Setting }}{{ .Setting.Options }}{{ end }}</textarea>
       <small>(Required for radio/checkbox/select type, JSON array of {label, value})</small>
     </label>
   </p>
@@ -65,9 +66,29 @@
 
   <p>
     <label>
+      Default Option Value<br>
+      <div id="default_option_value_container">
+        {{ if .OptionsParsed }}
+          <select name="default_option_value" id="default_option_value">
+            <option value="">-- None --</option>
+            {{ range .OptionsParsed }}
+              <option value="{{ .value }}" {{ if eq $.DefaultOptionValue .value }}selected{{ end }}>{{ .label }}</option>
+            {{ end }}
+          </select>
+          <small>(Select default value from options above. Updates automatically when Options is changed.)</small>
+        {{ else }}
+          <input type="text" name="default_option_value" id="default_option_value" value="{{ if .Setting }}{{ .Setting.DefaultOptionValue }}{{ else }}{{ .DefaultOptionValue }}{{ end }}">
+          <small>(Default value for select/radio/checkbox when options are provided. Leave empty if not using options. Fill in Options field above to see dropdown.)</small>
+        {{ end }}
+      </div>
+    </label>
+  </p>
+
+  <p>
+    <label>
       Value<br>
       <input type="text" name="value" value="{{ if .Setting }}{{ .Setting.Value }}{{ end }}">
-      <small>(Default value)</small>
+      <small>(Initial value - will be set when setting is created)</small>
     </label>
   </p>
 
@@ -93,4 +114,53 @@
   </p>
 
 </form>
+
+<script>
+(function() {
+  const optionsTextarea = document.querySelector('textarea[name="options"]');
+  const defaultValueContainer = document.getElementById('default_option_value_container');
+  const currentDefaultValue = document.getElementById('default_option_value')?.value || '';
+
+  if (!optionsTextarea || !defaultValueContainer) return;
+
+  function updateDefaultValueField() {
+    const optionsText = optionsTextarea.value.trim();
+    
+    try {
+      if (optionsText) {
+        const options = JSON.parse(optionsText);
+        if (Array.isArray(options) && options.length > 0) {
+          // Create select dropdown
+          let html = '<select name="default_option_value" id="default_option_value">';
+          html += '<option value="">-- None --</option>';
+          options.forEach(function(opt) {
+            const value = opt.value || '';
+            const label = opt.label || value;
+            const selected = value === currentDefaultValue ? ' selected' : '';
+            html += `<option value="${value}"${selected}>${label}</option>`;
+          });
+          html += '</select>';
+          html += '<small>(Select default value from options above. Updates automatically when Options is changed.)</small>';
+          defaultValueContainer.innerHTML = html;
+          return;
+        }
+      }
+    } catch (e) {
+      // Invalid JSON, keep as text input
+    }
+    
+    // Default to text input
+    defaultValueContainer.innerHTML = '<input type="text" name="default_option_value" id="default_option_value" value="' + 
+      (currentDefaultValue || '') + '">' +
+      '<small>(Default value for select/radio/checkbox when options are provided. Fill in valid Options JSON above to see dropdown.)</small>';
+  }
+
+  optionsTextarea.addEventListener('input', updateDefaultValueField);
+  
+  // Initial update if options are already filled
+  if (optionsTextarea.value.trim()) {
+    updateDefaultValueField();
+  }
+})();
+</script>
 

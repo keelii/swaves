@@ -714,6 +714,146 @@ type ImportMarkdownInput struct {
 	SlugField  string     // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
 }
 
+// PreviewPostItem 预览页面的 post 数据
+type PreviewPostItem struct {
+	Index         int      // 索引（用于表单字段命名）
+	Filename      string   // 原始文件名
+	Title         string   // 标题
+	Slug          string   // slug
+	Content       string   // 内容（markdown）
+	Status        string   // 状态
+	CreatedAt     string   // 创建时间（格式化的时间字符串，用于显示）
+	CreatedAtUnix int64    // 创建时间（Unix 时间戳）
+	Tags          string   // 标签（逗号分隔的字符串）
+	TagsList      []string // 标签列表
+}
+
+// ParseImportFiles 解析导入文件但不入库，返回预览数据
+func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string) ([]PreviewPostItem, error) {
+	var items []PreviewPostItem
+	var errList []string
+
+	for i, file := range files {
+		if file.Content == "" {
+			errList = append(errList, file.Filename+": markdown content is required")
+			continue
+		}
+
+		// 解析 markdown
+		result := md.ParseMarkdown(file.Content)
+
+		// 从 meta 中提取信息
+		title := ""
+		if val, ok := result.Meta["title"]; ok {
+			if str, ok := val.(string); ok {
+				title = str
+			}
+		}
+		if title == "" {
+			errList = append(errList, file.Filename+": title is required in frontmatter")
+			continue
+		}
+
+		// 根据 slug 来源确定 slug
+		slug := ""
+		switch slugSource {
+		case SlugFromFilename:
+			if file.Filename != "" {
+				slug = slg.Make(file.Filename)
+			} else {
+				slug = slg.Make(title)
+			}
+		case SlugFromFrontmatter:
+			fieldName := slugField
+			if fieldName == "" {
+				fieldName = "slug"
+			}
+			if val, ok := result.Meta[fieldName]; ok {
+				if str, ok := val.(string); ok {
+					slug = str
+				}
+			}
+			if slug == "" {
+				slug = slg.Make(title)
+			}
+		case SlugFromTitle:
+			slug = slg.Make(title)
+		default:
+			slug = slg.Make(title)
+		}
+
+		status := "draft"
+		if val, ok := result.Meta["status"]; ok {
+			if str, ok := val.(string); ok {
+				status = str
+			}
+		}
+
+		// 获取 Markdown 内容
+		content := result.Markdown
+
+		// 解析 date 字段并转换为东8区时间戳
+		var createdAt int64
+		var createdAtStr string
+		if val, ok := result.Meta["date"]; ok {
+			if dateStr, ok := val.(string); ok && dateStr != "" {
+				t, err := time.Parse("2006-01-02T15:04:05.000Z", dateStr)
+				if err == nil {
+					loc, _ := time.LoadLocation("Asia/Shanghai")
+					createdAt = t.In(loc).Unix()
+					// 格式化为显示字符串 (YYYY-MM-DD HH:MM:SS)
+					createdAtStr = t.In(loc).Format("2006-01-02 15:04:05")
+				}
+			}
+		}
+		if createdAt == 0 {
+			createdAt = time.Now().Unix()
+			createdAtStr = time.Now().Format("2006-01-02 15:04:05")
+		}
+
+		// 处理 tags
+		var tagsList []string
+		var tagsStr string
+		if val, ok := result.Meta["tags"]; ok {
+			switch v := val.(type) {
+			case string:
+				if v != "" {
+					tagsList = strings.Split(v, ",")
+					for i, tag := range tagsList {
+						tagsList[i] = strings.TrimSpace(tag)
+					}
+				}
+			case []interface{}:
+				for _, item := range v {
+					if str, ok := item.(string); ok {
+						tagsList = append(tagsList, strings.TrimSpace(str))
+					}
+				}
+			}
+			tagsStr = strings.Join(tagsList, ", ")
+		}
+
+		items = append(items, PreviewPostItem{
+			Index:         i,
+			Filename:      file.Filename,
+			Title:         title,
+			Slug:          slug,
+			Content:       content,
+			Status:        status,
+			CreatedAt:     createdAtStr,
+			CreatedAtUnix: createdAt,
+			Tags:          tagsStr,
+			TagsList:      tagsList,
+		})
+	}
+
+	if len(errList) > 0 {
+		return items, errors.New(strings.Join(errList, "; "))
+	}
+
+	return items, nil
+}
+
 // importSingleMarkdown 导入单个 markdown 文件
 func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, slugField string) error {
 	if file.Content == "" {
@@ -866,6 +1006,60 @@ func ImportMarkdownService(dbx *db.DB, in ImportMarkdownInput) error {
 
 	if len(errList) > 0 {
 		return errors.New(strings.Join(errList, "; "))
+	}
+
+	return nil
+}
+
+// ImportPreviewService 从预览数据导入到数据库
+func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
+	for _, item := range items {
+		// 解析时间字符串为时间戳
+		createdAt := item.CreatedAtUnix
+		if item.CreatedAt != "" {
+			// 尝试解析时间字符串 "2006-01-02 15:04:05"
+			if t, err := time.Parse("2006-01-02 15:04:05", item.CreatedAt); err == nil {
+				createdAt = t.Unix()
+			}
+		}
+		if createdAt == 0 {
+			createdAt = time.Now().Unix()
+		}
+
+		// 创建 post
+		post := &db.Post{
+			Title:     item.Title,
+			Slug:      item.Slug,
+			Content:   item.Content,
+			Status:    item.Status,
+			CreatedAt: createdAt,
+			UpdatedAt: time.Now().Unix(),
+		}
+
+		if err := db.CreatePost(dbx, post); err != nil {
+			return errors.New(item.Filename + ": " + err.Error())
+		}
+
+		// 处理 tags
+		if item.Tags != "" {
+			var tagIDs []int64
+			tagNames := strings.Split(item.Tags, ",")
+			for _, tagName := range tagNames {
+				tagName = strings.TrimSpace(tagName)
+				if tagName != "" {
+					tag, err := CreateTagByName(dbx, tagName)
+					if err == nil {
+						tagIDs = append(tagIDs, tag.ID)
+					}
+				}
+			}
+
+			if len(tagIDs) > 0 {
+				if err := db.SetPostTags(dbx, post.ID, tagIDs); err != nil {
+					// tag 关联失败不影响主流程
+				}
+			}
+		}
 	}
 
 	return nil

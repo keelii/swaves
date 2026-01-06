@@ -1,0 +1,54 @@
+<p>
+  <a href="/admin/settings/new">New Setting</a>
+  <a href="/admin/settings/all" style="margin-left: 10px;">Edit All</a>
+</p>
+
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Category</th>
+    <th>Name</th>
+    <th>Code</th>
+    <th>Type</th>
+    <th>Value</th>
+    <th>Created At</th>
+    <th>Updated At</th>
+    <th>Actions</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {{ range .Settings }}
+  <tr>
+    <td>{{ .ID }}</td>
+    <td>{{ .Category }}</td>
+    <td>{{ .Name }}</td>
+    <td>{{ .Code }}</td>
+    <td>{{ .Type }}</td>
+    <td>
+      {{ if eq .Type "password" }}
+        <span>••••••</span>
+      {{ else }}
+        {{ .Value }}
+      {{ end }}
+    </td>
+    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ formatTime .UpdatedAt }}</td>
+    <td>
+      <a href="/admin/settings/{{ .ID }}/edit">Edit</a>
+
+      <form method="post" style="display:inline" action="/admin/settings/{{ .ID }}/delete">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {{ else }}
+  <tr>
+    <td colspan="9">No settings</td>
+  </tr>
+  {{ end }}
+  </tbody>
+
+</table>
+

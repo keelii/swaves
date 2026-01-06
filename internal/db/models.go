@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,168 +40,163 @@ func Open(opts Options) *DB {
 	return conn
 }
 
+const InitialSQL = `
+CREATE TABLE IF NOT EXISTS posts (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	title TEXT NOT NULL,
+	slug TEXT NOT NULL UNIQUE,
+	content TEXT NOT NULL,
+	status TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS encrypted_posts (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	title TEXT NOT NULL,
+	slug TEXT NOT NULL UNIQUE,
+	content TEXT NOT NULL,
+	password TEXT NOT NULL,
+	expires_at INTEGER,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL,
+	slug TEXT NOT NULL UNIQUE,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS post_tags (
+	post_id INTEGER NOT NULL,
+	tag_id INTEGER NOT NULL,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER,
+	UNIQUE(post_id, tag_id)
+);
+
+CREATE TABLE IF NOT EXISTS redirects (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	from_path TEXT NOT NULL UNIQUE,
+	to_path TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+	category TEXT NOT NULL DEFAULT 'default',
+	name TEXT NOT NULL,
+	code TEXT NOT NULL UNIQUE,
+	type TEXT NOT NULL,
+	options TEXT,
+	attrs TEXT,
+	value TEXT,
+	description TEXT,
+	sort INTEGER NOT NULL DEFAULT 0,
+
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category);
+CREATE INDEX IF NOT EXISTS idx_settings_code ON settings(code);
+
+CREATE TABLE IF NOT EXISTS http_error_logs (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+	req_id TEXT NOT NULL,
+	client_ip TEXT NOT NULL,
+	method TEXT NOT NULL,
+	path TEXT NOT NULL,
+	status INTEGER NOT NULL,
+	user_agent TEXT NOT NULL,
+
+	query_params TEXT,
+	body_params TEXT,
+
+	created_at INTEGER NOT NULL,
+	expired_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_http_error_logs_created_at
+ ON http_error_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_http_error_logs_expired_at
+ ON http_error_logs(expired_at);
+CREATE INDEX IF NOT EXISTS idx_http_error_logs_path
+ ON http_error_logs(path);
+CREATE INDEX IF NOT EXISTS idx_http_error_logs_status
+ ON http_error_logs(status);
+CREATE TABLE IF NOT EXISTS cron_jobs (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+	name TEXT NOT NULL,                 -- 任务名称（后台展示）
+	description TEXT NOT NULL DEFAULT '',
+
+	schedule TEXT NOT NULL,             -- cron 表达式，如 "0 */5 * * *"
+	enabled INTEGER NOT NULL DEFAULT 1, -- 1=启用 0=停用
+
+	last_run_at INTEGER,                -- 最近一次开始执行时间（可选）
+	last_success_at INTEGER,            -- 最近一次成功时间（可选）
+	last_error_at INTEGER,              -- 最近一次失败时间（可选）
+
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS cron_job_logs (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+	job_id INTEGER NOT NULL,             -- cron_jobs.id（无外键）
+	run_id TEXT NOT NULL,                -- 单次执行唯一标识（UUID）
+
+	status TEXT NOT NULL,                -- "success" | "error"
+	message TEXT NOT NULL DEFAULT '',    -- 简要结果 / 错误信息
+
+	started_at INTEGER NOT NULL,         -- 执行开始时间
+	finished_at INTEGER NOT NULL,        -- 执行结束时间
+	duration INTEGER NOT NULL,           -- 执行耗时（毫秒）
+
+	expire_at INTEGER,                   -- 过期时间（可为空）
+
+	created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cron_job_logs_job_id
+ON cron_job_logs(job_id);
+CREATE INDEX IF NOT EXISTS idx_cron_job_logs_job_id_status
+ON cron_job_logs(job_id, status);
+CREATE INDEX IF NOT EXISTS idx_cron_job_logs_created_at
+ON cron_job_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_cron_job_logs_expire_at
+ON cron_job_logs(expire_at);`
+
 func Migrate(db *DB) error {
-	stmts := []string{
-		`CREATE TABLE IF NOT EXISTS posts (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT NOT NULL,
-			slug TEXT NOT NULL UNIQUE,
-			content TEXT NOT NULL,
-			status TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS encrypted_posts (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT NOT NULL,
-			slug TEXT NOT NULL UNIQUE,
-			content TEXT NOT NULL,
-			password TEXT NOT NULL,
-			expires_at INTEGER,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS tags (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			slug TEXT NOT NULL UNIQUE,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS post_tags (
-			post_id INTEGER NOT NULL,
-			tag_id INTEGER NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER,
-			UNIQUE(post_id, tag_id)
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS redirects (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			from_path TEXT NOT NULL UNIQUE,
-			to_path TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS settings (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-			category TEXT NOT NULL DEFAULT 'default',
-			name TEXT NOT NULL,
-			code TEXT NOT NULL UNIQUE,
-			type TEXT NOT NULL,
-			options TEXT,
-			attrs TEXT,
-			value TEXT,
-			description TEXT,
-			sort INTEGER NOT NULL DEFAULT 0,
-
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER
-		);
-
-		CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category);
-		CREATE INDEX IF NOT EXISTS idx_settings_code ON settings(code);`,
-
-		`CREATE TABLE IF NOT EXISTS admin_sessions (
-		  id TEXT PRIMARY KEY,
-		  sid TEXT NOT NULL UNIQUE,
-		  expires_at INTEGER NOT NULL,
-		  created_at INTEGER NOT NULL,
-		  updated_at INTEGER NOT NULL,
-		  deleted_at INTEGER
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS http_error_logs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-			req_id TEXT NOT NULL,
-			client_ip TEXT NOT NULL,
-			method TEXT NOT NULL,
-			path TEXT NOT NULL,
-			status INTEGER NOT NULL,
-			user_agent TEXT NOT NULL,
-
-			query_params TEXT,
-			body_params TEXT,
-
-			created_at INTEGER NOT NULL,
-			expired_at INTEGER NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_http_error_logs_created_at
-		 ON http_error_logs(created_at);`,
-
-		`CREATE INDEX IF NOT EXISTS idx_http_error_logs_expired_at
-		 ON http_error_logs(expired_at);`,
-
-		`CREATE INDEX IF NOT EXISTS idx_http_error_logs_path
-		 ON http_error_logs(path);`,
-
-		`CREATE INDEX IF NOT EXISTS idx_http_error_logs_status
-		 ON http_error_logs(status);`,
-
-		`CREATE TABLE IF NOT EXISTS cron_jobs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-			name TEXT NOT NULL,                 -- 任务名称（后台展示）
-			description TEXT NOT NULL DEFAULT '',
-
-			schedule TEXT NOT NULL,             -- cron 表达式，如 "0 */5 * * *"
-			enabled INTEGER NOT NULL DEFAULT 1, -- 1=启用 0=停用
-
-			last_run_at INTEGER,                -- 最近一次开始执行时间（可选）
-			last_success_at INTEGER,            -- 最近一次成功时间（可选）
-			last_error_at INTEGER,              -- 最近一次失败时间（可选）
-
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS cron_job_logs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-			job_id INTEGER NOT NULL,             -- cron_jobs.id（无外键）
-			run_id TEXT NOT NULL,                -- 单次执行唯一标识（UUID）
-
-			status TEXT NOT NULL,                -- "success" | "error"
-			message TEXT NOT NULL DEFAULT '',    -- 简要结果 / 错误信息
-
-			started_at INTEGER NOT NULL,         -- 执行开始时间
-			finished_at INTEGER NOT NULL,        -- 执行结束时间
-			duration INTEGER NOT NULL,           -- 执行耗时（毫秒）
-
-			expire_at INTEGER,                   -- 过期时间（可为空）
-
-			created_at INTEGER NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_cron_job_logs_job_id
-		ON cron_job_logs(job_id);
-
-		CREATE INDEX IF NOT EXISTS idx_cron_job_logs_job_id_status
-		ON cron_job_logs(job_id, status);
-
-		CREATE INDEX IF NOT EXISTS idx_cron_job_logs_created_at
-		ON cron_job_logs(created_at);
-
-		CREATE INDEX IF NOT EXISTS idx_cron_job_logs_expire_at
-		ON cron_job_logs(expire_at);`,
-	}
+	stmts := []string{InitialSQL}
 
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
 			return err
 		}
+	}
+
+	// Add default_option_value column to settings table if it doesn't exist
+	_, err := db.Exec(`
+		ALTER TABLE settings 
+		ADD COLUMN default_option_value TEXT
+	`)
+	// Ignore error if column already exists
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		log.Printf("Warning: failed to add default_option_value column (may already exist): %v", err)
 	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
@@ -752,19 +749,20 @@ func CreateRedirect(db *DB, r *Redirect) error {
 }
 
 type Setting struct {
-	ID          int64
-	Category    string
-	Name        string
-	Code        string
-	Type        string
-	Options     string // JSON string
-	Attrs       string // JSON string
-	Value       string
-	Description string
-	Sort        int64
-	CreatedAt   int64
-	UpdatedAt   int64
-	DeletedAt   *int64
+	ID                 int64
+	Category           string
+	Name               string
+	Code               string
+	Type               string
+	Options            string // JSON string
+	Attrs              string // JSON string
+	Value              string
+	DefaultOptionValue string // Default value for select/radio/checkbox when options are provided
+	Description        string
+	Sort               int64
+	CreatedAt          int64
+	UpdatedAt          int64
+	DeletedAt          *int64
 }
 
 func CreateSetting(db *DB, s *Setting) error {
@@ -799,8 +797,8 @@ func CreateSetting(db *DB, s *Setting) error {
 
 	res, err := db.Exec(
 		`INSERT INTO settings
-		 (category, name, code, type, options, attrs, value, description, sort, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 (category, name, code, type, options, attrs, value, default_option_value, description, sort, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		s.Category,
 		s.Name,
 		s.Code,
@@ -808,6 +806,7 @@ func CreateSetting(db *DB, s *Setting) error {
 		s.Options,
 		s.Attrs,
 		s.Value,
+		s.DefaultOptionValue,
 		s.Description,
 		s.Sort,
 		s.CreatedAt,
@@ -823,7 +822,7 @@ func CreateSetting(db *DB, s *Setting) error {
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
 	row := db.QueryRow(`
-		SELECT id, category, name, code, type, options, attrs, value, description, sort,
+		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
 		       created_at, updated_at, deleted_at
 		FROM settings
 		WHERE code=? AND deleted_at IS NULL
@@ -841,6 +840,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 		&s.Options,
 		&s.Attrs,
 		&s.Value,
+		&s.DefaultOptionValue,
 		&s.Description,
 		&s.Sort,
 		&s.CreatedAt,
@@ -862,7 +862,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 
 func GetSettingByID(db *DB, id int64) (*Setting, error) {
 	row := db.QueryRow(`
-		SELECT id, category, name, code, type, options, attrs, value, description, sort,
+		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
 		       created_at, updated_at, deleted_at
 		FROM settings
 		WHERE id=? AND deleted_at IS NULL
@@ -880,6 +880,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 		&s.Options,
 		&s.Attrs,
 		&s.Value,
+		&s.DefaultOptionValue,
 		&s.Description,
 		&s.Sort,
 		&s.CreatedAt,
@@ -901,7 +902,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 
 func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
 	query := `
-		SELECT id, category, name, code, type, options, attrs, value, description, sort,
+		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
 		       created_at, updated_at, deleted_at
 		FROM settings
 		WHERE deleted_at IS NULL
@@ -913,7 +914,7 @@ func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
 		args = append(args, category)
 	}
 
-	query += ` ORDER BY category, sort, id`
+	//query += ` ORDER BY category, sort, id`
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
@@ -935,6 +936,7 @@ func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
 			&s.Options,
 			&s.Attrs,
 			&s.Value,
+			&s.DefaultOptionValue,
 			&s.Description,
 			&s.Sort,
 			&s.CreatedAt,
@@ -974,7 +976,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 
 	_, err := db.Exec(
 		`UPDATE settings
-		 SET category=?, name=?, type=?, options=?, attrs=?, value=?, description=?, sort=?, updated_at=?
+		 SET category=?, name=?, type=?, options=?, attrs=?, value=?, default_option_value=?, description=?, sort=?, updated_at=?
 		 WHERE id=? AND deleted_at IS NULL`,
 		s.Category,
 		s.Name,
@@ -982,6 +984,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 		s.Options,
 		s.Attrs,
 		s.Value,
+		s.DefaultOptionValue,
 		s.Description,
 		s.Sort,
 		s.UpdatedAt,
@@ -1041,20 +1044,120 @@ func CheckPassword(db *DB, raw string) error {
 	return bcrypt.CompareHashAndPassword([]byte(setting.Value), []byte(raw))
 }
 
+const InternalLang = `[
+  {"label": "简体中文（中国大陆）", "value": "zh-CN"},
+  {"label": "简体中文（新加坡）", "value": "zh-SG"},
+  {"label": "简体中文", "value": "zh-Hans"},
+  {"label": "简体中文（中国大陆）", "value": "zh-Hans-CN"},
+  {"label": "繁体中文（台湾）", "value": "zh-TW"},
+  {"label": "繁体中文（香港）", "value": "zh-HK"},
+  {"label": "繁体中文（澳门）", "value": "zh-MO"},
+  {"label": "繁体中文", "value": "zh-Hant"},
+  {"label": "繁体中文（台湾）", "value": "zh-Hant-TW"},
+  {"label": "繁体中文（香港）", "value": "zh-Hant-HK"},
+  {"label": "中文", "value": "zh"},
+  {"label": "英语（美国）", "value": "en-US"},
+  {"label": "英语（英国）", "value": "en-GB"},
+  {"label": "英语（加拿大）", "value": "en-CA"},
+  {"label": "英语（澳大利亚）", "value": "en-AU"},
+  {"label": "英语（印度）", "value": "en-IN"},
+  {"label": "英语", "value": "en"},
+  {"label": "日语（日本）", "value": "ja-JP"},
+  {"label": "日语", "value": "ja"},
+  {"label": "韩语（韩国）", "value": "ko-KR"},
+  {"label": "韩语", "value": "ko"},
+  {"label": "法语（法国）", "value": "fr-FR"},
+  {"label": "法语（加拿大）", "value": "fr-CA"},
+  {"label": "法语", "value": "fr"},
+  {"label": "德语（德国）", "value": "de-DE"},
+  {"label": "德语（奥地利）", "value": "de-AT"},
+  {"label": "德语", "value": "de"},
+  {"label": "西班牙语（西班牙）", "value": "es-ES"},
+  {"label": "西班牙语（墨西哥）", "value": "es-MX"},
+  {"label": "西班牙语（美国）", "value": "es-US"},
+  {"label": "西班牙语", "value": "es"},
+  {"label": "俄语（俄罗斯）", "value": "ru-RU"},
+  {"label": "俄语", "value": "ru"},
+  {"label": "葡萄牙语（葡萄牙）", "value": "pt-PT"},
+  {"label": "葡萄牙语（巴西）", "value": "pt-BR"},
+  {"label": "葡萄牙语", "value": "pt"},
+  {"label": "阿拉伯语（沙特阿拉伯）", "value": "ar-SA"},
+  {"label": "阿拉伯语（埃及）", "value": "ar-EG"},
+  {"label": "阿拉伯语", "value": "ar"},
+  {"label": "意大利语（意大利）", "value": "it-IT"},
+  {"label": "意大利语", "value": "it"},
+  {"label": "荷兰语（荷兰）", "value": "nl-NL"},
+  {"label": "荷兰语（比利时）", "value": "nl-BE"},
+  {"label": "荷兰语", "value": "nl"},
+  {"label": "土耳其语（土耳其）", "value": "tr-TR"},
+  {"label": "土耳其语", "value": "tr"},
+  {"label": "越南语（越南）", "value": "vi-VN"},
+  {"label": "越南语", "value": "vi"},
+  {"label": "泰语（泰国）", "value": "th-TH"},
+  {"label": "泰语", "value": "th"},
+  {"label": "印地语（印度）", "value": "hi-IN"},
+  {"label": "印地语", "value": "hi"}
+]`
+const InternalTimezone = `[
+  {"label": "中国标准时间 (北京)", "value": "Asia/Shanghai"},
+  {"label": "中国标准时间 (乌鲁木齐)", "value": "Asia/Urumqi"},
+  {"label": "香港时间", "value": "Asia/Hong_Kong"},
+  {"label": "台北时间", "value": "Asia/Taipei"},
+  {"label": "澳门时间", "value": "Asia/Macau"},
+  {"label": "美国东部时间 (纽约)", "value": "America/New_York"},
+  {"label": "美国中部时间 (芝加哥)", "value": "America/Chicago"},
+  {"label": "美国山区时间 (丹佛)", "value": "America/Denver"},
+  {"label": "美国太平洋时间 (洛杉矶)", "value": "America/Los_Angeles"},
+  {"label": "美国阿拉斯加时间 (安克雷奇)", "value": "America/Anchorage"},
+  {"label": "美国夏威夷时间 (檀香山)", "value": "Pacific/Honolulu"},
+  {"label": "英国时间 (伦敦)", "value": "Europe/London"},
+  {"label": "欧洲中部时间 (巴黎/柏林)", "value": "Europe/Paris"},
+  {"label": "东欧时间 (莫斯科)", "value": "Europe/Moscow"},
+  {"label": "中东时间 (迪拜)", "value": "Asia/Dubai"},
+  {"label": "印度标准时间 (新德里)", "value": "Asia/Kolkata"},
+  {"label": "日本标准时间 (东京)", "value": "Asia/Tokyo"},
+  {"label": "韩国标准时间 (首尔)", "value": "Asia/Seoul"},
+  {"label": "澳大利亚东部时间 (悉尼)", "value": "Australia/Sydney"},
+  {"label": "澳大利亚中部时间 (阿德莱德)", "value": "Australia/Adelaide"},
+  {"label": "澳大利亚西部时间 (珀斯)", "value": "Australia/Perth"},
+  {"label": "新西兰时间 (奥克兰)", "value": "Pacific/Auckland"},
+  {"label": "新加坡时间", "value": "Asia/Singapore"},
+  {"label": "马来西亚时间 (吉隆坡)", "value": "Asia/Kuala_Lumpur"},
+  {"label": "泰国时间 (曼谷)", "value": "Asia/Bangkok"},
+  {"label": "越南时间 (河内)", "value": "Asia/Ho_Chi_Minh"},
+  {"label": "印度尼西亚西部时间 (雅加达)", "value": "Asia/Jakarta"},
+  {"label": "印度尼西亚中部时间 (巴厘岛)", "value": "Asia/Makassar"},
+  {"label": "印度尼西亚东部时间 (查亚普拉)", "value": "Asia/Jayapura"},
+  {"label": "菲律宾时间 (马尼拉)", "value": "Asia/Manila"},
+  {"label": "加拿大东部时间 (多伦多)", "value": "America/Toronto"},
+  {"label": "加拿大中部时间 (温尼伯)", "value": "America/Winnipeg"},
+  {"label": "加拿大山地时间 (埃德蒙顿)", "value": "America/Edmonton"},
+  {"label": "加拿大太平洋时间 (温哥华)", "value": "America/Vancouver"},
+  {"label": "巴西东部时间 (圣保罗)", "value": "America/Sao_Paulo"},
+  {"label": "巴西西部时间 (马瑙斯)", "value": "America/Manaus"},
+  {"label": "阿根廷时间 (布宜诺斯艾利斯)", "value": "America/Argentina/Buenos_Aires"},
+  {"label": "墨西哥时间 (墨西哥城)", "value": "America/Mexico_City"},
+  {"label": "南非时间 (约翰内斯堡)", "value": "Africa/Johannesburg"},
+  {"label": "埃及时间 (开罗)", "value": "Africa/Cairo"},
+  {"label": "沙特阿拉伯时间 (利雅得)", "value": "Asia/Riyadh"},
+  {"label": "以色列时间 (耶路撒冷)", "value": "Asia/Jerusalem"},
+  {"label": "土耳其时间 (伊斯坦布尔)", "value": "Europe/Istanbul"},
+  {"label": "协调世界时 (UTC)", "value": "UTC"},
+  {"label": "格林威治标准时间", "value": "GMT"}
+]`
+
 // EnsureDefaultSettings 确保存在默认配置项
 func EnsureDefaultSettings(db *DB) error {
-	now := time.Now().Unix()
-
 	defaultSettings := []Setting{
-		{Category: "system", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称", Sort: 1, CreatedAt: now, UpdatedAt: now},
-		{Category: "system", Name: "Language", Code: "language", Type: "text", Value: "zh-CN", Description: "语言", Sort: 2, CreatedAt: now, UpdatedAt: now},
-		{Category: "system", Name: "Timezone", Code: "timezone", Type: "text", Value: "Asia/Shanghai", Description: "时区", Sort: 3, CreatedAt: now, UpdatedAt: now},
-		{Category: "system", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Sort: 100, CreatedAt: now, UpdatedAt: now},
-		{Category: "url", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式", Sort: 1, CreatedAt: now, UpdatedAt: now},
-		{Category: "url", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式", Sort: 2, CreatedAt: now, UpdatedAt: now},
-		{Category: "url", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式", Sort: 3, CreatedAt: now, UpdatedAt: now},
-		{Category: "integration", Name: "Giscus Config", Code: "giscus_config", Type: "text", Value: "", Description: "Giscus 配置 (JSON)", Sort: 1, CreatedAt: now, UpdatedAt: now},
-		{Category: "integration", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID", Sort: 2, CreatedAt: now, UpdatedAt: now},
+		{Sort: 1, Category: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
+		{Sort: 2, Category: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
+		{Sort: 3, Category: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
+		{Sort: 4, Category: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+		{Sort: 5, Category: "Post", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式"},
+		{Sort: 6, Category: "Post", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式"},
+		{Sort: 7, Category: "Post", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式"},
+		{Sort: 8, Category: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
+		{Sort: 9, Category: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 	}
 
 	for _, s := range defaultSettings {
@@ -1511,6 +1614,41 @@ func ListCronJobLogs(db *DB, jobID int64, limit int) ([]*CronJobLog, error) {
 		logs = append(logs, &l)
 	}
 	return logs, nil
+}
+
+var AppSettings atomic.Value // map[string]string
+
+func LoadSettingsMap(db *DB) error {
+	rows, err := db.Query(`
+		SELECT code, value
+		FROM settings
+		WHERE deleted_at IS NULL
+		ORDER BY sort ASC, id ASC
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	m := make(map[string]string)
+
+	for rows.Next() {
+		var code string
+		var value sql.NullString
+
+		if err := rows.Scan(&code, &value); err != nil {
+			return err
+		}
+
+		if value.Valid {
+			m[code] = value.String
+		} else {
+			m[code] = ""
+		}
+	}
+
+	AppSettings.Store(m)
+	return nil
 }
 
 var ErrNotFound = errors.New("not found")

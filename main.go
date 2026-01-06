@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"html/template"
 	"log"
+	"strings"
 	"swaves/internal/admin"
 	"swaves/internal/api"
-	"swaves/internal/md"
 	"swaves/internal/middleware"
 	"time"
 
@@ -43,6 +45,38 @@ func main() {
 		}
 		return time.Unix(ts, 0).Format(TimeFormat)
 	})
+	// 辅助函数：将 map[string]interface{} 转换为 HTML 属性字符串
+	engine.AddFunc("renderAttrs", func(attrs map[string]interface{}) template.HTMLAttr {
+		if attrs == nil || len(attrs) == 0 {
+			return ""
+		}
+		var parts []string
+		for k, v := range attrs {
+			// 将值转换为字符串，处理布尔值（如果为 false 则跳过）
+			var val string
+			switch tv := v.(type) {
+			case bool:
+				if tv {
+					parts = append(parts, k)
+				}
+				continue
+			case string:
+				val = tv
+			case float64:
+				// JSON 数字会被解析为 float64
+				val = fmt.Sprintf("%v", tv)
+			default:
+				val = fmt.Sprintf("%v", tv)
+			}
+			// HTML 转义属性值
+			val = strings.ReplaceAll(val, `"`, `&quot;`)
+			parts = append(parts, fmt.Sprintf(`%s="%s"`, k, val))
+		}
+		if len(parts) == 0 {
+			return ""
+		}
+		return template.HTMLAttr(" " + strings.Join(parts, " "))
+	})
 	engine.Reload(true)
 	app := fiber.New(fiber.Config{
 		AppName:               "swaves",
@@ -67,21 +101,6 @@ func main() {
 
 	admin.RegisterRoutes(app, conn)
 	api.RegisterRoutes(app, conn)
-
-	md.ParseMarkdown(`---
-title: 前端开发工具 - 编辑器篇
-date: 2011-05-12T02:20:04.000Z
-categories:
-  - ppt
-tags:
-  - editor
-  - vim
----
-
-公司分享会上自己总结的一些关于前端开发的工具应用知识
-
-<iframe src="//www.slideshare.net/slideshow/embed_code/key/DKyOV72B1j38ro" width="100%" height="100%" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:1px solid #CCC; border-width:1px; max-width: 100%;" allowfullscreen></iframe>
-`)
 
 	log.Println("swaves listening on :3000")
 	log.Fatal(app.Listen(":3000"))
