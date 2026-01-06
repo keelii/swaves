@@ -10,6 +10,7 @@ import (
 	"github.com/yuin/goldmark-meta" // 解析 Frontmatter
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"go.abhg.dev/goldmark/toc"
 )
 
 type MarkdownResult struct {
@@ -36,7 +37,9 @@ func ParseMarkdown(text string) *MarkdownResult {
 		goldmark.WithExtensions(
 			meta.Meta,       // 开启 Frontmatter 支持
 			mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
+			&toc.Extender{},
 		),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
 		goldmark.WithRendererOptions(
 			html.WithUnsafe(), // 关键：允许渲染原始 HTML 和不安全的标签
 		),

@@ -1082,8 +1082,26 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		})
 	}
 
+	// 获取 created_at 来源选择
+	createdSourceStr := c.FormValue("created_source")
+	createdSource := CreatedFromFrontmatter // 默认从 frontmatter 获取
+	switch createdSourceStr {
+	case "frontmatter":
+		createdSource = CreatedFromFrontmatter
+	case "filetime":
+		createdSource = CreatedFromFileTime
+	default:
+		createdSource = CreatedFromFrontmatter
+	}
+
+	// 如果是从 frontmatter，获取字段名
+	createdField := c.FormValue("created_field")
+	if createdField == "" {
+		createdField = "date"
+	}
+
 	// 解析文件但不入库，返回预览数据
-	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel)
+	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField)
 	if err != nil && len(items) == 0 {
 		// 如果全部解析失败，返回错误
 		return c.Render("import", fiber.Map{
@@ -1123,13 +1141,25 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		slugSourceDesc = "title"
 	}
 
+	// 构建 created_at 来源描述
+	createdSourceDesc := ""
+	switch createdSourceStr {
+	case "frontmatter":
+		createdSourceDesc = fmt.Sprintf("frontmatter(%s)", createdField)
+	case "filetime":
+		createdSourceDesc = "filetime"
+	default:
+		createdSourceDesc = "frontmatter(date)"
+	}
+
 	// 即使有部分错误，也显示预览页面（有警告信息）
 	return c.Render("import_preview", fiber.Map{
-		"Title":           "Import Preview",
-		"Items":           items,
-		"Error":           err, // 如果有错误，显示警告信息
-		"TitleSourceDesc": titleSourceDesc,
-		"SlugSourceDesc":  slugSourceDesc,
+		"Title":             "Import Preview",
+		"Items":             items,
+		"Error":             err, // 如果有错误，显示警告信息
+		"TitleSourceDesc":   titleSourceDesc,
+		"SlugSourceDesc":    slugSourceDesc,
+		"CreatedSourceDesc": createdSourceDesc,
 	}, "admin_layout")
 }
 

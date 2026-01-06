@@ -40,6 +40,7 @@ require (
 	github.com/valyala/fasthttp v1.68.0 // indirect
 	github.com/yuin/goldmark v1.7.14 // indirect
 	github.com/yuin/goldmark-meta v1.1.0 // indirect
+	go.abhg.dev/goldmark/toc v0.12.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect

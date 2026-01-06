@@ -711,18 +711,27 @@ const (
 	TitleFromMarkdown                       // 从 markdown 标题中提取（H1/H2/H3）
 )
 
+type CreatedSource int
+
+const (
+	CreatedFromFrontmatter CreatedSource = iota // 从 frontmatter 指定字段（默认 date）
+	CreatedFromFileTime                         // 从文件创建时间（实际上使用当前时间，因为 HTTP 上传无法获取文件创建时间）
+)
+
 type ImportFile struct {
 	Filename string // 文件名（不含扩展名）
 	Content  string // markdown 内容
 }
 
 type ImportMarkdownInput struct {
-	Files       []ImportFile
-	SlugSource  SlugSource  // slug 来源
-	SlugField   string      // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
-	TitleSource TitleSource // title 来源
-	TitleField  string      // 如果 TitleSource 是 TitleFromFrontmatter，指定字段名（默认 "title"）
-	TitleLevel  int         // 如果 TitleSource 是 TitleFromMarkdown，指定标题级别（1/2/3）
+	Files         []ImportFile
+	SlugSource    SlugSource    // slug 来源
+	SlugField     string        // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
+	TitleSource   TitleSource   // title 来源
+	TitleField    string        // 如果 TitleSource 是 TitleFromFrontmatter，指定字段名（默认 "title"）
+	TitleLevel    int           // 如果 TitleSource 是 TitleFromMarkdown，指定标题级别（1/2/3）
+	CreatedSource CreatedSource // created_at 来源
+	CreatedField  string        // 如果 CreatedSource 是 CreatedFromFrontmatter，指定字段名（默认 "date"）
 }
 
 // PreviewPostItem 预览页面的 post 数据
@@ -757,7 +766,7 @@ func extractTitleFromMarkdown(content string, level int) string {
 }
 
 // ParseImportFiles 解析导入文件但不入库，返回预览数据
-func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int) ([]PreviewPostItem, error) {
+func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int, createdSource CreatedSource, createdField string) ([]PreviewPostItem, error) {
 	var items []PreviewPostItem
 	var errList []string
 
@@ -862,20 +871,45 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 		// 获取 Markdown 内容
 		content := result.Markdown
 
-		// 解析 date 字段并转换为东8区时间戳
+		// 根据 created_at 来源确定创建时间
 		var createdAt int64
 		var createdAtStr string
-		if val, ok := result.Meta["date"]; ok {
-			if dateStr, ok := val.(string); ok && dateStr != "" {
-				t, err := time.Parse("2006-01-02T15:04:05.000Z", dateStr)
-				if err == nil {
-					loc, _ := time.LoadLocation("Asia/Shanghai")
-					createdAt = t.In(loc).Unix()
-					// 格式化为显示字符串 (YYYY-MM-DD HH:MM:SS)
-					createdAtStr = t.In(loc).Format("2006-01-02 15:04:05")
+		switch createdSource {
+		case CreatedFromFrontmatter:
+			// 从 frontmatter 指定字段获取
+			fieldName := createdField
+			if fieldName == "" {
+				fieldName = "date"
+			}
+			if val, ok := result.Meta[fieldName]; ok {
+				if dateStr, ok := val.(string); ok && dateStr != "" {
+					t, err := time.Parse("2006-01-02T15:04:05.000Z", dateStr)
+					if err == nil {
+						loc, _ := time.LoadLocation("Asia/Shanghai")
+						createdAt = t.In(loc).Unix()
+						// 格式化为显示字符串 (YYYY-MM-DD HH:MM:SS)
+						createdAtStr = t.In(loc).Format("2006-01-02 15:04:05")
+					}
+				}
+			}
+		case CreatedFromFileTime:
+			// 使用当前时间（HTTP 上传无法获取文件创建时间）
+			createdAt = time.Now().Unix()
+			createdAtStr = time.Now().Format("2006-01-02 15:04:05")
+		default:
+			// 默认从 frontmatter 的 date 字段获取
+			if val, ok := result.Meta["date"]; ok {
+				if dateStr, ok := val.(string); ok && dateStr != "" {
+					t, err := time.Parse("2006-01-02T15:04:05.000Z", dateStr)
+					if err == nil {
+						loc, _ := time.LoadLocation("Asia/Shanghai")
+						createdAt = t.In(loc).Unix()
+						createdAtStr = t.In(loc).Format("2006-01-02 15:04:05")
+					}
 				}
 			}
 		}
+		// 如果都取不到，使用当前时间
 		if createdAt == 0 {
 			createdAt = time.Now().Unix()
 			createdAtStr = time.Now().Format("2006-01-02 15:04:05")

@@ -64,6 +64,24 @@
   </p>
 
   <p>
+    <label>
+      Post Created Source<br>
+      <select name="created_source" required>
+        <option value="frontmatter" selected>From Frontmatter Field (default: date)</option>
+        <option value="filetime">From File Time (current time)</option>
+      </select>
+    </label>
+  </p>
+
+  <p id="created_field_container" style="display: none;">
+    <label>
+      Frontmatter Field Name<br>
+      <input type="text" name="created_field" value="date" placeholder="date">
+      <small>(The field name in frontmatter to use as created_at, default: date)</small>
+    </label>
+  </p>
+
+  <p>
     <small>
       Markdown 文件应包含 frontmatter，例如：<br>
       <pre>---
@@ -96,6 +114,9 @@ tags:
   const slugSourceSelect = document.querySelector('select[name="slug_source"]');
   const slugFieldContainer = document.getElementById('slug_field_container');
   
+  const createdSourceSelect = document.querySelector('select[name="created_source"]');
+  const createdFieldContainer = document.getElementById('created_field_container');
+  
   function updateTitleFieldVisibility() {
     if (titleSourceSelect.value === 'frontmatter') {
       titleFieldContainer.style.display = 'block';
@@ -117,10 +138,20 @@ tags:
     }
   }
   
+  function updateCreatedFieldVisibility() {
+    if (createdSourceSelect.value === 'frontmatter') {
+      createdFieldContainer.style.display = 'block';
+    } else {
+      createdFieldContainer.style.display = 'none';
+    }
+  }
+  
   titleSourceSelect.addEventListener('change', updateTitleFieldVisibility);
   slugSourceSelect.addEventListener('change', updateSlugFieldVisibility);
+  createdSourceSelect.addEventListener('change', updateCreatedFieldVisibility);
   
   updateTitleFieldVisibility(); // 初始化
   updateSlugFieldVisibility(); // 初始化
+  updateCreatedFieldVisibility(); // 初始化
 })();
 </script>

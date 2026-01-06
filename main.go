@@ -99,6 +99,8 @@ func main() {
 	//	Format:     "${time} ${status} - ${method} ${path} ${queryParams} ${body}\n",
 	//}))
 
+	//fmt.Println(md.ParseMarkdown(``))
+
 	admin.RegisterRoutes(app, conn)
 	api.RegisterRoutes(app, conn)
 
