@@ -12,7 +12,10 @@
        <th>Filename</th>
        <th>Title (from {{ .TitleSourceDesc }})</th>
        <th>Slug (from {{ .SlugSourceDesc }})</th>
-       <th>Status</th>
+       <th>
+         Status
+         <button type="button" id="toggle-status-btn" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">toggle</button>
+       </th>
        <th>Created At (from {{ .CreatedSourceDesc }})</th>
        <th>Tags</th>
        <th>Content</th>
@@ -58,4 +61,34 @@
   </p>
 
 </form>
+
+<script>
+(function() {
+  const toggleBtn = document.getElementById('toggle-status-btn');
+  if (!toggleBtn) return;
+
+  toggleBtn.addEventListener('click', function() {
+    // 获取所有的 status select 元素
+    const statusSelects = document.querySelectorAll('select[name*="[status]"]');
+    
+    if (statusSelects.length === 0) return;
+
+    // 检查是否所有行都是 draft
+    let allDraft = true;
+    for (let select of statusSelects) {
+      if (select.value !== 'draft') {
+        allDraft = false;
+        break;
+      }
+    }
+
+    // 根据当前状态切换：如果全是 draft，则全切换为 published；否则全切换为 draft
+    const newValue = allDraft ? 'published' : 'draft';
+    
+    for (let select of statusSelects) {
+      select.value = newValue;
+    }
+  });
+})();
+</script>
 

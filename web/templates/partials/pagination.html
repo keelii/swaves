@@ -1,25 +1,57 @@
-<nav aria-label="Page navigation">
-  {{if le .Pager.Page 1}}
-  <span class="page-link" tabindex="-1">上一页</span>
-  {{else}}
-  <a class="page-link" href="?page={{add .Pager.Page -1}}" tabindex="-1">上一页</a>
-  {{end}}
+<nav aria-label="Page navigation" style="display: flex; align-items: center; gap: 10px;">
+  <div style="display: flex; align-items: center; gap: 5px;">
+    {{$currentPageSize := .Pager.PageSize}}
+    {{if le .Pager.Page 1}}
+    <span class="page-link" tabindex="-1">上一页</span>
+    {{else}}
+    <a class="page-link" href="?page={{add .Pager.Page -1}}&pageSize={{$currentPageSize}}" tabindex="-1">上一页</a>
+    {{end}}
 
-  {{$currentPage := .Pager.Page}}
-  {{$baseURL := .BaseURL}}
+    {{$currentPage := .Pager.Page}}
 
-  {{range $i := until .Pager.Num}}
-  {{$pageNum := add $i 1}}
-  {{if eq $currentPage $pageNum}}
-  <span class="page-link">{{$pageNum}}</span>
-  {{else}}
-  <a class="page-link" href="?page={{$pageNum}}">{{$pageNum}}</a>
-  {{end}}
-  {{end}}
+    {{range $i := until .Pager.Num}}
+    {{$pageNum := add $i 1}}
+    {{if eq $currentPage $pageNum}}
+    <span class="page-link">{{$pageNum}}</span>
+    {{else}}
+    <a class="page-link" href="?page={{$pageNum}}&pageSize={{$currentPageSize}}">{{$pageNum}}</a>
+    {{end}}
+    {{end}}
 
-  {{if ge .Pager.Page .Pager.Total}}
-  <span class="page-link">下一页</span>
-  {{else}}
-  <a class="page-link" href="?page={{add .Pager.Page 1}}">下一页</a>
-  {{end}}
+    {{if ge .Pager.Page .Pager.Num}}
+    <span class="page-link">下一页</span>
+    {{else}}
+    <a class="page-link" href="?page={{add .Pager.Page 1}}&pageSize={{$currentPageSize}}">下一页</a>
+    {{end}}
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 5px;">
+    <label for="page-size-select" style="white-space: nowrap;">每页:</label>
+    <select id="page-size-select" style="padding: 2px 5px;">
+      <option value="5" {{if eq $currentPageSize 5}}selected{{end}}>5</option>
+      <option value="10" {{if eq $currentPageSize 10}}selected{{end}}>10</option>
+      <option value="20" {{if eq $currentPageSize 20}}selected{{end}}>20</option>
+      <option value="50" {{if eq $currentPageSize 50}}selected{{end}}>50</option>
+      <option value="100" {{if eq $currentPageSize 100}}selected{{end}}>100</option>
+    </select>
+    <span style="white-space: nowrap;">条</span>
+  </div>
 </nav>
+
+<script>
+(function() {
+  const pageSizeSelect = document.getElementById('page-size-select');
+  if (!pageSizeSelect) return;
+
+  // 当 pageSize 改变时
+  pageSizeSelect.addEventListener('change', function() {
+    const newPageSize = this.value;
+    const url = new URL(window.location.href);
+    // 保留所有现有查询参数，只更新 pageSize
+    url.searchParams.set('pageSize', newPageSize);
+    // 改变 pageSize 后重置到第1页
+    url.searchParams.set('page', '1');
+    window.location.href = url.toString();
+  });
+})();
+</script>

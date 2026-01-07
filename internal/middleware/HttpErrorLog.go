@@ -16,7 +16,7 @@ func HttpErrorLogMiddleware(dbx *db.DB) fiber.Handler {
 		err := c.Next()
 
 		status := c.Response().StatusCode()
-		if status != 200 {
+		if status == 200 {
 			return err
 		}
 
