@@ -718,6 +718,14 @@ const (
 	CreatedFromFileTime                         // 从文件创建时间（实际上使用当前时间，因为 HTTP 上传无法获取文件创建时间）
 )
 
+type StatusSource int
+
+const (
+	StatusFromFrontmatter StatusSource = iota // 从 frontmatter 指定字段（默认 status）
+	StatusAllDraft                            // 全部 draft
+	StatusAllPublished                        // 全部 published
+)
+
 type ImportFile struct {
 	Filename string // 文件名（不含扩展名）
 	Content  string // markdown 内容
@@ -732,6 +740,8 @@ type ImportMarkdownInput struct {
 	TitleLevel    int           // 如果 TitleSource 是 TitleFromMarkdown，指定标题级别（1/2/3）
 	CreatedSource CreatedSource // created_at 来源
 	CreatedField  string        // 如果 CreatedSource 是 CreatedFromFrontmatter，指定字段名（默认 "date"）
+	StatusSource  StatusSource  // status 来源
+	StatusField   string        // 如果 StatusSource 是 StatusFromFrontmatter，指定字段名（默认 "status"）
 }
 
 // PreviewPostItem 预览页面的 post 数据
@@ -766,7 +776,7 @@ func extractTitleFromMarkdown(content string, level int) string {
 }
 
 // ParseImportFiles 解析导入文件但不入库，返回预览数据
-func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int, createdSource CreatedSource, createdField string) ([]PreviewPostItem, error) {
+func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int, createdSource CreatedSource, createdField string, statusSource StatusSource, statusField string) ([]PreviewPostItem, error) {
 	var items []PreviewPostItem
 	var errList []string
 
@@ -861,10 +871,39 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			slug = slg.Make(title)
 		}
 
+		// 根据 status 来源确定 status
 		status := "draft"
-		if val, ok := result.Meta["status"]; ok {
-			if str, ok := val.(string); ok {
-				status = str
+		switch statusSource {
+		case StatusFromFrontmatter:
+			// 从 frontmatter 指定字段获取
+			fieldName := statusField
+			//if fieldName == "" {
+			//	fieldName = "draft"
+			//}
+			if _, ok := result.Meta[fieldName]; ok {
+				status = "draft"
+			} else {
+				status = "published"
+			}
+			// 如果没找到或为空，使用默认值 draft
+			//if status == "" {
+			//	status = "draft"
+			//}
+		case StatusAllDraft:
+			// 全部 draft
+			status = "draft"
+		case StatusAllPublished:
+			// 全部 published
+			status = "published"
+		default:
+			// 默认从 frontmatter 的 status 字段获取
+			if val, ok := result.Meta["status"]; ok {
+				if str, ok := val.(string); ok && str != "" {
+					status = str
+				}
+			}
+			if status == "" {
+				status = "draft"
 			}
 		}
 

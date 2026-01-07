@@ -73,11 +73,30 @@
     </label>
   </p>
 
-  <p id="created_field_container" style="display: none;">
+  <p id="created_field_container">
     <label>
       Frontmatter Field Name<br>
       <input type="text" name="created_field" value="date" placeholder="date">
       <small>(The field name in frontmatter to use as created_at, default: date)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Status Source<br>
+      <select name="status_source" required>
+        <option value="frontmatter" selected>From Frontmatter Field (default: draft)</option>
+        <option value="alldraft">All Draft</option>
+        <option value="allpublished">All Published</option>
+      </select>
+    </label>
+  </p>
+
+  <p id="status_field_container">
+    <label>
+      Frontmatter Field Name<br>
+      <input type="text" name="status_field" value="draft" placeholder="draft">
+      <small>(The field name in frontmatter to use as status, default: draft)</small>
     </label>
   </p>
 
@@ -117,6 +136,9 @@ tags:
   const createdSourceSelect = document.querySelector('select[name="created_source"]');
   const createdFieldContainer = document.getElementById('created_field_container');
   
+  const statusSourceSelect = document.querySelector('select[name="status_source"]');
+  const statusFieldContainer = document.getElementById('status_field_container');
+  
   function updateTitleFieldVisibility() {
     if (titleSourceSelect.value === 'frontmatter') {
       titleFieldContainer.style.display = 'block';
@@ -146,12 +168,22 @@ tags:
     }
   }
   
+  function updateStatusFieldVisibility() {
+    if (statusSourceSelect.value === 'frontmatter') {
+      statusFieldContainer.style.display = 'block';
+    } else {
+      statusFieldContainer.style.display = 'none';
+    }
+  }
+  
   titleSourceSelect.addEventListener('change', updateTitleFieldVisibility);
   slugSourceSelect.addEventListener('change', updateSlugFieldVisibility);
   createdSourceSelect.addEventListener('change', updateCreatedFieldVisibility);
+  statusSourceSelect.addEventListener('change', updateStatusFieldVisibility);
   
   updateTitleFieldVisibility(); // 初始化
   updateSlugFieldVisibility(); // 初始化
   updateCreatedFieldVisibility(); // 初始化
+  updateStatusFieldVisibility(); // 初始化
 })();
 </script>

@@ -1100,8 +1100,28 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		createdField = "date"
 	}
 
+	// 获取 status 来源选择
+	statusSourceStr := c.FormValue("status_source")
+	statusSource := StatusFromFrontmatter // 默认从 frontmatter 获取
+	switch statusSourceStr {
+	case "frontmatter":
+		statusSource = StatusFromFrontmatter
+	case "alldraft":
+		statusSource = StatusAllDraft
+	case "allpublished":
+		statusSource = StatusAllPublished
+	default:
+		statusSource = StatusFromFrontmatter
+	}
+
+	// 如果是从 frontmatter，获取字段名
+	statusField := c.FormValue("status_field")
+	if statusField == "" {
+		statusField = "draft"
+	}
+
 	// 解析文件但不入库，返回预览数据
-	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField)
+	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField)
 	if err != nil && len(items) == 0 {
 		// 如果全部解析失败，返回错误
 		return c.Render("import", fiber.Map{
@@ -1152,6 +1172,19 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		createdSourceDesc = "frontmatter(date)"
 	}
 
+	// 构建 status 来源描述
+	statusSourceDesc := ""
+	switch statusSourceStr {
+	case "frontmatter":
+		statusSourceDesc = fmt.Sprintf("frontmatter(%s)", statusField)
+	case "alldraft":
+		statusSourceDesc = "alldraft"
+	case "allpublished":
+		statusSourceDesc = "allpublished"
+	default:
+		statusSourceDesc = "frontmatter(draft)"
+	}
+
 	// 即使有部分错误，也显示预览页面（有警告信息）
 	return c.Render("import_preview", fiber.Map{
 		"Title":             "Import Preview",
@@ -1160,6 +1193,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		"TitleSourceDesc":   titleSourceDesc,
 		"SlugSourceDesc":    slugSourceDesc,
 		"CreatedSourceDesc": createdSourceDesc,
+		"StatusSourceDesc":  statusSourceDesc,
 	}, "admin_layout")
 }
 
