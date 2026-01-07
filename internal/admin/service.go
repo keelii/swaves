@@ -509,8 +509,8 @@ func ListEncryptedPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.Encrypte
 }
 
 func CreateEncryptedPostService(dbx *db.DB, in CreateEncryptedPostInput) error {
-	if in.Title == "" || in.Password == "" {
-		return errors.New("title and password required")
+	if in.Title == "" {
+		return errors.New("title is required")
 	}
 
 	var expiresAt *int64

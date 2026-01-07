@@ -342,8 +342,9 @@ func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
 	var p EncryptedPost
 	var deletedAt sql.NullInt64
 	var expiresAt sql.NullInt64
+	var encryptedContent string
 	if err := row.Scan(
-		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Password,
+		&p.ID, &p.Title, &p.Slug, &encryptedContent, &p.Password,
 		&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
 	); err != nil {
 		return nil, err
@@ -354,16 +355,31 @@ func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
 	if deletedAt.Valid {
 		p.DeletedAt = &deletedAt.Int64
 	}
+
+	// 解密 content（使用系统密钥，不依赖 password 字段）
+	decryptedContent, err := DecryptContent(encryptedContent)
+	if err != nil {
+		return nil, err
+	}
+	p.Content = decryptedContent
+
 	return &p, nil
 }
 
 func UpdateEncryptedPost(db *DB, p *EncryptedPost) error {
 	p.UpdatedAt = now()
-	_, err := db.Exec(
+
+	// 加密 content（使用系统密钥，不依赖 password 字段）
+	encryptedContent, err := EncryptContent(p.Content)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(
 		`UPDATE encrypted_posts
 		 SET title=?, content=?, password=?, expires_at=?, updated_at=?
 		 WHERE id=? AND deleted_at IS NULL`,
-		p.Title, p.Content, p.Password, p.ExpiresAt, p.UpdatedAt, p.ID,
+		p.Title, encryptedContent, p.Password, p.ExpiresAt, p.UpdatedAt, p.ID,
 	)
 	return err
 }
@@ -430,11 +446,17 @@ func CreateEncryptedPost(db *DB, p *EncryptedPost) error {
 		p.UpdatedAt = p.CreatedAt
 	}
 
+	// 加密 content（使用系统密钥，不依赖 password 字段）
+	encryptedContent, err := EncryptContent(p.Content)
+	if err != nil {
+		return err
+	}
+
 	res, err := db.Exec(
 		`INSERT INTO encrypted_posts
 		 (title, slug, content, password, expires_at, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		p.Title, p.Slug, p.Content, p.Password, p.ExpiresAt, p.CreatedAt, p.UpdatedAt,
+		p.Title, p.Slug, encryptedContent, p.Password, p.ExpiresAt, p.CreatedAt, p.UpdatedAt,
 	)
 	if err != nil {
 		return err
