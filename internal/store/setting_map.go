@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 )
 
-var Settings atomic.Value // 存储 map[string]string
+var Settings atomic.Value
 
 func InitSettings(dbx *db.DB) {
 	if err := ReloadSettings(dbx); err != nil {

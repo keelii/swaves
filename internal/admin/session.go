@@ -17,7 +17,7 @@ func NewSessionStore(dbInstance *db.DB) *SessionStore {
 		Database:   "./data.sqlite",
 		Table:      "session_storage",
 		Reset:      false,
-		GCInterval: 10 * time.Minute, // 每10分钟清理一次过期 session
+		GCInterval: 1 * time.Minute, // 每10分钟清理一次过期 session
 	})
 	store := session.New(session.Config{
 		Storage:        storage,

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -32,10 +33,10 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	logined := sess.Get("admin")
+	isLogin := sess.Get("admin")
 	return c.Render("admin_home", fiber.Map{
 		"Title":   "Admin Home",
-		"IsLogin": logined,
+		"IsLogin": isLogin,
 	}, "admin_layout")
 }
 
@@ -51,6 +52,7 @@ func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
 /* ---------- POST /admin/login ---------- */
 
 func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
+
 	password := c.FormValue("password")
 	if password == "" {
 		return c.Render("admin_login", fiber.Map{
@@ -71,8 +73,10 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 	}
 
 	sess.Set("admin", true)
+	sess.SetExpiry(time.Hour * 24 * 365)
 
 	if err := sess.Save(); err != nil {
+		log.Println("Session save error:", err)
 		return err
 	}
 
