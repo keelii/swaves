@@ -8,6 +8,7 @@ import (
 	"swaves/internal/admin"
 	"swaves/internal/api"
 	"swaves/internal/middleware"
+	"swaves/internal/store"
 	"time"
 
 	"swaves/internal/db"
@@ -28,7 +29,12 @@ func main() {
 	})
 	defer conn.Close()
 
+	store.LoadSettings(conn)
+
 	engine := html.New("./web/templates", ".html")
+	engine.AddFunc("settings", func(key string) string {
+		return store.GetSetting(key)
+	})
 	engine.AddFunc("add", func(a, b int) int {
 		return a + b
 	})
@@ -84,6 +90,7 @@ func main() {
 		Views:                 engine,
 	})
 
+	app.Use(middleware.GlobalSettings("settings"))
 	app.Use(requestid.New())
 	app.Use(middleware.PaginationMiddleware())
 	app.Use(requestid.New(requestid.Config{

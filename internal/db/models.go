@@ -1640,37 +1640,31 @@ func ListCronJobLogs(db *DB, jobID int64, limit int) ([]*CronJobLog, error) {
 
 var AppSettings atomic.Value // map[string]string
 
-func LoadSettingsMap(db *DB) error {
+// LoadSettingsToMap 从 settings 表加载 code -> value 映射
+func LoadSettingsToMap(db *DB) (map[string]string, error) {
 	rows, err := db.Query(`
-		SELECT code, value
-		FROM settings
-		WHERE deleted_at IS NULL
-		ORDER BY sort ASC, id ASC
+		SELECT code, value FROM settings WHERE deleted_at IS NULL
 	`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer rows.Close()
 
-	m := make(map[string]string)
-
+	settingsMap := make(map[string]string)
 	for rows.Next() {
-		var code string
-		var value sql.NullString
-
+		var code, value string
 		if err := rows.Scan(&code, &value); err != nil {
-			return err
+			return nil, err
 		}
-
-		if value.Valid {
-			m[code] = value.String
-		} else {
-			m[code] = ""
-		}
+		settingsMap[code] = value
 	}
 
-	AppSettings.Store(m)
-	return nil
+	// 检查遍历是否有错误
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return settingsMap, nil
 }
 
 var ErrNotFound = errors.New("not found")
