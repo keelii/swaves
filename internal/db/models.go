@@ -22,6 +22,22 @@ type Options struct {
 	DSN string
 }
 
+type TableName string
+type TableOp string
+
+var OnDatabaseChanged func(tableName TableName, kind TableOp)
+
+const (
+	TableOpInsert TableOp = "insert"
+	TableOpUpdate TableOp = "update"
+	TableOpDelete TableOp = "delete"
+)
+const (
+	TablePosts    TableName = "posts"
+	TableTags     TableName = "tags"
+	TableSettings TableName = "settings"
+)
+
 func Open(opts Options) *DB {
 	sqlDB, e1 := sql.Open("sqlite3", opts.DSN)
 	if e1 != nil {
@@ -103,6 +119,9 @@ CREATE TABLE IF NOT EXISTS settings (
 	value TEXT,
 	description TEXT,
 	sort INTEGER NOT NULL DEFAULT 0,
+	charset TEXT,
+	author TEXT,
+	keywords TEXT,
 
 	created_at INTEGER NOT NULL,
 	updated_at INTEGER NOT NULL,
@@ -197,6 +216,33 @@ func Migrate(db *DB) error {
 	// Ignore error if column already exists
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
 		log.Printf("Warning: failed to add default_option_value column (may already exist): %v", err)
+	}
+
+	// Add charset column to settings table if it doesn't exist
+	_, err = db.Exec(`
+		ALTER TABLE settings 
+		ADD COLUMN charset TEXT
+	`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		log.Printf("Warning: failed to add charset column (may already exist): %v", err)
+	}
+
+	// Add author column to settings table if it doesn't exist
+	_, err = db.Exec(`
+		ALTER TABLE settings 
+		ADD COLUMN author TEXT
+	`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		log.Printf("Warning: failed to add author column (may already exist): %v", err)
+	}
+
+	// Add keywords column to settings table if it doesn't exist
+	_, err = db.Exec(`
+		ALTER TABLE settings 
+		ADD COLUMN keywords TEXT
+	`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		log.Printf("Warning: failed to add keywords column (may already exist): %v", err)
 	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
@@ -782,6 +828,9 @@ type Setting struct {
 	DefaultOptionValue string // Default value for select/radio/checkbox when options are provided
 	Description        string
 	Sort               int64
+	Charset            string
+	Author             string
+	Keywords           string
 	CreatedAt          int64
 	UpdatedAt          int64
 	DeletedAt          *int64
@@ -819,8 +868,8 @@ func CreateSetting(db *DB, s *Setting) error {
 
 	res, err := db.Exec(
 		`INSERT INTO settings
-		 (category, name, code, type, options, attrs, value, default_option_value, description, sort, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 (category, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		s.Category,
 		s.Name,
 		s.Code,
@@ -831,6 +880,9 @@ func CreateSetting(db *DB, s *Setting) error {
 		s.DefaultOptionValue,
 		s.Description,
 		s.Sort,
+		s.Charset,
+		s.Author,
+		s.Keywords,
 		s.CreatedAt,
 		s.UpdatedAt,
 	)
@@ -845,7 +897,7 @@ func CreateSetting(db *DB, s *Setting) error {
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
 	row := db.QueryRow(`
 		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
-		       created_at, updated_at, deleted_at
+		       charset, author, keywords, created_at, updated_at, deleted_at
 		FROM settings
 		WHERE code=? AND deleted_at IS NULL
 	`, code)
@@ -865,6 +917,9 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 		&s.DefaultOptionValue,
 		&s.Description,
 		&s.Sort,
+		&s.Charset,
+		&s.Author,
+		&s.Keywords,
 		&s.CreatedAt,
 		&s.UpdatedAt,
 		&deletedAt,
@@ -885,7 +940,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 func GetSettingByID(db *DB, id int64) (*Setting, error) {
 	row := db.QueryRow(`
 		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
-		       created_at, updated_at, deleted_at
+		       charset, author, keywords, created_at, updated_at, deleted_at
 		FROM settings
 		WHERE id=? AND deleted_at IS NULL
 	`, id)
@@ -905,6 +960,9 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 		&s.DefaultOptionValue,
 		&s.Description,
 		&s.Sort,
+		&s.Charset,
+		&s.Author,
+		&s.Keywords,
 		&s.CreatedAt,
 		&s.UpdatedAt,
 		&deletedAt,
@@ -925,7 +983,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
 	query := `
 		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
-		       created_at, updated_at, deleted_at
+		       charset, author, keywords, created_at, updated_at, deleted_at
 		FROM settings
 		WHERE deleted_at IS NULL
 	`
@@ -961,6 +1019,9 @@ func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
 			&s.DefaultOptionValue,
 			&s.Description,
 			&s.Sort,
+			&s.Charset,
+			&s.Author,
+			&s.Keywords,
 			&s.CreatedAt,
 			&s.UpdatedAt,
 			&deletedAt,
@@ -998,7 +1059,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 
 	_, err := db.Exec(
 		`UPDATE settings
-		 SET category=?, name=?, type=?, options=?, attrs=?, value=?, default_option_value=?, description=?, sort=?, updated_at=?
+		 SET category=?, name=?, type=?, options=?, attrs=?, value=?, default_option_value=?, description=?, sort=?, charset=?, author=?, keywords=?, updated_at=?
 		 WHERE id=? AND deleted_at IS NULL`,
 		s.Category,
 		s.Name,
@@ -1009,9 +1070,17 @@ func UpdateSetting(db *DB, s *Setting) error {
 		s.DefaultOptionValue,
 		s.Description,
 		s.Sort,
+		s.Charset,
+		s.Author,
+		s.Keywords,
 		s.UpdatedAt,
 		s.ID,
 	)
+
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableSettings, TableOpUpdate)
+	}
+
 	return err
 }
 
@@ -1042,6 +1111,11 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 		now(),
 		code,
 	)
+
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableSettings, TableOpUpdate)
+	}
+
 	return err
 }
 
@@ -1051,6 +1125,11 @@ func DeleteSetting(db *DB, id int64) error {
 		`UPDATE settings SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
 		ts, id,
 	)
+
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableSettings, TableOpUpdate)
+	}
+
 	return err
 }
 
@@ -1171,15 +1250,18 @@ const InternalTimezone = `[
 // EnsureDefaultSettings 确保存在默认配置项
 func EnsureDefaultSettings(db *DB) error {
 	defaultSettings := []Setting{
-		{Sort: 1, Category: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
-		{Sort: 2, Category: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
-		{Sort: 3, Category: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
-		{Sort: 4, Category: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
-		{Sort: 5, Category: "Post", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式"},
-		{Sort: 6, Category: "Post", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式"},
-		{Sort: 7, Category: "Post", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式"},
-		{Sort: 8, Category: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
-		{Sort: 9, Category: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
+		{Sort: 2, Category: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
+		{Sort: 4, Category: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
+		{Sort: 5, Category: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "", Description: "关键字"},
+		{Sort: 6, Category: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
+		{Sort: 7, Category: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
+		{Sort: 9, Category: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
+		{Sort: 11, Category: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+		{Sort: 13, Category: "Post", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式"},
+		{Sort: 15, Category: "Post", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式"},
+		{Sort: 17, Category: "Post", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式"},
+		{Sort: 19, Category: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
+		{Sort: 21, Category: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 	}
 
 	for _, s := range defaultSettings {

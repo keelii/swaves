@@ -8,18 +8,37 @@ import (
 
 var Settings atomic.Value // 存储 map[string]string
 
-func LoadSettings(dbx *db.DB) {
-	m, err := db.LoadSettingsToMap(dbx)
-	if err != nil {
-		log.Fatal("Error loading settings: ", err)
+func InitSettings(dbx *db.DB) {
+	if err := ReloadSettings(dbx); err != nil {
+		log.Fatal("initial settings load failed:", err)
 	}
 
-	Settings.Store(m) // 原子替换全局 map
-	//for k := range m {
-	//	fmt.Println(k)
-	//}
+	// 只注册一次回调
+	db.OnDatabaseChanged = func(tableName db.TableName, kind db.TableOp) {
+		if tableName != db.TableSettings {
+			return
+		}
 
+		if kind != db.TableOpInsert && kind != db.TableOpUpdate && kind != db.TableOpDelete {
+			return
+		}
+
+		if err := ReloadSettings(dbx); err != nil {
+			log.Println("reload settings failed:", err)
+		}
+	}
+}
+
+func ReloadSettings(dbx *db.DB) error {
+	m, err := db.LoadSettingsToMap(dbx)
+	if err != nil {
+		log.Println("Error loading settings: ", err)
+		return err
+	}
+
+	Settings.Store(m)
 	log.Printf("Settings loaded successfully [%d]\n", len(m))
+	return nil
 }
 
 func GetSetting(code string) string {

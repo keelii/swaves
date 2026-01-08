@@ -29,7 +29,7 @@ func main() {
 	})
 	defer conn.Close()
 
-	store.LoadSettings(conn)
+	store.InitSettings(conn)
 
 	engine := html.New("./web/templates", ".html")
 	engine.AddFunc("settings", func(key string) string {
