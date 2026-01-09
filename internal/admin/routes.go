@@ -14,13 +14,12 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	)
 
 	adminGroup := app.Group("/admin")
+	adminGroup.Use(RequireAdmin(handler.Store, "/admin/login"))
 
 	adminGroup.Get("/", handler.GetHome)
 	adminGroup.Get("/login", handler.GetLoginHandler)
 	adminGroup.Post("/login", handler.PostLoginHandler)
 	adminGroup.Get("/logout", handler.GetLogoutHandler)
-
-	adminGroup.Use(RequireAdmin(handler.Store))
 
 	//store := NewSessionStore(deps.DB)
 	//
