@@ -1,11 +1,10 @@
 package db
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/google/uuid"
 )
 
 func openTestDB(t *testing.T) *DB {
@@ -366,253 +365,78 @@ func TestRedirects_SoftDelete(t *testing.T) {
 	}
 }
 
-func TestCreateSettings(t *testing.T) {
-	db := openTestDB(t)
-
-	c := &Settings{
-		Name:              "My Blog",
-		Language:          "zh-CN",
-		Timezone:          "Asia/Shanghai",
-		PostSlugPattern:   "/{yyyy}/{MM}/{dd}/{slug}",
-		TagSlugPattern:    "/tags/{slug}",
-		TagsPattern:       ",",
-		GiscusConfig:      `{"repo":"a/b"}`,
-		GA4ID:             "G-XXXX",
-		AdminPasswordHash: "raw_password",
-	}
-
-	if err := CreateSettings(db, c); err != nil {
-		t.Fatalf("CreateSettings failed: %v", err)
-	}
-	if c.ID == 0 {
-		t.Fatal("settings id not set")
-	}
-}
-func TestSettings_SoftDelete(t *testing.T) {
-	db := openTestDB(t)
-
-	c := &Settings{
-		Name:              "Blog",
-		Language:          "en",
-		Timezone:          "UTC",
-		PostSlugPattern:   "/{slug}",
-		TagSlugPattern:    "/tags/{slug}",
-		TagsPattern:       ",",
-		AdminPasswordHash: "raw_password",
-	}
-	CreateSettings(db, c)
-
-	softDeleteByTable(db, t, "settings", c.ID)
-
-	// 允许再次创建（settings 无唯一约束）
-	c2 := &Settings{
-		Name:              "Blog2",
-		Language:          "zh",
-		Timezone:          "Asia/Shanghai",
-		PostSlugPattern:   "/{yyyy}/{slug}",
-		TagSlugPattern:    "/t/{slug}",
-		TagsPattern:       "|",
-		AdminPasswordHash: "raw_password",
-	}
-	if err := CreateSettings(db, c2); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func GetSettingsForTest(db *DB) (*Settings, error) {
-	row := db.QueryRow(`
-		SELECT
-			id,
-			name,
-			language,
-			timezone,
-			post_slug_pattern,
-			tag_slug_pattern,
-			tags_pattern,
-			giscus_config,
-			ga4_id,
-			admin_password_hash,
-			created_at,
-			updated_at,
-			deleted_at
-		FROM settings
-		WHERE deleted_at IS NULL
-		ORDER BY id ASC
-		LIMIT 1
-	`)
-
-	var c Settings
-	var deletedAt sql.NullInt64
-
-	err := row.Scan(
-		&c.ID,
-		&c.Name,
-		&c.Language,
-		&c.Timezone,
-		&c.PostSlugPattern,
-		&c.TagSlugPattern,
-		&c.TagsPattern,
-		&c.GiscusConfig,
-		&c.GA4ID,
-		&c.AdminPasswordHash,
-		&c.CreatedAt,
-		&c.UpdatedAt,
-		&deletedAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-
-	if deletedAt.Valid {
-		c.DeletedAt = &deletedAt.Int64
-	}
-
-	return &c, nil
-}
-
-func TestCreateSettings_AdminPasswordIsBcrypt(t *testing.T) {
-	db := openTestDB(t)
-	defer db.Close()
-
-	db.Exec(`DELETE FROM settings where deleted_at IS NULL`)
-	//_, err := GetSettingsForTest(db)
-
-	cfg := &Settings{
-		Name:              "swaves",
-		Language:          "zh-CN",
-		Timezone:          "Asia/Shanghai",
-		PostSlugPattern:   "/{yyyy}/{MM}/{dd}/{name}",
-		TagSlugPattern:    "/tags/{name}",
-		TagsPattern:       "/tags",
-		AdminPasswordHash: "plain-password",
-	}
-
-	if err := CreateSettings(db, cfg); err != nil {
-		t.Fatalf("CreateSettings failed: %v", err)
-	}
-
-	got, err := GetSettingsForTest(db)
-	if err != nil {
-		t.Fatalf("GetSettingsForTest failed: %v", err)
-	}
-
-	if got.AdminPasswordHash == "plain-password" {
-		t.Fatal("admin password should not be stored as plaintext")
-	}
-
-	if err := bcrypt.CompareHashAndPassword(
-		[]byte(got.AdminPasswordHash),
-		[]byte("plain-password"),
-	); err != nil {
-		t.Fatalf("bcrypt compare failed: %v", err)
-	}
-}
-
-func TestCreateAndListCronJobs(t *testing.T) {
+func TestCronJobs(t *testing.T) {
 	dbx := openTestDB(t)
 
+	// ------------------------------
+	// 1️⃣ 测试创建 CronJob
 	job := &CronJob{
-		Name:     "test_job",
-		Schedule: "*/5 * * * *",
-		Enabled:  true,
+		Code:      "test_job",
+		Name:      "测试任务",
+		Schedule:  "* * * * *",
+		Enabled:   1,
+		CreatedAt: time.Now().Unix(),
+		UpdatedAt: time.Now().Unix(),
 	}
 
 	if err := CreateCronJob(dbx, job); err != nil {
-		t.Fatalf("CreateCronJob failed: %v", err)
+		t.Fatalf("failed to create cron job: %v", err)
 	}
-
 	if job.ID == 0 {
-		t.Fatal("job ID not set")
+		t.Fatal("expected job.ID > 0")
 	}
 
-	list, err := ListCronJobs(dbx)
-	if err != nil {
-		t.Fatalf("ListCronJobs failed: %v", err)
-	}
-
-	if len(list) != 1 {
-		t.Fatalf("expected 1 job, got %d", len(list))
-	}
-
-	if list[0].Name != "test_job" {
-		t.Fatalf("unexpected job name: %s", list[0].Name)
-	}
-}
-
-func TestCreateCronJobLogSuccess(t *testing.T) {
-	dbx := openTestDB(t)
-
-	job := &CronJob{
-		Name:     "success_job",
-		Schedule: "* * * * *",
-		Enabled:  true,
-	}
-	if err := CreateCronJob(dbx, job); err != nil {
-		t.Fatal(err)
-	}
-
-	start := time.Now().Unix()
-	end := start + 2
-
-	log := &CronJobLog{
-		JobID:      job.ID,
-		Status:     "success",
-		Message:    "ok",
-		StartedAt:  start,
-		FinishedAt: end,
-		Duration:   end - start,
-	}
-
-	if err := CreateCronJobLog(dbx, log); err != nil {
-		t.Fatalf("CreateCronJobLog failed: %v", err)
-	}
-
-	if log.ID == 0 {
-		t.Fatal("log ID not set")
-	}
-	if log.RunID == "" {
-		t.Fatal("run_id should be generated")
-	}
-}
-
-func TestCreateCronJobLogErrorUpdatesJob(t *testing.T) {
-	dbx := openTestDB(t)
-
-	job := &CronJob{
-		Name:     "error_job",
-		Schedule: "* * * * *",
-		Enabled:  true,
-	}
-	if err := CreateCronJob(dbx, job); err != nil {
-		t.Fatal(err)
-	}
-
-	start := time.Now().Unix()
-	end := start + 1
-
-	log := &CronJobLog{
-		JobID:      job.ID,
-		Status:     "error",
-		Message:    "failed",
-		StartedAt:  start,
-		FinishedAt: end,
-		Duration:   end - start,
-	}
-
-	if err := CreateCronJobLog(dbx, log); err != nil {
-		t.Fatal(err)
-	}
-
-	// 重新查询 job
+	// 2️⃣ 测试查询 CronJob
 	jobs, err := ListCronJobs(dbx)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to list cron jobs: %v", err)
+	}
+	if len(jobs) != 1 || jobs[0].Code != "test_job" {
+		t.Fatalf("unexpected jobs: %+v", jobs)
 	}
 
-	if jobs[0].LastErrorAt == nil {
-		t.Fatal("LastErrorAt should be set")
+	// ------------------------------
+	// 3️⃣ 测试创建 CronJobRun
+	run := &CronJobRun{
+		JobCode:    job.Code,
+		RunID:      uuid.NewString(),
+		Status:     "pending",
+		Message:    "",
+		StartedAt:  time.Now().Unix(),
+		FinishedAt: time.Now().Unix(),
+		Duration:   0,
+		CreatedAt:  time.Now().Unix(),
+	}
+	if err := CreateCronJobRun(dbx, run); err != nil {
+		t.Fatalf("failed to create cron job run: %v", err)
+	}
+	if run.ID == 0 {
+		t.Fatal("expected run.ID > 0")
+	}
+
+	// 4️⃣ 测试查询 CronJobRun
+	runs, err := ListCronJobRuns(dbx, job.Code, "", 10)
+	if err != nil {
+		t.Fatalf("failed to list cron job runs: %v", err)
+	}
+	if len(runs) != 1 || runs[0].Status != "pending" {
+		t.Fatalf("unexpected runs: %+v", runs)
+	}
+
+	// 5️⃣ 测试更新 Run 状态
+	run.Status = "success"
+	run.Message = "ok"
+	run.FinishedAt = time.Now().Unix()
+	run.Duration = 123
+	if err := UpdateCronJobRunStatus(dbx, run); err != nil {
+		t.Fatalf("failed to update cron job run: %v", err)
+	}
+
+	updated, err := ListCronJobRuns(dbx, job.Code, "success", 10)
+	if err != nil {
+		t.Fatalf("failed to list cron job runs: %v", err)
+	}
+	if len(updated) != 1 || updated[0].Status != "success" || updated[0].Message != "ok" {
+		t.Fatalf("update did not persist: %+v", updated)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"swaves/internal/admin"
 	"swaves/internal/api"
+	job "swaves/internal/jobs"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 	"time"
@@ -29,6 +30,10 @@ func main() {
 	})
 	defer conn.Close()
 
+	job.InitRegistry(conn, 5*time.Second) // 每 5 秒扫描 pending
+	job.RegisterJob("hello", job.HelloJob)
+	job.RegisterJob("fdsa", job.HelloJob1)
+
 	store.InitSettings(conn)
 
 	engine := html.New("./web/templates", ".html")
@@ -45,11 +50,23 @@ func main() {
 		}
 		return step
 	})
-	engine.AddFunc("formatTime", func(ts int64) string {
-		if ts == 0 {
+	engine.AddFunc("formatTime", func(ts interface{}) string {
+		var tsInt64 int64
+		switch v := ts.(type) {
+		case int64:
+			tsInt64 = v
+		case *int64:
+			if v == nil {
+				return "-"
+			}
+			tsInt64 = *v
+		default:
 			return "-"
 		}
-		return time.Unix(ts, 0).Format(TimeFormat)
+		if tsInt64 == 0 {
+			return "-"
+		}
+		return time.Unix(tsInt64, 0).Format(TimeFormat)
 	})
 	// 辅助函数：将 map[string]interface{} 转换为 HTML 属性字符串
 	engine.AddFunc("renderAttrs", func(attrs map[string]interface{}) template.HTMLAttr {

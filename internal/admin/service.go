@@ -657,6 +657,7 @@ func DeleteHttpErrorLogService(dbx *db.DB, id int64) error {
 
 // CronJobs
 type CreateCronJobInput struct {
+	Code        string
 	Name        string
 	Description string
 	Schedule    string
@@ -664,24 +665,60 @@ type CreateCronJobInput struct {
 }
 
 func CreateCronJobService(dbx *db.DB, in CreateCronJobInput) error {
+	if in.Code == "" {
+		return errors.New("code is required")
+	}
 	if in.Name == "" {
-		return errors.New("name required")
+		return errors.New("name is required")
 	}
 	if in.Schedule == "" {
-		return errors.New("schedule required")
+		return errors.New("schedule is required")
+	}
+
+	enabled := 0
+	if in.Enabled {
+		enabled = 1
 	}
 
 	job := &db.CronJob{
+		Code:        in.Code,
 		Name:        in.Name,
 		Description: in.Description,
 		Schedule:    in.Schedule,
-		Enabled:     in.Enabled,
+		Enabled:     enabled,
 	}
 
 	return db.CreateCronJob(dbx, job)
 }
 
-func ListCronJobs(dbx *db.DB) ([]db.CronJob, error) {
+type UpdateCronJobInput struct {
+	Code        string
+	Name        string
+	Description string
+	Schedule    string
+	Enabled     bool
+}
+
+func UpdateCronJobService(dbx *db.DB, id int64, in UpdateCronJobInput) error {
+	job, err := db.GetCronJobByID(dbx, id)
+	if err != nil {
+		return err
+	}
+
+	job.Code = in.Code
+	job.Name = in.Name
+	job.Description = in.Description
+	job.Schedule = in.Schedule
+	if in.Enabled {
+		job.Enabled = 1
+	} else {
+		job.Enabled = 0
+	}
+
+	return db.UpdateCronJob(dbx, job)
+}
+
+func ListCronJobsService(dbx *db.DB) ([]db.CronJob, error) {
 	return db.ListCronJobs(dbx)
 }
 
@@ -689,9 +726,26 @@ func GetCronJobForEdit(dbx *db.DB, id int64) (*db.CronJob, error) {
 	return db.GetCronJobByID(dbx, id)
 }
 
-// CronJobLogs
-func ListCronJobLogs(dbx *db.DB, jobID int64, limit int) ([]*db.CronJobLog, error) {
-	return db.ListCronJobLogs(dbx, jobID, limit)
+func DeleteCronJobService(dbx *db.DB, id int64) error {
+	return db.SoftDeleteCronJob(dbx, id)
+}
+
+// CronJobRuns
+func ListCronJobRunsService(dbx *db.DB, jobCode string, limit int) ([]db.CronJobRun, error) {
+	return db.ListCronJobRuns(dbx, jobCode, "", limit)
+}
+
+func CreatePendingRunService(dbx *db.DB, jobCode string) error {
+	now := time.Now().Unix()
+	run := &db.CronJobRun{
+		JobCode:    jobCode,
+		Status:     "pending",
+		Message:    "",
+		StartedAt:  now, // pending 状态时，started_at 设置为当前时间
+		FinishedAt: now, // pending 状态时，finished_at 设置为当前时间（满足 NOT NULL 约束）
+		Duration:   0,   // pending 状态时，duration 为 0
+	}
+	return db.CreateCronJobRun(dbx, run)
 }
 
 // Import/Export

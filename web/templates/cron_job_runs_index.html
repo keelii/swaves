@@ -3,35 +3,38 @@
   <a href="/admin/cron-jobs">返回 Cron Jobs</a>
 </p>
 
+<h3>Cron Job: {{ .Job.Name }} ({{ .Job.Code }})</h3>
+
 <table>
   <thead>
   <tr>
+    <th>JobCode</th>
     <th>RunID</th>
     <th>Status</th>
     <th>Message</th>
+    <th>Duration (ms)</th>
     <th>Started At</th>
     <th>Finished At</th>
-    <th>Duration (ms)</th>
     <th>Created At</th>
   </tr>
   </thead>
 
   <tbody>
-  {{ range .Logs }}
+  {{ range .Runs }}
   <tr>
+    <td>{{ .JobCode }}</td>
     <td>{{ .RunID }}</td>
     <td>{{ .Status }}</td>
     <td>{{ .Message }}</td>
+    <td>{{ .Duration }}</td>
     <td>{{ formatTime .StartedAt }}</td>
     <td>{{ formatTime .FinishedAt }}</td>
-    <td>{{ .Duration }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
   </tr>
   {{ else }}
   <tr>
-    <td colspan="7">No logs</td>
+    <td colspan="8">No runs</td>
   </tr>
   {{ end }}
   </tbody>
 </table>
-

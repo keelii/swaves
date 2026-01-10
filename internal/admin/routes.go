@@ -81,7 +81,11 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	adminGroup.Get("/cron-jobs", handler.GetCronJobListHandler)
 	adminGroup.Get("/cron-jobs/new", handler.GetCronJobNewHandler)
 	adminGroup.Post("/cron-jobs/new", handler.PostCreateCronJobHandler)
-	adminGroup.Get("/cron-jobs/:job_id/logs", handler.GetCronJobLogListHandler)
+	adminGroup.Get("/cron-jobs/:id/edit", handler.GetCronJobEditHandler)
+	adminGroup.Post("/cron-jobs/:id/edit", handler.PostUpdateCronJobHandler)
+	adminGroup.Post("/cron-jobs/:id/delete", handler.PostDeleteCronJobHandler)
+	adminGroup.Post("/cron-jobs/:code/trigger", handler.PostTriggerCronJobHandler)
+	adminGroup.Get("/cron-jobs/:code/runs", handler.GetCronJobRunListHandler)
 
 	adminGroup.Get("/import", handler.GetImportHandler)
 	adminGroup.Post("/import", handler.PostImportHandler)

@@ -923,7 +923,7 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
 
 // CronJobs
 func (h *Handler) GetCronJobListHandler(c *fiber.Ctx) error {
-	jobs, err := ListCronJobs(h.DB)
+	jobs, err := ListCronJobsService(h.DB)
 	if err != nil {
 		return err
 	}
@@ -944,6 +944,7 @@ func (h *Handler) PostCreateCronJobHandler(c *fiber.Ctx) error {
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
 
 	in := CreateCronJobInput{
+		Code:        c.FormValue("code"),
 		Name:        c.FormValue("name"),
 		Description: c.FormValue("description"),
 		Schedule:    c.FormValue("schedule"),
@@ -957,29 +958,94 @@ func (h *Handler) PostCreateCronJobHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/cron-jobs")
 }
 
-// CronJobLogs
-func (h *Handler) GetCronJobLogListHandler(c *fiber.Ctx) error {
-	jobID, err := strconv.ParseInt(c.Params("job_id"), 10, 64)
+func (h *Handler) GetCronJobEditHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	// 获取 job 信息
-	job, err := GetCronJobForEdit(h.DB, jobID)
+	job, err := GetCronJobForEdit(h.DB, id)
 	if err != nil {
 		return err
 	}
 
-	// 获取日志列表，默认限制 100 条
-	logs, err := ListCronJobLogs(h.DB, jobID, 100)
-	if err != nil {
-		return err
-	}
-
-	return c.Render("cron_job_logs_index", fiber.Map{
-		"Title": "Cron Job Logs: " + job.Name,
+	return c.Render("cron_jobs_edit", fiber.Map{
+		"Title": "Edit Cron Job",
 		"Job":   job,
-		"Logs":  logs,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostUpdateCronJobHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
+
+	in := UpdateCronJobInput{
+		Code:        c.FormValue("code"),
+		Name:        c.FormValue("name"),
+		Description: c.FormValue("description"),
+		Schedule:    c.FormValue("schedule"),
+		Enabled:     enabled,
+	}
+
+	if err := UpdateCronJobService(h.DB, id, in); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/cron-jobs")
+}
+
+func (h *Handler) PostDeleteCronJobHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := DeleteCronJobService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/cron-jobs")
+}
+
+func (h *Handler) PostTriggerCronJobHandler(c *fiber.Ctx) error {
+	jobCode := c.Params("code")
+	if jobCode == "" {
+		return fiber.ErrBadRequest
+	}
+
+	if err := CreatePendingRunService(h.DB, jobCode); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/cron-jobs")
+}
+
+func (h *Handler) GetCronJobRunListHandler(c *fiber.Ctx) error {
+	jobCode := c.Params("code")
+	if jobCode == "" {
+		return fiber.ErrBadRequest
+	}
+
+	// 获取 job 信息
+	job, err := db.GetCronJobByCode(h.DB, jobCode)
+	if err != nil {
+		return err
+	}
+
+	// 获取执行记录列表，默认限制 100 条
+	runs, err := ListCronJobRunsService(h.DB, jobCode, 100)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("cron_job_runs_index", fiber.Map{
+		"Title": "Cron Job Runs: " + job.Name,
+		"Job":   job,
+		"Runs":  runs,
 	}, "admin_layout")
 }
 
