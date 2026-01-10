@@ -141,6 +141,10 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		return errors.New("title and slug required")
 	}
 
+	if strings.TrimSpace(in.Content) == "" {
+		return errors.New("content is required")
+	}
+
 	p := &db.Post{
 		Title:   in.Title,
 		Slug:    in.Slug,
@@ -357,49 +361,22 @@ func DeleteTagService(dbx *db.DB, id int64) error {
 
 // Redirects
 type CreateRedirectInput struct {
-	From string
-	To   string
+	From   string
+	To     string
+	Status int
 }
 
 type UpdateRedirectInput struct {
-	From string
-	To   string
+	From   string
+	To     string
+	Status int
 }
 
 func ListRedirects(dbx *db.DB, pager *middleware.Pagination) ([]db.Redirect, error) {
-	var total int
-	row := dbx.QueryRow(`SELECT COUNT(*) FROM redirects WHERE deleted_at IS NULL`)
-	if err := row.Scan(&total); err != nil {
-		return nil, err
-	}
-
 	offset := (pager.Page - 1) * pager.PageSize
-	rows, err := dbx.Query(`
-		SELECT id, from_path, to_path, created_at, updated_at, deleted_at
-		FROM redirects
-		WHERE deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?
-	`, pager.PageSize, offset)
+	res, total, err := db.ListRedirects(dbx, pager.PageSize, offset)
 	if err != nil {
 		return nil, err
-	}
-	defer rows.Close()
-
-	var res []db.Redirect
-	for rows.Next() {
-		var r db.Redirect
-		if err := rows.Scan(
-			&r.ID,
-			&r.From,
-			&r.To,
-			&r.CreatedAt,
-			&r.UpdatedAt,
-			&r.DeletedAt,
-		); err != nil {
-			return nil, err
-		}
-		res = append(res, r)
 	}
 
 	pager.Total = total
@@ -408,14 +385,67 @@ func ListRedirects(dbx *db.DB, pager *middleware.Pagination) ([]db.Redirect, err
 	return res, nil
 }
 
+// checkRedirectCycle 检查是否存在循环重定向
+func checkRedirectCycle(dbx *db.DB, fromPath, toPath string) error {
+	visited := make(map[string]bool)
+	current := toPath
+	maxDepth := 100 // 防止无限循环，设置最大深度
+
+	for i := 0; i < maxDepth; i++ {
+		// 如果当前路径就是要创建的 from 路径，说明添加新的重定向后会形成循环
+		if current == fromPath {
+			return errors.New("detected redirect cycle: adding this redirect would create a loop")
+		}
+
+		// 如果已经访问过这个路径，说明在现有重定向链中存在循环
+		// 虽然不是直接回到 fromPath，但为了避免复杂的循环情况，也应该报错
+		if visited[current] {
+			return errors.New("detected redirect cycle in existing redirects")
+		}
+
+		// 标记当前路径为已访问
+		visited[current] = true
+
+		// 查找是否有从 current 路径的重定向
+		redirect, err := db.GetRedirectByFrom(dbx, current)
+		if err != nil {
+			if err == db.ErrNotFound {
+				// 没有找到重定向，链到此结束，没有循环
+				return nil
+			}
+			// 其他错误，返回
+			return err
+		}
+
+		current = redirect.To
+	}
+
+	return errors.New("detected redirect cycle: exceeded maximum redirect chain length")
+}
+
 func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
 	if in.From == "" || in.To == "" {
 		return errors.New("from and to required")
 	}
 
+	// 检查 from 和 to 是否相同
+	if in.From == in.To {
+		return errors.New("from 和 to 不能相同")
+	}
+
+	if in.Status == 0 {
+		in.Status = 301 // default
+	}
+
+	// 检查是否存在循环重定向
+	if err := checkRedirectCycle(dbx, in.From, in.To); err != nil {
+		return err
+	}
+
 	r := &db.Redirect{
-		From: in.From,
-		To:   in.To,
+		From:   in.From,
+		To:     in.To,
+		Status: in.Status,
 	}
 	return db.CreateRedirect(dbx, r)
 }
@@ -432,6 +462,11 @@ func UpdateRedirectService(dbx *db.DB, id int64, in UpdateRedirectInput) error {
 
 	r.From = in.From
 	r.To = in.To
+	if in.Status > 0 {
+		r.Status = in.Status
+	} else {
+		r.Status = 301 // default
+	}
 
 	return db.UpdateRedirect(dbx, r)
 }
@@ -511,6 +546,10 @@ func ListEncryptedPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.Encrypte
 func CreateEncryptedPostService(dbx *db.DB, in CreateEncryptedPostInput) error {
 	if in.Title == "" {
 		return errors.New("title is required")
+	}
+
+	if strings.TrimSpace(in.Content) == "" {
+		return errors.New("content is required")
 	}
 
 	var expiresAt *int64
@@ -705,7 +744,7 @@ func UpdateCronJobService(dbx *db.DB, id int64, in UpdateCronJobInput) error {
 		return err
 	}
 
-	job.Code = in.Code
+	// Code 不可修改，保持原有值
 	job.Name = in.Name
 	job.Description = in.Description
 	job.Schedule = in.Schedule

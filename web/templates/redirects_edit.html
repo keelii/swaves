@@ -6,13 +6,27 @@
   </p>
 
   <p>
-    <label>From Path</label>
-    <input type="text" name="from" value="{{ .Redirect.From }}" required>
+    <label>
+      From<br>
+      <input type="text" name="from" value="{{ .Redirect.From }}" required>
+    </label>
   </p>
 
   <p>
-    <label>To Path</label>
-    <input type="text" name="to" value="{{ .Redirect.To }}" required>
+    <label>
+      To<br>
+      <input type="text" name="to" value="{{ .Redirect.To }}" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Status (状态码)<br>
+      <select name="status">
+        <option value="301" {{ if eq .Redirect.Status 301 }}selected{{ end }}>301 - Permanent Redirect</option>
+        <option value="302" {{ if eq .Redirect.Status 302 }}selected{{ end }}>302 - Temporary Redirect</option>
+      </select>
+    </label>
   </p>
 
   <p>

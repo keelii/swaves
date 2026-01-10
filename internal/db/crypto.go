@@ -79,7 +79,7 @@ func DecryptContent(ciphertext string) (string, error) {
 	}
 
 	// 检查数据长度
-	if len(data) < 32 {
+	if len(data) < 0 {
 		return "", errors.New("encrypted content too short")
 	}
 

@@ -99,8 +99,9 @@ CREATE TABLE IF NOT EXISTS post_tags (
 
 CREATE TABLE IF NOT EXISTS redirects (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	from_path TEXT NOT NULL UNIQUE,
-	to_path TEXT NOT NULL,
+	"from" TEXT NOT NULL UNIQUE,
+	"to" TEXT NOT NULL,
+	status INTEGER NOT NULL DEFAULT 301,
 	created_at INTEGER NOT NULL,
 	updated_at INTEGER NOT NULL,
 	deleted_at INTEGER
@@ -245,6 +246,16 @@ func Migrate(db *DB) error {
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
 		log.Printf("Warning: failed to add last_status column to cron_jobs: %v", err)
 	}
+
+	// Add status column to redirects table if it doesn't exist
+	_, err = db.Exec(`ALTER TABLE redirects ADD COLUMN status INTEGER NOT NULL DEFAULT 301`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
+		log.Printf("Warning: failed to add status column to redirects: %v", err)
+	}
+
+	// Note: SQLite doesn't support renaming columns directly
+	// The database columns remain as from_path and to_path for backward compatibility
+	// but the application uses 'from' and 'to' in the Redirect struct
 
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
@@ -713,6 +724,7 @@ type Redirect struct {
 	ID        int64
 	From      string
 	To        string
+	Status    int
 	CreatedAt int64
 	UpdatedAt int64
 	DeletedAt *int64
@@ -720,18 +732,58 @@ type Redirect struct {
 
 func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 	row := db.QueryRow(
-		`SELECT id, from_path, to_path, created_at, updated_at, deleted_at
+		`SELECT id, from, to, COALESCE(status, 301), created_at, updated_at, deleted_at
 		 FROM redirects WHERE id=? AND deleted_at IS NULL`,
 		id,
 	)
 
 	var r Redirect
 	var deletedAt sql.NullInt64
+	var status sql.NullInt64
 	if err := row.Scan(
-		&r.ID, &r.From, &r.To,
+		&r.ID, &r.From, &r.To, &status,
 		&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
 		return nil, err
+	}
+	if status.Valid {
+		r.Status = int(status.Int64)
+	} else {
+		r.Status = 301 // default
+	}
+	if deletedAt.Valid {
+		r.DeletedAt = &deletedAt.Int64
+	}
+	return &r, nil
+}
+
+// GetRedirectByFrom 根据 from 路径查找 redirect
+func GetRedirectByFrom(db *DB, fromPath string) (*Redirect, error) {
+	row := db.QueryRow(
+		`SELECT id, from, to, COALESCE(status, 301), created_at, updated_at, deleted_at
+		 FROM redirects WHERE from=? AND deleted_at IS NULL`,
+		fromPath,
+	)
+
+	var r Redirect
+	var deletedAt sql.NullInt64
+	var status sql.NullInt64
+	if err := row.Scan(
+		&r.ID, &r.From, &r.To, &status,
+		&r.CreatedAt, &r.UpdatedAt, &deletedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if status.Valid {
+		r.Status = int(status.Int64)
+	} else {
+		r.Status = 301 // default
 	}
 	if deletedAt.Valid {
 		r.DeletedAt = &deletedAt.Int64
@@ -741,11 +793,14 @@ func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 
 func UpdateRedirect(db *DB, r *Redirect) error {
 	r.UpdatedAt = now()
+	if r.Status == 0 {
+		r.Status = 301 // default
+	}
 	_, err := db.Exec(
 		`UPDATE redirects
-		 SET from_path=?, to_path=?, updated_at=?
+		 SET from=?, to=?, status=?, updated_at=?
 		 WHERE id=? AND deleted_at IS NULL`,
-		r.From, r.To, r.UpdatedAt, r.ID,
+		r.From, r.To, r.Status, r.UpdatedAt, r.ID,
 	)
 	return err
 }
@@ -767,9 +822,54 @@ func RestoreRedirect(db *DB, id int64) error {
 	return err
 }
 
+func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
+	// 获取总数
+	var total int
+	row := db.QueryRow(`SELECT COUNT(*) FROM redirects WHERE deleted_at IS NULL`)
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	// 查询列表
+	rows, err := db.Query(`
+		SELECT id, from, to, status, created_at, updated_at, deleted_at
+		FROM redirects
+		WHERE deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var res []Redirect
+	for rows.Next() {
+		var r Redirect
+		var deletedAt sql.NullInt64
+		var status sql.NullInt64
+		if err := rows.Scan(
+			&r.ID, &r.From, &r.To, &status,
+			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, 0, err
+		}
+		if status.Valid {
+			r.Status = int(status.Int64)
+		} else {
+			r.Status = 301 // default
+		}
+		if deletedAt.Valid {
+			r.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, r)
+	}
+	return res, total, nil
+}
+
 func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 	rows, err := db.Query(`
-		SELECT id, from_path, to_path, created_at, updated_at, deleted_at
+		SELECT id, from, to, status, created_at, updated_at, deleted_at
 		FROM redirects
 		WHERE deleted_at IS NOT NULL
 		ORDER BY deleted_at DESC
@@ -783,11 +883,17 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 	for rows.Next() {
 		var r Redirect
 		var deletedAt sql.NullInt64
+		var status sql.NullInt64
 		if err := rows.Scan(
-			&r.ID, &r.From, &r.To,
+			&r.ID, &r.From, &r.To, &status,
 			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 		); err != nil {
 			return nil, err
+		}
+		if status.Valid {
+			r.Status = int(status.Int64)
+		} else {
+			r.Status = 301 // default
 		}
 		if deletedAt.Valid {
 			r.DeletedAt = &deletedAt.Int64
@@ -804,11 +910,14 @@ func CreateRedirect(db *DB, r *Redirect) error {
 	if r.UpdatedAt == 0 {
 		r.UpdatedAt = r.CreatedAt
 	}
+	if r.Status == 0 {
+		r.Status = 301 // default
+	}
 
 	res, err := db.Exec(
-		`INSERT INTO redirects (from_path, to_path, created_at, updated_at)
-		 VALUES (?, ?, ?, ?)`,
-		r.From, r.To, r.CreatedAt, r.UpdatedAt,
+		`INSERT INTO redirects (from, to, status, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?)`,
+		r.From, r.To, r.Status, r.CreatedAt, r.UpdatedAt,
 	)
 	if err != nil {
 		return err
@@ -1601,10 +1710,11 @@ func UpdateCronJob(db *DB, job *CronJob) error {
 	if job.Enabled == 1 {
 		enabled = 1
 	}
+	// Code 不可修改，不更新 code 字段
 	_, err := db.Exec(`UPDATE cron_jobs
-		SET code=?, name=?, description=?, schedule=?, enabled=?, updated_at=?
+		SET name=?, description=?, schedule=?, enabled=?, updated_at=?
 		WHERE id=? AND deleted_at IS NULL`,
-		job.Code, job.Name, job.Description, job.Schedule, enabled, job.UpdatedAt, job.ID,
+		job.Name, job.Description, job.Schedule, enabled, job.UpdatedAt, job.ID,
 	)
 	return err
 }

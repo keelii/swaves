@@ -4,8 +4,9 @@
   <p>
     <label>
       Code (唯一标识)<br>
-      <input type="text" name="code" id="code" value="{{ .Job.Code }}" required>
-      <small>用于在代码中识别此任务，必须唯一</small>
+      <input type="text" value="{{ .Job.Code }}" disabled>
+      <input type="hidden" name="code" value="{{ .Job.Code }}">
+      <small>用于在代码中识别此任务，必须唯一（不可修改）</small>
     </label>
   </p>
 
@@ -33,11 +34,8 @@
 
   <p>
     <label>
-      Enabled (启用状态)<br>
-      <select name="enabled">
-        <option value="1" {{ if eq .Job.Enabled 1 }}selected{{ end }}>启用</option>
-        <option value="0" {{ if eq .Job.Enabled 0 }}selected{{ end }}>禁用</option>
-      </select>
+      <input type="checkbox" name="enabled" value="1" {{ if eq .Job.Enabled 1 }}checked{{ end }}>
+      Enabled (启用状态)
     </label>
   </p>
 

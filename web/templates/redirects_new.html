@@ -1,17 +1,29 @@
-
+{{ if .Error }}
+  <p style="color:red">{{ .Error }}</p>
+{{ end }}
 <form method="post" action="/admin/redirects/new">
 
   <p>
     <label>
-      From Path<br>
+      From<br>
       <input type="text" name="from" required>
     </label>
   </p>
 
   <p>
     <label>
-      To Path<br>
+      To<br>
       <input type="text" name="to" required>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Status (状态码)<br>
+      <select name="status">
+        <option value="301" selected>301 - Permanent Redirect</option>
+        <option value="302">302 - Temporary Redirect</option>
+      </select>
     </label>
   </p>
 

@@ -354,13 +354,22 @@ func (h *Handler) GetRedirectNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
+	status, err := strconv.Atoi(c.FormValue("status"))
+	if err != nil || (status != 301 && status != 302) {
+		status = 301 // default to 301 if invalid
+	}
+
 	in := CreateRedirectInput{
-		From: c.FormValue("from"),
-		To:   c.FormValue("to"),
+		From:   c.FormValue("from"),
+		To:     c.FormValue("to"),
+		Status: status,
 	}
 
 	if err := CreateRedirectService(h.DB, in); err != nil {
-		return err
+		return c.Render("redirects_new", fiber.Map{
+			"Title": "New Redirect",
+			"Error": err,
+		}, "admin_layout")
 	}
 
 	return c.Redirect("/admin/redirects")
@@ -389,9 +398,15 @@ func (h *Handler) PostUpdateRedirectHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
+	status, err := strconv.Atoi(c.FormValue("status"))
+	if err != nil || (status != 301 && status != 302) {
+		status = 301 // default to 301 if invalid
+	}
+
 	in := UpdateRedirectInput{
-		From: c.FormValue("from"),
-		To:   c.FormValue("to"),
+		From:   c.FormValue("from"),
+		To:     c.FormValue("to"),
+		Status: status,
 	}
 
 	if err := UpdateRedirectService(h.DB, id, in); err != nil {
@@ -437,11 +452,26 @@ func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
+	expiresAtStr := c.FormValue("expires_at")
+	// 如果提供了 datetime-local 格式，转换为 Unix timestamp
+	if expiresAtStr != "" {
+		// 尝试解析为 datetime-local 格式 (2006-01-02T15:04)
+		if t, err := time.Parse("2006-01-02T15:04", expiresAtStr); err == nil {
+			expiresAtStr = fmt.Sprintf("%d", t.Unix())
+		} else {
+			// 如果解析失败，尝试作为 Unix timestamp 解析
+			if _, err := strconv.ParseInt(expiresAtStr, 10, 64); err != nil {
+				// 如果既不是 datetime-local 也不是 timestamp，清空
+				expiresAtStr = ""
+			}
+		}
+	}
+
 	in := CreateEncryptedPostInput{
 		Title:     c.FormValue("title"),
 		Content:   c.FormValue("content"),
 		Password:  c.FormValue("password"),
-		ExpiresAt: c.FormValue("expires_at"),
+		ExpiresAt: expiresAtStr,
 	}
 
 	if err := CreateEncryptedPostService(h.DB, in); err != nil {
@@ -474,11 +504,26 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
+	expiresAtStr := c.FormValue("expires_at")
+	// 如果提供了 datetime-local 格式，转换为 Unix timestamp
+	if expiresAtStr != "" {
+		// 尝试解析为 datetime-local 格式 (2006-01-02T15:04)
+		if t, err := time.Parse("2006-01-02T15:04", expiresAtStr); err == nil {
+			expiresAtStr = fmt.Sprintf("%d", t.Unix())
+		} else {
+			// 如果解析失败，尝试作为 Unix timestamp 解析
+			if _, err := strconv.ParseInt(expiresAtStr, 10, 64); err != nil {
+				// 如果既不是 datetime-local 也不是 timestamp，清空
+				expiresAtStr = ""
+			}
+		}
+	}
+
 	in := UpdateEncryptedPostInput{
 		Title:     c.FormValue("title"),
 		Content:   c.FormValue("content"),
 		Password:  c.FormValue("password"),
-		ExpiresAt: c.FormValue("expires_at"),
+		ExpiresAt: expiresAtStr,
 	}
 
 	if err := UpdateEncryptedPostService(h.DB, id, in); err != nil {

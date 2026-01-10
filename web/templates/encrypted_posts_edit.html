@@ -2,28 +2,94 @@
 <form method="post" action="/admin/encrypted-posts/{{ .Post.ID }}/edit">
 
   <p>
-    <label>ID:</label> {{ .Post.ID }}
-  </p>
-
-  <p>
-    <label>Title</label>
+    <label>Title</label><br>
     <input type="text" name="title" value="{{ .Post.Title }}" required>
   </p>
 
   <p>
-    <label>Slug</label>
+    <label>Slug</label><br>
     <input type="text" name="slug" value="{{ .Post.Slug }}" disabled>
   </p>
 
   <p>
-    <label>Password (leave empty to keep current)</label>
+    <label>Password (leave empty to keep current)</label><br>
     <input type="password" name="password">
   </p>
 
   <p>
-    <label>Expires At (Unix timestamp, leave empty for no expiration)</label>
-    <input type="text" name="expires_at" value="{{ if .Post.ExpiresAt }}{{ .Post.ExpiresAt }}{{ end }}" placeholder="Unix timestamp">
+    <label>
+      Expires At (可选)<br>
+      {{ $expiresAt := .Post.ExpiresAt }}
+      {{ $customDate := "" }}
+      {{ if $expiresAt }}
+        {{ $customDate = formatDateTimeLocal $expiresAt }}
+      {{ end }}
+      <label><input type="radio" name="expires_at_option" value="none" {{ if not $expiresAt }}checked{{ end }} onchange="toggleCustomDate()"> Never</label>
+      <label><input type="radio" name="expires_at_option" value="5min" onchange="toggleCustomDate()"> 5 minutes</label>
+      <label><input type="radio" name="expires_at_option" value="1hour" onchange="toggleCustomDate()"> 1 hour</label>
+      <label><input type="radio" name="expires_at_option" value="1day" onchange="toggleCustomDate()"> 1 day</label>
+      <label><input type="radio" name="expires_at_option" value="custom" {{ if $expiresAt }}checked{{ end }} onchange="toggleCustomDate()"> Other</label>
+      <div id="custom-date-container" style="display: {{ if $expiresAt }}block{{ else }}none{{ end }}; margin-top: 10px;">
+        <input type="datetime-local" name="expires_at_custom" id="expires_at_custom" value="{{ $customDate }}">
+      </div>
+      <input type="hidden" name="expires_at" id="expires_at_hidden" value="{{ $customDate }}">
+    </label>
   </p>
+
+  <script>
+    function toggleCustomDate() {
+      const customContainer = document.getElementById('custom-date-container');
+      const customInput = document.getElementById('expires_at_custom');
+      const selected = document.querySelector('input[name="expires_at_option"]:checked');
+      
+      if (selected && selected.value === 'custom') {
+        customContainer.style.display = 'block';
+      } else {
+        customContainer.style.display = 'none';
+        if (selected.value !== 'custom') {
+          customInput.value = '';
+        }
+      }
+    }
+
+    // 页面加载时初始化状态
+    toggleCustomDate();
+
+    // 表单提交前设置 expires_at 值
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const selected = document.querySelector('input[name="expires_at_option"]:checked');
+      const hiddenInput = document.getElementById('expires_at_hidden');
+      const customInput = document.getElementById('expires_at_custom');
+      
+      if (selected.value === 'custom' && customInput.value) {
+        hiddenInput.value = customInput.value;
+      } else if (selected.value === 'none') {
+        hiddenInput.value = '';
+      } else {
+        // 计算相对时间
+        const now = new Date();
+        let expiresAt = new Date();
+        switch(selected.value) {
+          case '5min':
+            expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+            break;
+          case '1hour':
+            expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+            break;
+          case '1day':
+            expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            break;
+        }
+        // 格式化为 datetime-local 格式
+        const year = expiresAt.getFullYear();
+        const month = String(expiresAt.getMonth() + 1).padStart(2, '0');
+        const day = String(expiresAt.getDate()).padStart(2, '0');
+        const hours = String(expiresAt.getHours()).padStart(2, '0');
+        const minutes = String(expiresAt.getMinutes()).padStart(2, '0');
+        hiddenInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+    });
+  </script>
 
   <div>
     <label>Content</label>
