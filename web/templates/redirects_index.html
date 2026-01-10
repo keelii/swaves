@@ -10,6 +10,7 @@
     <th>From</th>
     <th>To</th>
     <th>Status</th>
+    <th>Enabled</th>
     <th>Created At</th>
     <th>Updated At</th>
     <th>Actions</th>
@@ -31,6 +32,7 @@
         {{ .Status }}
       {{ end }}
     </td>
+    <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>{{ formatTime .UpdatedAt }}</td>
     <td>
@@ -43,14 +45,14 @@
   </tr>
   {{ else }}
   <tr>
-    <td colspan="7">No redirects</td>
+    <td colspan="8">No redirects</td>
   </tr>
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="7">
+    <td colspan="8">
       {{template "partials/pagination" .}}
     </td>
   </tr>

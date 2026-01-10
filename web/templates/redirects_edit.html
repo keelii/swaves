@@ -30,6 +30,13 @@
   </p>
 
   <p>
+    <label>
+      <input type="checkbox" name="enabled" value="1" {{ if eq .Redirect.Enabled 1 }}checked{{ end }}>
+      Enabled (启用)
+    </label>
+  </p>
+
+  <p>
     <button type="submit">Save</button>
     <a href="/admin/redirects">Back</a>
   </p>

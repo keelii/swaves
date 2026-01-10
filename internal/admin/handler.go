@@ -359,10 +359,17 @@ func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
 		status = 301 // default to 301 if invalid
 	}
 
+	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
+	enabledInt := 0
+	if enabled {
+		enabledInt = 1
+	}
+
 	in := CreateRedirectInput{
-		From:   c.FormValue("from"),
-		To:     c.FormValue("to"),
-		Status: status,
+		From:    c.FormValue("from"),
+		To:      c.FormValue("to"),
+		Status:  status,
+		Enabled: enabledInt,
 	}
 
 	if err := CreateRedirectService(h.DB, in); err != nil {
@@ -403,10 +410,17 @@ func (h *Handler) PostUpdateRedirectHandler(c *fiber.Ctx) error {
 		status = 301 // default to 301 if invalid
 	}
 
+	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
+	enabledInt := 0
+	if enabled {
+		enabledInt = 1
+	}
+
 	in := UpdateRedirectInput{
-		From:   c.FormValue("from"),
-		To:     c.FormValue("to"),
-		Status: status,
+		From:    c.FormValue("from"),
+		To:      c.FormValue("to"),
+		Status:  status,
+		Enabled: enabledInt,
 	}
 
 	if err := UpdateRedirectService(h.DB, id, in); err != nil {

@@ -99,9 +99,10 @@ CREATE TABLE IF NOT EXISTS post_tags (
 
 CREATE TABLE IF NOT EXISTS redirects (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	"from" TEXT NOT NULL UNIQUE,
-	"to" TEXT NOT NULL,
+	from_path TEXT NOT NULL UNIQUE,
+	to_path TEXT NOT NULL,
 	status INTEGER NOT NULL DEFAULT 301,
+	enabled INTEGER NOT NULL DEFAULT 1,
 	created_at INTEGER NOT NULL,
 	updated_at INTEGER NOT NULL,
 	deleted_at INTEGER
@@ -253,9 +254,11 @@ func Migrate(db *DB) error {
 		log.Printf("Warning: failed to add status column to redirects: %v", err)
 	}
 
-	// Note: SQLite doesn't support renaming columns directly
-	// The database columns remain as from_path and to_path for backward compatibility
-	// but the application uses 'from' and 'to' in the Redirect struct
+	// Add enabled column to redirects table if it doesn't exist
+	_, err = db.Exec(`ALTER TABLE redirects ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
+		log.Printf("Warning: failed to add enabled column to redirects: %v", err)
+	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
@@ -725,6 +728,7 @@ type Redirect struct {
 	From      string
 	To        string
 	Status    int
+	Enabled   int
 	CreatedAt int64
 	UpdatedAt int64
 	DeletedAt *int64
@@ -732,7 +736,7 @@ type Redirect struct {
 
 func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 	row := db.QueryRow(
-		`SELECT id, from, to, COALESCE(status, 301), created_at, updated_at, deleted_at
+		`SELECT id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at
 		 FROM redirects WHERE id=? AND deleted_at IS NULL`,
 		id,
 	)
@@ -740,8 +744,9 @@ func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 	var r Redirect
 	var deletedAt sql.NullInt64
 	var status sql.NullInt64
+	var enabled sql.NullInt64
 	if err := row.Scan(
-		&r.ID, &r.From, &r.To, &status,
+		&r.ID, &r.From, &r.To, &status, &enabled,
 		&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
@@ -753,6 +758,11 @@ func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 		r.Status = int(status.Int64)
 	} else {
 		r.Status = 301 // default
+	}
+	if enabled.Valid {
+		r.Enabled = int(enabled.Int64)
+	} else {
+		r.Enabled = 1 // default
 	}
 	if deletedAt.Valid {
 		r.DeletedAt = &deletedAt.Int64
@@ -760,19 +770,20 @@ func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 	return &r, nil
 }
 
-// GetRedirectByFrom 根据 from 路径查找 redirect
+// GetRedirectByFrom 根据 from_path 路径查找 redirect
 func GetRedirectByFrom(db *DB, fromPath string) (*Redirect, error) {
 	row := db.QueryRow(
-		`SELECT id, from, to, COALESCE(status, 301), created_at, updated_at, deleted_at
-		 FROM redirects WHERE from=? AND deleted_at IS NULL`,
+		`SELECT id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at
+		 FROM redirects WHERE from_path=? AND deleted_at IS NULL`,
 		fromPath,
 	)
 
 	var r Redirect
 	var deletedAt sql.NullInt64
 	var status sql.NullInt64
+	var enabled sql.NullInt64
 	if err := row.Scan(
-		&r.ID, &r.From, &r.To, &status,
+		&r.ID, &r.From, &r.To, &status, &enabled,
 		&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
@@ -784,6 +795,11 @@ func GetRedirectByFrom(db *DB, fromPath string) (*Redirect, error) {
 		r.Status = int(status.Int64)
 	} else {
 		r.Status = 301 // default
+	}
+	if enabled.Valid {
+		r.Enabled = int(enabled.Int64)
+	} else {
+		r.Enabled = 1 // default
 	}
 	if deletedAt.Valid {
 		r.DeletedAt = &deletedAt.Int64
@@ -798,9 +814,9 @@ func UpdateRedirect(db *DB, r *Redirect) error {
 	}
 	_, err := db.Exec(
 		`UPDATE redirects
-		 SET from=?, to=?, status=?, updated_at=?
+		 SET from_path=?, to_path=?, status=?, enabled=?, updated_at=?
 		 WHERE id=? AND deleted_at IS NULL`,
-		r.From, r.To, r.Status, r.UpdatedAt, r.ID,
+		r.From, r.To, r.Status, r.Enabled, r.UpdatedAt, r.ID,
 	)
 	return err
 }
@@ -832,7 +848,7 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 
 	// 查询列表
 	rows, err := db.Query(`
-		SELECT id, from, to, status, created_at, updated_at, deleted_at
+		SELECT id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at
 		FROM redirects
 		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
@@ -848,8 +864,9 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 		var r Redirect
 		var deletedAt sql.NullInt64
 		var status sql.NullInt64
+		var enabled sql.NullInt64
 		if err := rows.Scan(
-			&r.ID, &r.From, &r.To, &status,
+			&r.ID, &r.From, &r.To, &status, &enabled,
 			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 		); err != nil {
 			return nil, 0, err
@@ -858,6 +875,11 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 			r.Status = int(status.Int64)
 		} else {
 			r.Status = 301 // default
+		}
+		if enabled.Valid {
+			r.Enabled = int(enabled.Int64)
+		} else {
+			r.Enabled = 1 // default
 		}
 		if deletedAt.Valid {
 			r.DeletedAt = &deletedAt.Int64
@@ -869,7 +891,7 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 
 func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 	rows, err := db.Query(`
-		SELECT id, from, to, status, created_at, updated_at, deleted_at
+		SELECT id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at
 		FROM redirects
 		WHERE deleted_at IS NOT NULL
 		ORDER BY deleted_at DESC
@@ -884,8 +906,9 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 		var r Redirect
 		var deletedAt sql.NullInt64
 		var status sql.NullInt64
+		var enabled sql.NullInt64
 		if err := rows.Scan(
-			&r.ID, &r.From, &r.To, &status,
+			&r.ID, &r.From, &r.To, &status, &enabled,
 			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 		); err != nil {
 			return nil, err
@@ -894,6 +917,11 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 			r.Status = int(status.Int64)
 		} else {
 			r.Status = 301 // default
+		}
+		if enabled.Valid {
+			r.Enabled = int(enabled.Int64)
+		} else {
+			r.Enabled = 1 // default
 		}
 		if deletedAt.Valid {
 			r.DeletedAt = &deletedAt.Int64
@@ -913,11 +941,14 @@ func CreateRedirect(db *DB, r *Redirect) error {
 	if r.Status == 0 {
 		r.Status = 301 // default
 	}
+	if r.Enabled == 0 {
+		r.Enabled = 1 // default
+	}
 
 	res, err := db.Exec(
-		`INSERT INTO redirects (from, to, status, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?)`,
-		r.From, r.To, r.Status, r.CreatedAt, r.UpdatedAt,
+		`INSERT INTO redirects (from_path, to_path, status, enabled, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		r.From, r.To, r.Status, r.Enabled, r.CreatedAt, r.UpdatedAt,
 	)
 	if err != nil {
 		return err

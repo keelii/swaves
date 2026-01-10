@@ -361,15 +361,17 @@ func DeleteTagService(dbx *db.DB, id int64) error {
 
 // Redirects
 type CreateRedirectInput struct {
-	From   string
-	To     string
-	Status int
+	From    string
+	To      string
+	Status  int
+	Enabled int
 }
 
 type UpdateRedirectInput struct {
-	From   string
-	To     string
-	Status int
+	From    string
+	To      string
+	Status  int
+	Enabled int
 }
 
 func ListRedirects(dbx *db.DB, pager *middleware.Pagination) ([]db.Redirect, error) {
@@ -442,10 +444,18 @@ func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
 		return err
 	}
 
+	if in.Status == 0 {
+		in.Status = 301 // default
+	}
+	if in.Enabled == 0 {
+		in.Enabled = 1 // default
+	}
+
 	r := &db.Redirect{
-		From:   in.From,
-		To:     in.To,
-		Status: in.Status,
+		From:    in.From,
+		To:      in.To,
+		Status:  in.Status,
+		Enabled: in.Enabled,
 	}
 	return db.CreateRedirect(dbx, r)
 }
@@ -467,6 +477,7 @@ func UpdateRedirectService(dbx *db.DB, id int64, in UpdateRedirectInput) error {
 	} else {
 		r.Status = 301 // default
 	}
+	r.Enabled = in.Enabled
 
 	return db.UpdateRedirect(dbx, r)
 }
