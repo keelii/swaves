@@ -37,13 +37,18 @@ const (
 )
 
 func Open(opts Options) *DB {
-	sqlDB, e1 := sql.Open("sqlite3", opts.DSN)
-	if e1 != nil {
-		log.Fatalf("open sqlite failed: %v", e1)
+	var sqlDB *sql.DB
+	var err error
+
+	sqlDB, err = sql.Open("sqlite3", opts.DSN)
+	if err != nil {
+		log.Fatalf("open sqlite failed: %v", err)
 	}
 
-	sqlDB.Exec(`PRAGMA journal_mode = WAL;`)
-	sqlDB.Exec(`PRAGMA busy_timeout = 5000;`)
+	_, err = sqlDB.Exec(`PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;`)
+	if err != nil {
+		log.Fatalf("set journal_mode failed: %v", err)
+	}
 
 	conn := &DB{DB: sqlDB}
 
@@ -262,6 +267,9 @@ func GetPostByID(db *DB, id int64) (*Post, error) {
 		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status,
 		&p.CreatedAt, &p.UpdatedAt, &deletedAt,
 	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	if deletedAt.Valid {
@@ -1371,37 +1379,6 @@ func EnsureDefaultSettings(db *DB) error {
 	}
 
 	return nil
-}
-
-type AdminSession struct {
-	ID        string
-	Sid       string
-	ExpiresAt int64
-	CreatedAt int64
-	UpdatedAt int64
-	DeletedAt *int64
-}
-
-func CreateAdminSession(db *DB, ttl time.Duration) (*AdminSession, error) {
-	now := time.Now().Unix()
-	expiresAt := now + int64(ttl.Seconds())
-
-	uuid := uuid.NewString()
-
-	_, err := db.Exec(`
-		INSERT INTO admin_sessions (
-			sid, created_at, expires_at
-		) VALUES (?, ?, ?)
-	`, uuid, now, expiresAt)
-	if err != nil {
-		return nil, err
-	}
-
-	return &AdminSession{
-		Sid:       uuid,
-		CreatedAt: now,
-		ExpiresAt: expiresAt,
-	}, nil
 }
 
 type HttpErrorLog struct {
