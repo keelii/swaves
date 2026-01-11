@@ -568,6 +568,189 @@ type SettingView struct {
 	AttrsParsed    map[string]interface{} // 解析后的 attrs（用于 HTML 属性）
 }
 
+// Categories
+func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
+	tree, err := ListCategoriesService(h.DB)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("categories_index", fiber.Map{
+		"Title": "Categories",
+		"Tree":  tree,
+	}, "admin_layout")
+}
+
+func (h *Handler) GetCategoryNewHandler(c *fiber.Ctx) error {
+	// 获取所有分类用于选择父级
+	all, err := GetAllCategoriesFlat(h.DB)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("categories_new", fiber.Map{
+		"Title":      "New Category",
+		"Categories": all,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
+	parentIDStr := c.FormValue("parent_id")
+	var parentID int64
+	if parentIDStr != "" {
+		var err error
+		parentID, err = strconv.ParseInt(parentIDStr, 10, 64)
+		if err != nil {
+			parentID = 0
+		}
+	}
+
+	sortStr := c.FormValue("sort")
+	var sort int64
+	if sortStr != "" {
+		var err error
+		sort, err = strconv.ParseInt(sortStr, 10, 64)
+		if err != nil {
+			sort = 0
+		}
+	}
+
+	in := CreateCategoryInput{
+		ParentID:    parentID,
+		Name:        c.FormValue("name"),
+		Slug:        c.FormValue("slug"),
+		Description: c.FormValue("description"),
+		Sort:        sort,
+	}
+
+	if err := CreateCategoryService(h.DB, in); err != nil {
+		return c.Render("categories_new", fiber.Map{
+			"Title":      "New Category",
+			"Error":      err.Error(),
+			"Categories": []db.Category{},
+		}, "admin_layout")
+	}
+
+	return c.Redirect("/admin/categories")
+}
+
+func (h *Handler) GetCategoryEditHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	category, err := GetCategoryForEdit(h.DB, id)
+	if err != nil {
+		return err
+	}
+
+	// 获取所有分类用于选择父级（排除自己）
+	all, err := GetAllCategoriesFlat(h.DB)
+	if err != nil {
+		return err
+	}
+
+	// 过滤掉自己和自己的子节点（防止循环）
+	var availableCategories []db.Category
+	for _, c := range all {
+		if c.ID == id {
+			continue
+		}
+		// 检查是否是当前分类的子节点
+		isChild := false
+		cur := c.ParentID
+		for cur != 0 {
+			if cur == id {
+				isChild = true
+				break
+			}
+			// 找到父节点
+			var parent *db.Category
+			for _, p := range all {
+				if p.ID == cur {
+					parent = &p
+					break
+				}
+			}
+			if parent == nil {
+				break
+			}
+			cur = parent.ParentID
+		}
+		if !isChild {
+			availableCategories = append(availableCategories, c)
+		}
+	}
+
+	return c.Render("categories_edit", fiber.Map{
+		"Title":      "Edit Category",
+		"Category":   category,
+		"Categories": availableCategories,
+	}, "admin_layout")
+}
+
+func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	parentIDStr := c.FormValue("parent_id")
+	var parentID int64
+	if parentIDStr != "" && parentIDStr != "0" {
+		var err error
+		parentID, err = strconv.ParseInt(parentIDStr, 10, 64)
+		if err != nil {
+			parentID = 0
+		}
+	}
+
+	sortStr := c.FormValue("sort")
+	var sort int64
+	if sortStr != "" {
+		var err error
+		sort, err = strconv.ParseInt(sortStr, 10, 64)
+		if err != nil {
+			sort = 0
+		}
+	}
+
+	in := UpdateCategoryInput{
+		ParentID:    parentID,
+		Name:        c.FormValue("name"),
+		Slug:        c.FormValue("slug"),
+		Description: c.FormValue("description"),
+		Sort:        sort,
+	}
+
+	if err := UpdateCategoryService(h.DB, id, in); err != nil {
+		category, _ := GetCategoryForEdit(h.DB, id)
+		all, _ := GetAllCategoriesFlat(h.DB)
+		return c.Render("categories_edit", fiber.Map{
+			"Title":      "Edit Category",
+			"Error":      err.Error(),
+			"Category":   category,
+			"Categories": all,
+		}, "admin_layout")
+	}
+
+	return c.Redirect("/admin/categories")
+}
+
+func (h *Handler) PostDeleteCategoryHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := DeleteCategoryService(h.DB, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/categories")
+}
+
 // Settings
 func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 	// 获取所有 settings，以表格形式展示

@@ -440,3 +440,272 @@ func TestCronJobs(t *testing.T) {
 		t.Fatalf("update did not persist: %+v", updated)
 	}
 }
+
+func TestCategoryCRUD(t *testing.T) {
+	db := openTestDB(t)
+
+	c := &Category{
+		Name:        "Go",
+		Slug:        "go",
+		Description: "Go语言",
+		Sort:        1,
+	}
+
+	if err := CreateCategory(db, c); err != nil {
+		t.Fatalf("CreateCategory failed: %v", err)
+	}
+	if c.ID == 0 {
+		t.Fatal("category id not set")
+	}
+
+	got, err := GetCategoryByID(db, c.ID)
+	if err != nil {
+		t.Fatalf("GetCategoryByID failed: %v", err)
+	}
+	if got.Name != c.Name {
+		t.Fatalf("unexpected name: %s", got.Name)
+	}
+	if got.Slug != c.Slug {
+		t.Fatalf("unexpected slug: %s", got.Slug)
+	}
+
+	c.Name = "Go Updated"
+	c.Slug = "go-updated"
+	if err := UpdateCategory(db, c); err != nil {
+		t.Fatalf("UpdateCategory failed: %v", err)
+	}
+
+	got, err = GetCategoryByID(db, c.ID)
+	if err != nil {
+		t.Fatalf("GetCategoryByID after update failed: %v", err)
+	}
+	if got.Name != "Go Updated" {
+		t.Fatalf("update not applied")
+	}
+
+	if err := SoftDeleteCategory(db, c.ID); err != nil {
+		t.Fatalf("SoftDeleteCategory failed: %v", err)
+	}
+
+	_, err = GetCategoryByID(db, c.ID)
+	if err == nil {
+		t.Fatalf("expected error after soft delete")
+	}
+}
+
+func TestCategory_ParentChild(t *testing.T) {
+	db := openTestDB(t)
+
+	parent := &Category{
+		Name: "Parent",
+		Slug: "parent",
+		Sort: 1,
+	}
+	if err := CreateCategory(db, parent); err != nil {
+		t.Fatalf("CreateCategory parent failed: %v", err)
+	}
+
+	child := &Category{
+		ParentID: parent.ID,
+		Name:     "Child",
+		Slug:     "child",
+		Sort:     1,
+	}
+	if err := CreateCategory(db, child); err != nil {
+		t.Fatalf("CreateCategory child failed: %v", err)
+	}
+
+	got, err := GetCategoryByID(db, child.ID)
+	if err != nil {
+		t.Fatalf("GetCategoryByID child failed: %v", err)
+	}
+	if got.ParentID != parent.ID {
+		t.Fatalf("unexpected parent_id: %d", got.ParentID)
+	}
+}
+
+func TestCategory_UniqueSlugUnderParent(t *testing.T) {
+	db := openTestDB(t)
+
+	parent := &Category{
+		Name: "Parent",
+		Slug: "parent",
+		Sort: 1,
+	}
+	if err := CreateCategory(db, parent); err != nil {
+		t.Fatalf("CreateCategory parent failed: %v", err)
+	}
+
+	c1 := &Category{
+		ParentID: parent.ID,
+		Name:     "A",
+		Slug:     "same",
+		Sort:     1,
+	}
+	if err := CreateCategory(db, c1); err != nil {
+		t.Fatalf("create c1 failed: %v", err)
+	}
+
+	c2 := &Category{
+		ParentID: parent.ID,
+		Name:     "B",
+		Slug:     "same",
+		Sort:     1,
+	}
+	if err := CreateCategory(db, c2); err == nil {
+		t.Fatal("expected unique constraint error on slug under same parent")
+	}
+
+	// 不同父级下可以有相同的slug
+	c3 := &Category{
+		ParentID: 0,
+		Name:     "Root",
+		Slug:     "same",
+		Sort:     1,
+	}
+	if err := CreateCategory(db, c3); err != nil {
+		t.Fatalf("create c3 with same slug under different parent should succeed: %v", err)
+	}
+}
+
+func TestCategory_CycleDetection(t *testing.T) {
+	db := openTestDB(t)
+
+	parent := &Category{
+		Name: "Parent",
+		Slug: "parent",
+		Sort: 1,
+	}
+	if err := CreateCategory(db, parent); err != nil {
+		t.Fatalf("CreateCategory parent failed: %v", err)
+	}
+
+	child := &Category{
+		ParentID: parent.ID,
+		Name:     "Child",
+		Slug:     "child",
+		Sort:     1,
+	}
+	if err := CreateCategory(db, child); err != nil {
+		t.Fatalf("CreateCategory child failed: %v", err)
+	}
+
+	// 尝试将父级设置为自己的子级，应该检测到循环
+	if err := UpdateCategoryParent(db, parent.ID, child.ID); err == nil {
+		t.Fatal("expected cycle detection error")
+	}
+}
+
+func TestCategory_SoftDelete(t *testing.T) {
+	db := openTestDB(t)
+
+	c := &Category{
+		Name: "Test",
+		Slug: "test",
+		Sort: 1,
+	}
+	CreateCategory(db, c)
+
+	softDeleteByTable(db, t, "categories", c.ID)
+
+	// 不可再查询
+	if _, err := GetCategoryByID(db, c.ID); err == nil {
+		t.Fatal("soft deleted category should not be readable")
+	}
+
+	// 再次 soft delete 不应报错
+	if err := SoftDeleteCategory(db, c.ID); err != nil {
+		t.Fatal("double soft delete should be safe")
+	}
+
+	// slug 仍然占用（唯一性检查仍然有效）
+	c2 := &Category{
+		Name: "Test2",
+		Slug: "test",
+		Sort: 1,
+	}
+	if err := CreateCategory(db, c2); err == nil {
+		t.Fatal("category slug should remain unique after soft delete")
+	}
+}
+
+func TestCategory_ListCategories(t *testing.T) {
+	db := openTestDB(t)
+
+	c1 := &Category{
+		Name: "A",
+		Slug: "a",
+		Sort: 2,
+	}
+	c2 := &Category{
+		Name: "B",
+		Slug: "b",
+		Sort: 1,
+	}
+
+	CreateCategory(db, c1)
+	CreateCategory(db, c2)
+
+	list, err := ListCategories(db)
+	if err != nil {
+		t.Fatalf("ListCategories failed: %v", err)
+	}
+	if len(list) < 2 {
+		t.Fatalf("expected at least 2 categories, got %d", len(list))
+	}
+
+	// 应该按sort排序
+	var foundB, foundA bool
+	for _, c := range list {
+		if c.Slug == "b" {
+			foundB = true
+		}
+		if c.Slug == "a" {
+			foundA = true
+			if !foundB {
+				t.Fatal("categories should be ordered by sort, b (sort=1) should come before a (sort=2)")
+			}
+		}
+	}
+	if !foundA || !foundB {
+		t.Fatal("expected both categories in list")
+	}
+}
+
+func TestCategory_UpdateParent(t *testing.T) {
+	db := openTestDB(t)
+
+	parent1 := &Category{
+		Name: "Parent1",
+		Slug: "parent1",
+		Sort: 1,
+	}
+	parent2 := &Category{
+		Name: "Parent2",
+		Slug: "parent2",
+		Sort: 1,
+	}
+	child := &Category{
+		ParentID: parent1.ID,
+		Name:     "Child",
+		Slug:     "child",
+		Sort:     1,
+	}
+
+	CreateCategory(db, parent1)
+	CreateCategory(db, parent2)
+	CreateCategory(db, child)
+
+	// 将child从parent1移动到parent2
+	if err := UpdateCategoryParent(db, child.ID, parent2.ID); err != nil {
+		t.Fatalf("UpdateCategoryParent failed: %v", err)
+	}
+
+	got, err := GetCategoryByID(db, child.ID)
+	if err != nil {
+		t.Fatalf("GetCategoryByID failed: %v", err)
+	}
+	if got.ParentID != parent2.ID {
+		t.Fatalf("unexpected parent_id: %d, expected %d", got.ParentID, parent2.ID)
+	}
+}

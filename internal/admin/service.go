@@ -615,6 +615,142 @@ func DeleteEncryptedPostService(dbx *db.DB, id int64) error {
 	return db.SoftDeleteEncryptedPost(dbx, id)
 }
 
+// Categories
+type CategoryNode struct {
+	Category db.Category
+	Children []*CategoryNode `json:"children"`
+}
+
+func BuildCategoryTree(list []db.Category) []*CategoryNode {
+	nodeMap := make(map[int64]*CategoryNode)
+	var roots []*CategoryNode
+
+	// 1. 先把所有节点建出来
+	for _, c := range list {
+		nodeMap[c.ID] = &CategoryNode{
+			Category: c,
+			Children: make([]*CategoryNode, 0),
+		}
+	}
+
+	// 2. 组装父子关系
+	for _, node := range nodeMap {
+		if node.Category.ParentID == 0 {
+			roots = append(roots, node)
+			continue
+		}
+		if parent, ok := nodeMap[node.Category.ParentID]; ok {
+			parent.Children = append(parent.Children, node)
+		}
+	}
+
+	return roots
+}
+
+func GetCategoryTree(dbx *db.DB) ([]*CategoryNode, error) {
+	list, err := db.ListCategories(dbx)
+	if err != nil {
+		return nil, err
+	}
+	return BuildCategoryTree(list), nil
+}
+
+func HasCycle(all map[int64]*db.Category, nodeID int64, newParentID int64) bool {
+	cur := newParentID
+	for cur != 0 {
+		if cur == nodeID {
+			return true
+		}
+		parent, ok := all[cur]
+		if !ok {
+			break
+		}
+		cur = parent.ParentID
+	}
+	return false
+}
+
+func UpdateCategoryParentService(dbx *db.DB, id int64, newParentID int64) error {
+	list, err := db.ListCategories(dbx)
+	if err != nil {
+		return err
+	}
+
+	m := make(map[int64]*db.Category)
+	for i := range list {
+		m[list[i].ID] = &list[i]
+	}
+
+	if HasCycle(m, id, newParentID) {
+		return errors.New("category cycle detected")
+	}
+
+	return db.UpdateCategoryParent(dbx, id, newParentID)
+}
+
+// Category Service Functions
+type CreateCategoryInput struct {
+	ParentID    int64
+	Name        string
+	Slug        string
+	Description string
+	Sort        int64
+}
+
+type UpdateCategoryInput struct {
+	ParentID    int64
+	Name        string
+	Slug        string
+	Description string
+	Sort        int64
+}
+
+func ListCategoriesService(dbx *db.DB) ([]*CategoryNode, error) {
+	return GetCategoryTree(dbx)
+}
+
+func GetAllCategoriesFlat(dbx *db.DB) ([]db.Category, error) {
+	return db.ListCategories(dbx)
+}
+
+func CreateCategoryService(dbx *db.DB, in CreateCategoryInput) error {
+	if in.Name == "" {
+		return errors.New("name required")
+	}
+
+	c := &db.Category{
+		ParentID:    in.ParentID,
+		Name:        in.Name,
+		Slug:        in.Slug,
+		Description: in.Description,
+		Sort:        in.Sort,
+	}
+	return db.CreateCategory(dbx, c)
+}
+
+func GetCategoryForEdit(dbx *db.DB, id int64) (*db.Category, error) {
+	return db.GetCategoryByID(dbx, id)
+}
+
+func UpdateCategoryService(dbx *db.DB, id int64, in UpdateCategoryInput) error {
+	c, err := db.GetCategoryByID(dbx, id)
+	if err != nil {
+		return err
+	}
+
+	c.ParentID = in.ParentID
+	c.Name = in.Name
+	c.Slug = in.Slug
+	c.Description = in.Description
+	c.Sort = in.Sort
+
+	return db.UpdateCategory(dbx, c)
+}
+
+func DeleteCategoryService(dbx *db.DB, id int64) error {
+	return db.SoftDeleteCategory(dbx, id)
+}
+
 // Settings
 func ListSettingsByKind(dbx *db.DB, kind string) ([]db.Setting, error) {
 	return db.ListSettingsByKind(dbx, kind)

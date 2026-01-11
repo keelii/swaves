@@ -1,0 +1,37 @@
+<p>
+  <a href="/admin/categories/new">New Category</a>
+</p>
+
+{{ define "category_item" }}
+  <li style="margin: 10px 0;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <strong>{{ .Category.Name }}</strong>
+      <span style="color: #666;">({{ .Category.Slug }})</span>
+      {{ if .Category.Description }}
+        <span style="color: #999;">- {{ .Category.Description }}</span>
+      {{ end }}
+      <span style="color: #999;">Sort: {{ .Category.Sort }}</span>
+      <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
+      <form method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
+        <button type="submit">Delete</button>
+      </form>
+    </div>
+    {{ if .Children }}
+      <ul style="list-style-type: none; padding-left: 30px; margin: 5px 0;">
+        {{ range .Children }}
+          {{ template "category_item" . }}
+        {{ end }}
+      </ul>
+    {{ end }}
+  </li>
+{{ end }}
+
+{{ if .Tree }}
+  <ul style="list-style-type: none; padding-left: 0;">
+    {{ range .Tree }}
+      {{ template "category_item" . }}
+    {{ end }}
+  </ul>
+{{ else }}
+  <p>No categories</p>
+{{ end }}

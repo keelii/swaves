@@ -46,6 +46,13 @@ func RegisterRoutes(app *fiber.App, conn *db.DB) {
 	adminGroup.Post("/tags/:id/edit", handler.PostUpdateTagHandler)
 	adminGroup.Post("/tags/:id/delete", handler.PostDeleteTagHandler)
 
+	adminGroup.Get("/categories", handler.GetCategoryListHandler)
+	adminGroup.Get("/categories/new", handler.GetCategoryNewHandler)
+	adminGroup.Post("/categories/new", handler.PostCreateCategoryHandler)
+	adminGroup.Get("/categories/:id/edit", handler.GetCategoryEditHandler)
+	adminGroup.Post("/categories/:id/edit", handler.PostUpdateCategoryHandler)
+	adminGroup.Post("/categories/:id/delete", handler.PostDeleteCategoryHandler)
+
 	adminGroup.Get("/redirects", handler.GetRedirectListHandler)
 	adminGroup.Get("/redirects/new", handler.GetRedirectNewHandler)
 	adminGroup.Post("/redirects/new", handler.PostCreateRedirectHandler)

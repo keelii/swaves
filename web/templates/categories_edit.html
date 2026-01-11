@@ -1,0 +1,61 @@
+{{ if .Error }}
+<p style="color: red;">Error: {{ .Error }}</p>
+{{ end }}
+
+<form method="post" action="/admin/categories/{{ .Category.ID }}/edit">
+
+  <p>
+    <label>ID:</label> {{ .Category.ID }}
+  </p>
+
+  <p>
+    <label>
+      Parent Category<br>
+      <select name="parent_id">
+        <option value="0" {{ if eq .Category.ParentID 0 }}selected{{ end }}>-- None (Top Level) --</option>
+        {{ range .Categories }}
+          <option value="{{ .ID }}" {{ if eq $.Category.ParentID .ID }}selected{{ end }}>{{ .Name }}</option>
+        {{ end }}
+      </select>
+      <small>(Select parent category, or "None" for top level)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Name<br>
+      <input type="text" name="name" value="{{ .Category.Name }}" required>
+      <small>(Display name)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Slug<br>
+      <input type="text" name="slug" value="{{ .Category.Slug }}" required>
+      <small>(URL-friendly identifier, must be unique under same parent)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Description<br>
+      <textarea name="description" rows="3" cols="80">{{ .Category.Description }}</textarea>
+      <small>(Optional description)</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Sort<br>
+      <input type="number" name="sort" value="{{ .Category.Sort }}">
+      <small>(Sort order within same parent level)</small>
+    </label>
+  </p>
+
+  <p>
+    <button type="submit">Save</button>
+    <a href="/admin/categories">Back</a>
+  </p>
+
+</form>

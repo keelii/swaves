@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -79,6 +78,32 @@ CREATE TABLE IF NOT EXISTS encrypted_posts (
 	deleted_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    parent_id INTEGER,                -- 父分类，NULL 表示顶级分类
+    slug TEXT NOT NULL DEFAULT '',    -- 访问路径
+
+    name TEXT NOT NULL,                -- 展示名称
+    description TEXT NOT NULL DEFAULT '',
+
+    sort INTEGER NOT NULL DEFAULT 0,   -- 同级排序
+    enabled INTEGER NOT NULL DEFAULT 1, -- 1=启用 0=禁用
+
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS post_categories (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+	post_id INTEGER NOT NULL,      -- posts.id
+	category_id INTEGER NOT NULL,  -- categories.id
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	deleted_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS tags (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	name TEXT NOT NULL,
@@ -143,6 +168,7 @@ CREATE TABLE IF NOT EXISTS settings (
 	options TEXT,
 	attrs TEXT,
 	value TEXT,
+	default_option_value TEXT,
 	description TEXT,
 	sort INTEGER NOT NULL DEFAULT 0,
 	charset TEXT,
@@ -179,105 +205,6 @@ func Migrate(db *DB) error {
 		if _, err := db.Exec(stmt); err != nil {
 			return err
 		}
-	}
-
-	// Add default_option_value column to settings table if it doesn't exist
-	_, err := db.Exec(`
-		ALTER TABLE settings 
-		ADD COLUMN default_option_value TEXT
-	`)
-	// Ignore error if column already exists
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
-		log.Printf("Warning: failed to add default_option_value column (may already exist): %v", err)
-	}
-
-	// Add charset column to settings table if it doesn't exist
-	_, err = db.Exec(`
-		ALTER TABLE settings 
-		ADD COLUMN charset TEXT
-	`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
-		log.Printf("Warning: failed to add charset column (may already exist): %v", err)
-	}
-
-	// Add author column to settings table if it doesn't exist
-	_, err = db.Exec(`
-		ALTER TABLE settings 
-		ADD COLUMN author TEXT
-	`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
-		log.Printf("Warning: failed to add author column (may already exist): %v", err)
-	}
-
-	// Add keywords column to settings table if it doesn't exist
-	_, err = db.Exec(`
-		ALTER TABLE settings 
-		ADD COLUMN keywords TEXT
-	`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
-		log.Printf("Warning: failed to add keywords column (may already exist): %v", err)
-	}
-
-	// Migrate settings: change category to kind
-	// Try to add kind column (ignore error if it already exists)
-	_, err = db.Exec(`
-		ALTER TABLE settings 
-		ADD COLUMN kind TEXT
-	`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
-		log.Printf("Warning: failed to add kind column: %v", err)
-	} else {
-		// Copy data from category to kind if kind is NULL and category exists
-		_, err = db.Exec(`
-			UPDATE settings 
-			SET kind = COALESCE(category, 'default')
-			WHERE kind IS NULL
-		`)
-		if err != nil {
-			log.Printf("Warning: failed to migrate category to kind: %v", err)
-		}
-	}
-
-	// Migrate cron_job_runs: change job_id to job_code
-	// Try to add job_code column (ignore error if it already exists)
-	_, err = db.Exec(`
-		ALTER TABLE cron_job_runs 
-		ADD COLUMN job_code TEXT
-	`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
-		log.Printf("Warning: failed to add job_code column: %v", err)
-	} else if err == nil {
-		// Column was added successfully, migrate data from job_id to job_code
-		_, err = db.Exec(`
-			UPDATE cron_job_runs 
-			SET job_code = (SELECT code FROM cron_jobs WHERE cron_jobs.id = cron_job_runs.job_id)
-			WHERE job_code IS NULL AND EXISTS (SELECT 1 FROM cron_jobs WHERE cron_jobs.id = cron_job_runs.job_id)
-		`)
-		if err != nil {
-			log.Printf("Warning: failed to migrate job_id to job_code: %v", err)
-		}
-		// Note: We keep job_id column for now to avoid data loss, but new code will use job_code
-	}
-
-	// Add last_status column to cron_jobs table if it doesn't exist
-	_, err = db.Exec(`
-		ALTER TABLE cron_jobs 
-		ADD COLUMN last_status TEXT
-	`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
-		log.Printf("Warning: failed to add last_status column to cron_jobs: %v", err)
-	}
-
-	// Add status column to redirects table if it doesn't exist
-	_, err = db.Exec(`ALTER TABLE redirects ADD COLUMN status INTEGER NOT NULL DEFAULT 301`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
-		log.Printf("Warning: failed to add status column to redirects: %v", err)
-	}
-
-	// Add enabled column to redirects table if it doesn't exist
-	_, err = db.Exec(`ALTER TABLE redirects ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1`)
-	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
-		log.Printf("Warning: failed to add enabled column to redirects: %v", err)
 	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
@@ -1883,3 +1810,269 @@ func UpdateCronJobRunStatus(db *DB, run *CronJobRun) error {
 }
 
 var ErrNotFound = errors.New("not found")
+
+type Category struct {
+	ID          int64
+	ParentID    int64 // 0表示顶级分类
+	Name        string
+	Slug        string
+	Description string
+	Sort        int64
+	CreatedAt   int64
+	UpdatedAt   int64
+	DeletedAt   *int64
+}
+
+func GetCategoryByID(db *DB, id int64) (*Category, error) {
+	row := db.QueryRow(`
+		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
+		FROM categories
+		WHERE id=? AND deleted_at IS NULL
+	`, id)
+
+	var c Category
+	var parentID sql.NullInt64
+	var deletedAt sql.NullInt64
+
+	err := row.Scan(
+		&c.ID,
+		&parentID,
+		&c.Name,
+		&c.Slug,
+		&c.Description,
+		&c.Sort,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+		&deletedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	if parentID.Valid {
+		c.ParentID = parentID.Int64
+	}
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Int64
+	}
+
+	return &c, nil
+}
+
+func CategoryExists(db *DB, id int64) (bool, error) {
+	var cnt int
+	err := db.QueryRow(`SELECT COUNT(1) FROM categories WHERE id=? AND deleted_at IS NULL`, id).Scan(&cnt)
+	return cnt > 0, err
+}
+
+func CreateCategory(db *DB, c *Category) error {
+	if c.ParentID != 0 {
+		ok, err := CategoryExists(db, c.ParentID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New("parent category not exists")
+		}
+	}
+
+	// 检查唯一性：同一父级下slug必须唯一
+	var existingID int64
+	var err error
+	if c.ParentID == 0 {
+		err = db.QueryRow(`
+			SELECT id FROM categories WHERE parent_id=0 AND slug=? AND deleted_at IS NULL
+		`, c.Slug).Scan(&existingID)
+	} else {
+		err = db.QueryRow(`
+			SELECT id FROM categories WHERE parent_id=? AND slug=? AND deleted_at IS NULL
+		`, c.ParentID, c.Slug).Scan(&existingID)
+	}
+	if err == nil {
+		return errors.New("slug already exists under this parent")
+	} else if err != sql.ErrNoRows {
+		return err
+	}
+
+	if c.CreatedAt == 0 {
+		c.CreatedAt = now()
+	}
+	if c.UpdatedAt == 0 {
+		c.UpdatedAt = c.CreatedAt
+	}
+
+	var parentID interface{}
+	if c.ParentID == 0 {
+		parentID = nil
+	} else {
+		parentID = c.ParentID
+	}
+
+	res, err := db.Exec(`
+		INSERT INTO categories (parent_id, name, slug, description, sort, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, parentID, c.Name, c.Slug, c.Description, c.Sort, c.CreatedAt, c.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	c.ID = id
+	return nil
+}
+
+func ListCategories(db *DB) ([]Category, error) {
+	query := `
+		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
+		FROM categories
+		WHERE deleted_at IS NULL
+		ORDER BY parent_id ASC, sort ASC, id ASC
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []Category
+	for rows.Next() {
+		var c Category
+		var parentID sql.NullInt64
+		var deletedAt sql.NullInt64
+
+		if err := rows.Scan(
+			&c.ID,
+			&parentID,
+			&c.Name,
+			&c.Slug,
+			&c.Description,
+			&c.Sort,
+			&c.CreatedAt,
+			&c.UpdatedAt,
+			&deletedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		if parentID.Valid {
+			c.ParentID = parentID.Int64
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Int64
+		}
+
+		list = append(list, c)
+	}
+
+	return list, nil
+}
+
+func UpdateCategory(db *DB, c *Category) error {
+	c.UpdatedAt = now()
+
+	// 如果slug或parent_id改变了，需要检查唯一性
+	var existingID int64
+	var err error
+	if c.ParentID == 0 {
+		err = db.QueryRow(`
+			SELECT id FROM categories WHERE parent_id=0 AND slug=? AND id!=? AND deleted_at IS NULL
+		`, c.Slug, c.ID).Scan(&existingID)
+	} else {
+		err = db.QueryRow(`
+			SELECT id FROM categories WHERE parent_id=? AND slug=? AND id!=? AND deleted_at IS NULL
+		`, c.ParentID, c.Slug, c.ID).Scan(&existingID)
+	}
+	if err == nil {
+		return errors.New("slug already exists under this parent")
+	} else if err != sql.ErrNoRows {
+		return err
+	}
+
+	var parentID interface{}
+	if c.ParentID == 0 {
+		parentID = nil
+	} else {
+		parentID = c.ParentID
+	}
+
+	_, err = db.Exec(`
+		UPDATE categories
+		SET parent_id=?, name=?, slug=?, description=?, sort=?, updated_at=?
+		WHERE id=? AND deleted_at IS NULL
+	`, parentID, c.Name, c.Slug, c.Description, c.Sort, c.UpdatedAt, c.ID)
+	return err
+}
+
+func UpdateCategoryParent(db *DB, id int64, newParentID int64) error {
+	// 验证新父级是否存在（如果提供了）
+	if newParentID != 0 {
+		exists, err := CategoryExists(db, newParentID)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return errors.New("parent category not exists")
+		}
+	}
+
+	// 检查是否会造成循环
+	all, err := ListCategories(db)
+	if err != nil {
+		return err
+	}
+
+	categoryMap := make(map[int64]*Category)
+	for i := range all {
+		categoryMap[all[i].ID] = &all[i]
+	}
+
+	if newParentID != 0 {
+		cur := newParentID
+		for cur != 0 {
+			if cur == id {
+				return errors.New("category cycle detected")
+			}
+			parent, ok := categoryMap[cur]
+			if !ok {
+				break
+			}
+			cur = parent.ParentID
+		}
+	}
+
+	var parentID interface{}
+	if newParentID == 0 {
+		parentID = nil
+	} else {
+		parentID = newParentID
+	}
+
+	_, err = db.Exec(`
+		UPDATE categories SET parent_id=?, updated_at=? WHERE id=?
+	`, parentID, now(), id)
+	return err
+}
+
+func SoftDeleteCategory(db *DB, id int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE categories SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
+		ts, id,
+	)
+	return err
+}
+
+func RestoreCategory(db *DB, id int64) error {
+	_, err := db.Exec(
+		`UPDATE categories SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
+		id,
+	)
+	return err
+}
