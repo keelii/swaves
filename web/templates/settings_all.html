@@ -40,9 +40,14 @@
       {{ else if eq .Type "textarea" }}
         <textarea name="setting_{{ .Code }}"{{ renderAttrs .AttrsParsed }}>{{ .Value }}</textarea>
       {{ else if eq .Type "radio" }}
+        {{ $currentValue := .Value }}
+        {{ $currentCode := .Code }}
+        {{ if not $currentValue }}
+          {{ $currentValue = $.DefaultOptionValue }}
+        {{ end }}
         {{ range .OptionsParsed }}
           <label style="display:inline-block; margin-right:10px;">
-            <input type="radio" name="setting_{{ $.Code }}" value="{{ .value }}" {{ if eq $.Value .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
+            <input type="radio" name="setting_{{ $currentCode }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
             {{ .label }}
           </label>
         {{ end }}

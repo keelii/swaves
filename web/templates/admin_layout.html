@@ -3,13 +3,53 @@
 <head>
   <meta charset="utf-8">
   <title>{{ .Title }} - {{ settings "site_name" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="/static/new.css" />
+  {{ if eq (settings "mode") "dark"}}
   <style>
-    input[type="radio"] {
-        margin: 0;
-        padding: 0;
-        vertical-align: middle;
-    }
+      :root {
+          --nc-tx-1: #ffffff;
+          --nc-tx-2: #eeeeee;
+          --nc-bg-1: #000000;
+          --nc-bg-2: #111111;
+          --nc-bg-3: #222222;
+          --nc-lk-1: #3291FF;
+          --nc-lk-2: #0070F3;
+          --nc-lk-tx: #FFFFFF;
+          --nc-ac-1: #7928CA;
+          --nc-ac-tx: #FFFFFF;
+      }
+  </style>
+  {{ else }}
+    <style>
+        :root {
+            --admin_main_width: {{ settings "admin_main_width"}}px;
+        }
+    </style>
+  {{ end }}
+  <style>
+      body {
+          max-width: var(--admin_main_width);
+      }
+      nav {
+          margin-bottom: 0;
+      }
+      table th {
+          white-space: nowrap;
+      }
+      textarea, select, input {
+          margin-bottom: 0;
+      }
+      button {
+          padding: 2px 6px;
+          /*background: none;*/
+      }
+    /*input[type="radio"] {*/
+    /*    margin: 0;*/
+    /*    padding: 0;*/
+    /*    vertical-align: middle;*/
+    /*}*/
   </style>
 </head>
 <body>
@@ -17,8 +57,6 @@
 <header>
   {{template "partials/navigation" .}}
 </header>
-
-<hr>
 
 <h1>{{ .Title }}</h1>
 

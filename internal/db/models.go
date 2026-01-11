@@ -523,6 +523,9 @@ func GetTagByID(db *DB, id int64) (*Tag, error) {
 		&t.ID, &t.Name, &t.Slug,
 		&t.CreatedAt, &t.UpdatedAt, &deletedAt,
 	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	if deletedAt.Valid {
@@ -1353,6 +1356,9 @@ func EnsureDefaultSettings(db *DB) error {
 		{Sort: 7, Kind: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
 		{Sort: 9, Kind: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
 		{Sort: 11, Kind: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+		{Sort: 11, Kind: "Appearance", Name: "Font size", Code: "font_size", Type: "range", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
+		{Sort: 11, Kind: "Appearance", Name: "Mode", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
+		{Sort: 11, Kind: "Appearance", Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
 		{Sort: 13, Kind: "Post", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式"},
 		{Sort: 15, Kind: "Post", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式"},
 		{Sort: 17, Kind: "Post", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式"},
@@ -1861,7 +1867,7 @@ func CreateCategory(db *DB, c *Category) error {
 	var err error
 	if c.ParentID == 0 {
 		err = db.QueryRow(`
-			SELECT id FROM categories WHERE parent_id=0 AND slug=?
+			SELECT id FROM categories WHERE (parent_id IS NULL OR parent_id=0) AND slug=?
 		`, c.Slug).Scan(&existingID)
 	} else {
 		err = db.QueryRow(`
@@ -1970,7 +1976,7 @@ func UpdateCategory(db *DB, c *Category) error {
 	var err error
 	if c.ParentID == 0 {
 		err = db.QueryRow(`
-			SELECT id FROM categories WHERE parent_id=0 AND slug=? AND id!=? AND deleted_at IS NULL
+			SELECT id FROM categories WHERE (parent_id IS NULL OR parent_id=0) AND slug=? AND id!=? AND deleted_at IS NULL
 		`, c.Slug, c.ID).Scan(&existingID)
 	} else {
 		err = db.QueryRow(`

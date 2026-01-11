@@ -4,6 +4,9 @@
 </p>
 
 <table>
+  <colgroup>
+    <col style="width: 3em">
+  </colgroup>
   <thead>
   <tr>
     <th>ID</th>
@@ -44,7 +47,6 @@
     <td>{{ formatTime .Post.UpdatedAt }}</td>
     <td>
       <a href="/admin/posts/{{ .Post.ID }}/edit">Edit</a>
-
       <form method="post" style="display:inline" action="/admin/posts/{{ .Post.ID }}/delete">
         <button type="submit">Delete</button>
       </form>

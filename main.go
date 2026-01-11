@@ -141,6 +141,7 @@ func main() {
 		DisableStartupMessage: true,
 		Views:                 engine,
 	})
+	app.Static("/static", "./web/static")
 	app.Get("/metrics", monitor.New(monitor.Config{Title: "swaves metrics"}))
 
 	//app.Use(limiter.New())

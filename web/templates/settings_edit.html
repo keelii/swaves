@@ -106,6 +106,8 @@
           <input type="text" name="value" value="{{ .Setting.Value }}"{{ renderAttrs .Setting.AttrsParsed }}>
           <small style="color: orange;">Warning: Options not parsed. Please check Options JSON format.</small>
         {{ end }}
+      {{ else if eq .Setting.Type "range" }}
+        <input type="range" name="value" value="{{ .Setting.Value }}"{{ renderAttrs .Setting.AttrsParsed }}>
       {{ else }}
         <input type="text" name="value" value="{{ .Setting.Value }}"{{ renderAttrs .Setting.AttrsParsed }}>
       {{ end }}
