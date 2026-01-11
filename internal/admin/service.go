@@ -681,14 +681,14 @@ func SortCategoryTree(nodes []*CategoryNode) {
 		}
 	}
 }
-func GetCategoryTree(dbx *db.DB) ([]*CategoryNode, error) {
+func GetCategoryTree(dbx *db.DB) ([]db.Category, []*CategoryNode, error) {
 	list, err := db.ListCategories(dbx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	roots := BuildCategoryTree(list)
 	SortCategoryTree(roots)
-	return roots, nil
+	return list, roots, nil
 }
 
 func HasCycle(all map[int64]*db.Category, nodeID int64, newParentID int64) bool {

@@ -223,19 +223,15 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	var selectedCategoryID int64
-	if len(categories) > 0 {
-		selectedCategoryID = categories[0].ID
-	}
 
 	return c.Render("posts_edit", fiber.Map{
-		"Title":              "Edit Post",
-		"Post":               postWithTags.Post,
-		"Tags":               allTags,
-		"SelectedTags":       postWithTags.Tags,
-		"SelectedTagIDs":     selectedTagIDs,
-		"Categories":         allCategories,
-		"SelectedCategoryID": selectedCategoryID,
+		"Title":          "Edit Post",
+		"Post":           postWithTags.Post,
+		"Tags":           allTags,
+		"SelectedTags":   postWithTags.Tags,
+		"SelectedTagIDs": selectedTagIDs,
+		"Categories":     allCategories,
+		"Category":       categories[0],
 	}, "admin_layout")
 }
 
@@ -649,14 +645,20 @@ func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
-	tree, err := GetCategoryTree(h.DB)
+	allCategories, tree, err := GetCategoryTree(h.DB)
 	if err != nil {
 		return err
 	}
 
+	//allCategories, err := GetAllCategoriesFlat(h.DB)
+	//if err != nil {
+	//	return err
+	//}
+
 	return c.Render("categories_tree", fiber.Map{
-		"Title": "Category Tree",
-		"Tree":  tree,
+		"Title":      "Category Tree",
+		"Tree":       tree,
+		"Categories": allCategories,
 	}, "admin_layout")
 }
 

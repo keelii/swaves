@@ -34,7 +34,7 @@
 
   <p>
     <label>Category</label><br>
-    {{template "partials/category_select" .}}
+    {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
   </p>
 
   <div>

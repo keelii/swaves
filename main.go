@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -39,6 +40,20 @@ func main() {
 	engine := html.New("./web/templates", ".html")
 	engine.AddFunc("settings", func(key string) string {
 		return store.GetSetting(key)
+	})
+	engine.AddFunc("dict", func(values ...interface{}) (map[string]interface{}, error) {
+		if len(values)%2 != 0 {
+			return nil, errors.New("invalid dict call: must have even number of arguments")
+		}
+		dict := make(map[string]interface{}, len(values)/2)
+		for i := 0; i < len(values); i += 2 {
+			key, ok := values[i].(string)
+			if !ok {
+				return nil, errors.New("dict keys must be strings")
+			}
+			dict[key] = values[i+1]
+		}
+		return dict, nil
 	})
 	engine.AddFunc("add", func(a, b int) int {
 		return a + b

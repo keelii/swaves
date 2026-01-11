@@ -4,33 +4,45 @@
   <a href="/admin/categories/new">New Category</a>
 </p>
 
+
+
+
+{{ define "category_item" }}
+  <li>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span>{{ .Category.Sort }}</span>
+      <strong>{{ .Category.Name }}</strong>
+      <span>({{ .Category.Slug }})</span>
+      {{ if .Category.Description }}
+        <span>- {{ .Category.Description }}</span>
+      {{ end }}
+      <span>
+        {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID }}
+      </span>
+      <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
+      <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
+      <form method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
+        <button type="submit">Delete</button>
+      </form>
+    </div>
+
+      {{ if .Children }}
+        <ul>
+            {{ $root := .Root }}
+            {{ range .Children }}
+                {{ template "category_item" dict "Category" .Category "Children" .Children "Root" $root }}
+            {{ end }}
+        </ul>
+      {{ end }}
+  </li>
+{{ end }}
+
+
 {{ if .Tree }}
   <ul>
+    {{ $rootData := dict "Categories" .Categories }}
     {{ range .Tree }}
-      {{ block "category_item" . }}
-        <li>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <strong>{{ .Category.Name }}</strong>
-            <span>({{ .Category.Slug }})</span>
-            {{ if .Category.Description }}
-              <span>- {{ .Category.Description }}</span>
-            {{ end }}
-            <span>Sort: {{ .Category.Sort }}</span>
-            <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
-            <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
-            <form method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
-              <button type="submit">Delete</button>
-            </form>
-          </div>
-          {{ if .Children }}
-            <ul>
-              {{ range .Children }}
-                {{ template "category_item" . }}
-              {{ end }}
-            </ul>
-          {{ end }}
-        </li>
-      {{ end }}
+        {{ template "category_item" dict "Category" .Category "Children" .Children "Root" $rootData }}
     {{ end }}
   </ul>
 {{ else }}
