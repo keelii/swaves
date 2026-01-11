@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS settings
     KEY
     AUTOINCREMENT,
 
-    category
+    kind
     TEXT
     NOT
     NULL
@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS settings
     INTEGER
 );
 
-CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category);
+CREATE INDEX IF NOT EXISTS idx_settings_kind ON settings(kind);
 CREATE INDEX IF NOT EXISTS idx_settings_code ON settings(code);
 ,
 

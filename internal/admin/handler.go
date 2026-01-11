@@ -584,14 +584,14 @@ func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 
 func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 	// 获取分类参数，如果没有则显示所有
-	category := c.Query("category", "")
+	kind := c.Query("kind", "")
 
 	var settings []db.Setting
 	var err error
-	if category == "" {
+	if kind == "" {
 		settings, err = ListAllSettings(h.DB)
 	} else {
-		settings, err = ListSettingsByCategory(h.DB, category)
+		settings, err = ListSettingsByKind(h.DB, kind)
 	}
 	if err != nil {
 		return err
@@ -642,7 +642,7 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 	return c.Render("settings_all", fiber.Map{
 		"Title":    "Settings - Edit All",
 		"Settings": settingsViews,
-		"Category": category,
+		"Kind":     kind,
 	}, "admin_layout")
 }
 
@@ -741,7 +741,7 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 	}
 
 	// 更新字段
-	setting.Category = c.FormValue("category")
+	setting.Kind = c.FormValue("kind")
 	setting.Name = c.FormValue("name")
 	setting.Code = c.FormValue("code")
 	setting.Type = c.FormValue("type")
@@ -826,7 +826,7 @@ func (h *Handler) GetSettingNewHandler(c *fiber.Ctx) error {
 
 func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 	s := &db.Setting{
-		Category:           c.FormValue("category"),
+		Kind:               c.FormValue("kind"),
 		Name:               c.FormValue("name"),
 		Code:               c.FormValue("code"),
 		Type:               c.FormValue("type"),
@@ -843,8 +843,8 @@ func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	if s.Category == "" {
-		s.Category = "default"
+	if s.Kind == "" {
+		s.Kind = "default"
 	}
 
 	if err := CreateSettingService(h.DB, s); err != nil {

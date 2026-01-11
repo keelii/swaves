@@ -10,8 +10,8 @@
 
   <p>
     <label>
-      Category<br>
-      <input type="text" name="category" value="{{ .Setting.Category }}" required>
+      Kind<br>
+      <input type="text" name="kind" value="{{ .Setting.Kind }}" required>
       <small>(e.g., system, url, integration, default)</small>
     </label>
   </p>
@@ -125,7 +125,7 @@
     <label>
       Sort<br>
       <input type="number" name="sort" value="{{ .Setting.Sort }}">
-      <small>(Sort order within category)</small>
+      <small>(Sort order within kind)</small>
     </label>
   </p>
 

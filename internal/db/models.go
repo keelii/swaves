@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS cron_job_runs (
 CREATE TABLE IF NOT EXISTS settings (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-	category TEXT NOT NULL DEFAULT 'default',
+	kind TEXT NOT NULL DEFAULT 'default',
 	name TEXT NOT NULL,
 	code TEXT NOT NULL UNIQUE,
 	type TEXT NOT NULL,
@@ -216,6 +216,26 @@ func Migrate(db *DB) error {
 	`)
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
 		log.Printf("Warning: failed to add keywords column (may already exist): %v", err)
+	}
+
+	// Migrate settings: change category to kind
+	// Try to add kind column (ignore error if it already exists)
+	_, err = db.Exec(`
+		ALTER TABLE settings 
+		ADD COLUMN kind TEXT
+	`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") && !strings.Contains(err.Error(), "already exists") {
+		log.Printf("Warning: failed to add kind column: %v", err)
+	} else {
+		// Copy data from category to kind if kind is NULL and category exists
+		_, err = db.Exec(`
+			UPDATE settings 
+			SET kind = COALESCE(category, 'default')
+			WHERE kind IS NULL
+		`)
+		if err != nil {
+			log.Printf("Warning: failed to migrate category to kind: %v", err)
+		}
 	}
 
 	// Migrate cron_job_runs: change job_id to job_code
@@ -959,7 +979,7 @@ func CreateRedirect(db *DB, r *Redirect) error {
 
 type Setting struct {
 	ID                 int64
-	Category           string
+	Kind               string
 	Name               string
 	Code               string
 	Type               string
@@ -984,8 +1004,8 @@ func CreateSetting(db *DB, s *Setting) error {
 	if s.Type == "" {
 		return errors.New("type is required")
 	}
-	if s.Category == "" {
-		s.Category = "default"
+	if s.Kind == "" {
+		s.Kind = "default"
 	}
 
 	if s.CreatedAt == 0 {
@@ -1009,9 +1029,9 @@ func CreateSetting(db *DB, s *Setting) error {
 
 	res, err := db.Exec(
 		`INSERT INTO settings
-		 (category, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, created_at, updated_at)
+		 (kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.Category,
+		s.Kind,
 		s.Name,
 		s.Code,
 		s.Type,
@@ -1037,7 +1057,7 @@ func CreateSetting(db *DB, s *Setting) error {
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
 	row := db.QueryRow(`
-		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
+		SELECT id, kind, name, code, type, options, attrs, value, default_option_value, description, sort,
 		       charset, author, keywords, created_at, updated_at, deleted_at
 		FROM settings
 		WHERE code=? AND deleted_at IS NULL
@@ -1048,7 +1068,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 
 	err := row.Scan(
 		&s.ID,
-		&s.Category,
+		&s.Kind,
 		&s.Name,
 		&s.Code,
 		&s.Type,
@@ -1080,7 +1100,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 
 func GetSettingByID(db *DB, id int64) (*Setting, error) {
 	row := db.QueryRow(`
-		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
+		SELECT id, kind, name, code, type, options, attrs, value, default_option_value, description, sort,
 		       charset, author, keywords, created_at, updated_at, deleted_at
 		FROM settings
 		WHERE id=? AND deleted_at IS NULL
@@ -1091,7 +1111,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 
 	err := row.Scan(
 		&s.ID,
-		&s.Category,
+		&s.Kind,
 		&s.Name,
 		&s.Code,
 		&s.Type,
@@ -1121,21 +1141,21 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 	return &s, nil
 }
 
-func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
+func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 	query := `
-		SELECT id, category, name, code, type, options, attrs, value, default_option_value, description, sort,
+		SELECT id, kind, name, code, type, options, attrs, value, default_option_value, description, sort,
 		       charset, author, keywords, created_at, updated_at, deleted_at
 		FROM settings
 		WHERE deleted_at IS NULL
 	`
 	args := []interface{}{}
 
-	if category != "" {
-		query += ` AND category=?`
-		args = append(args, category)
+	if kind != "" {
+		query += ` AND kind=?`
+		args = append(args, kind)
 	}
 
-	//query += ` ORDER BY category, sort, id`
+	//query += ` ORDER BY kind, sort, id`
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
@@ -1150,7 +1170,7 @@ func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
 
 		if err := rows.Scan(
 			&s.ID,
-			&s.Category,
+			&s.Kind,
 			&s.Name,
 			&s.Code,
 			&s.Type,
@@ -1180,7 +1200,7 @@ func ListSettingsByCategory(db *DB, category string) ([]Setting, error) {
 }
 
 func ListAllSettings(db *DB) ([]Setting, error) {
-	return ListSettingsByCategory(db, "")
+	return ListSettingsByKind(db, "")
 }
 
 func UpdateSetting(db *DB, s *Setting) error {
@@ -1200,9 +1220,9 @@ func UpdateSetting(db *DB, s *Setting) error {
 
 	_, err := db.Exec(
 		`UPDATE settings
-		 SET category=?, name=?, type=?, options=?, attrs=?, value=?, default_option_value=?, description=?, sort=?, charset=?, author=?, keywords=?, updated_at=?
+		 SET kind=?, name=?, type=?, options=?, attrs=?, value=?, default_option_value=?, description=?, sort=?, charset=?, author=?, keywords=?, updated_at=?
 		 WHERE id=? AND deleted_at IS NULL`,
-		s.Category,
+		s.Kind,
 		s.Name,
 		s.Type,
 		s.Options,
@@ -1391,18 +1411,18 @@ const InternalTimezone = `[
 // EnsureDefaultSettings 确保存在默认配置项
 func EnsureDefaultSettings(db *DB) error {
 	defaultSettings := []Setting{
-		{Sort: 2, Category: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
-		{Sort: 4, Category: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
-		{Sort: 5, Category: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "", Description: "关键字"},
-		{Sort: 6, Category: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
-		{Sort: 7, Category: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
-		{Sort: 9, Category: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
-		{Sort: 11, Category: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
-		{Sort: 13, Category: "Post", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式"},
-		{Sort: 15, Category: "Post", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式"},
-		{Sort: 17, Category: "Post", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式"},
-		{Sort: 19, Category: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
-		{Sort: 21, Category: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
+		{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
+		{Sort: 4, Kind: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
+		{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "", Description: "关键字"},
+		{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
+		{Sort: 7, Kind: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
+		{Sort: 9, Kind: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
+		{Sort: 11, Kind: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+		{Sort: 13, Kind: "Post", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式"},
+		{Sort: 15, Kind: "Post", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式"},
+		{Sort: 17, Kind: "Post", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式"},
+		{Sort: 19, Kind: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
+		{Sort: 21, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 	}
 
 	for _, s := range defaultSettings {

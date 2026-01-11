@@ -4,14 +4,14 @@
 
 <form method="post" action="/admin/settings/all">
 
-  {{ $lastCategory := "" }}
+  {{ $lastKind := "" }}
   {{ range .Settings }}
-    {{ if ne $lastCategory .Category }}
-      {{ if ne $lastCategory "" }}
+    {{ if ne $lastKind .Kind }}
+      {{ if ne $lastKind "" }}
         <hr>
       {{ end }}
-      <h2>{{ .Category }}</h2>
-      {{ $lastCategory = .Category }}
+      <h2>{{ .Kind }}</h2>
+      {{ $lastKind = .Kind }}
     {{ end }}
 
   <p>

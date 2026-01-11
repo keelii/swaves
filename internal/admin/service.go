@@ -616,8 +616,8 @@ func DeleteEncryptedPostService(dbx *db.DB, id int64) error {
 }
 
 // Settings
-func ListSettingsByCategory(dbx *db.DB, category string) ([]db.Setting, error) {
-	return db.ListSettingsByCategory(dbx, category)
+func ListSettingsByKind(dbx *db.DB, kind string) ([]db.Setting, error) {
+	return db.ListSettingsByKind(dbx, kind)
 }
 
 func ListAllSettings(dbx *db.DB) ([]db.Setting, error) {
