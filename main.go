@@ -16,6 +16,7 @@ import (
 	"swaves/internal/db"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/template/html/v3"
 	"github.com/google/uuid"
@@ -140,7 +141,9 @@ func main() {
 		DisableStartupMessage: true,
 		Views:                 engine,
 	})
+	app.Get("/metrics", monitor.New(monitor.Config{Title: "swaves metrics"}))
 
+	//app.Use(limiter.New())
 	app.Use(middleware.GlobalSettings("settings"))
 	app.Use(requestid.New())
 	app.Use(middleware.PaginationMiddleware())
