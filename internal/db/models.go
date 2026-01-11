@@ -1861,7 +1861,7 @@ func CreateCategory(db *DB, c *Category) error {
 	var err error
 	if c.ParentID == 0 {
 		err = db.QueryRow(`
-			SELECT id FROM categories WHERE parent_id IS NULL AND slug=?
+			SELECT id FROM categories WHERE parent_id=0 AND slug=?
 		`, c.Slug).Scan(&existingID)
 	} else {
 		err = db.QueryRow(`

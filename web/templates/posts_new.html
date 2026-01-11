@@ -63,14 +63,7 @@
   <p>
     <label>
       Category<br>
-      <select name="categories" id="categories-select">
-        <option value="">-- None --</option>
-        {{ if .Categories }}
-          {{ range .Categories }}
-          <option value="{{ .ID }}">{{ .Name }}</option>
-          {{ end }}
-        {{ end }}
-      </select>
+      {{template "partials/category_select" .}}
     </label>
   </p>
 
