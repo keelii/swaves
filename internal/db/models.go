@@ -1924,6 +1924,17 @@ func CreateCategory(db *DB, c *Category) error {
 		return err
 	}
 	c.ID = id
+
+	// 如果 sort 为 0（默认值），则设置为 id
+	if c.Sort == 0 {
+		c.Sort = id
+		_, err = db.Exec(`
+			UPDATE categories SET sort=? WHERE id=?
+		`, c.Sort, id)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1932,7 +1943,7 @@ func ListCategories(db *DB) ([]Category, error) {
 		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
 		FROM categories
 		WHERE deleted_at IS NULL
-		ORDER BY parent_id ASC, sort ASC, id ASC
+		ORDER BY created_at DESC
 	`
 
 	rows, err := db.Query(query)
@@ -2075,4 +2086,97 @@ func RestoreCategory(db *DB, id int64) error {
 		id,
 	)
 	return err
+}
+
+func GetPostCategories(db *DB, postID int64) ([]Category, error) {
+	rows, err := db.Query(`
+		SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.sort, c.created_at, c.updated_at, c.deleted_at
+		FROM categories c
+		INNER JOIN post_categories pc ON c.id = pc.category_id
+		WHERE pc.post_id = ? AND pc.deleted_at IS NULL AND c.deleted_at IS NULL
+		ORDER BY c.name
+	`, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var categories []Category
+	for rows.Next() {
+		var c Category
+		var parentID sql.NullInt64
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
+			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if parentID.Valid {
+			c.ParentID = parentID.Int64
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Int64
+		}
+		categories = append(categories, c)
+	}
+	return categories, nil
+}
+
+func AttachCategoryToPost(db *DB, postID, categoryID int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`INSERT OR IGNORE INTO post_categories
+		 (post_id, category_id, created_at, updated_at)
+		 VALUES (?, ?, ?, ?)`,
+		postID, categoryID, ts, ts,
+	)
+	return err
+}
+
+func DetachCategoryFromPost(db *DB, postID, categoryID int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE post_categories SET deleted_at=? WHERE post_id=? AND category_id=? AND deleted_at IS NULL`,
+		ts, postID, categoryID,
+	)
+	return err
+}
+
+func SetPostCategories(db *DB, postID int64, categoryIDs []int64) error {
+	// 先获取当前关联的分类
+	currentCategories, err := GetPostCategories(db, postID)
+	if err != nil {
+		return err
+	}
+
+	currentCategoryIDs := make(map[int64]bool)
+	for _, category := range currentCategories {
+		currentCategoryIDs[category.ID] = true
+	}
+
+	newCategoryIDs := make(map[int64]bool)
+	for _, categoryID := range categoryIDs {
+		newCategoryIDs[categoryID] = true
+	}
+
+	// 删除不再需要的分类关联
+	for _, category := range currentCategories {
+		if !newCategoryIDs[category.ID] {
+			if err := DetachCategoryFromPost(db, postID, category.ID); err != nil {
+				return err
+			}
+		}
+	}
+
+	// 添加新的分类关联
+	for _, categoryID := range categoryIDs {
+		if !currentCategoryIDs[categoryID] {
+			if err := AttachCategoryToPost(db, postID, categoryID); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

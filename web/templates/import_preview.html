@@ -18,6 +18,7 @@
        </th>
        <th>Created At (from {{ .CreatedSourceDesc }})</th>
        <th>Tags</th>
+       <th>Category</th>
        <th>Content</th>
     </tr>
     </thead>
@@ -46,6 +47,9 @@
       </td>
       <td>
         <input type="text" name="items[{{ .Index }}][tags]" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
+      </td>
+      <td>
+        <input type="text" name="items[{{ .Index }}][category]" value="{{ .Category }}" placeholder="category name" style="width: 100%;">
       </td>
       <td>
         <textarea name="items[{{ .Index }}][content]" rows="5" style="width: 100%;">{{ .Content }}</textarea>

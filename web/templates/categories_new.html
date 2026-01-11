@@ -8,9 +8,9 @@
     <label>
       Parent Category<br>
       <select name="parent_id">
-        <option value="0">-- None (Top Level) --</option>
+        <option value="0" {{ if eq .ParentID 0 }}selected{{ end }}>-- None (Top Level) --</option>
         {{ range .Categories }}
-          <option value="{{ .ID }}">{{ .Name }}</option>
+          <option value="{{ .ID }}" {{ if eq $.ParentID .ID }}selected{{ end }}>{{ .Name }}</option>
         {{ end }}
       </select>
       <small>(Select parent category, or "None" for top level)</small>

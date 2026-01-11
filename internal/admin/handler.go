@@ -115,9 +115,15 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	categories, err := GetAllCategoriesFlat(h.DB)
+	if err != nil {
+		return err
+	}
+
 	return c.Render("posts_new", fiber.Map{
-		"Title": "New Post",
-		"Tags":  tags,
+		"Title":      "New Post",
+		"Tags":       tags,
+		"Categories": categories,
 	}, "admin_layout")
 }
 
@@ -153,12 +159,28 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	// 解析分类 ID（逗号分割）
+	var categoryIDs []int64
+	categoriesStr := c.FormValue("categories")
+	if categoriesStr != "" {
+		categoryIDStrs := strings.Split(categoriesStr, ",")
+		for _, categoryIDStr := range categoryIDStrs {
+			categoryIDStr = strings.TrimSpace(categoryIDStr)
+			if categoryIDStr != "" {
+				if categoryID, err := strconv.ParseInt(categoryIDStr, 10, 64); err == nil {
+					categoryIDs = append(categoryIDs, categoryID)
+				}
+			}
+		}
+	}
+
 	in := CreatePostInput{
-		Title:   c.FormValue("title"),
-		Slug:    c.FormValue("slug"),
-		Content: c.FormValue("content"),
-		Status:  c.FormValue("status"),
-		TagIDs:  tagIDs,
+		Title:       c.FormValue("title"),
+		Slug:        c.FormValue("slug"),
+		Content:     c.FormValue("content"),
+		Status:      c.FormValue("status"),
+		TagIDs:      tagIDs,
+		CategoryIDs: categoryIDs,
 	}
 
 	if err := CreatePostService(h.DB, in); err != nil {
@@ -190,12 +212,30 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 		selectedTagIDs[tag.ID] = true
 	}
 
+	// 获取所有分类
+	allCategories, err := GetAllCategoriesFlat(h.DB)
+	if err != nil {
+		return err
+	}
+
+	// 获取当前 post 的分类（单选，只取第一个）
+	categories, err := db.GetPostCategories(h.DB, id)
+	if err != nil {
+		return err
+	}
+	var selectedCategoryID int64
+	if len(categories) > 0 {
+		selectedCategoryID = categories[0].ID
+	}
+
 	return c.Render("posts_edit", fiber.Map{
-		"Title":          "Edit Post",
-		"Post":           postWithTags.Post,
-		"Tags":           allTags,
-		"SelectedTags":   postWithTags.Tags,
-		"SelectedTagIDs": selectedTagIDs,
+		"Title":              "Edit Post",
+		"Post":               postWithTags.Post,
+		"Tags":               allTags,
+		"SelectedTags":       postWithTags.Tags,
+		"SelectedTagIDs":     selectedTagIDs,
+		"Categories":         allCategories,
+		"SelectedCategoryID": selectedCategoryID,
 	}, "admin_layout")
 }
 
@@ -221,11 +261,21 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	// 解析分类 ID（单选）
+	var categoryIDs []int64
+	categoriesStr := c.FormValue("categories")
+	if categoriesStr != "" {
+		if categoryID, err := strconv.ParseInt(categoriesStr, 10, 64); err == nil {
+			categoryIDs = append(categoryIDs, categoryID)
+		}
+	}
+
 	in := UpdatePostInput{
-		Title:   c.FormValue("title"),
-		Content: c.FormValue("content"),
-		Status:  c.FormValue("status"),
-		TagIDs:  tagIDs,
+		Title:       c.FormValue("title"),
+		Content:     c.FormValue("content"),
+		Status:      c.FormValue("status"),
+		TagIDs:      tagIDs,
+		CategoryIDs: categoryIDs,
 	}
 
 	if err := UpdatePostService(h.DB, id, in); err != nil {
@@ -570,13 +620,42 @@ type SettingView struct {
 
 // Categories
 func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
-	tree, err := ListCategoriesService(h.DB)
+	categories, err := ListCategoriesService(h.DB)
 	if err != nil {
 		return err
 	}
 
+	// 创建分类ID到名称的映射，方便显示父分类名称
+	categoryMap := make(map[int64]string)
+	for _, cat := range categories {
+		categoryMap[cat.ID] = cat.Name
+	}
+
+	// 创建父分类名称映射
+	parentMap := make(map[int64]string)
+	for _, cat := range categories {
+		if cat.ParentID > 0 {
+			if parentName, ok := categoryMap[cat.ParentID]; ok {
+				parentMap[cat.ID] = parentName
+			}
+		}
+	}
+
 	return c.Render("categories_index", fiber.Map{
-		"Title": "Categories",
+		"Title":      "Categories",
+		"Categories": categories,
+		"ParentMap":  parentMap,
+	}, "admin_layout")
+}
+
+func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
+	tree, err := GetCategoryTree(h.DB)
+	if err != nil {
+		return err
+	}
+
+	return c.Render("categories_tree", fiber.Map{
+		"Title": "Category Tree",
 		"Tree":  tree,
 	}, "admin_layout")
 }
@@ -588,9 +667,21 @@ func (h *Handler) GetCategoryNewHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	// 从查询参数获取预选的父分类 ID
+	parentIDStr := c.Query("parent_id", "")
+	var parentID int64
+	if parentIDStr != "" {
+		var err error
+		parentID, err = strconv.ParseInt(parentIDStr, 10, 64)
+		if err != nil {
+			parentID = 0
+		}
+	}
+
 	return c.Render("categories_new", fiber.Map{
 		"Title":      "New Category",
 		"Categories": all,
+		"ParentID":   parentID,
 	}, "admin_layout")
 }
 
@@ -1432,8 +1523,28 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		statusField = "draft"
 	}
 
+	// 获取 category 来源选择
+	categorySourceStr := c.FormValue("category_source")
+	categorySource := CategoryNone // 默认留空
+	switch categorySourceStr {
+	case "frontmatter":
+		categorySource = CategoryFromFrontmatter
+	case "autocreate":
+		categorySource = CategoryAutoCreate
+	case "none":
+		categorySource = CategoryNone
+	default:
+		categorySource = CategoryNone
+	}
+
+	// 如果是从 frontmatter，获取字段名
+	categoryField := c.FormValue("category_field")
+	if categoryField == "" {
+		categoryField = "category"
+	}
+
 	// 解析文件但不入库，返回预览数据
-	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField)
+	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField, categorySource, categoryField)
 	if err != nil && len(items) == 0 {
 		// 如果全部解析失败，返回错误
 		return c.Render("import", fiber.Map{
@@ -1542,6 +1653,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 			Status:    c.FormValue(fmt.Sprintf("items[%d][status]", i)),
 			CreatedAt: c.FormValue(fmt.Sprintf("items[%d][created_at]", i)),
 			Tags:      c.FormValue(fmt.Sprintf("items[%d][tags]", i)),
+			Category:  c.FormValue(fmt.Sprintf("items[%d][category]", i)),
 			Filename:  c.FormValue(fmt.Sprintf("items[%d][filename]", i)),
 		}
 

@@ -1,37 +1,54 @@
+
 <p>
   <a href="/admin/categories/new">New Category</a>
+  |
+  <a href="/admin/categories/tree">Category Tree</a>
 </p>
 
-{{ define "category_item" }}
-  <li style="margin: 10px 0;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <strong>{{ .Category.Name }}</strong>
-      <span style="color: #666;">({{ .Category.Slug }})</span>
-      {{ if .Category.Description }}
-        <span style="color: #999;">- {{ .Category.Description }}</span>
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Slug</th>
+    <th>Parent</th>
+    <th>Description</th>
+    <th>Sort</th>
+    <th>Created At</th>
+    <th>Updated At</th>
+    <th>Actions</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {{ range .Categories }}
+  <tr>
+    <td>{{ .ID }}</td>
+    <td>{{ .Name }}</td>
+    <td>{{ .Slug }}</td>
+    <td>
+      {{ if eq .ParentID 0 }}
+        <span>-</span>
+      {{ else }}
+        {{ if index $.ParentMap .ID }}{{ index $.ParentMap .ID }}{{ else }}{{ .ParentID }}{{ end }}
       {{ end }}
-      <span style="color: #999;">Sort: {{ .Category.Sort }}</span>
-      <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
-      <form method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
+    </td>
+    <td>{{ .Description }}</td>
+    <td>{{ .Sort }}</td>
+    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ formatTime .UpdatedAt }}</td>
+    <td>
+      <a href="/admin/categories/{{ .ID }}/edit">Edit</a>
+
+      <form method="post" style="display:inline" action="/admin/categories/{{ .ID }}/delete">
         <button type="submit">Delete</button>
       </form>
-    </div>
-    {{ if .Children }}
-      <ul style="list-style-type: none; padding-left: 30px; margin: 5px 0;">
-        {{ range .Children }}
-          {{ template "category_item" . }}
-        {{ end }}
-      </ul>
-    {{ end }}
-  </li>
-{{ end }}
-
-{{ if .Tree }}
-  <ul style="list-style-type: none; padding-left: 0;">
-    {{ range .Tree }}
-      {{ template "category_item" . }}
-    {{ end }}
-  </ul>
-{{ else }}
-  <p>No categories</p>
-{{ end }}
+    </td>
+  </tr>
+  {{ else }}
+  <tr>
+    <td colspan="9">No categories</td>
+  </tr>
+  {{ end }}
+  </tbody>
+</table>

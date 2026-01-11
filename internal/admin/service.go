@@ -3,6 +3,7 @@ package admin
 import (
 	"database/sql"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"swaves/internal/md"
@@ -29,23 +30,26 @@ func (a *Service) CheckPassword(raw string) error {
 }
 
 type CreatePostInput struct {
-	Title   string
-	Slug    string
-	Content string
-	Status  string
-	TagIDs  []int64
+	Title       string
+	Slug        string
+	Content     string
+	Status      string
+	TagIDs      []int64
+	CategoryIDs []int64
 }
 
 type UpdatePostInput struct {
-	Title   string
-	Content string
-	Status  string
-	TagIDs  []int64
+	Title       string
+	Content     string
+	Status      string
+	TagIDs      []int64
+	CategoryIDs []int64
 }
 
 type PostWithTags struct {
-	Post *db.Post
-	Tags []db.Tag
+	Post       *db.Post
+	Tags       []db.Tag
+	Categories []db.Category
 }
 
 func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]PostWithTags, error) {
@@ -91,9 +95,16 @@ func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]PostWithTags, error)
 			return nil, err
 		}
 
+		// 获取该 post 的 categories
+		categories, err := db.GetPostCategories(dbx, p.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		res = append(res, PostWithTags{
-			Post: &p,
-			Tags: tags,
+			Post:       &p,
+			Tags:       tags,
+			Categories: categories,
 		})
 	}
 
@@ -162,6 +173,13 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		}
 	}
 
+	// 关联分类
+	if len(in.CategoryIDs) > 0 {
+		if err := db.SetPostCategories(dbx, p.ID, in.CategoryIDs); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -198,6 +216,11 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 
 	// 更新标签关联
 	if err := db.SetPostTags(dbx, id, in.TagIDs); err != nil {
+		return err
+	}
+
+	// 更新分类关联
+	if err := db.SetPostCategories(dbx, id, in.CategoryIDs); err != nil {
 		return err
 	}
 
@@ -647,12 +670,25 @@ func BuildCategoryTree(list []db.Category) []*CategoryNode {
 	return roots
 }
 
+func SortCategoryTree(nodes []*CategoryNode) {
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Category.Sort < nodes[j].Category.Sort
+	})
+
+	for _, n := range nodes {
+		if len(n.Children) > 0 {
+			SortCategoryTree(n.Children)
+		}
+	}
+}
 func GetCategoryTree(dbx *db.DB) ([]*CategoryNode, error) {
 	list, err := db.ListCategories(dbx)
 	if err != nil {
 		return nil, err
 	}
-	return BuildCategoryTree(list), nil
+	roots := BuildCategoryTree(list)
+	SortCategoryTree(roots)
+	return roots, nil
 }
 
 func HasCycle(all map[int64]*db.Category, nodeID int64, newParentID int64) bool {
@@ -705,8 +741,8 @@ type UpdateCategoryInput struct {
 	Sort        int64
 }
 
-func ListCategoriesService(dbx *db.DB) ([]*CategoryNode, error) {
-	return GetCategoryTree(dbx)
+func ListCategoriesService(dbx *db.DB) ([]db.Category, error) {
+	return db.ListCategories(dbx)
 }
 
 func GetAllCategoriesFlat(dbx *db.DB) ([]db.Category, error) {
@@ -726,6 +762,63 @@ func CreateCategoryService(dbx *db.DB, in CreateCategoryInput) error {
 		Sort:        in.Sort,
 	}
 	return db.CreateCategory(dbx, c)
+}
+
+func CreateCategoryByName(dbx *db.DB, name string) (*db.Category, error) {
+	if name == "" {
+		return nil, errors.New("name required")
+	}
+
+	// 生成 slug
+	slug := slg.Make(name)
+
+	// 检查分类是否已存在（根据名称和 slug，由于是单选，只需要检查顶级分类中是否存在相同的 slug）
+	rows, err := dbx.Query(`
+		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
+		FROM categories
+		WHERE (name = ? OR slug = ?) AND deleted_at IS NULL
+		LIMIT 1
+	`, name, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		var c db.Category
+		var parentID sql.NullInt64
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&c.ID,
+			&parentID,
+			&c.Name,
+			&c.Slug,
+			&c.Description,
+			&c.Sort,
+			&c.CreatedAt,
+			&c.UpdatedAt,
+			&deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if parentID.Valid {
+			c.ParentID = parentID.Int64
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Int64
+		}
+		return &c, nil
+	}
+
+	// 如果不存在，创建新分类（作为顶级分类）
+	c := &db.Category{
+		Name: name,
+		Slug: slug,
+	}
+	if err := db.CreateCategory(dbx, c); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func GetCategoryForEdit(dbx *db.DB, id int64) (*db.Category, error) {
@@ -966,22 +1059,32 @@ const (
 	StatusAllPublished                        // 全部 published
 )
 
+type CategorySource int
+
+const (
+	CategoryFromFrontmatter CategorySource = iota // 从 frontmatter 指定字段（默认 category）
+	CategoryAutoCreate                            // 自动创建默认分类
+	CategoryNone                                  // 留空（不设置分类）
+)
+
 type ImportFile struct {
 	Filename string // 文件名（不含扩展名）
 	Content  string // markdown 内容
 }
 
 type ImportMarkdownInput struct {
-	Files         []ImportFile
-	SlugSource    SlugSource    // slug 来源
-	SlugField     string        // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
-	TitleSource   TitleSource   // title 来源
-	TitleField    string        // 如果 TitleSource 是 TitleFromFrontmatter，指定字段名（默认 "title"）
-	TitleLevel    int           // 如果 TitleSource 是 TitleFromMarkdown，指定标题级别（1/2/3）
-	CreatedSource CreatedSource // created_at 来源
-	CreatedField  string        // 如果 CreatedSource 是 CreatedFromFrontmatter，指定字段名（默认 "date"）
-	StatusSource  StatusSource  // status 来源
-	StatusField   string        // 如果 StatusSource 是 StatusFromFrontmatter，指定字段名（默认 "status"）
+	Files          []ImportFile
+	SlugSource     SlugSource     // slug 来源
+	SlugField      string         // 如果 SlugSource 是 SlugFromFrontmatter，指定字段名（默认 "slug"）
+	TitleSource    TitleSource    // title 来源
+	TitleField     string         // 如果 TitleSource 是 TitleFromFrontmatter，指定字段名（默认 "title"）
+	TitleLevel     int            // 如果 TitleSource 是 TitleFromMarkdown，指定标题级别（1/2/3）
+	CreatedSource  CreatedSource  // created_at 来源
+	CreatedField   string         // 如果 CreatedSource 是 CreatedFromFrontmatter，指定字段名（默认 "date"）
+	StatusSource   StatusSource   // status 来源
+	StatusField    string         // 如果 StatusSource 是 StatusFromFrontmatter，指定字段名（默认 "status"）
+	CategorySource CategorySource // category 来源
+	CategoryField  string         // 如果 CategorySource 是 CategoryFromFrontmatter，指定字段名（默认 "category"）
 }
 
 // PreviewPostItem 预览页面的 post 数据
@@ -996,6 +1099,7 @@ type PreviewPostItem struct {
 	CreatedAtUnix int64    // 创建时间（Unix 时间戳）
 	Tags          string   // 标签（逗号分隔的字符串）
 	TagsList      []string // 标签列表
+	Category      string   // 分类名称
 }
 
 // extractTitleFromMarkdown 从 markdown 内容中提取指定级别的标题
@@ -1016,7 +1120,7 @@ func extractTitleFromMarkdown(content string, level int) string {
 }
 
 // ParseImportFiles 解析导入文件但不入库，返回预览数据
-func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int, createdSource CreatedSource, createdField string, statusSource StatusSource, statusField string) ([]PreviewPostItem, error) {
+func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int, createdSource CreatedSource, createdField string, statusSource StatusSource, statusField string, categorySource CategorySource, categoryField string) ([]PreviewPostItem, error) {
 	var items []PreviewPostItem
 	var errList []string
 
@@ -1216,6 +1320,40 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			tagsStr = strings.Join(tagsList, ", ")
 		}
 
+		// 处理 category（单选）
+		category := ""
+		switch categorySource {
+		case CategoryFromFrontmatter:
+			// 从 frontmatter 指定字段获取
+			fieldName := categoryField
+			if fieldName == "" {
+				fieldName = "category"
+			}
+			if val, ok := result.Meta[fieldName]; ok {
+				switch v := val.(type) {
+				case string:
+					// 如果是字符串，直接使用
+					category = strings.TrimSpace(v)
+				case []interface{}:
+					// 如果是数组，使用第一个元素
+					if len(v) > 0 {
+						if str, ok := v[0].(string); ok {
+							category = strings.TrimSpace(str)
+						}
+					}
+				}
+			}
+		case CategoryAutoCreate:
+			// 自动创建默认分类（使用默认分类名称 "Default"）
+			category = "Default"
+		case CategoryNone:
+			// 留空，不设置分类
+			category = ""
+		default:
+			// 默认留空
+			category = ""
+		}
+
 		items = append(items, PreviewPostItem{
 			Index:         i,
 			Filename:      file.Filename,
@@ -1227,6 +1365,7 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			CreatedAtUnix: createdAt,
 			Tags:          tagsStr,
 			TagsList:      tagsList,
+			Category:      category,
 		})
 	}
 
@@ -1440,6 +1579,18 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 			if len(tagIDs) > 0 {
 				if err := db.SetPostTags(dbx, post.ID, tagIDs); err != nil {
 					// tag 关联失败不影响主流程
+				}
+			}
+		}
+
+		// 处理 category（单选）
+		if item.Category != "" {
+			category, err := CreateCategoryByName(dbx, item.Category)
+			if err == nil {
+				var categoryIDs []int64
+				categoryIDs = append(categoryIDs, category.ID)
+				if err := db.SetPostCategories(dbx, post.ID, categoryIDs); err != nil {
+					// category 关联失败不影响主流程
 				}
 			}
 		}

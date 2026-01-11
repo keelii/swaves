@@ -15,7 +15,7 @@ type SessionStore struct {
 func NewSessionStore(dbInstance *db.DB) *SessionStore {
 	storage := sqlite3.New(sqlite3.Config{
 		Database:   "./data.sqlite",
-		Table:      "session_storage",
+		Table:      "a_session_storage",
 		Reset:      false,
 		GCInterval: 1 * time.Minute, // 每10分钟清理一次过期 session
 	})

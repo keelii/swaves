@@ -10,6 +10,7 @@
     <th>Title</th>
     <th>Slug</th>
     <th>Tags</th>
+    <th>Category</th>
     <th>Status</th>
     <th>Created At</th>
     <th>Updated At</th>
@@ -25,7 +26,15 @@
     <td>{{ .Post.Slug }}</td>
     <td>
       {{ if .Tags }}
-        {{ range $index, $tag := .Tags }}{{ if $index }}, {{ end }}{{ $tag.Name }}{{ end }}
+        {{ range $index, $tag := .Tags }}{{ if $index }}, {{ end }}<a href="/admin/tags/{{ $tag.ID }}/edit">{{ $tag.Name }}</a>{{ end }}
+      {{ else }}
+        <span>-</span>
+      {{ end }}
+    </td>
+    <td>
+      {{ if .Categories }}
+        {{ $category := index .Categories 0 }}
+        <a href="/admin/categories/{{ $category.ID }}/edit">{{ $category.Name }}</a>
       {{ else }}
         <span>-</span>
       {{ end }}
@@ -43,14 +52,14 @@
   </tr>
   {{ else }}
   <tr>
-    <td colspan="8">No posts</td>
+    <td colspan="9">No posts</td>
   </tr>
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="8">
+    <td colspan="9">
       {{template "partials/pagination" .}}
     </td>
   </tr>

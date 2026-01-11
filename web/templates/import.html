@@ -21,14 +21,7 @@
         <option value="filename">From Filename</option>
         <option value="markdown">From Markdown Heading</option>
       </select>
-    </label>
-  </p>
-
-  <p id="title_field_container" style="display: none;">
-    <label>
-      Frontmatter Field Name<br>
-      <input type="text" name="title_field" value="title" placeholder="title">
-      <small>(The field name in frontmatter to use as title, default: title)</small>
+      <input type="text" name="title_field" id="title_field_container" value="title" placeholder="title" style="display: none;">
     </label>
   </p>
 
@@ -52,14 +45,7 @@
         <option value="frontmatter">From Frontmatter Field (default: slug)</option>
         <option value="title">From Title (generated)</option>
       </select>
-    </label>
-  </p>
-
-  <p id="slug_field_container" style="display: none;">
-    <label>
-      Frontmatter Field Name<br>
-      <input type="text" name="slug_field" value="slug" placeholder="slug">
-      <small>(The field name in frontmatter to use as slug, default: slug)</small>
+      <input type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
     </label>
   </p>
 
@@ -70,14 +56,7 @@
         <option value="frontmatter" selected>From Frontmatter Field (default: date)</option>
         <option value="filetime">From File Time (current time)</option>
       </select>
-    </label>
-  </p>
-
-  <p id="created_field_container">
-    <label>
-      Frontmatter Field Name<br>
-      <input type="text" name="created_field" value="date" placeholder="date">
-      <small>(The field name in frontmatter to use as created_at, default: date)</small>
+      <input type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
     </label>
   </p>
 
@@ -89,14 +68,19 @@
         <option value="alldraft">All Draft</option>
         <option value="allpublished">All Published</option>
       </select>
+      <input type="text" name="status_field" id="status_field_container" value="draft" placeholder="draft">
     </label>
   </p>
 
-  <p id="status_field_container">
+  <p>
     <label>
-      Frontmatter Field Name<br>
-      <input type="text" name="status_field" value="draft" placeholder="draft">
-      <small>(The field name in frontmatter to use as status, default: draft)</small>
+      Category Source<br>
+      <select name="category_source" required>
+        <option value="none" selected>None (留空)</option>
+        <option value="frontmatter">From Frontmatter Field (default: categories)</option>
+        <option value="autocreate">Auto Create Default Category</option>
+      </select>
+      <input type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
     </label>
   </p>
 
@@ -108,6 +92,9 @@ title: 文章标题
 slug: article-slug
 date: 2011-05-12T02:20:04.000Z
 status: draft
+# only first one category supported
+categories:
+  - category1
 tags:
   - tag1
   - tag2
@@ -139,13 +126,16 @@ tags:
   const statusSourceSelect = document.querySelector('select[name="status_source"]');
   const statusFieldContainer = document.getElementById('status_field_container');
   
+  const categorySourceSelect = document.querySelector('select[name="category_source"]');
+  const categoryFieldContainer = document.getElementById('category_field_container');
+  
   function updateTitleFieldVisibility() {
     if (titleSourceSelect.value === 'frontmatter') {
-      titleFieldContainer.style.display = 'block';
+      titleFieldContainer.style.display = 'inline';
       titleLevelContainer.style.display = 'none';
     } else if (titleSourceSelect.value === 'markdown') {
       titleFieldContainer.style.display = 'none';
-      titleLevelContainer.style.display = 'block';
+      titleLevelContainer.style.display = 'inline';
     } else {
       titleFieldContainer.style.display = 'none';
       titleLevelContainer.style.display = 'none';
@@ -154,7 +144,7 @@ tags:
   
   function updateSlugFieldVisibility() {
     if (slugSourceSelect.value === 'frontmatter') {
-      slugFieldContainer.style.display = 'block';
+      slugFieldContainer.style.display = 'inline';
     } else {
       slugFieldContainer.style.display = 'none';
     }
@@ -162,7 +152,7 @@ tags:
   
   function updateCreatedFieldVisibility() {
     if (createdSourceSelect.value === 'frontmatter') {
-      createdFieldContainer.style.display = 'block';
+      createdFieldContainer.style.display = 'inline';
     } else {
       createdFieldContainer.style.display = 'none';
     }
@@ -170,9 +160,17 @@ tags:
   
   function updateStatusFieldVisibility() {
     if (statusSourceSelect.value === 'frontmatter') {
-      statusFieldContainer.style.display = 'block';
+      statusFieldContainer.style.display = 'inline';
     } else {
       statusFieldContainer.style.display = 'none';
+    }
+  }
+  
+  function updateCategoryFieldVisibility() {
+    if (categorySourceSelect.value === 'frontmatter') {
+      categoryFieldContainer.style.display = 'inline';
+    } else {
+      categoryFieldContainer.style.display = 'none';
     }
   }
   
@@ -180,10 +178,12 @@ tags:
   slugSourceSelect.addEventListener('change', updateSlugFieldVisibility);
   createdSourceSelect.addEventListener('change', updateCreatedFieldVisibility);
   statusSourceSelect.addEventListener('change', updateStatusFieldVisibility);
+  categorySourceSelect.addEventListener('change', updateCategoryFieldVisibility);
   
   updateTitleFieldVisibility(); // 初始化
   updateSlugFieldVisibility(); // 初始化
   updateCreatedFieldVisibility(); // 初始化
   updateStatusFieldVisibility(); // 初始化
+  updateCategoryFieldVisibility(); // 初始化
 })();
 </script>

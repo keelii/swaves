@@ -62,6 +62,20 @@
 
   <p>
     <label>
+      Category<br>
+      <select name="categories" id="categories-select">
+        <option value="">-- None --</option>
+        {{ if .Categories }}
+          {{ range .Categories }}
+          <option value="{{ .ID }}">{{ .Name }}</option>
+          {{ end }}
+        {{ end }}
+      </select>
+    </label>
+  </p>
+
+  <p>
+    <label>
       Content<br>
       <textarea name="content" rows="10" cols="80" required></textarea>
     </label>
@@ -76,8 +90,20 @@
 
 <script>
 document.querySelector('form').addEventListener('submit', function(e) {
-  const checkboxes = document.querySelectorAll('.tag-checkbox:checked');
-  const tagIDs = Array.from(checkboxes).map(cb => cb.value);
+  const tagCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
+  const tagIDs = Array.from(tagCheckboxes).map(cb => cb.value);
   document.getElementById('tags-input').value = tagIDs.join(',');
+
+  // 处理分类选择框（单选）
+  const categorySelect = document.getElementById('categories-select');
+  const categoryID = categorySelect.value;
+  // 如果选择了分类，将其转换为逗号分隔的字符串（与后端处理逻辑一致）
+  const categoryInput = document.createElement('input');
+  categoryInput.type = 'hidden';
+  categoryInput.name = 'categories';
+  categoryInput.value = categoryID || '';
+  // 移除原来的 select name，避免重复提交
+  categorySelect.removeAttribute('name');
+  document.querySelector('form').appendChild(categoryInput);
 });
 </script>

@@ -35,6 +35,7 @@
       <option value="100" {{if eq $currentPageSize 100}}selected{{end}}>100</option>
     </select>
     <span style="white-space: nowrap;">条</span>
+    <span style="white-space: nowrap;">，共 {{.Pager.Total}} 条</span>
   </div>
 </nav>
 
