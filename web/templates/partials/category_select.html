@@ -1,8 +1,12 @@
 <select name="categories" id="categories-select">
+  {{ if $.EmptyOption}}
+    <option value="">{{ .EmptyOption }}</option>
+  {{ else }}
   <option value="">-- None --</option>
-    {{ range .Root.Categories }}
-      <option value="{{ .ID }}" {{ if eq $.SelectedID .ID }}selected{{ end }}>
-          {{ .Name }}
-      </option>
-    {{ end }}
+  {{ end }}
+  {{ range .Root.Categories }}
+    <option value="{{ .ID }}" {{ if eq $.SelectedID .ID }}selected{{ end }}>
+        {{ .Name }}
+    </option>
+  {{ end }}
 </select>

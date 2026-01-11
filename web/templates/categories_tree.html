@@ -16,7 +16,7 @@
         <span>- {{ .Category.Description }}</span>
       {{ end }}
       <form method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">
-        {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID }}
+        {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
       </form>
       <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
       <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
