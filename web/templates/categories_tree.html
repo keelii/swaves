@@ -12,13 +12,12 @@
     <div style="display: flex; align-items: center; gap: 10px;">
       <span>{{ .Category.Sort }}</span>
       <strong>{{ .Category.Name }}</strong>
-      <span>({{ .Category.Slug }})</span>
       {{ if .Category.Description }}
         <span>- {{ .Category.Description }}</span>
       {{ end }}
-      <span>
+      <form method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">
         {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID }}
-      </span>
+      </form>
       <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
       <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
       <form method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
@@ -48,3 +47,17 @@
 {{ else }}
   <p>No categories</p>
 {{ end }}
+
+<script>
+(function() {
+  const forms = document.querySelectorAll('form.category-parent-form');
+  forms.forEach(function(form) {
+    const select = form.querySelector('select[name="categories"]');
+    if (select) {
+      select.addEventListener('change', function() {
+        form.submit();
+      });
+    }
+  });
+})();
+</script>

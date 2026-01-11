@@ -844,6 +844,29 @@ func (h *Handler) PostDeleteCategoryHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/categories")
 }
 
+func (h *Handler) PostUpdateCategoryParentHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	parentIDStr := c.FormValue("categories")
+	var parentID int64
+	if parentIDStr != "" && parentIDStr != "0" {
+		var err error
+		parentID, err = strconv.ParseInt(parentIDStr, 10, 64)
+		if err != nil {
+			parentID = 0
+		}
+	}
+
+	if err := UpdateCategoryParentService(h.DB, id, parentID); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/categories/tree")
+}
+
 // Settings
 func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 	// 获取所有 settings，以表格形式展示
