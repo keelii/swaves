@@ -1856,16 +1856,16 @@ func CreateCategory(db *DB, c *Category) error {
 		}
 	}
 
-	// 检查唯一性：同一父级下slug必须唯一
+	// 检查唯一性：同一父级下slug必须唯一（包括已软删除的）
 	var existingID int64
 	var err error
 	if c.ParentID == 0 {
 		err = db.QueryRow(`
-			SELECT id FROM categories WHERE parent_id=0 AND slug=? AND deleted_at IS NULL
+			SELECT id FROM categories WHERE parent_id IS NULL AND slug=?
 		`, c.Slug).Scan(&existingID)
 	} else {
 		err = db.QueryRow(`
-			SELECT id FROM categories WHERE parent_id=? AND slug=? AND deleted_at IS NULL
+			SELECT id FROM categories WHERE parent_id=? AND slug=?
 		`, c.ParentID, c.Slug).Scan(&existingID)
 	}
 	if err == nil {
@@ -1920,7 +1920,7 @@ func ListCategories(db *DB) ([]Category, error) {
 		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
 		FROM categories
 		WHERE deleted_at IS NULL
-		ORDER BY created_at DESC
+		ORDER BY sort
 	`
 
 	rows, err := db.Query(query)
