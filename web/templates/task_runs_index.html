@@ -1,14 +1,14 @@
 
 <p>
-  <a href="/admin/cron-jobs">返回 Cron Jobs</a>
+  <a href="/admin/tasks">返回 Tasks</a>
 </p>
 
-<h3>Cron Job: {{ .Job.Name }} ({{ .Job.Code }})</h3>
+<h3>Task: {{ .Task.Name }} ({{ .Task.Code }})</h3>
 
 <table>
   <thead>
   <tr>
-    <th>JobCode</th>
+    <th>TaskCode</th>
     <th>RunID</th>
     <th>Status</th>
     <th>Message</th>
@@ -22,7 +22,7 @@
   <tbody>
   {{ range .Runs }}
   <tr>
-    <td>{{ .JobCode }}</td>
+    <td>{{ .TaskCode }}</td>
     <td>{{ .RunID }}</td>
     <td>{{ .Status }}</td>
     <td>{{ .Message }}</td>

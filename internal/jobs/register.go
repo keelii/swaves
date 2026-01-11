@@ -49,46 +49,46 @@ func (r *Registry) executor(interval time.Duration) {
 }
 
 func (r *Registry) runPendingJobs() {
-	runs, err := db.ListCronJobRuns(r.DB, "", "pending", 1000) // 扫描所有 pending
+	runs, err := db.ListTaskRuns(r.DB, "", "pending", 1000) // 扫描所有 pending
 	if err != nil {
-		log.Printf("[cron] fetch pending runs failed: %v", err)
+		log.Printf("[task] fetch pending runs failed: %v", err)
 		return
 	}
 
 	for _, run := range runs {
-		log.Println("[cron] fetch pending run:", run)
-		// 找 job 函数
-		jobCode := run.JobCode
-		fn, ok := r.jobs[jobCode]
+		log.Println("[task] fetch pending run:", run)
+		// 找 task 函数
+		taskCode := run.TaskCode
+		fn, ok := r.jobs[taskCode]
 		if !ok {
-			log.Printf("[cron] job %s not registered", jobCode)
+			log.Printf("[task] task %s not registered", taskCode)
 			continue
 		}
 
-		log.Println("[cron] get job:", jobCode)
+		log.Println("[task] get task:", taskCode)
 
 		mu.Lock()
-		if r.running[jobCode] {
+		if r.running[taskCode] {
 			mu.Unlock()
 			continue
 		}
-		r.running[jobCode] = true
+		r.running[taskCode] = true
 		mu.Unlock()
 
-		go func(run db.CronJobRun, fn JobFunc) {
+		go func(run db.TaskRun, fn JobFunc) {
 			start := time.Now()
 			var msg string
 			var status string
-			log.Println("[cron] executing job:", jobCode)
+			log.Println("[task] executing task:", taskCode)
 			err := fn()
 			if err != nil {
 				status = "error"
 				msg = err.Error()
-				log.Println("[cron] job error:", jobCode, err)
+				log.Println("[task] task error:", taskCode, err)
 			} else {
 				status = "success"
 				msg = "ok"
-				log.Println("[cron] job success:", jobCode)
+				log.Println("[task] task success:", taskCode)
 			}
 			duration := time.Since(start).Milliseconds()
 			run.Status = status
@@ -96,12 +96,11 @@ func (r *Registry) runPendingJobs() {
 			run.Duration = int64(int(duration))
 			run.FinishedAt = time.Now().Unix()
 
-			_ = db.UpdateCronJobRunStatus(r.DB, &run)
-			db.UpdateCronJobStatus(r.DB, jobCode, run.Status, run.FinishedAt)
-			//_ = db.CreateCronJobRun(r.DB, &run)
+			_ = db.UpdateTaskRunStatus(r.DB, &run)
+			db.UpdateTaskStatus(r.DB, taskCode, run.Status, run.FinishedAt)
 
 			mu.Lock()
-			r.running[jobCode] = false
+			r.running[taskCode] = false
 			mu.Unlock()
 		}(run, fn)
 	}

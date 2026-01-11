@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS redirects (
 	deleted_at INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS cron_jobs (
+CREATE TABLE IF NOT EXISTS tasks (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	code TEXT NOT NULL UNIQUE, --任务唯一标识，必须唯一
 	name TEXT NOT NULL,
@@ -151,9 +151,9 @@ CREATE TABLE IF NOT EXISTS cron_jobs (
 	updated_at INTEGER NOT NULL,
 	deleted_at INTEGER
 );
-CREATE TABLE IF NOT EXISTS cron_job_runs (
+CREATE TABLE IF NOT EXISTS task_runs (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	job_code TEXT NOT NULL, -- 对应 cron_jobs.code
+	task_code TEXT NOT NULL, -- 对应 tasks.code
 	run_id TEXT NOT NULL, -- 本次执行唯一标识 UUID
 	status TEXT NOT NULL, -- "pending", "success" 或 "error"
 	message TEXT NOT NULL DEFAULT '',
@@ -1522,7 +1522,7 @@ func LoadSettingsToMap(db *DB) (map[string]string, error) {
 	return settingsMap, nil
 }
 
-type CronJob struct {
+type Task struct {
 	ID          int64
 	Code        string
 	Name        string
@@ -1536,9 +1536,9 @@ type CronJob struct {
 	DeletedAt   *int64
 }
 
-type CronJobRun struct {
+type TaskRun struct {
 	ID         int64
-	JobCode    string
+	TaskCode   string
 	RunID      string
 	Status     string
 	Message    string
@@ -1548,35 +1548,35 @@ type CronJobRun struct {
 	CreatedAt  int64
 }
 
-func CreateCronJob(db *DB, job *CronJob) error {
+func CreateTask(db *DB, task *Task) error {
 	now := time.Now().Unix()
-	job.CreatedAt = now
-	job.UpdatedAt = now
-	res, err := db.Exec(`INSERT INTO cron_jobs
+	task.CreatedAt = now
+	task.UpdatedAt = now
+	res, err := db.Exec(`INSERT INTO tasks
 		(code, name, description, schedule, enabled, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		job.Code, job.Name, job.Description, job.Schedule, job.Enabled, job.CreatedAt, job.UpdatedAt,
+		task.Code, task.Name, task.Description, task.Schedule, task.Enabled, task.CreatedAt, task.UpdatedAt,
 	)
 	if err != nil {
 		return err
 	}
-	job.ID, _ = res.LastInsertId()
+	task.ID, _ = res.LastInsertId()
 	return nil
 }
 
-func GetCronJobByID(db *DB, id int64) (*CronJob, error) {
+func GetTaskByID(db *DB, id int64) (*Task, error) {
 	row := db.QueryRow(`SELECT id, code, name, description, schedule, enabled,
 		last_run_at, last_status, created_at, updated_at, deleted_at
-		FROM cron_jobs WHERE id=? AND deleted_at IS NULL`, id)
+		FROM tasks WHERE id=? AND deleted_at IS NULL`, id)
 
-	var j CronJob
+	var t Task
 	var lastRun sql.NullInt64
 	var lastStatus sql.NullString
 	var deleted sql.NullInt64
 
 	if err := row.Scan(
-		&j.ID, &j.Code, &j.Name, &j.Description, &j.Schedule, &j.Enabled,
-		&lastRun, &lastStatus, &j.CreatedAt, &j.UpdatedAt, &deleted,
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled,
+		&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
@@ -1585,31 +1585,31 @@ func GetCronJobByID(db *DB, id int64) (*CronJob, error) {
 	}
 
 	if lastRun.Valid {
-		j.LastRunAt = &lastRun.Int64
+		t.LastRunAt = &lastRun.Int64
 	}
 	if lastStatus.Valid {
-		j.LastStatus = lastStatus.String
+		t.LastStatus = lastStatus.String
 	}
 	if deleted.Valid {
-		j.DeletedAt = &deleted.Int64
+		t.DeletedAt = &deleted.Int64
 	}
 
-	return &j, nil
+	return &t, nil
 }
 
-func GetCronJobByCode(db *DB, code string) (*CronJob, error) {
+func GetTaskByCode(db *DB, code string) (*Task, error) {
 	row := db.QueryRow(`SELECT id, code, name, description, schedule, enabled,
 		last_run_at, last_status, created_at, updated_at, deleted_at
-		FROM cron_jobs WHERE code=? AND deleted_at IS NULL`, code)
+		FROM tasks WHERE code=? AND deleted_at IS NULL`, code)
 
-	var j CronJob
+	var t Task
 	var lastRun sql.NullInt64
 	var lastStatus sql.NullString
 	var deleted sql.NullInt64
 
 	if err := row.Scan(
-		&j.ID, &j.Code, &j.Name, &j.Description, &j.Schedule, &j.Enabled,
-		&lastRun, &lastStatus, &j.CreatedAt, &j.UpdatedAt, &deleted,
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled,
+		&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
@@ -1618,83 +1618,83 @@ func GetCronJobByCode(db *DB, code string) (*CronJob, error) {
 	}
 
 	if lastRun.Valid {
-		j.LastRunAt = &lastRun.Int64
+		t.LastRunAt = &lastRun.Int64
 	}
 	if lastStatus.Valid {
-		j.LastStatus = lastStatus.String
+		t.LastStatus = lastStatus.String
 	}
 	if deleted.Valid {
-		j.DeletedAt = &deleted.Int64
+		t.DeletedAt = &deleted.Int64
 	}
 
-	return &j, nil
+	return &t, nil
 }
 
-func ListCronJobs(db *DB) ([]CronJob, error) {
+func ListTasks(db *DB) ([]Task, error) {
 	rows, err := db.Query(`SELECT id, code, name, description, schedule, enabled,
 		last_run_at, last_status, created_at, updated_at, deleted_at
-		FROM cron_jobs WHERE deleted_at IS NULL ORDER BY id DESC`)
+		FROM tasks WHERE deleted_at IS NULL ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var jobs []CronJob
+	var tasks []Task
 	for rows.Next() {
-		var j CronJob
+		var t Task
 		var lastRun sql.NullInt64
 		var lastStatus sql.NullString
 		var deleted sql.NullInt64
 		if err := rows.Scan(
-			&j.ID, &j.Code, &j.Name, &j.Description, &j.Schedule, &j.Enabled,
-			&lastRun, &lastStatus, &j.CreatedAt, &j.UpdatedAt, &deleted,
+			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled,
+			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 		); err != nil {
 			return nil, err
 		}
 		if lastRun.Valid {
-			j.LastRunAt = &lastRun.Int64
+			t.LastRunAt = &lastRun.Int64
 		}
 		if lastStatus.Valid {
-			j.LastStatus = lastStatus.String
+			t.LastStatus = lastStatus.String
 		}
 		if deleted.Valid {
-			j.DeletedAt = &deleted.Int64
+			t.DeletedAt = &deleted.Int64
 		}
-		jobs = append(jobs, j)
+		tasks = append(tasks, t)
 	}
-	return jobs, nil
+	return tasks, nil
 }
 
-func UpdateCronJob(db *DB, job *CronJob) error {
-	job.UpdatedAt = now()
+func UpdateTask(db *DB, task *Task) error {
+	task.UpdatedAt = now()
 	enabled := 0
-	if job.Enabled == 1 {
+	if task.Enabled == 1 {
 		enabled = 1
 	}
 	// Code 不可修改，不更新 code 字段
-	_, err := db.Exec(`UPDATE cron_jobs
+	_, err := db.Exec(`UPDATE tasks
 		SET name=?, description=?, schedule=?, enabled=?, updated_at=?
 		WHERE id=? AND deleted_at IS NULL`,
-		job.Name, job.Description, job.Schedule, enabled, job.UpdatedAt, job.ID,
+		task.Name, task.Description, task.Schedule, enabled, task.UpdatedAt, task.ID,
 	)
 	return err
 }
-func UpdateCronJobStatus(db *DB, jobCode string, lastStatus string, lastRunAt int64) error {
-	_, err := db.Exec(`UPDATE cron_jobs
+func UpdateTaskStatus(db *DB, taskCode string, lastStatus string, lastRunAt int64) error {
+	_, err := db.Exec(`UPDATE tasks
 		SET last_status=?, last_run_at=?
 		WHERE code=? AND deleted_at IS NULL`,
-		lastStatus, lastRunAt, jobCode,
+		lastStatus, lastRunAt, taskCode,
 	)
 	return err
 }
 
-func SoftDeleteCronJob(db *DB, id int64) error {
+func SoftDeleteTask(db *DB, id int64) error {
 	ts := now()
-	_, err := db.Exec(`UPDATE cron_jobs SET deleted_at=? WHERE id=? AND deleted_at IS NULL`, ts, id)
+	_, err := db.Exec(`UPDATE tasks SET deleted_at=? WHERE id=? AND deleted_at IS NULL`, ts, id)
 	return err
 }
 
-func CreateCronJobRun(db *DB, run *CronJobRun) error {
+func CreateTaskRun(db *DB, run *TaskRun) error {
 	now := time.Now().Unix()
 	run.RunID = uuid.NewString()
 	run.CreatedAt = now
@@ -1709,10 +1709,10 @@ func CreateCronJobRun(db *DB, run *CronJobRun) error {
 		run.Duration = 0
 	}
 
-	res, err := db.Exec(`INSERT INTO cron_job_runs
-		(job_code, run_id, status, message, started_at, finished_at, duration, created_at)
+	res, err := db.Exec(`INSERT INTO task_runs
+		(task_code, run_id, status, message, started_at, finished_at, duration, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		run.JobCode, run.RunID, run.Status, run.Message,
+		run.TaskCode, run.RunID, run.Status, run.Message,
 		run.StartedAt, run.FinishedAt, run.Duration, run.CreatedAt,
 	)
 	if err != nil {
@@ -1720,25 +1720,25 @@ func CreateCronJobRun(db *DB, run *CronJobRun) error {
 	}
 	run.ID, _ = res.LastInsertId()
 
-	// 同步更新 cron_jobs 的 last_run_at 和 last_status 字段
-	_, _ = db.Exec(`UPDATE cron_jobs
+	// 同步更新 tasks 的 last_run_at 和 last_status 字段
+	_, _ = db.Exec(`UPDATE tasks
 		SET last_run_at=?, last_status=?, updated_at=?
 		WHERE code=? AND deleted_at IS NULL`,
-		run.StartedAt, run.Status, now, run.JobCode,
+		run.StartedAt, run.Status, now, run.TaskCode,
 	)
 	return nil
 }
 
-func ListCronJobRuns(db *DB, jobCode string, status string, limit int) ([]CronJobRun, error) {
+func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun, error) {
 	query := `
-        SELECT id, job_code, run_id, status, message, started_at, finished_at, duration, created_at
-        FROM cron_job_runs WHERE 1=1`
+        SELECT id, task_code, run_id, status, message, started_at, finished_at, duration, created_at
+        FROM task_runs WHERE 1=1`
 
 	args := []interface{}{}
 
-	if jobCode != "" {
-		query += ` AND job_code = ?`
-		args = append(args, jobCode)
+	if taskCode != "" {
+		query += ` AND task_code = ?`
+		args = append(args, taskCode)
 	}
 
 	if status != "" {
@@ -1755,11 +1755,11 @@ func ListCronJobRuns(db *DB, jobCode string, status string, limit int) ([]CronJo
 	}
 	defer rows.Close()
 
-	var runs []CronJobRun
+	var runs []TaskRun
 	for rows.Next() {
-		var r CronJobRun
+		var r TaskRun
 		if err := rows.Scan(
-			&r.ID, &r.JobCode, &r.RunID, &r.Status, &r.Message,
+			&r.ID, &r.TaskCode, &r.RunID, &r.Status, &r.Message,
 			&r.StartedAt, &r.FinishedAt, &r.Duration, &r.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -1768,14 +1768,14 @@ func ListCronJobRuns(db *DB, jobCode string, status string, limit int) ([]CronJo
 	}
 	return runs, nil
 }
-func UpdateCronJobRunStatus(db *DB, run *CronJobRun) error {
+func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 	if run.ID == 0 {
 		return errors.New("run.ID is zero")
 	}
 
-	// 更新 cron_job_runs 表
+	// 更新 task_runs 表
 	_, err := db.Exec(`
-		UPDATE cron_job_runs
+		UPDATE task_runs
 		SET status=?, message=?, finished_at=?, duration=?
 		WHERE id=?
 	`, run.Status, run.Message, run.FinishedAt, run.Duration, run.ID)
@@ -1783,12 +1783,12 @@ func UpdateCronJobRunStatus(db *DB, run *CronJobRun) error {
 		return err
 	}
 
-	// 同步更新 cron_jobs 表的 last_run_at 和 last_status 字段
+	// 同步更新 tasks 表的 last_run_at 和 last_status 字段
 	_, _ = db.Exec(`
-		UPDATE cron_jobs
+		UPDATE tasks
 		SET last_run_at=?, last_status=?, updated_at=?
 		WHERE code=? AND deleted_at IS NULL
-	`, run.StartedAt, run.Status, now(), run.JobCode)
+	`, run.StartedAt, run.Status, now(), run.TaskCode)
 	return nil
 }
 

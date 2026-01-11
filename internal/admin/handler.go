@@ -1279,29 +1279,29 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/http-error-logs")
 }
 
-// CronJobs
-func (h *Handler) GetCronJobListHandler(c *fiber.Ctx) error {
-	jobs, err := ListCronJobsService(h.DB)
+// Tasks
+func (h *Handler) GetTaskListHandler(c *fiber.Ctx) error {
+	tasks, err := ListTasksService(h.DB)
 	if err != nil {
 		return err
 	}
 
-	return c.Render("cron_jobs_index", fiber.Map{
-		"Title": "Cron Jobs",
-		"Jobs":  jobs,
+	return c.Render("tasks_index", fiber.Map{
+		"Title": "Tasks",
+		"Tasks": tasks,
 	}, "admin_layout")
 }
 
-func (h *Handler) GetCronJobNewHandler(c *fiber.Ctx) error {
-	return c.Render("cron_jobs_new", fiber.Map{
-		"Title": "New Cron Job",
+func (h *Handler) GetTaskNewHandler(c *fiber.Ctx) error {
+	return c.Render("tasks_new", fiber.Map{
+		"Title": "New Task",
 	}, "admin_layout")
 }
 
-func (h *Handler) PostCreateCronJobHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreateTaskHandler(c *fiber.Ctx) error {
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
 
-	in := CreateCronJobInput{
+	in := CreateTaskInput{
 		Code:        c.FormValue("code"),
 		Name:        c.FormValue("name"),
 		Description: c.FormValue("description"),
@@ -1309,31 +1309,31 @@ func (h *Handler) PostCreateCronJobHandler(c *fiber.Ctx) error {
 		Enabled:     enabled,
 	}
 
-	if err := CreateCronJobService(h.DB, in); err != nil {
+	if err := CreateTaskService(h.DB, in); err != nil {
 		return err
 	}
 
-	return c.Redirect("/admin/cron-jobs")
+	return c.Redirect("/admin/tasks")
 }
 
-func (h *Handler) GetCronJobEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTaskEditHandler(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	job, err := GetCronJobForEdit(h.DB, id)
+	task, err := GetTaskForEdit(h.DB, id)
 	if err != nil {
 		return err
 	}
 
-	return c.Render("cron_jobs_edit", fiber.Map{
-		"Title": "Edit Cron Job",
-		"Job":   job,
+	return c.Render("tasks_edit", fiber.Map{
+		"Title": "Edit Task",
+		"Task":  task,
 	}, "admin_layout")
 }
 
-func (h *Handler) PostUpdateCronJobHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateTaskHandler(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1341,7 +1341,7 @@ func (h *Handler) PostUpdateCronJobHandler(c *fiber.Ctx) error {
 
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
 
-	in := UpdateCronJobInput{
+	in := UpdateTaskInput{
 		Code:        c.FormValue("code"),
 		Name:        c.FormValue("name"),
 		Description: c.FormValue("description"),
@@ -1349,60 +1349,60 @@ func (h *Handler) PostUpdateCronJobHandler(c *fiber.Ctx) error {
 		Enabled:     enabled,
 	}
 
-	if err := UpdateCronJobService(h.DB, id, in); err != nil {
+	if err := UpdateTaskService(h.DB, id, in); err != nil {
 		return err
 	}
 
-	return c.Redirect("/admin/cron-jobs")
+	return c.Redirect("/admin/tasks")
 }
 
-func (h *Handler) PostDeleteCronJobHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteTaskHandler(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteCronJobService(h.DB, id); err != nil {
+	if err := DeleteTaskService(h.DB, id); err != nil {
 		return err
 	}
 
-	return c.Redirect("/admin/cron-jobs")
+	return c.Redirect("/admin/tasks")
 }
 
-func (h *Handler) PostTriggerCronJobHandler(c *fiber.Ctx) error {
-	jobCode := c.Params("code")
-	if jobCode == "" {
+func (h *Handler) PostTriggerTaskHandler(c *fiber.Ctx) error {
+	taskCode := c.Params("code")
+	if taskCode == "" {
 		return fiber.ErrBadRequest
 	}
 
-	if err := CreatePendingRunService(h.DB, jobCode); err != nil {
+	if err := CreatePendingRunService(h.DB, taskCode); err != nil {
 		return err
 	}
 
-	return c.Redirect("/admin/cron-jobs")
+	return c.Redirect("/admin/tasks")
 }
 
-func (h *Handler) GetCronJobRunListHandler(c *fiber.Ctx) error {
-	jobCode := c.Params("code")
-	if jobCode == "" {
+func (h *Handler) GetTaskRunListHandler(c *fiber.Ctx) error {
+	taskCode := c.Params("code")
+	if taskCode == "" {
 		return fiber.ErrBadRequest
 	}
 
-	// 获取 job 信息
-	job, err := db.GetCronJobByCode(h.DB, jobCode)
+	// 获取 task 信息
+	task, err := db.GetTaskByCode(h.DB, taskCode)
 	if err != nil {
 		return err
 	}
 
 	// 获取执行记录列表，默认限制 100 条
-	runs, err := ListCronJobRunsService(h.DB, jobCode, 100)
+	runs, err := ListTaskRunsService(h.DB, taskCode, 100)
 	if err != nil {
 		return err
 	}
 
-	return c.Render("cron_job_runs_index", fiber.Map{
-		"Title": "Cron Job Runs: " + job.Name,
-		"Job":   job,
+	return c.Render("task_runs_index", fiber.Map{
+		"Title": "Task Runs: " + task.Name,
+		"Task":  task,
 		"Runs":  runs,
 	}, "admin_layout")
 }

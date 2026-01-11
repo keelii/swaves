@@ -367,13 +367,13 @@ func TestRedirects_SoftDelete(t *testing.T) {
 	}
 }
 
-func TestCronJobs(t *testing.T) {
+func TestTasks(t *testing.T) {
 	dbx := openTestDB(t)
 
 	// ------------------------------
-	// 1️⃣ 测试创建 CronJob
-	job := &CronJob{
-		Code:      "test_job",
+	// 1️⃣ 测试创建 Task
+	task := &Task{
+		Code:      "test_task",
 		Name:      "测试任务",
 		Schedule:  "* * * * *",
 		Enabled:   1,
@@ -381,26 +381,26 @@ func TestCronJobs(t *testing.T) {
 		UpdatedAt: time.Now().Unix(),
 	}
 
-	if err := CreateCronJob(dbx, job); err != nil {
-		t.Fatalf("failed to create cron job: %v", err)
+	if err := CreateTask(dbx, task); err != nil {
+		t.Fatalf("failed to create task: %v", err)
 	}
-	if job.ID == 0 {
-		t.Fatal("expected job.ID > 0")
+	if task.ID == 0 {
+		t.Fatal("expected task.ID > 0")
 	}
 
-	// 2️⃣ 测试查询 CronJob
-	jobs, err := ListCronJobs(dbx)
+	// 2️⃣ 测试查询 Task
+	tasks, err := ListTasks(dbx)
 	if err != nil {
-		t.Fatalf("failed to list cron jobs: %v", err)
+		t.Fatalf("failed to list tasks: %v", err)
 	}
-	if len(jobs) != 1 || jobs[0].Code != "test_job" {
-		t.Fatalf("unexpected jobs: %+v", jobs)
+	if len(tasks) != 1 || tasks[0].Code != "test_task" {
+		t.Fatalf("unexpected tasks: %+v", tasks)
 	}
 
 	// ------------------------------
-	// 3️⃣ 测试创建 CronJobRun
-	run := &CronJobRun{
-		JobCode:    job.Code,
+	// 3️⃣ 测试创建 TaskRun
+	run := &TaskRun{
+		TaskCode:   task.Code,
 		RunID:      uuid.NewString(),
 		Status:     "pending",
 		Message:    "",
@@ -409,17 +409,17 @@ func TestCronJobs(t *testing.T) {
 		Duration:   0,
 		CreatedAt:  time.Now().Unix(),
 	}
-	if err := CreateCronJobRun(dbx, run); err != nil {
-		t.Fatalf("failed to create cron job run: %v", err)
+	if err := CreateTaskRun(dbx, run); err != nil {
+		t.Fatalf("failed to create task run: %v", err)
 	}
 	if run.ID == 0 {
 		t.Fatal("expected run.ID > 0")
 	}
 
-	// 4️⃣ 测试查询 CronJobRun
-	runs, err := ListCronJobRuns(dbx, job.Code, "", 10)
+	// 4️⃣ 测试查询 TaskRun
+	runs, err := ListTaskRuns(dbx, task.Code, "", 10)
 	if err != nil {
-		t.Fatalf("failed to list cron job runs: %v", err)
+		t.Fatalf("failed to list task runs: %v", err)
 	}
 	if len(runs) != 1 || runs[0].Status != "pending" {
 		t.Fatalf("unexpected runs: %+v", runs)
@@ -430,13 +430,13 @@ func TestCronJobs(t *testing.T) {
 	run.Message = "ok"
 	run.FinishedAt = time.Now().Unix()
 	run.Duration = 123
-	if err := UpdateCronJobRunStatus(dbx, run); err != nil {
-		t.Fatalf("failed to update cron job run: %v", err)
+	if err := UpdateTaskRunStatus(dbx, run); err != nil {
+		t.Fatalf("failed to update task run: %v", err)
 	}
 
-	updated, err := ListCronJobRuns(dbx, job.Code, "success", 10)
+	updated, err := ListTaskRuns(dbx, task.Code, "success", 10)
 	if err != nil {
-		t.Fatalf("failed to list cron job runs: %v", err)
+		t.Fatalf("failed to list task runs: %v", err)
 	}
 	if len(updated) != 1 || updated[0].Status != "success" || updated[0].Message != "ok" {
 		t.Fatalf("update did not persist: %+v", updated)
@@ -1404,85 +1404,85 @@ func TestUpdateRedirect(t *testing.T) {
 	}
 }
 
-func TestGetCronJobByID(t *testing.T) {
+func TestGetTaskByID(t *testing.T) {
 	db := openTestDB(t)
 
-	job := &CronJob{
+	task := &Task{
 		Code:      "get_by_id",
-		Name:      "Test Job",
+		Name:      "Test Task",
 		Schedule:  "0 0 * * *",
 		Enabled:   1,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateCronJob(db, job)
+	CreateTask(db, task)
 
-	got, err := GetCronJobByID(db, job.ID)
+	got, err := GetTaskByID(db, task.ID)
 	if err != nil {
-		t.Fatalf("GetCronJobByID failed: %v", err)
+		t.Fatalf("GetTaskByID failed: %v", err)
 	}
 	if got.Code != "get_by_id" {
 		t.Fatalf("unexpected code: %s", got.Code)
 	}
 
 	// 测试不存在的 id
-	_, err = GetCronJobByID(db, 99999)
+	_, err = GetTaskByID(db, 99999)
 	if err != ErrNotFound {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
 
-func TestGetCronJobByCode(t *testing.T) {
+func TestGetTaskByCode(t *testing.T) {
 	db := openTestDB(t)
 
-	job := &CronJob{
+	task := &Task{
 		Code:      "get_by_code",
-		Name:      "Test Job",
+		Name:      "Test Task",
 		Schedule:  "0 0 * * *",
 		Enabled:   1,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateCronJob(db, job)
+	CreateTask(db, task)
 
-	got, err := GetCronJobByCode(db, "get_by_code")
+	got, err := GetTaskByCode(db, "get_by_code")
 	if err != nil {
-		t.Fatalf("GetCronJobByCode failed: %v", err)
+		t.Fatalf("GetTaskByCode failed: %v", err)
 	}
-	if got.Name != "Test Job" {
+	if got.Name != "Test Task" {
 		t.Fatalf("unexpected name: %s", got.Name)
 	}
 
 	// 测试不存在的 code
-	_, err = GetCronJobByCode(db, "non_exist")
+	_, err = GetTaskByCode(db, "non_exist")
 	if err != ErrNotFound {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
 
-func TestUpdateCronJob(t *testing.T) {
+func TestUpdateTask(t *testing.T) {
 	db := openTestDB(t)
 
-	job := &CronJob{
-		Code:      "update_job",
+	task := &Task{
+		Code:      "update_task",
 		Name:      "Original",
 		Schedule:  "0 0 * * *",
 		Enabled:   1,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateCronJob(db, job)
+	CreateTask(db, task)
 
-	job.Name = "Updated"
-	job.Schedule = "0 */5 * * *"
-	job.Enabled = 0
-	if err := UpdateCronJob(db, job); err != nil {
-		t.Fatalf("UpdateCronJob failed: %v", err)
+	task.Name = "Updated"
+	task.Schedule = "0 */5 * * *"
+	task.Enabled = 0
+	if err := UpdateTask(db, task); err != nil {
+		t.Fatalf("UpdateTask failed: %v", err)
 	}
 
-	got, err := GetCronJobByCode(db, "update_job")
+	got, err := GetTaskByCode(db, "update_task")
 	if err != nil {
-		t.Fatalf("GetCronJobByCode failed: %v", err)
+		t.Fatalf("GetTaskByCode failed: %v", err)
 	}
 	if got.Name != "Updated" {
 		t.Fatalf("update not applied, got %s", got.Name)
@@ -1495,10 +1495,10 @@ func TestUpdateCronJob(t *testing.T) {
 	}
 }
 
-func TestUpdateCronJobStatus(t *testing.T) {
+func TestUpdateTaskStatus(t *testing.T) {
 	db := openTestDB(t)
 
-	job := &CronJob{
+	task := &Task{
 		Code:      "update_status",
 		Name:      "Test",
 		Schedule:  "0 0 * * *",
@@ -1506,16 +1506,16 @@ func TestUpdateCronJobStatus(t *testing.T) {
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateCronJob(db, job)
+	CreateTask(db, task)
 
 	now := time.Now().Unix()
-	if err := UpdateCronJobStatus(db, "update_status", "success", now); err != nil {
-		t.Fatalf("UpdateCronJobStatus failed: %v", err)
+	if err := UpdateTaskStatus(db, "update_status", "success", now); err != nil {
+		t.Fatalf("UpdateTaskStatus failed: %v", err)
 	}
 
-	got, err := GetCronJobByCode(db, "update_status")
+	got, err := GetTaskByCode(db, "update_status")
 	if err != nil {
-		t.Fatalf("GetCronJobByCode failed: %v", err)
+		t.Fatalf("GetTaskByCode failed: %v", err)
 	}
 	if got.LastStatus != "success" {
 		t.Fatalf("status update not applied, got %s", got.LastStatus)

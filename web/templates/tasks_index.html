@@ -1,6 +1,6 @@
 
 <p>
-  <a href="/admin/cron-jobs/new">New Cron Job</a>
+  <a href="/admin/tasks/new">New Task</a>
 </p>
 
 <table>
@@ -21,7 +21,7 @@
   </thead>
 
   <tbody>
-  {{ range .Jobs }}
+  {{ range .Tasks }}
   <tr>
     <td>{{ .ID }}</td>
     <td>{{ .Code }}</td>
@@ -29,7 +29,7 @@
     <td>{{ .Description }}</td>
     <td>{{ .Schedule }}</td>
     <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
-    <td><a href="/admin/cron-jobs/{{ .Code }}/runs">执行记录</a></td>
+    <td><a href="/admin/tasks/{{ .Code }}/runs">执行记录</a></td>
     <td>
       {{ if .LastStatus }}
         {{ if eq .LastStatus "success" }}
@@ -48,18 +48,18 @@
     <td>{{ if .LastRunAt }}{{ formatTime .LastRunAt }}{{ else }}-{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>
-      <a href="/admin/cron-jobs/{{ .ID }}/edit" style="margin-right: 10px;">编辑</a>
-      <form method="POST" action="/admin/cron-jobs/{{ .Code }}/trigger" style="display: inline-block; margin-right: 10px;">
+      <a href="/admin/tasks/{{ .ID }}/edit" style="margin-right: 10px;">编辑</a>
+      <form method="POST" action="/admin/tasks/{{ .Code }}/trigger" style="display: inline-block; margin-right: 10px;">
         <button type="submit">执行</button>
       </form>
-      <form method="POST" action="/admin/cron-jobs/{{ .ID }}/delete" style="display: inline-block;">
+      <form method="POST" action="/admin/tasks/{{ .ID }}/delete" style="display: inline-block;">
         <button type="submit">删除</button>
       </form>
     </td>
   </tr>
   {{ else }}
   <tr>
-    <td colspan="11">No cron jobs</td>
+    <td colspan="11">No tasks</td>
   </tr>
   {{ end }}
   </tbody>
