@@ -3,29 +3,26 @@ package middleware
 
 import (
 	"strconv"
+	"swaves/internal/consts"
+	"swaves/internal/types"
 
 	"github.com/gofiber/fiber/v2"
-)
-
-type Pagination struct {
-	Page     int
-	PageSize int
-	Num      int
-	Total    int
-}
-
-const (
-	DefaultPage     = 1
-	DefaultPageSize = 5
-	MaxPageSize     = 100
 )
 
 // PaginationMiddleware 将 page/pageSize 封装成 Pagination 放入 c.Locals
 func PaginationMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		p := Pagination{
-			Page:     DefaultPage,
-			PageSize: DefaultPageSize,
+		var pageSize int = consts.DefaultPageSize
+		if c.Locals("settings.page_size") != nil {
+			size, err := strconv.Atoi(c.Locals("settings.page_size").(string))
+			if err == nil {
+				pageSize = size
+			}
+		}
+
+		p := types.Pagination{
+			Page:     consts.DefaultPage,
+			PageSize: pageSize,
 		}
 
 		if pageStr := c.Query("page"); pageStr != "" {
@@ -35,8 +32,14 @@ func PaginationMiddleware() fiber.Handler {
 		}
 
 		if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-			if v, err := strconv.Atoi(pageSizeStr); err == nil && v > 0 && v <= MaxPageSize {
-				p.PageSize = v
+			if v, err := strconv.Atoi(pageSizeStr); err == nil {
+				if v < consts.MinPageSize {
+					p.PageSize = consts.MinPageSize
+				} else if v > consts.MaxPageSize {
+					p.PageSize = consts.MaxPageSize
+				} else {
+					p.PageSize = v
+				}
 			}
 		}
 
@@ -47,11 +50,11 @@ func PaginationMiddleware() fiber.Handler {
 }
 
 // 从 c.Locals 获取 Pagination
-func GetPagination(c *fiber.Ctx) Pagination {
+func GetPagination(c *fiber.Ctx) types.Pagination {
 	if v := c.Locals("pagination"); v != nil {
-		if p, ok := v.(Pagination); ok {
+		if p, ok := v.(types.Pagination); ok {
 			return p
 		}
 	}
-	return Pagination{Page: DefaultPage, PageSize: DefaultPageSize}
+	return types.Pagination{Page: consts.DefaultPage, PageSize: consts.DefaultPageSize}
 }

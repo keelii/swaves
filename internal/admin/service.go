@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"swaves/internal/md"
-	"swaves/internal/middleware"
+	"swaves/internal/types"
 	"time"
 
 	"swaves/internal/db"
@@ -52,7 +52,7 @@ type PostWithTags struct {
 	Categories []db.Category
 }
 
-func ListPosts(dbx *db.DB, pager *middleware.Pagination) ([]PostWithTags, error) {
+func ListPosts(dbx *db.DB, pager *types.Pagination) ([]PostWithTags, error) {
 	// 先查询总数
 	var total int
 	row := dbx.QueryRow(`SELECT COUNT(*) FROM posts WHERE deleted_at IS NULL`)
@@ -241,7 +241,7 @@ type UpdateTagInput struct {
 	Slug string
 }
 
-func ListTags(dbx *db.DB, pager *middleware.Pagination) ([]db.Tag, error) {
+func ListTags(dbx *db.DB, pager *types.Pagination) ([]db.Tag, error) {
 	var total int
 	row := dbx.QueryRow(`SELECT COUNT(*) FROM tags WHERE deleted_at IS NULL`)
 	if err := row.Scan(&total); err != nil {
@@ -397,7 +397,7 @@ type UpdateRedirectInput struct {
 	Enabled int
 }
 
-func ListRedirects(dbx *db.DB, pager *middleware.Pagination) ([]db.Redirect, error) {
+func ListRedirects(dbx *db.DB, pager *types.Pagination) ([]db.Redirect, error) {
 	offset := (pager.Page - 1) * pager.PageSize
 	res, total, err := db.ListRedirects(dbx, pager.PageSize, offset)
 	if err != nil {
@@ -524,7 +524,7 @@ type UpdateEncryptedPostInput struct {
 	ExpiresAt string
 }
 
-func ListEncryptedPosts(dbx *db.DB, pager *middleware.Pagination) ([]db.EncryptedPost, error) {
+func ListEncryptedPosts(dbx *db.DB, pager *types.Pagination) ([]db.EncryptedPost, error) {
 	var total int
 	row := dbx.QueryRow(`SELECT COUNT(*) FROM encrypted_posts WHERE deleted_at IS NULL`)
 	if err := row.Scan(&total); err != nil {
@@ -911,7 +911,7 @@ func RestoreRedirectService(dbx *db.DB, id int64) error {
 }
 
 // HttpErrorLogs
-func ListHttpErrorLogs(dbx *db.DB, pager *middleware.Pagination) ([]db.HttpErrorLog, error) {
+func ListHttpErrorLogs(dbx *db.DB, pager *types.Pagination) ([]db.HttpErrorLog, error) {
 	var total int
 	total, err := db.CountHttpErrorLogs(dbx)
 	if err != nil {

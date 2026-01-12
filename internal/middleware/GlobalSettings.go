@@ -8,11 +8,13 @@ import (
 
 func GlobalSettings(key string) fiber.Handler {
 	if key == "" {
-		key = "setting"
+		key = "settings"
 	}
 	return func(c *fiber.Ctx) error {
 		setting := store.GetSettingMap()
-		c.Locals(key, setting)
+		for k := range setting {
+			c.Locals(key+"."+k, setting[k])
+		}
 		return c.Next()
 	}
 }

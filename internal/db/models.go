@@ -1359,6 +1359,7 @@ func EnsureDefaultSettings(db *DB) error {
 		{Sort: 11, Kind: "Appearance", Name: "Font size", Code: "font_size", Type: "range", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 		{Sort: 11, Kind: "Appearance", Name: "Mode", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 		{Sort: 11, Kind: "Appearance", Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
+		{Sort: 11, Kind: "Appearance", Name: "Page size", Code: "page_size", Type: "number", Value: "10", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
 		{Sort: 13, Kind: "Post", Name: "Post Slug Pattern", Code: "post_slug_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{name}", Description: "文章 URL 模式"},
 		{Sort: 15, Kind: "Post", Name: "Tag Slug Pattern", Code: "tag_slug_pattern", Type: "text", Value: "/tags/{name}", Description: "标签 URL 模式"},
 		{Sort: 17, Kind: "Post", Name: "Tags Pattern", Code: "tags_pattern", Type: "text", Value: "/tags", Description: "标签列表 URL 模式"},

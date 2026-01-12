@@ -53,10 +53,10 @@ func GetSetting(code string) string {
 	}
 	return val
 }
-func GetSettingMap() map[string]interface{} {
-	s, ok := Settings.Load().(map[string]interface{})
+func GetSettingMap() map[string]string {
+	s, ok := Settings.Load().(map[string]string)
 	if !ok {
-		return map[string]interface{}{}
+		return map[string]string{}
 	}
 	return s
 }
