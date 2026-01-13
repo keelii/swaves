@@ -59,6 +59,12 @@ func main() {
 	engine.AddFunc("add", func(a, b int) int {
 		return a + b
 	})
+	engine.AddFunc("ellipsis", func(a string) template.HTML {
+		return template.HTML("<span title='" + a + "' class='ellipsis'>" + a + "</span>")
+	})
+	engine.AddFunc("long_text", func(a string, cols int, rows int) template.HTML {
+		return template.HTML("<textarea class=\"long-text\" cols=\"" + fmt.Sprint(cols) + "\" rows=\"" + fmt.Sprint(rows) + "\" readonly>" + a + "</textarea>")
+	})
 	engine.AddFunc("until", func(count int) []int {
 		var step []int
 		for i := 0; i < count; i++ {

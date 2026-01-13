@@ -25,11 +25,11 @@
     <td>{{ .Method }}</td>
     <td>{{ .Path }}</td>
     <td>{{ .Status }}</td>
-    <td>
-      <span style="display: block;height:1.5em;width:20em;text-overflow: ellipsis;overflow: hidden">{{ if .UserAgent }}{{ .UserAgent }}{{ else }}-{{ end }}</span>
-    </td>
+    <td>{{ if .UserAgent }}{{ long_text .UserAgent 30 5 }}{{ else }}-{{ end }}</td>
     <td>{{ if .QueryParams }}{{ .QueryParams }}{{ else }}-{{ end }}</td>
-    <td>{{ if .BodyParams }}{{ .BodyParams }}{{ else }}-{{ end }}</td>
+    <td>{{ if .BodyParams }}
+      {{ long_text .BodyParams 30 5 }}
+      {{ else }}-{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>
       <form method="post" style="display:inline" action="/admin/http-error-logs/{{ .ID }}/delete">

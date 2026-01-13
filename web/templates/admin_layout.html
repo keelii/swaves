@@ -5,7 +5,11 @@
   <title>{{ .Title }} - {{ settings "site_name" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
+  <!-- https://github.com/edwardtufte/tufte-css -->
   <link rel="stylesheet" href="/static/new.css" />
+  <style>
+
+  </style>
   {{ if eq (settings "mode") "dark"}}
   <style>
       :root {
@@ -24,6 +28,8 @@
   {{ else }}
     <style>
         :root {
+            --nc-tx-2: ##433;
+            --nc-bg-2: #f5f6f7;
             --admin_main_width: {{ settings "admin_main_width"}}px;
         }
     </style>
@@ -47,6 +53,23 @@
       button {
           padding: 2px 6px;
           /*background: none;*/
+      }
+      .salign {
+          display:flex; justify-content: space-between; align-items:center;
+      }
+      .ellipsis {
+          width: 10em;
+          display: inline-block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+      }
+      .long-text {
+          overflow: hidden;
+          background: transparent;
+      }
+      .long-text:hover {
+          {#border: none;#}
       }
     /*input[type="radio"] {*/
     /*    margin: 0;*/
