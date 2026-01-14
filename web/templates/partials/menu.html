@@ -1,7 +1,7 @@
 {{ $urlPath := .UrlPath }}
 <ul class="menu-list">
   <li class="menu-item{{ if eq $urlPath "/admin" }} active{{ end }}">
-    <span class="menu-text">工作台</span>
+    <a href="/admin" class="menu-text">工作台</a>
   </li>
   <li>
     <div class="menu-item{{ if or (hasPrefix $urlPath "/admin/posts") (hasPrefix $urlPath "/admin/encrypted-posts") (hasPrefix $urlPath "/admin/categories") (hasPrefix $urlPath "/admin/tags") }} expanded{{ end }}" onclick="toggleSubmenu(this)">

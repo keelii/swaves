@@ -8,9 +8,6 @@
   <!-- https://github.com/edwardtufte/tufte-css -->
   <link rel="stylesheet" href="/static/new.css" />
   <link rel="stylesheet" href="/static/style.css" />
-  <style>
-
-  </style>
   {{ if eq (settings "mode") "dark"}}
   <style>
       :root {
@@ -81,10 +78,14 @@
   <div class="top-navigation">
     <div class="nav-brand">
       <span class="menu-toggle-btn" onclick="toggleSidebar()">☰</span>
-      管理后台系统
+      Swaves Admin
     </div>
     <div class="nav-user">
-      <span>欢迎，管理员</span> <a href="/admin/logout">退出</a>
+      {{ if .IsLogin }}
+        <span>欢迎，管理员</span> <a href="/admin/logout">退出</a>
+      {{ else }}
+        <span>请先</span> <a href="/admin/login">登录</a>
+      {{ end }}
       <div class="user-avatar">A</div>
     </div>
   </div>
@@ -98,12 +99,12 @@
 
     <!-- 主内容区域 -->
     <div class="content-area">
-      <div class="content-header">
+      <div class="content-header content-box">
         <div class="content-title">
           {{ .Title }}
         </div>
       </div>
-      <div class="content-body">
+      <div class="content-body content-box">
         {{embed}}
       </div>
     </div>

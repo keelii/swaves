@@ -1,3 +1,6 @@
+:root {
+    --menu-width: 200px;
+}
 body {
     height: 100vh;
     overflow: hidden;
@@ -42,14 +45,6 @@ body {
     display: inline-block;
 }
 
-.menu-toggle-btn:hover {
-    transform: scale(1.1);
-}
-
-.menu-toggle-btn:active {
-    transform: scale(0.95);
-}
-
 .nav-user {
     display: flex;
     align-items: center;
@@ -77,9 +72,9 @@ body {
 
 /* 左侧菜单 */
 .sidebar-menu {
-    width: 220px;
+    width: var(--menu-width);
     background: #fff;
-    border-right: 1px solid #e8e8e8;
+    border-right: 1px solid var(--nc-bg-3);
     transition: all 0.3s ease;
     overflow-y: auto;
     overflow-x: hidden;
@@ -106,8 +101,8 @@ body {
 
     /* 小屏展开时恢复正常宽度 - 推开布局 */
     .sidebar-menu.mobile-expanded {
-        width: 220px;
-        border-right: 1px solid #e8e8e8;
+        width: var(--menu-width);
+        border-right: 1px solid var(--nc-bg-3);
     }
 }
 
@@ -116,7 +111,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid var(--nc-bg-3);
     cursor: pointer;
     background: #fafafa;
     transition: all 0.3s;
@@ -163,20 +158,27 @@ body {
     position: relative;
     font-size: 14px;
 }
+.menu-item a,
 .submenu-item a {
+    display: block;
     color: var(--nc-tx-2);
     text-decoration: none;
 }
 
 .menu-item:hover {
-    background: #e6f7ff;
-    color: #1890ff;
+    background: var(--nc-lk-3);
+    color: var(--nc-lk-1);
 }
 
+.submenu-item.active,
 .menu-item.active {
-    background: #e6f7ff;
-    color: #1890ff;
-    border-right: 3px solid #1890ff;
+    background: var(--nc-lk-3);
+    color: var(--nc-lk-1);
+    border-right: 3px solid var(--nc-lk-1);
+}
+.submenu-item.active a,
+.menu-item.active a {
+    color: var(--nc-lk-1);
 }
 
 .menu-icon {
@@ -260,13 +262,13 @@ body {
 }
 
 .submenu-item:hover {
-    background: #e6f7ff;
+    background: var(--nc-lk-3);
     color: #1890ff;
 }
 
 .submenu-item.active {
     color: #1890ff;
-    background: #e6f7ff;
+    background: var(--nc-lk-3);
 }
 
 /* 主内容区域 */
@@ -279,26 +281,23 @@ body {
 
 .content-header {
     background: white;
-    padding: 12px 20px;
     margin-bottom: 16px;
-    border-radius: 4px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
 .content-title {
     font-size: 18px;
-    font-weight: 500;
     color: #333;
 }
 
 .content-body {
-    background: white;
-    padding: 20px;
-    border-radius: 4px;
-    min-height: 400px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     font-size: 14px;
     line-height: 1.6;
+}
+.content-box {
+    background: #fff;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
 /* 滚动条样式 */

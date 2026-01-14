@@ -48,7 +48,7 @@ func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
 		"Title":   "Admin Login",
 		"Error":   "",
 		"UrlPath": c.Path(),
-	}, "admin_layout")
+	})
 }
 
 /* ---------- POST /admin/login ---------- */
@@ -60,7 +60,7 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 		return c.Render("admin_login", fiber.Map{
 			"Error":   "password is empty",
 			"UrlPath": c.Path(),
-		}, "admin_layout")
+		})
 	}
 
 	if err := h.Service.CheckPassword(password); err != nil {
@@ -68,7 +68,7 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 			"Title":   "Admin Login",
 			"Error":   "Invalid password",
 			"UrlPath": c.Path(),
-		}, "admin_layout")
+		})
 	}
 
 	sess, err := h.Store.Get(c)
