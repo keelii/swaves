@@ -7,6 +7,7 @@
   <meta name="robots" content="noindex, nofollow" />
   <!-- https://github.com/edwardtufte/tufte-css -->
   <link rel="stylesheet" href="/static/new.css" />
+  <link rel="stylesheet" href="/static/style.css" />
   <style>
 
   </style>
@@ -28,7 +29,7 @@
   {{ else }}
     <style>
         :root {
-            --nc-tx-2: ##433;
+            --nc-tx-2: #433;
             --nc-bg-2: #f5f6f7;
             --admin_main_width: {{ settings "admin_main_width"}}px;
         }
@@ -36,7 +37,7 @@
   {{ end }}
   <style>
       body {
-          max-width: var(--admin_main_width);
+          /*-max-width: var(--admin_main_width);*/
       }
       svg {
           vertical-align: text-bottom;
@@ -71,24 +72,133 @@
       .long-text:hover {
           {#border: none;#}
       }
-    /*input[type="radio"] {*/
-    /*    margin: 0;*/
-    /*    padding: 0;*/
-    /*    vertical-align: middle;*/
-    /*}*/
   </style>
 </head>
 <body>
 
-<header>
-  {{template "partials/navigation" .}}
-</header>
+<div class="admin-container">
+  <!-- 顶部导航 -->
+  <div class="top-navigation">
+    <div class="nav-brand">
+      <span class="menu-toggle-btn" onclick="toggleSidebar()">☰</span>
+      管理后台系统
+    </div>
+    <div class="nav-user">
+      <span>欢迎，管理员</span> <a href="/admin/logout">退出</a>
+      <div class="user-avatar">A</div>
+    </div>
+  </div>
 
-<h1>{{ .Title }}</h1>
+  <!-- 主体区域 -->
+  <div class="main-wrapper">
+    <!-- 左侧菜单 -->
+    <div class="sidebar-menu" id="sidebar">
+      {{template "partials/menu" .}}
+    </div>
 
-<main>
-  {{embed}}
-</main>
+    <!-- 主内容区域 -->
+    <div class="content-area">
+      <div class="content-header">
+        <div class="content-title">
+          {{ .Title }}
+        </div>
+      </div>
+      <div class="content-body">
+        {{embed}}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+
+        // 小屏幕特殊处理
+        if (window.innerWidth <= 768) {
+            sidebar.classList.toggle('mobile-expanded');
+        } else {
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // 收起时关闭所有子菜单
+        if (sidebar.classList.contains('collapsed') || !sidebar.classList.contains('mobile-expanded')) {
+            document.querySelectorAll('.menu-item.expanded').forEach(item => {
+                item.classList.remove('expanded');
+            });
+            document.querySelectorAll('.submenu-list.show').forEach(submenu => {
+                submenu.classList.remove('show');
+            });
+        }
+    }
+
+    function toggleSubmenu(element) {
+        // 获取侧边栏状态
+        const sidebar = document.getElementById('sidebar');
+        const isMobile = window.innerWidth <= 768;
+
+        // 小屏未展开或大屏收起状态不展开子菜单
+        if ((isMobile && !sidebar.classList.contains('mobile-expanded')) ||
+            (!isMobile && sidebar.classList.contains('collapsed'))) {
+            return;
+        }
+
+        const parent = element.parentElement;
+        const submenu = parent.querySelector('.submenu-list');
+        const isExpanded = element.classList.contains('expanded');
+
+        // 关闭所有其他子菜单
+        document.querySelectorAll('.menu-item.expanded').forEach(item => {
+            if (item !== element) {
+                item.classList.remove('expanded');
+                item.parentElement.querySelector('.submenu-list').classList.remove('show');
+            }
+        });
+
+        // 切换当前子菜单
+        if (isExpanded) {
+            element.classList.remove('expanded');
+            submenu.classList.remove('show');
+        } else {
+            element.classList.add('expanded');
+            submenu.classList.add('show');
+        }
+    }
+
+    // 一级菜单项点击事件
+    document.querySelectorAll('.menu-item').forEach(item => {
+        // 排除有子菜单的项
+        if (!item.parentElement.querySelector('.submenu-list')) {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                document.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        }
+    });
+
+    // 二级菜单项点击事件
+    document.querySelectorAll('.submenu-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // 响应窗口大小变化
+    window.addEventListener('resize', function() {
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth > 768) {
+            sidebar.classList.remove('mobile-expanded');
+        } else {
+            // 小屏时确保默认收起
+            sidebar.classList.remove('collapsed');
+        }
+    });
+</script>
+
 
 </body>
 </html>

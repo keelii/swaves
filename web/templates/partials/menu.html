@@ -1,0 +1,72 @@
+<ul class="menu-list">
+  <li class="menu-item active">
+    <span class="menu-text">工作台</span>
+  </li>
+  <li>
+    <div class="menu-item" onclick="toggleSubmenu(this)">
+      <span class="menu-text">内容管理</span>
+      <span class="menu-arrow">▸</span>
+    </div>
+    <ul class="submenu-list">
+      <li class="submenu-item">
+        <a href="/admin/posts">文章列表</a>
+      </li>
+      <li class="submenu-item">
+        <a href="/admin/encrypted-posts">加密文章列表</a>
+      </li>
+      <li class="submenu-item">
+        <a href="/admin/categories">分类列表</a>
+      </li>
+      <li class="submenu-item">
+        <a href="/admin/tags">标签列表</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <div class="menu-item" onclick="toggleSubmenu(this)">
+      <span class="menu-text">任务管理</span>
+      <span class="menu-arrow">▸</span>
+    </div>
+    <ul class="submenu-list">
+      <li class="submenu-item">
+        <a href="/admin/tasks">任务列表</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <div class="menu-item" onclick="toggleSubmenu(this)">
+      <span class="menu-text">数据管理</span>
+      <span class="menu-arrow">▸</span>
+    </div>
+    <ul class="submenu-list">
+      <li class="submenu-item">
+        <a href="/admin/import">导入</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <div class="menu-item" onclick="toggleSubmenu(this)">
+      <span class="menu-text">站点设置</span>
+      <span class="menu-arrow">▸</span>
+    </div>
+    <ul class="submenu-list">
+      <li class="submenu-item">
+        <a href="/admin/settings">站点设置</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <div class="menu-item" onclick="toggleSubmenu(this)">
+      <span class="menu-text">高级设置</span>
+      <span class="menu-arrow">▸</span>
+    </div>
+    <ul class="submenu-list">
+      <li class="submenu-item">
+        <a href="/admin/redirects">重定向管理</a>
+      </li>
+      <li class="submenu-item">
+        <a href="/admin/http-error-logs">请求日志</a>
+      </li>
+    </ul>
+  </li>
+</ul>
