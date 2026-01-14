@@ -141,6 +141,10 @@ func main() {
 		}
 		return template.HTMLAttr(" " + strings.Join(parts, " "))
 	})
+	// 辅助函数：检查字符串是否以指定前缀开头
+	engine.AddFunc("hasPrefix", func(s, prefix string) bool {
+		return strings.HasPrefix(s, prefix)
+	})
 	engine.Reload(true)
 	app := fiber.New(fiber.Config{
 		AppName:               "swaves",

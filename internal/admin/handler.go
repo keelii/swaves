@@ -37,6 +37,7 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 	return c.Render("admin_home", fiber.Map{
 		"Title":   "Admin Home",
 		"IsLogin": isLogin,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -44,8 +45,9 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 
 func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
 	return c.Render("admin_login", fiber.Map{
-		"Title": "Admin Login",
-		"Error": "",
+		"Title":   "Admin Login",
+		"Error":   "",
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -56,14 +58,16 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 	password := c.FormValue("password")
 	if password == "" {
 		return c.Render("admin_login", fiber.Map{
-			"Error": "password is empty",
+			"Error":   "password is empty",
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
 	if err := h.Service.CheckPassword(password); err != nil {
 		return c.Render("admin_login", fiber.Map{
-			"Title": "Admin Login",
-			"Error": "Invalid password",
+			"Title":   "Admin Login",
+			"Error":   "Invalid password",
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
@@ -104,9 +108,10 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("posts_index", fiber.Map{
-		"Title": "Posts",
-		"Posts": posts,
-		"Pager": pager,
+		"Title":   "Posts",
+		"Posts":   posts,
+		"Pager":   pager,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
@@ -124,6 +129,7 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 		"Title":      "New Post",
 		"Tags":       tags,
 		"Categories": categories,
+		"UrlPath":    c.Path(),
 	}, "admin_layout")
 }
 
@@ -232,6 +238,7 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 		"SelectedTagIDs": selectedTagIDs,
 		"Categories":     allCategories,
 		"Category":       categories[0],
+		"UrlPath":        c.Path(),
 	}, "admin_layout")
 }
 
@@ -304,15 +311,17 @@ func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("tags_index", fiber.Map{
-		"Title": "Tags",
-		"Tags":  tags,
-		"Pager": pager,
+		"Title":   "Tags",
+		"Tags":    tags,
+		"Pager":   pager,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
 func (h *Handler) GetTagNewHandler(c *fiber.Ctx) error {
 	return c.Render("tags_new", fiber.Map{
-		"Title": "New Tag",
+		"Title":   "New Tag",
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -341,8 +350,9 @@ func (h *Handler) GetTagEditHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("tags_edit", fiber.Map{
-		"Title": "Edit Tag",
-		"Tag":   tag,
+		"Title":   "Edit Tag",
+		"Tag":     tag,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -390,12 +400,14 @@ func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
 		"Title":     "Redirects",
 		"Redirects": redirects,
 		"Pager":     pager,
+		"UrlPath":   c.Path(),
 	}, "admin_layout")
 }
 
 func (h *Handler) GetRedirectNewHandler(c *fiber.Ctx) error {
 	return c.Render("redirects_new", fiber.Map{
-		"Title": "New Redirect",
+		"Title":   "New Redirect",
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -420,8 +432,9 @@ func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
 
 	if err := CreateRedirectService(h.DB, in); err != nil {
 		return c.Render("redirects_new", fiber.Map{
-			"Title": "New Redirect",
-			"Error": err,
+			"Title":   "New Redirect",
+			"Error":   err,
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
@@ -442,6 +455,7 @@ func (h *Handler) GetRedirectEditHandler(c *fiber.Ctx) error {
 	return c.Render("redirects_edit", fiber.Map{
 		"Title":    "Edit Redirect",
 		"Redirect": redirect,
+		"UrlPath":  c.Path(),
 	}, "admin_layout")
 }
 
@@ -499,15 +513,17 @@ func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("encrypted_posts_index", fiber.Map{
-		"Title": "Encrypted Posts",
-		"Posts": posts,
-		"Pager": pager,
+		"Title":   "Encrypted Posts",
+		"Posts":   posts,
+		"Pager":   pager,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
 func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
 	return c.Render("encrypted_posts_new", fiber.Map{
-		"Title": "New Encrypted Post",
+		"Title":   "New Encrypted Post",
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -553,8 +569,9 @@ func (h *Handler) GetEncryptedPostEditHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("encrypted_posts_edit", fiber.Map{
-		"Title": "Edit Encrypted Post",
-		"Post":  post,
+		"Title":   "Edit Encrypted Post",
+		"Post":    post,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -641,6 +658,7 @@ func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
 		"Title":      "Categories",
 		"Categories": categories,
 		"ParentMap":  parentMap,
+		"UrlPath":    c.Path(),
 	}, "admin_layout")
 }
 
@@ -659,6 +677,7 @@ func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
 		"Title":      "Category Tree",
 		"Tree":       tree,
 		"Categories": allCategories,
+		"UrlPath":    c.Path(),
 	}, "admin_layout")
 }
 
@@ -684,6 +703,7 @@ func (h *Handler) GetCategoryNewHandler(c *fiber.Ctx) error {
 		"Title":      "New Category",
 		"Categories": all,
 		"ParentID":   parentID,
+		"UrlPath":    c.Path(),
 	}, "admin_layout")
 }
 
@@ -721,6 +741,7 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 			"Title":      "New Category",
 			"Error":      err.Error(),
 			"Categories": []db.Category{},
+			"UrlPath":    c.Path(),
 		}, "admin_layout")
 	}
 
@@ -780,6 +801,7 @@ func (h *Handler) GetCategoryEditHandler(c *fiber.Ctx) error {
 		"Title":      "Edit Category",
 		"Category":   category,
 		"Categories": availableCategories,
+		"UrlPath":    c.Path(),
 	}, "admin_layout")
 }
 
@@ -825,6 +847,7 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 			"Error":      err.Error(),
 			"Category":   category,
 			"Categories": all,
+			"UrlPath":    c.Path(),
 		}, "admin_layout")
 	}
 
@@ -878,6 +901,7 @@ func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 	return c.Render("settings_index", fiber.Map{
 		"Title":    "Settings",
 		"Settings": settings,
+		"UrlPath":  c.Path(),
 	}, "admin_layout")
 }
 
@@ -942,6 +966,7 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		"Title":    "Settings - Edit All",
 		"Settings": settingsViews,
 		"Kind":     kind,
+		"UrlPath":  c.Path(),
 	}, "admin_layout")
 }
 
@@ -1024,6 +1049,7 @@ func (h *Handler) GetSettingEditHandler(c *fiber.Ctx) error {
 	return c.Render("settings_edit", fiber.Map{
 		"Title":   "Edit Setting",
 		"Setting": view,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -1085,6 +1111,7 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 			"Title":   "Edit Setting",
 			"Error":   err.Error(),
 			"Setting": view,
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
@@ -1120,6 +1147,7 @@ func (h *Handler) GetSettingNewHandler(c *fiber.Ctx) error {
 		"Title":              "New Setting",
 		"OptionsParsed":      optionsParsed,
 		"DefaultOptionValue": defaultOptionValue,
+		"UrlPath":            c.Path(),
 	}, "admin_layout")
 }
 
@@ -1159,6 +1187,7 @@ func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 			"Setting":            s,
 			"OptionsParsed":      optionsParsed,
 			"DefaultOptionValue": s.DefaultOptionValue,
+			"UrlPath":            c.Path(),
 		}, "admin_layout")
 	}
 
@@ -1195,6 +1224,7 @@ func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
 		"Title":     "Trash",
 		"Data":      data,
 		"ModelType": modelType,
+		"UrlPath":   c.Path(),
 	}, "admin_layout")
 }
 
@@ -1260,9 +1290,10 @@ func (h *Handler) GetHttpErrorLogListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("http_error_logs_index", fiber.Map{
-		"Title": "Http Error Logs",
-		"Logs":  logs,
-		"Pager": pager,
+		"Title":   "Http Error Logs",
+		"Logs":    logs,
+		"Pager":   pager,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -1287,14 +1318,16 @@ func (h *Handler) GetTaskListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("tasks_index", fiber.Map{
-		"Title": "Tasks",
-		"Tasks": tasks,
+		"Title":   "Tasks",
+		"Tasks":   tasks,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
 func (h *Handler) GetTaskNewHandler(c *fiber.Ctx) error {
 	return c.Render("tasks_new", fiber.Map{
-		"Title": "New Task",
+		"Title":   "New Task",
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -1328,8 +1361,9 @@ func (h *Handler) GetTaskEditHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("tasks_edit", fiber.Map{
-		"Title": "Edit Task",
-		"Task":  task,
+		"Title":   "Edit Task",
+		"Task":    task,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -1401,16 +1435,18 @@ func (h *Handler) GetTaskRunListHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Render("task_runs_index", fiber.Map{
-		"Title": "Task Runs: " + task.Name,
-		"Task":  task,
-		"Runs":  runs,
+		"Title":   "Task Runs: " + task.Name,
+		"Task":    task,
+		"Runs":    runs,
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
 // Import/Export
 func (h *Handler) GetImportHandler(c *fiber.Ctx) error {
 	return c.Render("import", fiber.Map{
-		"Title": "Import Markdown",
+		"Title":   "Import Markdown",
+		"UrlPath": c.Path(),
 	}, "admin_layout")
 }
 
@@ -1419,16 +1455,18 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	form, err := c.MultipartForm()
 	if err != nil {
 		return c.Render("import", fiber.Map{
-			"Title": "Import Markdown",
-			"Error": "Failed to parse form: " + err.Error(),
+			"Title":   "Import Markdown",
+			"Error":   "Failed to parse form: " + err.Error(),
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
 	files := form.File["files"]
 	if len(files) == 0 {
 		return c.Render("import", fiber.Map{
-			"Title": "Import Markdown",
-			"Error": "Please select at least one file to import",
+			"Title":   "Import Markdown",
+			"Error":   "Please select at least one file to import",
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
@@ -1484,8 +1522,9 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		src, err := fileHeader.Open()
 		if err != nil {
 			return c.Render("import", fiber.Map{
-				"Title": "Import Markdown",
-				"Error": "Failed to open file " + fileHeader.Filename + ": " + err.Error(),
+				"Title":   "Import Markdown",
+				"Error":   "Failed to open file " + fileHeader.Filename + ": " + err.Error(),
+				"UrlPath": c.Path(),
 			}, "admin_layout")
 		}
 
@@ -1493,8 +1532,9 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		src.Close()
 		if err != nil {
 			return c.Render("import", fiber.Map{
-				"Title": "Import Markdown",
-				"Error": "Failed to read file " + fileHeader.Filename + ": " + err.Error(),
+				"Title":   "Import Markdown",
+				"Error":   "Failed to read file " + fileHeader.Filename + ": " + err.Error(),
+				"UrlPath": c.Path(),
 			}, "admin_layout")
 		}
 
@@ -1573,8 +1613,9 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	if err != nil && len(items) == 0 {
 		// 如果全部解析失败，返回错误
 		return c.Render("import", fiber.Map{
-			"Title": "Import Markdown",
-			"Error": err.Error(),
+			"Title":   "Import Markdown",
+			"Error":   err.Error(),
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
@@ -1642,6 +1683,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		"SlugSourceDesc":    slugSourceDesc,
 		"CreatedSourceDesc": createdSourceDesc,
 		"StatusSourceDesc":  statusSourceDesc,
+		"UrlPath":           c.Path(),
 	}, "admin_layout")
 }
 
@@ -1660,9 +1702,10 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 	if itemCount == 0 {
 		return c.Render("import_preview", fiber.Map{
-			"Title": "Import Preview",
-			"Items": []PreviewPostItem{},
-			"Error": "No items to import",
+			"Title":   "Import Preview",
+			"Items":   []PreviewPostItem{},
+			"Error":   "No items to import",
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
@@ -1694,18 +1737,20 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 	if len(items) == 0 {
 		return c.Render("import_preview", fiber.Map{
-			"Title": "Import Preview",
-			"Items": items,
-			"Error": "No items to import",
+			"Title":   "Import Preview",
+			"Items":   items,
+			"Error":   "No items to import",
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 
 	// 调用 service 进行导入
 	if err := ImportPreviewService(h.DB, items); err != nil {
 		return c.Render("import_preview", fiber.Map{
-			"Title": "Import Preview",
-			"Items": items,
-			"Error": err.Error(),
+			"Title":   "Import Preview",
+			"Items":   items,
+			"Error":   err.Error(),
+			"UrlPath": c.Path(),
 		}, "admin_layout")
 	}
 

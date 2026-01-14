@@ -1,70 +1,71 @@
+{{ $urlPath := .UrlPath }}
 <ul class="menu-list">
-  <li class="menu-item active">
+  <li class="menu-item{{ if eq $urlPath "/admin" }} active{{ end }}">
     <span class="menu-text">工作台</span>
   </li>
   <li>
-    <div class="menu-item" onclick="toggleSubmenu(this)">
+    <div class="menu-item{{ if or (hasPrefix $urlPath "/admin/posts") (hasPrefix $urlPath "/admin/encrypted-posts") (hasPrefix $urlPath "/admin/categories") (hasPrefix $urlPath "/admin/tags") }} expanded{{ end }}" onclick="toggleSubmenu(this)">
       <span class="menu-text">内容管理</span>
       <span class="menu-arrow">▸</span>
     </div>
-    <ul class="submenu-list">
-      <li class="submenu-item">
+    <ul class="submenu-list{{ if or (hasPrefix $urlPath "/admin/posts") (hasPrefix $urlPath "/admin/encrypted-posts") (hasPrefix $urlPath "/admin/categories") (hasPrefix $urlPath "/admin/tags") }} show{{ end }}">
+      <li class="submenu-item{{ if or (eq $urlPath "/admin/posts") (hasPrefix $urlPath "/admin/posts/") }} active{{ end }}">
         <a href="/admin/posts">文章列表</a>
       </li>
-      <li class="submenu-item">
+      <li class="submenu-item{{ if or (eq $urlPath "/admin/encrypted-posts") (hasPrefix $urlPath "/admin/encrypted-posts/") }} active{{ end }}">
         <a href="/admin/encrypted-posts">加密文章列表</a>
       </li>
-      <li class="submenu-item">
+      <li class="submenu-item{{ if or (eq $urlPath "/admin/categories") (hasPrefix $urlPath "/admin/categories/") }} active{{ end }}">
         <a href="/admin/categories">分类列表</a>
       </li>
-      <li class="submenu-item">
+      <li class="submenu-item{{ if or (eq $urlPath "/admin/tags") (hasPrefix $urlPath "/admin/tags/") }} active{{ end }}">
         <a href="/admin/tags">标签列表</a>
       </li>
     </ul>
   </li>
   <li>
-    <div class="menu-item" onclick="toggleSubmenu(this)">
+    <div class="menu-item{{ if hasPrefix $urlPath "/admin/tasks" }} expanded{{ end }}" onclick="toggleSubmenu(this)">
       <span class="menu-text">任务管理</span>
       <span class="menu-arrow">▸</span>
     </div>
-    <ul class="submenu-list">
-      <li class="submenu-item">
+    <ul class="submenu-list{{ if hasPrefix $urlPath "/admin/tasks" }} show{{ end }}">
+      <li class="submenu-item{{ if or (eq $urlPath "/admin/tasks") (hasPrefix $urlPath "/admin/tasks/") }} active{{ end }}">
         <a href="/admin/tasks">任务列表</a>
       </li>
     </ul>
   </li>
   <li>
-    <div class="menu-item" onclick="toggleSubmenu(this)">
+    <div class="menu-item{{ if hasPrefix $urlPath "/admin/import" }} expanded{{ end }}" onclick="toggleSubmenu(this)">
       <span class="menu-text">数据管理</span>
       <span class="menu-arrow">▸</span>
     </div>
-    <ul class="submenu-list">
-      <li class="submenu-item">
+    <ul class="submenu-list{{ if hasPrefix $urlPath "/admin/import" }} show{{ end }}">
+      <li class="submenu-item{{ if hasPrefix $urlPath "/admin/import" }} active{{ end }}">
         <a href="/admin/import">导入</a>
       </li>
     </ul>
   </li>
   <li>
-    <div class="menu-item" onclick="toggleSubmenu(this)">
+    <div class="menu-item{{ if hasPrefix $urlPath "/admin/settings" }} expanded{{ end }}" onclick="toggleSubmenu(this)">
       <span class="menu-text">站点设置</span>
       <span class="menu-arrow">▸</span>
     </div>
-    <ul class="submenu-list">
-      <li class="submenu-item">
+    <ul class="submenu-list{{ if hasPrefix $urlPath "/admin/settings" }} show{{ end }}">
+      <li class="submenu-item{{ if hasPrefix $urlPath "/admin/settings" }} active{{ end }}">
         <a href="/admin/settings">站点设置</a>
       </li>
     </ul>
   </li>
   <li>
-    <div class="menu-item" onclick="toggleSubmenu(this)">
+    <div class="menu-item{{ if or (hasPrefix $urlPath "/admin/redirects") (hasPrefix $urlPath "/admin/http-error-logs") }} expanded{{ end }}" onclick="toggleSubmenu(this)">
       <span class="menu-text">高级设置</span>
       <span class="menu-arrow">▸</span>
     </div>
-    <ul class="submenu-list">
-      <li class="submenu-item">
+    <ul class="submenu-list{{ if or (hasPrefix $urlPath "/admin/redirects") (hasPrefix $urlPath "/admin/http-error-logs") }} show{{ end }}">
+      <li class="submenu-item{{ if or (eq $urlPath "/admin/redirects") (hasPrefix $urlPath "/admin/redirects/") }} active{{ end }}">
         <a href="/admin/redirects">重定向管理</a>
       </li>
-      <li class="submenu-item">
+      <li class="submenu-item{{ if or (eq $urlPath "/admin/http-error-logs") (hasPrefix $urlPath "/admin/http-error-logs/") }} active{{ end }}">
         <a href="/admin/http-error-logs">请求日志</a>
       </li>
     </ul>
