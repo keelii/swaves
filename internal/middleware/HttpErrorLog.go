@@ -4,6 +4,7 @@ import (
 	"log"
 	"strings"
 	"swaves/internal/db"
+	"swaves/internal/store"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +12,7 @@ import (
 
 const MaxMessageLength = 512
 
-func HttpErrorLogMiddleware(dbx *db.DB) fiber.Handler {
+func HttpErrorLogMiddleware(gStore *store.GlobalStore) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		err := c.Next()
 
@@ -35,7 +36,7 @@ func HttpErrorLogMiddleware(dbx *db.DB) fiber.Handler {
 		}
 
 		go func(l *db.HttpErrorLog) {
-			if err := db.CreateHttpErrorLog(dbx, l); err != nil {
+			if err := db.CreateHttpErrorLog(gStore.Model, l); err != nil {
 				log.Printf("insert http_error_log failed: %v", err)
 			}
 		}(logItem)

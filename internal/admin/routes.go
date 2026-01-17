@@ -1,27 +1,25 @@
 package admin
 
 import (
-	"swaves/internal/db"
+	"swaves/internal/store"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func RegisterRoutes(app *fiber.App, conn *db.DB) {
+func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	handler := NewHandler(
-		conn,
-		NewService(conn),
-		NewSessionStore(conn),
+		gStore,
+		NewService(gStore.Model),
 	)
 
 	adminGroup := app.Group("/admin")
-	adminGroup.Use(RequireAdmin(handler.Store, "/admin/login"))
 
 	adminGroup.Get("/", handler.GetHome)
 	adminGroup.Get("/login", handler.GetLoginHandler)
 	adminGroup.Post("/login", handler.PostLoginHandler)
 	adminGroup.Get("/logout", handler.GetLogoutHandler)
 
-	//store := NewSessionStore(deps.DB)
+	//store := NewSessionStore(deps.Model)
 	//
 	//// auth
 	//app.Get("/admin/login", GetLoginHandler(deps))

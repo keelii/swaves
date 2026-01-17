@@ -8,8 +8,8 @@ import (
 
 var Settings atomic.Value
 
-func InitSettings(dbx *db.DB) {
-	if err := ReloadSettings(dbx); err != nil {
+func InitSettings(gStore *GlobalStore) {
+	if err := ReloadSettings(gStore); err != nil {
 		log.Fatal("initial settings load failed:", err)
 	}
 
@@ -23,14 +23,14 @@ func InitSettings(dbx *db.DB) {
 			return
 		}
 
-		if err := ReloadSettings(dbx); err != nil {
+		if err := ReloadSettings(gStore); err != nil {
 			log.Println("reload settings failed:", err)
 		}
 	}
 }
 
-func ReloadSettings(dbx *db.DB) error {
-	m, err := db.LoadSettingsToMap(dbx)
+func ReloadSettings(gStore *GlobalStore) error {
+	m, err := db.LoadSettingsToMap(gStore.Model)
 	if err != nil {
 		log.Println("Error loading settings: ", err)
 		return err

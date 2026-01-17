@@ -3,6 +3,7 @@ package job
 import (
 	"log"
 	"swaves/internal/db"
+	"swaves/internal/store"
 	"sync"
 	"time"
 )
@@ -21,11 +22,11 @@ type Registry struct {
 }
 
 // 初始化 Registry
-func InitRegistry(dbx *db.DB, interval time.Duration) {
+func InitRegistry(gStore *store.GlobalStore, interval time.Duration) {
 	registry = &Registry{
 		jobs:    make(map[string]JobFunc),
 		running: make(map[string]bool),
-		DB:      dbx,
+		DB:      gStore.Model,
 	}
 	go registry.executor(interval)
 }

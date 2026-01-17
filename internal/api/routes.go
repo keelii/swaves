@@ -1,13 +1,11 @@
 package api
 
 import (
-	"swaves/internal/db"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gosimple/slug"
 )
 
-func RegisterRoutes(app *fiber.App, conn *db.DB) {
+func RegisterRoutes(app *fiber.App) {
 	apiGroup := app.Group("/api")
 
 	apiGroup.Get("/slug", func(c *fiber.Ctx) error {

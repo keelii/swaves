@@ -9,92 +9,88 @@ import (
 	"strings"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
+	"swaves/internal/store"
+	"swaves/internal/types"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type Handler struct {
-	DB      *db.DB
+	Model   *db.DB
+	Session *types.SessionStore
 	Service *Service
-	Store   *SessionStore
 }
 
-func NewHandler(db *db.DB, adminService *Service, store *SessionStore) *Handler {
+func NewHandler(gStore *store.GlobalStore, adminService *Service) *Handler {
 	return &Handler{
-		DB:      db,
+		Model:   gStore.Model,
+		Session: gStore.Session,
 		Service: adminService,
-		Store:   store,
 	}
+}
+
+func RenderAdminView(c *fiber.Ctx, view string, data fiber.Map, layout string) error {
+	if layout == "" {
+		layout = "admin_layout"
+	}
+	if data == nil {
+		data = fiber.Map{}
+	}
+
+	// 注入 Locals
+	c.Context().VisitUserValues(func(k []byte, v interface{}) {
+		log.Println("Injecting local:", string(k))
+		data[string(k)] = v
+	})
+
+	return c.Render(view, data, layout)
 }
 
 func (h *Handler) GetHome(c *fiber.Ctx) error {
-	sess, err := h.Store.Get(c)
-	if err != nil {
-		return err
-	}
-	isLogin := sess.Get("admin")
-	return c.Render("admin_home", fiber.Map{
-		"Title":   "Admin Home",
-		"IsLogin": isLogin,
-		"UrlPath": c.Path(),
-	}, "admin_layout")
+	return RenderAdminView(c, "admin_home", fiber.Map{"Title": "Admin Home"}, "")
 }
 
 /* ---------- GET /admin/login ---------- */
 
 func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
-	return c.Render("admin_login", fiber.Map{
-		"Title":   "Admin Login",
-		"Error":   "",
-		"UrlPath": c.Path(),
-	})
+	return RenderAdminView(c, "admin_login", fiber.Map{"Title": "Admin Login"}, "")
 }
 
 /* ---------- POST /admin/login ---------- */
 
 func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
-
 	password := c.FormValue("password")
 	if password == "" {
 		return c.Render("admin_login", fiber.Map{
-			"Error":   "password is empty",
-			"UrlPath": c.Path(),
+			"Title": "Admin Login",
+			"Error": "password is empty",
 		})
 	}
 
 	if err := h.Service.CheckPassword(password); err != nil {
 		return c.Render("admin_login", fiber.Map{
-			"Title":   "Admin Login",
-			"Error":   "Invalid password",
-			"UrlPath": c.Path(),
+			"Title": "Admin Login",
+			"Error": "Invalid password",
 		})
 	}
 
-	sess, err := h.Store.Get(c)
-	if err != nil {
-		return err
+	succ := h.Session.SaveSession(c)
+
+	if succ {
+		return c.Redirect("/admin")
 	}
 
-	sess.Set("admin", true)
-	sess.SetExpiry(time.Hour * 24 * 365)
-
-	if err := sess.Save(); err != nil {
-		log.Println("Session save error:", err)
-		return err
-	}
-
-	return c.Redirect("/admin")
+	return c.Render("admin_login", fiber.Map{
+		"Title": "Admin Login",
+		"Error": "Invalid Error",
+	})
 }
 
 /* ---------- POST /admin/logout ---------- */
 
 func (h *Handler) GetLogoutHandler(c *fiber.Ctx) error {
-	sess, err := h.Store.Get(c)
-	if err == nil {
-		sess.Destroy()
-	}
-
+	h.Session.ClearSession(c)
 	return c.Redirect("/admin/login")
 }
 
@@ -102,7 +98,7 @@ func (h *Handler) GetLogoutHandler(c *fiber.Ctx) error {
 func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
-	posts, err := ListPosts(h.DB, &pager)
+	posts, err := ListPosts(h.Model, &pager)
 	if err != nil {
 		return err
 	}
@@ -115,12 +111,12 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	}, "admin_layout")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
-	tags, err := GetAllTags(h.DB)
+	tags, err := GetAllTags(h.Model)
 	if err != nil {
 		return err
 	}
 
-	categories, err := GetAllCategoriesFlat(h.DB)
+	categories, err := GetAllCategoriesFlat(h.Model)
 	if err != nil {
 		return err
 	}
@@ -157,7 +153,7 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		for _, tagName := range tagNames {
 			tagName = strings.TrimSpace(tagName)
 			if tagName != "" {
-				tag, err := CreateTagByName(h.DB, tagName)
+				tag, err := CreateTagByName(h.Model, tagName)
 				if err == nil {
 					tagIDs = append(tagIDs, tag.ID)
 				}
@@ -189,7 +185,7 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		CategoryIDs: categoryIDs,
 	}
 
-	if err := CreatePostService(h.DB, in); err != nil {
+	if err := CreatePostService(h.Model, in); err != nil {
 		return err
 	}
 
@@ -202,12 +198,12 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	postWithTags, err := GetPostForEdit(h.DB, id)
+	postWithTags, err := GetPostForEdit(h.Model, id)
 	if err != nil {
 		return err
 	}
 
-	allTags, err := GetAllTags(h.DB)
+	allTags, err := GetAllTags(h.Model)
 	if err != nil {
 		return err
 	}
@@ -219,13 +215,13 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 	}
 
 	// 获取所有分类
-	allCategories, err := GetAllCategoriesFlat(h.DB)
+	allCategories, err := GetAllCategoriesFlat(h.Model)
 	if err != nil {
 		return err
 	}
 
 	// 获取当前 post 的分类（单选，只取第一个）
-	categories, err := db.GetPostCategories(h.DB, id)
+	categories, err := db.GetPostCategories(h.Model, id)
 	if err != nil {
 		return err
 	}
@@ -281,7 +277,7 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		CategoryIDs: categoryIDs,
 	}
 
-	if err := UpdatePostService(h.DB, id, in); err != nil {
+	if err := UpdatePostService(h.Model, id, in); err != nil {
 		return err
 	}
 
@@ -294,7 +290,7 @@ func (h *Handler) PostDeletePostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeletePostService(h.DB, id); err != nil {
+	if err := DeletePostService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -305,7 +301,7 @@ func (h *Handler) PostDeletePostHandler(c *fiber.Ctx) error {
 func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
-	tags, err := ListTags(h.DB, &pager)
+	tags, err := ListTags(h.Model, &pager)
 	if err != nil {
 		return err
 	}
@@ -331,7 +327,7 @@ func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
 		Slug: c.FormValue("slug"),
 	}
 
-	if err := CreateTagService(h.DB, in); err != nil {
+	if err := CreateTagService(h.Model, in); err != nil {
 		return err
 	}
 
@@ -344,7 +340,7 @@ func (h *Handler) GetTagEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	tag, err := GetTagForEdit(h.DB, id)
+	tag, err := GetTagForEdit(h.Model, id)
 	if err != nil {
 		return err
 	}
@@ -367,7 +363,7 @@ func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
 		Slug: c.FormValue("slug"),
 	}
 
-	if err := UpdateTagService(h.DB, id, in); err != nil {
+	if err := UpdateTagService(h.Model, id, in); err != nil {
 		return err
 	}
 
@@ -380,7 +376,7 @@ func (h *Handler) PostDeleteTagHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteTagService(h.DB, id); err != nil {
+	if err := DeleteTagService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -391,7 +387,7 @@ func (h *Handler) PostDeleteTagHandler(c *fiber.Ctx) error {
 func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
-	redirects, err := ListRedirects(h.DB, &pager)
+	redirects, err := ListRedirects(h.Model, &pager)
 	if err != nil {
 		return err
 	}
@@ -430,7 +426,7 @@ func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
 		Enabled: enabledInt,
 	}
 
-	if err := CreateRedirectService(h.DB, in); err != nil {
+	if err := CreateRedirectService(h.Model, in); err != nil {
 		return c.Render("redirects_new", fiber.Map{
 			"Title":   "New Redirect",
 			"Error":   err,
@@ -447,7 +443,7 @@ func (h *Handler) GetRedirectEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	redirect, err := GetRedirectForEdit(h.DB, id)
+	redirect, err := GetRedirectForEdit(h.Model, id)
 	if err != nil {
 		return err
 	}
@@ -483,7 +479,7 @@ func (h *Handler) PostUpdateRedirectHandler(c *fiber.Ctx) error {
 		Enabled: enabledInt,
 	}
 
-	if err := UpdateRedirectService(h.DB, id, in); err != nil {
+	if err := UpdateRedirectService(h.Model, id, in); err != nil {
 		return err
 	}
 
@@ -496,7 +492,7 @@ func (h *Handler) PostDeleteRedirectHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteRedirectService(h.DB, id); err != nil {
+	if err := DeleteRedirectService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -507,7 +503,7 @@ func (h *Handler) PostDeleteRedirectHandler(c *fiber.Ctx) error {
 func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
-	posts, err := ListEncryptedPosts(h.DB, &pager)
+	posts, err := ListEncryptedPosts(h.Model, &pager)
 	if err != nil {
 		return err
 	}
@@ -550,7 +546,7 @@ func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
 		ExpiresAt: expiresAtStr,
 	}
 
-	if err := CreateEncryptedPostService(h.DB, in); err != nil {
+	if err := CreateEncryptedPostService(h.Model, in); err != nil {
 		return err
 	}
 
@@ -563,7 +559,7 @@ func (h *Handler) GetEncryptedPostEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	post, err := GetEncryptedPostForEdit(h.DB, id)
+	post, err := GetEncryptedPostForEdit(h.Model, id)
 	if err != nil {
 		return err
 	}
@@ -603,7 +599,7 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c *fiber.Ctx) error {
 		ExpiresAt: expiresAtStr,
 	}
 
-	if err := UpdateEncryptedPostService(h.DB, id, in); err != nil {
+	if err := UpdateEncryptedPostService(h.Model, id, in); err != nil {
 		return err
 	}
 
@@ -616,7 +612,7 @@ func (h *Handler) PostDeleteEncryptedPostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteEncryptedPostService(h.DB, id); err != nil {
+	if err := DeleteEncryptedPostService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -633,7 +629,7 @@ type SettingView struct {
 
 // Categories
 func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
-	categories, err := ListCategoriesService(h.DB)
+	categories, err := ListCategoriesService(h.Model)
 	if err != nil {
 		return err
 	}
@@ -663,12 +659,12 @@ func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
-	allCategories, tree, err := GetCategoryTree(h.DB)
+	allCategories, tree, err := GetCategoryTree(h.Model)
 	if err != nil {
 		return err
 	}
 
-	//allCategories, err := GetAllCategoriesFlat(h.DB)
+	//allCategories, err := GetAllCategoriesFlat(h.Model)
 	//if err != nil {
 	//	return err
 	//}
@@ -683,7 +679,7 @@ func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
 
 func (h *Handler) GetCategoryNewHandler(c *fiber.Ctx) error {
 	// 获取所有分类用于选择父级
-	all, err := GetAllCategoriesFlat(h.DB)
+	all, err := GetAllCategoriesFlat(h.Model)
 	if err != nil {
 		return err
 	}
@@ -736,7 +732,7 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 		Sort:        sort,
 	}
 
-	if err := CreateCategoryService(h.DB, in); err != nil {
+	if err := CreateCategoryService(h.Model, in); err != nil {
 		return c.Render("categories_new", fiber.Map{
 			"Title":      "New Category",
 			"Error":      err.Error(),
@@ -754,13 +750,13 @@ func (h *Handler) GetCategoryEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	category, err := GetCategoryForEdit(h.DB, id)
+	category, err := GetCategoryForEdit(h.Model, id)
 	if err != nil {
 		return err
 	}
 
 	// 获取所有分类用于选择父级（排除自己）
-	all, err := GetAllCategoriesFlat(h.DB)
+	all, err := GetAllCategoriesFlat(h.Model)
 	if err != nil {
 		return err
 	}
@@ -839,9 +835,9 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 		Sort:        sort,
 	}
 
-	if err := UpdateCategoryService(h.DB, id, in); err != nil {
-		category, _ := GetCategoryForEdit(h.DB, id)
-		all, _ := GetAllCategoriesFlat(h.DB)
+	if err := UpdateCategoryService(h.Model, id, in); err != nil {
+		category, _ := GetCategoryForEdit(h.Model, id)
+		all, _ := GetAllCategoriesFlat(h.Model)
 		return c.Render("categories_edit", fiber.Map{
 			"Title":      "Edit Category",
 			"Error":      err.Error(),
@@ -860,7 +856,7 @@ func (h *Handler) PostDeleteCategoryHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteCategoryService(h.DB, id); err != nil {
+	if err := DeleteCategoryService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -883,7 +879,7 @@ func (h *Handler) PostUpdateCategoryParentHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	if err := UpdateCategoryParentService(h.DB, id, parentID); err != nil {
+	if err := UpdateCategoryParentService(h.Model, id, parentID); err != nil {
 		return err
 	}
 
@@ -893,7 +889,7 @@ func (h *Handler) PostUpdateCategoryParentHandler(c *fiber.Ctx) error {
 // Settings
 func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 	// 获取所有 settings，以表格形式展示
-	settings, err := ListAllSettings(h.DB)
+	settings, err := ListAllSettings(h.Model)
 	if err != nil {
 		return err
 	}
@@ -912,9 +908,9 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 	var settings []db.Setting
 	var err error
 	if kind == "" {
-		settings, err = ListAllSettings(h.DB)
+		settings, err = ListAllSettings(h.Model)
 	} else {
-		settings, err = ListSettingsByKind(h.DB, kind)
+		settings, err = ListSettingsByKind(h.Model, kind)
 	}
 	if err != nil {
 		return err
@@ -972,7 +968,7 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 
 func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 	// 获取所有配置项，然后更新每个的值
-	settings, err := ListAllSettings(h.DB)
+	settings, err := ListAllSettings(h.Model)
 	if err != nil {
 		return err
 	}
@@ -990,7 +986,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 			}
 
 			value := strings.Join(values, ",")
-			if err := UpdateSettingValueService(h.DB, setting.Code, value); err != nil {
+			if err := UpdateSettingValueService(h.Model, setting.Code, value); err != nil {
 				return err
 			}
 		} else {
@@ -1000,7 +996,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 			if setting.Type == "password" && value == "" {
 				continue
 			}
-			if err := UpdateSettingValueService(h.DB, setting.Code, value); err != nil {
+			if err := UpdateSettingValueService(h.Model, setting.Code, value); err != nil {
 				return err
 			}
 		}
@@ -1015,7 +1011,7 @@ func (h *Handler) GetSettingEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	setting, err := GetSettingByID(h.DB, id)
+	setting, err := GetSettingByID(h.Model, id)
 	if err != nil {
 		return err
 	}
@@ -1060,7 +1056,7 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 	}
 
 	// 获取现有设置
-	setting, err := GetSettingByID(h.DB, id)
+	setting, err := GetSettingByID(h.Model, id)
 	if err != nil {
 		return err
 	}
@@ -1090,7 +1086,7 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 		setting.Value = value
 	}
 
-	if err := UpdateSettingService(h.DB, setting); err != nil {
+	if err := UpdateSettingService(h.Model, setting); err != nil {
 		// 转换为视图结构，解析 options 和 attrs
 		view := SettingView{Setting: *setting}
 		if (setting.Type == "select" || setting.Type == "radio" || setting.Type == "checkbox") && setting.Options != "" {
@@ -1124,7 +1120,7 @@ func (h *Handler) PostDeleteSettingHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteSettingService(h.DB, id); err != nil {
+	if err := DeleteSettingService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1174,7 +1170,7 @@ func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 		s.Kind = "default"
 	}
 
-	if err := CreateSettingService(h.DB, s); err != nil {
+	if err := CreateSettingService(h.Model, s); err != nil {
 		// 解析 options 用于错误回显
 		var optionsParsed []map[string]string
 		if s.Options != "" {
@@ -1204,15 +1200,15 @@ func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
 
 	switch modelType {
 	case "posts":
-		data, err = GetTrashPosts(h.DB)
+		data, err = GetTrashPosts(h.Model)
 	case "encrypted-posts":
-		data, err = GetTrashEncryptedPosts(h.DB)
+		data, err = GetTrashEncryptedPosts(h.Model)
 	case "tags":
-		data, err = GetTrashTags(h.DB)
+		data, err = GetTrashTags(h.Model)
 	case "redirects":
-		data, err = GetTrashRedirects(h.DB)
+		data, err = GetTrashRedirects(h.Model)
 	default:
-		data, err = GetTrashPosts(h.DB)
+		data, err = GetTrashPosts(h.Model)
 		modelType = "posts"
 	}
 
@@ -1234,7 +1230,7 @@ func (h *Handler) PostRestorePostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := RestorePostService(h.DB, id); err != nil {
+	if err := RestorePostService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1247,7 +1243,7 @@ func (h *Handler) PostRestoreEncryptedPostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := RestoreEncryptedPostService(h.DB, id); err != nil {
+	if err := RestoreEncryptedPostService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1260,7 +1256,7 @@ func (h *Handler) PostRestoreTagHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := RestoreTagService(h.DB, id); err != nil {
+	if err := RestoreTagService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1273,7 +1269,7 @@ func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := RestoreRedirectService(h.DB, id); err != nil {
+	if err := RestoreRedirectService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1284,7 +1280,7 @@ func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
 func (h *Handler) GetHttpErrorLogListHandler(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
-	logs, err := ListHttpErrorLogs(h.DB, &pager)
+	logs, err := ListHttpErrorLogs(h.Model, &pager)
 	if err != nil {
 		return err
 	}
@@ -1303,7 +1299,7 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteHttpErrorLogService(h.DB, id); err != nil {
+	if err := DeleteHttpErrorLogService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1312,7 +1308,7 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
 
 // Tasks
 func (h *Handler) GetTaskListHandler(c *fiber.Ctx) error {
-	tasks, err := ListTasksService(h.DB)
+	tasks, err := ListTasksService(h.Model)
 	if err != nil {
 		return err
 	}
@@ -1342,7 +1338,7 @@ func (h *Handler) PostCreateTaskHandler(c *fiber.Ctx) error {
 		Enabled:     enabled,
 	}
 
-	if err := CreateTaskService(h.DB, in); err != nil {
+	if err := CreateTaskService(h.Model, in); err != nil {
 		return err
 	}
 
@@ -1355,7 +1351,7 @@ func (h *Handler) GetTaskEditHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	task, err := GetTaskForEdit(h.DB, id)
+	task, err := GetTaskForEdit(h.Model, id)
 	if err != nil {
 		return err
 	}
@@ -1383,7 +1379,7 @@ func (h *Handler) PostUpdateTaskHandler(c *fiber.Ctx) error {
 		Enabled:     enabled,
 	}
 
-	if err := UpdateTaskService(h.DB, id, in); err != nil {
+	if err := UpdateTaskService(h.Model, id, in); err != nil {
 		return err
 	}
 
@@ -1396,7 +1392,7 @@ func (h *Handler) PostDeleteTaskHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := DeleteTaskService(h.DB, id); err != nil {
+	if err := DeleteTaskService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1409,7 +1405,7 @@ func (h *Handler) PostTriggerTaskHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := CreatePendingRunService(h.DB, taskCode); err != nil {
+	if err := CreatePendingRunService(h.Model, taskCode); err != nil {
 		return err
 	}
 
@@ -1423,13 +1419,13 @@ func (h *Handler) GetTaskRunListHandler(c *fiber.Ctx) error {
 	}
 
 	// 获取 task 信息
-	task, err := db.GetTaskByCode(h.DB, taskCode)
+	task, err := db.GetTaskByCode(h.Model, taskCode)
 	if err != nil {
 		return err
 	}
 
 	// 获取执行记录列表，默认限制 100 条
-	runs, err := ListTaskRunsService(h.DB, taskCode, 100)
+	runs, err := ListTaskRunsService(h.Model, taskCode, 100)
 	if err != nil {
 		return err
 	}
@@ -1745,7 +1741,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 	}
 
 	// 调用 service 进行导入
-	if err := ImportPreviewService(h.DB, items); err != nil {
+	if err := ImportPreviewService(h.Model, items); err != nil {
 		return c.Render("import_preview", fiber.Map{
 			"Title":   "Import Preview",
 			"Items":   items,

@@ -1,18 +1,14 @@
 package admin
 
 import (
-	"swaves/internal/db"
+	"swaves/internal/types"
 	"time"
 
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/sqlite3/v2"
 )
 
-type SessionStore struct {
-	*session.Store
-}
-
-func NewSessionStore(dbInstance *db.DB) *SessionStore {
+func NewSessionStore() *types.SessionStore {
 	storage := sqlite3.New(sqlite3.Config{
 		Database:   "./data.sqlite",
 		Table:      "a_session_storage",
@@ -25,5 +21,5 @@ func NewSessionStore(dbInstance *db.DB) *SessionStore {
 		CookieHTTPOnly: true,
 	})
 
-	return &SessionStore{store}
+	return &types.SessionStore{store}
 }
