@@ -30,89 +30,22 @@ func (a *Service) CheckPassword(raw string) error {
 }
 
 type CreatePostInput struct {
-	Title       string
-	Slug        string
-	Content     string
-	Status      string
-	TagIDs      []int64
-	CategoryIDs []int64
+	Title      string
+	Slug       string
+	Content    string
+	Status     string
+	TagIDs     []int64
+	CategoryID int64
 }
 
 type UpdatePostInput struct {
-	Title       string
-	Content     string
-	Status      string
-	TagIDs      []int64
-	CategoryIDs []int64
+	Title      string
+	Content    string
+	Status     string
+	TagIDs     []int64
+	CategoryID int64
 }
 
-type PostWithTags struct {
-	Post       *db.Post
-	Tags       []db.Tag
-	Categories []db.Category
-}
-
-func ListPosts(dbx *db.DB, pager *types.Pagination) ([]PostWithTags, error) {
-	// 先查询总数
-	var total int
-	row := dbx.QueryRow(`SELECT COUNT(*) FROM posts WHERE deleted_at IS NULL`)
-	if err := row.Scan(&total); err != nil {
-		return nil, err
-	}
-
-	offset := (pager.Page - 1) * pager.PageSize
-	rows, err := dbx.Query(`
-		SELECT id, title, slug, content, status, created_at, updated_at, deleted_at
-		FROM posts
-		WHERE deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?
-	`, pager.PageSize, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var res []PostWithTags
-	for rows.Next() {
-		var p db.Post
-		if err := rows.Scan(
-			&p.ID,
-			&p.Title,
-			&p.Slug,
-			&p.Content,
-			&p.Status,
-			&p.CreatedAt,
-			&p.UpdatedAt,
-			&p.DeletedAt,
-		); err != nil {
-			return nil, err
-		}
-
-		// 获取该 post 的 tags
-		tags, err := db.GetPostTags(dbx, p.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		// 获取该 post 的 categories
-		categories, err := db.GetPostCategories(dbx, p.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		res = append(res, PostWithTags{
-			Post:       &p,
-			Tags:       tags,
-			Categories: categories,
-		})
-	}
-
-	pager.Total = total
-	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
-
-	return res, nil
-}
 func GetAllTags(dbx *db.DB) ([]db.Tag, error) {
 	rows, err := dbx.Query(`
 		SELECT id, name, slug, created_at, updated_at, deleted_at
@@ -173,9 +106,9 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		}
 	}
 
-	// 关联分类
-	if len(in.CategoryIDs) > 0 {
-		if err := db.SetPostCategories(dbx, p.ID, in.CategoryIDs); err != nil {
+	// 关联分类（单选）
+	if in.CategoryID > 0 {
+		if err := db.SetPostCategory(dbx, p.ID, in.CategoryID); err != nil {
 			return err
 		}
 	}
@@ -183,18 +116,19 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 	return nil
 }
 
-func GetPostForEdit(dbx *db.DB, id int64) (*PostWithTags, error) {
+func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithTags, error) {
 	post, err := db.GetPostByID(dbx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	tags, err := db.GetPostTags(dbx, id)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return &PostWithTags{
+	return &db.PostWithTags{
 		Post: post,
 		Tags: tags,
 	}, nil
@@ -219,8 +153,8 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 		return err
 	}
 
-	// 更新分类关联
-	if err := db.SetPostCategories(dbx, id, in.CategoryIDs); err != nil {
+	// 更新分类关联（单选）
+	if err := db.SetPostCategory(dbx, id, in.CategoryID); err != nil {
 		return err
 	}
 
@@ -1587,9 +1521,7 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 		if item.Category != "" {
 			category, err := CreateCategoryByName(dbx, item.Category)
 			if err == nil {
-				var categoryIDs []int64
-				categoryIDs = append(categoryIDs, category.ID)
-				if err := db.SetPostCategories(dbx, post.ID, categoryIDs); err != nil {
+				if err := db.SetPostCategory(dbx, post.ID, category.ID); err != nil {
 					// category 关联失败不影响主流程
 				}
 			}

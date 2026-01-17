@@ -1,8 +1,3 @@
-
-<p>
-  <a href="/admin/tasks/new">New Task</a>
-</p>
-
 <table>
   <thead>
   <tr>
@@ -49,10 +44,10 @@
     <td>{{ formatTime .CreatedAt }}</td>
     <td>
       <a href="/admin/tasks/{{ .ID }}/edit" style="margin-right: 10px;">编辑</a>
-      <form method="POST" action="/admin/tasks/{{ .Code }}/trigger" style="display: inline-block; margin-right: 10px;">
+      <form id="form" method="POST" action="/admin/tasks/{{ .Code }}/trigger" style="display: inline-block; margin-right: 10px;">
         <button type="submit">执行</button>
       </form>
-      <form method="POST" action="/admin/tasks/{{ .ID }}/delete" style="display: inline-block;">
+      <form id="form" method="POST" action="/admin/tasks/{{ .ID }}/delete" style="display: inline-block;">
         <button type="submit">删除</button>
       </form>
     </td>

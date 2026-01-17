@@ -56,6 +56,6 @@ func (s *SessionStore) IsLogin(c *fiber.Ctx) bool {
 		return false
 	}
 	isLogin := sess.Get(consts.LoginAdminName)
-	log.Println("isLogin:", isLogin)
+	//log.Println("isLogin:", isLogin)
 	return isLogin == true
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"swaves/internal/types"
 	"sync/atomic"
 	"time"
 
@@ -234,6 +235,12 @@ type Post struct {
 	DeletedAt *int64
 }
 
+type PostWithTags struct {
+	Post     *Post
+	Tags     []Tag
+	Category *Category
+}
+
 func CreatePost(db *DB, p *Post) error {
 	if p.CreatedAt == 0 {
 		p.CreatedAt = now()
@@ -287,6 +294,72 @@ func UpdatePost(db *DB, p *Post) error {
 		p.Title, p.Content, p.Status, p.UpdatedAt, p.ID,
 	)
 	return err
+}
+
+func ListPosts(db *DB, pager *types.Pagination) ([]PostWithTags, error) {
+	// 先查询总数
+	var total int
+	row := db.QueryRow(`SELECT COUNT(*) FROM posts WHERE deleted_at IS NULL`)
+	if err := row.Scan(&total); err != nil {
+		return nil, err
+	}
+
+	offset := (pager.Page - 1) * pager.PageSize
+	rows, err := db.Query(`
+		SELECT id, title, slug, content, status, created_at, updated_at, deleted_at
+		FROM posts
+		WHERE deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`, pager.PageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []PostWithTags
+	for rows.Next() {
+		var p Post
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&p.ID,
+			&p.Title,
+			&p.Slug,
+			&p.Content,
+			&p.Status,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+			&deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+
+		// 获取该 post 的 tags
+		tags, err := GetPostTags(db, p.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		// 获取该 post 的 category（单选）
+		category, err := GetPostCategory(db, p.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, PostWithTags{
+			Post:     &p,
+			Tags:     tags,
+			Category: category,
+		})
+	}
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+
+	return res, nil
 }
 
 func SoftDeletePost(db *DB, id int64) error {
@@ -625,7 +698,23 @@ func GetPostTags(db *DB, postID int64) ([]Tag, error) {
 
 func AttachTagToPost(db *DB, postID, tagID int64) error {
 	ts := now()
-	_, err := db.Exec(
+	// 先尝试恢复已存在的软删除关联
+	res, err := db.Exec(
+		`UPDATE post_tags 
+		 SET deleted_at=NULL, updated_at=?
+		 WHERE post_id=? AND tag_id=? AND deleted_at IS NOT NULL`,
+		ts, postID, tagID,
+	)
+	if err != nil {
+		return err
+	}
+	// 如果更新了记录，说明恢复了软删除的关联，直接返回
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected > 0 {
+		return nil
+	}
+	// 如果没有已存在的记录（包括软删除的），则插入新记录
+	_, err = db.Exec(
 		`INSERT OR IGNORE INTO post_tags
 		 (post_id, tag_id, created_at, updated_at)
 		 VALUES (?, ?, ?, ?)`,
@@ -1241,6 +1330,7 @@ func CheckPassword(db *DB, raw string) error {
 	if setting.Value == "" {
 		return ErrNotFound
 	}
+
 	return bcrypt.CompareHashAndPassword([]byte(setting.Value), []byte(raw))
 }
 
@@ -2072,39 +2162,35 @@ func RestoreCategory(db *DB, id int64) error {
 	return err
 }
 
-func GetPostCategories(db *DB, postID int64) ([]Category, error) {
-	rows, err := db.Query(`
+func GetPostCategory(db *DB, postID int64) (*Category, error) {
+	row := db.QueryRow(`
 		SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.sort, c.created_at, c.updated_at, c.deleted_at
 		FROM categories c
 		INNER JOIN post_categories pc ON c.id = pc.category_id
 		WHERE pc.post_id = ? AND pc.deleted_at IS NULL AND c.deleted_at IS NULL
 		ORDER BY c.name
+		LIMIT 1
 	`, postID)
-	if err != nil {
+
+	var c Category
+	var parentID sql.NullInt64
+	var deletedAt sql.NullInt64
+	if err := row.Scan(
+		&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
+		&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
-	defer rows.Close()
-
-	var categories []Category
-	for rows.Next() {
-		var c Category
-		var parentID sql.NullInt64
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
-			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
-		); err != nil {
-			return nil, err
-		}
-		if parentID.Valid {
-			c.ParentID = parentID.Int64
-		}
-		if deletedAt.Valid {
-			c.DeletedAt = &deletedAt.Int64
-		}
-		categories = append(categories, c)
+	if parentID.Valid {
+		c.ParentID = parentID.Int64
 	}
-	return categories, nil
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Int64
+	}
+	return &c, nil
 }
 
 func AttachCategoryToPost(db *DB, postID, categoryID int64) error {
@@ -2127,35 +2213,24 @@ func DetachCategoryFromPost(db *DB, postID, categoryID int64) error {
 	return err
 }
 
-func SetPostCategories(db *DB, postID int64, categoryIDs []int64) error {
+func SetPostCategory(db *DB, postID int64, categoryID int64) error {
 	// 先获取当前关联的分类
-	currentCategories, err := GetPostCategories(db, postID)
+	currentCategory, err := GetPostCategory(db, postID)
 	if err != nil {
 		return err
 	}
 
-	currentCategoryIDs := make(map[int64]bool)
-	for _, category := range currentCategories {
-		currentCategoryIDs[category.ID] = true
-	}
-
-	newCategoryIDs := make(map[int64]bool)
-	for _, categoryID := range categoryIDs {
-		newCategoryIDs[categoryID] = true
-	}
-
-	// 删除不再需要的分类关联
-	for _, category := range currentCategories {
-		if !newCategoryIDs[category.ID] {
-			if err := DetachCategoryFromPost(db, postID, category.ID); err != nil {
-				return err
-			}
+	// 如果当前分类存在且与新分类不同，则删除旧分类
+	if currentCategory != nil && currentCategory.ID != categoryID {
+		if err := DetachCategoryFromPost(db, postID, currentCategory.ID); err != nil {
+			return err
 		}
 	}
 
-	// 添加新的分类关联
-	for _, categoryID := range categoryIDs {
-		if !currentCategoryIDs[categoryID] {
+	// 如果新分类ID不为0，则添加新分类关联
+	if categoryID > 0 {
+		// 如果当前没有分类，或者当前分类与新分类不同，则添加新分类
+		if currentCategory == nil || currentCategory.ID != categoryID {
 			if err := AttachCategoryToPost(db, postID, categoryID); err != nil {
 				return err
 			}

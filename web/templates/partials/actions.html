@@ -1,0 +1,134 @@
+<style>
+  .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      padding: 4px 10px;
+      font-size: 14px;
+
+      color: #222;
+      background: #fff;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+
+      transition: background-color .12s ease,
+      border-color .12s ease,
+      box-shadow .12s ease;
+  }
+  .btn.primary {
+      background: var(--nc-lk-1);
+      border-color: var(--nc-lk-1);
+      color: var(--nc-lk-tx);
+  }
+  .btn.primary:hover {
+      color: var(--nc-lk-tx);
+      background: var(--nc-lk-2);
+  }
+
+  .btn:hover {
+      background: #f6f8fa;
+  }
+
+  .btn:active {
+      background: #eaeef2;
+  }
+
+  .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(9,105,218,.25);
+  }
+
+</style>
+<div class="actions salign">
+  <div class="left">
+      {{ if eq .UrlPath "/admin/posts/new" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+      {{ else if eq .UrlPath "/admin/tags/new" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+      {{ else if eq .UrlPath "/admin/categories/new" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+      {{ else if eq .UrlPath "/admin/encrypted-posts/new" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+      {{ else if eq .UrlPath "/admin/redirects/new" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+      {{ else if eq .UrlPath "/admin/tasks/new" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+      {{ else if eq .UrlPath "/admin/settings/new" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+      {{ else if eq .UrlPath "/admin/import" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">导入</a>
+      {{ else if eq .UrlPath "/admin/import/preview" }}
+        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">全部导入</a>
+      {{ else if match .UrlPath "^/admin/(posts|tags|categories|encrypted-posts|redirects|tasks|settings)/\\d+/edit$" }}
+        <button type="submit" form="form" class="btn primary">保存</button>
+      {{ end }}
+      {{ if eq .UrlPath "/admin/posts" }}
+        <a class="btn primary" href="/admin/posts/new">新建文章</a>
+      {{ else if eq .UrlPath "/admin/tags" }}
+        <a class="btn primary" href="/admin/tags/new">新建标签</a>
+      {{ else if eq .UrlPath "/admin/categories" }}
+        <a class="btn primary" href="/admin/categories/new">新建分类</a>
+        <a class="btn primary" href="/admin/categories/tree">分类树</a>
+      {{ else if eq .UrlPath "/admin/encrypted-posts" }}
+        <a class="btn primary" href="/admin/encrypted-posts/new">新建加密文章</a>
+      {{ else if eq .UrlPath "/admin/redirects" }}
+        <a class="btn primary" href="/admin/redirects/new">新建重定向</a>
+      {{ else if eq .UrlPath "/admin/tasks" }}
+        <a class="btn primary" href="/admin/tasks/new">新建任务</a>
+      {{ else if eq .UrlPath "/admin/settings" }}
+        <a class="btn primary" href="/admin/settings/new">新建设置</a>
+        <a class="btn primary" href="/admin/settings/all">编辑全部</a>
+      {{ else if eq .UrlPath "/admin/settings/all" }}
+        <a class="btn primary" href="/admin/settings">返回列表</a>
+      {{ else if eq .UrlPath "/admin/categories/tree" }}
+        <a class="btn primary" href="/admin/categories/new">新建分类</a>
+        <a class="btn primary" href="/admin/categories">分类列表</a>
+      {{ else if hasPrefix .UrlPath "/admin/tasks/" }}
+          {{ if hasSuffix .UrlPath "/runs" }}
+            <a class="btn primary" href="/admin/tasks">返回任务</a>
+          {{ end }}
+      {{ else if eq .UrlPath "/admin/posts/new" }}
+        <a class="btn primary" href="/admin/posts">返回</a>
+      {{ else if eq .UrlPath "/admin/tags/new" }}
+        <a class="btn primary" href="/admin/tags">返回</a>
+      {{ else if eq .UrlPath "/admin/categories/new" }}
+        <a class="btn primary" href="/admin/categories">返回</a>
+      {{ else if eq .UrlPath "/admin/encrypted-posts/new" }}
+        <a class="btn primary" href="/admin/encrypted-posts">返回</a>
+      {{ else if eq .UrlPath "/admin/redirects/new" }}
+        <a class="btn primary" href="/admin/redirects">返回</a>
+      {{ else if eq .UrlPath "/admin/tasks/new" }}
+        <a class="btn primary" href="/admin/tasks">返回</a>
+      {{ else if eq .UrlPath "/admin/settings/new" }}
+        <a class="btn primary" href="/admin/settings">返回</a>
+      {{ else if eq .UrlPath "/admin/import" }}
+        <a class="btn primary" href="/admin/posts">返回</a>
+      {{ else if eq .UrlPath "/admin/import/preview" }}
+        <a class="btn primary" href="/admin/import">返回</a>
+      {{ else if match .UrlPath "^/admin/posts/\\d+/edit$" }}
+        <a class="btn primary" href="/admin/posts">返回</a>
+      {{ else if match .UrlPath "^/admin/tags/\\d+/edit$" }}
+        <a class="btn primary" href="/admin/tags">返回</a>
+      {{ else if match .UrlPath "^/admin/categories/\\d+/edit$" }}
+        <a class="btn primary" href="/admin/categories">返回</a>
+      {{ else if match .UrlPath "^/admin/encrypted-posts/\\d+/edit$" }}
+        <a class="btn primary" href="/admin/encrypted-posts">返回</a>
+      {{ else if match .UrlPath "^/admin/redirects/\\d+/edit$" }}
+        <a class="btn primary" href="/admin/redirects">返回</a>
+      {{ else if match .UrlPath "^/admin/tasks/\\d+/edit$" }}
+        <a class="btn primary" href="/admin/tasks">返回</a>
+      {{ else if match .UrlPath "^/admin/settings/\\d+/edit$" }}
+        <a class="btn primary" href="/admin/settings">返回</a>
+      {{ else }}
+        <a class="btn primary" href="/admin">返回</a>
+      {{ end }}
+  </div>
+  <div class="right">
+  </div>
+
+</div>

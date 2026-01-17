@@ -2,7 +2,7 @@
 <p style="color: orange;">Warning: {{ .Error }}</p>
 {{ end }}
 
-<form method="post" action="/admin/import/preview">
+<form id="form" method="post" action="/admin/import/preview">
 
   <input type="hidden" name="items_count" value="{{ len .Items }}">
 
@@ -58,11 +58,6 @@
     {{ end }}
     </tbody>
   </table>
-
-  <p style="margin-top: 20px;">
-    <button type="submit">Import All</button>
-    <a href="/admin/import" style="margin-left: 10px;">Cancel</a>
-  </p>
 
 </form>
 

@@ -1,5 +1,5 @@
 
-<form method="post" action="/admin/tags/{{ .Tag.ID }}/edit">
+<form id="form" method="post" action="/admin/tags/{{ .Tag.ID }}/edit">
 
   <p>
     <label>ID:</label> {{ .Tag.ID }}
@@ -13,11 +13,6 @@
   <p>
     <label>Slug</label>
     <input type="text" name="slug" value="{{ .Tag.Slug }}" required>
-  </p>
-
-  <p>
-    <button type="submit">Save</button>
-    <a href="/admin/tags">Back</a>
   </p>
 
 </form>

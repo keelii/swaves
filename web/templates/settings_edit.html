@@ -2,7 +2,7 @@
 <p style="color: red;">Error: {{ .Error }}</p>
 {{ end }}
 
-<form method="post" action="/admin/settings/{{ .Setting.ID }}/edit">
+<form id="form" method="post" action="/admin/settings/{{ .Setting.ID }}/edit">
 
   <p>
     <label>ID:</label> {{ .Setting.ID }}
@@ -129,11 +129,6 @@
       <input type="number" name="sort" value="{{ .Setting.Sort }}">
       <small>(Sort order within kind)</small>
     </label>
-  </p>
-
-  <p>
-    <button type="submit">Save</button>
-    <a href="/admin/settings">Back</a>
   </p>
 
 </form>

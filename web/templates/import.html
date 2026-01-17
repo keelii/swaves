@@ -3,7 +3,7 @@
 <p style="color: red;">Error: {{ .Error }}</p>
 {{ end }}
 
-<form method="post" action="/admin/import" enctype="multipart/form-data">
+<form id="form" method="post" action="/admin/import" enctype="multipart/form-data">
 
   <p>
     <label>
@@ -102,11 +102,6 @@ tags:
 
 文章内容...</pre>
     </small>
-  </p>
-
-  <p>
-    <button type="submit">Import</button>
-    <a href="/admin/posts">Cancel</a>
   </p>
 
 </form>

@@ -1859,26 +1859,26 @@ func TestSetPostTags(t *testing.T) {
 	}
 }
 
-func TestGetPostCategories(t *testing.T) {
+func TestGetPostCategory(t *testing.T) {
 	db := openTestDB(t)
 
 	post := &Post{Title: "Cat Post", Slug: "cat-post", Content: "c", Status: "published"}
 	cat1 := &Category{Name: "Cat1", Slug: "cat1", Sort: 1}
-	cat2 := &Category{Name: "Cat2", Slug: "cat2", Sort: 1}
 
 	CreatePost(db, post)
 	CreateCategory(db, cat1)
-	CreateCategory(db, cat2)
 
 	AttachCategoryToPost(db, post.ID, cat1.ID)
-	AttachCategoryToPost(db, post.ID, cat2.ID)
 
-	cats, err := GetPostCategories(db, post.ID)
+	cat, err := GetPostCategory(db, post.ID)
 	if err != nil {
-		t.Fatalf("GetPostCategories failed: %v", err)
+		t.Fatalf("GetPostCategory failed: %v", err)
 	}
-	if len(cats) != 2 {
-		t.Fatalf("expected 2 categories, got %d", len(cats))
+	if cat == nil {
+		t.Fatal("expected category, got nil")
+	}
+	if cat.ID != cat1.ID {
+		t.Fatalf("expected category ID %d, got %d", cat1.ID, cat.ID)
 	}
 }
 
@@ -1895,12 +1895,15 @@ func TestAttachCategoryToPost(t *testing.T) {
 		t.Fatalf("AttachCategoryToPost failed: %v", err)
 	}
 
-	cats, err := GetPostCategories(db, post.ID)
+	gotCat, err := GetPostCategory(db, post.ID)
 	if err != nil {
-		t.Fatalf("GetPostCategories failed: %v", err)
+		t.Fatalf("GetPostCategory failed: %v", err)
 	}
-	if len(cats) != 1 {
-		t.Fatalf("expected 1 category, got %d", len(cats))
+	if gotCat == nil {
+		t.Fatal("expected category, got nil")
+	}
+	if gotCat.ID != cat.ID {
+		t.Fatalf("expected category ID %d, got %d", cat.ID, gotCat.ID)
 	}
 
 	// 再次关联应该不报错（INSERT OR IGNORE）
@@ -1921,9 +1924,12 @@ func TestDetachCategoryFromPost(t *testing.T) {
 	AttachCategoryToPost(db, post.ID, cat.ID)
 
 	// 验证已关联
-	cats, _ := GetPostCategories(db, post.ID)
-	if len(cats) != 1 {
-		t.Fatalf("expected 1 category before detach, got %d", len(cats))
+	gotCat, _ := GetPostCategory(db, post.ID)
+	if gotCat == nil {
+		t.Fatal("expected category before detach, got nil")
+	}
+	if gotCat.ID != cat.ID {
+		t.Fatalf("expected category ID %d, got %d", cat.ID, gotCat.ID)
 	}
 
 	// 取消关联
@@ -1932,63 +1938,49 @@ func TestDetachCategoryFromPost(t *testing.T) {
 	}
 
 	// 验证已取消关联
-	cats, _ = GetPostCategories(db, post.ID)
-	if len(cats) != 0 {
-		t.Fatalf("expected 0 categories after detach, got %d", len(cats))
+	gotCat, _ = GetPostCategory(db, post.ID)
+	if gotCat != nil {
+		t.Fatalf("expected nil category after detach, got category ID %d", gotCat.ID)
 	}
 }
 
-func TestSetPostCategories(t *testing.T) {
+func TestSetPostCategory(t *testing.T) {
 	db := openTestDB(t)
 
-	post := &Post{Title: "Set Cats Post", Slug: "set-cats-post", Content: "c", Status: "published"}
+	post := &Post{Title: "Set Cat Post", Slug: "set-cat-post", Content: "c", Status: "published"}
 	cat1 := &Category{Name: "SC1", Slug: "sc1", Sort: 1}
 	cat2 := &Category{Name: "SC2", Slug: "sc2", Sort: 1}
-	cat3 := &Category{Name: "SC3", Slug: "sc3", Sort: 1}
 
 	CreatePost(db, post)
 	CreateCategory(db, cat1)
 	CreateCategory(db, cat2)
-	CreateCategory(db, cat3)
 
-	// 先关联 cat1 和 cat2
+	// 先关联 cat1
 	AttachCategoryToPost(db, post.ID, cat1.ID)
-	AttachCategoryToPost(db, post.ID, cat2.ID)
 
-	// 使用 SetPostCategories 设置为 cat2 和 cat3
-	if err := SetPostCategories(db, post.ID, []int64{cat2.ID, cat3.ID}); err != nil {
-		t.Fatalf("SetPostCategories failed: %v", err)
+	// 使用 SetPostCategory 设置为 cat2
+	if err := SetPostCategory(db, post.ID, cat2.ID); err != nil {
+		t.Fatalf("SetPostCategory failed: %v", err)
 	}
 
-	cats, err := GetPostCategories(db, post.ID)
+	cat, err := GetPostCategory(db, post.ID)
 	if err != nil {
-		t.Fatalf("GetPostCategories failed: %v", err)
+		t.Fatalf("GetPostCategory failed: %v", err)
 	}
-	if len(cats) != 2 {
-		t.Fatalf("expected 2 categories, got %d", len(cats))
+	if cat == nil {
+		t.Fatal("expected category, got nil")
 	}
-
-	// 验证 cat1 已被移除，cat2 和 cat3 存在
-	foundCat1, foundCat2, foundCat3 := false, false, false
-	for _, cat := range cats {
-		if cat.ID == cat1.ID {
-			foundCat1 = true
-		}
-		if cat.ID == cat2.ID {
-			foundCat2 = true
-		}
-		if cat.ID == cat3.ID {
-			foundCat3 = true
-		}
+	if cat.ID != cat2.ID {
+		t.Fatalf("expected category ID %d, got %d", cat2.ID, cat.ID)
 	}
 
-	if foundCat1 {
-		t.Fatal("cat1 should be removed")
+	// 验证 cat1 已被移除
+	// 通过再次设置 cat1 来验证之前 cat2 已正确设置
+	if err := SetPostCategory(db, post.ID, cat1.ID); err != nil {
+		t.Fatalf("SetPostCategory to cat1 failed: %v", err)
 	}
-	if !foundCat2 {
-		t.Fatal("cat2 should exist")
-	}
-	if !foundCat3 {
-		t.Fatal("cat3 should exist")
+	cat, _ = GetPostCategory(db, post.ID)
+	if cat == nil || cat.ID != cat1.ID {
+		t.Fatalf("expected category ID %d, got %v", cat1.ID, cat)
 	}
 }

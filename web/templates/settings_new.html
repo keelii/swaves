@@ -2,7 +2,7 @@
 <p style="color: red;">Error: {{ .Error }}</p>
 {{ end }}
 
-<form method="post" action="/admin/settings/new">
+<form id="form" method="post" action="/admin/settings/new">
 
   <p>
     <label>
@@ -106,11 +106,6 @@
       <input type="number" name="sort" value="{{ if .Setting }}{{ .Setting.Sort }}{{ else }}0{{ end }}">
       <small>(Sort order within kind)</small>
     </label>
-  </p>
-
-  <p>
-    <button type="submit">Create</button>
-    <a href="/admin/settings">Cancel</a>
   </p>
 
 </form>

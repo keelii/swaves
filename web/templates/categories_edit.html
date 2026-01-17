@@ -2,7 +2,7 @@
 <p style="color: red;">Error: {{ .Error }}</p>
 {{ end }}
 
-<form method="post" action="/admin/categories/{{ .Category.ID }}/edit">
+<form id="form" method="post" action="/admin/categories/{{ .Category.ID }}/edit">
 
   <p>
     <label>
@@ -47,11 +47,6 @@
       <input type="number" name="sort" value="{{ .Category.Sort }}">
       <small>(Sort order within same parent level)</small>
     </label>
-  </p>
-
-  <p>
-    <button type="submit">Save</button>
-    <a href="/admin/categories">Back</a>
   </p>
 
 </form>

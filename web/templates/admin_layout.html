@@ -28,18 +28,19 @@
         :root {
             --nc-tx-2: #433;
             --nc-bg-2: #f5f6f7;
-            --admin_main_width: {{ settings "admin_main_width"}}px;
+            --ui-font-size: {{ settings "font_size"}}px;
         }
     </style>
   {{ end }}
   <style>
       body {
           /*-max-width: var(--admin_main_width);*/
+          /*font-size: var(--ui-font-size);*/
       }
       svg {
           vertical-align: text-bottom;
       }
-      nav {
+      nav, form, button {
           margin-bottom: 0;
       }
       table th {
@@ -48,9 +49,21 @@
       textarea, select, input {
           margin-bottom: 0;
       }
-      button {
-          padding: 2px 6px;
-          /*background: none;*/
+      .text-overflow {
+          width: 5em;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+      }
+      .valign {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+      }
+      .ivalign {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
       }
       .salign {
           display:flex; justify-content: space-between; align-items:center;
@@ -101,7 +114,7 @@
     <div class="content-area">
       <div class="content-header content-box">
         <div class="content-title">
-          {{ .Title }}
+          {{template "partials/actions" .}}
         </div>
       </div>
       <div class="content-body content-box">
@@ -148,15 +161,7 @@
         const submenu = parent.querySelector('.submenu-list');
         const isExpanded = element.classList.contains('expanded');
 
-        // 关闭所有其他子菜单
-        document.querySelectorAll('.menu-item.expanded').forEach(item => {
-            if (item !== element) {
-                item.classList.remove('expanded');
-                item.parentElement.querySelector('.submenu-list').classList.remove('show');
-            }
-        });
-
-        // 切换当前子菜单
+        // 只切换当前子菜单，不影响其他菜单
         if (isExpanded) {
             element.classList.remove('expanded');
             submenu.classList.remove('show');

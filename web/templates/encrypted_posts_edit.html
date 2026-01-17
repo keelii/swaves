@@ -1,5 +1,5 @@
 
-<form method="post" action="/admin/encrypted-posts/{{ .Post.ID }}/edit">
+<form id="form" method="post" action="/admin/encrypted-posts/{{ .Post.ID }}/edit">
 
   <p>
     <label>Title</label><br>
@@ -19,17 +19,16 @@
   <p>
     <label>
       Expires At (可选)<br>
-      {{ $expiresAt := .Post.ExpiresAt }}
       {{ $customDate := "" }}
-      {{ if $expiresAt }}
-        {{ $customDate = formatDateTimeLocal $expiresAt }}
+      {{ if .Post.ExpiresAt }}
+        {{ $customDate = formatDateTimeLocal .Post.ExpiresAt }}
       {{ end }}
-      <label><input type="radio" name="expires_at_option" value="none" {{ if not $expiresAt }}checked{{ end }} onchange="toggleCustomDate()"> Never</label>
+      <label><input type="radio" name="expires_at_option" value="none" {{ if not .Post.ExpiresAt }}checked{{ end }} onchange="toggleCustomDate()"> Never</label>
       <label><input type="radio" name="expires_at_option" value="5min" onchange="toggleCustomDate()"> 5 minutes</label>
       <label><input type="radio" name="expires_at_option" value="1hour" onchange="toggleCustomDate()"> 1 hour</label>
       <label><input type="radio" name="expires_at_option" value="1day" onchange="toggleCustomDate()"> 1 day</label>
-      <label><input type="radio" name="expires_at_option" value="custom" {{ if $expiresAt }}checked{{ end }} onchange="toggleCustomDate()"> Other</label>
-      <div id="custom-date-container" style="display: {{ if $expiresAt }}block{{ else }}none{{ end }}; margin-top: 10px;">
+      <label><input type="radio" name="expires_at_option" value="custom" {{ if .Post.ExpiresAt }}checked{{ end }} onchange="toggleCustomDate()"> Other</label>
+      <div id="custom-date-container" style="display: {{ if .Post.ExpiresAt }}block{{ else }}none{{ end }}; margin-top: 10px;">
         <input type="datetime-local" name="expires_at_custom" id="expires_at_custom" value="{{ $customDate }}">
       </div>
       <input type="hidden" name="expires_at" id="expires_at_hidden" value="{{ $customDate }}">
@@ -97,11 +96,6 @@
       <textarea name="content" rows="10" cols="80">{{ .Post.Content }}</textarea>
     </div>
   </div>
-
-  <p>
-    <button type="submit">Save</button>
-    <a href="/admin/encrypted-posts">Back</a>
-  </p>
 
 </form>
 

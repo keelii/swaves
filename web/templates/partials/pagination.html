@@ -1,38 +1,35 @@
 <nav aria-label="Page navigation" style="display: flex; align-items: center; gap: 10px;">
   <div style="display: flex; align-items: center; gap: 5px;">
-    {{$currentPageSize := .Pager.PageSize}}
     {{if le .Pager.Page 1}}
     <span class="page-link" tabindex="-1">上一页</span>
     {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page -1}}&pageSize={{$currentPageSize}}" tabindex="-1">上一页</a>
+    <a class="page-link" href="?page={{add .Pager.Page -1}}&pageSize={{.Pager.PageSize}}" tabindex="-1">上一页</a>
     {{end}}
-
-    {{$currentPage := .Pager.Page}}
 
     {{range $i := until .Pager.Num}}
     {{$pageNum := add $i 1}}
-    {{if eq $currentPage $pageNum}}
+    {{if eq $.Pager.Page $pageNum}}
     <span class="page-link">{{$pageNum}}</span>
     {{else}}
-    <a class="page-link" href="?page={{$pageNum}}&pageSize={{$currentPageSize}}">{{$pageNum}}</a>
+    <a class="page-link" href="?page={{$pageNum}}&pageSize={{$.Pager.PageSize}}">{{$pageNum}}</a>
     {{end}}
     {{end}}
 
     {{if ge .Pager.Page .Pager.Num}}
     <span class="page-link">下一页</span>
     {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page 1}}&pageSize={{$currentPageSize}}">下一页</a>
+    <a class="page-link" href="?page={{add .Pager.Page 1}}&pageSize={{.Pager.PageSize}}">下一页</a>
     {{end}}
   </div>
 
   <div style="display: flex; align-items: center; gap: 5px;">
     <label for="page-size-select" style="white-space: nowrap;">每页</label>
     <select id="page-size-select" style="padding: 2px 5px;">
-      <option value="5" {{if eq $currentPageSize 5}}selected{{end}}>5</option>
-      <option value="10" {{if eq $currentPageSize 10}}selected{{end}}>10</option>
-      <option value="20" {{if eq $currentPageSize 20}}selected{{end}}>20</option>
-      <option value="50" {{if eq $currentPageSize 50}}selected{{end}}>50</option>
-      <option value="100" {{if eq $currentPageSize 100}}selected{{end}}>100</option>
+      <option value="5" {{if eq .Pager.PageSize 5}}selected{{end}}>5</option>
+      <option value="10" {{if eq .Pager.PageSize 10}}selected{{end}}>10</option>
+      <option value="20" {{if eq .Pager.PageSize 20}}selected{{end}}>20</option>
+      <option value="50" {{if eq .Pager.PageSize 50}}selected{{end}}>50</option>
+      <option value="100" {{if eq .Pager.PageSize 100}}selected{{end}}>100</option>
     </select>
     <span style="white-space: nowrap;">条</span>
     <span style="white-space: nowrap;">，共 {{.Pager.Total}} 条</span>

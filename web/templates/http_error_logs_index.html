@@ -32,7 +32,7 @@
       {{ else }}-{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>
-      <form method="post" style="display:inline" action="/admin/http-error-logs/{{ .ID }}/delete">
+      <form id="form" method="post" style="display:inline" action="/admin/http-error-logs/{{ .ID }}/delete">
         <button type="submit">Delete</button>
       </form>
     </td>

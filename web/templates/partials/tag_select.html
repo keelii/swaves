@@ -1,0 +1,12 @@
+{{ if .Tags }}
+    {{ range .Tags }}
+      <label class="ivalign">
+        {{ if $.SelectedTagIDs }}
+          <input type="checkbox" class="tag-checkbox" value="{{ .ID }}" {{ if index $.SelectedTagIDs .ID }}checked{{ end }}>
+        {{ else }}
+          <input type="checkbox" class="tag-checkbox" value="{{ .ID }}">
+        {{ end }}
+        <span class="text-overflow">{{ .Name }}</span>
+      </label>
+    {{ end }}
+{{ end }}

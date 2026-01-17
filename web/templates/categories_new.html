@@ -2,7 +2,7 @@
 <p style="color: red;">Error: {{ .Error }}</p>
 {{ end }}
 
-<form method="post" action="/admin/categories/new">
+<form id="form" method="post" action="/admin/categories/new">
 
   <p>
     <label>
@@ -47,11 +47,6 @@
       <input type="number" name="sort" value="0">
       <small>(Sort order within same parent level)</small>
     </label>
-  </p>
-
-  <p>
-    <button type="submit">Create</button>
-    <a href="/admin/categories">Cancel</a>
   </p>
 
 </form>

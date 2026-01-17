@@ -1,106 +1,95 @@
-<!DOCTYPE html>
-<html lang="{{ settings "language" }}">
-<head>
-  <meta charset="utf-8">
-  <title>{{ .Title }} - {{ settings "site_name" }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        height: 100vh;
+        overflow: hidden;
+        max-width: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--nc-bg-2);
+    }
 
-  <link rel="stylesheet" href="/static/new.css" />
-  <link rel="stylesheet" href="/static/style.css" />
-  <title>登录 - 管理后台</title>
-  <style>
-      body {
-          height: 100vh;
-          overflow: hidden;
-          max-width: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--nc-bg-2);
-      }
+    .login-container {
+        width: 100%;
+        max-width: 350px;
+        padding: 1rem;
+    }
 
-      .login-container {
-          width: 100%;
-          max-width: 350px;
-          padding: 1rem;
-      }
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
 
-      .login-header {
-          text-align: center;
-          margin-bottom: 2rem;
-      }
+    .login-logo {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
 
-      .login-logo {
-          font-size: 3rem;
-          margin-bottom: 0.5rem;
-      }
+    .login-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--nc-tx-1);
+        margin: 0;
+    }
 
-      .login-title {
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: var(--nc-tx-1);
-          margin: 0;
-      }
+    .login-subtitle {
+        font-size: 0.9rem;
+        color: var(--nc-tx-2);
+        margin-top: 0.25rem;
+    }
 
-      .login-subtitle {
-          font-size: 0.9rem;
-          color: var(--nc-tx-2);
-          margin-top: 0.25rem;
-      }
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
 
-      .form-group {
-          margin-bottom: 1.5rem;
-      }
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--nc-bg-3);
+        border-radius: 4px;
+        background: var(--nc-bg-1);
+        color: var(--nc-tx-1);
+    }
 
-      .form-input {
-          width: 100%;
-          padding: 0.75rem 1rem;
-          border: 1px solid var(--nc-bg-3);
-          border-radius: 4px;
-          background: var(--nc-bg-1);
-          color: var(--nc-tx-1);
-      }
+    .password-wrapper {
+        position: relative;
+    }
 
-      .password-wrapper {
-          position: relative;
-      }
+    .login-button {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        color: white;
+        background: var(--nc-lk-1);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 116, 217, 0.2);
+    }
 
-      .login-button {
-          width: 100%;
-          padding: 0.75rem 1rem;
-          color: white;
-          background: var(--nc-lk-1);
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 116, 217, 0.2);
-      }
+    .login-button:hover {
+        background: var(--nc-lk-2);
+        box-shadow: 0 4px 8px rgba(0, 116, 217, 0.3);
+        transform: translateY(-1px);
+    }
 
-      .login-button:hover {
-          background: var(--nc-lk-2);
-          box-shadow: 0 4px 8px rgba(0, 116, 217, 0.3);
-          transform: translateY(-1px);
-      }
+    .login-button:active {
+        transform: translateY(0);
+    }
 
-      .login-button:active {
-          transform: translateY(0);
-      }
+    .login-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
 
-      .login-button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          transform: none;
-      }
+    .error-message {
+        color: #c33;
+        padding: 0.75rem 0;
+    }
+</style>
 
-      .error-message {
-          color: #c33;
-          padding: 0.75rem 0;
-      }
-  </style>
-</head>
-<body>
 <div class="login-container">
   <div class="content-box">
     <div class="login-header">
@@ -112,7 +101,7 @@
     <div class="error-message">{{ .Error }}</div>
     {{ end }}
 
-    <form method="POST" action="/admin/login">
+    <form id="form" method="POST" action="/admin/login">
       <div class="form-group">
         <div class="password-wrapper">
           <input
@@ -126,11 +115,7 @@
           >
         </div>
       </div>
-
       <button type="submit" class="login-button" id="loginButton">登录</button>
     </form>
   </div>
 </div>
-
-</body>
-</html>

@@ -1,9 +1,3 @@
-
-<p>
-  <a href="/admin/settings/new">New Setting</a>
-  <a href="/admin/settings/all" style="margin-left: 10px;">Edit All</a>
-</p>
-
 <table>
   <thead>
   <tr>
@@ -39,7 +33,7 @@
     <td>
       <a href="/admin/settings/{{ .ID }}/edit">Edit</a>
 
-      <form method="post" style="display:inline" action="/admin/settings/{{ .ID }}/delete">
+      <form id="form" method="post" style="display:inline" action="/admin/settings/{{ .ID }}/delete">
         <button type="submit">Delete</button>
       </form>
     </td>

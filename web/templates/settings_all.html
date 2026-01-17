@@ -1,8 +1,4 @@
-<p>
-  <a href="/admin/settings">Back to List</a>
-</p>
-
-<form method="post" action="/admin/settings/all">
+<form id="form" method="post" action="/admin/settings/all">
 
   {{ $lastKind := "" }}
   {{ range .Settings }}
@@ -16,7 +12,7 @@
 
   <p>
     <label>
-      {{ .Name }}<br>
+      {{ .Name }}
       {{ if .Description }}
       <small>{{ .Description }}</small><br>
       {{ end }}
@@ -41,13 +37,12 @@
         <textarea name="setting_{{ .Code }}"{{ renderAttrs .AttrsParsed }}>{{ .Value }}</textarea>
       {{ else if eq .Type "radio" }}
         {{ $currentValue := .Value }}
-        {{ $currentCode := .Code }}
         {{ if not $currentValue }}
           {{ $currentValue = $.DefaultOptionValue }}
         {{ end }}
         {{ range .OptionsParsed }}
           <label style="display:inline-block; margin-right:10px;">
-            <input type="radio" name="setting_{{ $currentCode }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
+            <input type="radio" name="setting_{{ $.Code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
             {{ .label }}
           </label>
         {{ end }}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"regexp"
 	"strings"
 	"swaves/internal/consts"
 	"swaves/internal/store"
@@ -119,6 +120,18 @@ func NewViewEngine() *html.Engine {
 	// 辅助函数：检查字符串是否以指定前缀开头
 	engine.AddFunc("hasPrefix", func(s, prefix string) bool {
 		return strings.HasPrefix(s, prefix)
+	})
+	// 辅助函数：检查字符串是否以指定后缀结尾
+	engine.AddFunc("hasSuffix", func(s, suffix string) bool {
+		return strings.HasSuffix(s, suffix)
+	})
+	// 辅助函数：检查字符串是否匹配正则表达式
+	engine.AddFunc("match", func(s, pattern string) bool {
+		matched, err := regexp.MatchString(pattern, s)
+		if err != nil {
+			return false
+		}
+		return matched
 	})
 	engine.Reload(true)
 

@@ -10,8 +10,7 @@
 </nav>
 
 {{ if eq .ModelType "posts" }}
-  {{ $posts := .Data }}
-  {{ if $posts }}
+  {{ if .Data }}
   <table>
     <thead>
     <tr>
@@ -24,7 +23,7 @@
     </tr>
     </thead>
     <tbody>
-    {{ range $posts }}
+    {{ range .Data }}
     <tr>
       <td>{{ .ID }}</td>
       <td>{{ .Title }}</td>
@@ -32,7 +31,7 @@
       <td>{{ .Status }}</td>
       <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form method="post" style="display:inline" action="/admin/trash/posts/{{ .ID }}/restore">
+        <form id="form" method="post" style="display:inline" action="/admin/trash/posts/{{ .ID }}/restore">
           <button type="submit">Restore</button>
         </form>
       </td>
@@ -46,8 +45,7 @@
 {{ end }}
 
 {{ if eq .ModelType "encrypted-posts" }}
-  {{ $posts := .Data }}
-  {{ if $posts }}
+  {{ if .Data }}
   <table>
     <thead>
     <tr>
@@ -59,14 +57,14 @@
     </tr>
     </thead>
     <tbody>
-    {{ range $posts }}
+    {{ range .Data }}
     <tr>
       <td>{{ .ID }}</td>
       <td>{{ .Title }}</td>
       <td>{{ .Slug }}</td>
       <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form method="post" style="display:inline" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
+        <form id="form" method="post" style="display:inline" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
           <button type="submit">Restore</button>
         </form>
       </td>
@@ -80,8 +78,7 @@
 {{ end }}
 
 {{ if eq .ModelType "tags" }}
-  {{ $tags := .Data }}
-  {{ if $tags }}
+  {{ if .Data }}
   <table>
     <thead>
     <tr>
@@ -93,14 +90,14 @@
     </tr>
     </thead>
     <tbody>
-    {{ range $tags }}
+    {{ range .Data }}
     <tr>
       <td>{{ .ID }}</td>
       <td>{{ .Name }}</td>
       <td>{{ .Slug }}</td>
       <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form method="post" style="display:inline" action="/admin/trash/tags/{{ .ID }}/restore">
+        <form id="form" method="post" style="display:inline" action="/admin/trash/tags/{{ .ID }}/restore">
           <button type="submit">Restore</button>
         </form>
       </td>
@@ -114,8 +111,7 @@
 {{ end }}
 
 {{ if eq .ModelType "redirects" }}
-  {{ $redirects := .Data }}
-  {{ if $redirects }}
+  {{ if .Data }}
   <table>
     <thead>
     <tr>
@@ -127,14 +123,14 @@
     </tr>
     </thead>
     <tbody>
-    {{ range $redirects }}
+    {{ range .Data }}
     <tr>
       <td>{{ .ID }}</td>
       <td>{{ .From }}</td>
       <td>{{ .To }}</td>
       <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form method="post" style="display:inline" action="/admin/trash/redirects/{{ .ID }}/restore">
+        <form id="form" method="post" style="display:inline" action="/admin/trash/redirects/{{ .ID }}/restore">
           <button type="submit">Restore</button>
         </form>
       </td>

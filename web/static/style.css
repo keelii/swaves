@@ -289,13 +289,9 @@ body {
     color: #333;
 }
 
-.content-body {
-    font-size: 14px;
-    line-height: 1.6;
-}
 .content-box {
     background: #fff;
-    padding: 20px;
+    padding: 15px;
     border-radius: 4px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }

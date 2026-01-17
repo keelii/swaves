@@ -1,5 +1,5 @@
 
-<form method="post" action="/admin/tasks/{{ .Task.ID }}/edit">
+<form id="form" method="post" action="/admin/tasks/{{ .Task.ID }}/edit">
 
   <p>
     <label>
@@ -37,11 +37,6 @@
       <input type="checkbox" name="enabled" value="1" {{ if eq .Task.Enabled 1 }}checked{{ end }}>
       Enabled (启用状态)
     </label>
-  </p>
-
-  <p>
-    <button type="submit">Update</button>
-    <a href="/admin/tasks">Cancel</a>
   </p>
 
 </form>
