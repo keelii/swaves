@@ -320,3 +320,71 @@ body {
 .nav-actions {
     padding-left: 16px;
 }
+
+.toggle-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 隐藏原生checkbox */
+.toggle-checkbox {
+    display: none;
+}
+
+/* Toggle开关样式 */
+:root {
+    --toggle-size: 16px;
+    --toggle-padding: 2px;
+}
+.toggle-label {
+    position: relative;
+    display: inline-block;
+    width: calc(calc(var(--toggle-size) + var(--toggle-padding) * 2) * 2);
+    /*width: calc(var(--toggle-size) * 2 + calc(var(--toggle-padding) * 2));*/
+    height: calc(var(--toggle-size) + calc(var(--toggle-padding) * 2));
+    /*height: calc(--toggle-size + calc(--toggle-size * 2);*/
+    background-color: #ccc;
+    border-radius: calc(var(--toggle-size) + calc(var(--toggle-padding) * 2));
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.toggle-label::after {
+    content: '';
+    position: absolute;
+    top: var(--toggle-padding);
+    left: var(--toggle-padding);
+    width: var(--toggle-size);
+    height: var(--toggle-size);
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 选中状态 */
+.toggle-checkbox:checked + .toggle-label {
+    background-color: #4CAF50;
+}
+
+.toggle-checkbox:checked + .toggle-label::after {
+    transform: translateX(calc(var(--toggle-size) + calc(var(--toggle-padding) * 2)));
+}
+
+/* 文案样式 */
+.toggle-text {
+    font-weight: 500;
+    color: #333;
+    min-width: 60px;
+}
+
+/* 使用伪元素显示不同文案 */
+.toggle-text::before {
+    content: attr(data-off);
+}
+
+.toggle-checkbox:checked ~ .toggle-text::before {
+    content: attr(data-on);
+    color: #4CAF50;
+}

@@ -2,10 +2,7 @@
 <form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
   <p>
     <input type="text" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
-  </p>
-
-  <p>
-    <input type="text" name="slug" value="{{ .Post.Slug }}" disabled>
+    / {{ .Post.Slug }}
   </p>
 
   <p>
