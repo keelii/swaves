@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	db2 "swaves/db"
 	"swaves/internal/types"
 	"sync/atomic"
 	"time"
@@ -32,9 +33,13 @@ const (
 	TableOpDelete TableOp = "delete"
 )
 const (
-	TablePosts    TableName = "posts"
-	TableTags     TableName = "tags"
-	TableSettings TableName = "settings"
+	TablePosts          TableName = "posts"
+	TableEncryptedPosts TableName = "encrypted_posts"
+	TableTags           TableName = "tags"
+	TableRedirects      TableName = "redirects"
+	TableSettings       TableName = "settings"
+	TableTasks          TableName = "tasks"
+	TableCategories     TableName = "categories"
 )
 
 func Open(opts Options) *DB {
@@ -224,6 +229,160 @@ func now() int64 {
 	return time.Now().Unix()
 }
 
+// ============================================================================
+// 通用基础函数（按 CRUD 顺序排列）
+// ============================================================================
+
+// TableConfig 表配置，用于通用查询
+type TableConfig struct {
+	TableName      string                               // 表名
+	SelectFields   string                               // SELECT 字段列表
+	IDField        string                               // ID 字段名，默认为 "id"
+	DeletedAtField string                               // deleted_at 字段名，默认为 "deleted_at"
+	DefaultOrderBy string                               // 默认排序，如 "created_at DESC"
+	ScanFunc       func(*sql.Rows) (interface{}, error) // 扫描函数
+}
+
+// ============================================================================
+// Read 操作（查询）
+// ============================================================================
+
+// GetRecordByID 根据 ID 获取记录（通用）
+// selectFields: SELECT 字段列表，如 "id, name, slug, created_at, updated_at, deleted_at"
+// scanFunc: 扫描函数，将 rows.Scan 的结果转换为具体类型
+func GetRecordByID(db *DB, tableName TableName, selectFields string, id int64, scanFunc func(*sql.Row) (interface{}, error)) (interface{}, error) {
+	row := db.QueryRow(
+		`SELECT `+selectFields+` FROM `+string(tableName)+` WHERE id=? AND deleted_at IS NULL`,
+		id,
+	)
+	return scanFunc(row)
+}
+
+// ListRecords 列出记录（通用，支持分页）
+// selectFields: SELECT 字段列表
+// whereClause: WHERE 子句，如 "status=?" 或 ""（空字符串表示无条件）
+// whereArgs: WHERE 参数
+// orderBy: ORDER BY 子句，如 "created_at DESC" 或 ""（使用默认排序）
+// limit, offset: 分页参数
+// scanFunc: 扫描函数，将 rows.Scan 的结果转换为具体类型
+func ListRecords(db *DB, tableName TableName, selectFields, whereClause, orderBy string, whereArgs []interface{}, limit, offset int, scanFunc func(*sql.Rows) (interface{}, error)) ([]interface{}, error) {
+	query := `SELECT ` + selectFields + ` FROM ` + string(tableName)
+	args := []interface{}{}
+
+	if whereClause != "" {
+		query += ` WHERE ` + whereClause
+		args = append(args, whereArgs...)
+	} else {
+		query += ` WHERE deleted_at IS NULL`
+	}
+
+	if orderBy != "" {
+		query += ` ORDER BY ` + orderBy
+	} else {
+		query += ` ORDER BY created_at DESC`
+	}
+
+	if limit > 0 {
+		query += ` LIMIT ? OFFSET ?`
+		args = append(args, limit, offset)
+	}
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []interface{}
+	for rows.Next() {
+		item, err := scanFunc(rows)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
+// ListDeletedRecords 列出已软删除的记录（通用）
+func ListDeletedRecords(db *DB, tableName TableName, selectFields, orderBy string, scanFunc func(*sql.Rows) (interface{}, error)) ([]interface{}, error) {
+	query := `SELECT ` + selectFields + ` FROM ` + string(tableName) + ` WHERE deleted_at IS NOT NULL`
+	if orderBy != "" {
+		query += ` ORDER BY ` + orderBy
+	} else {
+		query += ` ORDER BY deleted_at DESC`
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []interface{}
+	for rows.Next() {
+		item, err := scanFunc(rows)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
+// CountRecords 统计记录数（通用）
+func CountRecords(db *DB, tableName TableName, whereClause string, whereArgs []interface{}) (int, error) {
+	query := `SELECT COUNT(*) FROM ` + string(tableName)
+	args := []interface{}{}
+
+	if whereClause != "" {
+		query += ` WHERE ` + whereClause
+		args = append(args, whereArgs...)
+	} else {
+		query += ` WHERE deleted_at IS NULL`
+	}
+
+	var count int
+	err := db.QueryRow(query, args...).Scan(&count)
+	return count, err
+}
+
+// ============================================================================
+// Update 操作（更新）
+// ============================================================================
+
+// RestoreRecord 恢复软删除的记录（通用）
+func RestoreRecord(db *DB, tableName TableName, id int64) error {
+	_, err := db.Exec(
+		`UPDATE `+string(tableName)+` SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
+		id,
+	)
+	return err
+}
+
+// ============================================================================
+// Delete 操作（删除）
+// ============================================================================
+
+// SoftDeleteRecord 软删除记录（通用）
+func SoftDeleteRecord(db *DB, tableName TableName, id int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE `+string(tableName)+` SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
+		ts, id,
+	)
+	return err
+}
+
+// HardDeleteRecord 硬删除记录（通用）
+func HardDeleteRecord(db *DB, tableName TableName, id int64) error {
+	_, err := db.Exec(
+		`DELETE FROM `+string(tableName)+` WHERE id=?`,
+		id,
+	)
+	return err
+}
+
 type Post struct {
 	ID        int64
 	Title     string
@@ -262,27 +421,27 @@ func CreatePost(db *DB, p *Post) error {
 }
 
 func GetPostByID(db *DB, id int64) (*Post, error) {
-	row := db.QueryRow(
-		`SELECT id, title, slug, content, status, created_at, updated_at, deleted_at
-		 FROM posts WHERE id=? AND deleted_at IS NULL`,
-		id,
-	)
-
-	var p Post
-	var deletedAt sql.NullInt64
-	if err := row.Scan(
-		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status,
-		&p.CreatedAt, &p.UpdatedAt, &deletedAt,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+	result, err := GetRecordByID(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
+		var p Post
+		var deletedAt sql.NullInt64
+		if err := row.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status,
+			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrNotFound
+			}
+			return nil, err
 		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+		return &p, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	if deletedAt.Valid {
-		p.DeletedAt = &deletedAt.Int64
-	}
-	return &p, nil
+	return result.(*Post), nil
 }
 
 func UpdatePost(db *DB, p *Post) error {
@@ -363,36 +522,15 @@ func ListPosts(db *DB, pager *types.Pagination) ([]PostWithTags, error) {
 }
 
 func SoftDeletePost(db *DB, id int64) error {
-	ts := now()
-	_, err := db.Exec(
-		`UPDATE posts SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
-		ts, id,
-	)
-	return err
+	return SoftDeleteRecord(db, TablePosts, id)
 }
 
 func RestorePost(db *DB, id int64) error {
-	_, err := db.Exec(
-		`UPDATE posts SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
-		id,
-	)
-	return err
+	return RestoreRecord(db, TablePosts, id)
 }
 
 func ListDeletedPosts(db *DB) ([]Post, error) {
-	rows, err := db.Query(`
-		SELECT id, title, slug, content, status, created_at, updated_at, deleted_at
-		FROM posts
-		WHERE deleted_at IS NOT NULL
-		ORDER BY deleted_at DESC
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var res []Post
-	for rows.Next() {
+	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
@@ -404,7 +542,14 @@ func ListDeletedPosts(db *DB) ([]Post, error) {
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
 		}
-		res = append(res, p)
+		return p, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]Post, len(results))
+	for i, v := range results {
+		res[i] = v.(Post)
 	}
 	return res, nil
 }
@@ -422,37 +567,40 @@ type EncryptedPost struct {
 }
 
 func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
-	row := db.QueryRow(
-		`SELECT id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at
-		 FROM encrypted_posts WHERE id=? AND deleted_at IS NULL`,
-		id,
-	)
+	result, err := GetRecordByID(db, TableEncryptedPosts, "id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
+		var p EncryptedPost
+		var deletedAt sql.NullInt64
+		var expiresAt sql.NullInt64
+		var encryptedContent string
+		if err := row.Scan(
+			&p.ID, &p.Title, &p.Slug, &encryptedContent, &p.Password,
+			&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrNotFound
+			}
+			return nil, err
+		}
+		if expiresAt.Valid {
+			p.ExpiresAt = &expiresAt.Int64
+		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
 
-	var p EncryptedPost
-	var deletedAt sql.NullInt64
-	var expiresAt sql.NullInt64
-	var encryptedContent string
-	if err := row.Scan(
-		&p.ID, &p.Title, &p.Slug, &encryptedContent, &p.Password,
-		&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
-	); err != nil {
-		return nil, err
-	}
-	if expiresAt.Valid {
-		p.ExpiresAt = &expiresAt.Int64
-	}
-	if deletedAt.Valid {
-		p.DeletedAt = &deletedAt.Int64
-	}
+		// 解密 content（使用系统密钥，不依赖 password 字段）
+		decryptedContent, err := DecryptContent(encryptedContent)
+		if err != nil {
+			return nil, err
+		}
+		p.Content = decryptedContent
 
-	// 解密 content（使用系统密钥，不依赖 password 字段）
-	decryptedContent, err := DecryptContent(encryptedContent)
+		return &p, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	p.Content = decryptedContent
-
-	return &p, nil
+	return result.(*EncryptedPost), nil
 }
 
 func UpdateEncryptedPost(db *DB, p *EncryptedPost) error {
@@ -474,36 +622,15 @@ func UpdateEncryptedPost(db *DB, p *EncryptedPost) error {
 }
 
 func SoftDeleteEncryptedPost(db *DB, id int64) error {
-	ts := now()
-	_, err := db.Exec(
-		`UPDATE encrypted_posts SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
-		ts, id,
-	)
-	return err
+	return SoftDeleteRecord(db, TableEncryptedPosts, id)
 }
 
 func RestoreEncryptedPost(db *DB, id int64) error {
-	_, err := db.Exec(
-		`UPDATE encrypted_posts SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
-		id,
-	)
-	return err
+	return RestoreRecord(db, TableEncryptedPosts, id)
 }
 
 func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
-	rows, err := db.Query(`
-		SELECT id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at
-		FROM encrypted_posts
-		WHERE deleted_at IS NOT NULL
-		ORDER BY deleted_at DESC
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var res []EncryptedPost
-	for rows.Next() {
+	results, err := ListDeletedRecords(db, TableEncryptedPosts, "id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var p EncryptedPost
 		var deletedAt sql.NullInt64
 		var expiresAt sql.NullInt64
@@ -519,7 +646,14 @@ func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
 		}
-		res = append(res, p)
+		return p, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]EncryptedPost, len(results))
+	for i, v := range results {
+		res[i] = v.(EncryptedPost)
 	}
 	return res, nil
 }
@@ -584,27 +718,27 @@ func CreateTag(db *DB, t *Tag) error {
 }
 
 func GetTagByID(db *DB, id int64) (*Tag, error) {
-	row := db.QueryRow(
-		`SELECT id, name, slug, created_at, updated_at, deleted_at
-		 FROM tags WHERE id=? AND deleted_at IS NULL`,
-		id,
-	)
-
-	var t Tag
-	var deletedAt sql.NullInt64
-	if err := row.Scan(
-		&t.ID, &t.Name, &t.Slug,
-		&t.CreatedAt, &t.UpdatedAt, &deletedAt,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+	result, err := GetRecordByID(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
+		var t Tag
+		var deletedAt sql.NullInt64
+		if err := row.Scan(
+			&t.ID, &t.Name, &t.Slug,
+			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrNotFound
+			}
+			return nil, err
 		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		return &t, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	if deletedAt.Valid {
-		t.DeletedAt = &deletedAt.Int64
-	}
-	return &t, nil
+	return result.(*Tag), nil
 }
 
 func UpdateTag(db *DB, t *Tag) error {
@@ -619,36 +753,15 @@ func UpdateTag(db *DB, t *Tag) error {
 }
 
 func SoftDeleteTag(db *DB, id int64) error {
-	ts := now()
-	_, err := db.Exec(
-		`UPDATE tags SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
-		ts, id,
-	)
-	return err
+	return SoftDeleteRecord(db, TableTags, id)
 }
 
 func RestoreTag(db *DB, id int64) error {
-	_, err := db.Exec(
-		`UPDATE tags SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
-		id,
-	)
-	return err
+	return RestoreRecord(db, TableTags, id)
 }
 
 func ListDeletedTags(db *DB) ([]Tag, error) {
-	rows, err := db.Query(`
-		SELECT id, name, slug, created_at, updated_at, deleted_at
-		FROM tags
-		WHERE deleted_at IS NOT NULL
-		ORDER BY deleted_at DESC
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var res []Tag
-	for rows.Next() {
+	results, err := ListDeletedRecords(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var t Tag
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
@@ -660,7 +773,14 @@ func ListDeletedTags(db *DB) ([]Tag, error) {
 		if deletedAt.Valid {
 			t.DeletedAt = &deletedAt.Int64
 		}
-		res = append(res, t)
+		return t, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]Tag, len(results))
+	for i, v := range results {
+		res[i] = v.(Tag)
 	}
 	return res, nil
 }
@@ -869,20 +989,11 @@ func UpdateRedirect(db *DB, r *Redirect) error {
 }
 
 func SoftDeleteRedirect(db *DB, id int64) error {
-	ts := now()
-	_, err := db.Exec(
-		`UPDATE redirects SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
-		ts, id,
-	)
-	return err
+	return SoftDeleteRecord(db, TableRedirects, id)
 }
 
 func RestoreRedirect(db *DB, id int64) error {
-	_, err := db.Exec(
-		`UPDATE redirects SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
-		id,
-	)
-	return err
+	return RestoreRecord(db, TableRedirects, id)
 }
 
 func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
@@ -937,19 +1048,7 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 }
 
 func ListDeletedRedirects(db *DB) ([]Redirect, error) {
-	rows, err := db.Query(`
-		SELECT id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at
-		FROM redirects
-		WHERE deleted_at IS NOT NULL
-		ORDER BY deleted_at DESC
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var res []Redirect
-	for rows.Next() {
+	results, err := ListDeletedRecords(db, TableRedirects, "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var r Redirect
 		var deletedAt sql.NullInt64
 		var status sql.NullInt64
@@ -973,7 +1072,14 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 		if deletedAt.Valid {
 			r.DeletedAt = &deletedAt.Int64
 		}
-		res = append(res, r)
+		return r, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]Redirect, len(results))
+	for i, v := range results {
+		res[i] = v.(Redirect)
 	}
 	return res, nil
 }
@@ -1334,117 +1440,15 @@ func CheckPassword(db *DB, raw string) error {
 	return bcrypt.CompareHashAndPassword([]byte(setting.Value), []byte(raw))
 }
 
-const InternalLang = `[
-  {"label": "简体中文（中国大陆）", "value": "zh-CN"},
-  {"label": "简体中文（新加坡）", "value": "zh-SG"},
-  {"label": "简体中文", "value": "zh-Hans"},
-  {"label": "简体中文（中国大陆）", "value": "zh-Hans-CN"},
-  {"label": "繁体中文（台湾）", "value": "zh-TW"},
-  {"label": "繁体中文（香港）", "value": "zh-HK"},
-  {"label": "繁体中文（澳门）", "value": "zh-MO"},
-  {"label": "繁体中文", "value": "zh-Hant"},
-  {"label": "繁体中文（台湾）", "value": "zh-Hant-TW"},
-  {"label": "繁体中文（香港）", "value": "zh-Hant-HK"},
-  {"label": "中文", "value": "zh"},
-  {"label": "英语（美国）", "value": "en-US"},
-  {"label": "英语（英国）", "value": "en-GB"},
-  {"label": "英语（加拿大）", "value": "en-CA"},
-  {"label": "英语（澳大利亚）", "value": "en-AU"},
-  {"label": "英语（印度）", "value": "en-IN"},
-  {"label": "英语", "value": "en"},
-  {"label": "日语（日本）", "value": "ja-JP"},
-  {"label": "日语", "value": "ja"},
-  {"label": "韩语（韩国）", "value": "ko-KR"},
-  {"label": "韩语", "value": "ko"},
-  {"label": "法语（法国）", "value": "fr-FR"},
-  {"label": "法语（加拿大）", "value": "fr-CA"},
-  {"label": "法语", "value": "fr"},
-  {"label": "德语（德国）", "value": "de-DE"},
-  {"label": "德语（奥地利）", "value": "de-AT"},
-  {"label": "德语", "value": "de"},
-  {"label": "西班牙语（西班牙）", "value": "es-ES"},
-  {"label": "西班牙语（墨西哥）", "value": "es-MX"},
-  {"label": "西班牙语（美国）", "value": "es-US"},
-  {"label": "西班牙语", "value": "es"},
-  {"label": "俄语（俄罗斯）", "value": "ru-RU"},
-  {"label": "俄语", "value": "ru"},
-  {"label": "葡萄牙语（葡萄牙）", "value": "pt-PT"},
-  {"label": "葡萄牙语（巴西）", "value": "pt-BR"},
-  {"label": "葡萄牙语", "value": "pt"},
-  {"label": "阿拉伯语（沙特阿拉伯）", "value": "ar-SA"},
-  {"label": "阿拉伯语（埃及）", "value": "ar-EG"},
-  {"label": "阿拉伯语", "value": "ar"},
-  {"label": "意大利语（意大利）", "value": "it-IT"},
-  {"label": "意大利语", "value": "it"},
-  {"label": "荷兰语（荷兰）", "value": "nl-NL"},
-  {"label": "荷兰语（比利时）", "value": "nl-BE"},
-  {"label": "荷兰语", "value": "nl"},
-  {"label": "土耳其语（土耳其）", "value": "tr-TR"},
-  {"label": "土耳其语", "value": "tr"},
-  {"label": "越南语（越南）", "value": "vi-VN"},
-  {"label": "越南语", "value": "vi"},
-  {"label": "泰语（泰国）", "value": "th-TH"},
-  {"label": "泰语", "value": "th"},
-  {"label": "印地语（印度）", "value": "hi-IN"},
-  {"label": "印地语", "value": "hi"}
-]`
-const InternalTimezone = `[
-  {"label": "中国标准时间 (北京)", "value": "Asia/Shanghai"},
-  {"label": "中国标准时间 (乌鲁木齐)", "value": "Asia/Urumqi"},
-  {"label": "香港时间", "value": "Asia/Hong_Kong"},
-  {"label": "台北时间", "value": "Asia/Taipei"},
-  {"label": "澳门时间", "value": "Asia/Macau"},
-  {"label": "美国东部时间 (纽约)", "value": "America/New_York"},
-  {"label": "美国中部时间 (芝加哥)", "value": "America/Chicago"},
-  {"label": "美国山区时间 (丹佛)", "value": "America/Denver"},
-  {"label": "美国太平洋时间 (洛杉矶)", "value": "America/Los_Angeles"},
-  {"label": "美国阿拉斯加时间 (安克雷奇)", "value": "America/Anchorage"},
-  {"label": "美国夏威夷时间 (檀香山)", "value": "Pacific/Honolulu"},
-  {"label": "英国时间 (伦敦)", "value": "Europe/London"},
-  {"label": "欧洲中部时间 (巴黎/柏林)", "value": "Europe/Paris"},
-  {"label": "东欧时间 (莫斯科)", "value": "Europe/Moscow"},
-  {"label": "中东时间 (迪拜)", "value": "Asia/Dubai"},
-  {"label": "印度标准时间 (新德里)", "value": "Asia/Kolkata"},
-  {"label": "日本标准时间 (东京)", "value": "Asia/Tokyo"},
-  {"label": "韩国标准时间 (首尔)", "value": "Asia/Seoul"},
-  {"label": "澳大利亚东部时间 (悉尼)", "value": "Australia/Sydney"},
-  {"label": "澳大利亚中部时间 (阿德莱德)", "value": "Australia/Adelaide"},
-  {"label": "澳大利亚西部时间 (珀斯)", "value": "Australia/Perth"},
-  {"label": "新西兰时间 (奥克兰)", "value": "Pacific/Auckland"},
-  {"label": "新加坡时间", "value": "Asia/Singapore"},
-  {"label": "马来西亚时间 (吉隆坡)", "value": "Asia/Kuala_Lumpur"},
-  {"label": "泰国时间 (曼谷)", "value": "Asia/Bangkok"},
-  {"label": "越南时间 (河内)", "value": "Asia/Ho_Chi_Minh"},
-  {"label": "印度尼西亚西部时间 (雅加达)", "value": "Asia/Jakarta"},
-  {"label": "印度尼西亚中部时间 (巴厘岛)", "value": "Asia/Makassar"},
-  {"label": "印度尼西亚东部时间 (查亚普拉)", "value": "Asia/Jayapura"},
-  {"label": "菲律宾时间 (马尼拉)", "value": "Asia/Manila"},
-  {"label": "加拿大东部时间 (多伦多)", "value": "America/Toronto"},
-  {"label": "加拿大中部时间 (温尼伯)", "value": "America/Winnipeg"},
-  {"label": "加拿大山地时间 (埃德蒙顿)", "value": "America/Edmonton"},
-  {"label": "加拿大太平洋时间 (温哥华)", "value": "America/Vancouver"},
-  {"label": "巴西东部时间 (圣保罗)", "value": "America/Sao_Paulo"},
-  {"label": "巴西西部时间 (马瑙斯)", "value": "America/Manaus"},
-  {"label": "阿根廷时间 (布宜诺斯艾利斯)", "value": "America/Argentina/Buenos_Aires"},
-  {"label": "墨西哥时间 (墨西哥城)", "value": "America/Mexico_City"},
-  {"label": "南非时间 (约翰内斯堡)", "value": "Africa/Johannesburg"},
-  {"label": "埃及时间 (开罗)", "value": "Africa/Cairo"},
-  {"label": "沙特阿拉伯时间 (利雅得)", "value": "Asia/Riyadh"},
-  {"label": "以色列时间 (耶路撒冷)", "value": "Asia/Jerusalem"},
-  {"label": "土耳其时间 (伊斯坦布尔)", "value": "Europe/Istanbul"},
-  {"label": "协调世界时 (UTC)", "value": "UTC"},
-  {"label": "格林威治标准时间", "value": "GMT"}
-]`
-
 // EnsureDefaultSettings 确保存在默认配置项
 func EnsureDefaultSettings(db *DB) error {
 	defaultSettings := []Setting{
 		{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
 		{Sort: 4, Kind: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
 		{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "", Description: "关键字"},
-		{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
-		{Sort: 7, Kind: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
-		{Sort: 9, Kind: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
+		{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: db2.InternalLang},
+		{Sort: 7, Kind: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: db2.InternalLang},
+		{Sort: 9, Kind: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: db2.InternalTimezone},
 		{Sort: 11, Kind: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
 		{Sort: 11, Kind: "Appearance", Name: "Font size", Code: "font_size", Type: "range", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 		{Sort: 11, Kind: "Appearance", Name: "Mode", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
@@ -1780,9 +1784,7 @@ func UpdateTaskStatus(db *DB, taskCode string, lastStatus string, lastRunAt int6
 }
 
 func SoftDeleteTask(db *DB, id int64) error {
-	ts := now()
-	_, err := db.Exec(`UPDATE tasks SET deleted_at=? WHERE id=? AND deleted_at IS NULL`, ts, id)
-	return err
+	return SoftDeleteRecord(db, TableTasks, id)
 }
 
 func CreateTaskRun(db *DB, run *TaskRun) error {
@@ -2146,20 +2148,11 @@ func UpdateCategoryParent(db *DB, id int64, newParentID int64) error {
 }
 
 func SoftDeleteCategory(db *DB, id int64) error {
-	ts := now()
-	_, err := db.Exec(
-		`UPDATE categories SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
-		ts, id,
-	)
-	return err
+	return SoftDeleteRecord(db, TableCategories, id)
 }
 
 func RestoreCategory(db *DB, id int64) error {
-	_, err := db.Exec(
-		`UPDATE categories SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
-		id,
-	)
-	return err
+	return RestoreRecord(db, TableCategories, id)
 }
 
 func GetPostCategory(db *DB, postID int64) (*Category, error) {
