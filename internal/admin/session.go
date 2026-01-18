@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"swaves/internal/db"
 	"swaves/internal/types"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 func NewSessionStore() *types.SessionStore {
 	storage := sqlite3.New(sqlite3.Config{
 		Database:   "./data.sqlite",
-		Table:      "a_session_storage",
+		Table:      string(db.TableSessions),
 		Reset:      false,
 		GCInterval: 1 * time.Minute, // 每10分钟清理一次过期 session
 	})

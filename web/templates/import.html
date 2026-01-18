@@ -85,6 +85,18 @@
   </p>
 
   <p>
+    <label>
+      Tag Source<br>
+      <select name="tag_source" required>
+        <option value="none" selected>None (留空)</option>
+        <option value="frontmatter">From Frontmatter Field (default: tags)</option>
+        <option value="autocreate">Auto Create Default Tag</option>
+      </select>
+      <input type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
+    </label>
+  </p>
+
+  <p>
     <small>
       Markdown 文件应包含 frontmatter，例如：<br>
       <pre>---
@@ -123,6 +135,9 @@ tags:
   
   const categorySourceSelect = document.querySelector('select[name="category_source"]');
   const categoryFieldContainer = document.getElementById('category_field_container');
+  
+  const tagSourceSelect = document.querySelector('select[name="tag_source"]');
+  const tagFieldContainer = document.getElementById('tag_field_container');
   
   function updateTitleFieldVisibility() {
     if (titleSourceSelect.value === 'frontmatter') {
@@ -169,16 +184,26 @@ tags:
     }
   }
   
+  function updateTagFieldVisibility() {
+    if (tagSourceSelect.value === 'frontmatter') {
+      tagFieldContainer.style.display = 'inline';
+    } else {
+      tagFieldContainer.style.display = 'none';
+    }
+  }
+  
   titleSourceSelect.addEventListener('change', updateTitleFieldVisibility);
   slugSourceSelect.addEventListener('change', updateSlugFieldVisibility);
   createdSourceSelect.addEventListener('change', updateCreatedFieldVisibility);
   statusSourceSelect.addEventListener('change', updateStatusFieldVisibility);
   categorySourceSelect.addEventListener('change', updateCategoryFieldVisibility);
+  tagSourceSelect.addEventListener('change', updateTagFieldVisibility);
   
   updateTitleFieldVisibility(); // 初始化
   updateSlugFieldVisibility(); // 初始化
   updateCreatedFieldVisibility(); // 初始化
   updateStatusFieldVisibility(); // 初始化
   updateCategoryFieldVisibility(); // 初始化
+  updateTagFieldVisibility(); // 初始化
 })();
 </script>

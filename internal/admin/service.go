@@ -49,7 +49,7 @@ type UpdatePostInput struct {
 func GetAllTags(dbx *db.DB) ([]db.Tag, error) {
 	rows, err := dbx.Query(`
 		SELECT id, name, slug, created_at, updated_at, deleted_at
-		FROM tags
+		FROM ` + string(db.TableTags) + `
 		WHERE deleted_at IS NULL
 		ORDER BY name
 	`)
@@ -177,7 +177,7 @@ type UpdateTagInput struct {
 
 func ListTags(dbx *db.DB, pager *types.Pagination) ([]db.Tag, error) {
 	var total int
-	row := dbx.QueryRow(`SELECT COUNT(*) FROM tags WHERE deleted_at IS NULL`)
+	row := dbx.QueryRow(`SELECT COUNT(*) FROM ` + string(db.TableTags) + ` WHERE deleted_at IS NULL`)
 	if err := row.Scan(&total); err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func ListTags(dbx *db.DB, pager *types.Pagination) ([]db.Tag, error) {
 	offset := (pager.Page - 1) * pager.PageSize
 	rows, err := dbx.Query(`
 		SELECT id, name, slug, created_at, updated_at, deleted_at
-		FROM tags
+		FROM `+string(db.TableTags)+`
 		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
@@ -257,7 +257,7 @@ func CreateTagByName(dbx *db.DB, name string) (*db.Tag, error) {
 	slug := generateSlug(name)
 	rows, err := dbx.Query(`
 		SELECT id, name, slug, created_at, updated_at, deleted_at
-		FROM tags
+		FROM `+string(db.TableTags)+`
 		WHERE slug = ? AND deleted_at IS NULL
 		LIMIT 1
 	`, slug)
@@ -460,7 +460,7 @@ type UpdateEncryptedPostInput struct {
 
 func ListEncryptedPosts(dbx *db.DB, pager *types.Pagination) ([]db.EncryptedPost, error) {
 	var total int
-	row := dbx.QueryRow(`SELECT COUNT(*) FROM encrypted_posts WHERE deleted_at IS NULL`)
+	row := dbx.QueryRow(`SELECT COUNT(*) FROM ` + string(db.TableEncryptedPosts) + ` WHERE deleted_at IS NULL`)
 	if err := row.Scan(&total); err != nil {
 		return nil, err
 	}
@@ -468,7 +468,7 @@ func ListEncryptedPosts(dbx *db.DB, pager *types.Pagination) ([]db.EncryptedPost
 	offset := (pager.Page - 1) * pager.PageSize
 	rows, err := dbx.Query(`
 		SELECT id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at
-		FROM encrypted_posts
+		FROM `+string(db.TableEncryptedPosts)+`
 		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
@@ -709,7 +709,7 @@ func CreateCategoryByName(dbx *db.DB, name string) (*db.Category, error) {
 	// 检查分类是否已存在（根据名称和 slug，由于是单选，只需要检查顶级分类中是否存在相同的 slug）
 	rows, err := dbx.Query(`
 		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
-		FROM categories
+		FROM `+string(db.TableCategories)+`
 		WHERE (name = ? OR slug = ?) AND deleted_at IS NULL
 		LIMIT 1
 	`, name, slug)
@@ -1001,6 +1001,14 @@ const (
 	CategoryNone                                  // 留空（不设置分类）
 )
 
+type TagSource int
+
+const (
+	TagFromFrontmatter TagSource = iota // 从 frontmatter 指定字段（默认 tags）
+	TagAutoCreate                       // 自动创建默认标签
+	TagNone                             // 留空（不设置标签）
+)
+
 type ImportFile struct {
 	Filename string // 文件名（不含扩展名）
 	Content  string // markdown 内容
@@ -1019,6 +1027,8 @@ type ImportMarkdownInput struct {
 	StatusField    string         // 如果 StatusSource 是 StatusFromFrontmatter，指定字段名（默认 "status"）
 	CategorySource CategorySource // category 来源
 	CategoryField  string         // 如果 CategorySource 是 CategoryFromFrontmatter，指定字段名（默认 "category"）
+	TagSource      TagSource      // tag 来源
+	TagField       string         // 如果 TagSource 是 TagFromFrontmatter，指定字段名（默认 "tags"）
 }
 
 // PreviewPostItem 预览页面的 post 数据
@@ -1054,7 +1064,7 @@ func extractTitleFromMarkdown(content string, level int) string {
 }
 
 // ParseImportFiles 解析导入文件但不入库，返回预览数据
-func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int, createdSource CreatedSource, createdField string, statusSource StatusSource, statusField string, categorySource CategorySource, categoryField string) ([]PreviewPostItem, error) {
+func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField string, titleSource TitleSource, titleField string, titleLevel int, createdSource CreatedSource, createdField string, statusSource StatusSource, statusField string, categorySource CategorySource, categoryField string, tagSource TagSource, tagField string) ([]PreviewPostItem, error) {
 	var items []PreviewPostItem
 	var errList []string
 
@@ -1235,23 +1245,43 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 		// 处理 tags
 		var tagsList []string
 		var tagsStr string
-		if val, ok := result.Meta["tags"]; ok {
-			switch v := val.(type) {
-			case string:
-				if v != "" {
-					tagsList = strings.Split(v, ",")
-					for i, tag := range tagsList {
-						tagsList[i] = strings.TrimSpace(tag)
+		switch tagSource {
+		case TagFromFrontmatter:
+			// 从 frontmatter 指定字段获取
+			fieldName := tagField
+			if fieldName == "" {
+				fieldName = "tags"
+			}
+			if val, ok := result.Meta[fieldName]; ok {
+				switch v := val.(type) {
+				case string:
+					if v != "" {
+						tagsList = strings.Split(v, ",")
+						for i, tag := range tagsList {
+							tagsList[i] = strings.TrimSpace(tag)
+						}
 					}
-				}
-			case []interface{}:
-				for _, item := range v {
-					if str, ok := item.(string); ok {
-						tagsList = append(tagsList, strings.TrimSpace(str))
+				case []interface{}:
+					for _, item := range v {
+						if str, ok := item.(string); ok {
+							tagsList = append(tagsList, strings.TrimSpace(str))
+						}
 					}
 				}
 			}
 			tagsStr = strings.Join(tagsList, ", ")
+		case TagAutoCreate:
+			// 自动创建默认标签（使用默认标签名称 "Default"）
+			tagsList = []string{"Default"}
+			tagsStr = "Default"
+		case TagNone:
+			// 留空，不设置标签
+			tagsList = []string{}
+			tagsStr = ""
+		default:
+			// 默认留空
+			tagsList = []string{}
+			tagsStr = ""
 		}
 
 		// 处理 category（单选）

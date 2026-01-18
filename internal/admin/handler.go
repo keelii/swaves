@@ -258,6 +258,21 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	// 处理新标签（逗号分割的标签名称）
+	newTagsStr := c.FormValue("new_tags")
+	if newTagsStr != "" {
+		tagNames := strings.Split(newTagsStr, ",")
+		for _, tagName := range tagNames {
+			tagName = strings.TrimSpace(tagName)
+			if tagName != "" {
+				tag, err := CreateTagByName(h.Model, tagName)
+				if err == nil {
+					tagIDs = append(tagIDs, tag.ID)
+				}
+			}
+		}
+	}
+
 	// 解析分类 ID（单选）
 	var categoryID int64
 	categoriesStr := c.FormValue("categories")
@@ -938,6 +953,7 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 
 		settingsViews = append(settingsViews, view)
 	}
+	fmt.Println(settingsViews)
 
 	return RenderAdminView(c, "settings_all", fiber.Map{
 		"Title":    "Settings - Edit All",
@@ -1569,8 +1585,28 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		categoryField = "category"
 	}
 
+	// 获取 tag 来源选择
+	tagSourceStr := c.FormValue("tag_source")
+	tagSource := TagNone // 默认留空
+	switch tagSourceStr {
+	case "frontmatter":
+		tagSource = TagFromFrontmatter
+	case "autocreate":
+		tagSource = TagAutoCreate
+	case "none":
+		tagSource = TagNone
+	default:
+		tagSource = TagNone
+	}
+
+	// 如果是从 frontmatter，获取字段名
+	tagField := c.FormValue("tag_field")
+	if tagField == "" {
+		tagField = "tags"
+	}
+
 	// 解析文件但不入库，返回预览数据
-	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField, categorySource, categoryField)
+	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField, categorySource, categoryField, tagSource, tagField)
 	if err != nil && len(items) == 0 {
 		// 如果全部解析失败，返回错误
 		return RenderAdminView(c, "import", fiber.Map{

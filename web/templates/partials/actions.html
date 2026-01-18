@@ -64,6 +64,8 @@
         <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">导入</a>
       {{ else if eq .UrlPath "/admin/import/preview" }}
         <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">全部导入</a>
+      {{ else if eq .UrlPath "/admin/settings/all" }}
+        <button type="submit" form="form" class="btn primary">保存</button>
       {{ else if match .UrlPath "^/admin/(posts|tags|categories|encrypted-posts|redirects|tasks|settings)/\\d+/edit$" }}
         <button type="submit" form="form" class="btn primary">保存</button>
       {{ end }}
