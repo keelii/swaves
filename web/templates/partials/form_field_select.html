@@ -1,0 +1,14 @@
+{{/* 通用选择框字段
+使用方式: {{ template "partials/form_field_select" dict "Label" "状态" "Name" "status" "Options" (slice (dict "Value" "draft" "Label" "Draft") (dict "Value" "published" "Label" "Published")) "Selected" .Post.Status }}
+*/}}
+<p>
+  <label>
+    {{ .Label }}<br>
+    <select name="{{ .Name }}">
+      {{ range .Options }}
+        <option value="{{ .Value }}"{{ if eq $.Selected .Value }} selected{{ end }}>{{ .Label }}</option>
+      {{ end }}
+    </select>
+    {{ if .Help }}<small>{{ .Help }}</small>{{ end }}
+  </label>
+</p>

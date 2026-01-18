@@ -1,0 +1,10 @@
+{{/* 通用文本域字段
+使用方式: {{ template "partials/form_field_textarea" dict "Label" "描述" "Name" "description" "Value" .Category.Description "Rows" 3 "Cols" 80 "Help" "" }}
+*/}}
+<p>
+  <label>
+    <textarea name="{{ .Name }}" rows="{{ .Rows }}" cols="{{ .Cols }}">{{ .Value }}</textarea>
+    {{ .Label }}
+    {{ if .Help }}<small>{{ .Help }}</small>{{ end }}
+  </label>
+</p>

@@ -1,0 +1,10 @@
+{{/* 通用表格操作列
+使用方式: {{ template "partials/table_row_actions" dict "BaseURL" "/admin/tags" "ID" .ID }}
+*/}}
+<td>
+  <a href="{{ .BaseURL }}/{{ .ID }}/edit">编辑</a>
+
+  <form id="form" method="post" style="display:inline" action="{{ .BaseURL }}/{{ .ID }}/delete">
+    <button type="submit">删除</button>
+  </form>
+</td>

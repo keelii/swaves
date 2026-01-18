@@ -1,0 +1,10 @@
+{{/* 通用文本输入字段
+使用方式: {{ template "partials/form_field_text" dict "Label" "名称" "Name" "name" "Value" .Tag.Name "Required" true "Placeholder" "" "Help" "" }}
+*/}}
+<p>
+  <label>
+    <input type="text" name="{{ .Name }}" value="{{ .Value }}"{{ if .Required }} required{{ end }}{{ if .Placeholder }} placeholder="{{ .Placeholder }}"{{ end }}>
+    {{ .Label }}
+    {{ if .Help }}<small>{{ .Help }}</small>{{ end }}
+  </label>
+</p>

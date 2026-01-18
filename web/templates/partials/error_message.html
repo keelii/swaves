@@ -1,0 +1,6 @@
+{{/* 通用错误提示
+使用方式: {{ template "partials/error_message" . }}
+*/}}
+{{ if .Error }}
+<p style="color: red;">{{ .Error }}</p>
+{{ end }}
