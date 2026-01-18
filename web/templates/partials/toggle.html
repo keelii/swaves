@@ -1,0 +1,19 @@
+<div class="toggle-wrapper">
+  <input type="checkbox" id="{{ .ID }}" class="toggle-checkbox"{{ if .Checked }} checked{{ end }}{{ if .ReadOnly }} disabled{{ end }}>
+  <label for="{{ .ID }}" class="toggle-label"></label>
+  <span class="toggle-text" data-off="{{ .DataOff }}" data-on="{{ .DataOn }}"></span>
+</div>
+{{ if .Name }}
+<input type="hidden" name="{{ .Name }}" value="{{ if .Checked }}published{{ else }}draft{{ end }}" id="{{ .ID }}_hidden">
+<script>
+(function() {
+  const checkbox = document.getElementById('{{ .ID }}');
+  const hidden = document.getElementById('{{ .ID }}_hidden');
+  if (checkbox && hidden) {
+    checkbox.addEventListener('change', function() {
+      hidden.value = this.checked ? 'published' : 'draft';
+    });
+  }
+})();
+</script>
+{{ end }}

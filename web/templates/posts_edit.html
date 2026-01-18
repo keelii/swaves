@@ -1,15 +1,15 @@
 
 <form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
-  <p>
-    <input type="text" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
-    / {{ .Post.Slug }}
+  <p class="valign">
+    <span>
+      <input type="text" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
+    </span>
+    <span>
+      / {{ .Post.Slug }}
+    </span>
   </p>
-
   <p>
-    <select name="status">
-      <option value="draft" {{ if eq .Post.Status "draft" }}selected{{ end }}>Draft</option>
-      <option value="published" {{ if eq .Post.Status "published" }}selected{{ end }}>Published</option>
-    </select>
+      {{ template "partials/toggle" dict "ID" (printf "status_%d" .Post.ID) "Name" "status" "Checked" (eq .Post.Status "published") "DataOff" "草稿" "DataOn" "已发布" }}
   </p>
 
   <p>

@@ -35,11 +35,8 @@
 
   <p>
     <label>
-      Status<br>
-      <select name="status">
-        <option value="draft">Draft</option>
-        <option value="published">Published</option>
-      </select>
+      状态<br>
+      {{ template "partials/toggle" dict "ID" "status_new" "Name" "status" "Checked" false "DataOff" "草稿" "DataOn" "已发布" }}
     </label>
   </p>
 
