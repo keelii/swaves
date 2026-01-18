@@ -319,10 +319,21 @@ func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	// 统计每个标签的文章数量
+	tagIDs := make([]int64, len(tags))
+	for i, tag := range tags {
+		tagIDs[i] = tag.ID
+	}
+	postCounts, err := db.CountPostsByTags(h.Model, tagIDs)
+	if err != nil {
+		return err
+	}
+
 	return RenderAdminView(c, "tags_index", fiber.Map{
-		"Title": "Tags",
-		"Tags":  tags,
-		"Pager": pager,
+		"Title":      "Tags",
+		"Tags":       tags,
+		"Pager":      pager,
+		"PostCounts": postCounts,
 	}, "")
 }
 
@@ -653,10 +664,21 @@ func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	// 统计每个分类的文章数量
+	categoryIDs := make([]int64, len(categories))
+	for i, cat := range categories {
+		categoryIDs[i] = cat.ID
+	}
+	postCounts, err := db.CountPostsByCategories(h.Model, categoryIDs)
+	if err != nil {
+		return err
+	}
+
 	return RenderAdminView(c, "categories_index", fiber.Map{
 		"Title":      "Categories",
 		"Categories": categories,
 		"ParentMap":  parentMap,
+		"PostCounts": postCounts,
 	}, "")
 }
 
@@ -1196,6 +1218,8 @@ func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
 		data, err = GetTrashEncryptedPosts(h.Model)
 	case "tags":
 		data, err = GetTrashTags(h.Model)
+	case "categories":
+		data, err = GetTrashCategories(h.Model)
 	case "redirects":
 		data, err = GetTrashRedirects(h.Model)
 	default:
@@ -1260,6 +1284,19 @@ func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
 	}
 
 	if err := RestoreRedirectService(h.Model, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
+func (h *Handler) PostRestoreCategoryHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := RestoreCategoryService(h.Model, id); err != nil {
 		return err
 	}
 

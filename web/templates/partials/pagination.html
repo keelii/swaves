@@ -1,5 +1,10 @@
-<nav aria-label="Page navigation" style="display: flex; align-items: center; gap: 10px;">
-  <div style="display: flex; align-items: center; gap: 5px;">
+<style>
+  .pagination {
+
+  }
+</style>
+<nav aria-label="Page navigation" class="pagination">
+  <div class="ivalign gap-10">
     {{if le .Pager.Page 1}}
     <span class="page-link" tabindex="-1">上一页</span>
     {{else}}
@@ -22,7 +27,7 @@
     {{end}}
   </div>
 
-  <div style="display: flex; align-items: center; gap: 5px;">
+  <div class="ivalign gap-10">
     <label for="page-size-select" style="white-space: nowrap;">每页</label>
     <select id="page-size-select" style="padding: 2px 5px;">
       <option value="5" {{if eq .Pager.PageSize 5}}selected{{end}}>5</option>

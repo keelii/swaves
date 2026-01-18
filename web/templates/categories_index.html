@@ -7,6 +7,7 @@
     <th>父级</th>
     <th>描述</th>
     <th>排序</th>
+    <th>文章数量</th>
     <th>创建时间</th>
     <th>更新时间</th>
     <th>操作</th>
@@ -28,6 +29,7 @@
     </td>
     <td>{{ .Description }}</td>
     <td>{{ .Sort }}</td>
+    <td>{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>{{ formatTime .UpdatedAt }}</td>
     <td>
@@ -40,7 +42,7 @@
   </tr>
   {{ else }}
   <tr>
-    <td colspan="9">No categories</td>
+    <td colspan="10">No categories</td>
   </tr>
   {{ end }}
   </tbody>

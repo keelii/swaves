@@ -80,6 +80,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	adminGroup.Post("/trash/posts/:id/restore", handler.PostRestorePostHandler)
 	adminGroup.Post("/trash/encrypted-posts/:id/restore", handler.PostRestoreEncryptedPostHandler)
 	adminGroup.Post("/trash/tags/:id/restore", handler.PostRestoreTagHandler)
+	adminGroup.Post("/trash/categories/:id/restore", handler.PostRestoreCategoryHandler)
 	adminGroup.Post("/trash/redirects/:id/restore", handler.PostRestoreRedirectHandler)
 
 	adminGroup.Get("/http-error-logs", handler.GetHttpErrorLogListHandler)

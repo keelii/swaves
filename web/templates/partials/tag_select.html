@@ -1,6 +1,6 @@
 {{ if .Tags }}
     {{ range .Tags }}
-      <label class="ivalign">
+      <label class="ivalign gap-5">
         {{ if $.SelectedTagIDs }}
           <input type="checkbox" class="tag-checkbox" value="{{ .ID }}" {{ if index $.SelectedTagIDs .ID }}checked{{ end }}>
         {{ else }}

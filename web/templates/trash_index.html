@@ -6,6 +6,8 @@
   |
   <a href="/admin/trash?type=tags">Tags</a>
   |
+  <a href="/admin/trash?type=categories">Categories</a>
+  |
   <a href="/admin/trash?type=redirects">Redirects</a>
 </nav>
 
@@ -107,6 +109,43 @@
   </table>
   {{ else }}
   <p>No deleted tags.</p>
+  {{ end }}
+{{ end }}
+
+{{ if eq .ModelType "categories" }}
+  {{ if .Data }}
+  <table>
+    <thead>
+    <tr>
+      <th>ID</th>
+      <th>名称</th>
+      <th>别名</th>
+      <th>父级</th>
+      <th>描述</th>
+      <th>删除时间</th>
+      <th>操作</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range .Data }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .Name }}</td>
+      <td>{{ .Slug }}</td>
+      <td>{{ if eq .ParentID 0 }}-{{ else }}{{ .ParentID }}{{ end }}</td>
+      <td>{{ .Description }}</td>
+      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>
+        <form id="form" method="post" style="display:inline" action="/admin/trash/categories/{{ .ID }}/restore">
+          <button type="submit">Restore</button>
+        </form>
+      </td>
+    </tr>
+    {{ end }}
+    </tbody>
+  </table>
+  {{ else }}
+  <p>No deleted categories.</p>
   {{ end }}
 {{ end }}
 

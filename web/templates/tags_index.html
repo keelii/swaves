@@ -4,6 +4,7 @@
     <th>ID</th>
     <th>名称</th>
     <th>别名</th>
+    <th>文章数量</th>
     <th>创建时间</th>
     <th>更新时间</th>
     <th>操作</th>
@@ -16,6 +17,7 @@
     <td>{{ .ID }}</td>
     <td>{{ .Name }}</td>
     <td>{{ .Slug }}</td>
+    <td>{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>{{ formatTime .UpdatedAt }}</td>
     <td>
@@ -28,14 +30,14 @@
   </tr>
   {{ else }}
   <tr>
-    <td colspan="6">No tags</td>
+    <td colspan="7">No tags</td>
   </tr>
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="6">
+    <td colspan="7">
       {{template "partials/pagination" .}}
     </td>
   </tr>

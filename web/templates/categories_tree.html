@@ -72,28 +72,29 @@
         width: 8px;
         border-top: 1px dashed #ddd;
     }
-
 </style>
 {{ define "category_item" }}
   <li class="category-item">
     <div class="valign">
-      <div>{{ .Category.Sort }}</div>
       <div>
+        <div>{{ .Category.Sort }}</div>
         <strong>{{ .Category.Name }}</strong>
           {{ if .Category.Description }}
             <span>- {{ .Category.Description }}</span>
           {{ end }}
+        <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">
+            {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
+        </form>
       </div>
-      <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">
-        {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
-      </form>
-      <div>
-        <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
-        <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
+      <div class="valign" style="width: 200px; text-align: right;">
+        <div>
+          <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
+          <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
+        </div>
+        <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
+          <button type="submit">Delete</button>
+        </form>
       </div>
-      <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
-        <button type="submit">Delete</button>
-      </form>
     </div>
 
       {{ if .Children }}

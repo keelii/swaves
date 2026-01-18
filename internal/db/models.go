@@ -756,6 +756,56 @@ func GetPostTags(db *DB, postID int64) ([]Tag, error) {
 	return tags, nil
 }
 
+// CountPostsByTags 批量统计标签的文章数量
+// 返回 map[tagID]count，只统计未删除的关联和未删除的文章
+func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
+	if len(tagIDs) == 0 {
+		return make(map[int64]int), nil
+	}
+
+	placeholders := make([]string, len(tagIDs))
+	args := make([]interface{}, len(tagIDs))
+	for i, id := range tagIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT pt.tag_id, COUNT(DISTINCT pt.post_id) as count
+		FROM %s pt
+		INNER JOIN %s p ON pt.post_id = p.id
+		WHERE pt.tag_id IN (%s)
+		  AND pt.deleted_at IS NULL
+		  AND p.deleted_at IS NULL
+		GROUP BY pt.tag_id
+	`, string(TablePostTags), string(TablePosts), strings.Join(placeholders, ","))
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int64]int)
+	for rows.Next() {
+		var tagID int64
+		var count int
+		if err := rows.Scan(&tagID, &count); err != nil {
+			return nil, err
+		}
+		result[tagID] = count
+	}
+
+	// 确保所有 tagID 都在 map 中（没有关联文章时为 0）
+	for _, id := range tagIDs {
+		if _, ok := result[id]; !ok {
+			result[id] = 0
+		}
+	}
+
+	return result, nil
+}
+
 func AttachTagToPost(db *DB, postID, tagID int64) error {
 	ts := now()
 	// 先尝试恢复已存在的软删除关联
@@ -828,6 +878,56 @@ func SetPostTags(db *DB, postID int64, tagIDs []int64) error {
 	}
 
 	return nil
+}
+
+// CountPostsByCategories 批量统计分类的文章数量
+// 返回 map[categoryID]count，只统计未删除的关联和未删除的文章
+func CountPostsByCategories(db *DB, categoryIDs []int64) (map[int64]int, error) {
+	if len(categoryIDs) == 0 {
+		return make(map[int64]int), nil
+	}
+
+	placeholders := make([]string, len(categoryIDs))
+	args := make([]interface{}, len(categoryIDs))
+	for i, id := range categoryIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT pc.category_id, COUNT(DISTINCT pc.post_id) as count
+		FROM %s pc
+		INNER JOIN %s p ON pc.post_id = p.id
+		WHERE pc.category_id IN (%s)
+		  AND pc.deleted_at IS NULL
+		  AND p.deleted_at IS NULL
+		GROUP BY pc.category_id
+	`, string(TablePostCategories), string(TablePosts), strings.Join(placeholders, ","))
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int64]int)
+	for rows.Next() {
+		var categoryID int64
+		var count int
+		if err := rows.Scan(&categoryID, &count); err != nil {
+			return nil, err
+		}
+		result[categoryID] = count
+	}
+
+	// 确保所有 categoryID 都在 map 中（没有关联文章时为 0）
+	for _, id := range categoryIDs {
+		if _, ok := result[id]; !ok {
+			result[id] = 0
+		}
+	}
+
+	return result, nil
 }
 
 type Redirect struct {
@@ -2030,6 +2130,35 @@ func SoftDeleteCategory(db *DB, id int64) error {
 
 func RestoreCategory(db *DB, id int64) error {
 	return RestoreRecord(db, TableCategories, id)
+}
+
+func ListDeletedCategories(db *DB) ([]Category, error) {
+	results, err := ListDeletedRecords(db, TableCategories, "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
+		var c Category
+		var parentID sql.NullInt64
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
+			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if parentID.Valid {
+			c.ParentID = parentID.Int64
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Int64
+		}
+		return c, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]Category, len(results))
+	for i, v := range results {
+		res[i] = v.(Category)
+	}
+	return res, nil
 }
 
 func GetPostCategory(db *DB, postID int64) (*Category, error) {

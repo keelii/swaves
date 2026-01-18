@@ -828,6 +828,10 @@ func GetTrashRedirects(dbx *db.DB) ([]db.Redirect, error) {
 	return db.ListDeletedRedirects(dbx)
 }
 
+func GetTrashCategories(dbx *db.DB) ([]db.Category, error) {
+	return db.ListDeletedCategories(dbx)
+}
+
 func RestorePostService(dbx *db.DB, id int64) error {
 	return db.RestorePost(dbx, id)
 }
@@ -842,6 +846,10 @@ func RestoreTagService(dbx *db.DB, id int64) error {
 
 func RestoreRedirectService(dbx *db.DB, id int64) error {
 	return db.RestoreRedirect(dbx, id)
+}
+
+func RestoreCategoryService(dbx *db.DB, id int64) error {
+	return db.RestoreCategory(dbx, id)
 }
 
 // HttpErrorLogs
