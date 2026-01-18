@@ -8,6 +8,7 @@ const (
 	TableOpDelete TableOp = "delete"
 )
 const (
+	TableSessions       TableName = "t_admin_sessions"
 	TablePosts          TableName = "t_posts"
 	TableEncryptedPosts TableName = "t_encrypted_posts"
 	TableTags           TableName = "t_tags"
@@ -15,11 +16,10 @@ const (
 	TableSettings       TableName = "t_settings"
 	TableTasks          TableName = "t_tasks"
 	TableCategories     TableName = "t_categories"
-	TableSessions       TableName = "admin_sessions"
-	TablePostTags       TableName = "post_tags"
-	TablePostCategories TableName = "post_categories"
-	TableTaskRuns       TableName = "task_runs"
-	TableHttpErrorLogs  TableName = "http_error_logs"
+	TablePostTags       TableName = "t_post_tags"
+	TablePostCategories TableName = "t_post_categories"
+	TableTaskRuns       TableName = "t_task_runs"
+	TableHttpErrorLogs  TableName = "t_http_error_logs"
 )
 
 const InitialSQL = `

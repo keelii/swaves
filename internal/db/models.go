@@ -1067,6 +1067,10 @@ type Setting struct {
 	DeletedAt          *int64
 }
 
+func (s Setting) String() string {
+	return fmt.Sprintf("Setting{Code:%s, Value:%s}", s.Code, s.Value)
+}
+
 func CreateSetting(db *DB, s *Setting) error {
 	if s.Code == "" {
 		return errors.New("code is required")

@@ -953,7 +953,6 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 
 		settingsViews = append(settingsViews, view)
 	}
-	fmt.Println(settingsViews)
 
 	return RenderAdminView(c, "settings_all", fiber.Map{
 		"Title":    "Settings - Edit All",
