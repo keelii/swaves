@@ -4,14 +4,14 @@
   <p>
     <label>
       Title<br>
-      <input type="text" name="title" id="title" required>
+      <input type="text" name="title" id="title" required placeholder="文章标题">
     </label>
   </p>
 
   <p>
     <label>
       Slug<br>
-      <input type="text" name="slug" id="slug" required>
+      <input type="text" name="slug" id="slug" required placeholder="url-friendly-slug">
       <button onclick="autoSetSlug()" type="button">Auto</button>
       <button onclick="autoTranslate()" type="button">Translate</button>
       <script>
@@ -64,7 +64,7 @@
   <p>
     <label>
       Content<br>
-      <textarea name="content" rows="10" cols="80" required></textarea>
+      <textarea name="content" rows="10" cols="80" required placeholder="文章内容（支持 Markdown）"></textarea>
     </label>
   </p>
 

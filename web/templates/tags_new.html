@@ -2,8 +2,8 @@
 
 <form id="form" method="post" action="/admin/tags/new">
 
-  {{ template "partials/form_field_text" dict "Label" "Name" "Name" "name" "Required" true }}
-  {{ template "partials/form_field_text" dict "Label" "Slug" "Name" "slug" "Required" true }}
+  {{ template "partials/form_field_text" dict "Label" "Name" "Name" "name" "Required" true "Placeholder" "标签名称" }}
+  {{ template "partials/form_field_text" dict "Label" "Slug" "Name" "slug" "Required" true "Placeholder" "url-friendly-identifier" }}
 
 </form>
 

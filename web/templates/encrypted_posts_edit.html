@@ -2,7 +2,7 @@
 <form id="form" method="post" action="/admin/encrypted-posts/{{ .Post.ID }}/edit">
 
   <p>
-    <input type="text" name="title" value="{{ .Post.Title }}" required>
+    <input type="text" name="title" value="{{ .Post.Title }}" required placeholder="加密文章标题">
   </p>
 
   <p>
@@ -10,7 +10,7 @@
   </p>
 
   <p>
-    <input type="password" name="password">
+    <input type="password" name="password" placeholder="留空以保持当前密码">
   </p>
 
   <p>
@@ -89,7 +89,7 @@
 
   <div>
     <div>
-      <textarea name="content" rows="10" cols="80">{{ .Post.Content }}</textarea>
+      <textarea name="content" rows="10" cols="80" placeholder="加密文章内容（支持 Markdown）">{{ .Post.Content }}</textarea>
     </div>
   </div>
 

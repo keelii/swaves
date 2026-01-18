@@ -1,7 +1,7 @@
 
 <form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
   <p>
-    <input type="text" name="title" value="{{ .Post.Title }}" required>
+    <input type="text" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
   </p>
 
   <p>
@@ -27,7 +27,7 @@
 
   <div>
     <div>
-      <textarea name="content" rows="10" cols="80">{{ .Post.Content }}</textarea>
+      <textarea name="content" rows="10" cols="80" placeholder="文章内容（支持 Markdown）">{{ .Post.Content }}</textarea>
     </div>
   </div>
 
