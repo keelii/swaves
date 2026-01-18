@@ -1,17 +1,14 @@
 
 <form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
   <p>
-    <label>Title</label>
     <input type="text" name="title" value="{{ .Post.Title }}" required>
   </p>
 
   <p>
-    <label>Slug</label>
     <input type="text" name="slug" value="{{ .Post.Slug }}" disabled>
   </p>
 
   <p>
-    <label>Status</label>
     <select name="status">
       <option value="draft" {{ if eq .Post.Status "draft" }}selected{{ end }}>Draft</option>
       <option value="published" {{ if eq .Post.Status "published" }}selected{{ end }}>Published</option>
@@ -19,19 +16,16 @@
   </p>
 
   <p>
-    <label>Tags</label><br>
     {{ template "partials/tag_select" . }}
     <input type="text" name="new_tags" placeholder="New tags: comma separated">
     <input type="hidden" name="tags" id="tags-input">
   </p>
 
   <p>
-    <label>Category</label><br>
     {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
   </p>
 
   <div>
-    <label>Content</label>
     <div>
       <textarea name="content" rows="10" cols="80">{{ .Post.Content }}</textarea>
     </div>

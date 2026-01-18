@@ -1,38 +1,11 @@
-{{ if .Error }}
-  <p style="color:red">{{ .Error }}</p>
-{{ end }}
+{{ template "partials/error_message" . }}
+
 <form id="form" method="post" action="/admin/redirects/new">
 
-  <p>
-    <label>
-      From<br>
-      <input type="text" name="from" required>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      To<br>
-      <input type="text" name="to" required>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Status (状态码)<br>
-      <select name="status">
-        <option value="301" selected>301 - Permanent Redirect</option>
-        <option value="302">302 - Temporary Redirect</option>
-      </select>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      <input type="checkbox" name="enabled" value="1" checked>
-      Enabled (启用)
-    </label>
-  </p>
+  {{ template "partials/form_field_text" dict "Label" "From" "Name" "from" "Required" true }}
+  {{ template "partials/form_field_text" dict "Label" "To" "Name" "to" "Required" true }}
+  {{ template "partials/form_field_select" dict "Label" "Status (状态码)" "Name" "status" "Options" (slice (dict "Value" "301" "Label" "301 - Permanent Redirect") (dict "Value" "302" "Label" "302 - Temporary Redirect")) "Selected" "301" }}
+  {{ template "partials/form_field_checkbox" dict "Label" "Enabled (启用)" "Name" "enabled" "Value" 1 "Checked" true }}
 
 </form>
 

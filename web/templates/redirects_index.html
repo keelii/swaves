@@ -30,18 +30,10 @@
     <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>{{ formatTime .UpdatedAt }}</td>
-    <td>
-      <a href="/admin/redirects/{{ .ID }}/edit">Edit</a>
-
-      <form id="form" method="post" style="display:inline" action="/admin/redirects/{{ .ID }}/delete">
-        <button type="submit">Delete</button>
-      </form>
-    </td>
+    {{ template "partials/table_row_actions" dict "BaseURL" "/admin/redirects" "ID" .ID }}
   </tr>
   {{ else }}
-  <tr>
-    <td colspan="8">No redirects</td>
-  </tr>
+  {{ template "partials/table_empty" dict "ColSpan" 8 "Message" "No redirects" }}
   {{ end }}
   </tbody>
 

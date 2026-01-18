@@ -33,14 +33,12 @@
     <td>{{ formatTime .CreatedAt }}</td>
     <td>
       <form id="form" method="post" style="display:inline" action="/admin/http-error-logs/{{ .ID }}/delete">
-        <button type="submit">Delete</button>
+        <button type="submit">删除</button>
       </form>
     </td>
   </tr>
   {{ else }}
-  <tr>
-    <td colspan="12">No logs</td>
-  </tr>
+  {{ template "partials/table_empty" dict "ColSpan" 12 "Message" "No logs" }}
   {{ end }}
   </tbody>
 

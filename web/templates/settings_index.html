@@ -30,18 +30,10 @@
     </td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>{{ formatTime .UpdatedAt }}</td>
-    <td>
-      <a href="/admin/settings/{{ .ID }}/edit">Edit</a>
-
-      <form id="form" method="post" style="display:inline" action="/admin/settings/{{ .ID }}/delete">
-        <button type="submit">Delete</button>
-      </form>
-    </td>
+    {{ template "partials/table_row_actions" dict "BaseURL" "/admin/settings" "ID" .ID }}
   </tr>
   {{ else }}
-  <tr>
-    <td colspan="9">No settings</td>
-  </tr>
+  {{ template "partials/table_empty" dict "ColSpan" 9 "Message" "No settings" }}
   {{ end }}
   </tbody>
 

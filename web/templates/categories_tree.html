@@ -1,10 +1,10 @@
 <style>
     /* 树整体 */
     .categories-tree {
+        width: 50%;
         list-style: none;
         padding-left: 0;
         margin: 0;
-        font-size: 14px;
     }
 
     /* 子层级缩进 + 引导线 */
@@ -25,7 +25,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 6px 8px;
+        padding: 5px;
         border-radius: 4px;
     }
 
@@ -36,7 +36,7 @@
 
     /* ID */
     .category-item .valign > div:first-child {
-        width: 32px;
+        /*width: 32px;*/
         color: #999;
         font-size: 12px;
     }
@@ -46,15 +46,8 @@
         font-weight: 500;
     }
 
-    /* select */
-    .category-item select {
-        font-size: 12px;
-        padding: 2px 4px;
-    }
-
     /* 操作区 */
     .category-item a {
-        font-size: 12px;
         color: #0366d6;
         text-decoration: none;
         margin-right: 6px;
@@ -76,17 +69,17 @@
 {{ define "category_item" }}
   <li class="category-item">
     <div class="valign">
+      <div>{{ .Category.Sort }}</div>
       <div>
-        <div>{{ .Category.Sort }}</div>
         <strong>{{ .Category.Name }}</strong>
           {{ if .Category.Description }}
             <span>- {{ .Category.Description }}</span>
           {{ end }}
+      </div>
+      <div class="salign valign" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">
             {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
         </form>
-      </div>
-      <div class="valign" style="width: 200px; text-align: right;">
         <div>
           <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
           <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
@@ -98,7 +91,7 @@
     </div>
 
       {{ if .Children }}
-        <ul class="categories-tree">
+        <ul class="categories-subtree">
             {{ $root := .Root }}
             {{ range .Children }}
                 {{ template "category_item" dict "Category" .Category "Children" .Children "Root" $root }}

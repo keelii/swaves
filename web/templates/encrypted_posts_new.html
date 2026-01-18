@@ -18,13 +18,15 @@
   <p>
     <label>
       Expires At<br>
-      <label><input type="radio" name="expires_at_option" value="none" checked onchange="toggleCustomDate()"> Never</label>
-      <label><input type="radio" name="expires_at_option" value="5min" onchange="toggleCustomDate()"> 5 minutes</label>
-      <label><input type="radio" name="expires_at_option" value="1hour" onchange="toggleCustomDate()"> 1 hour</label>
-      <label><input type="radio" name="expires_at_option" value="1day" onchange="toggleCustomDate()"> 1 day</label>
-      <label><input type="radio" name="expires_at_option" value="custom" onchange="toggleCustomDate()"> Other</label>
-      <div id="custom-date-container" style="display: none;">
-        <input type="datetime-local" name="expires_at_custom" id="expires_at_custom">
+      <div class="valign gap-10">
+        <label class="valign gap-5"><input type="radio" name="expires_at_option" value="none" checked onchange="toggleCustomDate()"> Never</label>
+        <label class="valign gap-5"><input type="radio" name="expires_at_option" value="5min" onchange="toggleCustomDate()"> 5 minutes</label>
+        <label class="valign gap-5"><input type="radio" name="expires_at_option" value="1hour" onchange="toggleCustomDate()"> 1 hour</label>
+        <label class="valign gap-5"><input type="radio" name="expires_at_option" value="1day" onchange="toggleCustomDate()"> 1 day</label>
+        <label class="valign gap-5"><input type="radio" name="expires_at_option" value="custom" onchange="toggleCustomDate()"> Other</label>
+        <div id="custom-date-container" style="display: none;">
+          <input type="datetime-local" name="expires_at_custom" id="expires_at_custom">
+        </div>
       </div>
       <input type="hidden" name="expires_at" id="expires_at_hidden">
     </label>

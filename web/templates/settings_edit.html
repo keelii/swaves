@@ -5,10 +5,6 @@
 <form id="form" method="post" action="/admin/settings/{{ .Setting.ID }}/edit">
 
   <p>
-    <label>ID:</label> {{ .Setting.ID }}
-  </p>
-
-  <p>
     <label>
       Kind<br>
       <input type="text" name="kind" value="{{ .Setting.Kind }}" required>

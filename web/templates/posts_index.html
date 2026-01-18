@@ -39,17 +39,10 @@
     <td>{{ .Post.Status }}</td>
     <td>{{ formatTime .Post.CreatedAt }}</td>
     <td>{{ formatTime .Post.UpdatedAt }}</td>
-    <td>
-      <a href="/admin/posts/{{ .Post.ID }}/edit">Edit</a>
-      <form id="form" method="post" style="display:inline" action="/admin/posts/{{ .Post.ID }}/delete">
-        <button type="submit">Delete</button>
-      </form>
-    </td>
+    {{ template "partials/table_row_actions" dict "BaseURL" "/admin/posts" "ID" .Post.ID }}
   </tr>
   {{ else }}
-  <tr>
-    <td colspan="9">No posts</td>
-  </tr>
+  {{ template "partials/table_empty" dict "ColSpan" 9 "Message" "No posts" }}
   {{ end }}
   </tbody>
 

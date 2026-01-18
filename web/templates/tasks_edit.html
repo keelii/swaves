@@ -1,3 +1,4 @@
+{{ template "partials/error_message" . }}
 
 <form id="form" method="post" action="/admin/tasks/{{ .Task.ID }}/edit">
 
@@ -10,33 +11,9 @@
     </label>
   </p>
 
-  <p>
-    <label>
-      Name (任务名称)<br>
-      <input type="text" name="name" id="name" value="{{ .Task.Name }}" required>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Description (描述)<br>
-      <textarea name="description" rows="3" cols="60">{{ .Task.Description }}</textarea>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Schedule (Cron 表达式)<br>
-      <input type="text" name="schedule" id="schedule" value="{{ .Task.Schedule }}" required placeholder="例如: 0 */5 * * *">
-      <small>标准 cron 表达式，如 "0 */5 * * *" 表示每5小时执行一次</small>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      <input type="checkbox" name="enabled" value="1" {{ if eq .Task.Enabled 1 }}checked{{ end }}>
-      Enabled (启用状态)
-    </label>
-  </p>
+  {{ template "partials/form_field_text" dict "Label" "Name (任务名称)" "Name" "name" "Value" .Task.Name "Required" true }}
+  {{ template "partials/form_field_textarea" dict "Label" "Description (描述)" "Name" "description" "Value" .Task.Description "Rows" 3 "Cols" 60 }}
+  {{ template "partials/form_field_text" dict "Label" "Schedule (Cron 表达式)" "Name" "schedule" "Value" .Task.Schedule "Required" true "Placeholder" "例如: 0 */5 * * *" "Help" "标准 cron 表达式，如 \"0 */5 * * *\" 表示每5小时执行一次" }}
+  {{ template "partials/form_field_checkbox" dict "Label" "Enabled (启用状态)" "Name" "enabled" "Value" 1 "Checked" (eq .Task.Enabled 1) }}
 
 </form>

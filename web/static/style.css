@@ -24,17 +24,20 @@ body {
     color: var(--nc-bg-1);
     display: flex;
     align-items: center;
-    padding: 0 16px;
+    /*padding: 0 16px;*/
     z-index: 1000;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .nav-brand {
+    box-sizing: border-box;
+    width: var(--menu-width);
     font-size: 18px;
     font-weight: bold;
     margin-right: auto;
     display: flex;
     align-items: center;
+    padding-left: 16px;
 }
 
 .menu-toggle-btn {
@@ -50,6 +53,7 @@ body {
     align-items: center;
     gap: 8px;
     font-size: 14px;
+    padding-right: 16px;
 }
 
 .user-avatar {
@@ -311,4 +315,8 @@ body {
 .sidebar-menu::-webkit-scrollbar-thumb:hover,
 .content-area::-webkit-scrollbar-thumb:hover {
     background: #999;
+}
+
+.nav-actions {
+    padding-left: 16px;
 }

@@ -1,6 +1,4 @@
-{{ if .Error }}
-<p style="color: red;">Error: {{ .Error }}</p>
-{{ end }}
+{{ template "partials/error_message" . }}
 
 <form id="form" method="post" action="/admin/categories/new">
 
@@ -8,7 +6,7 @@
     <label>
       Parent Category<br>
       <select name="parent_id">
-        <option value="0" {{ if eq .ParentID 0 }}selected{{ end }}>-- None (Top Level) --</option>
+        <option value="0" {{ if eq .ParentID 0 }}selected{{ end }}>-- None --</option>
         {{ range .Categories }}
           <option value="{{ .ID }}" {{ if eq $.ParentID .ID }}selected{{ end }}>{{ .Name }}</option>
         {{ end }}
@@ -17,36 +15,9 @@
     </label>
   </p>
 
-  <p>
-    <label>
-      Name<br>
-      <input type="text" name="name" required>
-      <small>(Display name)</small>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Slug<br>
-      <input type="text" name="slug" required>
-      <small>(URL-friendly identifier, must be unique under same parent)</small>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Description<br>
-      <textarea name="description" rows="3" cols="80"></textarea>
-      <small>(Optional description)</small>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Sort<br>
-      <input type="number" name="sort" value="0">
-      <small>(Sort order within same parent level)</small>
-    </label>
-  </p>
+  {{ template "partials/form_field_text" dict "Label" "Name" "Name" "name" "Required" true "Help" "(Display name)" }}
+  {{ template "partials/form_field_text" dict "Label" "Slug" "Name" "slug" "Required" true "Help" "(URL-friendly identifier, must be unique under same parent)" }}
+  {{ template "partials/form_field_textarea" dict "Label" "Description" "Name" "description" "Value" "" "Rows" 3 "Cols" 80 "Help" "(Optional description)" }}
+  {{ template "partials/form_field_number" dict "Label" "Sort" "Name" "sort" "Value" "0" "Help" "(Sort order within same parent level)" }}
 
 </form>

@@ -1,19 +1,9 @@
+{{ template "partials/error_message" . }}
 
 <form id="form" method="post" action="/admin/tags/{{ .Tag.ID }}/edit">
 
-  <p>
-    <label>ID:</label> {{ .Tag.ID }}
-  </p>
-
-  <p>
-    <label>Name</label>
-    <input type="text" name="name" value="{{ .Tag.Name }}" required>
-  </p>
-
-  <p>
-    <label>Slug</label>
-    <input type="text" name="slug" value="{{ .Tag.Slug }}" required>
-  </p>
+  {{ template "partials/form_field_text" dict "Label" "Name" "Name" "name" "Value" .Tag.Name "Required" true }}
+  {{ template "partials/form_field_text" dict "Label" "Slug" "Name" "slug" "Value" .Tag.Slug "Required" true }}
 
 </form>
 

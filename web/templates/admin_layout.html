@@ -58,6 +58,9 @@
           text-overflow: ellipsis;
           white-space: nowrap;
       }
+      .gap-5 {
+          gap: 5px;
+      }
       .gap-10 {
           gap: 10px;
       }
@@ -73,6 +76,9 @@
           display: inline-flex;
           align-items: center;
           /*gap: 5px;*/
+      }
+      .grow {
+          flex-grow: 1;
       }
       .salign {
           display:flex;
@@ -90,7 +96,6 @@
           background: transparent;
       }
       .long-text:hover {
-          {#border: none;#}
       }
   </style>
 </head>
@@ -98,18 +103,21 @@
 
 <div class="admin-container">
   <!-- 顶部导航 -->
-  <div class="top-navigation">
+  <div class="top-navigation salign">
     <div class="nav-brand">
       <span class="menu-toggle-btn" onclick="toggleSidebar()">☰</span>
       Swaves Admin
     </div>
-    <div class="nav-user">
-      {{ if .IsLogin }}
-        <span>欢迎，管理员</span> <a href="/admin/logout">退出</a>
-      {{ else }}
-        <span>请先</span> <a href="/admin/login">登录</a>
-      {{ end }}
-      <div class="user-avatar">A</div>
+    <div class="nav-actions salign grow">
+      {{template "partials/actions" .}}
+      <div class="nav-user">
+          {{ if .IsLogin }}
+            <span>欢迎，管理员</span> <a href="/admin/logout">退出</a>
+          {{ else }}
+            <span>请先</span> <a href="/admin/login">登录</a>
+          {{ end }}
+        <div class="user-avatar">A</div>
+      </div>
     </div>
   </div>
 
@@ -122,7 +130,7 @@
 
     <!-- 主内容区域 -->
     <div class="content-area">
-      <div class="content-header content-box">
+      <div class="content-header content-box" style="display:none;">
         <div class="content-title">
           {{template "partials/actions" .}}
         </div>

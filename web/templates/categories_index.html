@@ -32,18 +32,10 @@
     <td>{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</td>
     <td>{{ formatTime .CreatedAt }}</td>
     <td>{{ formatTime .UpdatedAt }}</td>
-    <td>
-      <a href="/admin/categories/{{ .ID }}/edit">Edit</a>
-
-      <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .ID }}/delete">
-        <button type="submit">Delete</button>
-      </form>
-    </td>
+    {{ template "partials/table_row_actions" dict "BaseURL" "/admin/categories" "ID" .ID }}
   </tr>
   {{ else }}
-  <tr>
-    <td colspan="10">No categories</td>
-  </tr>
+  {{ template "partials/table_empty" dict "ColSpan" 10 "Message" "No categories" }}
   {{ end }}
   </tbody>
 </table>
