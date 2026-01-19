@@ -133,6 +133,10 @@ func NewViewEngine() *html.Engine {
 		}
 		return matched
 	})
+	// 辅助函数：分割字符串
+	engine.AddFunc("split", func(s, sep string) []string {
+		return strings.Split(s, sep)
+	})
 	engine.Reload(true)
 
 	return engine

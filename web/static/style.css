@@ -376,7 +376,6 @@ body {
 .toggle-text {
     font-weight: 500;
     color: #333;
-    min-width: 60px;
 }
 
 /* 使用伪元素显示不同文案 */
