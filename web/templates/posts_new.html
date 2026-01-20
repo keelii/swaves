@@ -43,11 +43,7 @@
   <p>
     <label>
       Tags<br>
-      <label>
-        {{ template "partials/tag_select" . }}
-        <input type="text" name="new_tags" placeholder="New tags: comma separated">
-      </label>
-      <input type="hidden" name="tags" id="tags-input">
+      {{ template "partials/tag_select" . }}
     </label>
   </p>
 
@@ -68,10 +64,53 @@
 </form>
 
 <script>
-document.querySelector('form').addEventListener('submit', function(e) {
-  const tagCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
-  const tagIDs = Array.from(tagCheckboxes).map(cb => cb.value);
-  document.getElementById('tags-input').value = tagIDs.join(',');
+document.addEventListener('DOMContentLoaded', function() {
+  const tagsSelect = document.querySelector('#tags-select');
+  if (tagsSelect) {
+    const choices = new Choices(tagsSelect, {
+      removeItemButton: true,
+      searchEnabled: true,
+      shouldSort: false,
+      placeholder: true,
+      placeholderValue: '选择或输入标签',
+      duplicateItemsAllowed: false,
+      addItems: true,
+      editItems: false,
+      delimiter: ',',
+      paste: false,
+      searchChoices: true,
+      searchResultLimit: 10,
+      renderChoiceLimit: 10
+    });
+
+    // 表单提交时处理标签
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const selectedValues = choices.getValue(true);
+      const tagIDs = [];
+      const newTagNames = [];
+
+      selectedValues.forEach(value => {
+        const strValue = String(value);
+        // 如果值是纯数字，说明是现有的标签ID
+        // 否则是用户输入的新标签名
+        if (/^\d+$/.test(strValue)) {
+          tagIDs.push(strValue);
+        } else {
+          newTagNames.push(strValue);
+        }
+      });
+
+      // 将标签 ID 和新建标签名称分别存储
+      document.getElementById('tags-input').value = tagIDs.join(',');
+      if (newTagNames.length > 0) {
+        const newTagsInput = document.createElement('input');
+        newTagsInput.type = 'hidden';
+        newTagsInput.name = 'new_tags';
+        newTagsInput.value = newTagNames.join(',');
+        this.appendChild(newTagsInput);
+      }
+    });
+  }
 
   // 处理分类选择框（单选）
   const categorySelect = document.getElementById('categories-select');

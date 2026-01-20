@@ -8,9 +8,10 @@
   </p>
 
   <p>
-    {{ template "partials/tag_select" . }}
-    <input type="text" name="new_tags" placeholder="New tags: comma separated">
-    <input type="hidden" name="tags" id="tags-input">
+    <label>
+      Tags<br>
+      {{ template "partials/tag_select" . }}
+    </label>
   </p>
 
   <p>
@@ -24,16 +25,3 @@
   </div>
 
 </form>
-
-<script>
-document.querySelector('form').addEventListener('submit', function(e) {
-  const checkboxes = document.querySelectorAll('.tag-checkbox:checked');
-  const tagIDs = Array.from(checkboxes).map(cb => cb.value);
-  document.getElementById('tags-input').value = tagIDs.join(',');
-
-
-  // 处理分类选择框（单选）
-  const categorySelect = document.getElementById('categories-select');
-  // select 的 name 已经是 'categories'，直接使用即可
-});
-</script>
