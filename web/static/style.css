@@ -387,3 +387,6 @@ body {
     content: attr(data-on);
     color: #4CAF50;
 }
+.choices {
+    width: 40%;
+}

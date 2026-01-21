@@ -5,7 +5,7 @@
   <p>
     <label>
       <select name="parent_id">
-        <option value="0" {{ if eq .Category.ParentID 0 }}selected{{ end }}>-- None --</option>
+        <option value="0" {{ if eq .Category.ParentID 0 }}selected{{ end }}>顶级分类</option>
         {{ range .Categories }}
           <option value="{{ .ID }}" {{ if eq $.Category.ParentID .ID }}selected{{ end }}>{{ .Name }}</option>
         {{ end }}

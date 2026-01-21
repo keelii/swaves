@@ -1,8 +1,8 @@
 <select name="categories" id="categories-select">
   {{ if $.EmptyOption}}
-    <option value="">{{ .EmptyOption }}</option>
+    <option value="">{{ $.EmptyOption }}</option>
   {{ else }}
-  <option value="">-- None --</option>
+  <option value="">顶级分类</option>
   {{ end }}
   {{ range .Root.Categories }}
     <option value="{{ .ID }}" {{ if eq $.SelectedID .ID }}selected{{ end }}>
@@ -10,3 +10,21 @@
     </option>
   {{ end }}
 </select>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.querySelector('#categories-select');
+    if (categorySelect) {
+      new Choices(categorySelect, {
+        removeItemButton: true,
+        searchEnabled: true,
+        shouldSort: false,
+        placeholder: true,
+        placeholderValue: '选择分类',
+        searchChoices: true,
+        searchResultLimit: 10,
+        renderChoiceLimit: 10
+      });
+    }
+  });
+</script>
