@@ -1784,3 +1784,10 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 	return c.Redirect("/admin/posts")
 }
+
+// Metrics
+func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
+	return RenderAdminView(c, "metrics", fiber.Map{
+		"Title": "性能监控",
+	}, "")
+}

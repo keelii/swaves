@@ -10,16 +10,15 @@
       {{ template "partials/toggle" dict "ID" (printf "status_%d" .Post.ID) "Name" "status" "Checked" (eq .Post.Status "published") "DataLabels" "草稿,发布" }}
   </p>
 
-  <p>
-    <label>
-      Tags<br>
+  <div class="salign gap-10">
+    <p class="grow">
       {{ template "partials/tag_select" . }}
-    </label>
-  </p>
+    </p>
 
-  <p>
-    {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
-  </p>
+    <p class="grow">
+      {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
+    </p>
+  </div>
 
   <div>
     <div>
