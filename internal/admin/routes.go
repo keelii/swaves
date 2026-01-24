@@ -15,6 +15,9 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	adminGroup := app.Group("/admin")
 
 	adminGroup.Get("/", handler.GetHome)
+	adminGroup.Get("/panic", func(c *fiber.Ctx) error {
+		panic("test panic")
+	})
 	adminGroup.Get("/login", handler.GetLoginHandler)
 	adminGroup.Post("/login", handler.PostLoginHandler)
 	adminGroup.Get("/logout", handler.GetLogoutHandler)

@@ -2,9 +2,9 @@
   <thead>
   <tr>
     <th>ID</th>
-    <th>分类</th>
     <th>名称</th>
-    <th>代码</th>
+    <th>分类</th>
+    <th>编码</th>
     <th>类型</th>
     <th>值</th>
     <th>创建时间</th>
@@ -17,8 +17,8 @@
   {{ range .Settings }}
   <tr>
     <td>{{ .ID }}</td>
-    <td>{{ .Kind }}</td>
     <td>{{ .Name }}</td>
+    <td>{{ .Kind }}</td>
     <td>{{ .Code }}</td>
     <td>{{ .Type }}</td>
     <td>

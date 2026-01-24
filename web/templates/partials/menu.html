@@ -54,7 +54,10 @@
     </div>
     <ul class="submenu-list show">
       <li class="submenu-item{{ if eq .UrlPath "/admin/settings" }} active{{ end }}">
-        <a href="/admin/settings">站点设置</a>
+        <a href="/admin/settings">设置列表</a>
+      </li>
+      <li class="submenu-item{{ if eq .UrlPath "/admin/settings/all" }} active{{ end }}">
+        <a href="/admin/settings/all">站点设置</a>
       </li>
     </ul>
   </li>

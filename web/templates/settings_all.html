@@ -38,19 +38,23 @@
         <textarea name="setting_{{ $code }}"{{ renderAttrs .AttrsParsed }}>{{ .Value }}</textarea>
       {{ else if eq .Type "radio" }}
         {{ $currentValue := or .Value .DefaultOptionValue }}
+        <div class="flex gap-1">
         {{ range .OptionsParsed }}
-          <label style="display:inline-block; margin-right:10px;">
+          <label class="ivalign gap-h">
             <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
             {{ .label }}
           </label>
         {{ end }}
+        </div>
       {{ else if eq .Type "checkbox" }}
+        <div class="flex gap-1">
         {{ range .OptionsParsed }}
-          <label style="display:inline-block; margin-right:10px;">
+          <label class="ivalign gap-h">
             <input type="checkbox" name="setting_{{ $code }}" value="{{ .value }}" {{ if index $.CheckboxValues .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
             {{ .label }}
           </label>
         {{ end }}
+        </div>
       {{ else if eq .Type "select" }}
         {{ $currentValue := or .Value .DefaultOptionValue }}
         <select name="setting_{{ $code }}"{{ renderAttrs .AttrsParsed }}>

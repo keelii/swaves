@@ -2,7 +2,7 @@
 <script src="/static/choices/choices.min.js"></script>
 
 <form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
-  <p class="valign gap-10">
+  <p class="valign gap-1">
     <span>
       <input type="text" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
     </span>
@@ -10,7 +10,7 @@
       {{ template "partials/toggle" dict "ID" (printf "status_%d" .Post.ID) "Name" "status" "Checked" (eq .Post.Status "published") "DataLabels" "草稿,发布" }}
   </p>
 
-  <div class="salign gap-10">
+  <div class="salign gap-1">
     <p class="grow">
       {{ template "partials/tag_select" . }}
     </p>

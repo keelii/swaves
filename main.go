@@ -2,76 +2,69 @@ package main
 
 import (
 	"log"
-	"swaves/internal/admin"
-	"swaves/internal/api"
-	"swaves/internal/consts"
-	job "swaves/internal/jobs"
-	"swaves/internal/middleware"
-	"swaves/internal/store"
+	"os"
+	"os/exec"
 	"time"
-
-	"swaves/internal/db"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/monitor"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/google/uuid"
 )
 
 const TimeFormat = "2006-01-02 15:04:05"
 
 //const TimeFormatMs = "2006-01-02 15:04:05.000"
 
-func main() {
-	globalStore := store.NewGlobalStore(db.Open(db.Options{
-		DSN: "data.sqlite",
-	}), admin.NewSessionStore())
+func watchParent() {
+	ppid := os.Getppid()
 
-	defer globalStore.Close()
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			pid := os.Getppid()
+			if pid != ppid {
+				log.Println("parent process exited, exiting worker", pid, ppid)
+				os.Exit(1)
+			}
+		}
+	}()
+}
+func worker() {
+	watchParent()
 
-	job.InitRegistry(globalStore, 5*time.Second) // 每 5 秒扫描 pending
-	job.RegisterJob("hello", job.HelloJob)
-	job.RegisterJob("fdsa", job.HelloJob1)
-
-	store.InitSettings(globalStore)
-
-	app := fiber.New(fiber.Config{
-		AppName:               "swaves",
-		DisableStartupMessage: true,
-		Views:                 NewViewEngine(),
+	swv := NewApp(AppConfig{
+		SqliteFile: "data.sqlite",
+		ListenAddr: ":3000",
+		AppName:    "swaves",
 	})
+	swv.Listen()
 
-	// statics
-	app.Static("/static", "./web/static")
-	// metrics
-	app.Get("/metrics", monitor.New(monitor.Config{Title: "swaves metrics"}))
+	defer swv.Shutdown()
+}
 
-	// Auth
-	app.Use(middleware.RequireAdmin(globalStore.Session, consts.LoginRoutePath))
+func launcher() {
+	for {
+		cmd := exec.Command(os.Args[0])
+		cmd.Env = append(os.Environ(), "WORKER=1")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-	//app.Use(limiter.New())
-	app.Use(middleware.AdminViewContext(globalStore.Session))
-	app.Use(middleware.GlobalSettings(consts.GlobalSettingKey))
-	app.Use(requestid.New())
-	app.Use(middleware.PaginationMiddleware())
-	app.Use(requestid.New(requestid.Config{
-		Header:     "X-Req-Id",
-		ContextKey: "reqId",
-		Generator: func() string {
-			return uuid.NewString()
-		},
-	}))
-	app.Use(middleware.HttpErrorLogMiddleware(globalStore))
-	//app.Use(logger.New(logger.Config{
-	//	TimeFormat: TimeFormat,
-	//	Format:     "${time} ${status} - ${method} ${path} ${queryParams} ${body}\n",
-	//}))
+		log.Println("[launcher] start worker")
+		err := cmd.Start()
+		if err != nil {
+			log.Println("[launcher] failed to start worker:", err)
+			time.Sleep(time.Second)
+			continue
+		}
 
-	//fmt.Println(md.ParseMarkdown(``))
+		// 阻塞等待 worker 退出
+		err = cmd.Wait()
+		log.Println("[launcher] worker exited:", err)
 
-	admin.RegisterRoutes(app, globalStore)
-	api.RegisterRoutes(app)
+		time.Sleep(200 * time.Millisecond)
+	}
+}
 
-	log.Println("swaves listening on :3000")
-	log.Fatal(app.Listen(":3000"))
+func main() {
+	if os.Getenv("WORKER") == "1" {
+		worker()
+	} else {
+		launcher()
+	}
 }
