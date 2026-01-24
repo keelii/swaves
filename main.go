@@ -62,9 +62,18 @@ func launcher() {
 }
 
 func main() {
-	if os.Getenv("WORKER") == "1" {
-		worker()
-	} else {
-		launcher()
-	}
+	swv := NewApp(AppConfig{
+		SqliteFile: "data.sqlite",
+		ListenAddr: ":3000",
+		AppName:    "swaves",
+	})
+	swv.Listen()
+
+	defer swv.Shutdown()
+	//
+	//if os.Getenv("WORKER") == "1" {
+	//	worker()
+	//} else {
+	//	launcher()
+	//}
 }

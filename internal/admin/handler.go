@@ -128,16 +128,24 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
-	// 解析标签 ID（逗号分割）
+	// 解析标签 ID：优先用隐藏 input "tags"（逗号分割），否则用 select "tags[]"（多选原样提交）
 	var tagIDs []int64
 	tagsStr := c.FormValue("tags")
 	if tagsStr != "" {
-		// 按逗号分割
 		tagIDStrs := strings.Split(tagsStr, ",")
 		for _, tagIDStr := range tagIDStrs {
 			tagIDStr = strings.TrimSpace(tagIDStr)
 			if tagIDStr != "" {
 				if tagID, err := strconv.ParseInt(tagIDStr, 10, 64); err == nil {
+					tagIDs = append(tagIDs, tagID)
+				}
+			}
+		}
+	} else {
+		for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
+			s := strings.TrimSpace(string(v))
+			if s != "" {
+				if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
 					tagIDs = append(tagIDs, tagID)
 				}
 			}
@@ -241,17 +249,24 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	// 解析标签 ID（逗号分割）
+	// 解析标签 ID：优先用 "tags"（逗号分割），否则用 "tags[]"
 	var tagIDs []int64
 	tagsStr := c.FormValue("tags")
-
 	if tagsStr != "" {
-		// 按逗号分割
 		tagIDStrs := strings.Split(tagsStr, ",")
 		for _, tagIDStr := range tagIDStrs {
 			tagIDStr = strings.TrimSpace(tagIDStr)
 			if tagIDStr != "" {
 				if tagID, err := strconv.ParseInt(tagIDStr, 10, 64); err == nil {
+					tagIDs = append(tagIDs, tagID)
+				}
+			}
+		}
+	} else {
+		for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
+			s := strings.TrimSpace(string(v))
+			if s != "" {
+				if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
 					tagIDs = append(tagIDs, tagID)
 				}
 			}
