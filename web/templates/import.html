@@ -1,4 +1,3 @@
-
 {{ if .Error }}
 <p style="color: red;">Error: {{ .Error }}</p>
 {{ end }}
@@ -76,8 +75,8 @@
     <label>
       Category Source<br>
       <select name="category_source" required>
-        <option value="none" selected>None (留空)</option>
-        <option value="frontmatter">From Frontmatter Field (default: categories)</option>
+        <option value="none">None (留空)</option>
+        <option value="frontmatter" selected>From Frontmatter Field (default: categories)</option>
         <option value="autocreate">Auto Create Default Category</option>
       </select>
       <input type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
@@ -88,8 +87,8 @@
     <label>
       Tag Source<br>
       <select name="tag_source" required>
-        <option value="none" selected>None (留空)</option>
-        <option value="frontmatter">From Frontmatter Field (default: tags)</option>
+        <option value="none">None (留空)</option>
+        <option value="frontmatter" selected>From Frontmatter Field (default: tags)</option>
         <option value="autocreate">Auto Create Default Tag</option>
       </select>
       <input type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
