@@ -38,6 +38,9 @@ func RenderAdminView(c *fiber.Ctx, view string, data fiber.Map, layout string) e
 		data = fiber.Map{}
 	}
 
+	data["UrlPath"] = c.Path()
+	data["Query"] = c.Queries()
+
 	// 注入 Locals
 	c.Context().VisitUserValues(func(k []byte, v interface{}) {
 		//log.Println("Injecting local:", string(k))

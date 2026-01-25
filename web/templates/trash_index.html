@@ -8,7 +8,7 @@
 
   .tab-item {
     flex: 1;
-    padding: 1em 2em;
+    padding: 0.4em 1em;
     text-align: center;
     font-size: 1.2em;
     cursor: pointer;
@@ -57,7 +57,6 @@
 
   .tab-card .tab-item {
     flex: none;
-    padding: 8px 16px;
     border: 1px solid var(--nc-bg-3);
     border-radius: 4px 4px 0 0;
     background: #fafafa;
@@ -79,21 +78,22 @@
     /*margin: 0 0 20px;*/
   }
 </style>
+{{ $type := or (index .Query "type") "posts" }}
 <div class="tab-card">
   <div class="tab-nav">
-    <div class="tab-item active">
+    <div class="tab-item{{ if eq $type "posts" }} active{{ end }}">
       <a href="/admin/trash?type=posts">Posts</a>
     </div>
-    <div class="tab-item">
+    <div class="tab-item{{ if eq $type "encrypted-posts" }} active{{ end }}">
       <a href="/admin/trash?type=encrypted-posts">Encrypted Posts</a>
     </div>
-    <div class="tab-item">
+    <div class="tab-item{{ if eq $type "tags" }} active{{ end }}">
       <a href="/admin/trash?type=tags">Tags</a>
     </div>
-    <div class="tab-item">
+    <div class="tab-item{{ if eq $type "categories" }} active{{ end }}">
       <a href="/admin/trash?type=categories">Categories</a>
     </div>
-    <div class="tab-item">
+    <div class="tab-item{{ if eq $type "redirects" }} active{{ end }}">
       <a href="/admin/trash?type=redirects">Redirects</a>
     </div>
   </div>
