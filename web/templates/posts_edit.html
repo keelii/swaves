@@ -11,13 +11,13 @@
   </p>
 
   <div class="salign gap-1">
-    <p class="grow">
+    <div class="grow">
       {{ template "partials/tag_select" . }}
-    </p>
+    </div>
 
-    <p class="grow">
+    <div class="grow">
       {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
-    </p>
+    </div>
   </div>
 
   <div>

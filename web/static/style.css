@@ -390,3 +390,6 @@ body {
 .choices {
     /*width: 40%;*/
 }
+textarea[name="content"] {
+  width: 100%;
+}
