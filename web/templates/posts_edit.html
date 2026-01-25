@@ -20,10 +20,12 @@
     </div>
   </div>
 
-  <div>
-    <div>
-      <textarea name="content" rows="10" cols="80" placeholder="文章内容（支持 Markdown）">{{ .Post.Content }}</textarea>
+  <div class="markdown-editor-row">
+    <div class="markdown-editor-col">
+      <label for="content">Content</label>
+      <textarea name="content" id="content" rows="10" cols="80" placeholder="文章内容（支持 Markdown）">{{ .Post.Content }}</textarea>
     </div>
+    {{ template "partials/markdown_preview" . }}
   </div>
 
 </form>

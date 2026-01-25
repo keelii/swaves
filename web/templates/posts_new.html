@@ -56,12 +56,13 @@
     </label>
   </p>
 
-  <p>
-    <label>
-      Content<br>
-      <textarea name="content" rows="10" cols="80" required placeholder="文章内容（支持 Markdown）"></textarea>
-    </label>
-  </p>
+  <div class="markdown-editor-row">
+    <div class="markdown-editor-col">
+      <label for="content">Content</label>
+      <textarea name="content" id="content" rows="10" cols="80" required placeholder="文章内容（支持 Markdown）"></textarea>
+    </div>
+    {{ template "partials/markdown_preview" . }}
+  </div>
 
 </form>
 

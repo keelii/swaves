@@ -1,0 +1,86 @@
+<style>
+  .markdown-editor-row {
+    display: flex;
+    gap: 1em;
+    align-items: stretch;
+  }
+  .markdown-editor-row .markdown-editor-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .markdown-editor-row .markdown-editor-col label {
+    margin-bottom: 0.25em;
+  }
+  .markdown-editor-row textarea {
+    flex: 1;
+    min-height: 240px;
+    resize: vertical;
+  }
+  .markdown-preview {
+    flex: 1;
+    min-height: 240px;
+    padding: 0.75em 1em;
+    border: 1px solid var(--nc-bg-3);
+    border-radius: 4px;
+    background: var(--nc-bg-1);
+    overflow: auto;
+    font-size: 0.95em;
+    line-height: 1.6;
+  }
+  .markdown-preview:empty::before {
+    content: "预览将在此处显示…";
+    color: var(--nc-tx-3);
+  }
+  .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 { margin-top: 1em; margin-bottom: 0.5em; }
+  .markdown-preview pre, .markdown-preview code { background: var(--nc-bg-2); padding: 0.2em 0.4em; border-radius: 3px; }
+  .markdown-preview pre { padding: 0.75em 1em; overflow-x: auto; }
+  .markdown-preview pre code { padding: 0; }
+  .markdown-preview blockquote { border-left: 3px solid var(--nc-bg-3); margin: 0.5em 0; padding-left: 1em; color: var(--nc-tx-2); }
+  .markdown-preview ul, .markdown-preview ol { padding-left: 1.5em; }
+  .markdown-preview p { margin: 0.5em 0; }
+  .markdown-preview p:first-child { margin-top: 0; }
+</style>
+<div class="markdown-editor-col">
+  <label>Preview</label>
+  <div id="content-preview" class="markdown-preview"></div>
+</div>
+<script>
+(function() {
+  function initMarkdownPreview() {
+    var ta = document.querySelector('textarea[name="content"]');
+    var preview = document.getElementById('content-preview');
+    if (!ta || !preview) return;
+    var timer = null;
+    function update() {
+      var text = ta.value || '';
+      if (!text.trim()) {
+        preview.innerHTML = '';
+        return;
+      }
+      fetch('/api/markdown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text })
+      }).then(function(r) { return r.json(); }).then(function(res) {
+        if (res && res.data != null) preview.innerHTML = res.data;
+      }).catch(function() {
+        preview.textContent = '预览请求失败';
+      });
+    }
+    function schedule() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(update, 280);
+    }
+    ta.addEventListener('input', schedule);
+    ta.addEventListener('paste', schedule);
+    update();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMarkdownPreview);
+  } else {
+    initMarkdownPreview();
+  }
+})();
+</script>
