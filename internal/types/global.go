@@ -59,3 +59,10 @@ func (s *SessionStore) IsLogin(c *fiber.Ctx) bool {
 	//log.Println("isLogin:", isLogin)
 	return isLogin == true
 }
+
+type AppConfig struct {
+	SqliteFile string
+	BackupDir  string
+	ListenAddr string
+	AppName    string
+}

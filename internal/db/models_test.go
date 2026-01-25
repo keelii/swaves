@@ -41,7 +41,7 @@ func TestPostCRUD(t *testing.T) {
 		Status:  "published",
 	}
 
-	if err := CreatePost(db, p); err != nil {
+	if _, err := CreatePost(db, p); err != nil {
 		t.Fatalf("CreatePost failed: %v", err)
 	}
 	if p.ID == 0 {
@@ -123,7 +123,7 @@ func TestPost_UniqueSlug(t *testing.T) {
 		Content: "2",
 		Status:  "draft",
 	}
-	if err := CreatePost(db, p2); err == nil {
+	if _, err := CreatePost(db, p2); err == nil {
 		t.Fatal("expected unique constraint error on slug")
 	}
 }
@@ -137,7 +137,7 @@ func TestPost_UpdateDoesNotChangeSlug(t *testing.T) {
 		Content: "world",
 		Status:  "published",
 	}
-	if err := CreatePost(db, p); err != nil {
+	if _, err := CreatePost(db, p); err != nil {
 		t.Fatal(err)
 	}
 
@@ -183,7 +183,7 @@ func TestPost_SoftDeleteIsolation(t *testing.T) {
 		Content: "y",
 		Status:  "published",
 	}
-	if err := CreatePost(db, p2); err == nil {
+	if _, err := CreatePost(db, p2); err == nil {
 		t.Fatal("slug should still be unique even if soft deleted")
 	}
 }
@@ -199,7 +199,7 @@ func TestPostTags_SoftDelete(t *testing.T) {
 	tag := &Tag{Name: "T", Slug: "t"}
 
 	CreatePost(db, post)
-	CreateTag(db, tag)
+	_, _ = CreateTag(db, tag)
 	AttachTagToPost(db, post.ID, tag.ID)
 
 	// 手动软删除关系
@@ -226,7 +226,7 @@ func TestCreateEncryptedPost(t *testing.T) {
 		Password: "hashed-password",
 	}
 
-	if err := CreateEncryptedPost(db, p); err != nil {
+	if _, err := CreateEncryptedPost(db, p); err != nil {
 		t.Fatalf("CreateEncryptedPost failed: %v", err)
 	}
 
@@ -256,7 +256,7 @@ func TestEncryptedPosts_SoftDelete(t *testing.T) {
 		Content:  "yyy",
 		Password: "bcrypt",
 	}
-	if err := CreateEncryptedPost(db, p2); err == nil {
+	if _, err := CreateEncryptedPost(db, p2); err == nil {
 		t.Fatal("slug should remain unique after soft delete")
 	}
 }
@@ -268,7 +268,7 @@ func TestTags_SoftDelete(t *testing.T) {
 		Name: "Go",
 		Slug: "go",
 	}
-	CreateTag(db, tag)
+	_, _ = CreateTag(db, tag)
 
 	softDeleteByTable(db, t, TableTags, tag.ID)
 
@@ -277,7 +277,7 @@ func TestTags_SoftDelete(t *testing.T) {
 		Name: "Go2",
 		Slug: "go",
 	}
-	if err := CreateTag(db, tag2); err == nil {
+	if _, err := CreateTag(db, tag2); err == nil {
 		t.Fatal("tag slug should remain unique after soft delete")
 	}
 }
@@ -288,7 +288,7 @@ func TestTagAndAttach(t *testing.T) {
 		Name: "Go",
 		Slug: "go",
 	}
-	if err := CreateTag(db, tag); err != nil {
+	if _, err := CreateTag(db, tag); err != nil {
 		t.Fatalf("CreateTag failed: %v", err)
 	}
 	if tag.ID == 0 {
@@ -336,7 +336,7 @@ func TestCreateRedirect(t *testing.T) {
 		From: "/old",
 		To:   "/new",
 	}
-	if err := CreateRedirect(db, r); err != nil {
+	if _, err := CreateRedirect(db, r); err != nil {
 		t.Fatalf("CreateRedirect failed: %v", err)
 	}
 	if r.ID == 0 {
@@ -350,7 +350,7 @@ func TestRedirects_SoftDelete(t *testing.T) {
 		From: "/old",
 		To:   "/new",
 	}
-	CreateRedirect(db, r)
+	_, _ = CreateRedirect(db, r)
 
 	softDeleteByTable(db, t, TableRedirects, r.ID)
 
@@ -359,7 +359,7 @@ func TestRedirects_SoftDelete(t *testing.T) {
 		From: "/old",
 		To:   "/another",
 	}
-	if err := CreateRedirect(db, r2); err == nil {
+	if _, err := CreateRedirect(db, r2); err == nil {
 		t.Fatal("redirect from_path should remain unique after soft delete")
 	}
 }
@@ -378,7 +378,7 @@ func TestTasks(t *testing.T) {
 		UpdatedAt: time.Now().Unix(),
 	}
 
-	if err := CreateTask(dbx, task); err != nil {
+	if _, err := CreateTask(dbx, task); err != nil {
 		t.Fatalf("failed to create task: %v", err)
 	}
 	if task.ID == 0 {
@@ -406,7 +406,7 @@ func TestTasks(t *testing.T) {
 		Duration:   0,
 		CreatedAt:  time.Now().Unix(),
 	}
-	if err := CreateTaskRun(dbx, run); err != nil {
+	if _, err := CreateTaskRun(dbx, run); err != nil {
 		t.Fatalf("failed to create task run: %v", err)
 	}
 	if run.ID == 0 {
@@ -450,7 +450,7 @@ func TestCategoryCRUD(t *testing.T) {
 		Sort:        1,
 	}
 
-	if err := CreateCategory(db, c); err != nil {
+	if _, err := CreateCategory(db, c); err != nil {
 		t.Fatalf("CreateCategory failed: %v", err)
 	}
 	if c.ID == 0 {
@@ -500,7 +500,7 @@ func TestCategory_ParentChild(t *testing.T) {
 		Slug: "parent",
 		Sort: 1,
 	}
-	if err := CreateCategory(db, parent); err != nil {
+	if _, err := CreateCategory(db, parent); err != nil {
 		t.Fatalf("CreateCategory parent failed: %v", err)
 	}
 
@@ -510,7 +510,7 @@ func TestCategory_ParentChild(t *testing.T) {
 		Slug:     "child",
 		Sort:     1,
 	}
-	if err := CreateCategory(db, child); err != nil {
+	if _, err := CreateCategory(db, child); err != nil {
 		t.Fatalf("CreateCategory child failed: %v", err)
 	}
 
@@ -531,7 +531,7 @@ func TestCategory_UniqueSlugUnderParent(t *testing.T) {
 		Slug: "parent",
 		Sort: 1,
 	}
-	if err := CreateCategory(db, parent); err != nil {
+	if _, err := CreateCategory(db, parent); err != nil {
 		t.Fatalf("CreateCategory parent failed: %v", err)
 	}
 
@@ -541,7 +541,7 @@ func TestCategory_UniqueSlugUnderParent(t *testing.T) {
 		Slug:     "same",
 		Sort:     1,
 	}
-	if err := CreateCategory(db, c1); err != nil {
+	if _, err := CreateCategory(db, c1); err != nil {
 		t.Fatalf("create c1 failed: %v", err)
 	}
 
@@ -551,7 +551,7 @@ func TestCategory_UniqueSlugUnderParent(t *testing.T) {
 		Slug:     "same",
 		Sort:     1,
 	}
-	if err := CreateCategory(db, c2); err == nil {
+	if _, err := CreateCategory(db, c2); err == nil {
 		t.Fatal("expected unique constraint error on slug under same parent")
 	}
 
@@ -562,7 +562,7 @@ func TestCategory_UniqueSlugUnderParent(t *testing.T) {
 		Slug:     "same",
 		Sort:     1,
 	}
-	if err := CreateCategory(db, c3); err != nil {
+	if _, err := CreateCategory(db, c3); err != nil {
 		t.Fatalf("create c3 with same slug under different parent should succeed: %v", err)
 	}
 }
@@ -575,7 +575,7 @@ func TestCategory_CycleDetection(t *testing.T) {
 		Slug: "parent",
 		Sort: 1,
 	}
-	if err := CreateCategory(db, parent); err != nil {
+	if _, err := CreateCategory(db, parent); err != nil {
 		t.Fatalf("CreateCategory parent failed: %v", err)
 	}
 
@@ -585,7 +585,7 @@ func TestCategory_CycleDetection(t *testing.T) {
 		Slug:     "child",
 		Sort:     1,
 	}
-	if err := CreateCategory(db, child); err != nil {
+	if _, err := CreateCategory(db, child); err != nil {
 		t.Fatalf("CreateCategory child failed: %v", err)
 	}
 
@@ -623,7 +623,7 @@ func TestCategory_SoftDelete(t *testing.T) {
 		Slug: "test",
 		Sort: 1,
 	}
-	if err := CreateCategory(db, c2); err == nil {
+	if _, err := CreateCategory(db, c2); err == nil {
 		t.Fatal("category slug should remain unique after soft delete")
 	}
 }
@@ -1129,7 +1129,7 @@ func TestRestoreTag(t *testing.T) {
 		Name: "Restore Tag",
 		Slug: "restore-tag",
 	}
-	CreateTag(db, tag)
+	_, _ = CreateTag(db, tag)
 
 	SoftDeleteTag(db, tag.ID)
 
@@ -1155,7 +1155,7 @@ func TestRestoreRedirect(t *testing.T) {
 		From: "/restore-from",
 		To:   "/restore-to",
 	}
-	CreateRedirect(db, r)
+	_, _ = CreateRedirect(db, r)
 
 	SoftDeleteRedirect(db, r.ID)
 
@@ -1212,7 +1212,7 @@ func TestGetEncryptedPostByID(t *testing.T) {
 		Content:  originalContent,
 		Password: "password123",
 	}
-	if err := CreateEncryptedPost(db, p); err != nil {
+	if _, err := CreateEncryptedPost(db, p); err != nil {
 		t.Fatalf("CreateEncryptedPost failed: %v", err)
 	}
 
@@ -1268,7 +1268,7 @@ func TestGetTagByID(t *testing.T) {
 		Name: "Go Language",
 		Slug: "go-lang",
 	}
-	CreateTag(db, tag)
+	_, _ = CreateTag(db, tag)
 
 	got, err := GetTagByID(db, tag.ID)
 	if err != nil {
@@ -1295,7 +1295,7 @@ func TestUpdateTag(t *testing.T) {
 		Name: "Original",
 		Slug: "original",
 	}
-	CreateTag(db, tag)
+	_, _ = CreateTag(db, tag)
 
 	tag.Name = "Updated"
 	tag.Slug = "updated"
@@ -1324,7 +1324,7 @@ func TestGetRedirectByID(t *testing.T) {
 		Status:  302,
 		Enabled: 1,
 	}
-	CreateRedirect(db, r)
+	_, _ = CreateRedirect(db, r)
 
 	got, err := GetRedirectByID(db, r.ID)
 	if err != nil {
@@ -1351,7 +1351,7 @@ func TestGetRedirectByFrom(t *testing.T) {
 		From: "/from-path",
 		To:   "/to-path",
 	}
-	CreateRedirect(db, r)
+	_, _ = CreateRedirect(db, r)
 
 	got, err := GetRedirectByFrom(db, "/from-path")
 	if err != nil {
@@ -1377,7 +1377,7 @@ func TestUpdateRedirect(t *testing.T) {
 		Status:  301,
 		Enabled: 1,
 	}
-	CreateRedirect(db, r)
+	_, _ = CreateRedirect(db, r)
 
 	r.To = "/new-target"
 	r.Status = 302
@@ -1412,7 +1412,7 @@ func TestGetTaskByID(t *testing.T) {
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateTask(db, task)
+	_, _ = CreateTask(db, task)
 
 	got, err := GetTaskByID(db, task.ID)
 	if err != nil {
@@ -1440,7 +1440,7 @@ func TestGetTaskByCode(t *testing.T) {
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateTask(db, task)
+	_, _ = CreateTask(db, task)
 
 	got, err := GetTaskByCode(db, "get_by_code")
 	if err != nil {
@@ -1468,7 +1468,7 @@ func TestUpdateTask(t *testing.T) {
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateTask(db, task)
+	_, _ = CreateTask(db, task)
 
 	task.Name = "Updated"
 	task.Schedule = "0 */5 * * *"
@@ -1503,7 +1503,7 @@ func TestUpdateTaskStatus(t *testing.T) {
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
-	CreateTask(db, task)
+	_, _ = CreateTask(db, task)
 
 	now := time.Now().Unix()
 	if err := UpdateTaskStatus(db, "update_status", "success", now); err != nil {
@@ -1624,7 +1624,7 @@ func TestListRedirects(t *testing.T) {
 			From: fmt.Sprintf("/list-test-%d", i),
 			To:   fmt.Sprintf("/target-%d", i),
 		}
-		CreateRedirect(db, r)
+		_, _ = CreateRedirect(db, r)
 	}
 
 	// 测试分页
@@ -1664,7 +1664,7 @@ func TestCreateHttpErrorLog(t *testing.T) {
 		UserAgent: "test-agent",
 	}
 
-	if err := CreateHttpErrorLog(db, log); err != nil {
+	if _, err := CreateHttpErrorLog(db, log); err != nil {
 		t.Fatalf("CreateHttpErrorLog failed: %v", err)
 	}
 	if log.ID == 0 {
@@ -1685,7 +1685,7 @@ func TestListHttpErrorLogs(t *testing.T) {
 			Status:    404,
 			UserAgent: "test",
 		}
-		CreateHttpErrorLog(db, log)
+		_, _ = CreateHttpErrorLog(db, log)
 	}
 
 	list, err := ListHttpErrorLogs(db, 3, 0)
@@ -1710,7 +1710,7 @@ func TestCountHttpErrorLogs(t *testing.T) {
 			Status:    404,
 			UserAgent: "test",
 		}
-		CreateHttpErrorLog(db, log)
+		_, _ = CreateHttpErrorLog(db, log)
 	}
 
 	count, err := CountHttpErrorLogs(db)
@@ -1733,7 +1733,7 @@ func TestDeleteHttpErrorLog(t *testing.T) {
 		Status:    404,
 		UserAgent: "test",
 	}
-	CreateHttpErrorLog(db, log)
+	_, _ = CreateHttpErrorLog(db, log)
 
 	if err := DeleteHttpErrorLog(db, log.ID); err != nil {
 		t.Fatalf("DeleteHttpErrorLog failed: %v", err)
@@ -1779,7 +1779,7 @@ func TestDetachTagFromPost(t *testing.T) {
 	tag := &Tag{Name: "Detach Tag", Slug: "detach-tag"}
 
 	CreatePost(db, post)
-	CreateTag(db, tag)
+	_, _ = CreateTag(db, tag)
 
 	AttachTagToPost(db, post.ID, tag.ID)
 
@@ -2005,7 +2005,7 @@ func TestSoftDeleteRecord(t *testing.T) {
 
 	// 测试 tags 表
 	tag := &Tag{Name: "SoftDelete Tag", Slug: "softdelete-tag"}
-	CreateTag(db, tag)
+	_, _ = CreateTag(db, tag)
 
 	if err := SoftDeleteRecord(db, TableTags, tag.ID); err != nil {
 		t.Fatalf("SoftDeleteRecord for tags failed: %v", err)
@@ -2090,7 +2090,7 @@ func TestHardDeleteRecord(t *testing.T) {
 
 	// 测试 redirects 表
 	r := &Redirect{From: "/harddelete-from", To: "/harddelete-to"}
-	CreateRedirect(db, r)
+	_, _ = CreateRedirect(db, r)
 	redirectID := r.ID
 
 	// 硬删除
@@ -2295,7 +2295,7 @@ func TestCountRecords(t *testing.T) {
 			Name: fmt.Sprintf("Count Test %d", i),
 			Slug: fmt.Sprintf("count-test-%d", i),
 		}
-		if err := CreateTag(db, tag); err != nil {
+		if _, err := CreateTag(db, tag); err != nil {
 			t.Fatalf("CreateTag failed: %v", err)
 		}
 		createdTags = append(createdTags, tag)

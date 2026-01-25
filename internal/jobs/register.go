@@ -4,11 +4,14 @@ import (
 	"log"
 	"swaves/internal/db"
 	"swaves/internal/store"
+	"swaves/internal/types"
 	"sync"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
-type JobFunc func() error
+type JobFunc func(reg *Registry) error
 
 var (
 	registry *Registry
@@ -19,16 +22,72 @@ type Registry struct {
 	jobs    map[string]JobFunc
 	running map[string]bool
 	DB      *db.DB
+	Config  types.AppConfig
 }
 
 // 初始化 Registry
-func InitRegistry(gStore *store.GlobalStore, interval time.Duration) {
+func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 	registry = &Registry{
 		jobs:    make(map[string]JobFunc),
 		running: make(map[string]bool),
 		DB:      gStore.Model,
+		Config:  config,
 	}
-	go registry.executor(interval)
+
+	// Internal jobs
+	RegisterJob("database_backup", DatabaseBackupJob) // 注册数据库备份任务
+
+	tasks, err := db.ListTasks(gStore.Model)
+	if err != nil {
+		log.Printf("[task] fetch tasks failed: %v", err)
+	}
+	c := cron.New()
+	for task := range tasks {
+		t := tasks[task]
+
+		log.Println("add cron job:", t.Code, t.Schedule)
+		//c.AddFunc("@every 10s", func() {
+		//	log.Printf("[task] cron job every 10s")
+		//})
+		c.AddFunc(t.Schedule, func() {
+			ExecuteTask(gStore.Model, t)
+		})
+	}
+	c.Start()
+	defer c.Stop()
+
+	select {}
+	//go registry.executor(registry, interval)
+}
+
+func ExecuteTask(dbx *db.DB, t db.Task) {
+	var tid int64
+	var err error
+	tid, err = db.CreateTaskRun(dbx, &db.TaskRun{
+		TaskCode:  t.Code,
+		Status:    "pending",
+		CreatedAt: time.Now().Unix(),
+	})
+	if err != nil {
+		log.Printf("[task] create task run failed: %v", err)
+		return
+	}
+
+	err = registry.jobs[t.Code](registry)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	err = db.UpdateTaskRunStatus(dbx, &db.TaskRun{
+		ID:         tid,
+		Status:     status,
+		FinishedAt: time.Now().Unix(),
+	})
+	if err != nil {
+		log.Printf("[task] update task run failed: %v", err)
+	}
 }
 
 // 注册 Job
@@ -42,14 +101,14 @@ func RegisterJob(code string, fn JobFunc) {
 }
 
 // executor 循环扫描 pending 的 job runs 并执行
-func (r *Registry) executor(interval time.Duration) {
+func (r *Registry) executor(reg *Registry, interval time.Duration) {
 	for {
 		time.Sleep(interval)
-		r.runPendingJobs()
+		r.runPendingJobs(reg)
 	}
 }
 
-func (r *Registry) runPendingJobs() {
+func (r *Registry) runPendingJobs(reg *Registry) {
 	runs, err := db.ListTaskRuns(r.DB, "", "pending", 1000) // 扫描所有 pending
 	if err != nil {
 		log.Printf("[task] fetch pending runs failed: %v", err)
@@ -81,7 +140,7 @@ func (r *Registry) runPendingJobs() {
 			var msg string
 			var status string
 			log.Println("[task] executing task:", taskCode)
-			err := fn()
+			err := fn(reg)
 			if err != nil {
 				status = "error"
 				msg = err.Error()

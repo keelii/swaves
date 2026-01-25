@@ -339,7 +339,7 @@ type PostWithTags struct {
 	Category *Category
 }
 
-func CreatePost(db *DB, p *Post) error {
+func CreatePost(db *DB, p *Post) (int64, error) {
 	if p.CreatedAt == 0 {
 		p.CreatedAt = now()
 	}
@@ -356,10 +356,10 @@ func CreatePost(db *DB, p *Post) error {
 		"updated_at": p.UpdatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	p.ID = id
-	return nil
+	return id, nil
 }
 
 func GetPostByID(db *DB, id int64) (*Post, error) {
@@ -598,7 +598,7 @@ func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
 	return res, nil
 }
 
-func CreateEncryptedPost(db *DB, p *EncryptedPost) error {
+func CreateEncryptedPost(db *DB, p *EncryptedPost) (int64, error) {
 	if p.Slug == "" {
 		p.Slug = uuid.NewString()
 	}
@@ -612,7 +612,7 @@ func CreateEncryptedPost(db *DB, p *EncryptedPost) error {
 	// 加密 content（使用系统密钥，不依赖 password 字段）
 	encryptedContent, err := EncryptContent(p.Content)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	id, err := CreateRecord(db, TableEncryptedPosts, map[string]interface{}{
@@ -625,10 +625,10 @@ func CreateEncryptedPost(db *DB, p *EncryptedPost) error {
 		"updated_at": p.UpdatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	p.ID = id
-	return nil
+	return id, nil
 }
 
 type Tag struct {
@@ -640,7 +640,7 @@ type Tag struct {
 	DeletedAt *int64
 }
 
-func CreateTag(db *DB, t *Tag) error {
+func CreateTag(db *DB, t *Tag) (int64, error) {
 	if t.CreatedAt == 0 {
 		t.CreatedAt = now()
 	}
@@ -655,10 +655,10 @@ func CreateTag(db *DB, t *Tag) error {
 		"updated_at": t.UpdatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	t.ID = id
-	return nil
+	return id, nil
 }
 
 func GetTagByID(db *DB, id int64) (*Tag, error) {
@@ -1120,7 +1120,7 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 	return res, nil
 }
 
-func CreateRedirect(db *DB, r *Redirect) error {
+func CreateRedirect(db *DB, r *Redirect) (int64, error) {
 	if r.CreatedAt == 0 {
 		r.CreatedAt = now()
 	}
@@ -1143,10 +1143,10 @@ func CreateRedirect(db *DB, r *Redirect) error {
 		"updated_at": r.UpdatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	r.ID = id
-	return nil
+	return id, nil
 }
 
 type Setting struct {
@@ -1173,12 +1173,12 @@ func (s Setting) String() string {
 	return fmt.Sprintf("Setting{Code:%s, Value:%s}", s.Code, s.Value)
 }
 
-func CreateSetting(db *DB, s *Setting) error {
+func CreateSetting(db *DB, s *Setting) (int64, error) {
 	if s.Code == "" {
-		return errors.New("code is required")
+		return 0, errors.New("code is required")
 	}
 	if s.Type == "" {
-		return errors.New("type is required")
+		return 0, errors.New("type is required")
 	}
 	if s.Kind == "" {
 		s.Kind = "default"
@@ -1198,7 +1198,7 @@ func CreateSetting(db *DB, s *Setting) error {
 			bcrypt.DefaultCost,
 		)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		s.Value = string(hashed)
 	}
@@ -1221,11 +1221,11 @@ func CreateSetting(db *DB, s *Setting) error {
 		"updated_at":           s.UpdatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	s.ID = id
-	return nil
+	return id, nil
 }
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
@@ -1479,7 +1479,7 @@ func EnsureDefaultSettings(db *DB) error {
 		}
 
 		// 不存在，创建
-		if err := CreateSetting(db, &s); err != nil {
+		if _, err := CreateSetting(db, &s); err != nil {
 			return err
 		}
 	}
@@ -1501,7 +1501,7 @@ type HttpErrorLog struct {
 	ExpiredAt   int64
 }
 
-func CreateHttpErrorLog(db *DB, l *HttpErrorLog) error {
+func CreateHttpErrorLog(db *DB, l *HttpErrorLog) (int64, error) {
 	if l.CreatedAt == 0 {
 		l.CreatedAt = now()
 	}
@@ -1523,10 +1523,10 @@ func CreateHttpErrorLog(db *DB, l *HttpErrorLog) error {
 		"expired_at":   l.ExpiredAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	l.ID = id
-	return nil
+	return id, nil
 }
 
 func ListHttpErrorLogs(db *DB, limit, offset int) ([]HttpErrorLog, error) {
@@ -1621,7 +1621,7 @@ type TaskRun struct {
 	CreatedAt  int64
 }
 
-func CreateTask(db *DB, task *Task) error {
+func CreateTask(db *DB, task *Task) (int64, error) {
 	now := time.Now().Unix()
 	task.CreatedAt = now
 	task.UpdatedAt = now
@@ -1636,10 +1636,10 @@ func CreateTask(db *DB, task *Task) error {
 		"updated_at":  task.UpdatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	task.ID = id
-	return nil
+	return id, nil
 }
 
 func GetTaskByID(db *DB, id int64) (*Task, error) {
@@ -1773,7 +1773,7 @@ func SoftDeleteTask(db *DB, id int64) error {
 	return SoftDeleteRecord(db, TableTasks, id)
 }
 
-func CreateTaskRun(db *DB, run *TaskRun) error {
+func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
 	now := time.Now().Unix()
 	run.RunID = uuid.NewString()
 	run.CreatedAt = now
@@ -1799,17 +1799,18 @@ func CreateTaskRun(db *DB, run *TaskRun) error {
 		"created_at":  run.CreatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	run.ID = id
+	return id, nil
 
-	// 同步更新 tasks 的 last_run_at 和 last_status 字段
-	_, _ = db.Exec(`UPDATE `+string(TableTasks)+`
-		SET last_run_at=?, last_status=?, updated_at=?
-		WHERE code=? AND deleted_at IS NULL`,
-		run.StartedAt, run.Status, now, run.TaskCode,
-	)
-	return nil
+	//// 同步更新 tasks 的 last_run_at 和 last_status 字段
+	//_, _ = db.Exec(`UPDATE `+string(TableTasks)+`
+	//	SET last_run_at=?, last_status=?, updated_at=?
+	//	WHERE code=? AND deleted_at IS NULL`,
+	//	run.StartedAt, run.Status, now, run.TaskCode,
+	//)
+	//return nil
 }
 
 func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun, error) {
@@ -1929,14 +1930,14 @@ func CategoryExists(db *DB, id int64) (bool, error) {
 	return cnt > 0, err
 }
 
-func CreateCategory(db *DB, c *Category) error {
+func CreateCategory(db *DB, c *Category) (int64, error) {
 	if c.ParentID != 0 {
 		ok, err := CategoryExists(db, c.ParentID)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		if !ok {
-			return errors.New("parent category not exists")
+			return 0, errors.New("parent category not exists")
 		}
 	}
 
@@ -1953,9 +1954,9 @@ func CreateCategory(db *DB, c *Category) error {
 		`, c.ParentID, c.Slug).Scan(&existingID)
 	}
 	if err == nil {
-		return errors.New("slug already exists under this parent")
+		return 0, errors.New("slug already exists under this parent")
 	} else if err != sql.ErrNoRows {
-		return err
+		return 0, err
 	}
 
 	if c.CreatedAt == 0 {
@@ -1982,7 +1983,7 @@ func CreateCategory(db *DB, c *Category) error {
 		"updated_at":  c.UpdatedAt,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	c.ID = id
 
@@ -1993,10 +1994,10 @@ func CreateCategory(db *DB, c *Category) error {
 			UPDATE `+string(TableCategories)+` SET sort=? WHERE id=?
 		`, c.Sort, id)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return nil
+	return id, nil
 }
 
 func ListCategories(db *DB) ([]Category, error) {

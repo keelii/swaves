@@ -36,7 +36,7 @@ func HttpErrorLogMiddleware(gStore *store.GlobalStore) fiber.Handler {
 		}
 
 		go func(l *db.HttpErrorLog) {
-			if err := db.CreateHttpErrorLog(gStore.Model, l); err != nil {
+			if _, err := db.CreateHttpErrorLog(gStore.Model, l); err != nil {
 				log.Printf("insert http_error_log failed: %v", err)
 			}
 		}(logItem)

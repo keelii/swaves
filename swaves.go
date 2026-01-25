@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"swaves/internal/admin"
 	"swaves/internal/api"
 	"swaves/internal/consts"
@@ -9,7 +11,7 @@ import (
 	"swaves/internal/jobs"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
-	"time"
+	"swaves/internal/types"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
@@ -17,30 +19,50 @@ import (
 	"github.com/google/uuid"
 )
 
-type AppConfig struct {
-	SqliteFile string
-	ListenAddr string
-	AppName    string
-}
 type SwavesApp struct {
 	App    *fiber.App
-	Config *AppConfig
+	Config *types.AppConfig
 	Store  *store.GlobalStore
 }
 
-func NewApp(config AppConfig) SwavesApp {
+func EnsureDir(dirPath string, perm os.FileMode) error {
+	// 检查路径是否存在
+	info, err := os.Stat(dirPath)
+	if err == nil {
+		// 路径存在，检查是否是目录
+		if !info.IsDir() {
+			return fmt.Errorf("路径存在但不是目录: %s", dirPath)
+		}
+		return nil // 目录已存在
+	}
+
+	// 如果错误是"不存在"，则创建目录
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(dirPath, perm)
+		if err != nil {
+			return fmt.Errorf("创建目录失败: %w", err)
+		}
+		return nil
+	}
+
+	// 其他错误（权限问题等）
+	return fmt.Errorf("检查目录失败: %w", err)
+}
+func NewApp(config types.AppConfig) SwavesApp {
 	globalStore := store.NewGlobalStore(db.Open(db.Options{
 		DSN: config.SqliteFile,
 	}), admin.NewSessionStore())
 
+	err := EnsureDir(config.BackupDir, 0755)
+	if err != nil {
+		log.Fatalf("无法创建备份目录: %v", err)
+	}
+
 	//defer globalStore.Close()
 
-	job.InitRegistry(globalStore, 5*time.Second) // 每 5 秒扫描 pending
-	job.RegisterJob("hello", job.HelloJob)
-	job.RegisterJob("fdsa", job.HelloJob1)
+	go job.InitRegistry(globalStore, config) // 每 5 秒扫描 pending
 
 	store.InitSettings(globalStore)
-
 	app := fiber.New(fiber.Config{
 		AppName:               config.AppName,
 		DisableStartupMessage: true,

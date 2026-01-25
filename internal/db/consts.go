@@ -114,6 +114,10 @@ const InitialSQL = `
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER
 	);
+	DELETE FROM ` + TableTasks + ` WHERE code = 'database_backup';
+    INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, created_at, updated_at) VALUES
+		('database_backup', '数据备份', '定备份置数据库', '* * * * *', 1, strftime('%s','now'), strftime('%s','now'));
+
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		task_code TEXT NOT NULL, -- 对应 ` + TableTasks + `.code

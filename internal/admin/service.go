@@ -95,7 +95,7 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		Content: in.Content,
 		Status:  in.Status,
 	}
-	if err := db.CreatePost(dbx, p); err != nil {
+	if _, err := db.CreatePost(dbx, p); err != nil {
 		return err
 	}
 
@@ -245,7 +245,8 @@ func CreateTagService(dbx *db.DB, in CreateTagInput) error {
 		Name: in.Name,
 		Slug: slug,
 	}
-	return db.CreateTag(dbx, t)
+	_, err := db.CreateTag(dbx, t)
+	return err
 }
 
 func CreateTagByName(dbx *db.DB, name string) (*db.Tag, error) {
@@ -290,7 +291,7 @@ func CreateTagByName(dbx *db.DB, name string) (*db.Tag, error) {
 		Name: name,
 		Slug: slug,
 	}
-	if err := db.CreateTag(dbx, t); err != nil {
+	if _, err := db.CreateTag(dbx, t); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -414,7 +415,8 @@ func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
 		Status:  in.Status,
 		Enabled: in.Enabled,
 	}
-	return db.CreateRedirect(dbx, r)
+	_, err := db.CreateRedirect(dbx, r)
+	return err
 }
 
 func GetRedirectForEdit(dbx *db.DB, id int64) (*db.Redirect, error) {
@@ -535,7 +537,8 @@ func CreateEncryptedPostService(dbx *db.DB, in CreateEncryptedPostInput) error {
 		Password:  in.Password,
 		ExpiresAt: expiresAt,
 	}
-	return db.CreateEncryptedPost(dbx, p)
+	_, err := db.CreateEncryptedPost(dbx, p)
+	return err
 }
 
 func GetEncryptedPostForEdit(dbx *db.DB, id int64) (*db.EncryptedPost, error) {
@@ -695,7 +698,8 @@ func CreateCategoryService(dbx *db.DB, in CreateCategoryInput) error {
 		Description: in.Description,
 		Sort:        in.Sort,
 	}
-	return db.CreateCategory(dbx, c)
+	_, err := db.CreateCategory(dbx, c)
+	return err
 }
 
 func CreateCategoryByName(dbx *db.DB, name string) (*db.Category, error) {
@@ -749,7 +753,7 @@ func CreateCategoryByName(dbx *db.DB, name string) (*db.Category, error) {
 		Name: name,
 		Slug: slug,
 	}
-	if err := db.CreateCategory(dbx, c); err != nil {
+	if _, err := db.CreateCategory(dbx, c); err != nil {
 		return nil, err
 	}
 	return c, nil
@@ -796,7 +800,8 @@ func GetSettingByID(dbx *db.DB, id int64) (*db.Setting, error) {
 }
 
 func CreateSettingService(dbx *db.DB, s *db.Setting) error {
-	return db.CreateSetting(dbx, s)
+	_, err := db.CreateSetting(dbx, s)
+	return err
 }
 
 func UpdateSettingService(dbx *db.DB, s *db.Setting) error {
@@ -909,7 +914,8 @@ func CreateTaskService(dbx *db.DB, in CreateTaskInput) error {
 		Enabled:     enabled,
 	}
 
-	return db.CreateTask(dbx, task)
+	_, err := db.CreateTask(dbx, task)
+	return err
 }
 
 type UpdateTaskInput struct {
@@ -966,7 +972,8 @@ func CreatePendingRunService(dbx *db.DB, taskCode string) error {
 		FinishedAt: now, // pending 状态时，finished_at 设置为当前时间（满足 NOT NULL 约束）
 		Duration:   0,   // pending 状态时，duration 为 0
 	}
-	return db.CreateTaskRun(dbx, run)
+	_, err := db.CreateTaskRun(dbx, run)
+	return err
 }
 
 // Import/Export
@@ -1442,7 +1449,7 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 		UpdatedAt: time.Now().Unix(),
 	}
 
-	if err := db.CreatePost(dbx, post); err != nil {
+	if _, err := db.CreatePost(dbx, post); err != nil {
 		return err
 	}
 
@@ -1530,7 +1537,7 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 			UpdatedAt: time.Now().Unix(),
 		}
 
-		if err := db.CreatePost(dbx, post); err != nil {
+		if _, err := db.CreatePost(dbx, post); err != nil {
 			return errors.New(item.Filename + ": " + err.Error())
 		}
 

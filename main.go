@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"swaves/internal/types"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func watchParent() {
 func worker() {
 	watchParent()
 
-	swv := NewApp(AppConfig{
+	swv := NewApp(types.AppConfig{
 		SqliteFile: "data.sqlite",
 		ListenAddr: ":3000",
 		AppName:    "swaves",
@@ -62,8 +63,9 @@ func launcher() {
 }
 
 func main() {
-	swv := NewApp(AppConfig{
+	swv := NewApp(types.AppConfig{
 		SqliteFile: "data.sqlite",
+		BackupDir:  "backups",
 		ListenAddr: ":3000",
 		AppName:    "swaves",
 	})
