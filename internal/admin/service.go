@@ -1082,8 +1082,8 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			continue
 		}
 
-		// 解析 markdown
-		result := md.ParseMarkdown(file.Content)
+		// 解析 markdown（导入预览不需要 TOC）
+		result := md.ParseMarkdown(file.Content, false)
 
 		// 根据 title 来源确定 title
 		title := ""
@@ -1354,8 +1354,8 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 		return errors.New("markdown content is required")
 	}
 
-	// 解析 markdown
-	result := md.ParseMarkdown(file.Content)
+	// 解析 markdown（导入时不需要 TOC）
+	result := md.ParseMarkdown(file.Content, false)
 
 	// 从 meta 中提取信息
 	title := ""

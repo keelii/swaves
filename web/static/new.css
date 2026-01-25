@@ -3,6 +3,9 @@
 	--nc-font-mono: Consolas, monaco, 'Ubuntu Mono', 'Liberation Mono', 'Courier New', Courier, monospace;
 	--nc-tx-1: #000000;
 	--nc-tx-2: #1A1A1A;
+  --nc-tx-g-3: #333;
+  --nc-tx-g-6: #666;
+  --nc-tx-g-9: #999;
 	--nc-bg-1: #FFFFFF;
 	--nc-bg-2: #F6F8FA;
 	--nc-bg-3: #E5E7EB;
@@ -11,7 +14,7 @@
 	--nc-lk-3: #e6f7ff;
 	--nc-lk-tx: #FFFFFF;
 	--nc-ac-1: #79FFE1;
-    --nc-ac-tx: #0C4047;
+  --nc-ac-tx: #0C4047;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -421,9 +424,9 @@ mark {
 textarea,
 select,
 input {
-	padding: 6px 12px;
+	padding: 8px 12px;
 	margin-bottom: .5rem;
-	background: var(--nc-bg-2);
+	/*background: var(--nc-bg-2);*/
 	color: var(--nc-tx-2);
 	border: 1px solid var(--nc-bg-3);
 	border-radius: 4px;

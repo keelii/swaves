@@ -31,7 +31,10 @@
       {{ else if eq .Type "url" }}
         <input type="url" name="setting_{{ $code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }}>
       {{ else if eq .Type "range" }}
-        <input type="range" name="setting_{{ $code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }}>
+        <span class="range-wrap ivalign gap-h">
+          <input type="range" id="setting_{{ $code }}_range" name="setting_{{ $code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }} data-range-value{{ if eq $code "font_size" }} data-unit=" px"{{ end }}>
+          <output class="range-value" for="setting_{{ $code }}_range">{{ .Value }}{{ if eq $code "font_size" }} px{{ end }}</output>
+        </span>
       {{ else if eq .Type "password" }}
         <input type="password" name="setting_{{ $code }}" placeholder="Leave empty to keep current" {{ renderAttrs .AttrsParsed }}>
       {{ else if eq .Type "textarea" }}
@@ -69,3 +72,23 @@
 
 </form>
 
+<script>
+(function() {
+  function initRangeValues() {
+    document.querySelectorAll('input[data-range-value]').forEach(function(input) {
+      var out = input.nextElementSibling;
+      if (!out || !out.classList.contains('range-value')) return;
+      function update() {
+        out.textContent = input.value + (input.dataset.unit || '');
+      }
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRangeValues);
+  } else {
+    initRangeValues();
+  }
+})();
+</script>

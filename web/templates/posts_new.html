@@ -3,19 +3,25 @@
 
 <form id="form" method="post" action="/admin/posts/new">
 
-  <p>
-    <label>
-      Title<br>
-      <input type="text" name="title" id="title" required placeholder="文章标题">
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Slug<br>
-      <input type="text" name="slug" id="slug" required placeholder="url-friendly-slug">
-      <button onclick="autoSetSlug()" type="button">Auto</button>
-      <button onclick="autoTranslate()" type="button">Translate</button>
+  <div class="salign gap-1">
+    <div class="grow">
+      <p>
+        <input style="width:100%;" type="text" name="title" id="title" required placeholder="文章标题">
+      </p>
+    </div>
+    <div class="grow">
+      <div class="flex gap-1">
+        <div class="grow">
+          <input style="width:100%;" type="text" name="slug" id="slug" required placeholder="url-friendly-slug">
+        </div>
+        <div class="valign gap-1">
+          <button onclick="autoSetSlug()" type="button">Auto</button>
+          <button onclick="autoTranslate()" type="button">Translate</button>
+          <label class="valign">
+              {{ template "partials/toggle" dict "ID" "status_new" "Name" "status" "Checked" false "DataLabels" "草稿,已发布" }}
+          </label>
+        </div>
+      </div>
       <script>
           async function autoTranslate() {
               const ret = await fetch(`/api/translate?name=${document.querySelector("#title").value}`)
@@ -32,15 +38,8 @@
               }
           }
       </script>
-    </label>
-  </p>
-
-  <p>
-    <label>
-      状态<br>
-      {{ template "partials/toggle" dict "ID" "status_new" "Name" "status" "Checked" false "DataLabels" "草稿,已发布" }}
-    </label>
-  </p>
+    </div>
+  </div>
 
   <p>
     <label>
@@ -56,8 +55,8 @@
     </label>
   </p>
 
-  <div class="markdown-editor-row">
-    <div class="markdown-editor-col">
+  <div class="markdown-editor-row split">
+    <div class="markdown-editor-col" id="split-editor">
       <label for="content">Content</label>
       <textarea name="content" id="content" rows="10" cols="80" required placeholder="文章内容（支持 Markdown）"></textarea>
     </div>

@@ -130,7 +130,7 @@
   /*background-color: var(--nc-bg-2);*/
   padding: 7.5px 7.5px 3.75px;
   border: 1px solid var(--nc-bg-3);
-  border-radius: 2.5px;
+  border-radius: 4px;
   font-size: 14px;
   min-height: 44px;
   overflow: hidden;

@@ -387,9 +387,16 @@ body {
     content: attr(data-on);
     color: #4CAF50;
 }
+
+::placeholder {
+  color: var(--nc-tx-g-9);
+}
 .choices {
     /*width: 40%;*/
 }
 textarea[name="content"] {
   width: 100%;
+}
+input[type="range"] {
+  padding: 0;
 }
