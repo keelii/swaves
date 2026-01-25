@@ -128,41 +128,20 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
-	// 解析标签 ID：优先用隐藏 input "tags"（逗号分割），否则用 select "tags[]"（多选原样提交）
+	// 解析标签：统一使用 tags[] 接收参数（支持标签ID和新标签名）
 	var tagIDs []int64
-	tagsStr := c.FormValue("tags")
-	if tagsStr != "" {
-		tagIDStrs := strings.Split(tagsStr, ",")
-		for _, tagIDStr := range tagIDStrs {
-			tagIDStr = strings.TrimSpace(tagIDStr)
-			if tagIDStr != "" {
-				if tagID, err := strconv.ParseInt(tagIDStr, 10, 64); err == nil {
-					tagIDs = append(tagIDs, tagID)
-				}
-			}
+	for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
+		s := strings.TrimSpace(string(v))
+		if s == "" {
+			continue
 		}
-	} else {
-		for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
-			s := strings.TrimSpace(string(v))
-			if s != "" {
-				if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
-					tagIDs = append(tagIDs, tagID)
-				}
-			}
-		}
-	}
-
-	// 处理新标签（逗号分割的标签名称）
-	newTagsStr := c.FormValue("new_tags")
-	if newTagsStr != "" {
-		tagNames := strings.Split(newTagsStr, ",")
-		for _, tagName := range tagNames {
-			tagName = strings.TrimSpace(tagName)
-			if tagName != "" {
-				tag, err := CreateTagByName(h.Model, tagName)
-				if err == nil {
-					tagIDs = append(tagIDs, tag.ID)
-				}
+		// 如果值是纯数字，说明是现有的标签ID
+		if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
+			tagIDs = append(tagIDs, tagID)
+		} else {
+			// 否则是用户输入的新标签名，创建新标签
+			if tag, err := CreateTagByName(h.Model, s); err == nil {
+				tagIDs = append(tagIDs, tag.ID)
 			}
 		}
 	}
@@ -249,41 +228,20 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	// 解析标签 ID：优先用 "tags"（逗号分割），否则用 "tags[]"
+	// 解析标签：统一使用 tags[] 接收参数（支持标签ID和新标签名）
 	var tagIDs []int64
-	tagsStr := c.FormValue("tags")
-	if tagsStr != "" {
-		tagIDStrs := strings.Split(tagsStr, ",")
-		for _, tagIDStr := range tagIDStrs {
-			tagIDStr = strings.TrimSpace(tagIDStr)
-			if tagIDStr != "" {
-				if tagID, err := strconv.ParseInt(tagIDStr, 10, 64); err == nil {
-					tagIDs = append(tagIDs, tagID)
-				}
-			}
+	for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
+		s := strings.TrimSpace(string(v))
+		if s == "" {
+			continue
 		}
-	} else {
-		for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
-			s := strings.TrimSpace(string(v))
-			if s != "" {
-				if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
-					tagIDs = append(tagIDs, tagID)
-				}
-			}
-		}
-	}
-
-	// 处理新标签（逗号分割的标签名称）
-	newTagsStr := c.FormValue("new_tags")
-	if newTagsStr != "" {
-		tagNames := strings.Split(newTagsStr, ",")
-		for _, tagName := range tagNames {
-			tagName = strings.TrimSpace(tagName)
-			if tagName != "" {
-				tag, err := CreateTagByName(h.Model, tagName)
-				if err == nil {
-					tagIDs = append(tagIDs, tag.ID)
-				}
+		// 如果值是纯数字，说明是现有的标签ID
+		if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
+			tagIDs = append(tagIDs, tagID)
+		} else {
+			// 否则是用户输入的新标签名，创建新标签
+			if tag, err := CreateTagByName(h.Model, s); err == nil {
+				tagIDs = append(tagIDs, tag.ID)
 			}
 		}
 	}

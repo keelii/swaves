@@ -1,4 +1,109 @@
+<style>
+  /* Tab 导航 */
+  .tab-nav {
+    display: flex;
+    border-bottom: 1px solid var(--nc-bg-3);
+    background: #fafafa;
+  }
 
+  .tab-item {
+    flex: 1;
+    padding: 1em 2em;
+    text-align: center;
+    font-size: 1.2em;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    position: relative;
+  }
+  .tab-item a {
+    text-decoration: none;
+    color: var(--nc-ac-tx)
+  }
+
+  .tab-item a:hover,
+  .tab-item.active a {
+    color: var(--nc-lk-1);
+  }
+  .tab-item:hover {
+    color: var(--nc-lk-1);
+    background: rgba(24, 144, 255, 0.05);
+  }
+
+  .tab-item.active {
+    color: var(--nc-lk-1);
+    background: white;
+    border-bottom-color: var(--nc-lk-1);
+    font-weight: 500;
+  }
+  /* Tab 内容 */
+  .tab-content {
+    padding: 10px;
+  }
+
+  .tab-pane {
+    display: none;
+    animation: fadeIn 0.3s;
+  }
+
+  .tab-pane.active {
+    display: block;
+  }
+  /* 卡片式Tab样式 */
+  .tab-card .tab-nav {
+    background: transparent;
+    border-bottom: none;
+    gap: 8px;
+  }
+
+  .tab-card .tab-item {
+    flex: none;
+    padding: 8px 16px;
+    border: 1px solid var(--nc-bg-3);
+    border-radius: 4px 4px 0 0;
+    background: #fafafa;
+    border-bottom: none;
+  }
+
+  .tab-card .tab-item.active {
+    background: white;
+    border-bottom: 1px solid white;
+    margin-bottom: -1px;
+    z-index: 1;
+  }
+
+  .tab-card .tab-content {
+    height: 0;
+    overflow: hidden;
+    border-top: 1px solid var(--nc-bg-3);
+    border-radius: 0 4px 4px 4px;
+    /*margin: 0 0 20px;*/
+  }
+</style>
+<div class="tab-card">
+  <div class="tab-nav">
+    <div class="tab-item active">
+      <a href="/admin/trash?type=posts">Posts</a>
+    </div>
+    <div class="tab-item">
+      <a href="/admin/trash?type=encrypted-posts">Encrypted Posts</a>
+    </div>
+    <div class="tab-item">
+      <a href="/admin/trash?type=tags">Tags</a>
+    </div>
+    <div class="tab-item">
+      <a href="/admin/trash?type=categories">Categories</a>
+    </div>
+    <div class="tab-item">
+      <a href="/admin/trash?type=redirects">Redirects</a>
+    </div>
+  </div>
+  <div class="tab-content">
+    <div class="tab-pane active" id="tab2-1">
+    </div>
+  </div>
+</div>
+
+<!--
 <nav>
   <a href="/admin/trash?type=posts">Posts</a>
   |
@@ -10,6 +115,7 @@
   |
   <a href="/admin/trash?type=redirects">Redirects</a>
 </nav>
+-->
 
 {{ if eq .ModelType "posts" }}
   {{ if .Data }}
