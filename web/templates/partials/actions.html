@@ -111,6 +111,8 @@
         <a class="btn primary" href="/admin/posts">返回</a>
       {{ else if eq .UrlPath "/admin/import/preview" }}
         <a class="btn primary" href="/admin/import">返回</a>
+      {{ else if eq .UrlPath "/admin/export" }}
+        <a class="btn primary" href="/admin/posts">返回</a>
       {{ else if match .UrlPath "^/admin/posts/\\d+/edit$" }}
         <a class="btn primary" href="/admin/posts">返回</a>
       {{ else if match .UrlPath "^/admin/tags/\\d+/edit$" }}

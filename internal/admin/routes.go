@@ -102,5 +102,8 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	adminGroup.Post("/import", handler.PostImportHandler)
 	adminGroup.Post("/import/preview", handler.PostImportPreviewHandler)
 
+	adminGroup.Get("/export", handler.GetExportHandler)
+	adminGroup.Get("/export/download", handler.GetExportDownloadHandler)
+
 	adminGroup.Get("/metrics", handler.GetMetricsHandler)
 }

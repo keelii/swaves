@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
@@ -1766,4 +1768,70 @@ func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "metrics", fiber.Map{
 		"Title": "性能监控",
 	}, "")
+}
+
+// Export
+func (h *Handler) GetExportHandler(c *fiber.Ctx) error {
+	return RenderAdminView(c, "export", fiber.Map{
+		"Title": "导出数据库",
+	}, "")
+}
+
+func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
+	// 生成导出文件名（包含时间戳）
+	name := strings.ToLower(c.App().Config().AppName) + "_export"
+	exportFilename := fmt.Sprintf("%s_%s.sqlite",
+		name,
+		time.Now().Format("2006-01-02-15-04-05"))
+
+	log.Println("export to:", os.TempDir(), exportFilename)
+
+	// 创建临时目录
+	tmpDir := filepath.Join(os.TempDir(), name)
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		return RenderAdminView(c, "export", fiber.Map{
+			"Title": "导出数据库",
+			"Error": "Failed to create export directory: " + err.Error(),
+		}, "")
+	}
+
+	// 导出文件路径
+	exportPath := filepath.Join(tmpDir, exportFilename)
+
+	// 调用 ExportSQLiteDatabase 函数
+	_, err := db.ExportSQLiteDatabase(h.Model, exportPath)
+	if err != nil {
+		return RenderAdminView(c, "export", fiber.Map{
+			"Title": "导出数据库",
+			"Error": "Failed to export database: " + err.Error(),
+		}, "")
+	}
+
+	// 确保文件存在
+	if _, err := os.Stat(exportPath); os.IsNotExist(err) {
+		return RenderAdminView(c, "export", fiber.Map{
+			"Title": "导出数据库",
+			"Error": "Export file not found",
+		}, "")
+	}
+
+	// 返回文件下载
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", exportFilename))
+	c.Set("Content-Type", "application/x-sqlite3")
+
+	// 发送文件
+	if err := c.SendFile(exportPath); err != nil {
+		return RenderAdminView(c, "export", fiber.Map{
+			"Title": "导出数据库",
+			"Error": "Failed to send file: " + err.Error(),
+		}, "")
+	}
+
+	// 下载完成后删除临时文件
+	go func() {
+		time.Sleep(5 * time.Second) // 等待下载完成
+		os.Remove(exportPath)
+	}()
+
+	return nil
 }

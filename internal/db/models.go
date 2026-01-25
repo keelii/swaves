@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"swaves/internal/types"
 	"sync/atomic"
@@ -2237,4 +2239,41 @@ func SetPostCategory(db *DB, postID int64, categoryID int64) error {
 	}
 
 	return nil
+}
+
+func ExportSQLiteDatabase(db *DB, exportPath string) (int64, error) {
+	if db == nil {
+		return 0, errors.New("db is nil")
+	}
+	if exportPath == "" {
+		return 0, errors.New("exportPath is empty")
+	}
+
+	dir := filepath.Dir(exportPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return 0, err
+	}
+
+	// 目标文件必须不存在
+	if _, err := os.Stat(exportPath); err == nil {
+		if err := os.Remove(exportPath); err != nil {
+			return 0, err
+		}
+	}
+
+	// 核心导出
+	if _, err := db.Exec("VACUUM INTO ?", exportPath); err != nil {
+		return 0, err
+	}
+
+	// 确认文件存在并返回大小
+	info, err := os.Stat(exportPath)
+	if err != nil {
+		return 0, err
+	}
+	if info.Size() <= 0 {
+		return 0, errors.New("exported file size is zero")
+	}
+
+	return info.Size(), nil
 }
