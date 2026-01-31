@@ -18,55 +18,6 @@
   </p>
 </div>
 
-<div style="margin-top: 2em; padding: 1.5em; background: var(--nc-bg-2); border-radius: 4px; border: 1px solid var(--nc-bg-3);">
-  <h3>定时备份</h3>
-  <p>
-    <small>配置定时备份任务，系统将按照设定的 Cron 表达式自动备份数据库到程序运行目录。</small>
-  </p>
-
-  {{ if .BackupTask }}
-  <p style="margin-top: 1em;">
-    <small>
-      <strong>当前配置：</strong><br>
-      调度：{{ .BackupTask.Schedule }}<br>
-      状态：{{ if eq .BackupTask.Enabled 1 }}已启用{{ else }}已禁用{{ end }}<br>
-      {{ if .BackupTask.LastRunAt }}
-      上次运行：{{ formatTime .BackupTask.LastRunAt }} ({{ .BackupTask.LastStatus }})<br>
-      {{ end }}
-    </small>
-  </p>
-  {{ end }}
-
-  <form id="backup-task-form" method="post" action="/admin/export/backup-task" style="margin-top: 1em;">
-    <p>
-      <label>
-        Cron 表达式<br>
-        <input type="text" name="schedule" value="{{ if .BackupTask }}{{ .BackupTask.Schedule }}{{ else }}0 2 * * *{{ end }}" placeholder="0 2 * * *" required style="width: 100%; max-width: 300px;">
-        <small>例如：<code>0 2 * * *</code> 表示每天凌晨2点执行，<code>0 */6 * * *</code> 表示每6小时执行一次</small>
-      </label>
-    </p>
-    <p>
-      <label>
-        描述（可选）<br>
-        <input type="text" name="description" value="{{ if .BackupTask }}{{ .BackupTask.Description }}{{ end }}" placeholder="定时备份任务描述" style="width: 100%; max-width: 400px;">
-      </label>
-    </p>
-    <p>
-      <label>
-        <input type="checkbox" name="enabled" value="1" {{ if .BackupTask }}{{ if eq .BackupTask.Enabled 1 }}checked{{ end }}{{ else }}checked{{ end }}>
-        启用定时备份
-      </label>
-    </p>
-    <p>
-      <button type="submit" class="btn primary">保存配置</button>
-      {{ if .BackupTask }}
-      <a href="/admin/tasks/{{ .BackupTask.ID }}/edit" class="btn" style="margin-left: 8px;">编辑任务</a>
-      <a href="/admin/tasks/{{ .BackupTask.Code }}/runs" class="btn" style="margin-left: 8px;">查看运行记录</a>
-      {{ end }}
-    </p>
-  </form>
-</div>
-
 <div style="margin-top: 2em; padding: 1em; background: var(--nc-bg-2); border-left: 3px solid var(--nc-lk-1);">
   <p style="margin: 0;">
     <strong>注意：</strong>
@@ -77,6 +28,5 @@
     <li>导出的文件可用于在其他 Swaves 实例中恢复数据</li>
     <li>导出过程可能需要几秒钟，请耐心等待</li>
     <li>文件将保存到浏览器的默认下载目录</li>
-    <li>定时备份文件将保存到程序运行目录，文件名格式：<code>swaves_backup_YYYY-MM-DD-HH-MM-SS.sqlite</code></li>
   </ul>
 </div>

@@ -1783,72 +1783,9 @@ func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
 
 // Export
 func (h *Handler) GetExportHandler(c *fiber.Ctx) error {
-	// 尝试获取备份任务（如果存在）
-	backupTask, err := db.GetTaskByCode(h.Model, "database_backup")
-	if err != nil && err != db.ErrNotFound {
-		return err
-	}
-
-	data := fiber.Map{
+	return RenderAdminView(c, "export", fiber.Map{
 		"Title": "导出数据库",
-	}
-	if err == nil {
-		data["BackupTask"] = backupTask
-	}
-
-	return RenderAdminView(c, "export", data, "")
-}
-
-func (h *Handler) PostBackupTaskHandler(c *fiber.Ctx) error {
-	// 检查任务是否已存在
-	existingTask, err := db.GetTaskByCode(h.Model, "database_backup")
-	if err != nil && err != db.ErrNotFound {
-		return err
-	}
-
-	schedule := c.FormValue("schedule")
-	if schedule == "" {
-		return RenderAdminView(c, "export", fiber.Map{
-			"Title": "导出数据库",
-			"Error": "Schedule is required",
-		}, "")
-	}
-
-	enabled := 0
-	if c.FormValue("enabled") == "1" {
-		enabled = 1
-	}
-
-	if existingTask != nil {
-		// 更新现有任务
-		existingTask.Schedule = schedule
-		existingTask.Enabled = enabled
-		existingTask.Description = c.FormValue("description")
-		if err := db.UpdateTask(h.Model, existingTask); err != nil {
-			return RenderAdminView(c, "export", fiber.Map{
-				"Title": "导出数据库",
-				"Error": "Failed to update backup task: " + err.Error(),
-			}, "")
-		}
-	} else {
-		// 创建新任务（内部任务，不生成 TaskRun）
-		task := &db.Task{
-			Code:        "database_backup",
-			Name:        "数据库定时备份",
-			Description: c.FormValue("description"),
-			Schedule:    schedule,
-			Enabled:     enabled,
-			Kind:        db.TaskInternal,
-		}
-		if _, err := db.CreateTask(h.Model, task); err != nil {
-			return RenderAdminView(c, "export", fiber.Map{
-				"Title": "导出数据库",
-				"Error": "Failed to create backup task: " + err.Error(),
-			}, "")
-		}
-	}
-
-	return c.Redirect("/admin/export")
+	}, "")
 }
 
 func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {

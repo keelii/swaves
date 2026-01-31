@@ -2,6 +2,12 @@
 <p style="color: red;">Error: {{ .Error }}</p>
 {{ end }}
 
+<style>
+  select {
+    min-width: 30em;
+  }
+</style>
+
 <form id="form" method="post" action="/admin/import" enctype="multipart/form-data">
 
   <p>
