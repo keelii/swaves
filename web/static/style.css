@@ -8,6 +8,9 @@ body {
     padding: 0;
     border-radius: 0;
 }
+select {
+  min-width: 165.5px;
+}
 
 .admin-container {
     display: flex;

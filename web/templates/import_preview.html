@@ -9,16 +9,12 @@
   <table>
     <thead>
     <tr>
-       <th>文件名</th>
-       <th>标题 (来源: {{ .TitleSourceDesc }})</th>
-       <th>URL标识 (来源: {{ .SlugSourceDesc }})</th>
+       <th>标题/URL标识</th>
        <th>
-         状态 (来源: {{ .StatusSourceDesc }})
+         状态
          <button type="button" id="toggle-status-btn" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">切换</button>
        </th>
-       <th>创建时间 (来源: {{ .CreatedSourceDesc }})</th>
-       <th>标签</th>
-       <th>分类</th>
+       <th>标签/分类</th>
        <th>内容</th>
     </tr>
     </thead>
@@ -26,33 +22,21 @@
     {{ range .Items }}
     <tr>
       <td>
-        <input type="hidden" name="items[{{ .Index }}][filename]" value="{{ .Filename }}">
-        {{ .Filename }}
-      </td>
-      <td>
         <input type="text" name="items[{{ .Index }}][title]" value="{{ .Title }}" required style="width: 100%;">
-      </td>
-      <td>
         <input type="text" name="items[{{ .Index }}][slug]" value="{{ .Slug }}" required style="width: 100%;">
-      </td>
-      <td>
-        <select name="items[{{ .Index }}][status]" style="width: 100%;">
-          <option value="draft" {{ if eq .Status "draft" }}selected{{ end }}>draft</option>
-          <option value="published" {{ if eq .Status "published" }}selected{{ end }}>published</option>
-        </select>
-      </td>
-      <td>
         <input type="hidden" name="items[{{ .Index }}][created_at_unix]" value="{{ .CreatedAtUnix }}">
         <input type="text" name="items[{{ .Index }}][created_at]" value="{{ .CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">
       </td>
       <td>
-        <input type="text" name="items[{{ .Index }}][tags]" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
+        <label class="ivalign gap-h"><input type="radio" name="items[{{ .Index }}][status]" value="draft" {{ if eq .Status "draft" }}checked{{ end }}> draft</label>
+        <label class="ivalign gap-h"><input type="radio" name="items[{{ .Index }}][status]" value="published" {{ if eq .Status "published" }}checked{{ end }}> published</label>
       </td>
       <td>
+        <input type="text" name="items[{{ .Index }}][tags]" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
         <input type="text" name="items[{{ .Index }}][category]" value="{{ .Category }}" placeholder="category name" style="width: 100%;">
       </td>
       <td>
-        <textarea name="items[{{ .Index }}][content]" rows="5" style="width: 100%;">{{ .Content }}</textarea>
+        <textarea name="items[{{ .Index }}][content]" rows="5" cols="150" style="width: 100%;">{{ .Content }}</textarea>
       </td>
     </tr>
     {{ end }}
@@ -64,10 +48,12 @@
 <script>
 $(function() {
   $('#toggle-status-btn').on('click', function() {
-    var $sel = $('select[name*="[status]"]');
-    if (!$sel.length) return;
-    var allDraft = $sel.toArray().every(function(el) { return el.value === 'draft'; });
-    $sel.val(allDraft ? 'published' : 'draft');
+    var allDraft = true;
+    $('tbody tr').each(function() {
+      if ($(this).find('input[type="radio"][name*="[status]"]:checked').val() !== 'draft') allDraft = false;
+    });
+    var newVal = allDraft ? 'published' : 'draft';
+    $('input[type="radio"][name*="[status]"][value="' + newVal + '"]').prop('checked', true);
   });
 });
 </script>

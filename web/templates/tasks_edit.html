@@ -8,8 +8,7 @@
     </label>
   </p>
 
-  {{ template "partials/form_field_radio" dict "Label" "Kind (任务类型)" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "内部任务（不生成运行记录）") (dict "Value" "1" "Label" "用户任务（生成运行记录）")) "Selected" (printf "%d" .Task.Kind) "Help" "内部任务执行时不写入 TaskRun 表" }}
-
+  {{ template "partials/form_field_radio" dict "Label" "Kind (任务类型)" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "内部任务（不生成运行记录）") (dict "Value" "1" "Label" "用户任务")) "Selected" (printf "%d" .Task.Kind) "Help" "内部任务执行时不写入 TaskRun 表" }}
   {{ template "partials/form_field_text" dict "Label" "任务名称" "Name" "name" "Value" .Task.Name "Required" true "Placeholder" "任务名称" }}
 
   <p>
@@ -31,12 +30,12 @@
         <option value="__custom__"{{ if not (or (eq .Task.Schedule "@hourly") (eq .Task.Schedule "@daily") (eq .Task.Schedule "@weekly") (eq .Task.Schedule "@monthly") (eq .Task.Schedule "@yearly")) }} selected{{ end }}>自定义</option>
       </select>
       <label id="schedule-custom-wrap" style="display: none;"><input type="text" id="schedule-custom" placeholder="例如: 0 */5 * * *" value="{{ .Task.Schedule }}"></label>
-      <small>选择任务执行频率或自定义 Cron 表达式</small>
+      选择任务执行频率或自定义 Cron 表达式
     </label>
   </p>
   <input type="hidden" name="schedule" id="schedule-value" value="{{ .Task.Schedule }}">
 
-  {{ template "partials/form_field_textarea" dict "Label" "任务描述" "Name" "description" "Value" .Task.Description "Rows" 3 "Cols" 60 "Placeholder" "任务描述" }}
+  {{ template "partials/form_field_textarea" dict "Label" "" "Name" "description" "Value" .Task.Description "Rows" 3 "Cols" 60 "Placeholder" "任务描述" }}
 
 </form>
 

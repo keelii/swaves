@@ -12,10 +12,13 @@
 </select>
 
 <script>
-$(function() {
-  if ($('#categories-select').length) new Choices(document.getElementById('categories-select'), {
-    removeItemButton: true, searchEnabled: true, shouldSort: false,
-    placeholder: true, placeholderValue: '选择分类', searchChoices: true
-  });
-});
+  if (typeof Choices !== 'undefined') {
+    var el = document.getElementById('categories-select');
+    if (el) {
+      new Choices(el, {
+        removeItemButton: true, searchEnabled: true, shouldSort: false,
+        placeholder: true, placeholderValue: '选择分类', searchChoices: true
+      });
+    }
+  }
 </script>

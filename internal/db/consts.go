@@ -276,7 +276,7 @@ const InternalTimezone = `[
 var DefaultSettings = []Setting{
 	{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
 	{Sort: 4, Kind: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
-	{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "", Description: "关键字"},
+	{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "前端开发,编程,javascript,typescript,css,html,nodejs,python,java", Description: "关键字"},
 	{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
 	{Sort: 7, Kind: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
 	{Sort: 9, Kind: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
