@@ -111,51 +111,31 @@
 </form>
 
 <script>
-(function() {
-  const optionsTextarea = document.querySelector('textarea[name="options"]');
-  const defaultValueContainer = document.getElementById('default_option_value_container');
-  const currentDefaultValue = document.getElementById('default_option_value')?.value || '';
-
-  if (!optionsTextarea || !defaultValueContainer) return;
-
-  function updateDefaultValueField() {
-    const optionsText = optionsTextarea.value.trim();
-    
+$(function() {
+  var $opt = $('textarea[name="options"]'), $cont = $('#default_option_value_container');
+  if (!$opt.length || !$cont.length) return;
+  function update() {
+    var currentVal = $('#default_option_value').val() || '';
+    var text = $opt.val().trim();
     try {
-      if (optionsText) {
-        const options = JSON.parse(optionsText);
-        if (Array.isArray(options) && options.length > 0) {
-          // Create select dropdown
-          let html = '<select name="default_option_value" id="default_option_value">';
-          html += '<option value="">顶级分类</option>';
-          options.forEach(function(opt) {
-            const value = opt.value || '';
-            const label = opt.label || value;
-            const selected = value === currentDefaultValue ? ' selected' : '';
-            html += `<option value="${value}"${selected}>${label}</option>`;
+      if (text) {
+        var opts = JSON.parse(text);
+        if (Array.isArray(opts) && opts.length > 0) {
+          var html = '<select name="default_option_value" id="default_option_value"><option value="">顶级分类</option>';
+          opts.forEach(function(o) {
+            var v = o.value || '', l = o.label || v;
+            html += '<option value="' + v + '"' + (v === currentVal ? ' selected' : '') + '>' + l + '</option>';
           });
-          html += '</select>';
-          html += '<small>(Select default value from options above. Updates automatically when Options is changed.)</small>';
-          defaultValueContainer.innerHTML = html;
+          html += '</select><small>(Select default value from options above.)</small>';
+          $cont.html(html);
           return;
         }
       }
-    } catch (e) {
-      // Invalid JSON, keep as text input
-    }
-    
-    // Default to text input
-    defaultValueContainer.innerHTML = '<input type="text" name="default_option_value" id="default_option_value" value="' + 
-      (currentDefaultValue || '') + '">' +
-      '<small>(Default value for select/radio/checkbox when options are provided. Fill in valid Options JSON above to see dropdown.)</small>';
+    } catch (e) {}
+    $cont.html('<input type="text" name="default_option_value" id="default_option_value" value="' + (currentVal || '') + '"><small>(Default value. Fill valid Options JSON to see dropdown.)</small>');
   }
-
-  optionsTextarea.addEventListener('input', updateDefaultValueField);
-  
-  // Initial update if options are already filled
-  if (optionsTextarea.value.trim()) {
-    updateDefaultValueField();
-  }
-})();
+  $opt.on('input', update);
+  if ($opt.val().trim()) update();
+});
 </script>
 

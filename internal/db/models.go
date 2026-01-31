@@ -1,9 +1,12 @@
 package db
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -53,6 +56,9 @@ func Open(opts Options) *DB {
 }
 
 func InitDatabase(db *DB) error {
+	// 迁移：为 t_tasks 添加 kind 列（须在 InitialSQL 的 INSERT 前执行，否则旧库 INSERT 会因缺列失败）
+	_, _ = db.Exec(`ALTER TABLE ` + string(TableTasks) + ` ADD COLUMN kind INTEGER NOT NULL DEFAULT 0`)
+
 	stmts := []string{string(InitialSQL)}
 
 	for _, stmt := range stmts {
@@ -1595,6 +1601,14 @@ func LoadSettingsToMap(db *DB) (map[string]string, error) {
 	return settingsMap, nil
 }
 
+// TaskKind 任务类型，与 job.JobKind 枚举值复用；JobInternal(0) 执行时不生成 TaskRun
+type TaskKind int
+
+const (
+	TaskInternal TaskKind = 0 // 内部任务，不生成 TaskRun 日志
+	TaskUser     TaskKind = 1 // 用户任务，生成 TaskRun 日志
+)
+
 type Task struct {
 	ID          int64
 	Code        string
@@ -1602,6 +1616,7 @@ type Task struct {
 	Description string
 	Schedule    string
 	Enabled     int
+	Kind        TaskKind
 	LastRunAt   *int64
 	LastStatus  string
 	CreatedAt   int64
@@ -1632,6 +1647,7 @@ func CreateTask(db *DB, task *Task) (int64, error) {
 		"description": task.Description,
 		"schedule":    task.Schedule,
 		"enabled":     task.Enabled,
+		"kind":        task.Kind,
 		"created_at":  task.CreatedAt,
 		"updated_at":  task.UpdatedAt,
 	})
@@ -1643,14 +1659,14 @@ func CreateTask(db *DB, task *Task) (int64, error) {
 }
 
 func GetTaskByID(db *DB, id int64) (*Task, error) {
-	result, err := GetRecordByID(db, TableTasks, "id, code, name, description, schedule, enabled, last_run_at, last_status, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
+	result, err := GetRecordByID(db, TableTasks, "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
 		var t Task
 		var lastRun sql.NullInt64
 		var lastStatus sql.NullString
 		var deleted sql.NullInt64
 
 		if err := row.Scan(
-			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled,
+			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
 			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 		); err != nil {
 			if err == sql.ErrNoRows {
@@ -1678,14 +1694,14 @@ func GetTaskByID(db *DB, id int64) (*Task, error) {
 }
 
 func GetTaskByCode(db *DB, code string) (*Task, error) {
-	result, err := GetRecordByField(db, TableTasks, "id, code, name, description, schedule, enabled, last_run_at, last_status, created_at, updated_at, deleted_at", "code", code, func(row *sql.Row) (interface{}, error) {
+	result, err := GetRecordByField(db, TableTasks, "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at", "code", code, func(row *sql.Row) (interface{}, error) {
 		var t Task
 		var lastRun sql.NullInt64
 		var lastStatus sql.NullString
 		var deleted sql.NullInt64
 
 		if err := row.Scan(
-			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled,
+			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
 			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 		); err != nil {
 			if err == sql.ErrNoRows {
@@ -1713,13 +1729,13 @@ func GetTaskByCode(db *DB, code string) (*Task, error) {
 }
 
 func ListTasks(db *DB) ([]Task, error) {
-	results, err := ListRecords(db, TableTasks, "id, code, name, description, schedule, enabled, last_run_at, last_status, created_at, updated_at, deleted_at", "", "id DESC", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
+	results, err := ListRecords(db, TableTasks, "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at", "", "id DESC", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
 		var t Task
 		var lastRun sql.NullInt64
 		var lastStatus sql.NullString
 		var deleted sql.NullInt64
 		if err := rows.Scan(
-			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled,
+			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
 			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 		); err != nil {
 			return nil, err
@@ -1757,6 +1773,7 @@ func UpdateTask(db *DB, task *Task) error {
 		"description": task.Description,
 		"schedule":    task.Schedule,
 		"enabled":     enabled,
+		"kind":        task.Kind,
 		"updated_at":  task.UpdatedAt,
 	})
 }
@@ -2242,39 +2259,85 @@ func SetPostCategory(db *DB, postID int64, categoryID int64) error {
 	return nil
 }
 
-func ExportSQLiteDatabase(db *DB, exportPath string) (int64, error) {
-	if db == nil {
-		return 0, errors.New("db is nil")
-	}
-	if exportPath == "" {
-		return 0, errors.New("exportPath is empty")
+// ExportResult 导出结果
+type ExportResult struct {
+	Size int64  // 文件大小
+	Hash string // SHA256 哈希值（十六进制）
+	Date string // 导出日期
+	File string // 导出文件路径
+}
+
+func (receiver ExportResult) String() string {
+	return fmt.Sprintf("Date=%s, Size=%d, Hash=%s", receiver.Date, receiver.Size, receiver.Hash[:8])
+}
+
+func ExportSQLiteWithHash(db *DB, dir string) (res *ExportResult, err error) {
+	timestamp := time.Now().Format("2006-01-02-15-04-05")
+
+	// 1. 确保目录存在
+	if err = os.MkdirAll(dir, 0755); err != nil {
+		log.Printf("[WARN] failed to create directory: %v", err)
+		return nil, errors.New("failed to create directory")
 	}
 
-	dir := filepath.Dir(exportPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return 0, err
-	}
-
-	// 目标文件必须不存在
-	if _, err := os.Stat(exportPath); err == nil {
-		if err := os.Remove(exportPath); err != nil {
-			return 0, err
-		}
-	}
-
-	// 核心导出
-	if _, err := db.Exec("VACUUM INTO ?", exportPath); err != nil {
-		return 0, err
-	}
-
-	// 确认文件存在并返回大小
-	info, err := os.Stat(exportPath)
+	// 2. 临时文件
+	tmpFile, err := os.Create(filepath.Join(dir, "__tmp__"))
 	if err != nil {
-		return 0, err
+		log.Println("[WARN] failed to create temp file:", err)
+		return nil, errors.New("failed to create temp file")
 	}
-	if info.Size() <= 0 {
-		return 0, errors.New("exported file size is zero")
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+
+	// 出错时清理
+	defer func() {
+		if err != nil {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if _, err = db.Exec("PRAGMA wal_checkpoint(FULL)"); err != nil {
+		log.Printf("[WARN] failed to checkpoint WAL: %v", err)
+		return nil, err
+	}
+	// 3. 导出
+	if _, err = db.Exec("VACUUM INTO ?", tmpPath); err != nil {
+		log.Println("[WARN] failed to write to temp file:", err)
+		return nil, err
 	}
 
-	return info.Size(), nil
+	// 4. 计算 SHA-256
+	f, err := os.Open(tmpPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err = io.Copy(h, f); err != nil {
+		return nil, err
+	}
+
+	hash := hex.EncodeToString(h.Sum(nil))
+
+	// 5. 文件大小
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	size := info.Size()
+
+	// 6. 原子 rename
+	realFile := fmt.Sprintf("%s_%s.sqlite", timestamp, hash)
+	finalPath := filepath.Join(dir, realFile)
+	if err = os.Rename(tmpPath, finalPath); err != nil {
+		return nil, err
+	}
+
+	return &ExportResult{
+		Size: size,
+		Hash: hash,
+		Date: timestamp,
+		File: finalPath,
+	}, nil
 }

@@ -108,6 +108,7 @@ const InitialSQL = `
 		description TEXT NOT NULL DEFAULT '',
 		schedule TEXT NOT NULL, -- cron 表达式，如 "0 */5 * * *"
 		enabled INTEGER NOT NULL DEFAULT 1,
+		kind INTEGER NOT NULL DEFAULT 0, -- 任务类型：0=Internal(不生成TaskRun) 
 		last_run_at INTEGER,
 		last_status TEXT, -- 最后一次执行状态: "pending", "success", "error"
 		created_at INTEGER NOT NULL,
@@ -115,8 +116,8 @@ const InitialSQL = `
 		deleted_at INTEGER
 	);
 	DELETE FROM ` + TableTasks + ` WHERE code = 'database_backup';
-    INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, created_at, updated_at) VALUES
-		('database_backup', '数据备份', '定备份置数据库', '* * * * *', 1, strftime('%s','now'), strftime('%s','now'));
+    INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
+		('database_backup', '数据备份', '定备份置数据库', '* * * * *', 1, 0, strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

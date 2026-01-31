@@ -1332,12 +1332,18 @@ func (h *Handler) GetTaskNewHandler(c *fiber.Ctx) error {
 func (h *Handler) PostCreateTaskHandler(c *fiber.Ctx) error {
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
 
+	kind := db.TaskInternal
+	if k := c.FormValue("kind"); k == "1" {
+		kind = db.TaskUser
+	}
+
 	in := CreateTaskInput{
 		Code:        c.FormValue("code"),
 		Name:        c.FormValue("name"),
 		Description: c.FormValue("description"),
 		Schedule:    c.FormValue("schedule"),
 		Enabled:     enabled,
+		Kind:        kind,
 	}
 
 	if err := CreateTaskService(h.Model, in); err != nil {
@@ -1371,6 +1377,10 @@ func (h *Handler) PostUpdateTaskHandler(c *fiber.Ctx) error {
 	}
 
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
+	kind := db.TaskInternal
+	if k := c.FormValue("kind"); k == "1" {
+		kind = db.TaskUser
+	}
 
 	in := UpdateTaskInput{
 		Code:        c.FormValue("code"),
@@ -1378,6 +1388,7 @@ func (h *Handler) PostUpdateTaskHandler(c *fiber.Ctx) error {
 		Description: c.FormValue("description"),
 		Schedule:    c.FormValue("schedule"),
 		Enabled:     enabled,
+		Kind:        kind,
 	}
 
 	if err := UpdateTaskService(h.Model, id, in); err != nil {
@@ -1820,13 +1831,14 @@ func (h *Handler) PostBackupTaskHandler(c *fiber.Ctx) error {
 			}, "")
 		}
 	} else {
-		// 创建新任务
+		// 创建新任务（内部任务，不生成 TaskRun）
 		task := &db.Task{
 			Code:        "database_backup",
 			Name:        "数据库定时备份",
 			Description: c.FormValue("description"),
 			Schedule:    schedule,
 			Enabled:     enabled,
+			Kind:        db.TaskInternal,
 		}
 		if _, err := db.CreateTask(h.Model, task); err != nil {
 			return RenderAdminView(c, "export", fiber.Map{
@@ -1842,11 +1854,8 @@ func (h *Handler) PostBackupTaskHandler(c *fiber.Ctx) error {
 func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
 	// 生成导出文件名（包含时间戳）
 	name := strings.ToLower(c.App().Config().AppName) + "_export"
-	exportFilename := fmt.Sprintf("%s_%s.sqlite",
-		name,
-		time.Now().Format("2006-01-02-15-04-05"))
 
-	log.Println("export to:", os.TempDir(), exportFilename)
+	log.Println("export to:", os.TempDir(), name)
 
 	// 创建临时目录
 	tmpDir := filepath.Join(os.TempDir(), name)
@@ -1857,11 +1866,8 @@ func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	// 导出文件路径
-	exportPath := filepath.Join(tmpDir, exportFilename)
-
-	// 调用 ExportSQLiteDatabase 函数
-	_, err := db.ExportSQLiteDatabase(h.Model, exportPath)
+	// 调用 ExportSQLiteWithHash 函数（传目录，函数内自动生成文件名）
+	result, err := db.ExportSQLiteWithHash(h.Model, tmpDir)
 	if err != nil {
 		return RenderAdminView(c, "export", fiber.Map{
 			"Title": "导出数据库",
@@ -1869,20 +1875,13 @@ func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	// 确保文件存在
-	if _, err := os.Stat(exportPath); os.IsNotExist(err) {
-		return RenderAdminView(c, "export", fiber.Map{
-			"Title": "导出数据库",
-			"Error": "Export file not found",
-		}, "")
-	}
-
-	// 返回文件下载
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", exportFilename))
+	// 返回文件下载（从完整路径中提取文件名）
+	filename := filepath.Base(result.File)
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Set("Content-Type", "application/x-sqlite3")
 
 	// 发送文件
-	if err := c.SendFile(exportPath); err != nil {
+	if err := c.SendFile(result.File); err != nil {
 		return RenderAdminView(c, "export", fiber.Map{
 			"Title": "导出数据库",
 			"Error": "Failed to send file: " + err.Error(),
@@ -1892,7 +1891,7 @@ func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
 	// 下载完成后删除临时文件
 	go func() {
 		time.Sleep(5 * time.Second) // 等待下载完成
-		os.Remove(exportPath)
+		os.Remove(result.File)
 	}()
 
 	return nil

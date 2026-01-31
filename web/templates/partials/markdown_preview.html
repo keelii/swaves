@@ -55,53 +55,29 @@
 </div>
 <script src="/static/split.min.js"></script>
 <script>
-  (function() {
-    function initMarkdownPreview() {
-      var ta = document.querySelector('textarea[name="content"]');
-      var preview = document.getElementById('content-preview');
-      if (!ta || !preview) return;
-      var timer = null;
-      function update() {
-        var text = ta.value || '';
-        if (!text.trim()) {
-          preview.innerHTML = '';
-          return;
-        }
-        fetch('/api/markdown', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: text })
-        }).then(function(r) { return r.json(); }).then(function(res) {
-          if (res && res.data != null) preview.innerHTML = res.data;
-        }).catch(function() {
-          preview.textContent = '预览请求失败';
-        });
+$(function() {
+  var $ta = $('textarea[name="content"]'), $preview = $('#content-preview');
+  if ($ta.length && $preview.length) {
+    var timer;
+    function update() {
+      var text = $ta.val() || '';
+      if (!text.trim()) {
+        $preview.empty();
+        return;
       }
-      function schedule() {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(update, 280);
-      }
-      ta.addEventListener('input', schedule);
-      ta.addEventListener('paste', schedule);
-      update();
+      fetch('/api/markdown', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: text }) })
+        .then(function(r) { return r.json(); })
+        .then(function(res) { if (res && res.data != null) $preview.html(res.data); })
+        .catch(function() { $preview.text('预览请求失败'); });
     }
-    function init() {
-      var a = document.getElementById('split-editor');
-      var b = document.getElementById('split-preview');
-      if (a && b && typeof Split !== 'undefined') {
-        Split(['#split-editor', '#split-preview'], {
-          sizes: [50, 50],
-          minSize: [180, 180],
-          gutterSize: 8,
-          direction: 'horizontal'
-        });
-      }
-      initMarkdownPreview();
-    }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
-    } else {
-      init();
-    }
-  })();
+    $ta.on('input paste', function() {
+      clearTimeout(timer);
+      timer = setTimeout(update, 280);
+    });
+    update();
+  }
+  if ($('#split-editor').length && $('#split-preview').length && typeof Split !== 'undefined') {
+    Split(['#split-editor', '#split-preview'], { sizes: [50, 50], minSize: [180, 180], gutterSize: 8, direction: 'horizontal' });
+  }
+});
 </script>

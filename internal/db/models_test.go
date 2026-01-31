@@ -374,6 +374,7 @@ func TestTasks(t *testing.T) {
 		Name:      "测试任务",
 		Schedule:  "* * * * *",
 		Enabled:   1,
+		Kind:      TaskInternal,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
@@ -1409,6 +1410,7 @@ func TestGetTaskByID(t *testing.T) {
 		Name:      "Test Task",
 		Schedule:  "0 0 * * *",
 		Enabled:   1,
+		Kind:      TaskInternal,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
@@ -1437,6 +1439,7 @@ func TestGetTaskByCode(t *testing.T) {
 		Name:      "Test Task",
 		Schedule:  "0 0 * * *",
 		Enabled:   1,
+		Kind:      TaskInternal,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
@@ -1465,6 +1468,7 @@ func TestUpdateTask(t *testing.T) {
 		Name:      "Original",
 		Schedule:  "0 0 * * *",
 		Enabled:   1,
+		Kind:      TaskInternal,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}
@@ -1500,6 +1504,7 @@ func TestUpdateTaskStatus(t *testing.T) {
 		Name:      "Test",
 		Schedule:  "0 0 * * *",
 		Enabled:   1,
+		Kind:      TaskInternal,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
 	}

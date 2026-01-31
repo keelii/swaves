@@ -888,6 +888,7 @@ type CreateTaskInput struct {
 	Description string
 	Schedule    string
 	Enabled     bool
+	Kind        db.TaskKind
 }
 
 func CreateTaskService(dbx *db.DB, in CreateTaskInput) error {
@@ -912,6 +913,7 @@ func CreateTaskService(dbx *db.DB, in CreateTaskInput) error {
 		Description: in.Description,
 		Schedule:    in.Schedule,
 		Enabled:     enabled,
+		Kind:        in.Kind,
 	}
 
 	_, err := db.CreateTask(dbx, task)
@@ -924,6 +926,7 @@ type UpdateTaskInput struct {
 	Description string
 	Schedule    string
 	Enabled     bool
+	Kind        db.TaskKind
 }
 
 func UpdateTaskService(dbx *db.DB, id int64, in UpdateTaskInput) error {
@@ -936,6 +939,7 @@ func UpdateTaskService(dbx *db.DB, id int64, in UpdateTaskInput) error {
 	task.Name = in.Name
 	task.Description = in.Description
 	task.Schedule = in.Schedule
+	task.Kind = in.Kind
 	if in.Enabled {
 		task.Enabled = 1
 	} else {

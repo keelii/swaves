@@ -23,19 +23,15 @@
         </div>
       </div>
       <script>
-          async function autoTranslate() {
-              const ret = await fetch(`/api/translate?name=${document.querySelector("#title").value}`)
-              const json = await ret.json()
-              if (json && json.data) {
-                  document.querySelector("#slug").value = json.data
-              }
+          function autoTranslate() {
+              fetch('/api/translate?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
+                  if (json && json.data) $('#slug').val(json.data);
+              });
           }
-          async function autoSetSlug() {
-              const ret = await fetch(`/api/slug?name=${document.querySelector("#title").value}`)
-              const json = await ret.json()
-              if (json && json.data) {
-                  document.querySelector("#slug").value = json.data
-              }
+          function autoSetSlug() {
+              fetch('/api/slug?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
+                  if (json && json.data) $('#slug').val(json.data);
+              });
           }
       </script>
     </div>
@@ -65,11 +61,3 @@
 
 </form>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // 标签选择由 tag_select 模板处理，这里不需要重复初始化
-  // 处理分类选择框（单选）
-  const categorySelect = document.getElementById('categories-select');
-  // select 的 name 已经是 'categories'，直接使用即可
-});
-</script>

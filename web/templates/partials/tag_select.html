@@ -7,22 +7,11 @@
 </select>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const tagsSelect = document.querySelector('#tags-select');
-    if (tagsSelect) {
-      const choices = new Choices(tagsSelect, {
-        placeholderValue: '选择标签    ',
-        placeholder: true,
-        removeItemButton: true,
-        searchEnabled: true,
-        shouldSort: false,
-        searchChoices: true,
-        addItems: true,
-        editItems: false,
-        delimiter: ',',
-        paste: false,
-        duplicateItemsAllowed: false,
-      });
-    }
+$(function() {
+  if ($('#tags-select').length) new Choices(document.getElementById('tags-select'), {
+    placeholderValue: '选择标签    ', placeholder: true, removeItemButton: true, searchEnabled: true,
+    shouldSort: false, searchChoices: true, addItems: true, editItems: false, delimiter: ',',
+    paste: false, duplicateItemsAllowed: false
   });
+});
 </script>

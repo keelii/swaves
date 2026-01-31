@@ -12,17 +12,10 @@
 </select>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const categorySelect = document.querySelector('#categories-select');
-    if (categorySelect) {
-      new Choices(categorySelect, {
-        removeItemButton: true,
-        searchEnabled: true,
-        shouldSort: false,
-        placeholder: true,
-        placeholderValue: '选择分类',
-        searchChoices: true,
-      });
-    }
+$(function() {
+  if ($('#categories-select').length) new Choices(document.getElementById('categories-select'), {
+    removeItemButton: true, searchEnabled: true, shouldSort: false,
+    placeholder: true, placeholderValue: '选择分类', searchChoices: true
   });
+});
 </script>

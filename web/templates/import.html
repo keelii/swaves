@@ -118,91 +118,29 @@ tags:
 </form>
 
 <script>
-(function() {
-  const titleSourceSelect = document.querySelector('select[name="title_source"]');
-  const titleFieldContainer = document.getElementById('title_field_container');
-  const titleLevelContainer = document.getElementById('title_level_container');
-  
-  const slugSourceSelect = document.querySelector('select[name="slug_source"]');
-  const slugFieldContainer = document.getElementById('slug_field_container');
-  
-  const createdSourceSelect = document.querySelector('select[name="created_source"]');
-  const createdFieldContainer = document.getElementById('created_field_container');
-  
-  const statusSourceSelect = document.querySelector('select[name="status_source"]');
-  const statusFieldContainer = document.getElementById('status_field_container');
-  
-  const categorySourceSelect = document.querySelector('select[name="category_source"]');
-  const categoryFieldContainer = document.getElementById('category_field_container');
-  
-  const tagSourceSelect = document.querySelector('select[name="tag_source"]');
-  const tagFieldContainer = document.getElementById('tag_field_container');
-  
-  function updateTitleFieldVisibility() {
-    if (titleSourceSelect.value === 'frontmatter') {
-      titleFieldContainer.style.display = 'inline';
-      titleLevelContainer.style.display = 'none';
-    } else if (titleSourceSelect.value === 'markdown') {
-      titleFieldContainer.style.display = 'none';
-      titleLevelContainer.style.display = 'inline';
-    } else {
-      titleFieldContainer.style.display = 'none';
-      titleLevelContainer.style.display = 'none';
-    }
-  }
-  
-  function updateSlugFieldVisibility() {
-    if (slugSourceSelect.value === 'frontmatter') {
-      slugFieldContainer.style.display = 'inline';
-    } else {
-      slugFieldContainer.style.display = 'none';
-    }
-  }
-  
-  function updateCreatedFieldVisibility() {
-    if (createdSourceSelect.value === 'frontmatter') {
-      createdFieldContainer.style.display = 'inline';
-    } else {
-      createdFieldContainer.style.display = 'none';
-    }
-  }
-  
-  function updateStatusFieldVisibility() {
-    if (statusSourceSelect.value === 'frontmatter') {
-      statusFieldContainer.style.display = 'inline';
-    } else {
-      statusFieldContainer.style.display = 'none';
-    }
-  }
-  
-  function updateCategoryFieldVisibility() {
-    if (categorySourceSelect.value === 'frontmatter') {
-      categoryFieldContainer.style.display = 'inline';
-    } else {
-      categoryFieldContainer.style.display = 'none';
-    }
-  }
-  
-  function updateTagFieldVisibility() {
-    if (tagSourceSelect.value === 'frontmatter') {
-      tagFieldContainer.style.display = 'inline';
-    } else {
-      tagFieldContainer.style.display = 'none';
-    }
-  }
-  
-  titleSourceSelect.addEventListener('change', updateTitleFieldVisibility);
-  slugSourceSelect.addEventListener('change', updateSlugFieldVisibility);
-  createdSourceSelect.addEventListener('change', updateCreatedFieldVisibility);
-  statusSourceSelect.addEventListener('change', updateStatusFieldVisibility);
-  categorySourceSelect.addEventListener('change', updateCategoryFieldVisibility);
-  tagSourceSelect.addEventListener('change', updateTagFieldVisibility);
-  
-  updateTitleFieldVisibility(); // 初始化
-  updateSlugFieldVisibility(); // 初始化
-  updateCreatedFieldVisibility(); // 初始化
-  updateStatusFieldVisibility(); // 初始化
-  updateCategoryFieldVisibility(); // 初始化
-  updateTagFieldVisibility(); // 初始化
-})();
+$(function() {
+  function show(sel, disp) { $(sel).css('display', disp || 'inline'); }
+  function hide(sel) { $(sel).css('display', 'none'); }
+  $('select[name="title_source"]').on('change', function() {
+    var v = $(this).val();
+    if (v === 'frontmatter') { show('#title_field_container'); hide('#title_level_container'); }
+    else if (v === 'markdown') { hide('#title_field_container'); show('#title_level_container'); }
+    else { hide('#title_field_container'); hide('#title_level_container'); }
+  }).trigger('change');
+  $('select[name="slug_source"]').on('change', function() {
+    $(this).val() === 'frontmatter' ? show('#slug_field_container') : hide('#slug_field_container');
+  }).trigger('change');
+  $('select[name="created_source"]').on('change', function() {
+    $(this).val() === 'frontmatter' ? show('#created_field_container') : hide('#created_field_container');
+  }).trigger('change');
+  $('select[name="status_source"]').on('change', function() {
+    $(this).val() === 'frontmatter' ? show('#status_field_container') : hide('#status_field_container');
+  }).trigger('change');
+  $('select[name="category_source"]').on('change', function() {
+    $(this).val() === 'frontmatter' ? show('#category_field_container') : hide('#category_field_container');
+  }).trigger('change');
+  $('select[name="tag_source"]').on('change', function() {
+    $(this).val() === 'frontmatter' ? show('#tag_field_container') : hide('#tag_field_container');
+  }).trigger('change');
+});
 </script>

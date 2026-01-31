@@ -42,19 +42,12 @@
 </nav>
 
 <script>
-(function() {
-  const pageSizeSelect = document.getElementById('page-size-select');
-  if (!pageSizeSelect) return;
-
-  // 当 pageSize 改变时
-  pageSizeSelect.addEventListener('change', function() {
-    const newPageSize = this.value;
-    const url = new URL(window.location.href);
-    // 保留所有现有查询参数，只更新 pageSize
-    url.searchParams.set('pageSize', newPageSize);
-    // 改变 pageSize 后重置到第1页
+$(function() {
+  $('#page-size-select').on('change', function() {
+    var url = new URL(window.location.href);
+    url.searchParams.set('pageSize', $(this).val());
     url.searchParams.set('page', '1');
     window.location.href = url.toString();
   });
-})();
+});
 </script>

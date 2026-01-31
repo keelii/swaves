@@ -73,22 +73,13 @@
 </form>
 
 <script>
-(function() {
-  function initRangeValues() {
-    document.querySelectorAll('input[data-range-value]').forEach(function(input) {
-      var out = input.nextElementSibling;
-      if (!out || !out.classList.contains('range-value')) return;
-      function update() {
-        out.textContent = input.value + (input.dataset.unit || '');
-      }
-      input.addEventListener('input', update);
-      input.addEventListener('change', update);
-    });
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initRangeValues);
-  } else {
-    initRangeValues();
-  }
-})();
+$(function() {
+  $('input[data-range-value]').each(function() {
+    var $in = $(this), $out = $in.next('.range-value');
+    if (!$out.length) return;
+    function update() { $out.text($in.val() + ($in.data('unit') || '')); }
+    $in.on('input change', update);
+    update();
+  });
+});
 </script>

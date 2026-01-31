@@ -1,24 +1,16 @@
 {{ $labels := split .DataLabels "," }}
+{{ $onVal := or .DataOnValue "published" }}
+{{ $offVal := or .DataOffValue "draft" }}
 <span class="toggle-wrapper">
   <input type="checkbox" id="{{ .ID }}"
          class="toggle-checkbox"{{ if .Checked }} checked{{ end }}
-         {{ if .ReadOnly }} disabled{{ end }} />
+         {{ if .ReadOnly }} disabled{{ end }}
+         data-on-value="{{ $onVal }}" data-off-value="{{ $offVal }}" />
   <label for="{{ .ID }}" class="toggle-label"></label>
   <span class="toggle-text" data-off="{{ index $labels 0 }}" data-on="{{ index $labels 1 }}"></span>
 </span>
 {{ if .Name }}
 <input type="hidden" name="{{ .Name }}"
-       value="{{ if .Checked }}published{{ else }}draft{{ end }}"
+       value="{{ if .Checked }}{{ $onVal }}{{ else }}{{ $offVal }}{{ end }}"
        id="{{ .ID }}_hidden" />
-<script>
-(function() {
-  const checkbox = document.getElementById('{{ .ID }}');
-  const hidden = document.getElementById('{{ .ID }}_hidden');
-  if (checkbox && hidden) {
-    checkbox.addEventListener('change', function() {
-      hidden.value = this.checked ? 'published' : 'draft';
-    });
-  }
-})();
-</script>
 {{ end }}

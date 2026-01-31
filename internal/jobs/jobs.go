@@ -22,31 +22,23 @@ func HelloJob1() error {
 }
 
 // DatabaseBackupJob 数据库备份任务
-func DatabaseBackupJob(reg *Registry) error {
+func DatabaseBackupJob(reg *Registry) (string, error) {
 	if reg == nil || reg.DB == nil {
-		return errors.New("reg.DB is nil")
+		return "", errors.New("reg.DB is nil")
 	}
-
-	// 生成备份文件名（包含时间戳）
-	appName := "swaves"
 
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Println("[backup] getwd error:", err)
 	}
 
-	timestamp := time.Now().Format("2006-01-02-15-04-05")
-	backupFilename := fmt.Sprintf("%s_backup_%s.sqlite", appName, timestamp)
-	backupPath := filepath.Join(wd, reg.Config.BackupDir, backupFilename)
-
-	log.Printf("[backup] starting database backup to: %s", backupPath)
+	backupDir := filepath.Join(wd, reg.Config.BackupDir)
 
 	// 调用 ExportSQLiteDatabase 函数
-	size, err := db.ExportSQLiteDatabase(reg.DB, backupPath)
+	result, err := db.ExportSQLiteWithHash(reg.DB, backupDir)
 	if err != nil {
-		return fmt.Errorf("failed to export database: %v", err)
+		return "", fmt.Errorf("failed to export database: %v", err)
 	}
 
-	log.Printf("[backup] database backup completed: %s %d", backupPath, size)
-	return nil
+	return fmt.Sprintf("%v", result), nil
 }

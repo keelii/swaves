@@ -32,6 +32,10 @@ func NewViewEngine() *html.Engine {
 		}
 		return dict, nil
 	})
+	// slice 将可变参数收集为 []interface{}，用于在模板中构造选项列表，如 slice (dict "Value" "0" "Label" "选项") ...
+	engine.AddFunc("slice", func(values ...interface{}) []interface{} {
+		return values
+	})
 	engine.AddFunc("add", func(a, b int) int {
 		return a + b
 	})

@@ -114,15 +114,9 @@
 {{ end }}
 
 <script>
-(function() {
-  const forms = document.querySelectorAll('form.category-parent-form');
-  forms.forEach(function(form) {
-    const select = form.querySelector('select[name="categories"]');
-    if (select) {
-      select.addEventListener('change', function() {
-        form.submit();
-      });
-    }
+$(function() {
+  $('form.category-parent-form').find('select[name="categories"]').on('change', function() {
+    $(this).closest('form').submit();
   });
-})();
+});
 </script>
