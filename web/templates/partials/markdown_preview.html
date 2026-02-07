@@ -48,10 +48,63 @@
   .markdown-preview p img {
     margin-bottom: 0;
   }
+
+  #toc a {
+    color: var(--nc-tx-g-6);
+  }
+  #split-toc {
+    position: sticky;
+    top: 0;
+  }
+  #toc {
+    background: var(--nc-bg-2);
+    border-radius: 4px;
+  }
+  #toc #toc-list {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  #toc-title {
+    display:none;
+    padding: 1em;
+    font-size: 1.5em;
+    margin: 0;
+  }
+  #toc-list {
+    padding: 0.5em 0 0 0;
+  }
+  #toc-list > li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  #toc-list > li ul {
+    padding-left: 2em;
+  }
+  #toc-list > li ul ul {
+    padding-left: 1.5em;
+  }
+  #toc-list > li ul {
+    list-style-type: decimal;
+  }
+  #toc-list > li ul ul {
+    list-style-type: lower-alpha;
+  }
+  #toc-list > li ul ul ul {
+    list-style-type: lower-roman;
+  }
+  #toc-list > li ul ul ul {
+    list-style-type: lower-greek;
+  }
 </style>
 <div class="markdown-editor-col" id="split-preview">
   <label>Preview</label>
   <div id="content-preview" class="markdown-preview"></div>
+</div>
+<div id="split-toc-wrap" class="markdown-editor-col">
+  <label for="">Table of Contents</label>
+  <div id="split-toc"></div>
 </div>
 <script src="/static/split.min.js"></script>
 <script>
@@ -67,7 +120,12 @@ $(function() {
       }
       fetch('/api/markdown', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: text }) })
         .then(function(r) { return r.json(); })
-        .then(function(res) { if (res && res.data != null) $preview.html(res.data); })
+        .then(function(res) {
+          if (res && res.data != null) {
+            $preview.html(res.data);
+            updateToc()
+          }
+        })
         .catch(function() { $preview.text('预览请求失败'); });
     }
     $ta.on('input paste', function() {
@@ -76,8 +134,20 @@ $(function() {
     });
     update();
   }
+  function updateToc() {
+    $("#toc").appendTo($("#split-toc"))
+  }
   if ($('#split-editor').length && $('#split-preview').length && typeof Split !== 'undefined') {
-    Split(['#split-editor', '#split-preview'], { sizes: [50, 50], minSize: [180, 180], gutterSize: 8, direction: 'horizontal' });
+    updateToc()
+    Split(
+      ['#split-editor', '#split-preview', '#split-toc-wrap'],
+      {
+        sizes: [40, 40, 20],
+        minSize: [180, 180],
+        gutterSize: 8,
+        direction: 'horizontal'
+      }
+    );
   }
 });
 </script>

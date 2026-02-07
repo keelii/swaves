@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"log"
 	"strings"
+	toc "swaves/internal/md/goldmark-toc"
 
 	mathjax "github.com/litao91/goldmark-mathjax" // 识别数学公式
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark-meta" // 解析 Frontmatter
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
-	"go.abhg.dev/goldmark/toc"
 )
 
 type MarkdownResult struct {
