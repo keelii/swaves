@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"log"
 	"strings"
-	toc "swaves/internal/md/goldmark-toc"
 
 	mathjax "github.com/litao91/goldmark-mathjax" // 识别数学公式
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark-meta" // 解析 Frontmatter
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/util"
 )
 
 type MarkdownResult struct {
@@ -39,21 +41,32 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 	extensions := []goldmark.Extender{
 		meta.Meta,       // 开启 Front matter 支持
 		mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
+		extension.Table,
+		extension.CJK,
+		extension.GFM,
 	}
 
 	if includeTOC {
-		extensions = append(extensions, &toc.Extender{
-			//Title:   "TOC-TITLE",
-			TitleID: "toc-title",
-			ListID:  "toc-list",
-		})
+		//extensions = append(extensions, &toc.Extender{
+		//	//Title:   "TOC-TITLE",
+		//	TitleID: "toc-title",
+		//	ListID:  "toc-list",
+		//})
 	}
 
 	md := goldmark.New(
 		goldmark.WithExtensions(extensions...),
 		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+		goldmark.WithParserOptions(
+			parser.WithASTTransformers(
+				util.Prioritized(&MyTransformer{}, 100),
+			),
+		),
 		goldmark.WithRendererOptions(
 			html.WithUnsafe(), // 关键：允许渲染原始 HTML 和不安全的标签
+			renderer.WithNodeRenderers(
+				util.Prioritized(&TOCContainerHTMLRenderer{}, 100),
+			),
 		),
 	)
 

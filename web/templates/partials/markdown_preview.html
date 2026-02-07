@@ -116,6 +116,7 @@ $(function() {
       var text = $ta.val() || '';
       if (!text.trim()) {
         $preview.empty();
+        $("#split-toc").empty();
         return;
       }
       fetch('/api/markdown', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: text }) })
@@ -138,12 +139,16 @@ $(function() {
     $("#toc").appendTo($("#split-toc"))
   }
   if ($('#split-editor').length && $('#split-preview').length && typeof Split !== 'undefined') {
-    updateToc()
-    Split(
+    // updateToc()
+
+    var splitInstance;
+
+    $("#split-toc-wrap").show()
+    splitInstance = Split(
       ['#split-editor', '#split-preview', '#split-toc-wrap'],
       {
         sizes: [40, 40, 20],
-        minSize: [180, 180],
+        minSize: [180, 0, 0],
         gutterSize: 8,
         direction: 'horizontal'
       }
