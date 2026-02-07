@@ -1,7 +1,9 @@
+{{ $placeholder := or .Placeholder "文章内容（支持 Markdown）" }}
+{{ $value := or .Value "" }}
+{{ $required := or .Required false }}
 <style>
   .markdown-editor-row.split {
     display: flex;
-    /*gap: 10px;*/
     flex-direction: row;
     align-items: stretch;
   }
@@ -98,13 +100,19 @@
     list-style-type: lower-greek;
   }
 </style>
-<div class="markdown-editor-col" id="split-preview">
-  <label>Preview</label>
-  <div id="content-preview" class="markdown-preview"></div>
-</div>
-<div id="split-toc-wrap" class="markdown-editor-col">
-  <label for="">Table of Contents</label>
-  <div id="split-toc"></div>
+<div class="markdown-editor-row split">
+  <div class="markdown-editor-col" id="split-editor">
+    <label for="content">Content</label>
+    <textarea name="content" id="content" rows="10" cols="80" placeholder="{{ $placeholder }}"{{ if $required }} required{{ end }}>{{ $value }}</textarea>
+  </div>
+  <div class="markdown-editor-col" id="split-preview">
+    <label>Preview</label>
+    <div id="content-preview" class="markdown-preview"></div>
+  </div>
+  <div id="split-toc-wrap" class="markdown-editor-col">
+    <label for="">Table of Contents</label>
+    <div id="split-toc"></div>
+  </div>
 </div>
 <script src="/static/split.min.js"></script>
 <script>
@@ -129,22 +137,18 @@ $(function() {
         })
         .catch(function() { $preview.text('预览请求失败'); });
     }
+    function updateToc() {
+      $("#toc").appendTo($("#split-toc"))
+    }
     $ta.on('input paste', function() {
       clearTimeout(timer);
       timer = setTimeout(update, 280);
     });
     update();
   }
-  function updateToc() {
-    $("#toc").appendTo($("#split-toc"))
-  }
   if ($('#split-editor').length && $('#split-preview').length && typeof Split !== 'undefined') {
-    // updateToc()
-
-    var splitInstance;
-
-    $("#split-toc-wrap").show()
-    splitInstance = Split(
+    $("#split-toc-wrap").show();
+    Split(
       ['#split-editor', '#split-preview', '#split-toc-wrap'],
       {
         sizes: [40, 40, 20],

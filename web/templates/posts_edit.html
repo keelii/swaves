@@ -21,12 +21,6 @@
     </div>
   </div>
 
-  <div class="markdown-editor-row split">
-    <div class="markdown-editor-col" id="split-editor">
-      <label for="content">Content</label>
-      <textarea name="content" id="content" rows="10" cols="80" placeholder="文章内容（支持 Markdown）">{{ .Post.Content }}</textarea>
-    </div>
-    {{ template "partials/markdown_preview" . }}
-  </div>
+  {{ template "partials/markdown_preview" dict "Value" .Post.Content }}
 
 </form>
