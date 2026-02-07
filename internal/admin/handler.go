@@ -160,11 +160,17 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	kind := db.PostKindPost
+	if c.FormValue("kind") == "1" {
+		kind = db.PostKindPage
+	}
+
 	in := CreatePostInput{
 		Title:      c.FormValue("title"),
 		Slug:       c.FormValue("slug"),
 		Content:    c.FormValue("content"),
 		Status:     c.FormValue("status"),
+		Kind:       kind,
 		TagIDs:     tagIDs,
 		CategoryID: categoryID,
 	}
@@ -260,10 +266,16 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	kind := db.PostKindPost
+	if c.FormValue("kind") == "1" {
+		kind = db.PostKindPage
+	}
+
 	in := UpdatePostInput{
 		Title:      c.FormValue("title"),
 		Content:    c.FormValue("content"),
 		Status:     c.FormValue("status"),
+		Kind:       kind,
 		TagIDs:     tagIDs,
 		CategoryID: categoryID,
 	}

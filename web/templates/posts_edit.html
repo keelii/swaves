@@ -10,6 +10,13 @@
       {{ template "partials/toggle" dict "ID" (printf "status_%d" .Post.ID) "Name" "status" "Checked" (eq .Post.Status "published") "DataLabels" "草稿,发布" }}
   </p>
 
+  <p>
+    <label class="valign gap-h">
+      Kind (类型)<br>
+      {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
+    </label>
+  </p>
+
   <div class="salign gap-1">
     <div class="grow">
       {{ template "partials/tag_select" . }}

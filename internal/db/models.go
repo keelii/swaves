@@ -58,6 +58,8 @@ func Open(opts Options) *DB {
 func InitDatabase(db *DB) error {
 	// 迁移：为 t_tasks 添加 kind 列（须在 InitialSQL 的 INSERT 前执行，否则旧库 INSERT 会因缺列失败）
 	_, _ = db.Exec(`ALTER TABLE ` + string(TableTasks) + ` ADD COLUMN kind INTEGER NOT NULL DEFAULT 0`)
+	// 迁移：为 t_posts 添加 kind 列
+	_, _ = db.Exec(`ALTER TABLE ` + string(TablePosts) + ` ADD COLUMN kind INTEGER NOT NULL DEFAULT 0`)
 
 	stmts := []string{string(InitialSQL)}
 
@@ -328,12 +330,21 @@ func HardDeleteRecord(db *DB, tableName TableName, id int64) error {
 	return err
 }
 
+// PostKind 文章类型
+type PostKind int
+
+const (
+	PostKindPost PostKind = 0 // 文章
+	PostKindPage PostKind = 1 // 页面
+)
+
 type Post struct {
 	ID        int64
 	Title     string
 	Slug      string
 	Content   string
 	Status    string
+	Kind      PostKind
 	CreatedAt int64
 	UpdatedAt int64
 	DeletedAt *int64
@@ -358,6 +369,7 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 		"slug":       p.Slug,
 		"content":    p.Content,
 		"status":     p.Status,
+		"kind":       p.Kind,
 		"created_at": p.CreatedAt,
 		"updated_at": p.UpdatedAt,
 	})
@@ -369,11 +381,11 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 }
 
 func GetPostByID(db *DB, id int64) (*Post, error) {
-	result, err := GetRecordByID(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
+	result, err := GetRecordByID(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := row.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status,
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
 			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
@@ -398,6 +410,7 @@ func UpdatePost(db *DB, p *Post) error {
 		"title":      p.Title,
 		"content":    p.Content,
 		"status":     p.Status,
+		"kind":       p.Kind,
 		"updated_at": p.UpdatedAt,
 	})
 }
@@ -411,7 +424,7 @@ func ListPosts(db *DB, pager *types.Pagination) ([]PostWithTags, error) {
 
 	offset := (pager.Page - 1) * pager.PageSize
 	rows, err := db.Query(`
-		SELECT id, title, slug, content, status, created_at, updated_at, deleted_at
+		SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at
 		FROM `+string(TablePosts)+`
 		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
@@ -432,6 +445,7 @@ func ListPosts(db *DB, pager *types.Pagination) ([]PostWithTags, error) {
 			&p.Slug,
 			&p.Content,
 			&p.Status,
+			&p.Kind,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 			&deletedAt,
@@ -476,11 +490,11 @@ func RestorePost(db *DB, id int64) error {
 }
 
 func ListDeletedPosts(db *DB) ([]Post, error) {
-	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
+	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status,
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
 			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
 		); err != nil {
 			return nil, err
@@ -2327,9 +2341,22 @@ func ExportSQLiteWithHash(db *DB, dir string) (res *ExportResult, err error) {
 	}
 	size := info.Size()
 
-	// 6. 原子 rename
 	realFile := fmt.Sprintf("%s_%s.sqlite", timestamp, hash)
 	finalPath := filepath.Join(dir, realFile)
+
+	// 查看目录下是否有文件名中hash包括当前文件hash的
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if strings.Contains(file.Name(), hash) {
+			// 有相同hash的文件，删除临时文件，直接返回已有文件信息
+			return nil, errors.New("数据没有变更，无需重复导出: " + hash[:8])
+		}
+	}
+
+	// 6. 原子 rename
 	if err = os.Rename(tmpPath, finalPath); err != nil {
 		return nil, err
 	}

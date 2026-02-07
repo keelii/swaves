@@ -1,8 +1,10 @@
 <p>
-  {{ range .Options }}
-  <label class="ivalign gap-h">
-    <input type="radio" name="{{ $.Name }}" value="{{ .Value }}"{{ if eq $.Selected .Value }} checked{{ end }}>
-    {{ .Label }}
-  </label>
-  {{ end }}
+  <div class="ivalign gap-1">
+    {{ range .Options }}
+    <label class="ivalign gap-h">
+      <input type="radio" name="{{ $.Name }}" value="{{ .Value }}"{{ if eq $.Selected .Value }} checked{{ end }}>
+      {{ .Label }}
+    </label>
+    {{ end }}
+  </div>
 </p>

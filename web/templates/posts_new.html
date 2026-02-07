@@ -38,6 +38,13 @@
   </div>
 
   <p>
+    <label class="valign gap-h">
+      Kind (类型)<br>
+      {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" "0" }}
+    </label>
+  </p>
+
+  <p>
     <label>
       Tags<br>
       {{ template "partials/tag_select" . }}

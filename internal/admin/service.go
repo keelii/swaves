@@ -34,6 +34,7 @@ type CreatePostInput struct {
 	Slug       string
 	Content    string
 	Status     string
+	Kind       db.PostKind
 	TagIDs     []int64
 	CategoryID int64
 }
@@ -42,6 +43,7 @@ type UpdatePostInput struct {
 	Title      string
 	Content    string
 	Status     string
+	Kind       db.PostKind
 	TagIDs     []int64
 	CategoryID int64
 }
@@ -94,6 +96,7 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		Slug:    in.Slug,
 		Content: in.Content,
 		Status:  in.Status,
+		Kind:    in.Kind,
 	}
 	if _, err := db.CreatePost(dbx, p); err != nil {
 		return err
@@ -143,6 +146,7 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 	p.Title = in.Title
 	p.Content = in.Content
 	p.Status = in.Status
+	p.Kind = in.Kind
 
 	if err := db.UpdatePost(dbx, p); err != nil {
 		return err

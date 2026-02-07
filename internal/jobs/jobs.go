@@ -37,7 +37,7 @@ func DatabaseBackupJob(reg *Registry) (string, error) {
 	// 调用 ExportSQLiteDatabase 函数
 	result, err := db.ExportSQLiteWithHash(reg.DB, backupDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to export database: %v", err)
+		return "", err
 	}
 
 	return fmt.Sprintf("%v", result), nil
