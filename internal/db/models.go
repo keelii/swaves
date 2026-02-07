@@ -415,21 +415,38 @@ func UpdatePost(db *DB, p *Post) error {
 	})
 }
 
-func ListPosts(db *DB, pager *types.Pagination) ([]PostWithTags, error) {
-	// 先查询总数
-	total, err := CountRecords(db, TablePosts, "", nil)
+// CountPostsByKind 按类型统计文章数（未删除）
+func CountPostsByKind(db *DB, kind PostKind) (int, error) {
+	return CountRecords(db, TablePosts, "deleted_at IS NULL AND kind = ?", []interface{}{kind})
+}
+
+func ListPosts(db *DB, pager *types.Pagination, kind *PostKind) ([]PostWithTags, error) {
+	var total int
+	var err error
+	if kind == nil {
+		total, err = CountRecords(db, TablePosts, "", nil)
+	} else {
+		total, err = CountPostsByKind(db, *kind)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	offset := (pager.Page - 1) * pager.PageSize
-	rows, err := db.Query(`
+	query := `
 		SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at
-		FROM `+string(TablePosts)+`
-		WHERE deleted_at IS NULL
+		FROM ` + string(TablePosts) + `
+		WHERE deleted_at IS NULL`
+	args := []interface{}{}
+	if kind != nil {
+		query += ` AND kind = ?`
+		args = append(args, *kind)
+	}
+	query += `
 		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?
-	`, pager.PageSize, offset)
+		LIMIT ? OFFSET ?`
+	args = append(args, pager.PageSize, offset)
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

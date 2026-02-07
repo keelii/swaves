@@ -102,16 +102,37 @@ func (h *Handler) GetLogoutHandler(c *fiber.Ctx) error {
 // Posts
 func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
+	// kind: 0=文章(post), 1=页面(page)，默认 0
+	kindVal := c.Query("kind", "0")
+	var kind db.PostKind
+	if kindVal == "1" {
+		kind = db.PostKindPage
+	} else {
+		kind = db.PostKindPost
+	}
+	var kindPtr *db.PostKind
+	kindPtr = &kind
 
-	posts, err := db.ListPosts(h.Model, &pager)
+	countPost, _ := db.CountPostsByKind(h.Model, db.PostKindPost)
+	countPage, _ := db.CountPostsByKind(h.Model, db.PostKindPage)
+
+	posts, err := db.ListPosts(h.Model, &pager, kindPtr)
 	if err != nil {
 		return err
 	}
 
+	kindQuery := "0"
+	if kind == db.PostKindPage {
+		kindQuery = "1"
+	}
 	return RenderAdminView(c, "posts_index", fiber.Map{
-		"Title": "Posts",
-		"Posts": posts,
-		"Pager": pager,
+		"Title":     "Posts",
+		"Posts":     posts,
+		"Pager":     pager,
+		"Kind":      kind,
+		"KindQuery": kindQuery,
+		"CountPost": countPost,
+		"CountPage": countPage,
 	}, "")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
@@ -1744,12 +1765,17 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 	// 构建 items
 	for i := 0; i < itemCount; i++ {
+		kindVal := c.FormValue(fmt.Sprintf("items[%d][kind]", i))
+		if kindVal != "0" && kindVal != "1" {
+			kindVal = "0"
+		}
 		item := PreviewPostItem{
 			Index:     i,
 			Title:     c.FormValue(fmt.Sprintf("items[%d][title]", i)),
 			Slug:      c.FormValue(fmt.Sprintf("items[%d][slug]", i)),
 			Content:   c.FormValue(fmt.Sprintf("items[%d][content]", i)),
 			Status:    c.FormValue(fmt.Sprintf("items[%d][status]", i)),
+			Kind:      kindVal,
 			CreatedAt: c.FormValue(fmt.Sprintf("items[%d][created_at]", i)),
 			Tags:      c.FormValue(fmt.Sprintf("items[%d][tags]", i)),
 			Category:  c.FormValue(fmt.Sprintf("items[%d][category]", i)),

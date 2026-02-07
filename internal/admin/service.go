@@ -1062,6 +1062,7 @@ type PreviewPostItem struct {
 	Slug          string   // slug
 	Content       string   // 内容（markdown）
 	Status        string   // 状态
+	Kind          string   // 类型： "0"=post, "1"=page
 	CreatedAt     string   // 创建时间（格式化的时间字符串，用于显示）
 	CreatedAtUnix int64    // 创建时间（Unix 时间戳）
 	Tags          string   // 标签（逗号分隔的字符串）
@@ -1348,6 +1349,7 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			Slug:          slug,
 			Content:       content,
 			Status:        status,
+			Kind:          "0", // 默认 post
 			CreatedAt:     createdAtStr,
 			CreatedAtUnix: createdAt,
 			Tags:          tagsStr,
@@ -1535,12 +1537,18 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 			createdAt = time.Now().Unix()
 		}
 
+		kind := db.PostKindPost
+		if item.Kind == "1" {
+			kind = db.PostKindPage
+		}
+
 		// 创建 post
 		post := &db.Post{
 			Title:     item.Title,
 			Slug:      item.Slug,
 			Content:   item.Content,
 			Status:    item.Status,
+			Kind:      kind,
 			CreatedAt: createdAt,
 			UpdatedAt: time.Now().Unix(),
 		}

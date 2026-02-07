@@ -73,7 +73,11 @@ func NewApp(config types.AppConfig) SwavesApp {
 	// statics
 	app.Static("/static", "./web/static")
 	// metrics
-	app.Get("/metrics", monitor.New(monitor.Config{Title: config.AppName + " metrics"}))
+	app.Get("/metrics", monitor.New(monitor.Config{
+		Title:      config.AppName + " metrics",
+		FontURL:    "/static/metrics/google-font.css",
+		ChartJsURL: "/static/metrics/Chart.bundle.min.js",
+	}))
 
 	// Auth
 	app.Use(middleware.RequireAdmin(globalStore.Session, consts.LoginRoutePath))
