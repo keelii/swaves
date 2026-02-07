@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	mathjax "github.com/litao91/goldmark-mathjax" // 识别数学公式
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
+
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark-meta" // 解析 Frontmatter
 	"github.com/yuin/goldmark/extension"
@@ -44,6 +46,14 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 		extension.Table,
 		extension.CJK,
 		extension.GFM,
+		extension.Footnote,
+		extension.Typographer,
+		highlighting.NewHighlighting(
+			highlighting.WithStyle("trac"),
+			//highlighting.WithFormatOptions(
+			//	chromahtml.WithLineNumbers(true),
+			//),
+		),
 	}
 
 	if includeTOC {
@@ -67,6 +77,8 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 			renderer.WithNodeRenderers(
 				util.Prioritized(&TOCContainerHTMLRenderer{}, 100),
 			),
+			html.WithHardWraps(),
+			html.WithXHTML(),
 		),
 	)
 
