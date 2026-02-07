@@ -408,13 +408,19 @@ input[type="range"] {
 .tab-nav {
   display: flex;
   border-bottom: 1px solid var(--nc-bg-3);
-  background: #fafafa;
+  /*background: #fafafa;*/
+}
+.tab-nav.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--nc-bg-1);
 }
 .tab-item {
   flex: 1;
   padding: 0.4em 1em;
   text-align: center;
-  font-size: 1.2em;
+  /*font-size: 1.2em;*/
   cursor: pointer;
   border-bottom: 2px solid transparent;
   position: relative;
@@ -438,7 +444,7 @@ input[type="range"] {
   font-weight: 500;
 }
 .tab-content {
-  padding: 10px;
+  padding-top: 1em;
 }
 .tab-pane {
   display: none;
@@ -448,7 +454,6 @@ input[type="range"] {
   display: block;
 }
 .tab-card .tab-nav {
-  background: transparent;
   border-bottom: none;
   gap: 8px;
 }
@@ -471,4 +476,40 @@ input[type="range"] {
   border-top: 1px solid var(--nc-bg-3);
   border-radius: 0 4px 4px 4px;
 }
+
+/* tab-card.simple：仅下边框，当前项用 new.css 蓝色高亮 */
+.tab-card.simple .tab-nav {
+  border-bottom: 1px solid var(--nc-bg-3);
+  gap: 0;
+}
+.tab-card.simple .tab-item {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab-card.simple .tab-item a {
+  color: var(--nc-tx-2);
+}
+.tab-card.simple .tab-item:hover a {
+  color: var(--nc-lk-1);
+}
+.tab-card.simple .tab-item:hover {
+  background: transparent;
+}
+.tab-card.simple .tab-item.active {
+  background: transparent;
+  border-bottom: 2px solid var(--nc-lk-1);
+  margin-bottom: -1px;
+  font-weight: 500;
+}
+.tab-card.simple .tab-item.active a {
+  color: var(--nc-lk-1);
+}
+.tab-card.simple .tab-content {
+  border-top: none;
+  border-radius: 0;
+}
+
 

@@ -2,161 +2,188 @@
 {{ $value := or .Value "" }}
 {{ $required := or .Required false }}
 <style>
-  .markdown-editor-row.split {
+  /* markdown 编辑/预览：tab 内容区可见，预览模式内用 split 分预览与 TOC */
+  .markdown-editor-wrap .tab-card .tab-content {
+    height: auto;
+    min-height: 280px;
+    overflow: visible;
+    /*border-top: 1px solid var(--nc-bg-3);*/
+    /*border-radius: 0 4px 4px 4px;*/
+  }
+  .markdown-editor-wrap .tab-pane {
+    display: none;
+  }
+  .markdown-editor-wrap .tab-pane.active {
+    display: block;
+  }
+  .markdown-editor-wrap .tab-pane textarea {
+    width: 100%;
+    min-height: 240px;
+    resize: vertical;
+  }
+  .markdown-preview-row {
     display: flex;
     flex-direction: row;
     align-items: stretch;
+    min-height: 240px;
   }
-  .markdown-editor-row .markdown-editor-col {
+  .markdown-preview-row .markdown-editor-col {
     min-width: 0;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    width: 50%;
   }
-  .markdown-editor-row .markdown-editor-col label {
+  .markdown-preview-row .markdown-editor-col label {
     margin-bottom: 0.25em;
   }
-  .markdown-editor-row .markdown-editor-col textarea {
-    flex: 1;
-    min-height: 240px;
-    resize: vertical;
-  }
-  .markdown-editor-row .gutter {
+  .markdown-preview-row .gutter.gutter-horizontal {
+    width: 8px;
+    flex-shrink: 0;
+    cursor: col-resize;
     background-repeat: no-repeat;
     background-position: 50%;
-    flex-shrink: 0;
-    width: 1em;
-  }
-  .markdown-editor-row .gutter.gutter-horizontal {
-    width: 8px;
-    cursor: col-resize;
     background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
   }
-  .markdown-preview {
+  .markdown-preview-box {
     flex: 1;
-    min-height: 240px;
+    min-height: 200px;
     padding: 0.75em 1em;
     border: 1px solid var(--nc-bg-3);
     border-radius: 4px;
     background: var(--nc-bg-1);
     overflow: auto;
   }
-  .markdown-preview:empty::before {
+  .markdown-preview-box:empty::before {
     content: "预览将在此处显示…";
     color: var(--nc-tx-g-9);
   }
-  .markdown-preview li p,
-  .markdown-preview p img {
+  .markdown-preview-box li p,
+  .markdown-preview-box p img {
     margin-bottom: 0;
   }
-
-  #toc a {
+  .markdown-editor-wrap #toc a {
     color: var(--nc-tx-g-6);
+  }
+  .markdown-editor-wrap .split-toc-wrap {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .markdown-editor-wrap #toc {
+    background: var(--nc-bg-2);
+    border-radius: 4px;
+    flex: 1;
+    overflow: auto;
+  }
+  .markdown-editor-wrap #toc-title {
+    /*display: none;*/
+    padding: 1em;
+    font-size: 1.2em;
+    margin: 0;
+    border-bottom: 1px solid var(--nc-bg-3);
+  }
+  .markdown-editor-wrap #toc-list {
+    padding: 0.5em 0 0 0;
+  }
+  .markdown-editor-wrap #toc-list > li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .markdown-editor-wrap #toc-list > li ul {
+    padding-left: 2em;
+    list-style-type: decimal;
+  }
+  .markdown-editor-wrap #toc-list > li ul ul {
+    padding-left: 1.5em;
+    list-style-type: lower-alpha;
+  }
+  .markdown-editor-wrap #toc-list > li ul ul ul {
+    list-style-type: lower-roman;
+  }
+  .markdown-editor-wrap #toc-list > li ul ul ul {
+    list-style-type: lower-greek;
   }
   #split-toc {
     position: sticky;
     top: 0;
   }
-  #toc {
-    background: var(--nc-bg-2);
-    border-radius: 4px;
-  }
-  #toc #toc-list {
-    height: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-  #toc-title {
-    display:none;
-    padding: 1em;
-    font-size: 1.5em;
-    margin: 0;
-  }
-  #toc-list {
-    padding: 0.5em 0 0 0;
-  }
-  #toc-list > li {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  #toc-list > li ul {
-    padding-left: 2em;
-  }
-  #toc-list > li ul ul {
-    padding-left: 1.5em;
-  }
-  #toc-list > li ul {
-    list-style-type: decimal;
-  }
-  #toc-list > li ul ul {
-    list-style-type: lower-alpha;
-  }
-  #toc-list > li ul ul ul {
-    list-style-type: lower-roman;
-  }
-  #toc-list > li ul ul ul {
-    list-style-type: lower-greek;
-  }
 </style>
-<div class="markdown-editor-row split">
-  <div class="markdown-editor-col" id="split-editor">
-    <label for="content">Content</label>
-    <textarea name="content" id="content" rows="10" cols="80" placeholder="{{ $placeholder }}"{{ if $required }} required{{ end }}>{{ $value }}</textarea>
-  </div>
-  <div class="markdown-editor-col" id="split-preview">
-    <label>Preview</label>
-    <div id="content-preview" class="markdown-preview"></div>
-  </div>
-  <div id="split-toc-wrap" class="markdown-editor-col">
-    <label for="">Table of Contents</label>
-    <div id="split-toc"></div>
+<div class="markdown-editor-wrap">
+  <div class="tab-card simple">
+    <div class="tab-nav">
+      <div class="tab-item active" data-tab="edit">编辑</div>
+      <div class="tab-item" data-tab="preview">预览</div>
+    </div>
+    <div class="tab-content">
+      <div class="tab-pane active" id="pane-edit">
+        <textarea name="content" id="content" rows="40" cols="80" placeholder="{{ $placeholder }}"{{ if $required }} required{{ end }}>{{ $value }}</textarea>
+      </div>
+      <div class="tab-pane" id="pane-preview">
+        <div class="markdown-preview-row split" id="preview-split-row">
+          <div class="markdown-editor-col" id="split-preview">
+            <div id="content-preview" class="markdown-preview-box"></div>
+          </div>
+          <div class="markdown-editor-col split-toc-wrap" id="split-toc-wrap">
+            <div id="split-toc"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 <script src="/static/split.min.js"></script>
 <script>
 $(function() {
   var $ta = $('textarea[name="content"]'), $preview = $('#content-preview');
+  var $navItems = $('.markdown-editor-wrap .tab-item'), $panes = $('.markdown-editor-wrap .tab-pane');
+  var splitInstance = null;
+
+  function showPane(tab) {
+    $navItems.removeClass('active').filter('[data-tab="' + tab + '"]').addClass('active');
+    $panes.removeClass('active').filter('#pane-' + tab).addClass('active');
+    if (tab === 'preview') {
+      update();
+      if (typeof Split !== 'undefined' && !splitInstance && $('#preview-split-row').length) {
+        splitInstance = Split(['#split-preview', '#split-toc-wrap'], {
+          sizes: [70, 30],
+          minSize: [120, 0],
+          gutterSize: 8,
+          direction: 'horizontal'
+        });
+      }
+    }
+  }
+
+  $navItems.on('click', function() {
+    var tab = $(this).data('tab');
+    showPane(tab);
+  });
+
+  function update() {
+    var text = $ta.val() || '';
+    if (!text.trim()) {
+      $preview.empty();
+      $('#split-toc').empty();
+      return;
+    }
+    fetch('/api/markdown', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: text }) })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res && res.data != null) {
+          $preview.html(res.data);
+          $('#toc').appendTo($('#split-toc'));
+        }
+      })
+      .catch(function() { $preview.text('预览请求失败'); });
+  }
+
   if ($ta.length && $preview.length) {
     var timer;
-    function update() {
-      var text = $ta.val() || '';
-      if (!text.trim()) {
-        $preview.empty();
-        $("#split-toc").empty();
-        return;
-      }
-      fetch('/api/markdown', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: text }) })
-        .then(function(r) { return r.json(); })
-        .then(function(res) {
-          if (res && res.data != null) {
-            $preview.html(res.data);
-            updateToc()
-          }
-        })
-        .catch(function() { $preview.text('预览请求失败'); });
-    }
-    function updateToc() {
-      $("#toc").appendTo($("#split-toc"))
-    }
     $ta.on('input paste', function() {
       clearTimeout(timer);
       timer = setTimeout(update, 280);
     });
-    update();
-  }
-  if ($('#split-editor').length && $('#split-preview').length && typeof Split !== 'undefined') {
-    $("#split-toc-wrap").show();
-    Split(
-      ['#split-editor', '#split-preview', '#split-toc-wrap'],
-      {
-        sizes: [40, 40, 20],
-        minSize: [180, 0, 0],
-        gutterSize: 8,
-        direction: 'horizontal'
-      }
-    );
   }
 });
 </script>

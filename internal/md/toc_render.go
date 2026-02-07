@@ -79,7 +79,7 @@ func (t *MyTransformer) Transform(doc *ast.Document, reader text.Reader, ctx par
 	// 创建标题
 	heading := ast.NewHeading(2)
 	heading.SetAttributeString("id", "toc-title")
-	heading.AppendChild(heading, ast.NewString([]byte("Table of Contents")))
+	heading.AppendChild(heading, ast.NewString([]byte("目录")))
 
 	// 使用容器节点
 	container := NewTOCContainer()
