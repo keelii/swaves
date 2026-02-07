@@ -33,6 +33,9 @@ func GetMarkdownOnly(input string) string {
 }
 
 func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
+	if !includeTOC {
+		includeTOC = true
+	}
 	extensions := []goldmark.Extender{
 		meta.Meta,       // 开启 Front matter 支持
 		mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
