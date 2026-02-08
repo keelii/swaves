@@ -1362,6 +1362,14 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 		return items, errors.New(strings.Join(errList, "; "))
 	}
 
+	// 按 created_at 倒序（时间晚的在前）
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreatedAtUnix > items[j].CreatedAtUnix
+	})
+	for i := range items {
+		items[i].Index = i
+	}
+
 	return items, nil
 }
 

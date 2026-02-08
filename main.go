@@ -10,8 +10,6 @@ import (
 
 const TimeFormat = "2006-01-02 15:04:05"
 
-//const TimeFormatMs = "2006-01-02 15:04:05.000"
-
 func watchParent() {
 	ppid := os.Getppid()
 

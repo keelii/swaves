@@ -70,14 +70,14 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 		return RenderAdminView(c, "admin_login", fiber.Map{
 			"Title": "Admin Login",
 			"Error": "password is empty",
-		}, "")
+		}, "base")
 	}
 
 	if err := h.Service.CheckPassword(password); err != nil {
 		return RenderAdminView(c, "admin_login", fiber.Map{
 			"Title": "Admin Login",
 			"Error": "Invalid password",
-		}, "")
+		}, "base")
 	}
 
 	succ := h.Session.SaveSession(c)
@@ -89,7 +89,7 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "admin_login", fiber.Map{
 		"Title": "Admin Login",
 		"Error": "Invalid Error",
-	}, "")
+	}, "base")
 }
 
 /* ---------- POST /admin/logout ---------- */

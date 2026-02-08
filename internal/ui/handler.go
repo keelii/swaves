@@ -21,7 +21,7 @@ func (h Handler) GetHome(ctx *fiber.Ctx) error {
 
 func (h Handler) GetRSS(ctx *fiber.Ctx) error {
 	pager := middleware.GetPagination(ctx)
-	posts := db.ListPublishedPosts(h.Model, &pager)
+	posts := ListDisplayPosts(h.Model, &pager)
 	rss, err := GenerateRSS(posts, ctx, pager.Page, pager.Total)
 	if err != nil {
 		return err

@@ -36,9 +36,6 @@ func GetMarkdownOnly(input string) string {
 }
 
 func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
-	if !includeTOC {
-		includeTOC = true
-	}
 	extensions := []goldmark.Extender{
 		meta.Meta, // 开启 Front matter 支持
 		//mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
@@ -56,24 +53,11 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 		),
 	}
 
-	if includeTOC {
-		//extensions = append(extensions, &toc.Extender{
-		//	//Title:   "TOC-TITLE",
-		//	TitleID: "toc-title",
-		//	ListID:  "toc-list",
-		//})
-	}
-
-	md := goldmark.New(
+	options := []goldmark.Option{
 		goldmark.WithExtensions(extensions...),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 			//parser.WithIDs(NewUnicodeIDs()),
-		),
-		goldmark.WithParserOptions(
-			parser.WithASTTransformers(
-				util.Prioritized(&MyTransformer{}, 100),
-			),
 		),
 		goldmark.WithRendererOptions(
 			html.WithUnsafe(), // 关键：允许渲染原始 HTML 和不安全的标签
@@ -83,6 +67,18 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 			html.WithHardWraps(),
 			html.WithXHTML(),
 		),
+	}
+
+	if includeTOC {
+		options = append(options, goldmark.WithParserOptions(
+			parser.WithASTTransformers(
+				util.Prioritized(&MyTransformer{}, 100),
+			),
+		))
+	}
+
+	md := goldmark.New(
+		options...,
 	)
 
 	source := []byte(text)

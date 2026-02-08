@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"swaves/internal/db"
 	"swaves/internal/store"
 	"time"
 
@@ -18,7 +17,7 @@ type Article struct {
 	CreatedAt   time.Time
 }
 
-func GenerateRSS(posts []db.Post, ctx *fiber.Ctx, page int, total int) (string, error) {
+func GenerateRSS(posts []DisplayPost, ctx *fiber.Ctx, page int, total int) (string, error) {
 	title := store.GetSetting("site_name")
 
 	// 创建 Feed
@@ -34,7 +33,8 @@ func GenerateRSS(posts []db.Post, ctx *fiber.Ctx, page int, total int) (string, 
 	for _, p := range posts {
 		item := &feeds.Item{
 			Title:       p.Title,
-			Link:        &feeds.Link{Href: GetPostAbsUrl(ctx, p)},
+			Content:     p.HTML,
+			Link:        &feeds.Link{Href: GetPostAbsUrl(ctx, p.Raw())},
 			Description: "",
 			Author:      &feeds.Author{Name: GetSiteAuthor(ctx)},
 			Created:     time.Unix(p.CreatedAt, 0),
