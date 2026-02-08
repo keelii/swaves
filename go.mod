@@ -35,6 +35,11 @@ require (
 	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
+	github.com/rs/zerolog v1.28.0 // indirect
+	github.com/simukti/sqldb-logger v0.0.0-20230108155151-646c1a075551 // indirect
+	github.com/simukti/sqldb-logger/logadapter/logrusadapter v0.0.0-20230108155151-646c1a075551 // indirect
+	github.com/simukti/sqldb-logger/logadapter/zerologadapter v0.0.0-20230108155151-646c1a075551 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.69.0 // indirect

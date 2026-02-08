@@ -16,7 +16,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mattn/go-sqlite3"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/simukti/sqldb-logger"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,11 +38,13 @@ func Open(opts Options) *DB {
 	var sqlDB *sql.DB
 	var err error
 
-	sqlDB, err = sql.Open("sqlite3", opts.DSN)
-	if err != nil {
-		log.Fatalf("open sqlite failed: %v", err)
-	}
+	sqlDB = sqldblogger.OpenDriver(opts.DSN, &sqlite3.SQLiteDriver{}, &SqlLogger{})
 
+	//sqlDB, err = sql.Open("sqlite3", opts.DSN)
+	//if err != nil {
+	//	log.Fatalf("open sqlite failed: %v", err)
+	//}
+	//
 	_, err = sqlDB.Exec(`PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;`)
 	if err != nil {
 		log.Fatalf("set journal_mode failed: %v", err)
@@ -418,6 +422,47 @@ func UpdatePost(db *DB, p *Post) error {
 // CountPostsByKind 按类型统计文章数（未删除）
 func CountPostsByKind(db *DB, kind PostKind) (int, error) {
 	return CountRecords(db, TablePosts, "deleted_at IS NULL AND kind = ?", []interface{}{kind})
+}
+
+// ListPublishedPosts 分页列出已发布文章（用于 RSS 等），返回 []Post
+func ListPublishedPosts(db *DB, pager *types.Pagination) []Post {
+	total, err := CountRecords(db, TablePosts, "deleted_at IS NULL AND status = ?", []interface{}{"published"})
+	if err != nil {
+		log.Println(err)
+		return []Post{}
+	}
+	offset := (pager.Page - 1) * pager.PageSize
+	rows, err := db.Query(`
+		SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at
+		FROM `+string(TablePosts)+`
+		WHERE deleted_at IS NULL AND status = ?
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`, "published", pager.PageSize, offset)
+	if err != nil {
+		log.Println(err)
+		return []Post{}
+	}
+	defer rows.Close()
+	var res []Post
+	for rows.Next() {
+		var p Post
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+		); err != nil {
+			log.Println(err)
+			return []Post{}
+		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, p)
+	}
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	return res
 }
 
 func ListPosts(db *DB, pager *types.Pagination, kind *PostKind) ([]PostWithTags, error) {

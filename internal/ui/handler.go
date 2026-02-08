@@ -2,6 +2,7 @@ package ui
 
 import (
 	"swaves/internal/db"
+	"swaves/internal/middleware"
 	"swaves/internal/store"
 	"swaves/internal/types"
 
@@ -19,7 +20,14 @@ func (h Handler) GetHome(ctx *fiber.Ctx) error {
 }
 
 func (h Handler) GetRSS(ctx *fiber.Ctx) error {
-	return ctx.Send([]byte("not implemented"))
+	pager := middleware.GetPagination(ctx)
+	posts := db.ListPublishedPosts(h.Model, &pager)
+	rss, err := GenerateRSS(posts, ctx, pager.Page, pager.Total)
+	if err != nil {
+		return err
+	}
+	ctx.Set("Content-Type", "application/xml; charset=utf-8")
+	return ctx.SendString(rss)
 }
 
 func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {

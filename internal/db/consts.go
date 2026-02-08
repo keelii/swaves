@@ -289,7 +289,7 @@ var DefaultSettings = []Setting{
 	{Sort: 11, Kind: "Appearance", Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
 	{Sort: 11, Kind: "Appearance", Name: "Page size", Code: "page_size", Type: "number", Value: "10", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
 	{Sort: 11, Kind: "Post", Name: "Base Path", Code: "base_path", Type: "text", Value: "/", Description: "访问根路径"},
-	{Sort: 13, Kind: "Post", Name: "Page Url", Code: "page_url", Type: "text", Value: "/", Description: "页面根路径"},
+	{Sort: 13, Kind: "Post", Name: "Page Path", Code: "page_path", Type: "text", Value: "/", Description: "页面根路径"},
 	{Sort: 13, Kind: "Post", Name: "RSS Url", Code: "rss_url", Type: "text", Value: "/atom.xml", Description: "feed 地址"},
 	{Sort: 13, Kind: "Post", Name: "Post Url Pattern", Code: "post_url_pattern", Type: "text", Value: "/{year}/{month}/{day}/{slug}", Description: "文章 URL 模式"},
 	{Sort: 15, Kind: "Post", Name: "Tag Url Pattern", Code: "tag_url_pattern", Type: "text", Value: "/tags/{slug}", Description: "标签 URL 模式"},
