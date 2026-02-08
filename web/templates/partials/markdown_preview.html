@@ -61,6 +61,9 @@
   .markdown-preview-box p img {
     margin-bottom: 0;
   }
+  .markdown-editor-wrap #toc li::marker {
+    color: var(--nc-tx-g-9);
+  }
   .markdown-editor-wrap #toc a {
     color: var(--nc-tx-g-6);
   }
@@ -135,8 +138,10 @@
 <script src="/static/split.min.js"></script>
 <script>
 $(function() {
-  var $ta = $('textarea[name="content"]'), $preview = $('#content-preview');
-  var $navItems = $('.markdown-editor-wrap .tab-item'), $panes = $('.markdown-editor-wrap .tab-pane');
+  var $ta = $('textarea[name="content"]');
+  var $preview = $('#content-preview');
+  var $navItems = $('.markdown-editor-wrap .tab-item');
+  var $panes = $('.markdown-editor-wrap .tab-pane');
   var splitInstance = null;
 
   function showPane(tab) {
@@ -173,6 +178,10 @@ $(function() {
         if (res && res.data != null) {
           $preview.html(res.data);
           $('#toc').appendTo($('#split-toc'));
+          if (typeof MathJax !== 'undefined') {
+            // console.log(MathJax.typesetPromise)
+            MathJax.typesetPromise([$preview[0]])
+          }
         }
       })
       .catch(function() { $preview.text('预览请求失败'); });
@@ -187,3 +196,17 @@ $(function() {
   }
 });
 </script>
+<script>
+  window.MathJax = {
+    options: {},
+    startup: {
+      typeset: false   // 关键：禁止自动扫描
+    },
+    tex: {
+      inlineMath: [ ['$','$'] ],
+      displayMath: [ ['$$','$$'] ],
+      processEscapes: false
+    }
+  }
+</script>
+<script id="MathJax-script" src="/static/MathJax/tex-chtml.js" async></script>

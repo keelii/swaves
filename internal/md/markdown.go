@@ -5,7 +5,6 @@ import (
 	"log"
 	"strings"
 
-	mathjax "github.com/litao91/goldmark-mathjax" // 识别数学公式
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 
 	"github.com/yuin/goldmark"
@@ -41,13 +40,14 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 		includeTOC = true
 	}
 	extensions := []goldmark.Extender{
-		meta.Meta,       // 开启 Front matter 支持
-		mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
+		meta.Meta, // 开启 Front matter 支持
+		//mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
 		extension.Table,
 		extension.CJK,
 		extension.GFM,
 		extension.Footnote,
 		extension.Typographer,
+		extension.Strikethrough,
 		highlighting.NewHighlighting(
 			highlighting.WithStyle("trac"),
 			//highlighting.WithFormatOptions(
@@ -66,7 +66,10 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 
 	md := goldmark.New(
 		goldmark.WithExtensions(extensions...),
-		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+			//parser.WithIDs(NewUnicodeIDs()),
+		),
 		goldmark.WithParserOptions(
 			parser.WithASTTransformers(
 				util.Prioritized(&MyTransformer{}, 100),
@@ -85,7 +88,7 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 	source := []byte(text)
 
 	var buf bytes.Buffer
-	context := parser.NewContext()
+	context := parser.NewContext(parser.WithIDs(NewUnicodeIDs()))
 	if err := md.Convert(source, &buf, parser.WithContext(context)); err != nil {
 		log.Fatalf("md.Convert: %s", err)
 	}
