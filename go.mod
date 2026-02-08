@@ -26,6 +26,7 @@ require (
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/gofiber/template/v2 v2.1.0 // indirect
 	github.com/gofiber/utils/v2 v2.0.0 // indirect
+	github.com/gorilla/feeds v1.2.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

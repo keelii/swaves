@@ -18,6 +18,10 @@ func (h Handler) GetHome(ctx *fiber.Ctx) error {
 	return ctx.Send([]byte("ui home"))
 }
 
+func (h Handler) GetRSS(ctx *fiber.Ctx) error {
+	return ctx.Send([]byte("not implemented"))
+}
+
 func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {
 	return &Handler{
 		Model:   gStore.Model,

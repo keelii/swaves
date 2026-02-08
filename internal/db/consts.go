@@ -118,7 +118,7 @@ const InitialSQL = `
 	);
 	DELETE FROM ` + TableTasks + ` WHERE code = 'database_backup';
     INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
-		('database_backup', '数据备份', '定备份置数据库', '* * * * *', 1, 0, strftime('%s','now'), strftime('%s','now'));
+		('database_backup', '数据备份', '定备份置数据库', '@daily', 1, 0, strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -275,7 +275,9 @@ const InternalTimezone = `[
 ]`
 
 var DefaultSettings = []Setting{
+	{Sort: 1, Kind: "General", Name: "Site URL", Code: "site_url", Type: "text", Value: "http://keelii.com", Description: "站点地址，不包括路径"},
 	{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
+	{Sort: 2, Kind: "General", Name: "Site Description", Code: "site_desc", Type: "text", Value: "Nothing", Description: "站点描述"},
 	{Sort: 4, Kind: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
 	{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "前端开发,编程,javascript,typescript,css,html,nodejs,python,java", Description: "关键字"},
 	{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
@@ -286,10 +288,10 @@ var DefaultSettings = []Setting{
 	{Sort: 11, Kind: "Appearance", Name: "Mode", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 	{Sort: 11, Kind: "Appearance", Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
 	{Sort: 11, Kind: "Appearance", Name: "Page size", Code: "page_size", Type: "number", Value: "10", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
-	{Sort: 11, Kind: "Post", Name: "Base Url", Code: "base_url", Type: "text", Value: "/", Description: "访问根路径"},
-	{Sort: 13, Kind: "Post", Name: "About Url", Code: "about_url", Type: "text", Value: "/about", Description: "关于我页面地址"},
+	{Sort: 11, Kind: "Post", Name: "Base Path", Code: "base_path", Type: "text", Value: "/", Description: "访问根路径"},
+	{Sort: 13, Kind: "Post", Name: "Page Url", Code: "page_url", Type: "text", Value: "/", Description: "页面根路径"},
 	{Sort: 13, Kind: "Post", Name: "RSS Url", Code: "rss_url", Type: "text", Value: "/atom.xml", Description: "feed 地址"},
-	{Sort: 13, Kind: "Post", Name: "Post Url Pattern", Code: "post_url_pattern", Type: "text", Value: "/{yyyy}/{MM}/{dd}/{slug}", Description: "文章 URL 模式"},
+	{Sort: 13, Kind: "Post", Name: "Post Url Pattern", Code: "post_url_pattern", Type: "text", Value: "/{year}/{month}/{day}/{slug}", Description: "文章 URL 模式"},
 	{Sort: 15, Kind: "Post", Name: "Tag Url Pattern", Code: "tag_url_pattern", Type: "text", Value: "/tags/{slug}", Description: "标签 URL 模式"},
 	{Sort: 17, Kind: "Post", Name: "Category Page", Code: "category_page", Type: "text", Value: "/categories", Description: "分类页面地址"},
 	{Sort: 17, Kind: "Post", Name: "Tags Page", Code: "tags_page", Type: "text", Value: "/tags", Description: "标签页面地址"},

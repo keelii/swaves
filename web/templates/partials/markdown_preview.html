@@ -172,12 +172,16 @@ $(function() {
       $('#split-toc').empty();
       return;
     }
-    fetch('/api/markdown', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: text }) })
+    fetch('/api/markdown', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text })
+    })
       .then(function(r) { return r.json(); })
       .then(function(res) {
         if (res && res.data != null) {
           $preview.html(res.data);
-          $('#toc').appendTo($('#split-toc'));
+          $('#toc').appendTo($('#split-toc').empty());
           if (typeof MathJax !== 'undefined') {
             // console.log(MathJax.typesetPromise)
             MathJax.typesetPromise([$preview[0]])
