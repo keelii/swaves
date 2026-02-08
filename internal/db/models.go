@@ -60,11 +60,6 @@ func Open(opts Options) *DB {
 }
 
 func InitDatabase(db *DB) error {
-	// 迁移：为 t_tasks 添加 kind 列（须在 InitialSQL 的 INSERT 前执行，否则旧库 INSERT 会因缺列失败）
-	_, _ = db.Exec(`ALTER TABLE ` + string(TableTasks) + ` ADD COLUMN kind INTEGER NOT NULL DEFAULT 0`)
-	// 迁移：为 t_posts 添加 kind 列
-	_, _ = db.Exec(`ALTER TABLE ` + string(TablePosts) + ` ADD COLUMN kind INTEGER NOT NULL DEFAULT 0`)
-
 	stmts := []string{string(InitialSQL)}
 
 	for _, stmt := range stmts {
