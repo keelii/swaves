@@ -10,6 +10,7 @@ const (
 const (
 	TableSessions       TableName = "t_admin_sessions"
 	TablePosts          TableName = "t_posts"
+	TablePostsFTS       TableName = "t_posts_fts"
 	TableEncryptedPosts TableName = "t_encrypted_posts"
 	TableTags           TableName = "t_tags"
 	TableRedirects      TableName = "t_redirects"

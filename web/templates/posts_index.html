@@ -1,17 +1,27 @@
 {{ $kind := or .Kind 0 }}
+{{ $q := or .SearchQueryEscaped "" }}
 <div class="tab-card">
   <div class="tab-nav">
     <div class="tab-item{{ if eq $kind 0 }} active{{ end }}">
-      <a href="/admin/posts?kind=0">文章 ({{ .CountPost }})</a>
+      <a href="/admin/posts?kind=0{{ if $q }}&q={{ $q }}{{ end }}">文章 ({{ .CountPost }})</a>
     </div>
     <div class="tab-item{{ if eq $kind 1 }} active{{ end }}">
-      <a href="/admin/posts?kind=1">页面 ({{ .CountPage }})</a>
+      <a href="/admin/posts?kind=1{{ if $q }}&q={{ $q }}{{ end }}">页面 ({{ .CountPage }})</a>
     </div>
   </div>
   <div class="tab-content">
     <div class="tab-pane active"></div>
   </div>
 </div>
+
+<form method="get" action="/admin/posts" class="salign gap-1" style="margin-bottom: 1em;">
+  <input type="hidden" name="kind" value="{{ or .KindQuery "0" }}">
+  <input type="search" name="q" value="{{ or .SearchQuery "" }}" placeholder="搜索标题、内容…" style="max-width: 20em;">
+  <button type="submit">搜索</button>
+  {{ if .SearchQuery }}
+  <a href="/admin/posts?kind={{ or .KindQuery "0" }}">清除</a>
+  {{ end }}
+</form>
 
 <table>
   <colgroup>

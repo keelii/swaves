@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -116,7 +117,17 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	countPost, _ := db.CountPostsByKind(h.Model, db.PostKindPost)
 	countPage, _ := db.CountPostsByKind(h.Model, db.PostKindPage)
 
-	posts, err := db.ListPosts(h.Model, &pager, kindPtr)
+	searchQuery := c.Query("q")
+	var searchIDs []int64
+	if searchQuery != "" {
+		ids, err := db.SearchPostIDsByFTS(h.Model, searchQuery)
+		if err != nil {
+			return err
+		}
+		searchIDs = ids
+	}
+
+	posts, err := db.ListPosts(h.Model, &pager, kindPtr, searchIDs)
 	if err != nil {
 		return err
 	}
@@ -125,14 +136,20 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	if kind == db.PostKindPage {
 		kindQuery = "1"
 	}
+	searchQueryEscaped := ""
+	if searchQuery != "" {
+		searchQueryEscaped = url.QueryEscape(searchQuery)
+	}
 	return RenderAdminView(c, "posts_index", fiber.Map{
-		"Title":     "Posts",
-		"Posts":     posts,
-		"Pager":     pager,
-		"Kind":      kind,
-		"KindQuery": kindQuery,
-		"CountPost": countPost,
-		"CountPage": countPage,
+		"Title":              "Posts",
+		"Posts":              posts,
+		"Pager":              pager,
+		"Kind":               kind,
+		"KindQuery":          kindQuery,
+		"CountPost":          countPost,
+		"CountPage":          countPage,
+		"SearchQuery":        searchQuery,
+		"SearchQueryEscaped": searchQueryEscaped,
 	}, "")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {

@@ -77,6 +77,16 @@ func InitDatabase(db *DB) error {
 		log.Fatalf("ensure default settings failed: %v", err)
 	}
 
+	// FTS5 全文搜索表（首次建库或表为空时创建并重建索引）
+	if _, err := db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ` + string(TablePostsFTS) + ` USING fts5(title, content, tokenize='unicode61')`); err != nil {
+		log.Printf("create fts5 table: %v", err)
+	} else {
+		var n int
+		if _ = db.QueryRow(`SELECT COUNT(*) FROM ` + string(TablePostsFTS)).Scan(&n); n == 0 {
+			_ = RebuildPostsFTS(db)
+		}
+	}
+
 	return nil
 }
 
@@ -381,6 +391,7 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 		return 0, err
 	}
 	p.ID = id
+	_ = EnsurePostFTS(db, id, p.Title, p.Content)
 	return id, nil
 }
 
@@ -410,13 +421,17 @@ func GetPostByID(db *DB, id int64) (*Post, error) {
 
 func UpdatePost(db *DB, p *Post) error {
 	p.UpdatedAt = now()
-	return UpdateRecord(db, TablePosts, p.ID, map[string]interface{}{
+	if err := UpdateRecord(db, TablePosts, p.ID, map[string]interface{}{
 		"title":      p.Title,
 		"content":    p.Content,
 		"status":     p.Status,
 		"kind":       p.Kind,
 		"updated_at": p.UpdatedAt,
-	})
+	}); err != nil {
+		return err
+	}
+	_ = EnsurePostFTS(db, p.ID, p.Title, p.Content)
+	return nil
 }
 
 // CountPostsByKind 按类型统计文章数（未删除）
@@ -465,10 +480,17 @@ func ListPublishedPosts(db *DB, pager *types.Pagination) []Post {
 	return res
 }
 
-func ListPosts(db *DB, pager *types.Pagination, kind *PostKind) ([]PostWithTags, error) {
+func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, searchIDs []int64) ([]PostWithTags, error) {
 	var total int
 	var err error
-	if kind == nil {
+	if searchIDs != nil {
+		total = len(searchIDs)
+		if total == 0 {
+			pager.Total = 0
+			pager.Num = 0
+			return []PostWithTags{}, nil
+		}
+	} else if kind == nil {
 		total, err = CountRecords(db, TablePosts, "", nil)
 	} else {
 		total, err = CountPostsByKind(db, *kind)
@@ -486,6 +508,16 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind) ([]PostWithTags,
 	if kind != nil {
 		query += ` AND kind = ?`
 		args = append(args, *kind)
+	}
+	if searchIDs != nil && len(searchIDs) > 0 {
+		placeholders := make([]string, len(searchIDs))
+		for i := range searchIDs {
+			placeholders[i] = "?"
+		}
+		query += ` AND id IN (` + strings.Join(placeholders, ",") + `)`
+		for _, id := range searchIDs {
+			args = append(args, id)
+		}
 	}
 	query += `
 		ORDER BY created_at DESC
@@ -544,11 +576,23 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind) ([]PostWithTags,
 }
 
 func SoftDeletePost(db *DB, id int64) error {
-	return SoftDeleteRecord(db, TablePosts, id)
+	if err := SoftDeleteRecord(db, TablePosts, id); err != nil {
+		return err
+	}
+	_ = RemovePostFTS(db, id)
+	return nil
 }
 
 func RestorePost(db *DB, id int64) error {
-	return RestoreRecord(db, TablePosts, id)
+	if err := RestoreRecord(db, TablePosts, id); err != nil {
+		return err
+	}
+	post, err := GetPostByID(db, id)
+	if err != nil {
+		return err
+	}
+	_ = EnsurePostFTS(db, post.ID, post.Title, post.Content)
+	return nil
 }
 
 func ListDeletedPosts(db *DB) ([]Post, error) {
@@ -913,6 +957,70 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	}
 	return *result.(*Post), nil
 }
+
+func ensurePostsFTSTable(db *DB) {
+	_, _ = db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ` + string(TablePostsFTS) + ` USING fts5(title, content, tokenize='unicode61')`)
+}
+
+func RebuildPostsFTS(db *DB) error {
+	ensurePostsFTSTable(db)
+	if _, err := db.Exec(`DELETE FROM ` + string(TablePostsFTS)); err != nil {
+		return err
+	}
+	rows, err := db.Query(`SELECT id, title, content FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var title, content string
+		if err := rows.Scan(&id, &title, &content); err != nil {
+			return err
+		}
+		if _, err := db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(rowid, title, content) VALUES (?, ?, ?)`, id, title, content); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
+func EnsurePostFTS(db *DB, id int64, title, content string) error {
+	ensurePostsFTSTable(db)
+	_, _ = db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(`+string(TablePostsFTS)+`, rowid, title, content) VALUES ('delete', ?, '', '')`, id)
+	_, err := db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(rowid, title, content) VALUES (?, ?, ?)`, id, title, content)
+	return err
+}
+
+func RemovePostFTS(db *DB, id int64) error {
+	ensurePostsFTSTable(db)
+	_, err := db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(`+string(TablePostsFTS)+`, rowid, title, content) VALUES ('delete', ?, '', '')`, id)
+	return err
+}
+
+func SearchPostIDsByFTS(db *DB, query string) ([]int64, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+	ensurePostsFTSTable(db)
+	query = strings.ReplaceAll(query, `"`, `""`)
+	rows, err := db.Query(`SELECT rowid FROM `+string(TablePostsFTS)+` WHERE `+string(TablePostsFTS)+` MATCH ? ORDER BY rank`, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func AttachTagToPost(db *DB, postID, tagID int64) error {
 	ts := now()
 	// 先尝试恢复已存在的软删除关联
