@@ -293,8 +293,8 @@ var DefaultSettings = []Setting{
 	{Sort: 13, Kind: "Post", Name: "RSS Url", Code: "rss_path", Type: "text", Value: "/atom.xml", Description: "feed 地址"},
 	{Sort: 13, Kind: "Post", Name: "Post Url Pattern", Code: "post_url_pattern", Type: "text", Value: "/{year}/{month}/{day}/{slug}", Description: "文章 URL 模式"},
 	{Sort: 15, Kind: "Post", Name: "Tag Url Pattern", Code: "tag_url_pattern", Type: "text", Value: "/tags/{slug}", Description: "标签 URL 模式"},
-	{Sort: 17, Kind: "Post", Name: "Category Page", Code: "category_page", Type: "text", Value: "/categories", Description: "分类页面地址"},
-	{Sort: 17, Kind: "Post", Name: "Tags Page", Code: "tags_page", Type: "text", Value: "/tags", Description: "标签页面地址"},
+	{Sort: 17, Kind: "Post", Name: "Category Index", Code: "category_index", Type: "text", Value: "/categories", Description: "分类页面地址"},
+	{Sort: 17, Kind: "Post", Name: "Tag Index", Code: "tag_index", Type: "text", Value: "/tags", Description: "标签页面地址"},
 	{Sort: 19, Kind: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
 	{Sort: 21, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 }

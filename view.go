@@ -39,6 +39,12 @@ func NewViewEngine() *html.Engine {
 	engine.AddFunc("add", func(a, b int) int {
 		return a + b
 	})
+	engine.AddFunc("safeHTML", func(s interface{}) template.HTML {
+		if s == nil {
+			return ""
+		}
+		return template.HTML(fmt.Sprint(s))
+	})
 	engine.AddFunc("ellipsis", func(a string) template.HTML {
 		return template.HTML("<span title='" + a + "' class='ellipsis'>" + a + "</span>")
 	})

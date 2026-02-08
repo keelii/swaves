@@ -16,5 +16,8 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 
 	uiGroup.Get(store.GetSetting("base_path"), handler.GetHome)
 	uiGroup.Get(store.GetSetting("rss_path"), handler.GetRSS)
+	uiGroup.Get(store.GetSetting("category_index"), handler.GetCategoryIndex)
+	uiGroup.Get(store.GetSetting("tag_index"), handler.GetTagIndex)
+	uiGroup.Get("/:slug", handler.GetPost)
 
 }

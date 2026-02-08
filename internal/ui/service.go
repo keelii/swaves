@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"log"
 	"swaves/internal/db"
 	"swaves/internal/md"
 	"swaves/internal/types"
@@ -28,4 +29,17 @@ func ListDisplayPosts(dbx *db.DB, pager *types.Pagination) []DisplayPost {
 	}
 
 	return res
+}
+
+func GetPostBySlug(dbx *db.DB, slug string) *DisplayPost {
+	post, err := db.GetPostBySlug(dbx, slug)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return &DisplayPost{
+		Post: post,
+		HTML: md.ParseMarkdown(post.Content, false).HTML,
+	}
 }

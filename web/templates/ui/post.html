@@ -1,0 +1,8 @@
+<article>
+  <header>
+    <h1>{{ .Post.Title }}</h1>
+  </header>
+  <main>
+    {{ .Post.HTML | safeHTML }}
+  </main>
+</article>

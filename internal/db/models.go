@@ -890,6 +890,29 @@ func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
 	return result, nil
 }
 
+func GetPostBySlug(db *DB, slug string) (Post, error) {
+	var p Post
+	result, err := GetRecordByField(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
+		var deletedAt sql.NullInt64
+		if err := row.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrNotFound
+			}
+			return nil, err
+		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+		return &p, nil
+	})
+	if err != nil {
+		return Post{}, err
+	}
+	return *result.(*Post), nil
+}
 func AttachTagToPost(db *DB, postID, tagID int64) error {
 	ts := now()
 	// 先尝试恢复已存在的软删除关联
