@@ -1,0 +1,20 @@
+<header>
+  <h1>{{ settings "site_desc" }}</h1>
+  <nav>
+    {{ range .Pages}}
+    <a href="{{ .PostLink }}">{{ .Title }}</a>
+    {{ end }}
+  </nav>
+</header>
+<ul>
+  {{ range .Articles }}
+  <li>
+    <a href="{{ .PostLink }}">{{ .Title }}</a>
+    <span>{{ relativeTime .CreatedAt }}</span>
+  </li>
+  {{ else }}
+  <li>No posts</li>
+  {{ end }}
+</ul>
+
+{{template "ui/pagination" .}}

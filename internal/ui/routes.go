@@ -16,12 +16,10 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 
 	// RSS
 	uiGroup.Get(store.GetSetting("rss_path"), handler.GetRSS)
-	// Home
-	uiGroup.Get("/", handler.GetHome)
 	// Pages
 	uiGroup.Get("/:pageSlug", handler.GetPage)
 	// Posts
-	uiGroup.Get("/*", handler.GetPost)
+	uiGroup.Get("/*", handler.DispatchHandler)
 	//uiGroup.Get(store.GetSetting("post_url_prefix"), ha)
 	//uiGroup.Get("/posts/:date<regex(\\d{4}/\\d{2}/\\d{2})>", handler.GetDate)
 

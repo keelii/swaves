@@ -4,7 +4,8 @@ import "swaves/internal/db"
 
 type DisplayPost struct {
 	db.Post
-	HTML string
+	PostLink string
+	HTML     string
 }
 
 func (p DisplayPost) Raw() db.Post {

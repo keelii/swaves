@@ -15,16 +15,17 @@ func NewService(db *db.DB) *Service {
 	return &Service{DB: db}
 }
 
-func ListDisplayPosts(dbx *db.DB, pager *types.Pagination) []DisplayPost {
+func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination) []DisplayPost {
 	var res []DisplayPost
 
-	posts := db.ListPublishedPosts(dbx, pager)
+	articles := db.ListPublishedPosts(dbx, kind, pager)
 
-	for _, p := range posts {
+	for _, p := range articles {
 		mdResult := md.ParseMarkdown(p.Content, false)
 		res = append(res, DisplayPost{
-			Post: p,
-			HTML: mdResult.HTML,
+			Post:     p,
+			PostLink: GetPostUrl(p),
+			HTML:     mdResult.HTML,
 		})
 	}
 

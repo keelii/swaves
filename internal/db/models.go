@@ -278,10 +278,16 @@ func UpdateRecord(db *DB, tableName TableName, id int64, data map[string]interfa
 	setPairs := make([]string, 0, len(data))
 	args := make([]interface{}, 0, len(data)+1)
 
-	// 构建 SET 子句
+	// 构建 SET 子句，禁止更新 created_at
 	for k, v := range data {
+		if k == "created_at" {
+			continue
+		}
 		setPairs = append(setPairs, k+"=?")
 		args = append(args, v)
+	}
+	if len(setPairs) == 0 {
+		return errors.New("no data to update after excluding created_at")
 	}
 
 	// 添加 WHERE 条件的参数
@@ -423,7 +429,7 @@ func CountPostsByKind(db *DB, kind PostKind) (int, error) {
 }
 
 // ListPublishedPosts 分页列出已发布文章（用于 RSS 等），返回 []Post
-func ListPublishedPosts(db *DB, pager *types.Pagination) []Post {
+func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 	total, err := CountRecords(db, TablePosts, "deleted_at IS NULL AND status = ?", []interface{}{"published"})
 	if err != nil {
 		log.Println(err)
@@ -433,10 +439,10 @@ func ListPublishedPosts(db *DB, pager *types.Pagination) []Post {
 	rows, err := db.Query(`
 		SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at
 		FROM `+string(TablePosts)+`
-		WHERE deleted_at IS NULL AND status = ?
+		WHERE deleted_at IS NULL AND status = ? AND kind = ?
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
-	`, "published", pager.PageSize, offset)
+	`, "published", kind, pager.PageSize, offset)
 	if err != nil {
 		log.Println(err)
 		return []Post{}
