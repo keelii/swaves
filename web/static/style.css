@@ -540,6 +540,8 @@ input[type="range"] {
 .tag-remove {
   cursor: pointer;
   color: var(--nc-tx-g-9);
+  display: inline-flex;
+  align-items: center;
 }
 .tag-remove:hover {
   color: var(--nc-tx-1);

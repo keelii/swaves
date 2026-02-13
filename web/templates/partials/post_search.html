@@ -9,8 +9,12 @@
   var form = document.getElementById('posts-search-form');
   var input = document.getElementById('posts-search-input');
   if (!form || !input) return;
-  input.addEventListener('input', function(){
-    if (this.value.trim() === '') form.submit();
+  input.addEventListener('input', function(e){
+    if (e instanceof InputEvent) {
+      // console.log("yes")
+    } else {
+      form.submit();
+    }
   });
 })();
 </script>

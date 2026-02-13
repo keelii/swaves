@@ -12,12 +12,12 @@
     </div>
     <div class="tab-nav-right">
         {{ if or .FilterTagName .FilterCategoryName }}
-          <p class="ivalign gap-1" style="margin-bottom: 0.5em; font-size: 0.9em; flex-wrap: wrap;">
-            {{ $tag := concat "标签 " .FilterTagName }}
-            {{ $cat := concat "分类 " .FilterCategoryName }}
-            {{ if .FilterTagName }}{{ template "partials/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}
-            {{ if .FilterCategoryName }}{{ template "partials/tag_item" dict "Label" $cat "RemoveHref" .FilterCategoryRemoveURL }}{{ end }}
-          </p>
+        <div class="ivalign gap-1" style="">
+          {{ $tag := concat "标签 " .FilterTagName }}
+          {{ $cat := concat "分类 " .FilterCategoryName }}
+          {{ if .FilterTagName }}{{ template "partials/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}
+          {{ if .FilterCategoryName }}{{ template "partials/tag_item" dict "Label" $cat "RemoveHref" .FilterCategoryRemoveURL }}{{ end }}
+        </div>
         {{ end }}
         {{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery "FilterTagIDStr" .FilterTagIDStr "FilterCategoryIDStr" .FilterCategoryIDStr }}
     </div>

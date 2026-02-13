@@ -505,7 +505,7 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 	}
 	defer rows.Close()
 
-	var res []PostWithTags
+	var posts []*Post
 	for rows.Next() {
 		var p Post
 		var deletedAt sql.NullInt64
@@ -525,15 +525,26 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
 		}
-		tags, err := GetPostTags(db, p.ID)
-		if err != nil {
-			return nil, err
+		posts = append(posts, &p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	postIDs := make([]int64, len(posts))
+	for i, p := range posts {
+		postIDs[i] = p.ID
+	}
+	tagsByPost, _ := getPostTagsByPostIDs(db, postIDs)
+	categoriesByPost, _ := getPostCategoriesByPostIDs(db, postIDs)
+
+	res := make([]PostWithTags, 0, len(posts))
+	for _, p := range posts {
+		tags := tagsByPost[p.ID]
+		if tags == nil {
+			tags = []Tag{}
 		}
-		category, err := GetPostCategory(db, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, PostWithTags{Post: &p, Tags: tags, Category: category})
+		res = append(res, PostWithTags{Post: p, Tags: tags, Category: categoriesByPost[p.ID]})
 	}
 
 	pager.Total = total
@@ -838,6 +849,97 @@ func GetPostTags(db *DB, postID int64) ([]Tag, error) {
 	return tags, nil
 }
 
+// getPostTagsByPostIDs 批量查询多篇文章的标签，返回 postID -> []Tag，避免 N+1
+func getPostTagsByPostIDs(db *DB, postIDs []int64) (map[int64][]Tag, error) {
+	out := make(map[int64][]Tag)
+	if len(postIDs) == 0 {
+		return out, nil
+	}
+	placeholders := make([]string, len(postIDs))
+	args := make([]interface{}, len(postIDs))
+	for i, id := range postIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	query := `
+		SELECT pt.post_id, t.id, t.name, t.slug, t.created_at, t.updated_at, t.deleted_at
+		FROM ` + string(TableTags) + ` t
+		INNER JOIN ` + string(TablePostTags) + ` pt ON t.id = pt.tag_id
+		WHERE pt.post_id IN (` + strings.Join(placeholders, ",") + `) AND pt.deleted_at IS NULL AND t.deleted_at IS NULL
+		ORDER BY pt.post_id, t.name`
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID int64
+		var t Tag
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&postID,
+			&t.ID, &t.Name, &t.Slug,
+			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		out[postID] = append(out[postID], t)
+	}
+	return out, rows.Err()
+}
+
+// getPostCategoriesByPostIDs 批量查询多篇文章的分类，返回 postID -> *Category（每篇最多一个），避免 N+1
+func getPostCategoriesByPostIDs(db *DB, postIDs []int64) (map[int64]*Category, error) {
+	out := make(map[int64]*Category)
+	if len(postIDs) == 0 {
+		return out, nil
+	}
+	placeholders := make([]string, len(postIDs))
+	args := make([]interface{}, len(postIDs))
+	for i, id := range postIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	query := `
+		SELECT pc.post_id, c.id, c.parent_id, c.name, c.slug, c.description, c.sort, c.created_at, c.updated_at, c.deleted_at
+		FROM ` + string(TableCategories) + ` c
+		INNER JOIN ` + string(TablePostCategories) + ` pc ON c.id = pc.category_id
+		WHERE pc.post_id IN (` + strings.Join(placeholders, ",") + `) AND pc.deleted_at IS NULL AND c.deleted_at IS NULL
+		ORDER BY pc.post_id, c.name`
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID int64
+		var c Category
+		var parentID sql.NullInt64
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&postID,
+			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
+			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, err
+		}
+		if parentID.Valid {
+			c.ParentID = parentID.Int64
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Int64
+		}
+		// 每篇只保留第一个（与 GetPostCategory LIMIT 1 一致）
+		if _, ok := out[postID]; !ok {
+			out[postID] = &c
+		}
+	}
+	return out, rows.Err()
+}
+
 // CountPostsByTags 批量统计标签的文章数量
 // 返回 map[tagID]count，只统计未删除的关联和未删除的文章
 func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
@@ -951,17 +1053,20 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		(CASE WHEN title   LIKE '%' || ? || '%' ESCAPE '\' THEN 10 ELSE 0 END) +
 		(CASE WHEN content LIKE '%' || ? || '%' ESCAPE '\' THEN 1  ELSE 0 END)
 	) AS score`
-	mainQuery := `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
-		FROM ` + string(TablePosts) + `
-		WHERE deleted_at IS NULL AND ` + likeCond + filterClause
-	mainArgs := []interface{}{pattern, pattern, pattern, pattern}
-	mainArgs = append(mainArgs, filterArgs...)
+	var mainQuery string
+	var mainArgs []interface{}
 	if kind != nil {
 		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
 			FROM ` + string(TablePosts) + `
 			WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond + filterClause
-		mainArgs = append([]interface{}{pattern, pattern, pattern, *kind, pattern, pattern}, filterArgs...)
+		mainArgs = []interface{}{pattern, pattern, *kind, pattern, pattern}
+	} else {
+		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
+			FROM ` + string(TablePosts) + `
+			WHERE deleted_at IS NULL AND ` + likeCond + filterClause
+		mainArgs = []interface{}{pattern, pattern, pattern, pattern}
 	}
+	mainArgs = append(mainArgs, filterArgs...)
 	mainQuery += ` ORDER BY score DESC, created_at DESC LIMIT ? OFFSET ?`
 	mainArgs = append(mainArgs, pager.PageSize, offset)
 
@@ -971,7 +1076,7 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 	}
 	defer rows.Close()
 
-	var res []PostWithTags
+	var posts []*Post
 	for rows.Next() {
 		var p Post
 		var deletedAt sql.NullInt64
@@ -985,20 +1090,31 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
 		}
-		tags, err := GetPostTags(db, p.ID)
-		if err != nil {
-			return nil, err
+		posts = append(posts, &p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	postIDs := make([]int64, len(posts))
+	for i, p := range posts {
+		postIDs[i] = p.ID
+	}
+	tagsByPost, _ := getPostTagsByPostIDs(db, postIDs)
+	categoriesByPost, _ := getPostCategoriesByPostIDs(db, postIDs)
+
+	res := make([]PostWithTags, 0, len(posts))
+	for _, p := range posts {
+		tags := tagsByPost[p.ID]
+		if tags == nil {
+			tags = []Tag{}
 		}
-		category, err := GetPostCategory(db, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, PostWithTags{Post: &p, Tags: tags, Category: category})
+		res = append(res, PostWithTags{Post: p, Tags: tags, Category: categoriesByPost[p.ID]})
 	}
 
 	pager.Total = total
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
-	return res, rows.Err()
+	return res, nil
 }
 
 func AttachTagToPost(db *DB, postID, tagID int64) error {
