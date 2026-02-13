@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"fmt"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
@@ -36,8 +37,28 @@ func RenderUIView(c *fiber.Ctx, view string, data fiber.Map, layout string) erro
 	return c.Render(view, data, layout)
 }
 
+func (h Handler) GetDate(ctx *fiber.Ctx) error {
+	dt := ctx.Params("dob")
+	fmt.Println("===")
+	fmt.Println(dt)
+	fmt.Println("===")
+	return ctx.Send([]byte("ui home"))
+}
 func (h Handler) GetHome(ctx *fiber.Ctx) error {
 	return ctx.Send([]byte("ui home"))
+}
+func (h Handler) GetPage(ctx *fiber.Ctx) error {
+	pageSlug := ctx.Params("pageSlug")
+	display, err := GetPage(h.Model, pageSlug)
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			return ctx.Status(fiber.StatusNotFound).SendString("page not found")
+		}
+		return err
+	}
+	return RenderUIView(ctx, "ui/post", fiber.Map{
+		"Post": display,
+	}, "")
 }
 
 func (h Handler) GetRSS(ctx *fiber.Ctx) error {
@@ -58,12 +79,12 @@ func (h Handler) GetTagIndex(ctx *fiber.Ctx) error {
 }
 
 func (h Handler) GetPost(ctx *fiber.Ctx) error {
-	slug := ctx.Params("slug")
-	post := GetPostBySlug(h.Model, slug)
-
-	return RenderUIView(ctx, "ui/post", fiber.Map{
-		"Post": post,
-	}, "")
+	ret := MatchRouter(PostPathToRegExp(), ctx.Path())
+	fmt.Println("path:", ret)
+	return ctx.Send([]byte("ui home"))
+	//return RenderUIView(ctx, "ui/post", fiber.Map{
+	//	"Post": post,
+	//}, "")
 }
 
 func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {

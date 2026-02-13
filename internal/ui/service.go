@@ -43,3 +43,15 @@ func GetPostBySlug(dbx *db.DB, slug string) *DisplayPost {
 		HTML: md.ParseMarkdown(post.Content, false).HTML,
 	}
 }
+
+// GetPage 根据 slug 查询 type=page 的页面，返回渲染用 DisplayPost；未找到返回 nil, ErrNotFound
+func GetPage(dbx *db.DB, slug string) (*DisplayPost, error) {
+	post, err := db.GetPage(dbx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return &DisplayPost{
+		Post: *post,
+		HTML: md.ParseMarkdown(post.Content, false).HTML,
+	}, nil
+}

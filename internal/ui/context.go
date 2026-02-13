@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"swaves/internal/db"
 	"swaves/internal/store"
@@ -33,12 +34,34 @@ func GetSiteUrl(c *fiber.Ctx) string {
 func GetPageUrl(c *fiber.Ctx, post db.Post) string {
 	return GetPagePath(c) + "/" + post.Slug
 }
+
+func PostPathToRegExp() string {
+	postPath := store.GetSetting("post_url_prefix")
+	postPath = strings.ReplaceAll(postPath, "{year}", `\d{4}`)
+	postPath = strings.ReplaceAll(postPath, "{month}", `\d{2}`)
+	postPath = strings.ReplaceAll(postPath, "{day}", `\d{2}`)
+	return "^" + postPath + "$"
+}
+
+func MatchRouter(src, dst string) bool {
+	// 加上开始和结束锚点，确保完全匹配
+	pattern := "^" + src + "$"
+
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		// 正则非法直接返回 false
+		return false
+	}
+
+	return re.MatchString(dst)
+}
+
 func GetArticleUrl(c *fiber.Ctx, post db.Post) string {
 	y := time.Unix(post.CreatedAt, 0).Format("2006")
 	m := time.Unix(post.CreatedAt, 0).Format("01")
 	d := time.Unix(post.CreatedAt, 0).Format("02")
 
-	postPath := store.GetSetting("post_url_pattern")
+	postPath := store.GetSetting("post_url_prefix")
 	postPath = strings.ReplaceAll(postPath, "{year}", y)
 	postPath = strings.ReplaceAll(postPath, "{month}", m)
 	postPath = strings.ReplaceAll(postPath, "{day}", d)

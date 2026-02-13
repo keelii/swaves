@@ -12,12 +12,19 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 		NewService(gStore.Model),
 	)
 
-	uiGroup := app.Group("/ui")
+	uiGroup := app.Group(store.GetSetting("base_path"))
 
-	uiGroup.Get(store.GetSetting("base_path"), handler.GetHome)
+	// RSS
 	uiGroup.Get(store.GetSetting("rss_path"), handler.GetRSS)
+	// Home
+	uiGroup.Get("/", handler.GetHome)
+	// Pages
+	uiGroup.Get("/:pageSlug", handler.GetPage)
+	// Posts
+	uiGroup.Get("/*", handler.GetPost)
+	//uiGroup.Get(store.GetSetting("post_url_prefix"), ha)
+	//uiGroup.Get("/posts/:date<regex(\\d{4}/\\d{2}/\\d{2})>", handler.GetDate)
+
 	uiGroup.Get(store.GetSetting("category_index"), handler.GetCategoryIndex)
 	uiGroup.Get(store.GetSetting("tag_index"), handler.GetTagIndex)
-	uiGroup.Get("/:slug", handler.GetPost)
-
 }
