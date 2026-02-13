@@ -1019,18 +1019,18 @@ func likePattern(q string) string {
 	return strings.NewReplacer(`%`, `\%`, `_`, `\_`).Replace(strings.TrimSpace(q))
 }
 
-// ListPostsBySearch 后台文章搜索：单条 SQL，score = title(10) + content(1)，ORDER BY score DESC, created_at DESC；支持 tag/category 过滤
+// ListPostsBySearch 后台文章搜索：单条 SQL，优先级 title(10) > slug(5) > content(1)，ORDER BY score DESC, created_at DESC；支持 tag/category 过滤
 func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string, tagID, categoryID *int64) ([]PostWithTags, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
 		return []PostWithTags{}, nil
 	}
 	pattern := likePattern(q)
-	likeCond := `(title LIKE '%' || ? || '%' ESCAPE '\' OR content LIKE '%' || ? || '%' ESCAPE '\')`
+	likeCond := `(title LIKE '%' || ? || '%' ESCAPE '\' OR slug LIKE '%' || ? || '%' ESCAPE '\' OR content LIKE '%' || ? || '%' ESCAPE '\')`
 	filterClause, filterArgs := listPostsFilterClause(tagID, categoryID)
 
 	countQuery := `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND ` + likeCond + filterClause
-	countArgs := []interface{}{pattern, pattern}
+	countArgs := []interface{}{pattern, pattern, pattern}
 	countArgs = append(countArgs, filterArgs...)
 	if kind != nil {
 		countQuery = `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond + filterClause
@@ -1047,6 +1047,7 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 	offset := (pager.Page - 1) * pager.PageSize
 	scoreExpr := `(
 		(CASE WHEN title   LIKE '%' || ? || '%' ESCAPE '\' THEN 10 ELSE 0 END) +
+		(CASE WHEN slug    LIKE '%' || ? || '%' ESCAPE '\' THEN 5  ELSE 0 END) +
 		(CASE WHEN content LIKE '%' || ? || '%' ESCAPE '\' THEN 1  ELSE 0 END)
 	) AS score`
 	var mainQuery string
@@ -1055,12 +1056,12 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
 			FROM ` + string(TablePosts) + `
 			WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond + filterClause
-		mainArgs = []interface{}{pattern, pattern, *kind, pattern, pattern}
+		mainArgs = []interface{}{pattern, pattern, pattern, *kind, pattern, pattern, pattern}
 	} else {
 		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
 			FROM ` + string(TablePosts) + `
 			WHERE deleted_at IS NULL AND ` + likeCond + filterClause
-		mainArgs = []interface{}{pattern, pattern, pattern, pattern}
+		mainArgs = []interface{}{pattern, pattern, pattern, pattern, pattern, pattern}
 	}
 	mainArgs = append(mainArgs, filterArgs...)
 	mainQuery += ` ORDER BY score DESC, created_at DESC LIMIT ? OFFSET ?`
