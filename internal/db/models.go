@@ -1023,8 +1023,6 @@ func likePattern(q string) string {
 func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string, tagID, categoryID *int64) ([]PostWithTags, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
-		pager.Total = 0
-		pager.Num = 0
 		return []PostWithTags{}, nil
 	}
 	pattern := likePattern(q)
@@ -1043,8 +1041,6 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		return nil, err
 	}
 	if total == 0 {
-		pager.Total = 0
-		pager.Num = 0
 		return []PostWithTags{}, nil
 	}
 
