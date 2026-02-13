@@ -45,6 +45,12 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 		Func: DatabaseBackupJob,
 	}) // 注册数据库备份任务
 
+	// 过期加密文章自动删除（用户可在任务管理中创建，建议 schedule 如 @daily）
+	RegisterJob("clear_encrypted_posts", JobItem{
+		Kind: db.TaskInternal,
+		Func: DeleteExpiredEncryptedPostsJob,
+	})
+
 	tasks, err := db.ListTasks(gStore.Model)
 	if err != nil {
 		log.Printf("[task] fetch tasks failed: %v", err)

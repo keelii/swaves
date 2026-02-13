@@ -119,6 +119,9 @@ const InitialSQL = `
 	DELETE FROM ` + TableTasks + ` WHERE code = 'database_backup';
     INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
 		('database_backup', '数据备份', '定备份置数据库', '@daily', 1, 0, strftime('%s','now'), strftime('%s','now'));
+	DELETE FROM ` + TableTasks + ` WHERE code = 'clear_encrypted_posts';
+    INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
+		('clear_encrypted_posts', '清理过期加密文章', '定时清理加密文章', '@every 1m', 1, 0, strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

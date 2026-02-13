@@ -26,7 +26,7 @@ func HelloJob1() error {
 func DatabaseBackupJob(reg *Registry) (string, error) {
 	err := util.EnsureDir(reg.Config.BackupDir, 0755)
 	if err != nil {
-		log.Fatalf("无法创建备份目录: %v", err)
+		log.Printf("无法创建备份目录: %v\n", err)
 	}
 
 	if reg == nil || reg.DB == nil {
@@ -47,4 +47,21 @@ func DatabaseBackupJob(reg *Registry) (string, error) {
 	}
 
 	return fmt.Sprintf("%v", result), nil
+}
+
+// DeleteExpiredEncryptedPostsJob 软删除已过期的加密文章（expires_at < 当前时间）
+func DeleteExpiredEncryptedPostsJob(reg *Registry) (string, error) {
+	if reg == nil || reg.DB == nil {
+		return "", errors.New("reg.DB is nil")
+	}
+	nowUnix := time.Now().Unix()
+	n, err := db.SoftDeleteExpiredEncryptedPosts(reg.DB, nowUnix)
+	if err != nil {
+		return "", err
+	}
+	if n > 0 {
+		return fmt.Sprintf("已软删除 %d 条过期加密文章\n", n), nil
+	}
+
+	return "没有发现需要清理的文章\n", nil
 }

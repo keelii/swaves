@@ -660,6 +660,19 @@ func RestoreEncryptedPost(db *DB, id int64) error {
 	return RestoreRecord(db, TableEncryptedPosts, id)
 }
 
+// SoftDeleteExpiredEncryptedPosts 软删除所有已过期的加密文章（expires_at IS NOT NULL AND expires_at < beforeUnix），返回删除条数
+func SoftDeleteExpiredEncryptedPosts(db *DB, beforeUnix int64) (int64, error) {
+	ts := now()
+	res, err := db.Exec(
+		`UPDATE `+string(TableEncryptedPosts)+` SET deleted_at=?, updated_at=? WHERE expires_at IS NOT NULL AND expires_at < ? AND deleted_at IS NULL`,
+		ts, ts, beforeUnix,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
 	results, err := ListDeletedRecords(db, TableEncryptedPosts, "id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var p EncryptedPost

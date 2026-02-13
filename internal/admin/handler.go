@@ -614,18 +614,23 @@ func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
-	expiresAtStr := c.FormValue("expires_at")
+	expiresAtStr := strings.TrimSpace(c.FormValue("expires_at"))
 	// 如果提供了 datetime-local 格式，转换为 Unix timestamp
 	if expiresAtStr != "" {
-		// 尝试解析为 datetime-local 格式 (2006-01-02T15:04)
-		if t, err := time.Parse("2006-01-02T15:04", expiresAtStr); err == nil {
-			expiresAtStr = fmt.Sprintf("%d", t.Unix())
+		var unix int64
+		if t, err := time.ParseInLocation("2006-01-02T15:04", expiresAtStr, time.Local); err == nil {
+			unix = t.Unix()
+		} else if t, err := time.ParseInLocation("2006-01-02T15:04:05", expiresAtStr, time.Local); err == nil {
+			unix = t.Unix()
+		} else if ts, err := strconv.ParseInt(expiresAtStr, 10, 64); err == nil {
+			unix = ts
 		} else {
-			// 如果解析失败，尝试作为 Unix timestamp 解析
-			if _, err := strconv.ParseInt(expiresAtStr, 10, 64); err != nil {
-				// 如果既不是 datetime-local 也不是 timestamp，清空
-				expiresAtStr = ""
-			}
+			unix = 0
+		}
+		if unix > 0 {
+			expiresAtStr = strconv.FormatInt(unix, 10)
+		} else {
+			expiresAtStr = ""
 		}
 	}
 
@@ -666,18 +671,22 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	expiresAtStr := c.FormValue("expires_at")
-	// 如果提供了 datetime-local 格式，转换为 Unix timestamp
+	expiresAtStr := strings.TrimSpace(c.FormValue("expires_at"))
 	if expiresAtStr != "" {
-		// 尝试解析为 datetime-local 格式 (2006-01-02T15:04)
-		if t, err := time.Parse("2006-01-02T15:04", expiresAtStr); err == nil {
-			expiresAtStr = fmt.Sprintf("%d", t.Unix())
+		var unix int64
+		if t, err := time.ParseInLocation("2006-01-02T15:04", expiresAtStr, time.Local); err == nil {
+			unix = t.Unix()
+		} else if t, err := time.ParseInLocation("2006-01-02T15:04:05", expiresAtStr, time.Local); err == nil {
+			unix = t.Unix()
+		} else if ts, err := strconv.ParseInt(expiresAtStr, 10, 64); err == nil {
+			unix = ts
 		} else {
-			// 如果解析失败，尝试作为 Unix timestamp 解析
-			if _, err := strconv.ParseInt(expiresAtStr, 10, 64); err != nil {
-				// 如果既不是 datetime-local 也不是 timestamp，清空
-				expiresAtStr = ""
-			}
+			unix = 0
+		}
+		if unix > 0 {
+			expiresAtStr = strconv.FormatInt(unix, 10)
+		} else {
+			expiresAtStr = ""
 		}
 	}
 
