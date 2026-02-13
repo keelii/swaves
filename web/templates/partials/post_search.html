@@ -1,0 +1,14 @@
+<form method="get" action="/admin/posts" class="valign" id="posts-search-form">
+  <input type="hidden" name="kind" value="{{ or .KindQuery "0" }}">
+  <input type="search" name="q" value="{{ or .SearchQuery "" }}" placeholder="搜索标题、内容…（回车搜索）" style="max-width: 20em;" id="posts-search-input">
+</form>
+<script>
+(function(){
+  var form = document.getElementById('posts-search-form');
+  var input = document.getElementById('posts-search-input');
+  if (!form || !input) return;
+  input.addEventListener('input', function(){
+    if (this.value.trim() === '') form.submit();
+  });
+})();
+</script>

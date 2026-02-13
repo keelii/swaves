@@ -72,16 +72,6 @@ func InitDatabase(db *DB) error {
 		log.Fatalf("ensure default settings failed: %v", err)
 	}
 
-	// FTS5 全文搜索表（首次建库或表为空时创建并重建索引）
-	if _, err := db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ` + string(TablePostsFTS) + ` USING fts5(title, content, tokenize='unicode61')`); err != nil {
-		log.Printf("create fts5 table: %v", err)
-	} else {
-		var n int
-		if _ = db.QueryRow(`SELECT COUNT(*) FROM ` + string(TablePostsFTS)).Scan(&n); n == 0 {
-			_ = RebuildPostsFTS(db)
-		}
-	}
-
 	return nil
 }
 
@@ -386,7 +376,6 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 		return 0, err
 	}
 	p.ID = id
-	_ = EnsurePostFTS(db, id, p.Title, p.Content)
 	return id, nil
 }
 
@@ -425,7 +414,6 @@ func UpdatePost(db *DB, p *Post) error {
 	}); err != nil {
 		return err
 	}
-	_ = EnsurePostFTS(db, p.ID, p.Title, p.Content)
 	return nil
 }
 
@@ -571,23 +559,11 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, searchIDs []int6
 }
 
 func SoftDeletePost(db *DB, id int64) error {
-	if err := SoftDeleteRecord(db, TablePosts, id); err != nil {
-		return err
-	}
-	_ = RemovePostFTS(db, id)
-	return nil
+	return SoftDeleteRecord(db, TablePosts, id)
 }
 
 func RestorePost(db *DB, id int64) error {
-	if err := RestoreRecord(db, TablePosts, id); err != nil {
-		return err
-	}
-	post, err := GetPostByID(db, id)
-	if err != nil {
-		return err
-	}
-	_ = EnsurePostFTS(db, post.ID, post.Title, post.Content)
-	return nil
+	return RestoreRecord(db, TablePosts, id)
 }
 
 func ListDeletedPosts(db *DB) ([]Post, error) {
@@ -953,54 +929,18 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	return *result.(*Post), nil
 }
 
-func ensurePostsFTSTable(db *DB) {
-	_, _ = db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ` + string(TablePostsFTS) + ` USING fts5(title, content, tokenize='unicode61')`)
-}
-
-func RebuildPostsFTS(db *DB) error {
-	ensurePostsFTSTable(db)
-	if _, err := db.Exec(`DELETE FROM ` + string(TablePostsFTS)); err != nil {
-		return err
-	}
-	rows, err := db.Query(`SELECT id, title, content FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id int64
-		var title, content string
-		if err := rows.Scan(&id, &title, &content); err != nil {
-			return err
-		}
-		if _, err := db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(rowid, title, content) VALUES (?, ?, ?)`, id, title, content); err != nil {
-			return err
-		}
-	}
-	return rows.Err()
-}
-
-func EnsurePostFTS(db *DB, id int64, title, content string) error {
-	ensurePostsFTSTable(db)
-	_, _ = db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(`+string(TablePostsFTS)+`, rowid, title, content) VALUES ('delete', ?, '', '')`, id)
-	_, err := db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(rowid, title, content) VALUES (?, ?, ?)`, id, title, content)
-	return err
-}
-
-func RemovePostFTS(db *DB, id int64) error {
-	ensurePostsFTSTable(db)
-	_, err := db.Exec(`INSERT INTO `+string(TablePostsFTS)+`(`+string(TablePostsFTS)+`, rowid, title, content) VALUES ('delete', ?, '', '')`, id)
-	return err
-}
-
-func SearchPostIDsByFTS(db *DB, query string) ([]int64, error) {
-	query = strings.TrimSpace(query)
-	if query == "" {
+// SearchPostIDsByLIKE 后台文章搜索：按 title/content LIKE 匹配未删除文章 ID
+func SearchPostIDsByLIKE(db *DB, q string) ([]int64, error) {
+	q = strings.TrimSpace(q)
+	if q == "" {
 		return nil, nil
 	}
-	ensurePostsFTSTable(db)
-	query = strings.ReplaceAll(query, `"`, `""`)
-	rows, err := db.Query(`SELECT rowid FROM `+string(TablePostsFTS)+` WHERE `+string(TablePostsFTS)+` MATCH ? ORDER BY rank`, query)
+	escape := strings.NewReplacer(`%`, `\%`, `_`, `\_`)
+	pattern := "%" + escape.Replace(q) + "%"
+	rows, err := db.Query(
+		`SELECT id FROM `+string(TablePosts)+` WHERE deleted_at IS NULL AND (title LIKE ? ESCAPE '\' OR content LIKE ? ESCAPE '\')`,
+		pattern, pattern,
+	)
 	if err != nil {
 		return nil, err
 	}

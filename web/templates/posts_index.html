@@ -14,14 +14,7 @@
   </div>
 </div>
 
-<form method="get" action="/admin/posts" class="salign gap-1" style="margin-bottom: 1em;">
-  <input type="hidden" name="kind" value="{{ or .KindQuery "0" }}">
-  <input type="search" name="q" value="{{ or .SearchQuery "" }}" placeholder="搜索标题、内容…" style="max-width: 20em;">
-  <button type="submit">搜索</button>
-  {{ if .SearchQuery }}
-  <a href="/admin/posts?kind={{ or .KindQuery "0" }}">清除</a>
-  {{ end }}
-</form>
+{{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery }}
 
 <table>
   <colgroup>

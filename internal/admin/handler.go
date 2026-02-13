@@ -120,7 +120,7 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	searchQuery := c.Query("q")
 	var searchIDs []int64
 	if searchQuery != "" {
-		ids, err := db.SearchPostIDsByFTS(h.Model, searchQuery)
+		ids, err := db.SearchPostIDsByLIKE(h.Model, searchQuery)
 		if err != nil {
 			return err
 		}
