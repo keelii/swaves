@@ -1,6 +1,6 @@
-{{/* 通用错误提示
+{{/* 通用错误提示，传入当前上下文（需含 .Error）
 使用方式: {{ template "partials/error_message" . }}
 */}}
 {{ if .Error }}
-<p style="color: red;">{{ .Error }}</p>
+<p class="error-message">{{ .Error }}</p>
 {{ end }}

@@ -1,7 +1,3 @@
-{{ if .Error }}
-<p style="color: orange;">Warning: {{ .Error }}</p>
-{{ end }}
-
 <form id="form" method="post" action="/admin/import/preview">
 
   <input type="hidden" name="items_count" value="{{ len .Items }}">

@@ -14,6 +14,7 @@ import (
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 	"swaves/internal/types"
+	"swaves/util"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -289,9 +290,21 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		kind = db.PostKindPage
 	}
 
+	slug := strings.TrimSpace(c.FormValue("slug"))
+	if !util.IsSlug(slug) {
+		tags, _ := GetAllTags(h.Model)
+		categories, _ := GetAllCategoriesFlat(h.Model)
+		return RenderAdminView(c, "posts_new", fiber.Map{
+			"Title":      "New Post",
+			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+			"Tags":       tags,
+			"Categories": categories,
+		}, "")
+	}
+
 	in := CreatePostInput{
 		Title:      c.FormValue("title"),
-		Slug:       c.FormValue("slug"),
+		Slug:       slug,
 		Content:    c.FormValue("content"),
 		Status:     c.FormValue("status"),
 		Kind:       kind,
@@ -458,9 +471,16 @@ func (h *Handler) GetTagNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
+	slug := strings.TrimSpace(c.FormValue("slug"))
+	if !util.IsSlug(slug) {
+		return RenderAdminView(c, "tags_new", fiber.Map{
+			"Title": "New Tag",
+			"Error": "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+		}, "")
+	}
 	in := CreateTagInput{
 		Name: c.FormValue("name"),
-		Slug: c.FormValue("slug"),
+		Slug: slug,
 	}
 
 	if err := CreateTagService(h.Model, in); err != nil {
@@ -492,10 +512,18 @@ func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
-
+	slug := strings.TrimSpace(c.FormValue("slug"))
+	if !util.IsSlug(slug) {
+		tag, _ := GetTagForEdit(h.Model, id)
+		return RenderAdminView(c, "tags_edit", fiber.Map{
+			"Title": "Edit Tag",
+			"Tag":   tag,
+			"Error": "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+		}, "")
+	}
 	in := UpdateTagInput{
 		Name: c.FormValue("name"),
-		Slug: c.FormValue("slug"),
+		Slug: slug,
 	}
 
 	if err := UpdateTagService(h.Model, id, in); err != nil {
@@ -841,10 +869,20 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	slug := strings.TrimSpace(c.FormValue("slug"))
+	if !util.IsSlug(slug) {
+		all, _ := GetAllCategoriesFlat(h.Model)
+		return RenderAdminView(c, "categories_new", fiber.Map{
+			"Title":      "New Category",
+			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+			"Categories": all,
+		}, "")
+	}
+
 	in := CreateCategoryInput{
 		ParentID:    parentID,
 		Name:        c.FormValue("name"),
-		Slug:        c.FormValue("slug"),
+		Slug:        slug,
 		Description: c.FormValue("description"),
 		Sort:        sort,
 	}
@@ -942,10 +980,22 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	slug := strings.TrimSpace(c.FormValue("slug"))
+	if !util.IsSlug(slug) {
+		category, _ := GetCategoryForEdit(h.Model, id)
+		all, _ := GetAllCategoriesFlat(h.Model)
+		return RenderAdminView(c, "categories_edit", fiber.Map{
+			"Title":      "Edit Category",
+			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+			"Category":   category,
+			"Categories": all,
+		}, "")
+	}
+
 	in := UpdateCategoryInput{
 		ParentID:    parentID,
 		Name:        c.FormValue("name"),
-		Slug:        c.FormValue("slug"),
+		Slug:        slug,
 		Description: c.FormValue("description"),
 		Sort:        sort,
 	}
@@ -1882,6 +1932,17 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 			"Items": items,
 			"Error": "No items to import",
 		}, "")
+	}
+
+	// 校验每条记录的 slug
+	for _, item := range items {
+		if !util.IsSlug(strings.TrimSpace(item.Slug)) {
+			return RenderAdminView(c, "import_preview", fiber.Map{
+				"Title": "Import Preview",
+				"Items": items,
+				"Error": fmt.Sprintf("第 %d 条记录的 slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头", item.Index+1),
+			}, "")
+		}
 	}
 
 	// 调用 service 进行导入

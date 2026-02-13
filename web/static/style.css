@@ -16,6 +16,11 @@ mark {
   padding: 0;
 }
 
+.error-message {
+  color: #c00;
+  margin: 0.5em 0;
+}
+
 .admin-container {
     display: flex;
     flex-direction: column;
@@ -482,7 +487,6 @@ input[type="range"] {
   background: white;
   border-bottom: 1px solid white;
   margin-bottom: -1px;
-  z-index: 1;
 }
 .tab-card .tab-content {
   height: 0;

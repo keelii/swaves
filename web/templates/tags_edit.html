@@ -1,5 +1,3 @@
-{{ template "partials/error_message" . }}
-
 <form id="form" method="post" action="/admin/tags/{{ .Tag.ID }}/edit">
 
   {{ template "partials/form_field_text" dict "Label" "Name" "Name" "name" "Value" .Tag.Name "Required" true "Placeholder" "标签名称" }}

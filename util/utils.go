@@ -3,6 +3,8 @@ package util
 import (
 	"fmt"
 	"os"
+
+	"github.com/gosimple/slug"
 )
 
 func EnsureDir(dirPath string, perm os.FileMode) error {
@@ -27,4 +29,8 @@ func EnsureDir(dirPath string, perm os.FileMode) error {
 
 	// 其他错误（权限问题等）
 	return fmt.Errorf("检查目录失败: %w", err)
+}
+
+func IsSlug(str string) bool {
+	return slug.IsSlug(str)
 }
