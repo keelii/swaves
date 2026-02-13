@@ -84,4 +84,15 @@
       </li>
     </ul>
   </li>
+  <li>
+    <div class="menu-item expanded" onclick="toggleSubmenu(this)">
+      <span class="menu-text">开发调试</span>
+      <span class="menu-arrow">▸</span>
+    </div>
+    <ul class="submenu-list show">
+      <li class="submenu-item{{ if eq .UrlPath "/admin/dev/ui-components" }} active{{ end }}">
+        <a href="/admin/dev/ui-components">UI组件</a>
+      </li>
+    </ul>
+  </li>
 </ul>

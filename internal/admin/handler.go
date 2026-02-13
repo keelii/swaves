@@ -1836,6 +1836,12 @@ func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
+func (h *Handler) GetDevUIComponentsHandler(c *fiber.Ctx) error {
+	return RenderAdminView(c, "dev_ui_components", fiber.Map{
+		"Title": "UI组件",
+	}, "")
+}
+
 // Export
 func (h *Handler) GetExportHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "export", fiber.Map{

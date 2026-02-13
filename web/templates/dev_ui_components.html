@@ -1,0 +1,88 @@
+<h2 style="margin-bottom: 1em;">UI 组件展示</h2>
+
+<section style="margin-bottom: 2em;">
+  <h3>.tab-card（默认）</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">带圆角卡片式 Tab，当前项白底+下边线。</p>
+  <div class="tab-card">
+    <div class="tab-nav">
+      <div class="tab-item active">
+        <a href="#">文章 (12)</a>
+      </div>
+      <div class="tab-item">
+        <a href="#">页面 (3)</a>
+      </div>
+    </div>
+    <div class="tab-content">
+      <div class="tab-pane active">内容区</div>
+    </div>
+  </div>
+</section>
+
+<section style="margin-bottom: 2em;">
+  <h3>.tab-card.simple</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">仅下划线，当前项蓝色下边线。</p>
+  <div class="tab-card simple">
+    <div class="tab-nav">
+      <div class="tab-item active">
+        <a href="#">编辑</a>
+      </div>
+      <div class="tab-item">
+        <a href="#">预览</a>
+      </div>
+    </div>
+    <div class="tab-content">
+      <div class="tab-pane active">内容区</div>
+    </div>
+  </div>
+</section>
+
+<section style="margin-bottom: 2em;">
+  <h3>.salign / .valign / .ivalign + .gap-*</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">salign：两端对齐；valign：垂直居中（flex）；ivalign：行内 flex 垂直居中；gap-h / gap-1 / gap-2 间距。</p>
+  <div class="salign gap-1" style="margin-bottom: 0.5em;">
+    <span>左侧</span>
+    <span>右侧</span>
+  </div>
+  <div class="valign gap-1" style="margin-bottom: 0.5em;">
+    <label class="ivalign gap-h"><input type="radio" name="demo" value="a"> 选项 A</label>
+    <label class="ivalign gap-h"><input type="radio" name="demo" value="b"> 选项 B</label>
+  </div>
+  <div class="ivalign gap-h">
+    <button type="button" class="btn">按钮</button>
+    <a href="#" class="btn primary">主按钮</a>
+  </div>
+</section>
+
+<section style="margin-bottom: 2em;">
+  <h3>.btn / .btn.primary</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">普通按钮与主色按钮（与 partials/actions 一致）。</p>
+  <div class="salign gap-1">
+    <a href="#" class="btn">取消</a>
+    <a href="#" class="btn primary">保存</a>
+  </div>
+</section>
+
+<section style="margin-bottom: 2em;">
+  <h3>.actions.salign</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">操作栏：左侧链接组 + 右侧链接组。</p>
+  <div class="actions salign">
+    <div class="left">
+      <a class="btn primary" href="#">新建</a>
+    </div>
+    <div class="right salign gap-1">
+      <a href="#">链接一</a>
+      <a href="#">链接二</a>
+    </div>
+  </div>
+</section>
+
+<section style="margin-bottom: 2em;">
+  <h3>分页 .ivalign .gap-*</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">与 partials/pagination 一致的布局示意。</p>
+  <div class="ivalign gap-1">
+    <span>共 100 条</span>
+    <a href="#">上一页</a>
+    <span>1 / 10</span>
+    <a href="#">下一页</a>
+  </div>
+</section>

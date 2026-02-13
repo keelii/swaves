@@ -106,4 +106,6 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	adminGroup.Get("/export/download", handler.GetExportDownloadHandler)
 
 	adminGroup.Get("/metrics", handler.GetMetricsHandler)
+
+	adminGroup.Get("/dev/ui-components", handler.GetDevUIComponentsHandler)
 }
