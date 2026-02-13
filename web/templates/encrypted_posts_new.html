@@ -16,53 +16,8 @@
   </p>
 
   <p>
-    <label>
-      Expires At<br>
-      <div class="valign gap-1">
-        <label class="valign gap-h"><input type="radio" name="expires_at_option" value="none" checked> Never</label>
-        <label class="valign gap-h"><input type="radio" name="expires_at_option" value="5min"> 5 minutes</label>
-        <label class="valign gap-h"><input type="radio" name="expires_at_option" value="1hour"> 1 hour</label>
-        <label class="valign gap-h"><input type="radio" name="expires_at_option" value="1day"> 1 day</label>
-        <label class="valign gap-h"><input type="radio" name="expires_at_option" value="custom"> Other</label>
-      <div id="custom-date-container" style="display: none;">
-        <input type="datetime-local" name="expires_at_custom" id="expires_at_custom">
-        </div>
-      </div>
-      <input type="hidden" name="expires_at" id="expires_at_hidden">
-    </label>
+    {{ template "partials/expires_at_field" dict "CustomDate" "" "HasExpiry" false }}
   </p>
-
-  <script>
-$(function() {
-  var $opt = $('input[name="expires_at_option"]'), $customWrap = $('#custom-date-container'), $custom = $('#expires_at_custom'), $hidden = $('#expires_at_hidden');
-  function toggleCustomDate() {
-    if ($opt.filter(':checked').val() === 'custom') {
-      $customWrap.show();
-    } else {
-      $customWrap.hide();
-      $custom.val('');
-    }
-  }
-  function fmtDate(d) {
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  }
-  $opt.on('change', toggleCustomDate);
-  $('#form').on('submit', function() {
-    var v = $opt.filter(':checked').val();
-    if (v === 'custom' && $custom.val()) {
-      $hidden.val($custom.val());
-    } else if (v === 'none') {
-      $hidden.val('');
-    } else if (v === '5min' || v === '1hour' || v === '1day') {
-      var now = new Date(), t = now.getTime();
-      if (v === '5min') t += 5 * 60 * 1000;
-      else if (v === '1hour') t += 60 * 60 * 1000;
-      else t += 24 * 60 * 60 * 1000;
-      $hidden.val(fmtDate(new Date(t)));
-    }
-  });
-});
-  </script>
 
   {{ template "partials/markdown_preview" dict "Placeholder" "加密文章内容（支持 Markdown）" "Value" "" "Required" true }}
 

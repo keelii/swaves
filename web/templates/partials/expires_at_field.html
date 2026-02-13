@@ -1,0 +1,40 @@
+{{ if .ReadOnly }}
+<p>
+  <label>Expires At{{ if .LabelSuffix }} {{ .LabelSuffix }}{{ end }}</label><br>
+  {{ if .HasExpiry }}
+  <span>{{ or .DisplayDate "—" }}</span>
+  {{ else }}
+  <span>Never</span>
+  {{ end }}
+</p>
+{{ else }}
+<label>
+  Expires At{{ if .LabelSuffix }} {{ .LabelSuffix }}{{ end }}<br>
+  <div class="valign gap-1">
+    <label class="valign gap-h"><input type="radio" name="expires_at_option" value="none"{{ if not .HasExpiry }} checked{{ end }}> Never</label>
+    <label class="valign gap-h"><input type="radio" name="expires_at_option" value="1min"> 1 minute</label>
+    <label class="valign gap-h"><input type="radio" name="expires_at_option" value="5min"> 5 minutes</label>
+    <label class="valign gap-h"><input type="radio" name="expires_at_option" value="1hour"> 1 hour</label>
+    <label class="valign gap-h"><input type="radio" name="expires_at_option" value="1day"> 1 day</label>
+    <label class="valign gap-h"><input type="radio" name="expires_at_option" value="custom"{{ if .HasExpiry }} checked{{ end }}> Other</label>
+  </div>
+  <div id="custom-date-container" style="display: {{ if .HasExpiry }}block{{ else }}none{{ end }}; margin-top: 0.25em;">
+    <input type="datetime-local" name="expires_at_custom" id="expires_at_custom" value="{{ or .CustomDate "" }}">
+  </div>
+</label>
+<script>
+$(function() {
+  var $opt = $('input[name="expires_at_option"]'), $customWrap = $('#custom-date-container'), $custom = $('#expires_at_custom');
+  function toggleCustomDate() {
+    if ($opt.filter(':checked').val() === 'custom') {
+      $customWrap.show();
+    } else {
+      $customWrap.hide();
+      $custom.val('');
+    }
+  }
+  $opt.on('change', toggleCustomDate);
+  toggleCustomDate();
+});
+</script>
+{{ end }}

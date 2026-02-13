@@ -33,6 +33,45 @@ func NewHandler(gStore *store.GlobalStore, adminService *Service) *Handler {
 	}
 }
 
+// parseExpiresAtFromOption 根据 expires_at_option 与 expires_at_custom 解析出 Unix 时间戳字符串并入库用。
+// option: "none"|"5min"|"1hour"|"1day"|"custom"；为 "custom" 时用 customValue 解析为本地时间。
+func parseExpiresAtFromOption(option, customValue string) string {
+	option = strings.TrimSpace(option)
+	if option == "" || option == "none" {
+		return ""
+	}
+	now := time.Now()
+	switch option {
+	case "1min":
+		return strconv.FormatInt(now.Add(1*time.Minute).Unix(), 10)
+	case "5min":
+		return strconv.FormatInt(now.Add(5*time.Minute).Unix(), 10)
+	case "1hour":
+		return strconv.FormatInt(now.Add(time.Hour).Unix(), 10)
+	case "1day":
+		return strconv.FormatInt(now.Add(24*time.Hour).Unix(), 10)
+	case "custom":
+		customValue = strings.TrimSpace(customValue)
+		if customValue == "" {
+			return ""
+		}
+		var unix int64
+		if t, err := time.ParseInLocation("2006-01-02T15:04", customValue, time.Local); err == nil {
+			unix = t.Unix()
+		} else if t, err := time.ParseInLocation("2006-01-02T15:04:05", customValue, time.Local); err == nil {
+			unix = t.Unix()
+		} else {
+			return ""
+		}
+		if unix <= 0 {
+			return ""
+		}
+		return strconv.FormatInt(unix, 10)
+	default:
+		return ""
+	}
+}
+
 func RenderAdminView(c *fiber.Ctx, view string, data fiber.Map, layout string) error {
 	if layout == "" {
 		layout = "admin_layout"
@@ -614,25 +653,7 @@ func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
-	expiresAtStr := strings.TrimSpace(c.FormValue("expires_at"))
-	// 如果提供了 datetime-local 格式，转换为 Unix timestamp
-	if expiresAtStr != "" {
-		var unix int64
-		if t, err := time.ParseInLocation("2006-01-02T15:04", expiresAtStr, time.Local); err == nil {
-			unix = t.Unix()
-		} else if t, err := time.ParseInLocation("2006-01-02T15:04:05", expiresAtStr, time.Local); err == nil {
-			unix = t.Unix()
-		} else if ts, err := strconv.ParseInt(expiresAtStr, 10, 64); err == nil {
-			unix = ts
-		} else {
-			unix = 0
-		}
-		if unix > 0 {
-			expiresAtStr = strconv.FormatInt(unix, 10)
-		} else {
-			expiresAtStr = ""
-		}
-	}
+	expiresAtStr := parseExpiresAtFromOption(c.FormValue("expires_at_option"), c.FormValue("expires_at_custom"))
 
 	in := CreateEncryptedPostInput{
 		Title:     c.FormValue("title"),
@@ -671,22 +692,12 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	expiresAtStr := strings.TrimSpace(c.FormValue("expires_at"))
-	if expiresAtStr != "" {
-		var unix int64
-		if t, err := time.ParseInLocation("2006-01-02T15:04", expiresAtStr, time.Local); err == nil {
-			unix = t.Unix()
-		} else if t, err := time.ParseInLocation("2006-01-02T15:04:05", expiresAtStr, time.Local); err == nil {
-			unix = t.Unix()
-		} else if ts, err := strconv.ParseInt(expiresAtStr, 10, 64); err == nil {
-			unix = ts
-		} else {
-			unix = 0
-		}
-		if unix > 0 {
-			expiresAtStr = strconv.FormatInt(unix, 10)
-		} else {
-			expiresAtStr = ""
+	expiresAtStr := parseExpiresAtFromOption(c.FormValue("expires_at_option"), c.FormValue("expires_at_custom"))
+	if expiresAtStr == "" && c.FormValue("expires_at_option") == "" {
+		// 编辑页未提交过期选项（只读展示），保留原有值
+		post, err := db.GetEncryptedPostByID(h.Model, id)
+		if err == nil && post.ExpiresAt != nil {
+			expiresAtStr = strconv.FormatInt(*post.ExpiresAt, 10)
 		}
 	}
 

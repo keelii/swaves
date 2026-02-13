@@ -59,7 +59,7 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 	for task := range tasks {
 		t := tasks[task]
 
-		log.Println("add cron job:", t.Code, t.Schedule)
+		log.Printf("add cron job<%s>: %s", t.Schedule, t.Code)
 		//c.AddFunc("@every 10s", func() {
 		//	log.Printf("[task] cron job every 10s")
 		//})
