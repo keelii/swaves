@@ -118,16 +118,13 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	countPage, _ := db.CountPostsByKind(h.Model, db.PostKindPage)
 
 	searchQuery := c.Query("q")
-	var searchIDs []int64
+	var posts []db.PostWithTags
+	var err error
 	if searchQuery != "" {
-		ids, err := db.SearchPostIDsByLIKE(h.Model, searchQuery)
-		if err != nil {
-			return err
-		}
-		searchIDs = ids
+		posts, err = db.ListPostsBySearch(h.Model, &pager, kindPtr, searchQuery)
+	} else {
+		posts, err = db.ListPosts(h.Model, &pager, kindPtr)
 	}
-
-	posts, err := db.ListPosts(h.Model, &pager, kindPtr, searchIDs)
 	if err != nil {
 		return err
 	}

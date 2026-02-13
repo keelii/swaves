@@ -39,7 +39,7 @@
   {{ range .Posts }}
   <tr>
     <td>{{ .Post.ID }}</td>
-    <td>{{ .Post.Title }}</td>
+    <td>{{ if $.SearchQuery }}{{ highlight .Post.Title $.SearchQuery }}{{ else }}{{ .Post.Title }}{{ end }}</td>
     <td>{{ .Post.Slug }}</td>
     <td>
       {{ if .Tags }}

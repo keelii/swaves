@@ -388,7 +388,7 @@ func GetPostByID(db *DB, id int64) (*Post, error) {
 			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetPostByID")
 			}
 			return nil, err
 		}
@@ -463,17 +463,10 @@ func ListPublishedPosts(db *DB, pager *types.Pagination) []Post {
 	return res
 }
 
-func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, searchIDs []int64) ([]PostWithTags, error) {
+func ListPosts(db *DB, pager *types.Pagination, kind *PostKind) ([]PostWithTags, error) {
 	var total int
 	var err error
-	if searchIDs != nil {
-		total = len(searchIDs)
-		if total == 0 {
-			pager.Total = 0
-			pager.Num = 0
-			return []PostWithTags{}, nil
-		}
-	} else if kind == nil {
+	if kind == nil {
 		total, err = CountRecords(db, TablePosts, "", nil)
 	} else {
 		total, err = CountPostsByKind(db, *kind)
@@ -491,16 +484,6 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, searchIDs []int6
 	if kind != nil {
 		query += ` AND kind = ?`
 		args = append(args, *kind)
-	}
-	if searchIDs != nil && len(searchIDs) > 0 {
-		placeholders := make([]string, len(searchIDs))
-		for i := range searchIDs {
-			placeholders[i] = "?"
-		}
-		query += ` AND id IN (` + strings.Join(placeholders, ",") + `)`
-		for _, id := range searchIDs {
-			args = append(args, id)
-		}
 	}
 	query += `
 		ORDER BY created_at DESC
@@ -532,29 +515,19 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, searchIDs []int6
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
 		}
-
-		// 获取该 post 的 tags
 		tags, err := GetPostTags(db, p.ID)
 		if err != nil {
 			return nil, err
 		}
-
-		// 获取该 post 的 category（单选）
 		category, err := GetPostCategory(db, p.ID)
 		if err != nil {
 			return nil, err
 		}
-
-		res = append(res, PostWithTags{
-			Post:     &p,
-			Tags:     tags,
-			Category: category,
-		})
+		res = append(res, PostWithTags{Post: &p, Tags: tags, Category: category})
 	}
 
 	pager.Total = total
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
-
 	return res, nil
 }
 
@@ -614,7 +587,7 @@ func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
 			&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetEncryptedPostByID")
 			}
 			return nil, err
 		}
@@ -767,7 +740,7 @@ func GetTagByID(db *DB, id int64) (*Tag, error) {
 			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetTagByID")
 			}
 			return nil, err
 		}
@@ -914,7 +887,7 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetPostBySlug")
 			}
 			return nil, err
 		}
@@ -929,31 +902,90 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	return *result.(*Post), nil
 }
 
-// SearchPostIDsByLIKE 后台文章搜索：按 title/content LIKE 匹配未删除文章 ID
-func SearchPostIDsByLIKE(db *DB, q string) ([]int64, error) {
+// likePattern 对关键词做 LIKE 通配符转义，用于 '%'||?||'%' 的 ?
+func likePattern(q string) string {
+	return strings.NewReplacer(`%`, `\%`, `_`, `\_`).Replace(strings.TrimSpace(q))
+}
+
+// ListPostsBySearch 后台文章搜索：单条 SQL，score = title(10) + content(1)，ORDER BY score DESC, created_at DESC（不含 slug）
+func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string) ([]PostWithTags, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
-		return nil, nil
+		pager.Total = 0
+		pager.Num = 0
+		return []PostWithTags{}, nil
 	}
-	escape := strings.NewReplacer(`%`, `\%`, `_`, `\_`)
-	pattern := "%" + escape.Replace(q) + "%"
-	rows, err := db.Query(
-		`SELECT id FROM `+string(TablePosts)+` WHERE deleted_at IS NULL AND (title LIKE ? ESCAPE '\' OR content LIKE ? ESCAPE '\')`,
-		pattern, pattern,
-	)
+	pattern := likePattern(q)
+	likeCond := `(title LIKE '%' || ? || '%' ESCAPE '\' OR content LIKE '%' || ? || '%' ESCAPE '\')`
+
+	countQuery := `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND ` + likeCond
+	countArgs := []interface{}{pattern, pattern}
+	if kind != nil {
+		countQuery = `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond
+		countArgs = append([]interface{}{*kind}, countArgs...)
+	}
+	var total int
+	if err := db.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, err
+	}
+	if total == 0 {
+		pager.Total = 0
+		pager.Num = 0
+		return []PostWithTags{}, nil
+	}
+
+	offset := (pager.Page - 1) * pager.PageSize
+	scoreExpr := `(
+		(CASE WHEN title   LIKE '%' || ? || '%' ESCAPE '\' THEN 10 ELSE 0 END) +
+		(CASE WHEN content LIKE '%' || ? || '%' ESCAPE '\' THEN 1  ELSE 0 END)
+	) AS score`
+	mainQuery := `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
+		FROM ` + string(TablePosts) + `
+		WHERE deleted_at IS NULL AND ` + likeCond
+	mainArgs := []interface{}{pattern, pattern, pattern, pattern}
+	if kind != nil {
+		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
+			FROM ` + string(TablePosts) + `
+			WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond
+		mainArgs = []interface{}{pattern, pattern, *kind, pattern, pattern}
+	}
+	mainQuery += ` ORDER BY score DESC, created_at DESC LIMIT ? OFFSET ?`
+	mainArgs = append(mainArgs, pager.PageSize, offset)
+
+	rows, err := db.Query(mainQuery, mainArgs...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var ids []int64
+
+	var res []PostWithTags
 	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
+		var p Post
+		var deletedAt sql.NullInt64
+		var score int
+		if err := rows.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+			&p.CreatedAt, &p.UpdatedAt, &deletedAt, &score,
+		); err != nil {
 			return nil, err
 		}
-		ids = append(ids, id)
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+		tags, err := GetPostTags(db, p.ID)
+		if err != nil {
+			return nil, err
+		}
+		category, err := GetPostCategory(db, p.ID)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, PostWithTags{Post: &p, Tags: tags, Category: category})
 	}
-	return ids, rows.Err()
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	return res, rows.Err()
 }
 
 func AttachTagToPost(db *DB, postID, tagID int64) error {
@@ -1102,7 +1134,7 @@ func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetRedirectByID")
 			}
 			return nil, err
 		}
@@ -1139,7 +1171,7 @@ func GetRedirectByFrom(db *DB, fromPath string) (*Redirect, error) {
 			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetRedirectByFrom")
 			}
 			return nil, err
 		}
@@ -1402,7 +1434,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 		)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetSettingByCode")
 			}
 			return nil, err
 		}
@@ -1444,7 +1476,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 		)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetSettingByID")
 			}
 			return nil, err
 		}
@@ -1606,7 +1638,7 @@ func CheckPassword(db *DB, raw string) error {
 		return err
 	}
 	if setting.Value == "" {
-		return ErrNotFound
+		return ErrNotFound("CheckPassword")
 	}
 
 	return bcrypt.CompareHashAndPassword([]byte(setting.Value), []byte(raw))
@@ -1621,7 +1653,7 @@ func EnsureDefaultSettings(db *DB) error {
 			// 已存在，跳过
 			continue
 		}
-		if err != ErrNotFound {
+		if !IsErrNotFound(err) {
 			// 其他错误，返回
 			return err
 		}
@@ -1812,7 +1844,7 @@ func GetTaskByID(db *DB, id int64) (*Task, error) {
 			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetTaskByID")
 			}
 			return nil, err
 		}
@@ -1847,7 +1879,7 @@ func GetTaskByCode(db *DB, code string) (*Task, error) {
 			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetTaskByCode")
 			}
 			return nil, err
 		}
@@ -2031,7 +2063,17 @@ func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 	return nil
 }
 
-var ErrNotFound = errors.New("not found")
+var errNotFoundSentinel = errors.New("not found")
+
+// ErrNotFound 返回带标识的 not found 错误，便于排查来源；判断请用 IsErrNotFound(err)
+func ErrNotFound(label string) error {
+	return fmt.Errorf("%s: %w", label, errNotFoundSentinel)
+}
+
+// IsErrNotFound 判断是否为“未找到”错误
+func IsErrNotFound(err error) bool {
+	return errors.Is(err, errNotFoundSentinel)
+}
 
 type Category struct {
 	ID          int64
@@ -2064,7 +2106,7 @@ func GetCategoryByID(db *DB, id int64) (*Category, error) {
 		)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("GetCategoryByID")
 			}
 			return nil, err
 		}

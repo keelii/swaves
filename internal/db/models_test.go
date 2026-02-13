@@ -816,7 +816,7 @@ func TestGetSettingByCode(t *testing.T) {
 
 	// 测试不存在的 code
 	_, err = GetSettingByCode(db, "non_exist")
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -843,7 +843,7 @@ func TestGetSettingByID(t *testing.T) {
 
 	// 测试不存在的 id
 	_, err = GetSettingByID(db, 99999)
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -987,7 +987,7 @@ func TestDeleteSetting(t *testing.T) {
 
 	// 软删除后应该查不到
 	_, err := GetSettingByCode(db, "delete_test")
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound after soft delete, got %v", err)
 	}
 }
@@ -1284,7 +1284,7 @@ func TestGetTagByID(t *testing.T) {
 
 	// 测试不存在的 id
 	_, err = GetTagByID(db, 99999)
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -1340,7 +1340,7 @@ func TestGetRedirectByID(t *testing.T) {
 
 	// 测试不存在的 id
 	_, err = GetRedirectByID(db, 99999)
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -1364,7 +1364,7 @@ func TestGetRedirectByFrom(t *testing.T) {
 
 	// 测试不存在的路径
 	_, err = GetRedirectByFrom(db, "/non-exist")
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -1426,7 +1426,7 @@ func TestGetTaskByID(t *testing.T) {
 
 	// 测试不存在的 id
 	_, err = GetTaskByID(db, 99999)
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -1455,7 +1455,7 @@ func TestGetTaskByCode(t *testing.T) {
 
 	// 测试不存在的 code
 	_, err = GetTaskByCode(db, "non_exist")
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -2125,7 +2125,7 @@ func TestGetRecordByID(t *testing.T) {
 			&post.CreatedAt, &post.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("test")
 			}
 			return nil, err
 		}
@@ -2152,13 +2152,13 @@ func TestGetRecordByID(t *testing.T) {
 			&post.CreatedAt, &post.UpdatedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
-				return nil, ErrNotFound
+				return nil, ErrNotFound("test")
 			}
 			return nil, err
 		}
 		return &post, nil
 	})
-	if err != ErrNotFound {
+	if !IsErrNotFound(err) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }

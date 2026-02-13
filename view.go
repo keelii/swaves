@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	HTML "html"
 	"html/template"
 	"regexp"
 	"strings"
@@ -126,6 +127,30 @@ func NewViewEngine() *html.Engine {
 			return ""
 		}
 		return template.HTMLAttr(" " + strings.Join(parts, " "))
+	})
+	// 辅助函数：搜索关键词高亮，将 text 中与 query 匹配处用 <mark> 包裹（不区分大小写、HTML 转义安全）
+	engine.AddFunc("highlight", func(text, query string) template.HTML {
+		if query == "" {
+			return template.HTML(HTML.EscapeString(text))
+		}
+		lowerText := strings.ToLower(text)
+		lowerQuery := strings.ToLower(query)
+		var buf strings.Builder
+		start := 0
+		for {
+			idx := strings.Index(lowerText[start:], lowerQuery)
+			if idx == -1 {
+				break
+			}
+			pos := start + idx
+			buf.WriteString(HTML.EscapeString(text[start:pos]))
+			buf.WriteString("<mark>")
+			buf.WriteString(HTML.EscapeString(text[pos : pos+len(query)]))
+			buf.WriteString("</mark>")
+			start = pos + len(query)
+		}
+		buf.WriteString(HTML.EscapeString(text[start:]))
+		return template.HTML(buf.String())
 	})
 	// 辅助函数：检查字符串是否以指定前缀开头
 	engine.AddFunc("hasPrefix", func(s, prefix string) bool {

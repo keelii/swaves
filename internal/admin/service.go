@@ -373,7 +373,7 @@ func checkRedirectCycle(dbx *db.DB, fromPath, toPath string) error {
 		// 查找是否有从 current 路径的重定向
 		redirect, err := db.GetRedirectByFrom(dbx, current)
 		if err != nil {
-			if err == db.ErrNotFound {
+			if db.IsErrNotFound(err) {
 				// 没有找到重定向，链到此结束，没有循环
 				return nil
 			}

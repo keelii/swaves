@@ -11,6 +11,10 @@ body {
 select {
   min-width: 165.5px;
 }
+mark {
+  background-color: mark;
+  padding: 0;
+}
 
 .admin-container {
     display: flex;
