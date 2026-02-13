@@ -57,7 +57,7 @@
       <td>{{ .Title }}</td>
       <td>{{ .Slug }}</td>
       <td>{{ .Status }}</td>
-      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <form id="form" method="post" style="display:inline" action="/admin/trash/posts/{{ .ID }}/restore">
           <button type="submit">Restore</button>
@@ -90,7 +90,7 @@
       <td>{{ .ID }}</td>
       <td>{{ .Title }}</td>
       <td>{{ .Slug }}</td>
-      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <form id="form" method="post" style="display:inline" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
           <button type="submit">Restore</button>
@@ -123,7 +123,7 @@
       <td>{{ .ID }}</td>
       <td>{{ .Name }}</td>
       <td>{{ .Slug }}</td>
-      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <form id="form" method="post" style="display:inline" action="/admin/trash/tags/{{ .ID }}/restore">
           <button type="submit">Restore</button>
@@ -160,7 +160,7 @@
       <td>{{ .Slug }}</td>
       <td>{{ if eq .ParentID 0 }}-{{ else }}{{ .ParentID }}{{ end }}</td>
       <td>{{ .Description }}</td>
-      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <form id="form" method="post" style="display:inline" action="/admin/trash/categories/{{ .ID }}/restore">
           <button type="submit">Restore</button>
@@ -193,7 +193,7 @@
       <td>{{ .ID }}</td>
       <td>{{ .From }}</td>
       <td>{{ .To }}</td>
-      <td>{{ if .DeletedAt }}{{ formatTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <form id="form" method="post" style="display:inline" action="/admin/trash/redirects/{{ .ID }}/restore">
           <button type="submit">Restore</button>

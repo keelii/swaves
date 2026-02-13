@@ -28,8 +28,8 @@
         {{ .Value }}
       {{ end }}
     </td>
-    <td>{{ formatTime .CreatedAt }}</td>
-    <td>{{ formatTime .UpdatedAt }}</td>
+    <td>{{ relativeTime .CreatedAt }}</td>
+    <td>{{ relativeTime .UpdatedAt }}</td>
     {{ template "partials/table_row_actions" dict "BaseURL" "/admin/settings" "ID" .ID }}
   </tr>
   {{ else }}

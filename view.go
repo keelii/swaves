@@ -80,6 +80,25 @@ func NewViewEngine() *html.Engine {
 		}
 		return time.Unix(tsInt64, 0).Format(TimeFormat)
 	})
+	// relativeTime 将 Unix timestamp 转为相对时间：刚刚、1分钟前、1小时前、1天前、1月前、1年前
+	engine.AddFunc("relativeTime", func(ts interface{}) string {
+		var tsInt64 int64
+		switch v := ts.(type) {
+		case int64:
+			tsInt64 = v
+		case *int64:
+			if v == nil {
+				return "-"
+			}
+			tsInt64 = *v
+		default:
+			return "-"
+		}
+		if tsInt64 == 0 {
+			return "-"
+		}
+		return relativeTimeString(tsInt64)
+	})
 	// formatDateTimeLocal 将 Unix timestamp 转换为 datetime-local 输入格式 (YYYY-MM-DDTHH:mm)
 	engine.AddFunc("formatDateTimeLocal", func(ts interface{}) string {
 		var tsInt64 int64
@@ -178,4 +197,31 @@ func NewViewEngine() *html.Engine {
 	engine.Reload(true)
 
 	return engine
+}
+
+// relativeTimeString 将 Unix 时间戳转为相对时间中文描述
+func relativeTimeString(ts int64) string {
+	now := time.Now().Unix()
+	diff := now - ts
+	if diff < 0 {
+		diff = -diff
+		if diff < 60 {
+			return "刚刚"
+		}
+		return time.Unix(ts, 0).Format(TimeFormat)
+	}
+	switch {
+	case diff < 60:
+		return "刚刚"
+	case diff < 3600:
+		return fmt.Sprintf("%d分钟前", diff/60)
+	case diff < 86400:
+		return fmt.Sprintf("%d小时前", diff/3600)
+	case diff < 30*86400:
+		return fmt.Sprintf("%d天前", diff/86400)
+	case diff < 365*86400:
+		return fmt.Sprintf("%d月前", diff/(30*86400))
+	default:
+		return fmt.Sprintf("%d年前", diff/(365*86400))
+	}
 }

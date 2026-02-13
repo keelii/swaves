@@ -40,8 +40,8 @@
         -
       {{ end }}
     </td>
-    <td>{{ if .LastRunAt }}{{ formatTime .LastRunAt }}{{ else }}-{{ end }}</td>
-    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ if .LastRunAt }}{{ relativeTime .LastRunAt }}{{ else }}-{{ end }}</td>
+    <td>{{ relativeTime .CreatedAt }}</td>
     <td>
       <a href="/admin/tasks/{{ .ID }}/edit" style="margin-right: 10px;">编辑</a>
       <form id="form" method="POST" action="/admin/tasks/{{ .Code }}/trigger" style="display: inline-block; margin-right: 10px;">

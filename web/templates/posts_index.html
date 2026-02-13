@@ -66,8 +66,8 @@
       {{ end }}
     </td>
     <td>{{ .Post.Status }}</td>
-    <td>{{ formatTime .Post.CreatedAt }}</td>
-    <td>{{ formatTime .Post.UpdatedAt }}</td>
+    <td>{{ relativeTime .Post.CreatedAt }}</td>
+    <td>{{ relativeTime .Post.UpdatedAt }}</td>
     {{ template "partials/table_row_actions" dict "BaseURL" "/admin/posts" "ID" .Post.ID }}
   </tr>
   {{ else }}

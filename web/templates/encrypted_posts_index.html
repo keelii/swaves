@@ -17,9 +17,9 @@
     <td>{{ .ID }}</td>
     <td>{{ .Title }}</td>
     <td>{{ .Slug }}</td>
-    <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}Never{{ end }}</td>
-    <td>{{ formatTime .CreatedAt }}</td>
-    <td>{{ formatTime .UpdatedAt }}</td>
+    <td>{{ if .ExpiresAt }}{{ relativeTime .ExpiresAt }}{{ else }}Never{{ end }}</td>
+    <td>{{ relativeTime .CreatedAt }}</td>
+    <td>{{ relativeTime .UpdatedAt }}</td>
     {{ template "partials/table_row_actions" dict "BaseURL" "/admin/encrypted-posts" "ID" .ID }}
   </tr>
   {{ else }}

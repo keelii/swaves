@@ -22,9 +22,9 @@
     <td>{{ .Status }}</td>
     <td>{{ .Message }}</td>
     <td>{{ .Duration }}</td>
-    <td>{{ formatTime .StartedAt }}</td>
-    <td>{{ formatTime .FinishedAt }}</td>
-    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ relativeTime .StartedAt }}</td>
+    <td>{{ relativeTime .FinishedAt }}</td>
+    <td>{{ relativeTime .CreatedAt }}</td>
   </tr>
   {{ else }}
   <tr>

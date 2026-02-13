@@ -30,7 +30,7 @@
     <td>{{ if .BodyParams }}
       {{ long_text .BodyParams 30 5 }}
       {{ else }}-{{ end }}</td>
-    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ relativeTime .CreatedAt }}</td>
     <td>
       <form id="form" method="post" style="display:inline" action="/admin/http-error-logs/{{ .ID }}/delete">
         <button type="submit">删除</button>

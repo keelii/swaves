@@ -28,8 +28,8 @@
       {{ end }}
     </td>
     <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
-    <td>{{ formatTime .CreatedAt }}</td>
-    <td>{{ formatTime .UpdatedAt }}</td>
+    <td>{{ relativeTime .CreatedAt }}</td>
+    <td>{{ relativeTime .UpdatedAt }}</td>
     {{ template "partials/table_row_actions" dict "BaseURL" "/admin/redirects" "ID" .ID }}
   </tr>
   {{ else }}
