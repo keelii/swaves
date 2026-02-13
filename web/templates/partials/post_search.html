@@ -1,5 +1,7 @@
 <form method="get" action="/admin/posts" class="valign" id="posts-search-form">
   <input type="hidden" name="kind" value="{{ or .KindQuery "0" }}">
+  {{ if .FilterTagIDStr }}<input type="hidden" name="tag" value="{{ .FilterTagIDStr }}">{{ end }}
+  {{ if .FilterCategoryIDStr }}<input type="hidden" name="category" value="{{ .FilterCategoryIDStr }}">{{ end }}
   <input type="search" name="q" value="{{ or .SearchQuery "" }}" placeholder="搜索标题、内容" id="posts-search-input">
 </form>
 <script>

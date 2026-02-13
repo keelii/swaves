@@ -1,15 +1,25 @@
 {{ $kind := or .Kind 0 }}
 {{ $q := or .SearchQueryEscaped "" }}
+{{ $tag := or .FilterTagIDStr "" }}
+{{ $cat := or .FilterCategoryIDStr "" }}
 <div class="tab-card">
   <div class="tab-nav">
     <div class="tab-item{{ if eq $kind 0 }} active{{ end }}">
-      <a href="/admin/posts?kind=0{{ if $q }}&q={{ $q }}{{ end }}">文章 ({{ .CountPost }})</a>
+      <a href="/admin/posts?kind=0{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">文章 ({{ .CountPost }})</a>
     </div>
     <div class="tab-item{{ if eq $kind 1 }} active{{ end }}">
-      <a href="/admin/posts?kind=1{{ if $q }}&q={{ $q }}{{ end }}">页面 ({{ .CountPage }})</a>
+      <a href="/admin/posts?kind=1{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">页面 ({{ .CountPage }})</a>
     </div>
     <div class="tab-nav-right">
-      {{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery }}
+        {{ if or .FilterTagName .FilterCategoryName }}
+          <p class="ivalign gap-1" style="margin-bottom: 0.5em; font-size: 0.9em;">
+            筛选：
+              {{ if .FilterTagName }}<span>标签: {{ .FilterTagName }}</span>{{ end }}
+              {{ if .FilterCategoryName }}<span>分类: {{ .FilterCategoryName }}</span>{{ end }}
+            <a href="/admin/posts?kind={{ .KindQuery }}{{ if .SearchQueryEscaped }}&q={{ .SearchQueryEscaped }}{{ end }}">清除筛选</a>
+          </p>
+        {{ end }}
+        {{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery "FilterTagIDStr" .FilterTagIDStr "FilterCategoryIDStr" .FilterCategoryIDStr }}
     </div>
   </div>
   <div class="tab-content">
@@ -43,14 +53,14 @@
     <td>{{ .Post.Slug }}</td>
     <td>
       {{ if .Tags }}
-        {{ range $index, $tag := .Tags }}{{ if $index }}, {{ end }}<a href="/admin/tags/{{ $tag.ID }}/edit">{{ $tag.Name }}</a>{{ end }}
+        {{ range $index, $t := .Tags }}{{ if $index }}, {{ end }}<a href="/admin/posts?kind={{ $.KindQuery }}{{ if $.SearchQueryEscaped }}&q={{ $.SearchQueryEscaped }}{{ end }}{{ if $.FilterCategoryIDStr }}&category={{ $.FilterCategoryIDStr }}{{ end }}&tag={{ $t.ID }}">{{ $t.Name }}</a>{{ end }}
       {{ else }}
         <span>-</span>
       {{ end }}
     </td>
     <td>
       {{ if .Category }}
-        <a href="/admin/categories/{{ .Category.ID }}/edit">{{ .Category.Name }}</a>
+        <a href="/admin/posts?kind={{ $.KindQuery }}{{ if $.SearchQueryEscaped }}&q={{ $.SearchQueryEscaped }}{{ end }}{{ if $.FilterTagIDStr }}&tag={{ $.FilterTagIDStr }}{{ end }}&category={{ .Category.ID }}">{{ .Category.Name }}</a>
       {{ else }}
         <span>-</span>
       {{ end }}

@@ -118,12 +118,24 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	countPage, _ := db.CountPostsByKind(h.Model, db.PostKindPage)
 
 	searchQuery := c.Query("q")
+	var tagID, categoryID *int64
+	if v := c.Query("tag"); v != "" {
+		if id, err := strconv.ParseInt(v, 10, 64); err == nil {
+			tagID = &id
+		}
+	}
+	if v := c.Query("category"); v != "" {
+		if id, err := strconv.ParseInt(v, 10, 64); err == nil {
+			categoryID = &id
+		}
+	}
+
 	var posts []db.PostWithTags
 	var err error
 	if searchQuery != "" {
-		posts, err = db.ListPostsBySearch(h.Model, &pager, kindPtr, searchQuery)
+		posts, err = db.ListPostsBySearch(h.Model, &pager, kindPtr, searchQuery, tagID, categoryID)
 	} else {
-		posts, err = db.ListPosts(h.Model, &pager, kindPtr)
+		posts, err = db.ListPosts(h.Model, &pager, kindPtr, tagID, categoryID)
 	}
 	if err != nil {
 		return err
@@ -137,16 +149,36 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	if searchQuery != "" {
 		searchQueryEscaped = url.QueryEscape(searchQuery)
 	}
+
+	var filterTagName, filterCategoryName string
+	var filterTagIDStr, filterCategoryIDStr string
+	if tagID != nil {
+		filterTagIDStr = strconv.FormatInt(*tagID, 10)
+		if t, err := db.GetTagByID(h.Model, *tagID); err == nil {
+			filterTagName = t.Name
+		}
+	}
+	if categoryID != nil {
+		filterCategoryIDStr = strconv.FormatInt(*categoryID, 10)
+		if cat, err := db.GetCategoryByID(h.Model, *categoryID); err == nil {
+			filterCategoryName = cat.Name
+		}
+	}
+
 	return RenderAdminView(c, "posts_index", fiber.Map{
-		"Title":              "Posts",
-		"Posts":              posts,
-		"Pager":              pager,
-		"Kind":               kind,
-		"KindQuery":          kindQuery,
-		"CountPost":          countPost,
-		"CountPage":          countPage,
-		"SearchQuery":        searchQuery,
-		"SearchQueryEscaped": searchQueryEscaped,
+		"Title":               "Posts",
+		"Posts":               posts,
+		"Pager":               pager,
+		"Kind":                kind,
+		"KindQuery":           kindQuery,
+		"CountPost":           countPost,
+		"CountPage":           countPage,
+		"SearchQuery":         searchQuery,
+		"SearchQueryEscaped":  searchQueryEscaped,
+		"FilterTagIDStr":      filterTagIDStr,
+		"FilterCategoryIDStr": filterCategoryIDStr,
+		"FilterTagName":       filterTagName,
+		"FilterCategoryName":  filterCategoryName,
 	}, "")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
