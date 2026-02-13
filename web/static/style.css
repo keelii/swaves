@@ -407,8 +407,18 @@ input[type="range"] {
 /* Tab 导航 / tab-card */
 .tab-nav {
   display: flex;
+  align-items: center;
+  width: 100%;
   border-bottom: 1px solid var(--nc-bg-3);
   /*background: #fafafa;*/
+}
+.tab-nav-right {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5em;
 }
 .tab-nav.sticky {
   position: sticky;
@@ -418,7 +428,7 @@ input[type="range"] {
 }
 .tab-item {
   flex: 1;
-  padding: 0.4em 1em;
+  padding: 0.5em 1em;
   text-align: center;
   /*font-size: 1.2em;*/
   cursor: pointer;

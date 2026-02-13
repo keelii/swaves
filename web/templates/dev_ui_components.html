@@ -19,6 +19,44 @@
 </section>
 
 <section style="margin-bottom: 2em;">
+  <h3>.tab-nav-right（右侧自定义区域）</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">在 .tab-nav 内放置 .tab-nav-right，左侧为 tab-item，右侧为自定义内容（按钮、链接等）。</p>
+  <div class="tab-card">
+    <div class="tab-nav">
+      <div class="tab-item active">
+        <a href="#">文章 (12)</a>
+      </div>
+      <div class="tab-item">
+        <a href="#">页面 (3)</a>
+      </div>
+      <div class="tab-nav-right">
+        <a href="#" class="btn">操作</a>
+        <a href="#" class="btn primary">新建</a>
+      </div>
+    </div>
+    <div class="tab-content">
+      <div class="tab-pane active">内容区</div>
+    </div>
+  </div>
+  <div class="tab-card simple" style="margin-top: 1em;">
+    <div class="tab-nav">
+      <div class="tab-item active">
+        <a href="#">编辑</a>
+      </div>
+      <div class="tab-item">
+        <a href="#">预览</a>
+      </div>
+      <div class="tab-nav-right">
+        <span style="font-size: 0.9em; color: var(--nc-tx-2);">字数 0</span>
+      </div>
+    </div>
+    <div class="tab-content">
+      <div class="tab-pane active">.tab-card.simple + .tab-nav-right 示例</div>
+    </div>
+  </div>
+</section>
+
+<section style="margin-bottom: 2em;">
   <h3>.tab-card.simple</h3>
   <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">仅下划线，当前项蓝色下边线。</p>
   <div class="tab-card simple">

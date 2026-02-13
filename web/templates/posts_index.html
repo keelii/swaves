@@ -8,13 +8,14 @@
     <div class="tab-item{{ if eq $kind 1 }} active{{ end }}">
       <a href="/admin/posts?kind=1{{ if $q }}&q={{ $q }}{{ end }}">页面 ({{ .CountPage }})</a>
     </div>
+    <div class="tab-nav-right">
+      {{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery }}
+    </div>
   </div>
   <div class="tab-content">
     <div class="tab-pane active"></div>
   </div>
 </div>
-
-{{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery }}
 
 <table>
   <colgroup>
