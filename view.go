@@ -40,6 +40,9 @@ func NewViewEngine() *html.Engine {
 	engine.AddFunc("add", func(a, b int) int {
 		return a + b
 	})
+	engine.AddFunc("concat", func(a, b string) string {
+		return a + b
+	})
 	engine.AddFunc("safeHTML", func(s interface{}) template.HTML {
 		if s == nil {
 			return ""

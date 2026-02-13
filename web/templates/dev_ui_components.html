@@ -115,6 +115,16 @@
 </section>
 
 <section style="margin-bottom: 2em;">
+  <h3>.tag（圆角标签 + 删除 icon）</h3>
+  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">使用 partials/tag_item：传入 Label；需删除 icon 时传 RemoveHref（链接）。</p>
+  <div class="ivalign gap-1" style="flex-wrap: wrap;">
+    {{ template "partials/tag_item" dict "Label" "标签一" "RemoveHref" "#" }}
+    {{ template "partials/tag_item" dict "Label" "标签二" }}
+    {{ template "partials/tag_item" dict "Label" "可删除" "RemoveHref" "#" }}
+  </div>
+</section>
+
+<section style="margin-bottom: 2em;">
   <h3>分页 .ivalign .gap-*</h3>
   <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">与 partials/pagination 一致的布局示意。</p>
   <div class="ivalign gap-1">

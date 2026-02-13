@@ -165,20 +165,38 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	// 清除单项筛选的 URL（供筛选区 tag 组件的 RemoveHref 使用）
+	filterTagRemoveURL := "/admin/posts?kind=" + kindQuery
+	if searchQueryEscaped != "" {
+		filterTagRemoveURL += "&q=" + searchQueryEscaped
+	}
+	if filterCategoryIDStr != "" {
+		filterTagRemoveURL += "&category=" + filterCategoryIDStr
+	}
+	filterCategoryRemoveURL := "/admin/posts?kind=" + kindQuery
+	if searchQueryEscaped != "" {
+		filterCategoryRemoveURL += "&q=" + searchQueryEscaped
+	}
+	if filterTagIDStr != "" {
+		filterCategoryRemoveURL += "&tag=" + filterTagIDStr
+	}
+
 	return RenderAdminView(c, "posts_index", fiber.Map{
-		"Title":               "Posts",
-		"Posts":               posts,
-		"Pager":               pager,
-		"Kind":                kind,
-		"KindQuery":           kindQuery,
-		"CountPost":           countPost,
-		"CountPage":           countPage,
-		"SearchQuery":         searchQuery,
-		"SearchQueryEscaped":  searchQueryEscaped,
-		"FilterTagIDStr":      filterTagIDStr,
-		"FilterCategoryIDStr": filterCategoryIDStr,
-		"FilterTagName":       filterTagName,
-		"FilterCategoryName":  filterCategoryName,
+		"Title":                   "Posts",
+		"Posts":                   posts,
+		"Pager":                   pager,
+		"Kind":                    kind,
+		"KindQuery":               kindQuery,
+		"CountPost":               countPost,
+		"CountPage":               countPage,
+		"SearchQuery":             searchQuery,
+		"SearchQueryEscaped":      searchQueryEscaped,
+		"FilterTagIDStr":          filterTagIDStr,
+		"FilterCategoryIDStr":     filterCategoryIDStr,
+		"FilterTagName":           filterTagName,
+		"FilterCategoryName":      filterCategoryName,
+		"FilterTagRemoveURL":      filterTagRemoveURL,
+		"FilterCategoryRemoveURL": filterCategoryRemoveURL,
 	}, "")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {

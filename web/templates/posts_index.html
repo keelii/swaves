@@ -12,11 +12,11 @@
     </div>
     <div class="tab-nav-right">
         {{ if or .FilterTagName .FilterCategoryName }}
-          <p class="ivalign gap-1" style="margin-bottom: 0.5em; font-size: 0.9em;">
-            筛选：
-              {{ if .FilterTagName }}<span>标签: {{ .FilterTagName }}</span>{{ end }}
-              {{ if .FilterCategoryName }}<span>分类: {{ .FilterCategoryName }}</span>{{ end }}
-            <a href="/admin/posts?kind={{ .KindQuery }}{{ if .SearchQueryEscaped }}&q={{ .SearchQueryEscaped }}{{ end }}">清除筛选</a>
+          <p class="ivalign gap-1" style="margin-bottom: 0.5em; font-size: 0.9em; flex-wrap: wrap;">
+            {{ $tag := concat "标签 " .FilterTagName }}
+            {{ $cat := concat "分类 " .FilterCategoryName }}
+            {{ if .FilterTagName }}{{ template "partials/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}
+            {{ if .FilterCategoryName }}{{ template "partials/tag_item" dict "Label" $cat "RemoveHref" .FilterCategoryRemoveURL }}{{ end }}
           </p>
         {{ end }}
         {{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery "FilterTagIDStr" .FilterTagIDStr "FilterCategoryIDStr" .FilterCategoryIDStr }}

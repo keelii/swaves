@@ -526,4 +526,47 @@ input[type="range"] {
   border-radius: 0;
 }
 
+/* .tag 圆角标签，与 new.css 变量对齐，可带删除 icon */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  padding: 0.2em 0.8em;
+  /*color: var(--nc-tx-2);*/
+  background: var(--nc-bg-2);
+  border: 1px solid var(--nc-bg-3);
+  border-radius: 9999px;
+}
+.tag-remove {
+  cursor: pointer;
+  color: var(--nc-tx-g-9);
+}
+.tag-remove:hover {
+  color: var(--nc-tx-1);
+}
+/*  background: var(--nc-bg-3);*/
+/*  opacity: 1;*/
+/*}*/
+/*.tag-remove {*/
+/*  display: inline-flex;*/
+/*  align-items: center;*/
+/*  justify-content: center;*/
+/*  width: 1.1em;*/
+/*  height: 1.1em;*/
+/*  padding: 0;*/
+/*  margin: 0;*/
+/*  border: none;*/
+/*  border-radius: 50%;*/
+/*  background: transparent;*/
+/*  color: var(--nc-tx-2);*/
+/*  cursor: pointer;*/
+/*  font-size: 1em;*/
+/*  line-height: 1;*/
+/*  opacity: 0.8;*/
+/*}*/
+/*.tag-remove:hover {*/
+/*  background: var(--nc-bg-3);*/
+/*  opacity: 1;*/
+/*}*/
+
 

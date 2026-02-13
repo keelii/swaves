@@ -1,0 +1,15 @@
+<span class="tag">
+  {{ if and .Tag .KindQuery }}
+  <a href="/admin/posts?kind={{ .KindQuery }}{{ if .SearchQueryEscaped }}&q={{ .SearchQueryEscaped }}{{ end }}{{ if .FilterCategoryIDStr }}&category={{ .FilterCategoryIDStr }}{{ end }}&tag={{ .Tag.ID }}">{{ .Tag.Name }}</a>
+  {{ else }}
+  {{ .Label }}
+  {{ end }}
+  {{ if .RemoveHref }}
+  <a href="{{ .RemoveHref }}" class="tag-remove" aria-label="删除">
+    <svg width="12" height="12" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <line x1="4" y1="4" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="4" x2="4" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </a>
+  {{ end }}
+</span>
