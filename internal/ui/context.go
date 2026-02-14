@@ -97,3 +97,6 @@ func GetPostAbsUrl(post db.Post) string {
 func GetSiteAuthor() string {
 	return store.GetSetting("author")
 }
+func GetSiteCopyright() string {
+	return store.GetSetting("site_copyright")
+}

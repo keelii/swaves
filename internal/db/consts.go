@@ -173,7 +173,7 @@ const InitialSQL = `
 		created_at INTEGER NOT NULL,
 		expired_at INTEGER NOT NULL
 	);
-	`
+`
 const InternalLang = `[
 	  {"label": "简体中文（中国大陆）", "value": "zh-CN"},
 	  {"label": "简体中文（新加坡）", "value": "zh-SG"},
@@ -281,6 +281,7 @@ var DefaultSettings = []Setting{
 	{Sort: 1, Kind: "General", Name: "Site URL", Code: "site_url", Type: "text", Value: "http://keelii.com", Description: "站点地址，不包括路径"},
 	{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
 	{Sort: 2, Kind: "General", Name: "Site Description", Code: "site_desc", Type: "text", Value: "Nothing", Description: "站点描述"},
+	{Sort: 2, Kind: "General", Name: "Site Copyright", Code: "site_copyright", Type: "text", Value: "Copyright © {{year}}", Description: "站点版权"},
 	{Sort: 4, Kind: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
 	{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "前端开发,编程,javascript,typescript,css,html,nodejs,python,java", Description: "关键字"},
 	{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
