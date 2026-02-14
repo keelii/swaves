@@ -302,11 +302,17 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		}, "")
 	}
 
+	// 新建：action= publish 发布，否则保存为草稿
+	status := "draft"
+	if c.FormValue("action") == "publish" {
+		status = "published"
+	}
+
 	in := CreatePostInput{
 		Title:      c.FormValue("title"),
 		Slug:       slug,
 		Content:    c.FormValue("content"),
-		Status:     c.FormValue("status"),
+		Status:     status,
 		Kind:       kind,
 		TagIDs:     tagIDs,
 		CategoryID: categoryID,
@@ -408,6 +414,15 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		kind = db.PostKindPage
 	}
 
+	actionStr := c.FormValue("action")
+	action := UpdatePostActionSave
+	switch actionStr {
+	case "publish":
+		action = UpdatePostActionPublish
+	case "update":
+		action = UpdatePostActionUpdate
+	}
+
 	in := UpdatePostInput{
 		Title:      c.FormValue("title"),
 		Content:    c.FormValue("content"),
@@ -415,6 +430,7 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		Kind:       kind,
 		TagIDs:     tagIDs,
 		CategoryID: categoryID,
+		Action:     action,
 	}
 
 	if err := UpdatePostService(h.Model, id, in); err != nil {

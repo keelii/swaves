@@ -30,6 +30,7 @@ const InitialSQL = `
 		content TEXT NOT NULL,
 		status TEXT NOT NULL,
 		kind INTEGER NOT NULL DEFAULT 0,
+		published_at INTEGER NOT NULL DEFAULT 0,
 		created_at INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER

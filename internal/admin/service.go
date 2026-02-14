@@ -39,6 +39,15 @@ type CreatePostInput struct {
 	CategoryID int64
 }
 
+// UpdatePostAction 编辑文章时的操作：save=保存草稿，publish=发布，update=更新已发布文章
+type UpdatePostAction string
+
+const (
+	UpdatePostActionSave    UpdatePostAction = "save"
+	UpdatePostActionPublish UpdatePostAction = "publish"
+	UpdatePostActionUpdate  UpdatePostAction = "update"
+)
+
 type UpdatePostInput struct {
 	Title      string
 	Content    string
@@ -46,6 +55,7 @@ type UpdatePostInput struct {
 	Kind       db.PostKind
 	TagIDs     []int64
 	CategoryID int64
+	Action     UpdatePostAction // save | publish | update
 }
 
 func GetAllTags(dbx *db.DB) ([]db.Tag, error) {
@@ -148,8 +158,28 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 
 	p.Title = in.Title
 	p.Content = in.Content
-	p.Status = in.Status
 	p.Kind = in.Kind
+
+	switch in.Action {
+	case UpdatePostActionPublish:
+		p.Status = "published"
+		if p.PublishedAt == 0 {
+			p.PublishedAt = time.Now().Unix()
+		}
+	case UpdatePostActionSave:
+		p.Status = "draft"
+		// 不修改 PublishedAt
+	case UpdatePostActionUpdate:
+		// 已发布状态仅更新内容，不修改 status、published_at
+		p.Status = "published"
+		// p.PublishedAt 保持原值
+	default:
+		if in.Status != "" {
+			p.Status = in.Status
+		} else {
+			p.Status = "draft"
+		}
+	}
 
 	if err := db.UpdatePost(dbx, p); err != nil {
 		return err
@@ -1499,7 +1529,7 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 		}
 	}
 
-	// 创建 post
+	// 创建 post；导入时已发布则 published_at 默认为 created_at
 	post := &db.Post{
 		Title:     title,
 		Slug:      slug,
@@ -1507,6 +1537,9 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 		Status:    status,
 		CreatedAt: createdAt,
 		UpdatedAt: time.Now().Unix(),
+	}
+	if status == "published" {
+		post.PublishedAt = createdAt
 	}
 
 	if _, err := db.CreatePost(dbx, post); err != nil {
@@ -1603,7 +1636,7 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 			return errors.New("slug 格式不合法: " + item.Slug + "，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 		}
 
-		// 创建 post
+		// 创建 post；导入时已发布则 published_at 默认为 created_at
 		post := &db.Post{
 			Title:     item.Title,
 			Slug:      slug,
@@ -1612,6 +1645,9 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 			Kind:      kind,
 			CreatedAt: createdAt,
 			UpdatedAt: time.Now().Unix(),
+		}
+		if item.Status == "published" {
+			post.PublishedAt = createdAt
 		}
 
 		if _, err := db.CreatePost(dbx, post); err != nil {

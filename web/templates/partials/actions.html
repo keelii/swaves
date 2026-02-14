@@ -46,7 +46,8 @@
 <div class="actions salign">
   <div class="left">
       {{ if eq .UrlPath "/admin/posts/new" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
+        <button type="submit" form="form" name="action" value="save" class="btn primary">保存</button>
+        <button type="submit" form="form" name="action" value="publish" class="btn primary">发布</button>
       {{ else if eq .UrlPath "/admin/tags/new" }}
         <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">保存</a>
       {{ else if eq .UrlPath "/admin/categories/new" }}
@@ -65,7 +66,14 @@
         <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">全部导入</a>
       {{ else if eq .UrlPath "/admin/settings/all" }}
         <button type="submit" form="form" class="btn primary">保存</button>
-      {{ else if match .UrlPath "^/admin/(posts|tags|categories|encrypted-posts|redirects|tasks|settings)/\\d+/edit$" }}
+      {{ else if match .UrlPath "^/admin/posts/\\d+/edit$" }}
+        {{ if and .Post (gt .Post.PublishedAt 0) }}
+        <button type="submit" form="form" name="action" value="update" class="btn primary">更新</button>
+        {{ else }}
+        <button type="submit" form="form" name="action" value="save" class="btn primary">保存</button>
+        <button type="submit" form="form" name="action" value="publish" class="btn primary">发布</button>
+        {{ end }}
+      {{ else if match .UrlPath "^/admin/(tags|categories|encrypted-posts|redirects|tasks|settings)/\\d+/edit$" }}
         <button type="submit" form="form" class="btn primary">保存</button>
       {{ end }}
       {{ if eq .UrlPath "/admin/posts" }}

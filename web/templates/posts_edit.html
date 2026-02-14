@@ -7,7 +7,6 @@
       <input type="text" style="width: 100%" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
     </span>
     <span>/{{ .Post.Slug }}</span>
-    {{ template "partials/toggle" dict "ID" (printf "status_%d" .Post.ID) "Name" "status" "Checked" (eq .Post.Status "published") "DataLabels" "草稿,发布" }}
     {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
   </div>
 

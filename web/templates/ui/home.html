@@ -10,7 +10,7 @@
   {{ range .Articles }}
   <li>
     <a href="{{ .PostLink }}">{{ .Title }}</a>
-    <span>{{ relativeTime .CreatedAt }}</span>
+    <span>{{ relativeTime .PublishedAt }}</span>
   </li>
   {{ else }}
   <li>No posts</li>

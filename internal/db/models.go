@@ -344,15 +344,16 @@ const (
 )
 
 type Post struct {
-	ID        int64
-	Title     string
-	Slug      string
-	Content   string
-	Status    string
-	Kind      PostKind
-	CreatedAt int64
-	UpdatedAt int64
-	DeletedAt *int64
+	ID          int64
+	Title       string
+	Slug        string
+	Content     string
+	Status      string
+	Kind        PostKind
+	PublishedAt int64 // 首次发布时间，0 表示未发布
+	CreatedAt   int64
+	UpdatedAt   int64
+	DeletedAt   *int64
 }
 
 type PostWithTags struct {
@@ -369,14 +370,18 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 		p.UpdatedAt = p.CreatedAt
 	}
 
+	if p.Status == "published" && p.PublishedAt == 0 {
+		p.PublishedAt = now()
+	}
 	id, err := CreateRecord(db, TablePosts, map[string]interface{}{
-		"title":      p.Title,
-		"slug":       p.Slug,
-		"content":    p.Content,
-		"status":     p.Status,
-		"kind":       p.Kind,
-		"created_at": p.CreatedAt,
-		"updated_at": p.UpdatedAt,
+		"title":        p.Title,
+		"slug":         p.Slug,
+		"content":      p.Content,
+		"status":       p.Status,
+		"kind":         p.Kind,
+		"created_at":   p.CreatedAt,
+		"updated_at":   p.UpdatedAt,
+		"published_at": p.PublishedAt,
 	})
 	if err != nil {
 		return 0, err
@@ -386,12 +391,12 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 }
 
 func GetPostByID(db *DB, id int64) (*Post, error) {
-	result, err := GetRecordByID(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
+	result, err := GetRecordByID(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := row.Scan(
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetPostByID")
@@ -411,13 +416,19 @@ func GetPostByID(db *DB, id int64) (*Post, error) {
 
 func UpdatePost(db *DB, p *Post) error {
 	p.UpdatedAt = now()
-	if err := UpdateRecord(db, TablePosts, p.ID, map[string]interface{}{
+	data := map[string]interface{}{
 		"title":      p.Title,
 		"content":    p.Content,
 		"status":     p.Status,
 		"kind":       p.Kind,
 		"updated_at": p.UpdatedAt,
-	}); err != nil {
+	}
+	// published_at 一旦被设置则不再更新，仅当当前为 0 且要写入非 0 时才更新
+	var currentPublishedAt int64
+	if err := db.QueryRow(`SELECT published_at FROM `+string(TablePosts)+` WHERE id=? AND deleted_at IS NULL`, p.ID).Scan(&currentPublishedAt); err == nil && currentPublishedAt == 0 && p.PublishedAt > 0 {
+		data["published_at"] = p.PublishedAt
+	}
+	if err := UpdateRecord(db, TablePosts, p.ID, data); err != nil {
 		return err
 	}
 	return nil
@@ -437,10 +448,10 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 	}
 	offset := (pager.Page - 1) * pager.PageSize
 	rows, err := db.Query(`
-		SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at
+		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
 		FROM `+string(TablePosts)+`
 		WHERE deleted_at IS NULL AND status = ? AND kind = ?
-		ORDER BY created_at DESC
+		ORDER BY published_at DESC
 		LIMIT ? OFFSET ?
 	`, "published", kind, pager.PageSize, offset)
 	if err != nil {
@@ -454,7 +465,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
 			log.Println(err)
 			return []Post{}
@@ -499,7 +510,7 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 
 	offset := (pager.Page - 1) * pager.PageSize
 	query := `
-		SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at
+		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
 		FROM ` + string(TablePosts) + `
 		WHERE ` + whereBase + `
 		ORDER BY created_at DESC
@@ -524,6 +535,7 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 			&p.Kind,
 			&p.CreatedAt,
 			&p.UpdatedAt,
+			&p.PublishedAt,
 			&deletedAt,
 		); err != nil {
 			return nil, err
@@ -567,12 +579,12 @@ func RestorePost(db *DB, id int64) error {
 }
 
 func ListDeletedPosts(db *DB) ([]Post, error) {
-	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
+	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1011,11 +1023,11 @@ func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
 
 func GetPostBySlug(db *DB, slug string) (Post, error) {
 	var p Post
-	result, err := GetRecordByField(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
+	result, err := GetRecordByField(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
 		var deletedAt sql.NullInt64
 		if err := row.Scan(
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetPostBySlug")
@@ -1038,13 +1050,13 @@ func GetPage(db *DB, slug string) (*Post, error) {
 	var p Post
 	var deletedAt sql.NullInt64
 	row := db.QueryRow(
-		`SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at
+		`SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
 		 FROM `+string(TablePosts)+` WHERE slug=? AND kind=? AND deleted_at IS NULL`,
 		slug, PostKindPage,
 	)
 	if err := row.Scan(
 		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-		&p.CreatedAt, &p.UpdatedAt, &deletedAt,
+		&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound("GetPage")
@@ -1096,18 +1108,18 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 	var mainQuery string
 	var mainArgs []interface{}
 	if kind != nil {
-		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
+		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at, ` + scoreExpr + `
 			FROM ` + string(TablePosts) + `
 			WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond + filterClause
 		mainArgs = []interface{}{pattern, pattern, pattern, *kind, pattern, pattern, pattern}
 	} else {
-		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, deleted_at, ` + scoreExpr + `
+		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at, ` + scoreExpr + `
 			FROM ` + string(TablePosts) + `
 			WHERE deleted_at IS NULL AND ` + likeCond + filterClause
 		mainArgs = []interface{}{pattern, pattern, pattern, pattern, pattern, pattern}
 	}
 	mainArgs = append(mainArgs, filterArgs...)
-	mainQuery += ` ORDER BY score DESC, created_at DESC LIMIT ? OFFSET ?`
+	mainQuery += ` ORDER BY score DESC, published_at DESC, LIMIT ? OFFSET ?`
 	mainArgs = append(mainArgs, pager.PageSize, offset)
 
 	rows, err := db.Query(mainQuery, mainArgs...)
@@ -1123,7 +1135,7 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		var score int
 		if err := rows.Scan(
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &deletedAt, &score,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
 		); err != nil {
 			return nil, err
 		}
