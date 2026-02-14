@@ -1,10 +1,10 @@
 <nav aria-label="Page navigation" class="pagination">
   <div class="ivalign gap-1">
-    <a class="page-link" href="?page=1" tabindex="-1">«</a>
+    <a class="page-link page-link-first" href="?page=1" tabindex="-1">«</a>
     {{if le .Pager.Page 1}}
-    <span class="page-link" tabindex="-1">‹</span>
+    <span class="page-link page-link-prev" tabindex="-1">‹</span>
     {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page -1}}&pageSize={{.Pager.PageSize}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}" tabindex="-1">‹</a>
+    <a class="page-link page-link-prev" href="?page={{add .Pager.Page -1}}&pageSize={{.Pager.PageSize}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}" tabindex="-1">‹</a>
     {{end}}
 
     {{range $i := until .Pager.Num}}
@@ -17,10 +17,10 @@
     {{end}}
 
     {{if ge .Pager.Page .Pager.Num}}
-    <span class="page-link">›</span>
+    <span class="page-link page-link-next">›</span>
     {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page 1}}&pageSize={{.Pager.PageSize}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}">›</a>
+    <a class="page-link page-link-next" href="?page={{add .Pager.Page 1}}&pageSize={{.Pager.PageSize}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}">›</a>
     {{end}}
-    <a class="page-link" href="?page={{.Pager.Num}}&pageSize={{$.Pager.PageSize}}{{if $.SearchQueryEscaped}}&q={{$.SearchQueryEscaped}}{{end}}" tabindex="-1">»</a>
+    <a class="page-link page-link-last" href="?page={{.Pager.Num}}&pageSize={{$.Pager.PageSize}}{{if $.SearchQueryEscaped}}&q={{$.SearchQueryEscaped}}{{end}}" tabindex="-1">»</a>
   </div>
 </nav>

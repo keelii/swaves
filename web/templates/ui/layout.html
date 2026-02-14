@@ -2,12 +2,35 @@
 <html lang="{{ settings "language" }}">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ .Title }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--<link rel="stylesheet" href="/static/oat/oat.min.css">-->
+  <link rel="stylesheet" href="/static/tufte-css/tufte.min.css">
+  <style>
+    .page-link-first,
+    .page-link-prev,
+    .page-link-next,
+    .page-link-last {
+      font-family: "Courier New", Courier, monospace!important;
+      text-decoration: none!important;
+    }
+    .page-link {
+      display: inline-block;
+      padding: 0.4em;
+    }
+  </style>
 </head>
 <body>
+  <main>
+      {{embed}}
+  </main>
 
-{{embed}}
+  <footer>
+    <p>
+      <small>{{ settings "site_copyright" | replace_datetime }}</small>
+    </p>
+  </footer>
 
 </body>
 </html>

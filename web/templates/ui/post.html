@@ -1,8 +1,7 @@
 <article>
-  <header>
-    <h1>{{ .Post.Title }}</h1>
-  </header>
-  <main>
+  <h1>{{ .Post.Title }}</h1>
+  <p class="subtitle">{{ settings "author" }}</p>
+  <section>
     {{ .Post.HTML | safeHTML }}
-  </main>
+  </section>
 </article>

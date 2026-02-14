@@ -1,12 +1,15 @@
 <header>
   <h1>{{ settings "site_desc" }}</h1>
   <nav>
-    {{ range .Pages}}
-    <a href="{{ .PostLink }}">{{ .Title }}</a>
-    {{ end }}
+      {{ range .Pages}}
+        <a href="{{ .PostLink }}">{{ .Title }}</a>
+      {{ end }}
+    /
+    <a href="{{ settings "rss_path" }}">RSS</a>
   </nav>
 </header>
-<ul>
+
+<ul class="articles">
   {{ range .Articles }}
   <li>
     <a href="{{ .PostLink }}">{{ .Title }}</a>

@@ -30,7 +30,6 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	default:
 		uiGroup.Get(postUrlPrefix+"/:slug", handler.GetPostBySlug)
 	}
-	//uiGroup.Get("/*", handler.DispatchHandler)
 	//uiGroup.Get(store.GetSetting("post_url_prefix"), ha)
 	//uiGroup.Get("/posts/:date<regex(\\d{4}/\\d{2}/\\d{2})>", handler.GetDate)
 

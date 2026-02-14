@@ -446,6 +446,10 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		log.Println(err)
 		return []Post{}
 	}
+	if kind == PostKindPage {
+		pager.Page = 1
+		pager.PageSize = 1024
+	}
 	offset := (pager.Page - 1) * pager.PageSize
 	rows, err := db.Query(`
 		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
@@ -477,6 +481,36 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 	}
 	pager.Total = total
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	return res
+}
+func ListPublishedPages(db *DB) []Post {
+	rows, err := db.Query(`
+		SELECT id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at
+		FROM `+string(TablePosts)+`
+		WHERE deleted_at IS NULL AND status = ? AND kind = ?
+		ORDER BY published_at DESC
+	`, "published", PostKindPage)
+	if err != nil {
+		log.Println(err)
+		return []Post{}
+	}
+	defer rows.Close()
+	var res []Post
+	for rows.Next() {
+		var p Post
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
+		); err != nil {
+			log.Println(err)
+			return []Post{}
+		}
+		if deletedAt.Valid {
+			p.DeletedAt = &deletedAt.Int64
+		}
+		res = append(res, p)
+	}
 	return res
 }
 

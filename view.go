@@ -194,6 +194,10 @@ func NewViewEngine() *html.Engine {
 	engine.AddFunc("split", func(s, sep string) []string {
 		return strings.Split(s, sep)
 	})
+	engine.AddFunc("replace_datetime", func(s string) string {
+		s = strings.ReplaceAll(s, "{{year}}", time.Now().Format("2006"))
+		return s
+	})
 	engine.Reload(true)
 
 	return engine

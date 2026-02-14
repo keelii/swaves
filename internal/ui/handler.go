@@ -47,10 +47,10 @@ func (h Handler) GetDate(c *fiber.Ctx) error {
 func (h Handler) GetHome(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
-	pages := ListDisplayPosts(h.Model, db.PostKindPage, &pager)
+
 	return RenderUIView(c, "ui/home", fiber.Map{
 		"Articles": articles,
-		"Pages":    pages,
+		"Pages":    ListPages(h.Model),
 		"Pager":    pager,
 	}, "")
 }
@@ -64,16 +64,10 @@ func (h Handler) GetPost(c *fiber.Ctx) error {
 
 	return RenderUIView(c, "ui/post", fiber.Map{
 		"Post": post,
+		//"Pages": ListPages(h.Model),
 	}, "")
 }
 
-func (h Handler) DispatchHandler(c *fiber.Ctx) error {
-	if c.Path() == "/" {
-		return h.GetHome(c)
-	}
-
-	return h.GetPost(c)
-}
 func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	year := c.Params("year")
 	month := c.Params("month")
@@ -97,6 +91,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 
 	return RenderUIView(c, "ui/post", fiber.Map{
 		"Post": post,
+		//"Pages": ListPages(h.Model),
 	}, "")
 }
 func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
@@ -105,8 +100,10 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	if post == nil {
 		return c.Status(fiber.StatusNotFound).SendString("page not found")
 	}
+
 	return RenderUIView(c, "ui/post", fiber.Map{
 		"Post": post,
+		//"Pages": ListPages(h.Model),
 	}, "")
 }
 

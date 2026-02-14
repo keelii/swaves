@@ -31,6 +31,24 @@ func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination) []D
 
 	return res
 }
+func ListPages(dbx *db.DB) []DisplayPage {
+	var res []DisplayPage
+
+	pages := db.ListPublishedPages(dbx)
+	for _, p := range pages {
+		res = append(res, DisplayPage{
+			ID:          p.ID,
+			Title:       p.Title,
+			Slug:        p.Slug,
+			Status:      p.Status,
+			PostLink:    GetPostUrl(p),
+			PublishedAt: p.PublishedAt,
+			CreatedAt:   p.CreatedAt,
+			UpdatedAt:   p.UpdatedAt,
+		})
+	}
+	return res
+}
 
 func GetPostBySlug(dbx *db.DB, slug string) *DisplayPost {
 	post, err := db.GetPostBySlug(dbx, slug)
