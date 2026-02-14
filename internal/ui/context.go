@@ -48,9 +48,6 @@ func MatchRouter(dst string) map[string]string {
 	pattern := PostPathToRegExp()
 	// 加上开始和结束锚点，确保完全匹配
 
-	//fmt.Println(dst)
-	//fmt.Println(pattern)
-
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return result
@@ -73,23 +70,30 @@ func MatchRouter(dst string) map[string]string {
 	return result
 }
 
+func GetArticlePublishedDate(post db.Post) (string, string, string) {
+	published := time.Unix(post.PublishedAt, 0)
+	y := published.Format("2006")
+	m := published.Format("01")
+	d := published.Format("02")
+	return y, m, d
+}
 func GetArticleUrl(post db.Post) string {
-	y := time.Unix(post.CreatedAt, 0).Format("2006")
-	m := time.Unix(post.CreatedAt, 0).Format("01")
-	d := time.Unix(post.CreatedAt, 0).Format("02")
-
+	y, m, d := GetArticlePublishedDate(post)
 	postPath := store.GetSetting("post_url_prefix")
-	postPath = strings.ReplaceAll(postPath, "{year}", y)
-	postPath = strings.ReplaceAll(postPath, "{month}", m)
-	postPath = strings.ReplaceAll(postPath, "{day}", d)
+	postPath = strings.ReplaceAll(postPath, "{datetime}", fmt.Sprintf("%s/%s/%s", y, m, d))
+
+	if postPath == "/" {
+		return "/" + post.Slug
+	}
 
 	return postPath + "/" + post.Slug
 }
 func GetPostUrl(post db.Post) string {
+	base := GetBasePath()
 	if post.Kind == db.PostKindPage {
-		return GetPageUrl(post)
+		return base + GetPageUrl(post)
 	}
-	return GetArticleUrl(post)
+	return base + GetArticleUrl(post)
 }
 func GetPostAbsUrl(post db.Post) string {
 	return fmt.Sprintf("%s%s", GetSiteUrl(), GetPostUrl(post))

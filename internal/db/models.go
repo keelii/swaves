@@ -1045,30 +1045,6 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	return *result.(*Post), nil
 }
 
-// GetPage 根据 slug 查询 type=page 的文章，未找到返回 ErrNotFound
-func GetPage(db *DB, slug string) (*Post, error) {
-	var p Post
-	var deletedAt sql.NullInt64
-	row := db.QueryRow(
-		`SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
-		 FROM `+string(TablePosts)+` WHERE slug=? AND kind=? AND deleted_at IS NULL`,
-		slug, PostKindPage,
-	)
-	if err := row.Scan(
-		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-		&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound("GetPage")
-		}
-		return nil, err
-	}
-	if deletedAt.Valid {
-		p.DeletedAt = &deletedAt.Int64
-	}
-	return &p, nil
-}
-
 // likePattern 对关键词做 LIKE 通配符转义，用于 '%'||?||'%' 的 ?
 func likePattern(q string) string {
 	return strings.NewReplacer(`%`, `\%`, `_`, `\_`).Replace(strings.TrimSpace(q))

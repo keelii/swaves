@@ -78,7 +78,7 @@ func NewViewEngine() *html.Engine {
 		if tsInt64 == 0 {
 			return "-"
 		}
-		return time.Unix(tsInt64, 0).Format(TimeFormat)
+		return time.Unix(tsInt64, 0).Format(consts.TimeFormat)
 	})
 	// relativeTime 将 Unix timestamp 转为相对时间：刚刚、1分钟前、1小时前、1天前、1月前、1年前
 	engine.AddFunc("relativeTime", func(ts interface{}) string {
@@ -208,7 +208,7 @@ func relativeTimeString(ts int64) string {
 		if diff < 60 {
 			return "刚刚"
 		}
-		return time.Unix(ts, 0).Format(TimeFormat)
+		return time.Unix(ts, 0).Format(consts.TimeFormat)
 	}
 	switch {
 	case diff < 60:

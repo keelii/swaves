@@ -11,3 +11,5 @@ const LoginSessionExpire = time.Hour * 24 * 365
 const LoginRoutePath = "/admin/login"
 
 const GlobalSettingKey = "settings"
+
+const TimeFormat = "2006-01-02 15:04:05"

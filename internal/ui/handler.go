@@ -74,17 +74,39 @@ func (h Handler) DispatchHandler(c *fiber.Ctx) error {
 
 	return h.GetPost(c)
 }
-func (h Handler) GetPage(c *fiber.Ctx) error {
-	pageSlug := c.Params("pageSlug")
-	display, err := GetPage(h.Model, pageSlug)
-	if err != nil {
-		if db.IsErrNotFound(err) {
-			return c.Status(fiber.StatusNotFound).SendString("page not found")
-		}
-		return err
+func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
+	year := c.Params("year")
+	month := c.Params("month")
+	day := c.Params("day")
+
+	if year == "" || month == "" || day == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("invalid date format")
+	}
+
+	pSlug := c.Params("slug")
+	post := GetPostBySlug(h.Model, pSlug)
+	if post == nil {
+		return c.Status(fiber.StatusNotFound).SendString("page not found")
+	}
+
+	y, m, d := GetArticlePublishedDate(post.Post)
+
+	if y != year || m != month || d != day {
+		return c.Status(fiber.StatusNotFound).SendString("page not found, maybe the date is wrong")
+	}
+
+	return RenderUIView(c, "ui/post", fiber.Map{
+		"Post": post,
+	}, "")
+}
+func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
+	pSlug := c.Params("slug")
+	post := GetPostBySlug(h.Model, pSlug)
+	if post == nil {
+		return c.Status(fiber.StatusNotFound).SendString("page not found")
 	}
 	return RenderUIView(c, "ui/post", fiber.Map{
-		"Post": display,
+		"Post": post,
 	}, "")
 }
 

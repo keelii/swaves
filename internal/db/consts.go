@@ -1,5 +1,7 @@
 package db
 
+import "swaves/internal/consts"
+
 type TableOp string
 
 const (
@@ -293,13 +295,12 @@ var DefaultSettings = []Setting{
 	{Sort: 11, Kind: "Appearance", Name: "Mode", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 	{Sort: 11, Kind: "Appearance", Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
 	{Sort: 11, Kind: "Appearance", Name: "Page size", Code: "page_size", Type: "number", Value: "10", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
-	{Sort: 11, Kind: "Post", Name: "Base Path", Code: "base_path", Type: "text", Value: "/", Description: "访问根路径"},
-	{Sort: 13, Kind: "Post", Name: "Page Path", Code: "page_path", Type: "text", Value: "/", Description: "页面根路径"},
-	{Sort: 13, Kind: "Post", Name: "RSS Url", Code: "rss_path", Type: "text", Value: "/atom.xml", Description: "feed 地址"},
-	{Sort: 13, Kind: "Post", Name: "Post Url Prefix", Code: "post_url_prefix", Type: "text", Value: "/{year}/{month}/{day}", Description: "文章 URL 模式"},
-	{Sort: 15, Kind: "Post", Name: "Tag Url Pattern", Code: "tag_url_pattern", Type: "text", Value: "/tags/{slug}", Description: "标签 URL 模式"},
-	{Sort: 17, Kind: "Post", Name: "Category Index", Code: "category_index", Type: "text", Value: "/categories", Description: "分类页面地址"},
-	{Sort: 17, Kind: "Post", Name: "Tag Index", Code: "tag_index", Type: "text", Value: "/tags", Description: "标签页面地址"},
+	{Sort: 11, Kind: "Post", Name: "Base Path", Code: "base_path", Type: "text", Value: "/", Description: "访问根路径", Attrs: consts.UrlPrefixValidatorJSON},
+	{Sort: 13, Kind: "Post", Name: "Page Path", Code: "page_path", Type: "text", Value: "/", Description: "页面根路径", Attrs: consts.UrlPrefixValidatorJSON},
+	{Sort: 13, Kind: "Post", Name: "RSS Url", Code: "rss_path", Type: "text", Value: "/atom.xml", Description: "feed 地址", Attrs: consts.UrlFileNamePrefixValidatorJSON},
+	{Sort: 13, Kind: "Post", Name: "Post Url Prefix", Code: "post_url_prefix", Type: "text", Value: "/{datetime}", Attrs: consts.PostUrlPrefixValidatorJSON, Description: "文章 URL 前缀"},
+	{Sort: 15, Kind: "Post", Name: "Tag Url Prefix", Code: "tag_url_prefix", Type: "text", Value: "/tags", Attrs: consts.UrlPrefixValidatorJSON, Description: "标签 URL 前缀"},
+	{Sort: 17, Kind: "Post", Name: "Category Index", Code: "category_index", Type: "text", Value: "/categories", Attrs: consts.UrlPrefixValidatorJSON, Description: "分类页面地址"},
 	{Sort: 19, Kind: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
 	{Sort: 21, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 }

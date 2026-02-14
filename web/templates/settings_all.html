@@ -19,7 +19,7 @@
       {{ end }}
 
       {{ if eq .Type "text" }}
-        <input type="text" name="setting_{{ .Code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }}>
+        <input autocomplete="off" type="text" name="setting_{{ .Code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }}>
       {{ else if eq .Type "number" }}
         <input type="number" name="setting_{{ $code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }}>
       {{ else if eq .Type "date" }}

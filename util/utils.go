@@ -1,8 +1,10 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gosimple/slug"
 )
@@ -33,4 +35,13 @@ func EnsureDir(dirPath string, perm os.FileMode) error {
 
 func IsSlug(str string) bool {
 	return slug.IsSlug(str)
+}
+
+func JSONEncode(str string) string {
+	b, _ := json.Marshal(str)
+	return strings.Trim(string(b), `"`)
+}
+func JSONStringify(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }
