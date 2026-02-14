@@ -13,7 +13,7 @@
 
   <p>
     <label>
-      {{ .Name }}
+      {{ .Name }}{{ if eq .Reload 1 }} <small style="color: var(--nc-lk-1);">（需重启生效）</small>{{ end }}
       {{ if .Description }}
       <small>{{ .Description }}</small><br>
       {{ end }}

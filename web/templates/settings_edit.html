@@ -79,5 +79,6 @@
 
   {{ template "partials/form_field_textarea" dict "Label" "Description" "Name" "description" "Value" .Setting.Description "Rows" 2 "Cols" 80 "Placeholder" "帮助文本，显示在管理界面中" "Help" "(Help text shown in admin)" }}
   {{ template "partials/form_field_number" dict "Label" "Sort" "Name" "sort" "Value" .Setting.Sort "Help" "(Sort order within kind)" }}
+  {{ template "partials/form_field_checkbox" dict "Label" "修改后需重启生效 (Reload)" "Name" "reload" "Value" "1" "Checked" (eq .Setting.Reload 1) }}
 
 </form>

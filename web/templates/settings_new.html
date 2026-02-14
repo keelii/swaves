@@ -104,6 +104,13 @@
     </label>
   </p>
 
+  <p>
+    <label>
+      <input type="checkbox" name="reload" value="1"{{ if .Setting }}{{ if eq .Setting.Reload 1 }} checked{{ end }}{{ end }}>
+      修改后需重启生效 (Reload)
+    </label>
+  </p>
+
 </form>
 
 <script>

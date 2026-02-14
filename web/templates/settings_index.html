@@ -7,6 +7,7 @@
     <th>编码</th>
     <th>类型</th>
     <th>值</th>
+    <th>需重启</th>
     <th>创建时间</th>
     <th>更新时间</th>
     <th>操作</th>
@@ -28,12 +29,13 @@
         {{ .Value }}
       {{ end }}
     </td>
+    <td>{{ if eq .Reload 1 }}是{{ else }}—{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>
     {{ template "partials/table_row_actions" dict "BaseURL" "/admin/settings" "ID" .ID }}
   </tr>
   {{ else }}
-  {{ template "partials/table_empty" dict "ColSpan" 9 "Message" "No settings" }}
+  {{ template "partials/table_empty" dict "ColSpan" 10 "Message" "No settings" }}
   {{ end }}
   </tbody>
 

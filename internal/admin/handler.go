@@ -1237,6 +1237,11 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 			setting.Sort = sort
 		}
 	}
+	if c.FormValue("reload") != "" {
+		setting.Reload = 1
+	} else {
+		setting.Reload = 0
+	}
 
 	// 处理 value 字段
 	value := c.FormValue("value")
@@ -1323,6 +1328,11 @@ func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 		if sort, err := strconv.ParseInt(sortStr, 10, 64); err == nil {
 			s.Sort = sort
 		}
+	}
+	if c.FormValue("reload") != "" {
+		s.Reload = 1
+	} else {
+		s.Reload = 0
 	}
 
 	if s.Kind == "" {

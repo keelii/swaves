@@ -1501,6 +1501,7 @@ type Setting struct {
 	Charset            string
 	Author             string
 	Keywords           string
+	Reload             int // 1 表示该项配置修改后需重启应用才能生效
 	CreatedAt          int64
 	UpdatedAt          int64
 	DeletedAt          *int64
@@ -1554,6 +1555,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 		"charset":              s.Charset,
 		"author":               s.Author,
 		"keywords":             s.Keywords,
+		"reload":               s.Reload,
 		"created_at":           s.CreatedAt,
 		"updated_at":           s.UpdatedAt,
 	})
@@ -1566,7 +1568,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 }
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
-	result, err := GetRecordByField(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, created_at, updated_at, deleted_at", "code", code, func(row *sql.Row) (interface{}, error) {
+	result, err := GetRecordByField(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at", "code", code, func(row *sql.Row) (interface{}, error) {
 		var s Setting
 		var deletedAt sql.NullInt64
 
@@ -1585,6 +1587,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 			&s.Charset,
 			&s.Author,
 			&s.Keywords,
+			&s.Reload,
 			&s.CreatedAt,
 			&s.UpdatedAt,
 			&deletedAt,
@@ -1608,7 +1611,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 }
 
 func GetSettingByID(db *DB, id int64) (*Setting, error) {
-	result, err := GetRecordByID(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
+	result, err := GetRecordByID(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
 		var s Setting
 		var deletedAt sql.NullInt64
 
@@ -1627,6 +1630,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 			&s.Charset,
 			&s.Author,
 			&s.Keywords,
+			&s.Reload,
 			&s.CreatedAt,
 			&s.UpdatedAt,
 			&deletedAt,
@@ -1657,7 +1661,7 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 		whereArgs = append(whereArgs, kind)
 	}
 
-	results, err := ListRecords(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, created_at, updated_at, deleted_at", whereClause, "", whereArgs, 0, 0, func(rows *sql.Rows) (interface{}, error) {
+	results, err := ListRecords(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at", whereClause, "", whereArgs, 0, 0, func(rows *sql.Rows) (interface{}, error) {
 		var s Setting
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
@@ -1675,6 +1679,7 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 			&s.Charset,
 			&s.Author,
 			&s.Keywords,
+			&s.Reload,
 			&s.CreatedAt,
 			&s.UpdatedAt,
 			&deletedAt,
@@ -1729,6 +1734,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 		"charset":              s.Charset,
 		"author":               s.Author,
 		"keywords":             s.Keywords,
+		"reload":               s.Reload,
 		"updated_at":           s.UpdatedAt,
 	})
 
