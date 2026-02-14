@@ -1,24 +1,10 @@
 <select name="categories" id="categories-select">
-  {{ if $.EmptyOption}}
+  {{ if $.EmptyOption }}
     <option value="">{{ $.EmptyOption }}</option>
   {{ else }}
-  <option value="">顶级分类</option>
+    <option value="">顶级分类</option>
   {{ end }}
   {{ range .Root.Categories }}
-    <option value="{{ .ID }}" {{ if eq $.SelectedID .ID }}selected{{ end }}>
-        {{ .Name }}
-    </option>
+    <option value="{{ .ID }}" {{ if eq $.SelectedID .ID }}selected{{ end }}>{{ .Name }}</option>
   {{ end }}
 </select>
-
-<script>
-  if (typeof Choices !== 'undefined') {
-    var el = document.getElementById('categories-select');
-    if (el) {
-      new Choices(el, {
-        removeItemButton: true, searchEnabled: true, shouldSort: false,
-        placeholder: true, placeholderValue: '选择分类', searchChoices: true
-      });
-    }
-  }
-</script>

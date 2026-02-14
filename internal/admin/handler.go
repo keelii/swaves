@@ -93,6 +93,21 @@ func RenderAdminView(c *fiber.Ctx, view string, data fiber.Map, layout string) e
 	return c.Render(view, data, layout)
 }
 
+// parseTagsFromCommaSeparated 解析 "标签1, 标签2" 为 tagIDs，不存在的标签会创建
+func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
+	var tagIDs []int64
+	for _, part := range strings.Split(s, ",") {
+		name := strings.TrimSpace(part)
+		if name == "" {
+			continue
+		}
+		if tag, err := CreateTagByName(dbx, name); err == nil {
+			tagIDs = append(tagIDs, tag.ID)
+		}
+	}
+	return tagIDs
+}
+
 func (h *Handler) GetHome(c *fiber.Ctx) error {
 	return RenderAdminView(c, "admin_home", fiber.Map{"Title": "Admin Home"}, "")
 }
@@ -258,23 +273,8 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
-	// 解析标签：统一使用 tags[] 接收参数（支持标签ID和新标签名）
-	var tagIDs []int64
-	for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
-		s := strings.TrimSpace(string(v))
-		if s == "" {
-			continue
-		}
-		// 如果值是纯数字，说明是现有的标签ID
-		if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
-			tagIDs = append(tagIDs, tagID)
-		} else {
-			// 否则是用户输入的新标签名，创建新标签
-			if tag, err := CreateTagByName(h.Model, s); err == nil {
-				tagIDs = append(tagIDs, tag.ID)
-			}
-		}
-	}
+	// 解析标签：name="tags" 逗号分隔，每段为标签名（存在则关联，不存在则创建）
+	tagIDs := parseTagsFromCommaSeparated(h.Model, c.FormValue("tags"))
 
 	// 解析分类 ID（单选）
 	var categoryID int64
@@ -341,10 +341,10 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	// 创建已选标签的 map 以便在模板中快速查找
-	selectedTagIDs := make(map[int64]bool)
+	// 已选标签名逗号拼接，供 input 展示
+	selectedTagNames := make([]string, 0, len(postWithTags.Tags))
 	for _, tag := range postWithTags.Tags {
-		selectedTagIDs[tag.ID] = true
+		selectedTagNames = append(selectedTagNames, tag.Name)
 	}
 
 	// 获取所有分类
@@ -366,13 +366,13 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "posts_edit", fiber.Map{
-		"Title":          "Edit Post",
-		"Post":           postWithTags.Post,
-		"Tags":           allTags,
-		"SelectedTags":   postWithTags.Tags,
-		"SelectedTagIDs": selectedTagIDs,
-		"Categories":     allCategories,
-		"Category":       *category,
+		"Title":            "Edit Post",
+		"Post":             postWithTags.Post,
+		"Tags":             allTags,
+		"SelectedTags":     postWithTags.Tags,
+		"SelectedTagNames": strings.Join(selectedTagNames, ", "),
+		"Categories":       allCategories,
+		"Category":         *category,
 	}, "")
 }
 
@@ -382,23 +382,7 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	// 解析标签：统一使用 tags[] 接收参数（支持标签ID和新标签名）
-	var tagIDs []int64
-	for _, v := range c.Request().PostArgs().PeekMulti("tags[]") {
-		s := strings.TrimSpace(string(v))
-		if s == "" {
-			continue
-		}
-		// 如果值是纯数字，说明是现有的标签ID
-		if tagID, err := strconv.ParseInt(s, 10, 64); err == nil {
-			tagIDs = append(tagIDs, tagID)
-		} else {
-			// 否则是用户输入的新标签名，创建新标签
-			if tag, err := CreateTagByName(h.Model, s); err == nil {
-				tagIDs = append(tagIDs, tag.ID)
-			}
-		}
-	}
+	tagIDs := parseTagsFromCommaSeparated(h.Model, c.FormValue("tags"))
 
 	// 解析分类 ID（单选）
 	var categoryID int64

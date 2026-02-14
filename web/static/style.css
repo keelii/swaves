@@ -403,9 +403,6 @@ mark {
 ::placeholder {
   color: var(--nc-tx-g-9);
 }
-.choices {
-    /*width: 40%;*/
-}
 textarea[name="content"] {
   width: 100%;
 }

@@ -1,17 +1,2 @@
-<select id="tags-select" name="tags[]" multiple>
-  {{ if .Tags }}
-    {{ range .Tags }}
-      <option value="{{ .ID }}"{{ if $.SelectedTagIDs }}{{ if index $.SelectedTagIDs .ID }} selected{{ end }}{{ end }}>{{ .Name }}</option>
-    {{ end }}
-  {{ end }}
-</select>
-
-<script>
-$(function() {
-  if ($('#tags-select').length) new Choices(document.getElementById('tags-select'), {
-    placeholderValue: '选择标签    ', placeholder: true, removeItemButton: true, searchEnabled: true,
-    shouldSort: false, searchChoices: true, addItems: true, editItems: false, delimiter: ',',
-    paste: false, duplicateItemsAllowed: false
-  });
-});
-</script>
+{{/* 标签：input 逗号分隔，name="tags"，值为 "标签1, 标签2"。新建时 .SelectedTagNames 为空，编辑时传入已选标签名拼接。 */}}
+<input type="text" id="tags-input" name="tags" value="{{ .SelectedTagNames }}" placeholder="标签名，多个用逗号分隔" style="width: 100%;">
