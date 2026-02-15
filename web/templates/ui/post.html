@@ -3,12 +3,13 @@
   <nav>
     <span class="author">{{ settings "author" }}</span>
     <span>{{ articleTime .Post.PublishedAt }}</span>
-    <a href="{{ settings "base_path" }}">首页</a>
+    · <a href="{{ settings "base_path" }}">首页</a>
     {{if .Post.Category}}
-      | <a href="{{ .Post.Category.PermLink }}">{{ .Post.Category.Name }}</a>
+      · 分类 <a href="{{ .Post.Category.PermLink }}">{{ .Post.Category.Name }}</a>
     {{end}}
-    |
+    {{if .Post.Tags}}
     {{template "ui/tag_list" dict "Items" .Post.Tags}}
+    {{end}}
   </nav>
 </header>
 <article>

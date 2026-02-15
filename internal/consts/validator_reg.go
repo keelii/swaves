@@ -1,7 +1,7 @@
 package consts
 
 import (
-	"swaves/util"
+	"swaves/helper"
 )
 
 const PostUrlPrefixReg = `^/\{datetime\}|/[a-z]*$`
@@ -11,7 +11,7 @@ var PostUrlPrefixValidator = map[string]interface{}{
 	"required": true,
 	"pattern":  PostUrlPrefixReg,
 }
-var PostUrlPrefixValidatorJSON = util.JSONStringify(PostUrlPrefixValidator)
+var PostUrlPrefixValidatorJSON = helper.JSONStringify(PostUrlPrefixValidator)
 
 const UrlPrefixReg = `^/[a-z]*$`
 
@@ -20,7 +20,7 @@ var UrlPrefixValidator = map[string]interface{}{
 	"required": true,
 	"pattern":  UrlPrefixReg,
 }
-var UrlPrefixValidatorJSON = util.JSONStringify(UrlPrefixValidator)
+var UrlPrefixValidatorJSON = helper.JSONStringify(UrlPrefixValidator)
 
 const UrlFileNamePrefixReg = `^/[a-z]+[0-9]*.?[a-z]+$`
 
@@ -29,4 +29,4 @@ var UrlFileNamePrefixValidator = map[string]interface{}{
 	"required": true,
 	"pattern":  UrlFileNamePrefixReg,
 }
-var UrlFileNamePrefixValidatorJSON = util.JSONStringify(UrlFileNamePrefixValidator)
+var UrlFileNamePrefixValidatorJSON = helper.JSONStringify(UrlFileNamePrefixValidator)

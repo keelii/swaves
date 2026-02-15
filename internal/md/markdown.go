@@ -2,9 +2,9 @@ package md
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"strings"
+	"swaves/helper"
 
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -36,7 +36,6 @@ func GetMarkdownOnly(input string) string {
 }
 
 func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
-	fmt.Println("includeTOC", includeTOC)
 	extensions := []goldmark.Extender{
 		meta.Meta, // 开启 Front matter 支持
 		//mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
@@ -96,9 +95,12 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 	//// 4. 获取 HTML 内容
 	//fmt.Println("--- HTML 内容 ---")
 	//fmt.Println(buf.String())
+
+	result := helper.FlattenTOC(buf.String())
+
 	return &MarkdownResult{
 		Meta:     metaData,
 		Markdown: GetMarkdownOnly(text),
-		HTML:     buf.String(),
+		HTML:     result,
 	}
 }

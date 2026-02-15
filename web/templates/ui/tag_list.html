@@ -1,5 +1,6 @@
 {{if gt (len .Items) 0}}
-{{range .Items}}
-  <a href="{{ .PermLink }}">{{ .Name }}</a>
+· 标签
+{{range $i, $t := .Items}}
+  <a href="{{ $t.PermLink }}">{{ $t.Name }}</a>{{ if ne (add $i 1) (len $.Items) }},{{ end }}
 {{end}}
 {{end}}

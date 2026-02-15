@@ -50,6 +50,10 @@ func ListPages(dbx *db.DB) []DisplayPostInfo {
 }
 
 func postToPostInfo(p *db.Post) *DisplayPostInfo {
+	if p == nil {
+		return nil
+	}
+
 	return &DisplayPostInfo{
 		ID:          p.ID,
 		Title:       p.Title,
@@ -235,7 +239,7 @@ func toDisplayTags(tags []db.Tag) []DisplayItem {
 }
 func toDisplayCategory(category *db.Category) *DisplayItem {
 	if category == nil {
-		return &DisplayItem{}
+		return nil
 	}
 	return &DisplayItem{
 		ID:        category.ID,

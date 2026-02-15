@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"swaves/helper"
 	"swaves/internal/db"
-	"swaves/util"
 	"time"
 )
 
@@ -24,7 +24,7 @@ func HelloJob1() error {
 
 // DatabaseBackupJob 数据库备份任务
 func DatabaseBackupJob(reg *Registry) (string, error) {
-	err := util.EnsureDir(reg.Config.BackupDir, 0755)
+	err := helper.EnsureDir(reg.Config.BackupDir, 0755)
 	if err != nil {
 		log.Printf("无法创建备份目录: %v\n", err)
 	}

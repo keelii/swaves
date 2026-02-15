@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"swaves/helper"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 	"swaves/internal/types"
-	"swaves/util"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -298,7 +298,7 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 	}
 
 	slug := strings.TrimSpace(c.FormValue("slug"))
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		tags, _ := GetAllTags(h.Model)
 		categories, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "posts_new", fiber.Map{
@@ -479,7 +479,7 @@ func (h *Handler) GetTagNewHandler(c *fiber.Ctx) error {
 
 func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
 	slug := strings.TrimSpace(c.FormValue("slug"))
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		return RenderAdminView(c, "tags_new", fiber.Map{
 			"Title": "New Tag",
 			"Error": "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
@@ -520,7 +520,7 @@ func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 	slug := strings.TrimSpace(c.FormValue("slug"))
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		tag, _ := GetTagForEdit(h.Model, id)
 		return RenderAdminView(c, "tags_edit", fiber.Map{
 			"Title": "Edit Tag",
@@ -877,7 +877,7 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 	}
 
 	slug := strings.TrimSpace(c.FormValue("slug"))
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_new", fiber.Map{
 			"Title":      "New Category",
@@ -988,7 +988,7 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 	}
 
 	slug := strings.TrimSpace(c.FormValue("slug"))
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		category, _ := GetCategoryForEdit(h.Model, id)
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_edit", fiber.Map{
@@ -1953,7 +1953,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 	// 校验每条记录的 slug
 	for _, item := range items {
-		if !util.IsSlug(strings.TrimSpace(item.Slug)) {
+		if !helper.IsSlug(strings.TrimSpace(item.Slug)) {
 			return RenderAdminView(c, "import_preview", fiber.Map{
 				"Title": "Import Preview",
 				"Items": items,

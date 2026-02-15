@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"swaves/helper"
 	"swaves/internal/db"
 	"swaves/internal/md"
 	"swaves/internal/types"
-	"swaves/util"
 	"time"
 
 	slg "github.com/gosimple/slug"
@@ -96,7 +96,7 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 	if in.Title == "" || in.Slug == "" {
 		return errors.New("title and slug required")
 	}
-	if !util.IsSlug(in.Slug) {
+	if !helper.IsSlug(in.Slug) {
 		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 	}
 
@@ -281,7 +281,7 @@ func CreateTagService(dbx *db.DB, in CreateTagInput) error {
 	if slug == "" {
 		slug = "tag"
 	}
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 	}
 
@@ -302,7 +302,7 @@ func CreateTagByName(dbx *db.DB, name string) (*db.Tag, error) {
 	if slug == "" {
 		slug = "tag"
 	}
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		return nil, errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 	}
 
@@ -357,7 +357,7 @@ func UpdateTagService(dbx *db.DB, id int64, in UpdateTagInput) error {
 	if err != nil {
 		return err
 	}
-	if in.Slug != "" && !util.IsSlug(in.Slug) {
+	if in.Slug != "" && !helper.IsSlug(in.Slug) {
 		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 	}
 	t.Name = in.Name
@@ -744,7 +744,7 @@ func CreateCategoryService(dbx *db.DB, in CreateCategoryInput) error {
 		return errors.New("name required")
 	}
 	slug := in.Slug
-	if slug != "" && !util.IsSlug(slug) {
+	if slug != "" && !helper.IsSlug(slug) {
 		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 	}
 
@@ -768,7 +768,7 @@ func CreateCategoryByName(dbx *db.DB, name string) (*db.Category, error) {
 	if slug == "" {
 		slug = "category"
 	}
-	if !util.IsSlug(slug) {
+	if !helper.IsSlug(slug) {
 		return nil, errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 	}
 
@@ -830,7 +830,7 @@ func UpdateCategoryService(dbx *db.DB, id int64, in UpdateCategoryInput) error {
 	if err != nil {
 		return err
 	}
-	if in.Slug != "" && !util.IsSlug(in.Slug) {
+	if in.Slug != "" && !helper.IsSlug(in.Slug) {
 		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 	}
 
@@ -1519,12 +1519,12 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 	}
 
 	slug = strings.Trim(slug, "-")
-	if slug == "" || !util.IsSlug(slug) {
+	if slug == "" || !helper.IsSlug(slug) {
 		slug = strings.Trim(slg.Make(title), "-")
 		if slug == "" {
 			slug = "post"
 		}
-		if !util.IsSlug(slug) {
+		if !helper.IsSlug(slug) {
 			return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 		}
 	}
@@ -1632,7 +1632,7 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 		if slug == "" {
 			slug = "post"
 		}
-		if !util.IsSlug(slug) {
+		if !helper.IsSlug(slug) {
 			return errors.New("slug 格式不合法: " + item.Slug + "，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
 		}
 

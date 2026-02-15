@@ -4,12 +4,13 @@
   <a href="{{ settings "category_url_prefix" }}">分类</a>
   /
   <a href="{{ settings "tag_url_prefix" }}">标签</a>
+  {{if gt (len .Pages) 0 }}
   /
     {{ range .Pages}}
       <a href="{{ .PermLink }}">{{ .Title }}</a>
     {{ end }}
-  /
-  <a href="{{ settings "rss_path" }}">RSS</a>
+  {{end}}
+  / <a href="{{ settings "rss_path" }}">RSS</a>
   {{if .IsLogin}}
     / <a href="{{ settings "admin_path" }}">管理</a>
   {{end}}
