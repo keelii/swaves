@@ -96,7 +96,7 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 	//fmt.Println("--- HTML 内容 ---")
 	//fmt.Println(buf.String())
 
-	result := helper.FlattenTOC(buf.String())
+	result := helper.FlattenTOC(buf.String(), "ol")
 
 	return &MarkdownResult{
 		Meta:     metaData,
