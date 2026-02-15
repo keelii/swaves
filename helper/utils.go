@@ -30,7 +30,7 @@ func FlattenTOC(input string) string {
 }
 
 func fixTocList(n *html.Node) {
-	if n.Type == html.ElementNode && n.Data == "ul" {
+	if n.Type == html.ElementNode && n.Data == "ol" {
 		for _, attr := range n.Attr {
 			if attr.Key == "id" && attr.Val == "toc-list" {
 				flattenTocList(n)

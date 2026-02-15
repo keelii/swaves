@@ -73,7 +73,7 @@ func (t *MyTransformer) Transform(doc *ast.Document, reader text.Reader, ctx par
 		return
 	}
 
-	listNode := toc.RenderList(tocTree)
+	listNode := toc.RenderOrderedList(tocTree)
 	listNode.SetAttributeString("id", "toc-list")
 
 	// 创建标题
