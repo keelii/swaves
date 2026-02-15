@@ -64,7 +64,7 @@ func InitDatabase(db *DB) error {
 
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
-			return err
+			return WrapInternalErr("InitDatabase", err)
 		}
 	}
 
@@ -132,7 +132,7 @@ func CreateRecord(db *DB, tableName TableName, data map[string]interface{}) (int
 
 	res, err := db.Exec(query, args...)
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateRecord", err)
 	}
 	id, _ := res.LastInsertId()
 	return id, nil
@@ -197,7 +197,7 @@ func ListRecords(db *DB, tableName TableName, selectFields, whereClause, orderBy
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListRecords", err)
 	}
 	defer rows.Close()
 
@@ -205,7 +205,7 @@ func ListRecords(db *DB, tableName TableName, selectFields, whereClause, orderBy
 	for rows.Next() {
 		item, err := scanFunc(rows)
 		if err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListRecords.scan", err)
 		}
 		res = append(res, item)
 	}
@@ -223,7 +223,7 @@ func ListDeletedRecords(db *DB, tableName TableName, selectFields, orderBy strin
 
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListDeletedRecords", err)
 	}
 	defer rows.Close()
 
@@ -231,7 +231,7 @@ func ListDeletedRecords(db *DB, tableName TableName, selectFields, orderBy strin
 	for rows.Next() {
 		item, err := scanFunc(rows)
 		if err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListDeletedRecords.scan", err)
 		}
 		res = append(res, item)
 	}
@@ -252,7 +252,10 @@ func CountRecords(db *DB, tableName TableName, whereClause string, whereArgs []i
 
 	var count int
 	err := db.QueryRow(query, args...).Scan(&count)
-	return count, err
+	if err != nil {
+		return 0, WrapInternalErr("CountRecords", err)
+	}
+	return count, nil
 }
 
 // ============================================================================
@@ -300,7 +303,10 @@ func UpdateRecord(db *DB, tableName TableName, id int64, data map[string]interfa
 	)
 
 	_, err := db.Exec(query, args...)
-	return err
+	if err != nil {
+		return WrapInternalErr("UpdateRecord", err)
+	}
+	return nil
 }
 
 // RestoreRecord 恢复软删除的记录（通用）
@@ -309,7 +315,10 @@ func RestoreRecord(db *DB, tableName TableName, id int64) error {
 		`UPDATE `+string(tableName)+` SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
 		id,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("RestoreRecord", err)
+	}
+	return nil
 }
 
 // ============================================================================
@@ -323,7 +332,10 @@ func SoftDeleteRecord(db *DB, tableName TableName, id int64) error {
 		`UPDATE `+string(tableName)+` SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
 		ts, id,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("SoftDeleteRecord", err)
+	}
+	return nil
 }
 
 // HardDeleteRecord 硬删除记录（通用）
@@ -332,7 +344,10 @@ func HardDeleteRecord(db *DB, tableName TableName, id int64) error {
 		`DELETE FROM `+string(tableName)+` WHERE id=?`,
 		id,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("HardDeleteRecord", err)
+	}
+	return nil
 }
 
 // PostKind 文章类型
@@ -384,7 +399,7 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 		"published_at": p.PublishedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreatePost", err)
 	}
 	p.ID = id
 	return id, nil
@@ -401,7 +416,7 @@ func GetPostByID(db *DB, id int64) (*Post, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetPostByID")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetPostByID", err)
 		}
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
@@ -409,7 +424,7 @@ func GetPostByID(db *DB, id int64) (*Post, error) {
 		return &p, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetPostByID", err)
 	}
 	return result.(*Post), nil
 }
@@ -443,7 +458,7 @@ func CountPostsByKind(db *DB, kind PostKind) (int, error) {
 func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 	total, err := CountRecords(db, TablePosts, "deleted_at IS NULL AND status = ?", []interface{}{"published"})
 	if err != nil {
-		log.Println(err)
+		log.Printf("[db] ListPublishedPosts CountRecords: %v", err)
 		return []Post{}
 	}
 	if kind == PostKindPage {
@@ -459,7 +474,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		LIMIT ? OFFSET ?
 	`, "published", kind, pager.PageSize, offset)
 	if err != nil {
-		log.Println(err)
+		log.Printf("[db] ListPublishedPosts Query: %v", err)
 		return []Post{}
 	}
 	defer rows.Close()
@@ -471,7 +486,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
 			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
-			log.Println(err)
+			log.Printf("[db] ListPublishedPosts Scan: %v", err)
 			return []Post{}
 		}
 		if deletedAt.Valid {
@@ -491,7 +506,7 @@ func ListPublishedPages(db *DB) []Post {
 		ORDER BY published_at DESC
 	`, "published", PostKindPage)
 	if err != nil {
-		log.Println(err)
+		log.Printf("[db] ListPublishedPages: %v", err)
 		return []Post{}
 	}
 	defer rows.Close()
@@ -503,7 +518,7 @@ func ListPublishedPages(db *DB) []Post {
 			&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
 			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
-			log.Println(err)
+			log.Printf("[db] ListPublishedPages Scan: %v", err)
 			return []Post{}
 		}
 		if deletedAt.Valid {
@@ -539,7 +554,7 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 
 	total, err := CountRecords(db, TablePosts, whereBase, whereArgs)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListPosts.CountRecords", err)
 	}
 
 	offset := (pager.Page - 1) * pager.PageSize
@@ -552,7 +567,7 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 	args := append(whereArgs, pager.PageSize, offset)
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListPosts", err)
 	}
 	defer rows.Close()
 
@@ -572,7 +587,7 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 			&p.PublishedAt,
 			&deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListPosts.Scan", err)
 		}
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
@@ -580,7 +595,7 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 		posts = append(posts, &p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListPosts.rows.Err", err)
 	}
 
 	postIDs := make([]int64, len(posts))
@@ -620,7 +635,7 @@ func ListDeletedPosts(db *DB) ([]Post, error) {
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
 			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListDeletedPosts.Scan", err)
 		}
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
@@ -628,7 +643,7 @@ func ListDeletedPosts(db *DB) ([]Post, error) {
 		return p, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListDeletedPosts", err)
 	}
 	res := make([]Post, len(results))
 	for i, v := range results {
@@ -662,7 +677,7 @@ func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetEncryptedPostByID")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetEncryptedPostByID", err)
 		}
 		if expiresAt.Valid {
 			p.ExpiresAt = &expiresAt.Int64
@@ -674,14 +689,14 @@ func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
 		// 解密 content（使用系统密钥，不依赖 password 字段）
 		decryptedContent, err := DecryptContent(encryptedContent)
 		if err != nil {
-			return nil, err
+			return nil, WrapInternalErr("GetEncryptedPostByID.DecryptContent", err)
 		}
 		p.Content = decryptedContent
 
 		return &p, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetEncryptedPostByID", err)
 	}
 	return result.(*EncryptedPost), nil
 }
@@ -692,7 +707,7 @@ func UpdateEncryptedPost(db *DB, p *EncryptedPost) error {
 	// 加密 content（使用系统密钥，不依赖 password 字段）
 	encryptedContent, err := EncryptContent(p.Content)
 	if err != nil {
-		return err
+		return WrapInternalErr("UpdateEncryptedPost.EncryptContent", err)
 	}
 
 	return UpdateRecord(db, TableEncryptedPosts, p.ID, map[string]interface{}{
@@ -720,7 +735,7 @@ func SoftDeleteExpiredEncryptedPosts(db *DB, beforeUnix int64) (int64, error) {
 		ts, ts, beforeUnix,
 	)
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("SoftDeleteExpiredEncryptedPosts", err)
 	}
 	return res.RowsAffected()
 }
@@ -734,7 +749,7 @@ func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Password,
 			&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListDeletedEncryptedPosts.Scan", err)
 		}
 		if expiresAt.Valid {
 			p.ExpiresAt = &expiresAt.Int64
@@ -745,7 +760,7 @@ func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
 		return p, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListDeletedEncryptedPosts", err)
 	}
 	res := make([]EncryptedPost, len(results))
 	for i, v := range results {
@@ -768,7 +783,7 @@ func CreateEncryptedPost(db *DB, p *EncryptedPost) (int64, error) {
 	// 加密 content（使用系统密钥，不依赖 password 字段）
 	encryptedContent, err := EncryptContent(p.Content)
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateEncryptedPost.EncryptContent", err)
 	}
 
 	id, err := CreateRecord(db, TableEncryptedPosts, map[string]interface{}{
@@ -781,7 +796,7 @@ func CreateEncryptedPost(db *DB, p *EncryptedPost) (int64, error) {
 		"updated_at": p.UpdatedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateEncryptedPost", err)
 	}
 	p.ID = id
 	return id, nil
@@ -811,7 +826,7 @@ func CreateTag(db *DB, t *Tag) (int64, error) {
 		"updated_at": t.UpdatedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateTag", err)
 	}
 	t.ID = id
 	return id, nil
@@ -828,7 +843,7 @@ func GetTagByID(db *DB, id int64) (*Tag, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetTagByID")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetTagByID.Scan", err)
 		}
 		if deletedAt.Valid {
 			t.DeletedAt = &deletedAt.Int64
@@ -836,7 +851,7 @@ func GetTagByID(db *DB, id int64) (*Tag, error) {
 		return &t, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetTagByID", err)
 	}
 	return result.(*Tag), nil
 }
@@ -866,7 +881,7 @@ func ListDeletedTags(db *DB) ([]Tag, error) {
 			&t.ID, &t.Name, &t.Slug,
 			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListDeletedTags.Scan", err)
 		}
 		if deletedAt.Valid {
 			t.DeletedAt = &deletedAt.Int64
@@ -874,7 +889,7 @@ func ListDeletedTags(db *DB) ([]Tag, error) {
 		return t, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListDeletedTags", err)
 	}
 	res := make([]Tag, len(results))
 	for i, v := range results {
@@ -892,7 +907,7 @@ func GetPostTags(db *DB, postID int64) ([]Tag, error) {
 		ORDER BY t.name
 	`, postID)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetPostTags", err)
 	}
 	defer rows.Close()
 
@@ -904,12 +919,15 @@ func GetPostTags(db *DB, postID int64) ([]Tag, error) {
 			&t.ID, &t.Name, &t.Slug,
 			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("GetPostTags.Scan", err)
 		}
 		if deletedAt.Valid {
 			t.DeletedAt = &deletedAt.Int64
 		}
 		tags = append(tags, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, WrapInternalErr("GetPostTags.rows.Err", err)
 	}
 	return tags, nil
 }
@@ -934,7 +952,7 @@ func getPostTagsByPostIDs(db *DB, postIDs []int64) (map[int64][]Tag, error) {
 		ORDER BY pt.post_id, t.name`
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("getPostTagsByPostIDs", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -946,14 +964,17 @@ func getPostTagsByPostIDs(db *DB, postIDs []int64) (map[int64][]Tag, error) {
 			&t.ID, &t.Name, &t.Slug,
 			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("getPostTagsByPostIDs.Scan", err)
 		}
 		if deletedAt.Valid {
 			t.DeletedAt = &deletedAt.Int64
 		}
 		out[postID] = append(out[postID], t)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, WrapInternalErr("getPostTagsByPostIDs.rows.Err", err)
+	}
+	return out, nil
 }
 
 // getPostCategoriesByPostIDs 批量查询多篇文章的分类，返回 postID -> *Category（每篇最多一个），避免 N+1
@@ -976,7 +997,7 @@ func getPostCategoriesByPostIDs(db *DB, postIDs []int64) (map[int64]*Category, e
 		ORDER BY pc.post_id, c.name`
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("getPostCategoriesByPostIDs", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -989,7 +1010,7 @@ func getPostCategoriesByPostIDs(db *DB, postIDs []int64) (map[int64]*Category, e
 			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
 			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("getPostCategoriesByPostIDs.Scan", err)
 		}
 		if parentID.Valid {
 			c.ParentID = parentID.Int64
@@ -1002,7 +1023,10 @@ func getPostCategoriesByPostIDs(db *DB, postIDs []int64) (map[int64]*Category, e
 			out[postID] = &c
 		}
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, WrapInternalErr("getPostCategoriesByPostIDs.rows.Err", err)
+	}
+	return out, nil
 }
 
 // CountPostsByTags 批量统计标签的文章数量
@@ -1031,7 +1055,7 @@ func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("CountPostsByTags", err)
 	}
 	defer rows.Close()
 
@@ -1040,9 +1064,12 @@ func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
 		var tagID int64
 		var count int
 		if err := rows.Scan(&tagID, &count); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("CountPostsByTags.Scan", err)
 		}
 		result[tagID] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, WrapInternalErr("CountPostsByTags.rows.Err", err)
 	}
 
 	// 确保所有 tagID 都在 map 中（没有关联文章时为 0）
@@ -1066,7 +1093,7 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetPostBySlug")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetPostBySlug.Scan", err)
 		}
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
@@ -1074,14 +1101,22 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 		return &p, nil
 	})
 	if err != nil {
-		return Post{}, err
+		return Post{}, WrapInternalErr("GetPostBySlug", err)
 	}
 	return *result.(*Post), nil
 }
 
 // likePattern 对关键词做 LIKE 通配符转义，用于 '%'||?||'%' 的 ?
 func likePattern(q string) string {
-	return strings.NewReplacer(`%`, `\%`, `_`, `\_`).Replace(strings.TrimSpace(q))
+	replacer := strings.NewReplacer(
+		`%`, `\%`,
+		`_`, `\_`,
+		`[`, `\[`,
+		`]`, `\]`,
+		`^`, `\^`,
+		`\`, `\\`,
+	)
+	return replacer.Replace(strings.TrimSpace(q))
 }
 
 // ListPostsBySearch 后台文章搜索：单条 SQL，优先级 title(10) > slug(5) > content(1)，ORDER BY score DESC, created_at DESC；支持 tag/category 过滤
@@ -1103,7 +1138,7 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 	}
 	var total int
 	if err := db.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListPostsBySearch.Count", err)
 	}
 	if total == 0 {
 		return []PostWithTags{}, nil
@@ -1129,12 +1164,12 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		mainArgs = []interface{}{pattern, pattern, pattern, pattern, pattern, pattern}
 	}
 	mainArgs = append(mainArgs, filterArgs...)
-	mainQuery += ` ORDER BY score DESC, published_at DESC, LIMIT ? OFFSET ?`
+	mainQuery += ` ORDER BY score DESC, published_at DESC LIMIT ? OFFSET ?`
 	mainArgs = append(mainArgs, pager.PageSize, offset)
 
 	rows, err := db.Query(mainQuery, mainArgs...)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListPostsBySearch", err)
 	}
 	defer rows.Close()
 
@@ -1147,7 +1182,7 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
 			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListPostsBySearch.Scan", err)
 		}
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
@@ -1155,7 +1190,7 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		posts = append(posts, &p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListPostsBySearch.rows.Err", err)
 	}
 
 	postIDs := make([]int64, len(posts))
@@ -1189,7 +1224,7 @@ func AttachTagToPost(db *DB, postID, tagID int64) error {
 		ts, postID, tagID,
 	)
 	if err != nil {
-		return err
+		return WrapInternalErr("AttachTagToPost.Update", err)
 	}
 	// 如果更新了记录，说明恢复了软删除的关联，直接返回
 	rowsAffected, _ := res.RowsAffected()
@@ -1203,7 +1238,10 @@ func AttachTagToPost(db *DB, postID, tagID int64) error {
 		 VALUES (?, ?, ?, ?)`,
 		postID, tagID, ts, ts,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("AttachTagToPost.Insert", err)
+	}
+	return nil
 }
 
 func DetachTagFromPost(db *DB, postID, tagID int64) error {
@@ -1212,7 +1250,10 @@ func DetachTagFromPost(db *DB, postID, tagID int64) error {
 		`UPDATE `+string(TablePostTags)+` SET deleted_at=? WHERE post_id=? AND tag_id=? AND deleted_at IS NULL`,
 		ts, postID, tagID,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("DetachTagFromPost", err)
+	}
+	return nil
 }
 
 func SetPostTags(db *DB, postID int64, tagIDs []int64) error {
@@ -1279,7 +1320,7 @@ func CountPostsByCategories(db *DB, categoryIDs []int64) (map[int64]int, error) 
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("CountPostsByCategories", err)
 	}
 	defer rows.Close()
 
@@ -1288,9 +1329,12 @@ func CountPostsByCategories(db *DB, categoryIDs []int64) (map[int64]int, error) 
 		var categoryID int64
 		var count int
 		if err := rows.Scan(&categoryID, &count); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("CountPostsByCategories.Scan", err)
 		}
 		result[categoryID] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, WrapInternalErr("CountPostsByCategories.rows.Err", err)
 	}
 
 	// 确保所有 categoryID 都在 map 中（没有关联文章时为 0）
@@ -1327,7 +1371,7 @@ func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetRedirectByID")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetRedirectByID.Scan", err)
 		}
 		if status.Valid {
 			r.Status = int(status.Int64)
@@ -1345,7 +1389,7 @@ func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
 		return &r, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetRedirectByID", err)
 	}
 	return result.(*Redirect), nil
 }
@@ -1364,7 +1408,7 @@ func GetRedirectByFrom(db *DB, fromPath string) (*Redirect, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetRedirectByFrom")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetRedirectByFrom.Scan", err)
 		}
 		if status.Valid {
 			r.Status = int(status.Int64)
@@ -1382,7 +1426,7 @@ func GetRedirectByFrom(db *DB, fromPath string) (*Redirect, error) {
 		return &r, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetRedirectByFrom", err)
 	}
 	return result.(*Redirect), nil
 }
@@ -1413,7 +1457,7 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 	// 获取总数
 	total, err := CountRecords(db, TableRedirects, "", nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, WrapInternalErr("ListRedirects.Count", err)
 	}
 
 	// 查询列表
@@ -1426,7 +1470,7 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 			&r.ID, &r.From, &r.To, &status, &enabled,
 			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListRedirects.Scan", err)
 		}
 		if status.Valid {
 			r.Status = int(status.Int64)
@@ -1444,7 +1488,7 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 		return r, nil
 	})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, WrapInternalErr("ListRedirects", err)
 	}
 
 	res := make([]Redirect, len(results))
@@ -1464,7 +1508,7 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 			&r.ID, &r.From, &r.To, &status, &enabled,
 			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListDeletedRedirects.Scan", err)
 		}
 		if status.Valid {
 			r.Status = int(status.Int64)
@@ -1482,7 +1526,7 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 		return r, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListDeletedRedirects", err)
 	}
 	res := make([]Redirect, len(results))
 	for i, v := range results {
@@ -1514,7 +1558,7 @@ func CreateRedirect(db *DB, r *Redirect) (int64, error) {
 		"updated_at": r.UpdatedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateRedirect", err)
 	}
 	r.ID = id
 	return id, nil
@@ -1570,7 +1614,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 			bcrypt.DefaultCost,
 		)
 		if err != nil {
-			return 0, err
+			return 0, WrapInternalErr("CreateSetting.bcrypt", err)
 		}
 		s.Value = string(hashed)
 	}
@@ -1594,7 +1638,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 		"updated_at":           s.UpdatedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateSetting", err)
 	}
 
 	s.ID = id
@@ -1630,7 +1674,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetSettingByCode")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetSettingByCode.Scan", err)
 		}
 
 		if deletedAt.Valid {
@@ -1639,7 +1683,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 		return &s, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetSettingByCode", err)
 	}
 	return result.(*Setting), nil
 }
@@ -1673,7 +1717,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetSettingByID")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetSettingByID.Scan", err)
 		}
 
 		if deletedAt.Valid {
@@ -1682,7 +1726,7 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 		return &s, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetSettingByID", err)
 	}
 	return result.(*Setting), nil
 }
@@ -1718,7 +1762,7 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 			&s.UpdatedAt,
 			&deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListSettingsByKind.Scan", err)
 		}
 		if deletedAt.Valid {
 			s.DeletedAt = &deletedAt.Int64
@@ -1726,7 +1770,7 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 		return s, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListSettingsByKind", err)
 	}
 
 	settings := make([]Setting, len(results))
@@ -1750,7 +1794,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 			bcrypt.DefaultCost,
 		)
 		if err != nil {
-			return err
+			return WrapInternalErr("UpdateSetting.bcrypt", err)
 		}
 		s.Value = string(hashed)
 	}
@@ -1793,7 +1837,7 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 			bcrypt.DefaultCost,
 		)
 		if err != nil {
-			return err
+			return WrapInternalErr("UpdateSettingByCode.bcrypt", err)
 		}
 		value = string(hashed)
 	}
@@ -1806,12 +1850,15 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 		now(),
 		code,
 	)
+	if err != nil {
+		return WrapInternalErr("UpdateSettingByCode", err)
+	}
 
 	if OnDatabaseChanged != nil {
 		OnDatabaseChanged(TableSettings, TableOpUpdate)
 	}
 
-	return err
+	return nil
 }
 
 func DeleteSetting(db *DB, id int64) error {
@@ -1820,12 +1867,15 @@ func DeleteSetting(db *DB, id int64) error {
 		`UPDATE `+string(TableSettings)+` SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
 		ts, id,
 	)
+	if err != nil {
+		return WrapInternalErr("DeleteSetting", err)
+	}
 
 	if OnDatabaseChanged != nil {
 		OnDatabaseChanged(TableSettings, TableOpUpdate)
 	}
 
-	return err
+	return nil
 }
 
 // CheckPassword 检查管理员密码
@@ -1900,7 +1950,7 @@ func CreateHttpErrorLog(db *DB, l *HttpErrorLog) (int64, error) {
 		"expired_at":   l.ExpiredAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateHttpErrorLog", err)
 	}
 	l.ID = id
 	return id, nil
@@ -1923,12 +1973,12 @@ func ListHttpErrorLogs(db *DB, limit, offset int) ([]HttpErrorLog, error) {
 			&l.CreatedAt,
 			&l.ExpiredAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListHttpErrorLogs.Scan", err)
 		}
 		return l, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListHttpErrorLogs", err)
 	}
 
 	res := make([]HttpErrorLog, len(results))
@@ -1954,12 +2004,12 @@ func LoadSettingsToMap(db *DB) (map[string]string, error) {
 	results, err := ListRecords(db, TableSettings, "code, value", "", "", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
 		var code, value string
 		if err := rows.Scan(&code, &value); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("LoadSettingsToMap.Scan", err)
 		}
 		return map[string]string{code: value}, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("LoadSettingsToMap", err)
 	}
 
 	settingsMap := make(map[string]string)
@@ -2023,7 +2073,7 @@ func CreateTask(db *DB, task *Task) (int64, error) {
 		"updated_at":  task.UpdatedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateTask", err)
 	}
 	task.ID = id
 	return id, nil
@@ -2043,7 +2093,7 @@ func GetTaskByID(db *DB, id int64) (*Task, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetTaskByID")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetTaskByID.Scan", err)
 		}
 
 		if lastRun.Valid {
@@ -2059,7 +2109,7 @@ func GetTaskByID(db *DB, id int64) (*Task, error) {
 		return &t, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetTaskByID", err)
 	}
 	return result.(*Task), nil
 }
@@ -2078,7 +2128,7 @@ func GetTaskByCode(db *DB, code string) (*Task, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetTaskByCode")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetTaskByCode.Scan", err)
 		}
 
 		if lastRun.Valid {
@@ -2094,7 +2144,7 @@ func GetTaskByCode(db *DB, code string) (*Task, error) {
 		return &t, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetTaskByCode", err)
 	}
 	return result.(*Task), nil
 }
@@ -2109,7 +2159,7 @@ func ListTasks(db *DB) ([]Task, error) {
 			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
 			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListTasks.Scan", err)
 		}
 		if lastRun.Valid {
 			t.LastRunAt = &lastRun.Int64
@@ -2123,7 +2173,7 @@ func ListTasks(db *DB) ([]Task, error) {
 		return t, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListTasks", err)
 	}
 	res := make([]Task, len(results))
 	for i, v := range results {
@@ -2154,7 +2204,10 @@ func UpdateTaskStatus(db *DB, taskCode string, lastStatus string, lastRunAt int6
 		WHERE code=? AND deleted_at IS NULL`,
 		lastStatus, lastRunAt, taskCode,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("UpdateTaskStatus", err)
+	}
+	return nil
 }
 
 func SoftDeleteTask(db *DB, id int64) error {
@@ -2187,7 +2240,7 @@ func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
 		"created_at":  run.CreatedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateTaskRun", err)
 	}
 	run.ID = id
 	return id, nil
@@ -2222,12 +2275,12 @@ func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun,
 			&r.ID, &r.TaskCode, &r.RunID, &r.Status, &r.Message,
 			&r.StartedAt, &r.FinishedAt, &r.Duration, &r.CreatedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListTaskRuns.Scan", err)
 		}
 		return r, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListTaskRuns", err)
 	}
 
 	runs := make([]TaskRun, len(results))
@@ -2248,7 +2301,7 @@ func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 		WHERE id=?
 	`, run.Status, run.Message, run.FinishedAt, run.Duration, run.ID)
 	if err != nil {
-		return err
+		return WrapInternalErr("UpdateTaskRunStatus", err)
 	}
 
 	// 同步更新 tasks 表的 last_run_at 和 last_status 字段
@@ -2265,6 +2318,27 @@ var errNotFoundSentinel = errors.New("not found")
 // ErrNotFound 返回带标识的 not found 错误，便于排查来源；判断请用 IsErrNotFound(err)
 func ErrNotFound(label string) error {
 	return fmt.Errorf("%s: %w", label, errNotFoundSentinel)
+}
+
+var errInternalSentinel = errors.New("internal error")
+
+// ErrInternalError 返回带标识的内部错误
+func ErrInternalError(label string) error {
+	return fmt.Errorf("%s: %w", label, errInternalSentinel)
+}
+
+// WrapInternalErr 包装 SQL 等执行产生的 error：先 log.Printf 再返回带 label 的包装错误，便于上层区分
+func WrapInternalErr(label string, err error) error {
+	if err == nil {
+		return nil
+	}
+	log.Printf("[db] %s: %v", label, err)
+	return fmt.Errorf("%s: %w", label, err)
+}
+
+// IsErrInternalError 判断是否为内部错误（由 ErrInternalError 或包含 errInternalSentinel 的包装产生）
+func IsErrInternalError(err error) bool {
+	return errors.Is(err, errInternalSentinel)
 }
 
 // IsErrNotFound 判断是否为“未找到”错误
@@ -2305,7 +2379,7 @@ func GetCategoryByID(db *DB, id int64) (*Category, error) {
 			if err == sql.ErrNoRows {
 				return nil, ErrNotFound("GetCategoryByID")
 			}
-			return nil, err
+			return nil, WrapInternalErr("GetCategoryByID.Scan", err)
 		}
 
 		if parentID.Valid {
@@ -2318,7 +2392,7 @@ func GetCategoryByID(db *DB, id int64) (*Category, error) {
 		return &c, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("GetCategoryByID", err)
 	}
 	return result.(*Category), nil
 }
@@ -2354,7 +2428,7 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 	if err == nil {
 		return 0, errors.New("slug already exists under this parent")
 	} else if err != sql.ErrNoRows {
-		return 0, err
+		return 0, WrapInternalErr("CreateCategory.CheckSlug", err)
 	}
 
 	if c.CreatedAt == 0 {
@@ -2381,7 +2455,7 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 		"updated_at":  c.UpdatedAt,
 	})
 	if err != nil {
-		return 0, err
+		return 0, WrapInternalErr("CreateCategory", err)
 	}
 	c.ID = id
 
@@ -2392,7 +2466,7 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 			UPDATE `+string(TableCategories)+` SET sort=? WHERE id=?
 		`, c.Sort, id)
 		if err != nil {
-			return 0, err
+			return 0, WrapInternalErr("CreateCategory.UpdateSort", err)
 		}
 	}
 	return id, nil
@@ -2415,7 +2489,7 @@ func ListCategories(db *DB) ([]Category, error) {
 			&c.UpdatedAt,
 			&deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListCategories.Scan", err)
 		}
 
 		if parentID.Valid {
@@ -2428,7 +2502,7 @@ func ListCategories(db *DB) ([]Category, error) {
 		return c, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListCategories", err)
 	}
 	res := make([]Category, len(results))
 	for i, v := range results {
@@ -2455,7 +2529,7 @@ func UpdateCategory(db *DB, c *Category) error {
 	if err == nil {
 		return errors.New("slug already exists under this parent")
 	} else if err != sql.ErrNoRows {
-		return err
+		return WrapInternalErr("UpdateCategory.CheckSlug", err)
 	}
 
 	var parentID interface{}
@@ -2522,7 +2596,10 @@ func UpdateCategoryParent(db *DB, id int64, newParentID int64) error {
 	_, err = db.Exec(`
 		UPDATE `+string(TableCategories)+` SET parent_id=?, updated_at=? WHERE id=?
 	`, parentID, now(), id)
-	return err
+	if err != nil {
+		return WrapInternalErr("UpdateCategoryParent", err)
+	}
+	return nil
 }
 
 func SoftDeleteCategory(db *DB, id int64) error {
@@ -2542,7 +2619,7 @@ func ListDeletedCategories(db *DB) ([]Category, error) {
 			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
 			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
 		); err != nil {
-			return nil, err
+			return nil, WrapInternalErr("ListDeletedCategories.Scan", err)
 		}
 		if parentID.Valid {
 			c.ParentID = parentID.Int64
@@ -2553,7 +2630,7 @@ func ListDeletedCategories(db *DB) ([]Category, error) {
 		return c, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, WrapInternalErr("ListDeletedCategories", err)
 	}
 	res := make([]Category, len(results))
 	for i, v := range results {
@@ -2582,7 +2659,7 @@ func GetPostCategory(db *DB, postID int64) (*Category, error) {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, WrapInternalErr("GetPostCategory.Scan", err)
 	}
 	if parentID.Valid {
 		c.ParentID = parentID.Int64
@@ -2597,11 +2674,14 @@ func AttachCategoryToPost(db *DB, postID, categoryID int64) error {
 	ts := now()
 	_, err := db.Exec(
 		`INSERT OR IGNORE INTO `+string(TablePostCategories)+`
-		 (post_id, category_id, created_at, updated_at)
+		(post_id, category_id, created_at, updated_at)
 		 VALUES (?, ?, ?, ?)`,
 		postID, categoryID, ts, ts,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("AttachCategoryToPost", err)
+	}
+	return nil
 }
 
 func DetachCategoryFromPost(db *DB, postID, categoryID int64) error {
@@ -2610,7 +2690,10 @@ func DetachCategoryFromPost(db *DB, postID, categoryID int64) error {
 		`UPDATE `+string(TablePostCategories)+` SET deleted_at=? WHERE post_id=? AND category_id=? AND deleted_at IS NULL`,
 		ts, postID, categoryID,
 	)
-	return err
+	if err != nil {
+		return WrapInternalErr("DetachCategoryFromPost", err)
+	}
+	return nil
 }
 
 func SetPostCategory(db *DB, postID int64, categoryID int64) error {
@@ -2678,13 +2761,11 @@ func ExportSQLiteWithHash(db *DB, dir string) (res *ExportResult, err error) {
 	}()
 
 	if _, err = db.Exec("PRAGMA wal_checkpoint(FULL)"); err != nil {
-		log.Printf("[WARN] failed to checkpoint WAL: %v", err)
-		return nil, err
+		return nil, WrapInternalErr("ExportSQLiteWithHash.checkpoint", err)
 	}
 	// 3. 导出
 	if _, err = db.Exec("VACUUM INTO ?", tmpPath); err != nil {
-		log.Println("[WARN] failed to write to temp file:", err)
-		return nil, err
+		return nil, WrapInternalErr("ExportSQLiteWithHash.VACUUM", err)
 	}
 
 	// 4. 计算 SHA-256

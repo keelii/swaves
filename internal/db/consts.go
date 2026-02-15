@@ -284,8 +284,9 @@ const InternalTimezone = `[
 var DefaultSettings = []Setting{
 	{Sort: 1, Kind: "General", Name: "Site URL", Code: "site_url", Type: "text", Value: "http://keelii.com", Description: "站点地址，不包括路径"},
 	{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
-	{Sort: 2, Kind: "General", Name: "Site Description", Code: "site_desc", Type: "text", Value: "Nothing", Description: "站点描述"},
-	{Sort: 2, Kind: "General", Name: "Site Copyright", Code: "site_copyright", Type: "text", Value: "Copyright © {{year}}", Description: "站点版权"},
+	{Sort: 2, Kind: "General", Name: "Site Title", Code: "site_title", Type: "text", Value: "Nothing", Description: "站点标题"},
+	{Sort: 2, Kind: "General", Name: "Site Description", Code: "site_desc", Type: "text", Value: "声音是一种机械波，而博客是一种思想波。", Description: "站点描述"},
+	{Sort: 2, Kind: "General", Name: "Site Copyright", Code: "site_copyright", Type: "text", Value: "Copyright © {{year}} keelii", Description: "站点版权"},
 	{Sort: 4, Kind: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
 	{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "前端开发,编程,javascript,typescript,css,html,nodejs,python,java", Description: "关键字"},
 	{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
@@ -301,7 +302,7 @@ var DefaultSettings = []Setting{
 	{Sort: 13, Kind: "Post", Name: "RSS Url", Code: "rss_path", Reload: 1, Type: "text", Value: "/atom.xml", Description: "feed 地址", Attrs: consts.UrlFileNamePrefixValidatorJSON},
 	{Sort: 13, Kind: "Post", Name: "Post Url Prefix", Code: "post_url_prefix", Reload: 1, Type: "text", Value: "/{datetime}", Attrs: consts.PostUrlPrefixValidatorJSON, Description: "文章 URL 前缀"},
 	{Sort: 15, Kind: "Post", Name: "Tag Url Prefix", Code: "tag_url_prefix", Reload: 1, Type: "text", Value: "/tags", Attrs: consts.UrlPrefixValidatorJSON, Description: "标签 URL 前缀"},
-	{Sort: 17, Kind: "Post", Name: "Category Url Prefix", Code: "category_prefix", Reload: 1, Type: "text", Value: "/categories", Attrs: consts.UrlPrefixValidatorJSON, Description: "分类 URL 前缀"},
+	{Sort: 17, Kind: "Post", Name: "Category Url Prefix", Code: "category_url_prefix", Reload: 1, Type: "text", Value: "/categories", Attrs: consts.UrlPrefixValidatorJSON, Description: "分类 URL 前缀"},
 	{Sort: 19, Kind: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
 	{Sort: 21, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 }

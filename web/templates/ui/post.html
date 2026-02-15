@@ -1,6 +1,12 @@
 <article>
-  <h1>{{ .Post.Title }}</h1>
-  <p class="subtitle">{{ settings "author" }}</p>
+  <header>
+    <h1>{{ .Post.Title }}</h1>
+    <p class="subtitle">
+      <span class="author">{{ settings "author" }}</span>
+      <span>{{ relativeTime .Post.PublishedAt }}</span>
+      <a href="{{ settings "base_path" }}">首页</a>
+    </p>
+  </header>
   <section>
     {{ .Post.HTML | safeHTML }}
   </section>
