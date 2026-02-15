@@ -104,3 +104,15 @@ func GetSiteAuthor() string {
 func GetSiteCopyright() string {
 	return store.GetSetting("site_copyright")
 }
+func GetCategoryIndex() string {
+	return store.GetSetting("category_url_prefix")
+}
+func GetTagIndex() string {
+	return store.GetSetting("tag_url_prefix")
+}
+func GetCategoryUrl(category db.Category) string {
+	return GetCategoryIndex() + "/" + category.Slug
+}
+func GetTagUrl(tag db.Tag) string {
+	return GetTagIndex() + "/" + tag.Slug
+}

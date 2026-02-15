@@ -2,6 +2,9 @@ package md
 
 import (
 	"bytes"
+	"fmt"
+	"html"
+	"log"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/renderer"
@@ -25,18 +28,38 @@ func imageAltText(img *ast.Image, source []byte) string {
 }
 func (r *FigureRenderer) renderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	img := node.(*ast.Image)
+
 	if entering {
+		alt := html.EscapeString(imageAltText(img, source))
+		src := html.EscapeString(string(img.Destination))
+
 		if len(img.Title) > 0 {
-			w.WriteString("<figure class=\"fullwidth\">")
-			w.WriteString(`<img src="` + string(img.Destination) + `" alt="` + string(imageAltText(img, source)) + `">`)
-			w.WriteString(`<figcaption>` + string(img.Title) + `</figcaption>`)
+			title := html.EscapeString(string(img.Title))
+			_, err := fmt.Fprintf(w,
+				`<figure class="fullwidth"><img src="%s" alt="%s"><figcaption>%s</figcaption>`,
+				src, alt, title)
+			if err != nil {
+				log.Println(err)
+				return ast.WalkStop, err
+			}
 		} else {
-			w.WriteString(`<p><img src="` + string(img.Destination) + `" alt="` + string(imageAltText(img, source)) + `"></p>`)
+			_, err := fmt.Fprintf(w, `<p><img src="%s" alt="%s"></p>`, src, alt)
+			if err != nil {
+				log.Println(err)
+				return ast.WalkStop, err
+			}
 		}
-	} else {
-		if len(img.Title) > 0 {
-			w.WriteString("</figure>")
+
+		// 关键：返回 SkipChildren，防止 alt 文本子节点被重复渲染
+		return ast.WalkSkipChildren, nil
+	}
+
+	// exiting 时关闭 figure
+	if len(img.Title) > 0 {
+		if _, err := w.WriteString("</figure>"); err != nil {
+			return ast.WalkStop, err
 		}
 	}
+
 	return ast.WalkContinue, nil
 }

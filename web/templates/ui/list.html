@@ -1,0 +1,21 @@
+<header>
+  <h1>{{ .Title }}</h1>
+  <nav>
+    <a href="{{ settings "base_path" }}">首页</a>
+    /
+    <a href="{{ settings "category_url_prefix" }}">分类</a>
+    /
+    <a href="{{ settings "tag_url_prefix" }}">标签</a>
+  </nav>
+</header>
+
+<ul class="{{ .ID }}">
+  {{ range .List }}
+  <li>
+    <a href="{{ .PermLink }}">{{ .Name }}</a>
+    <span class="post-count">({{ .PostCount }})</span>
+  </li>
+  {{ else }}
+  <li>No {{ .ID }}</li>
+  {{ end }}
+</ul>

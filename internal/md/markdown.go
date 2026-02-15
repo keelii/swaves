@@ -67,17 +67,11 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 		),
 		goldmark.WithRendererOptions(
 			html.WithUnsafe(), // 关键：允许渲染原始 HTML 和不安全的标签
-			renderer.WithNodeRenderers(
-				util.Prioritized(&TOCContainerHTMLRenderer{}, 100),
-			),
 			html.WithHardWraps(),
 			html.WithXHTML(),
-		),
-		goldmark.WithRenderer(
-			renderer.NewRenderer(
-				renderer.WithNodeRenderers(
-					util.Prioritized(&FigureRenderer{}, 500),
-				),
+			renderer.WithNodeRenderers(
+				util.Prioritized(&TOCContainerHTMLRenderer{}, 100),
+				util.Prioritized(&FigureRenderer{}, 500),
 			),
 		),
 	}

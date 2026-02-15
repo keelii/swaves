@@ -1,0 +1,13 @@
+<nav>
+  <a href="{{ settings "base_path" }}">首页</a>
+  /
+  <a href="{{ settings "category_url_prefix" }}">分类</a>
+  /
+  <a href="{{ settings "tag_url_prefix" }}">标签</a>
+  /
+    {{ range .Pages}}
+      <a href="{{ .PermLink }}">{{ .Title }}</a>
+    {{ end }}
+  /
+  <a href="{{ settings "rss_path" }}">RSS</a>
+</nav>

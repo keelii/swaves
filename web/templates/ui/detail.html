@@ -1,0 +1,30 @@
+  <header>
+    <h1>{{ .Entity.Name }}</h1>
+    <nav>
+      <a href="{{ settings "base_path" }}">首页</a>
+      {{if .IsCategory}}
+      / <a href="{{ settings "category_url_prefix" }}">分类</a>
+      {{end}}
+      {{if .IsTag}}
+      / <a href="{{ settings "tag_url_prefix" }}">标签</a>
+      {{end}}
+    </nav>
+  </header>
+  <ul>
+    {{ range .List }}
+    <li>
+      <a href="{{ .PermLink }}">{{ .Title }}</a>
+      <span class="relation">
+        {{ if gt (len .Tags) 0 }}
+          [{{range .Tags}}<a href="{{ .PermLink }}">{{ .Name }}</a>{{end}}]
+        {{end}}
+        {{if and $.IsCategory .Category}}
+        <a href="{{ .Category.PermLink }}">{{ .Category.Name }}</a>
+        {{end}}
+      </span>
+      <span class="published">{{ relativeTime .CreatedAt }}</span>
+    </li>
+    {{ else }}
+    <li>No {{ .ID }}</li>
+    {{ end }}
+  </ul>

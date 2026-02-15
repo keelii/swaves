@@ -132,7 +132,7 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 	return nil
 }
 
-func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithTags, error) {
+func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithRelation, error) {
 	post, err := db.GetPostByID(dbx, id)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithTags, error) {
 		return nil, err
 	}
 
-	return &db.PostWithTags{
+	return &db.PostWithRelation{
 		Post: post,
 		Tags: tags,
 	}, nil
@@ -672,7 +672,7 @@ func SortCategoryTree(nodes []*CategoryNode) {
 	}
 }
 func GetCategoryTree(dbx *db.DB) ([]db.Category, []*CategoryNode, error) {
-	list, err := db.ListCategories(dbx)
+	list, err := db.ListCategories(dbx, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -697,7 +697,7 @@ func HasCycle(all map[int64]*db.Category, nodeID int64, newParentID int64) bool 
 }
 
 func UpdateCategoryParentService(dbx *db.DB, id int64, newParentID int64) error {
-	list, err := db.ListCategories(dbx)
+	list, err := db.ListCategories(dbx, false)
 	if err != nil {
 		return err
 	}
@@ -732,11 +732,11 @@ type UpdateCategoryInput struct {
 }
 
 func ListCategoriesService(dbx *db.DB) ([]db.Category, error) {
-	return db.ListCategories(dbx)
+	return db.ListCategories(dbx, false)
 }
 
 func GetAllCategoriesFlat(dbx *db.DB) ([]db.Category, error) {
-	return db.ListCategories(dbx)
+	return db.ListCategories(dbx, false)
 }
 
 func CreateCategoryService(dbx *db.DB, in CreateCategoryInput) error {

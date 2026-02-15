@@ -371,7 +371,7 @@ type Post struct {
 	DeletedAt   *int64
 }
 
-type PostWithTags struct {
+type PostWithRelation struct {
 	Post     *Post
 	Tags     []Tag
 	Category *Category
@@ -529,26 +529,35 @@ func ListPublishedPages(db *DB) []Post {
 	return res
 }
 
-func listPostsFilterClause(tagID, categoryID *int64) (clause string, args []interface{}) {
-	if tagID != nil {
+// PostQueryOptions 文章列表查询参数
+type PostQueryOptions struct {
+	Kind        *PostKind // nil 表示不限类型
+	TagID       int64     // 0 表示不限标签
+	CategoryID  int64     // 0 表示不限分类
+	Pager       *types.Pagination
+	WithContent bool // 是否查询 content 字段
+}
+
+func listPostsFilterClause(opts *PostQueryOptions) (clause string, args []interface{}) {
+	if opts.TagID != 0 {
 		clause += ` AND id IN (SELECT post_id FROM ` + string(TablePostTags) + ` WHERE tag_id=? AND deleted_at IS NULL)`
-		args = append(args, *tagID)
+		args = append(args, opts.TagID)
 	}
-	if categoryID != nil {
+	if opts.CategoryID != 0 {
 		clause += ` AND id IN (SELECT post_id FROM ` + string(TablePostCategories) + ` WHERE category_id=? AND deleted_at IS NULL)`
-		args = append(args, *categoryID)
+		args = append(args, opts.CategoryID)
 	}
 	return clause, args
 }
 
-func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryID *int64) ([]PostWithTags, error) {
+func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
 	whereBase := "deleted_at IS NULL"
 	whereArgs := []interface{}{}
-	if kind != nil {
+	if opts.Kind != nil {
 		whereBase += " AND kind = ?"
-		whereArgs = append(whereArgs, *kind)
+		whereArgs = append(whereArgs, *opts.Kind)
 	}
-	filterClause, filterArgs := listPostsFilterClause(tagID, categoryID)
+	filterClause, filterArgs := listPostsFilterClause(opts)
 	whereBase += filterClause
 	whereArgs = append(whereArgs, filterArgs...)
 
@@ -557,9 +566,13 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 		return nil, WrapInternalErr("ListPosts.CountRecords", err)
 	}
 
+	pager := opts.Pager
 	offset := (pager.Page - 1) * pager.PageSize
-	query := `
-		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
+	selectFields := "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at"
+	if opts.WithContent {
+		selectFields = "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at"
+	}
+	query := `SELECT ` + selectFields + `
 		FROM ` + string(TablePosts) + `
 		WHERE ` + whereBase + `
 		ORDER BY created_at DESC
@@ -575,19 +588,20 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 	for rows.Next() {
 		var p Post
 		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&p.ID,
-			&p.Title,
-			&p.Slug,
-			&p.Content,
-			&p.Status,
-			&p.Kind,
-			&p.CreatedAt,
-			&p.UpdatedAt,
-			&p.PublishedAt,
-			&deletedAt,
-		); err != nil {
-			return nil, WrapInternalErr("ListPosts.Scan", err)
+		if opts.WithContent {
+			if err := rows.Scan(
+				&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
+			); err != nil {
+				return nil, WrapInternalErr("ListPosts.Scan", err)
+			}
+		} else {
+			if err := rows.Scan(
+				&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
+				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
+			); err != nil {
+				return nil, WrapInternalErr("ListPosts.Scan", err)
+			}
 		}
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
@@ -605,18 +619,28 @@ func ListPosts(db *DB, pager *types.Pagination, kind *PostKind, tagID, categoryI
 	tagsByPost, _ := getPostTagsByPostIDs(db, postIDs)
 	categoriesByPost, _ := getPostCategoriesByPostIDs(db, postIDs)
 
-	res := make([]PostWithTags, 0, len(posts))
+	res := make([]PostWithRelation, 0, len(posts))
 	for _, p := range posts {
 		tags := tagsByPost[p.ID]
 		if tags == nil {
 			tags = []Tag{}
 		}
-		res = append(res, PostWithTags{Post: p, Tags: tags, Category: categoriesByPost[p.ID]})
+		res = append(res, PostWithRelation{Post: p, Tags: tags, Category: categoriesByPost[p.ID]})
 	}
 
 	pager.Total = total
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
 	return res, nil
+}
+
+// ListPostsByTag 按标签 ID 分页列出文章（未删除），返回 PostWithRelation
+func ListPostsByTag(db *DB, options *PostQueryOptions) ([]PostWithRelation, error) {
+	return ListPosts(db, options)
+}
+
+// ListPostsByCategory 按分类 ID 分页列出文章（未删除），返回 PostWithRelation
+func ListPostsByCategory(db *DB, options *PostQueryOptions) ([]PostWithRelation, error) {
+	return ListPosts(db, options)
 }
 
 func SoftDeletePost(db *DB, id int64) error {
@@ -809,6 +833,7 @@ type Tag struct {
 	CreatedAt int64
 	UpdatedAt int64
 	DeletedAt *int64
+	PostCount int // 仅当 ListTags(withPostCount=true) 时关联查询填充
 }
 
 func CreateTag(db *DB, t *Tag) (int64, error) {
@@ -830,6 +855,30 @@ func CreateTag(db *DB, t *Tag) (int64, error) {
 	}
 	t.ID = id
 	return id, nil
+}
+
+func GetTagBySlug(db *DB, slug string) (*Tag, error) {
+	result, err := GetRecordByField(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
+		var t Tag
+		var deletedAt sql.NullInt64
+		if err := row.Scan(
+			&t.ID, &t.Name, &t.Slug,
+			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrNotFound("GetTagBySlug")
+			}
+			return nil, WrapInternalErr("GetTagBySlug.Scan", err)
+		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		return &t, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("GetTagBySlug", err)
+	}
+	return result.(*Tag), nil
 }
 
 func GetTagByID(db *DB, id int64) (*Tag, error) {
@@ -871,6 +920,46 @@ func SoftDeleteTag(db *DB, id int64) error {
 
 func RestoreTag(db *DB, id int64) error {
 	return RestoreRecord(db, TableTags, id)
+}
+
+func ListTags(db *DB, withPostCount bool) ([]Tag, error) {
+	results, err := ListRecords(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", "", "name", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
+		var t Tag
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(
+			&t.ID, &t.Name, &t.Slug,
+			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+		); err != nil {
+			return nil, WrapInternalErr("ListTags.Scan", err)
+		}
+		if deletedAt.Valid {
+			t.DeletedAt = &deletedAt.Int64
+		}
+		return t, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("ListTags", err)
+	}
+	res := make([]Tag, len(results))
+	for i, v := range results {
+		res[i] = v.(Tag)
+	}
+	if withPostCount && len(res) > 0 {
+		ids := make([]int64, len(res))
+		for i := range res {
+			ids[i] = res[i].ID
+		}
+		counts, err := CountPostsByTags(db, ids)
+		if err != nil {
+			return nil, err
+		}
+		for i := range res {
+			if n, ok := counts[res[i].ID]; ok {
+				res[i].PostCount = n
+			}
+		}
+	}
+	return res, nil
 }
 
 func ListDeletedTags(db *DB) ([]Tag, error) {
@@ -1106,6 +1195,67 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	return *result.(*Post), nil
 }
 
+// GetPrevNextPost 按当前文章 ID 查询前一篇、后一篇（按 published_at 排序，仅已发布文章）
+// prev 为 published_at 小于当前文章的最近一篇，next 为 published_at 大于当前文章的最近一篇；若不存在则对应为 nil
+func GetPrevNextPost(db *DB, id int64) (prev, next *Post, err error) {
+	p, err := GetPostByID(db, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	baseWhere := `deleted_at IS NULL AND status = ? AND kind = ?`
+
+	// 前一篇: published_at < 当前，ORDER BY published_at DESC
+	prevRow := db.QueryRow(`
+		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
+		FROM `+string(TablePosts)+`
+		WHERE `+baseWhere+` AND published_at > 0 AND published_at < ?
+		ORDER BY published_at DESC, id DESC
+		LIMIT 1
+	`, "published", p.Kind, p.PublishedAt)
+	prev, err = scanPostRow(prevRow)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, nil, WrapInternalErr("GetPrevNextPost.prev", err)
+	}
+	if err == sql.ErrNoRows {
+		prev = nil
+	}
+
+	// 后一篇: published_at > 当前，ORDER BY published_at ASC
+	nextRow := db.QueryRow(`
+		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
+		FROM `+string(TablePosts)+`
+		WHERE `+baseWhere+` AND published_at > ?
+		ORDER BY published_at ASC, id ASC
+		LIMIT 1
+	`, "published", p.Kind, p.PublishedAt)
+	next, err = scanPostRow(nextRow)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, nil, WrapInternalErr("GetPrevNextPost.next", err)
+	}
+	if err == sql.ErrNoRows {
+		next = nil
+		err = nil // ErrNoRows 仅表示 prev/next 不存在，不作为错误返回
+	}
+	return prev, next, err
+}
+
+// scanPostRow 从 *sql.Row 扫描为 *Post，若 ErrNoRows 则返回 (nil, sql.ErrNoRows)
+func scanPostRow(row *sql.Row) (*Post, error) {
+	var p Post
+	var deletedAt sql.NullInt64
+	err := row.Scan(
+		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+		&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if deletedAt.Valid {
+		p.DeletedAt = &deletedAt.Int64
+	}
+	return &p, nil
+}
+
 // likePattern 对关键词做 LIKE 通配符转义，用于 '%'||?||'%' 的 ?
 func likePattern(q string) string {
 	replacer := strings.NewReplacer(
@@ -1119,46 +1269,51 @@ func likePattern(q string) string {
 	return replacer.Replace(strings.TrimSpace(q))
 }
 
-// ListPostsBySearch 后台文章搜索：单条 SQL，优先级 title(10) > slug(5) > content(1)，ORDER BY score DESC, created_at DESC；支持 tag/category 过滤
-func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string, tagID, categoryID *int64) ([]PostWithTags, error) {
+// ListPostsBySearch 后台文章搜索：单条 SQL，优先级 title(10) > slug(5) > content(1)，ORDER BY score DESC, published_at DESC；支持 tag/category 过滤
+func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRelation, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
-		return []PostWithTags{}, nil
+		return []PostWithRelation{}, nil
 	}
 	pattern := likePattern(q)
 	likeCond := `(title LIKE '%' || ? || '%' ESCAPE '\' OR slug LIKE '%' || ? || '%' ESCAPE '\' OR content LIKE '%' || ? || '%' ESCAPE '\')`
-	filterClause, filterArgs := listPostsFilterClause(tagID, categoryID)
+	filterClause, filterArgs := listPostsFilterClause(opts)
 
 	countQuery := `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND ` + likeCond + filterClause
 	countArgs := []interface{}{pattern, pattern, pattern}
 	countArgs = append(countArgs, filterArgs...)
-	if kind != nil {
+	if opts.Kind != nil {
 		countQuery = `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond + filterClause
-		countArgs = append([]interface{}{*kind}, countArgs...)
+		countArgs = append([]interface{}{*opts.Kind}, countArgs...)
 	}
 	var total int
 	if err := db.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
 		return nil, WrapInternalErr("ListPostsBySearch.Count", err)
 	}
 	if total == 0 {
-		return []PostWithTags{}, nil
+		return []PostWithRelation{}, nil
 	}
 
+	pager := opts.Pager
 	offset := (pager.Page - 1) * pager.PageSize
 	scoreExpr := `(
 		(CASE WHEN title   LIKE '%' || ? || '%' ESCAPE '\' THEN 10 ELSE 0 END) +
 		(CASE WHEN slug    LIKE '%' || ? || '%' ESCAPE '\' THEN 5  ELSE 0 END) +
 		(CASE WHEN content LIKE '%' || ? || '%' ESCAPE '\' THEN 1  ELSE 0 END)
 	) AS score`
+	selectFields := "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at"
+	if opts.WithContent {
+		selectFields = "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at"
+	}
 	var mainQuery string
 	var mainArgs []interface{}
-	if kind != nil {
-		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at, ` + scoreExpr + `
+	if opts.Kind != nil {
+		mainQuery = `SELECT ` + selectFields + `, ` + scoreExpr + `
 			FROM ` + string(TablePosts) + `
 			WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond + filterClause
-		mainArgs = []interface{}{pattern, pattern, pattern, *kind, pattern, pattern, pattern}
+		mainArgs = []interface{}{pattern, pattern, pattern, *opts.Kind, pattern, pattern, pattern}
 	} else {
-		mainQuery = `SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at, ` + scoreExpr + `
+		mainQuery = `SELECT ` + selectFields + `, ` + scoreExpr + `
 			FROM ` + string(TablePosts) + `
 			WHERE deleted_at IS NULL AND ` + likeCond + filterClause
 		mainArgs = []interface{}{pattern, pattern, pattern, pattern, pattern, pattern}
@@ -1178,11 +1333,20 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 		var p Post
 		var deletedAt sql.NullInt64
 		var score int
-		if err := rows.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
-		); err != nil {
-			return nil, WrapInternalErr("ListPostsBySearch.Scan", err)
+		if opts.WithContent {
+			if err := rows.Scan(
+				&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
+			); err != nil {
+				return nil, WrapInternalErr("ListPostsBySearch.Scan", err)
+			}
+		} else {
+			if err := rows.Scan(
+				&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
+				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
+			); err != nil {
+				return nil, WrapInternalErr("ListPostsBySearch.Scan", err)
+			}
 		}
 		if deletedAt.Valid {
 			p.DeletedAt = &deletedAt.Int64
@@ -1200,13 +1364,13 @@ func ListPostsBySearch(db *DB, pager *types.Pagination, kind *PostKind, q string
 	tagsByPost, _ := getPostTagsByPostIDs(db, postIDs)
 	categoriesByPost, _ := getPostCategoriesByPostIDs(db, postIDs)
 
-	res := make([]PostWithTags, 0, len(posts))
+	res := make([]PostWithRelation, 0, len(posts))
 	for _, p := range posts {
 		tags := tagsByPost[p.ID]
 		if tags == nil {
 			tags = []Tag{}
 		}
-		res = append(res, PostWithTags{Post: p, Tags: tags, Category: categoriesByPost[p.ID]})
+		res = append(res, PostWithRelation{Post: p, Tags: tags, Category: categoriesByPost[p.ID]})
 	}
 
 	pager.Total = total
@@ -2356,6 +2520,7 @@ type Category struct {
 	CreatedAt   int64
 	UpdatedAt   int64
 	DeletedAt   *int64
+	PostCount   int
 }
 
 func GetCategoryByID(db *DB, id int64) (*Category, error) {
@@ -2393,6 +2558,34 @@ func GetCategoryByID(db *DB, id int64) (*Category, error) {
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetCategoryByID", err)
+	}
+	return result.(*Category), nil
+}
+
+func GetCategoryBySlug(db *DB, slug string) (*Category, error) {
+	result, err := GetRecordByField(db, TableCategories, "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
+		var c Category
+		var parentID sql.NullInt64
+		var deletedAt sql.NullInt64
+		if err := row.Scan(
+			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
+			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrNotFound("GetCategoryBySlug")
+			}
+			return nil, WrapInternalErr("GetCategoryBySlug.Scan", err)
+		}
+		if parentID.Valid {
+			c.ParentID = parentID.Int64
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Int64
+		}
+		return &c, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("GetCategoryBySlug", err)
 	}
 	return result.(*Category), nil
 }
@@ -2472,7 +2665,7 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 	return id, nil
 }
 
-func ListCategories(db *DB) ([]Category, error) {
+func ListCategories(db *DB, withPostCount bool) ([]Category, error) {
 	results, err := ListRecords(db, TableCategories, "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at", "", "sort", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
 		var c Category
 		var parentID sql.NullInt64
@@ -2507,6 +2700,21 @@ func ListCategories(db *DB) ([]Category, error) {
 	res := make([]Category, len(results))
 	for i, v := range results {
 		res[i] = v.(Category)
+	}
+	if withPostCount && len(res) > 0 {
+		ids := make([]int64, len(res))
+		for i := range res {
+			ids[i] = res[i].ID
+		}
+		counts, err := CountPostsByCategories(db, ids)
+		if err != nil {
+			return nil, err
+		}
+		for i := range res {
+			if n, ok := counts[res[i].ID]; ok {
+				res[i].PostCount = n
+			}
+		}
 	}
 	return res, nil
 }
@@ -2562,7 +2770,7 @@ func UpdateCategoryParent(db *DB, id int64, newParentID int64) error {
 	}
 
 	// 检查是否会造成循环
-	all, err := ListCategories(db)
+	all, err := ListCategories(db, false)
 	if err != nil {
 		return err
 	}

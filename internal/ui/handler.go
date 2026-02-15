@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
@@ -118,10 +117,67 @@ func (h Handler) GetRSS(c *fiber.Ctx) error {
 	return c.SendString(rss)
 }
 func (h Handler) GetCategoryIndex(c *fiber.Ctx) error {
-	return errors.New("not implemented")
+	categories := ListCategories(h.Model)
+
+	if categories == nil {
+		return c.Status(fiber.StatusNotFound).SendString("categories not found")
+	}
+
+	pages := ListPages(h.Model)
+	return RenderUIView(c, "ui/list", fiber.Map{
+		"Title": "Categories",
+		"Pages": pages,
+		"List":  categories,
+	}, "")
 }
 func (h Handler) GetTagIndex(c *fiber.Ctx) error {
-	return errors.New("not implemented")
+	tags := ListTags(h.Model)
+
+	if tags == nil {
+		return c.Status(fiber.StatusNotFound).SendString("tags not found")
+	}
+
+	return RenderUIView(c, "ui/list", fiber.Map{
+		"Title": "Tags",
+		"Pages": ListPages(h.Model),
+		"List":  tags,
+	}, "")
+}
+func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
+	pager := middleware.GetPagination(c)
+	slug := c.Params("categorySlug")
+	category := GetCategoryBySlug(h.Model, slug)
+	if category == nil {
+		return c.Status(fiber.StatusNotFound).SendString("category not found")
+	}
+
+	posts := ListPostsByCategory(h.Model, category.ID, &pager)
+
+	return RenderUIView(c, "ui/detail", fiber.Map{
+		"IsCategory": true,
+		"Entity":     category,
+		"List":       posts,
+		"ListPage":   GetCategoryIndex(),
+		"Pages":      ListPages(h.Model),
+	}, "")
+}
+func (h Handler) GetTagDetail(c *fiber.Ctx) error {
+	pager := middleware.GetPagination(c)
+	slug := c.Params("tagSlug")
+	tag := GetTagBySlug(h.Model, slug)
+	if tag == nil {
+		return c.Status(fiber.StatusNotFound).SendString("tag not found")
+	}
+
+	posts := ListPostsByTag(h.Model, tag.ID, &pager)
+
+	return RenderUIView(c, "ui/detail", fiber.Map{
+		"IsTag":    true,
+		"Entity":   tag,
+		"List":     posts,
+		"ListPage": GetTagIndex(),
+		"Pages":    ListPages(h.Model),
+	}, "")
 }
 
 func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {

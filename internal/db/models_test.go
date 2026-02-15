@@ -646,7 +646,7 @@ func TestCategory_ListCategories(t *testing.T) {
 	CreateCategory(db, c1)
 	CreateCategory(db, c2)
 
-	list, err := ListCategories(db)
+	list, err := ListCategories(db, false)
 	if err != nil {
 		t.Fatalf("ListCategories failed: %v", err)
 	}

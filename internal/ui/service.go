@@ -24,24 +24,23 @@ func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination) []D
 		mdResult := md.ParseMarkdown(p.Content, false)
 		res = append(res, DisplayPost{
 			Post:     p,
-			PostLink: GetPostUrl(p),
+			PermLink: GetPostUrl(p),
 			HTML:     mdResult.HTML,
 		})
 	}
 
 	return res
 }
-func ListPages(dbx *db.DB) []DisplayPage {
-	var res []DisplayPage
+func ListPages(dbx *db.DB) []DisplayPostInfo {
+	var res []DisplayPostInfo
 
 	pages := db.ListPublishedPages(dbx)
 	for _, p := range pages {
-		res = append(res, DisplayPage{
+		res = append(res, DisplayPostInfo{
 			ID:          p.ID,
 			Title:       p.Title,
 			Slug:        p.Slug,
-			Status:      p.Status,
-			PostLink:    GetPostUrl(p),
+			PermLink:    GetPostUrl(p),
 			PublishedAt: p.PublishedAt,
 			CreatedAt:   p.CreatedAt,
 			UpdatedAt:   p.UpdatedAt,
@@ -60,5 +59,167 @@ func GetPostBySlug(dbx *db.DB, slug string) *DisplayPost {
 	return &DisplayPost{
 		Post: post,
 		HTML: md.ParseMarkdown(post.Content, false).HTML,
+	}
+}
+
+func ListCategories(dbx *db.DB) []DisplayItem {
+	res, err := db.ListCategories(dbx, true)
+	if err != nil {
+		return []DisplayItem{}
+	}
+	var items []DisplayItem
+	for _, c := range res {
+		items = append(items, DisplayItem{
+			ID:        c.ID,
+			Name:      c.Name,
+			Slug:      c.Slug,
+			PermLink:  GetCategoryUrl(c),
+			PostCount: c.PostCount,
+			CreatedAt: c.CreatedAt,
+			UpdatedAt: c.UpdatedAt,
+		})
+	}
+	return items
+}
+func ListTags(dbx *db.DB) []DisplayItem {
+	res, err := db.ListTags(dbx, true)
+	if err != nil {
+		return []DisplayItem{}
+	}
+	var items []DisplayItem
+	for _, c := range res {
+		items = append(items, DisplayItem{
+			ID:        c.ID,
+			Name:      c.Name,
+			Slug:      c.Slug,
+			PermLink:  GetTagUrl(c),
+			PostCount: c.PostCount,
+			CreatedAt: c.CreatedAt,
+			UpdatedAt: c.UpdatedAt,
+		})
+	}
+	return items
+}
+
+func GetCategoryBySlug(dbx *db.DB, slug string) *DisplayItem {
+	category, err := db.GetCategoryBySlug(dbx, slug)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return &DisplayItem{
+		ID:        category.ID,
+		Name:      category.Name,
+		Slug:      category.Slug,
+		PermLink:  GetCategoryUrl(*category),
+		PostCount: category.PostCount,
+		CreatedAt: category.CreatedAt,
+		UpdatedAt: category.UpdatedAt,
+	}
+}
+func GetTagBySlug(dbx *db.DB, slug string) *DisplayItem {
+	tag, err := db.GetTagBySlug(dbx, slug)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	return &DisplayItem{
+		ID:        tag.ID,
+		Name:      tag.Name,
+		Slug:      tag.Slug,
+		PermLink:  GetTagUrl(*tag),
+		PostCount: tag.PostCount,
+		CreatedAt: tag.CreatedAt,
+		UpdatedAt: tag.UpdatedAt,
+	}
+}
+func ListPostsByCategory(dbx *db.DB, categoryID int64, pager *types.Pagination) []DisplayPostRelativeInfo {
+	var res []DisplayPostRelativeInfo
+
+	posts, err := db.ListPostsByCategory(dbx, &db.PostQueryOptions{
+		Kind:        nil,
+		CategoryID:  categoryID,
+		TagID:       0,
+		Pager:       pager,
+		WithContent: false,
+	})
+	if err != nil {
+		return []DisplayPostRelativeInfo{}
+	}
+
+	for _, p := range posts {
+		res = append(res, DisplayPostRelativeInfo{
+			ID:          p.Post.ID,
+			Title:       p.Post.Title,
+			Slug:        p.Post.Slug,
+			PermLink:    GetPostUrl(*p.Post),
+			Tags:        toDisplayTags(p.Tags),
+			Category:    toDisplayCategory(p.Category),
+			PublishedAt: p.Post.PublishedAt,
+			CreatedAt:   p.Post.CreatedAt,
+			UpdatedAt:   p.Post.UpdatedAt,
+		})
+	}
+
+	return res
+}
+func ListPostsByTag(dbx *db.DB, tagID int64, pager *types.Pagination) []DisplayPostRelativeInfo {
+	var res []DisplayPostRelativeInfo
+
+	posts, err := db.ListPostsByCategory(dbx, &db.PostQueryOptions{
+		Kind:        nil,
+		CategoryID:  0,
+		TagID:       tagID,
+		Pager:       pager,
+		WithContent: false,
+	})
+	if err != nil {
+		return []DisplayPostRelativeInfo{}
+	}
+
+	for _, p := range posts {
+		res = append(res, DisplayPostRelativeInfo{
+			ID:          p.Post.ID,
+			Title:       p.Post.Title,
+			Slug:        p.Post.Slug,
+			PermLink:    GetPostUrl(*p.Post),
+			Tags:        toDisplayTags(p.Tags),
+			Category:    toDisplayCategory(p.Category),
+			PublishedAt: p.Post.PublishedAt,
+			CreatedAt:   p.Post.CreatedAt,
+			UpdatedAt:   p.Post.UpdatedAt,
+		})
+	}
+
+	return res
+}
+func toDisplayTags(tags []db.Tag) []DisplayItem {
+	var items []DisplayItem
+	for _, t := range tags {
+		items = append(items, DisplayItem{
+			ID:        t.ID,
+			Name:      t.Name,
+			Slug:      t.Slug,
+			PermLink:  GetTagUrl(t),
+			PostCount: t.PostCount,
+			CreatedAt: t.CreatedAt,
+			UpdatedAt: t.UpdatedAt,
+		})
+	}
+	return items
+}
+func toDisplayCategory(category *db.Category) DisplayItem {
+	if category == nil {
+		return DisplayItem{}
+	}
+	return DisplayItem{
+		ID:        category.ID,
+		Name:      category.Name,
+		Slug:      category.Slug,
+		PermLink:  GetCategoryUrl(*category),
+		PostCount: category.PostCount,
+		CreatedAt: category.CreatedAt,
+		UpdatedAt: category.UpdatedAt,
 	}
 }

@@ -17,6 +17,12 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup.Get("/", handler.GetHome)
 	// RSS
 	uiGroup.Get(store.GetSetting("rss_path"), handler.GetRSS)
+	// Categories and Tags
+	uiGroup.Get(store.GetSetting("category_url_prefix"), handler.GetCategoryIndex)
+	uiGroup.Get(store.GetSetting("tag_url_prefix"), handler.GetTagIndex)
+	uiGroup.Get(store.GetSetting("category_url_prefix")+"/:categorySlug", handler.GetCategoryDetail)
+	uiGroup.Get(store.GetSetting("tag_url_prefix")+"/:tagSlug", handler.GetTagDetail)
+
 	// Pages
 	uiGroup.Get("/:slug", handler.GetPostBySlug)
 	// Posts
@@ -32,7 +38,4 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	}
 	//uiGroup.Get(store.GetSetting("post_url_prefix"), ha)
 	//uiGroup.Get("/posts/:date<regex(\\d{4}/\\d{2}/\\d{2})>", handler.GetDate)
-
-	uiGroup.Get(store.GetSetting("category_url_prefix"), handler.GetCategoryIndex)
-	uiGroup.Get(store.GetSetting("tag_url_prefix"), handler.GetTagIndex)
 }
