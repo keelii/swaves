@@ -58,7 +58,7 @@ func GetPostBySlug(dbx *db.DB, slug string) *DisplayPost {
 
 	return &DisplayPost{
 		Post: post,
-		HTML: md.ParseMarkdown(post.Content, false).HTML,
+		HTML: md.ParseMarkdown(post.Content, true).HTML,
 	}
 }
 

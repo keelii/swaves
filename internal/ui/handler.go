@@ -26,6 +26,7 @@ func RenderUIView(c *fiber.Ctx, view string, data fiber.Map, layout string) erro
 
 	data["UrlPath"] = c.Path()
 	data["Query"] = c.Queries()
+	data["IsLogin"] = c.Locals("IsLogin")
 
 	//// 注入 Locals
 	//c.Context().VisitUserValues(func(k []byte, v interface{}) {

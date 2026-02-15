@@ -25,7 +25,7 @@ func RegisterRoutes(app *fiber.App) {
 		if err := c.BodyParser(&body); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "invalid json"})
 		}
-		result := md.ParseMarkdown(body.Content, body.TOC)
+		result := md.ParseMarkdown(body.Content, true)
 		return c.JSON(fiber.Map{"data": result.HTML})
 	})
 	//apiGroup.Get("/translate", func(c *fiber.Ctx) error {

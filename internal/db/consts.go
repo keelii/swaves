@@ -293,6 +293,7 @@ var DefaultSettings = []Setting{
 	{Sort: 7, Kind: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
 	{Sort: 9, Kind: "General", Name: "Timezone", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
 	{Sort: 11, Kind: "General", Name: "Admin Password", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+	{Sort: 11, Kind: "General", Name: "Admin Path", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: consts.UrlPrefixValidatorJSON},
 	{Sort: 11, Kind: "Appearance", Name: "Font size", Code: "font_size", Type: "range", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 	{Sort: 11, Kind: "Appearance", Name: "Mode", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 	{Sort: 11, Kind: "Appearance", Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},

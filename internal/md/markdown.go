@@ -2,6 +2,7 @@ package md
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"strings"
 
@@ -35,6 +36,7 @@ func GetMarkdownOnly(input string) string {
 }
 
 func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
+	fmt.Println("includeTOC", includeTOC)
 	extensions := []goldmark.Extender{
 		meta.Meta, // 开启 Front matter 支持
 		//mathjax.MathJax, // 开启公式支持，它会把 $$ 内部内容原样保留输出
@@ -46,16 +48,6 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 		extension.Strikethrough,
 		highlighting.NewHighlighting(
 			highlighting.WithCustomStyle(SwavesTrac),
-			//highlighting.WithWrapperRenderer(func(w util.BufWriter, ctx highlighting.CodeBlockContext, entering bool) {
-			//	if entering {
-			//		w.WriteString("<pre class=\"my-code\">") // 自定义外层
-			//	} else {
-			//		w.WriteString("</pre>")
-			//	}
-			//}),
-			//highlighting.WithFormatOptions(
-			//	chromahtml.WithLineNumbers(true),
-			//),
 		),
 	}
 

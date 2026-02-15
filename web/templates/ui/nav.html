@@ -10,4 +10,7 @@
     {{ end }}
   /
   <a href="{{ settings "rss_path" }}">RSS</a>
+  {{if .IsLogin}}
+    / <a href="{{ settings "admin_path" }}">管理</a>
+  {{end}}
 </nav>

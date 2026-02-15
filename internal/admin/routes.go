@@ -12,7 +12,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 		NewService(gStore.Model),
 	)
 
-	adminGroup := app.Group("/admin")
+	adminGroup := app.Group(store.GetSetting("admin_path"))
 
 	adminGroup.Get("/", handler.GetHome)
 	adminGroup.Get("/panic", func(c *fiber.Ctx) error {
