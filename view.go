@@ -99,6 +99,21 @@ func NewViewEngine() *html.Engine {
 		}
 		return relativeTimeString(tsInt64)
 	})
+	engine.AddFunc("articleTime", func(ts interface{}) string {
+		var tsInt64 int64
+		switch v := ts.(type) {
+		case int64:
+			tsInt64 = v
+		case *int64:
+			if v == nil {
+				return "-"
+			}
+		}
+		if tsInt64 == 0 {
+			return "-"
+		}
+		return time.Unix(tsInt64, 0).Format("2006-01-02")
+	})
 	// formatDateTimeLocal 将 Unix timestamp 转换为 datetime-local 输入格式 (YYYY-MM-DDTHH:mm)
 	engine.AddFunc("formatDateTimeLocal", func(ts interface{}) string {
 		var tsInt64 int64

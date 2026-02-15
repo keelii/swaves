@@ -1,6 +1,8 @@
 <header>
   <h1>{{ settings "site_title" }}</h1>
   <nav>
+    <a href="{{ settings "site_base" }}">首页</a>
+    /
       {{ range .Pages}}
         <a href="{{ .PostLink }}">{{ .Title }}</a>
       {{ end }}
@@ -13,7 +15,7 @@
   {{ range .Articles }}
   <li>
     <a href="{{ .PostLink }}">{{ .Title }}</a>
-    <span>{{ relativeTime .PublishedAt }}</span>
+    <span class="published">{{ relativeTime .PublishedAt }}</span>
   </li>
   {{ else }}
   <li>No posts</li>

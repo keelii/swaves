@@ -2,7 +2,6 @@ package md
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/renderer"
@@ -27,7 +26,6 @@ func imageAltText(img *ast.Image, source []byte) string {
 func (r *FigureRenderer) renderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	img := node.(*ast.Image)
 	if entering {
-		fmt.Println("title_len", img.Title, len(img.Title) > 0)
 		if len(img.Title) > 0 {
 			w.WriteString("<figure class=\"fullwidth\">")
 			w.WriteString(`<img src="` + string(img.Destination) + `" alt="` + string(imageAltText(img, source)) + `">`)
