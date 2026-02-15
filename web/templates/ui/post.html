@@ -1,13 +1,28 @@
+<header>
+  <h1>{{ .Post.Title }}</h1>
+  <nav>
+    <span class="author">{{ settings "author" }}</span>
+    <span>{{ articleTime .Post.PublishedAt }}</span>
+    <a href="{{ settings "base_path" }}">首页</a>
+    {{if .Post.Category}}
+      | <a href="{{ .Post.Category.PermLink }}">{{ .Post.Category.Name }}</a>
+    {{end}}
+    |
+    {{template "ui/tag_list" dict "Items" .Post.Tags}}
+  </nav>
+</header>
 <article>
-  <header>
-    <h1>{{ .Post.Title }}</h1>
-    <p class="subtitle">
-      <span class="author">{{ settings "author" }}</span>
-      <span>{{ relativeTime .Post.PublishedAt }}</span>
-      <a href="{{ settings "base_path" }}">首页</a>
-    </p>
-  </header>
   <section>
     {{ .Post.HTML | safeHTML }}
   </section>
 </article>
+<section>
+  <p class="salign">
+      {{if .Post.Prev}}
+        <span>上一篇：<a href="{{ .Post.Prev.PermLink }}" class="prev">{{ .Post.Prev.Title }}</a></span>
+      {{end}}
+      {{if .Post.Next}}
+        <span>下一篇：<a href="{{ .Post.Next.PermLink }}" class="next">{{ .Post.Next.Title }}</a></span>
+      {{end}}
+  </p>
+</section>

@@ -5,8 +5,24 @@ import "swaves/internal/db"
 // DisplayPost 包含了 Post 的原始数据，以及一些额外的显示相关字段，如 PermLink 和 HTML
 type DisplayPost struct {
 	db.Post
+	Prev     *DisplayPostInfo
+	Next     *DisplayPostInfo
 	PermLink string
 	HTML     string
+}
+type DisplayTag struct {
+	db.Tag
+	PermLink string
+}
+type DisplayCategory struct {
+	db.Category
+	PermLink string
+}
+
+type DisplayPostWithRelation struct {
+	DisplayPost
+	Tags     []DisplayItem
+	Category *DisplayItem
 }
 
 // DisplayPostInfo 包含了 Post 的基本信息，适用于在列表中显示，没有 HTML 内容 和 content
@@ -25,7 +41,7 @@ type DisplayPostRelativeInfo struct {
 	Slug        string
 	PermLink    string
 	Tags        []DisplayItem
-	Category    DisplayItem
+	Category    *DisplayItem
 	PublishedAt int64
 	CreatedAt   int64
 	UpdatedAt   int64

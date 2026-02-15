@@ -49,16 +49,40 @@ func ListPages(dbx *db.DB) []DisplayPostInfo {
 	return res
 }
 
-func GetPostBySlug(dbx *db.DB, slug string) *DisplayPost {
-	post, err := db.GetPostBySlug(dbx, slug)
+func postToPostInfo(p *db.Post) *DisplayPostInfo {
+	return &DisplayPostInfo{
+		ID:          p.ID,
+		Title:       p.Title,
+		Slug:        p.Slug,
+		PermLink:    GetPostUrl(*p),
+		PublishedAt: p.PublishedAt,
+		CreatedAt:   p.CreatedAt,
+		UpdatedAt:   p.UpdatedAt,
+	}
+}
+
+func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
+	p, err := db.GetPostBySlugWithRelation(dbx, slug)
 	if err != nil {
 		log.Println(err)
 		return nil
 	}
 
-	return &DisplayPost{
-		Post: post,
-		HTML: md.ParseMarkdown(post.Content, true).HTML,
+	prev, next, err := db.GetPrevNextPost(dbx, p.Post.PublishedAt)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return &DisplayPostWithRelation{
+		DisplayPost: DisplayPost{
+			Post:     *p.Post,
+			Prev:     postToPostInfo(prev),
+			Next:     postToPostInfo(next),
+			PermLink: GetPostUrl(*p.Post),
+			HTML:     md.ParseMarkdown(p.Post.Content, true).HTML,
+		},
+		Tags:     toDisplayTags(p.Tags),
+		Category: toDisplayCategory(p.Category),
 	}
 }
 
@@ -209,11 +233,11 @@ func toDisplayTags(tags []db.Tag) []DisplayItem {
 	}
 	return items
 }
-func toDisplayCategory(category *db.Category) DisplayItem {
+func toDisplayCategory(category *db.Category) *DisplayItem {
 	if category == nil {
-		return DisplayItem{}
+		return &DisplayItem{}
 	}
-	return DisplayItem{
+	return &DisplayItem{
 		ID:        category.ID,
 		Name:      category.Name,
 		Slug:      category.Slug,

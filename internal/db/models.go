@@ -1195,23 +1195,33 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	return *result.(*Post), nil
 }
 
+// GetPostBySlugWithRelation 按 slug 查询文章并带出关联的分类与标签，返回 PostWithRelation
+func GetPostBySlugWithRelation(db *DB, slug string) (PostWithRelation, error) {
+	p, err := GetPostBySlug(db, slug)
+	if err != nil {
+		return PostWithRelation{}, err
+	}
+	tags, err := GetPostTags(db, p.ID)
+	if err != nil {
+		return PostWithRelation{}, WrapInternalErr("GetPostBySlugWithRelation.GetPostTags", err)
+	}
+	category, _ := GetPostCategory(db, p.ID) // 无分类时返回 nil，不视为错误
+	return PostWithRelation{Post: &p, Tags: tags, Category: category}, nil
+}
+
 // GetPrevNextPost 按当前文章 ID 查询前一篇、后一篇（按 published_at 排序，仅已发布文章）
 // prev 为 published_at 小于当前文章的最近一篇，next 为 published_at 大于当前文章的最近一篇；若不存在则对应为 nil
-func GetPrevNextPost(db *DB, id int64) (prev, next *Post, err error) {
-	p, err := GetPostByID(db, id)
-	if err != nil {
-		return nil, nil, err
-	}
+func GetPrevNextPost(db *DB, publishedAt int64) (prev, next *Post, err error) {
 	baseWhere := `deleted_at IS NULL AND status = ? AND kind = ?`
 
 	// 前一篇: published_at < 当前，ORDER BY published_at DESC
 	prevRow := db.QueryRow(`
-		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
+		SELECT id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at
 		FROM `+string(TablePosts)+`
 		WHERE `+baseWhere+` AND published_at > 0 AND published_at < ?
 		ORDER BY published_at DESC, id DESC
 		LIMIT 1
-	`, "published", p.Kind, p.PublishedAt)
+	`, "published", PostKindPost, publishedAt)
 	prev, err = scanPostRow(prevRow)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, nil, WrapInternalErr("GetPrevNextPost.prev", err)
@@ -1222,12 +1232,12 @@ func GetPrevNextPost(db *DB, id int64) (prev, next *Post, err error) {
 
 	// 后一篇: published_at > 当前，ORDER BY published_at ASC
 	nextRow := db.QueryRow(`
-		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
+		SELECT id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at
 		FROM `+string(TablePosts)+`
 		WHERE `+baseWhere+` AND published_at > ?
 		ORDER BY published_at ASC, id ASC
 		LIMIT 1
-	`, "published", p.Kind, p.PublishedAt)
+	`, "published", PostKindPost, publishedAt)
 	next, err = scanPostRow(nextRow)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, nil, WrapInternalErr("GetPrevNextPost.next", err)
@@ -1244,7 +1254,7 @@ func scanPostRow(row *sql.Row) (*Post, error) {
 	var p Post
 	var deletedAt sql.NullInt64
 	err := row.Scan(
-		&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+		&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
 		&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 	)
 	if err != nil {

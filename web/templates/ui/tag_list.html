@@ -1,0 +1,5 @@
+{{if gt (len .Items) 0}}
+{{range .Items}}
+  <a href="{{ .PermLink }}">{{ .Name }}</a>
+{{end}}
+{{end}}

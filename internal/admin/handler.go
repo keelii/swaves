@@ -109,13 +109,13 @@ func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
 }
 
 func (h *Handler) GetHome(c *fiber.Ctx) error {
-	return RenderAdminView(c, "admin_home", fiber.Map{"Name": "Admin Home"}, "")
+	return RenderAdminView(c, "admin_home", fiber.Map{"Title": "Admin Home"}, "")
 }
 
 /* ---------- GET /admin/login ---------- */
 
 func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
-	return RenderAdminView(c, "admin_login", fiber.Map{"Name": "Admin Login"}, "base")
+	return RenderAdminView(c, "admin_login", fiber.Map{"Title": "Admin Login"}, "base")
 }
 
 /* ---------- POST /admin/login ---------- */
@@ -124,14 +124,14 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 	password := c.FormValue("password")
 	if password == "" {
 		return RenderAdminView(c, "admin_login", fiber.Map{
-			"Name":  "Admin Login",
+			"Title": "Admin Login",
 			"Error": "password is empty",
 		}, "base")
 	}
 
 	if err := h.Service.CheckPassword(password); err != nil {
 		return RenderAdminView(c, "admin_login", fiber.Map{
-			"Name":  "Admin Login",
+			"Title": "Admin Login",
 			"Error": "Invalid password",
 		}, "base")
 	}
@@ -143,7 +143,7 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "admin_login", fiber.Map{
-		"Name":  "Admin Login",
+		"Title": "Admin Login",
 		"Error": "Invalid Error",
 	}, "base")
 }
@@ -244,7 +244,7 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "posts_index", fiber.Map{
-		"Name":                    "Posts",
+		"Title":                   "Posts",
 		"Posts":                   posts,
 		"Pager":                   pager,
 		"Kind":                    kind,
@@ -273,7 +273,7 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "posts_new", fiber.Map{
-		"Name":       "New Post",
+		"Title":      "New Post",
 		"Tags":       tags,
 		"Categories": categories,
 	}, "")
@@ -302,7 +302,7 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		tags, _ := GetAllTags(h.Model)
 		categories, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "posts_new", fiber.Map{
-			"Name":       "New Post",
+			"Title":      "New Post",
 			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
 			"Tags":       tags,
 			"Categories": categories,
@@ -373,7 +373,7 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "posts_edit", fiber.Map{
-		"Name":             "Edit Post",
+		"Title":            "Edit Post",
 		"Post":             postWithTags.Post,
 		"Tags":             allTags,
 		"SelectedTags":     postWithTags.Tags,
@@ -464,7 +464,7 @@ func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "tags_index", fiber.Map{
-		"Name":       "Tags",
+		"Title":      "Tags",
 		"Tags":       tags,
 		"Pager":      pager,
 		"PostCounts": postCounts,
@@ -473,7 +473,7 @@ func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
 
 func (h *Handler) GetTagNewHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "tags_new", fiber.Map{
-		"Name": "New Tag",
+		"Title": "New Tag",
 	}, "")
 }
 
@@ -481,7 +481,7 @@ func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
 	slug := strings.TrimSpace(c.FormValue("slug"))
 	if !util.IsSlug(slug) {
 		return RenderAdminView(c, "tags_new", fiber.Map{
-			"Name":  "New Tag",
+			"Title": "New Tag",
 			"Error": "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
 		}, "")
 	}
@@ -509,8 +509,8 @@ func (h *Handler) GetTagEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "tags_edit", fiber.Map{
-		"Name": "Edit Tag",
-		"Tag":  tag,
+		"Title": "Edit Tag",
+		"Tag":   tag,
 	}, "")
 }
 
@@ -523,7 +523,7 @@ func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
 	if !util.IsSlug(slug) {
 		tag, _ := GetTagForEdit(h.Model, id)
 		return RenderAdminView(c, "tags_edit", fiber.Map{
-			"Name":  "Edit Tag",
+			"Title": "Edit Tag",
 			"Tag":   tag,
 			"Error": "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
 		}, "")
@@ -563,7 +563,7 @@ func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "redirects_index", fiber.Map{
-		"Name":      "Redirects",
+		"Title":     "Redirects",
 		"Redirects": redirects,
 		"Pager":     pager,
 	}, "")
@@ -571,7 +571,7 @@ func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
 
 func (h *Handler) GetRedirectNewHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "redirects_new", fiber.Map{
-		"Name": "New Redirect",
+		"Title": "New Redirect",
 	}, "")
 }
 
@@ -596,7 +596,7 @@ func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
 
 	if err := CreateRedirectService(h.Model, in); err != nil {
 		return RenderAdminView(c, "redirects_new", fiber.Map{
-			"Name":  "New Redirect",
+			"Title": "New Redirect",
 			"Error": err,
 		}, "")
 	}
@@ -616,7 +616,7 @@ func (h *Handler) GetRedirectEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "redirects_edit", fiber.Map{
-		"Name":     "Edit Redirect",
+		"Title":    "Edit Redirect",
 		"Redirect": redirect,
 	}, "")
 }
@@ -675,7 +675,7 @@ func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "encrypted_posts_index", fiber.Map{
-		"Name":  "Encrypted Posts",
+		"Title": "Encrypted Posts",
 		"Posts": posts,
 		"Pager": pager,
 	}, "")
@@ -683,7 +683,7 @@ func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
 
 func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "encrypted_posts_new", fiber.Map{
-		"Name": "New Encrypted Post",
+		"Title": "New Encrypted Post",
 	}, "")
 }
 
@@ -716,8 +716,8 @@ func (h *Handler) GetEncryptedPostEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "encrypted_posts_edit", fiber.Map{
-		"Name": "Edit Encrypted Post",
-		"Post": post,
+		"Title": "Edit Encrypted Post",
+		"Post":  post,
 	}, "")
 }
 
@@ -805,7 +805,7 @@ func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "categories_index", fiber.Map{
-		"Name":       "Categories",
+		"Title":      "Categories",
 		"Categories": categories,
 		"ParentMap":  parentMap,
 		"PostCounts": postCounts,
@@ -824,7 +824,7 @@ func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
 	//}
 
 	return RenderAdminView(c, "categories_tree", fiber.Map{
-		"Name":       "Category Tree",
+		"Title":      "Category Tree",
 		"Tree":       tree,
 		"Categories": allCategories,
 	}, "")
@@ -849,7 +849,7 @@ func (h *Handler) GetCategoryNewHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "categories_new", fiber.Map{
-		"Name":       "New Category",
+		"Title":      "New Category",
 		"Categories": all,
 		"ParentID":   parentID,
 	}, "")
@@ -880,7 +880,7 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 	if !util.IsSlug(slug) {
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_new", fiber.Map{
-			"Name":       "New Category",
+			"Title":      "New Category",
 			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
 			"Categories": all,
 		}, "")
@@ -896,7 +896,7 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 
 	if err := CreateCategoryService(h.Model, in); err != nil {
 		return RenderAdminView(c, "categories_new", fiber.Map{
-			"Name":       "New Category",
+			"Title":      "New Category",
 			"Error":      err.Error(),
 			"Categories": []db.Category{},
 		}, "")
@@ -955,7 +955,7 @@ func (h *Handler) GetCategoryEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "categories_edit", fiber.Map{
-		"Name":       "Edit Category",
+		"Title":      "Edit Category",
 		"Category":   category,
 		"Categories": availableCategories,
 	}, "")
@@ -992,7 +992,7 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 		category, _ := GetCategoryForEdit(h.Model, id)
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_edit", fiber.Map{
-			"Name":       "Edit Category",
+			"Title":      "Edit Category",
 			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
 			"Category":   category,
 			"Categories": all,
@@ -1011,7 +1011,7 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 		category, _ := GetCategoryForEdit(h.Model, id)
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_edit", fiber.Map{
-			"Name":       "Edit Category",
+			"Title":      "Edit Category",
 			"Error":      err.Error(),
 			"Category":   category,
 			"Categories": all,
@@ -1066,7 +1066,7 @@ func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "settings_index", fiber.Map{
-		"Name":     "Settings",
+		"Title":    "Settings",
 		"Settings": settings,
 	}, "")
 }
@@ -1129,7 +1129,7 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "settings_all", fiber.Map{
-		"Name":     "Settings - Edit All",
+		"Title":    "Settings - Edit All",
 		"Settings": settingsViews,
 		"Kind":     kind,
 	}, "")
@@ -1212,7 +1212,7 @@ func (h *Handler) GetSettingEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "settings_edit", fiber.Map{
-		"Name":    "Edit Setting",
+		"Title":   "Edit Setting",
 		"Setting": view,
 	}, "")
 }
@@ -1277,7 +1277,7 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 		}
 
 		return RenderAdminView(c, "settings_edit", fiber.Map{
-			"Name":    "Edit Setting",
+			"Title":   "Edit Setting",
 			"Error":   err.Error(),
 			"Setting": view,
 		}, "")
@@ -1312,7 +1312,7 @@ func (h *Handler) GetSettingNewHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "settings_new", fiber.Map{
-		"Name":               "New Setting",
+		"Title":              "New Setting",
 		"OptionsParsed":      optionsParsed,
 		"DefaultOptionValue": defaultOptionValue,
 	}, "")
@@ -1354,7 +1354,7 @@ func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 		}
 
 		return RenderAdminView(c, "settings_new", fiber.Map{
-			"Name":               "New Setting",
+			"Title":              "New Setting",
 			"Error":              err.Error(),
 			"Setting":            s,
 			"OptionsParsed":      optionsParsed,
@@ -1394,7 +1394,7 @@ func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "trash_index", fiber.Map{
-		"Name":      "Trash",
+		"Title":     "Trash",
 		"Data":      data,
 		"ModelType": modelType,
 	}, "")
@@ -1475,7 +1475,7 @@ func (h *Handler) GetHttpErrorLogListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "http_error_logs_index", fiber.Map{
-		"Name":  "Http Error Logs",
+		"Title": "Http Error Logs",
 		"Logs":  logs,
 		"Pager": pager,
 	}, "")
@@ -1502,14 +1502,14 @@ func (h *Handler) GetTaskListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "tasks_index", fiber.Map{
-		"Name":  "Tasks",
+		"Title": "Tasks",
 		"Tasks": tasks,
 	}, "")
 }
 
 func (h *Handler) GetTaskNewHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "tasks_new", fiber.Map{
-		"Name": "New Task",
+		"Title": "New Task",
 	}, "")
 }
 
@@ -1549,8 +1549,8 @@ func (h *Handler) GetTaskEditHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "tasks_edit", fiber.Map{
-		"Name": "Edit Task",
-		"Task": task,
+		"Title": "Edit Task",
+		"Task":  task,
 	}, "")
 }
 
@@ -1627,16 +1627,16 @@ func (h *Handler) GetTaskRunListHandler(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "task_runs_index", fiber.Map{
-		"Name": "Task Runs: " + task.Name,
-		"Task": task,
-		"Runs": runs,
+		"Title": "Task Runs: " + task.Name,
+		"Task":  task,
+		"Runs":  runs,
 	}, "")
 }
 
 // Import/Export
 func (h *Handler) GetImportHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "import", fiber.Map{
-		"Name": "Import Markdown",
+		"Title": "Import Markdown",
 	}, "")
 }
 
@@ -1645,7 +1645,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	form, err := c.MultipartForm()
 	if err != nil {
 		return RenderAdminView(c, "import", fiber.Map{
-			"Name":  "Import Markdown",
+			"Title": "Import Markdown",
 			"Error": "Failed to parse form: " + err.Error(),
 		}, "")
 	}
@@ -1653,7 +1653,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	files := form.File["files"]
 	if len(files) == 0 {
 		return RenderAdminView(c, "import", fiber.Map{
-			"Name":  "Import Markdown",
+			"Title": "Import Markdown",
 			"Error": "Please select at least one file to import",
 		}, "")
 	}
@@ -1710,7 +1710,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		src, err := fileHeader.Open()
 		if err != nil {
 			return RenderAdminView(c, "import", fiber.Map{
-				"Name":  "Import Markdown",
+				"Title": "Import Markdown",
 				"Error": "Failed to open file " + fileHeader.Filename + ": " + err.Error(),
 			}, "")
 		}
@@ -1719,7 +1719,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 		src.Close()
 		if err != nil {
 			return RenderAdminView(c, "import", fiber.Map{
-				"Name":  "Import Markdown",
+				"Title": "Import Markdown",
 				"Error": "Failed to read file " + fileHeader.Filename + ": " + err.Error(),
 			}, "")
 		}
@@ -1819,7 +1819,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	if err != nil && len(items) == 0 {
 		// 如果全部解析失败，返回错误
 		return RenderAdminView(c, "import", fiber.Map{
-			"Name":  "Import Markdown",
+			"Title": "Import Markdown",
 			"Error": err.Error(),
 		}, "")
 	}
@@ -1881,7 +1881,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 
 	// 即使有部分错误，也显示预览页面（有警告信息）
 	return RenderAdminView(c, "import_preview", fiber.Map{
-		"Name":              "Import Preview",
+		"Title":             "Import Preview",
 		"Items":             items,
 		"Error":             err, // 如果有错误，显示警告信息
 		"TitleSourceDesc":   titleSourceDesc,
@@ -1906,7 +1906,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 	if itemCount == 0 {
 		return RenderAdminView(c, "import_preview", fiber.Map{
-			"Name":  "Import Preview",
+			"Title": "Import Preview",
 			"Items": []PreviewPostItem{},
 			"Error": "No items to import",
 		}, "")
@@ -1945,7 +1945,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 	if len(items) == 0 {
 		return RenderAdminView(c, "import_preview", fiber.Map{
-			"Name":  "Import Preview",
+			"Title": "Import Preview",
 			"Items": items,
 			"Error": "No items to import",
 		}, "")
@@ -1955,7 +1955,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 	for _, item := range items {
 		if !util.IsSlug(strings.TrimSpace(item.Slug)) {
 			return RenderAdminView(c, "import_preview", fiber.Map{
-				"Name":  "Import Preview",
+				"Title": "Import Preview",
 				"Items": items,
 				"Error": fmt.Sprintf("第 %d 条记录的 slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头", item.Index+1),
 			}, "")
@@ -1965,7 +1965,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 	// 调用 service 进行导入
 	if err := ImportPreviewService(h.Model, items); err != nil {
 		return RenderAdminView(c, "import_preview", fiber.Map{
-			"Name":  "Import Preview",
+			"Title": "Import Preview",
 			"Items": items,
 			"Error": err.Error(),
 		}, "")
@@ -1977,20 +1977,20 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 // Metrics
 func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "metrics", fiber.Map{
-		"Name": "性能监控",
+		"Title": "性能监控",
 	}, "")
 }
 
 func (h *Handler) GetDevUIComponentsHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "dev_ui_components", fiber.Map{
-		"Name": "UI组件",
+		"Title": "UI组件",
 	}, "")
 }
 
 // Export
 func (h *Handler) GetExportHandler(c *fiber.Ctx) error {
 	return RenderAdminView(c, "export", fiber.Map{
-		"Name": "导出数据库",
+		"Title": "导出数据库",
 	}, "")
 }
 
@@ -2004,7 +2004,7 @@ func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
 	tmpDir := filepath.Join(os.TempDir(), name)
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		return RenderAdminView(c, "export", fiber.Map{
-			"Name":  "导出数据库",
+			"Title": "导出数据库",
 			"Error": "Failed to create export directory: " + err.Error(),
 		}, "")
 	}
@@ -2013,7 +2013,7 @@ func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
 	result, err := db.ExportSQLiteWithHash(h.Model, tmpDir)
 	if err != nil {
 		return RenderAdminView(c, "export", fiber.Map{
-			"Name":  "导出数据库",
+			"Title": "导出数据库",
 			"Error": "Failed to export database: " + err.Error(),
 		}, "")
 	}
@@ -2026,7 +2026,7 @@ func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
 	// 发送文件
 	if err := c.SendFile(result.File); err != nil {
 		return RenderAdminView(c, "export", fiber.Map{
-			"Name":  "导出数据库",
+			"Title": "导出数据库",
 			"Error": "Failed to send file: " + err.Error(),
 		}, "")
 	}
