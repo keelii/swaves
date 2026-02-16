@@ -15,12 +15,12 @@
     <li>
       <a href="{{ .PermLink }}">{{ .Title }}</a>
       <span class="relation">
-        {{ if gt (len .Tags) 0 }}
-          [{{range .Tags}}<a href="{{ .PermLink }}">{{ .Name }}</a>{{end}}]
-        {{end}}
-        {{if and $.IsCategory .Category}}
-        <a href="{{ .Category.PermLink }}">{{ .Category.Name }}</a>
-        {{end}}
+        {{ template "ui/tag_list" dict "Items" .Tags "Label" true }}
+        {{ if not $.IsCategory }}
+            {{if .Category}}
+                {{template "ui/category_item" dict "Item" .Category "Label" true}}
+            {{end}}
+        {{ end }}
       </span>
       <span class="published">{{ relativeTime .CreatedAt }}</span>
     </li>

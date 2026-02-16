@@ -5,10 +5,10 @@
     <span>{{ articleTime .Post.PublishedAt }}</span>
     · <a href="{{ settings "base_path" }}">首页</a>
     {{if .Post.Category}}
-      · 分类 <a href="{{ .Post.Category.PermLink }}">{{ .Post.Category.Name }}</a>
+      {{template "ui/category_item" dict "Item" .Post.Category "Label" true}}
     {{end}}
     {{if .Post.Tags}}
-    {{template "ui/tag_list" dict "Items" .Post.Tags}}
+      {{template "ui/tag_list" dict "Items" .Post.Tags "Label" true}}
     {{end}}
   </nav>
 </header>

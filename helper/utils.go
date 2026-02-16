@@ -13,7 +13,7 @@ import (
 
 // FlattenTOC 扁平化目录结构
 // listType: "ul" 或 "ol"，指定要查找的列表类型
-func FlattenTOC(input string, listType string) string {
+func FlattenTOC(input string, listType string, attrKey string) string {
 	doc, err := html.Parse(strings.NewReader(input))
 	if err != nil {
 		log.Println("解析 HTML 失败:", err)
@@ -25,7 +25,7 @@ func FlattenTOC(input string, listType string) string {
 	fixTocList = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == listType {
 			for _, attr := range n.Attr {
-				if attr.Key == "id" && attr.Val == "toc-list" {
+				if attr.Key == attrKey && attr.Val == "toc-list" {
 					flattenTocList(n, listType)
 					return
 				}

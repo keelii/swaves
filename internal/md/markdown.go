@@ -58,7 +58,7 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 		),
 		goldmark.WithRendererOptions(
 			html.WithUnsafe(), // 关键：允许渲染原始 HTML 和不安全的标签
-			html.WithHardWraps(),
+			//html.WithHardWraps(),
 			html.WithXHTML(),
 			renderer.WithNodeRenderers(
 				util.Prioritized(&TOCContainerHTMLRenderer{}, 100),
@@ -96,7 +96,7 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 	//fmt.Println("--- HTML 内容 ---")
 	//fmt.Println(buf.String())
 
-	result := helper.FlattenTOC(buf.String(), "ol")
+	result := helper.FlattenTOC(buf.String(), "ol", "class")
 
 	return &MarkdownResult{
 		Meta:     metaData,

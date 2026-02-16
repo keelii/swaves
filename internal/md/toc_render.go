@@ -50,7 +50,7 @@ func (r *TOCContainerHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRe
 
 func (r *TOCContainerHTMLRenderer) renderTOCContainer(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString(`<div id="toc">`)
+		_, _ = w.WriteString(`<div class="toc"><span class="toc-toggle" onclick="this.parentNode.classList.toggle('open')">§</span>`)
 		_, _ = w.WriteString("\n")
 	} else {
 		_, _ = w.WriteString("</div>\n")
@@ -74,11 +74,11 @@ func (t *MyTransformer) Transform(doc *ast.Document, reader text.Reader, ctx par
 	}
 
 	listNode := toc.RenderOrderedList(tocTree)
-	listNode.SetAttributeString("id", "toc-list")
+	listNode.SetAttributeString("class", "toc-list")
 
 	// 创建标题
 	heading := ast.NewHeading(2)
-	heading.SetAttributeString("id", "toc-title")
+	heading.SetAttributeString("class", "toc-title")
 	heading.AppendChild(heading, ast.NewString([]byte("目录")))
 
 	// 使用容器节点
