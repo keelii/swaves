@@ -101,7 +101,7 @@ func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
 		if name == "" {
 			continue
 		}
-		if tag, err := CreateTagByName(dbx, name); err == nil {
+		if tag, err := CreateTagByName(dbx, name, 0); err == nil {
 			tagIDs = append(tagIDs, tag.ID)
 		}
 	}

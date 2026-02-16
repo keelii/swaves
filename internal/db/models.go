@@ -922,6 +922,18 @@ func RestoreTag(db *DB, id int64) error {
 	return RestoreRecord(db, TableTags, id)
 }
 
+// UpdateTagCreatedAtIfEarlier 仅当 createdAt 早于当前 created_at 时更新（导入时用于“按最早出现该标签的文章创建时间”）
+func UpdateTagCreatedAtIfEarlier(db *DB, id int64, createdAt int64) error {
+	_, err := db.Exec(
+		`UPDATE `+string(TableTags)+` SET created_at = ? WHERE id = ? AND deleted_at IS NULL AND (created_at IS NULL OR created_at > ?)`,
+		createdAt, id, createdAt,
+	)
+	if err != nil {
+		return WrapInternalErr("UpdateTagCreatedAtIfEarlier", err)
+	}
+	return nil
+}
+
 func ListTags(db *DB, withPostCount bool) ([]Tag, error) {
 	results, err := ListRecords(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", "", "name", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
 		var t Tag
@@ -2826,6 +2838,18 @@ func SoftDeleteCategory(db *DB, id int64) error {
 
 func RestoreCategory(db *DB, id int64) error {
 	return RestoreRecord(db, TableCategories, id)
+}
+
+// UpdateCategoryCreatedAtIfEarlier 仅当 createdAt 早于当前 created_at 时更新（导入时用于“按最早出现该分类的文章创建时间”）
+func UpdateCategoryCreatedAtIfEarlier(db *DB, id int64, createdAt int64) error {
+	_, err := db.Exec(
+		`UPDATE `+string(TableCategories)+` SET created_at = ? WHERE id = ? AND deleted_at IS NULL AND (created_at IS NULL OR created_at > ?)`,
+		createdAt, id, createdAt,
+	)
+	if err != nil {
+		return WrapInternalErr("UpdateCategoryCreatedAtIfEarlier", err)
+	}
+	return nil
 }
 
 func ListDeletedCategories(db *DB) ([]Category, error) {

@@ -14,6 +14,7 @@
   <li>
     <a href="{{ .PermLink }}">{{ .Name }}</a>
     <span class="post-count">({{ .PostCount }})</span>
+    <span>{{ relativeTime .CreatedAt }}</span>
   </li>
   {{ else }}
   <li>No {{ .ID }}</li>

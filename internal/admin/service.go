@@ -293,7 +293,8 @@ func CreateTagService(dbx *db.DB, in CreateTagInput) error {
 	return err
 }
 
-func CreateTagByName(dbx *db.DB, name string) (*db.Tag, error) {
+// CreateTagByName 按名称创建或获取标签。postCreatedAt 为引用该标签的文章的创建时间（导入时传入，0 表示使用当前时间）。
+func CreateTagByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Tag, error) {
 	if name == "" {
 		return nil, errors.New("name required")
 	}
@@ -334,13 +335,22 @@ func CreateTagByName(dbx *db.DB, name string) (*db.Tag, error) {
 		if deletedAt.Valid {
 			t.DeletedAt = &deletedAt.Int64
 		}
+		if postCreatedAt > 0 && postCreatedAt < t.CreatedAt {
+			_ = db.UpdateTagCreatedAtIfEarlier(dbx, t.ID, postCreatedAt)
+			t.CreatedAt = postCreatedAt
+		}
 		return &t, nil
 	}
 
-	// 如果不存在，创建新标签
+	createdAt := postCreatedAt
+	if createdAt <= 0 {
+		createdAt = time.Now().Unix()
+	}
 	t := &db.Tag{
-		Name: name,
-		Slug: slug,
+		Name:      name,
+		Slug:      slug,
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 	}
 	if _, err := db.CreateTag(dbx, t); err != nil {
 		return nil, err
@@ -759,7 +769,8 @@ func CreateCategoryService(dbx *db.DB, in CreateCategoryInput) error {
 	return err
 }
 
-func CreateCategoryByName(dbx *db.DB, name string) (*db.Category, error) {
+// CreateCategoryByName 按名称创建或获取分类（顶级）。postCreatedAt 为引用该分类的文章的创建时间（导入时传入，0 表示使用当前时间）。
+func CreateCategoryByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Category, error) {
 	if name == "" {
 		return nil, errors.New("name required")
 	}
@@ -807,13 +818,22 @@ func CreateCategoryByName(dbx *db.DB, name string) (*db.Category, error) {
 		if deletedAt.Valid {
 			c.DeletedAt = &deletedAt.Int64
 		}
+		if postCreatedAt > 0 && postCreatedAt < c.CreatedAt {
+			_ = db.UpdateCategoryCreatedAtIfEarlier(dbx, c.ID, postCreatedAt)
+			c.CreatedAt = postCreatedAt
+		}
 		return &c, nil
 	}
 
-	// 如果不存在，创建新分类（作为顶级分类）
+	createdAt := postCreatedAt
+	if createdAt <= 0 {
+		createdAt = time.Now().Unix()
+	}
 	c := &db.Category{
-		Name: name,
-		Slug: slug,
+		Name:      name,
+		Slug:      slug,
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 	}
 	if _, err := db.CreateCategory(dbx, c); err != nil {
 		return nil, err
@@ -1569,7 +1589,7 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 		for _, tagName := range tagNames {
 			tagName = strings.TrimSpace(tagName)
 			if tagName != "" {
-				tag, err := CreateTagByName(dbx, tagName)
+				tag, err := CreateTagByName(dbx, tagName, post.CreatedAt)
 				if err == nil {
 					tagIDs = append(tagIDs, tag.ID)
 				}
@@ -1661,7 +1681,7 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 			for _, tagName := range tagNames {
 				tagName = strings.TrimSpace(tagName)
 				if tagName != "" {
-					tag, err := CreateTagByName(dbx, tagName)
+					tag, err := CreateTagByName(dbx, tagName, createdAt)
 					if err == nil {
 						tagIDs = append(tagIDs, tag.ID)
 					}
@@ -1677,7 +1697,7 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 
 		// 处理 category（单选）
 		if item.Category != "" {
-			category, err := CreateCategoryByName(dbx, item.Category)
+			category, err := CreateCategoryByName(dbx, item.Category, createdAt)
 			if err == nil {
 				if err := db.SetPostCategory(dbx, post.ID, category.ID); err != nil {
 					// category 关联失败不影响主流程
