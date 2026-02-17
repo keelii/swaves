@@ -24,7 +24,7 @@
 
   <div class="ivalign gap-h">
     <label for="page-size-select">每页</label>
-    <select id="page-size-select" style="padding: 0;min-width:auto">
+    <select id="page-size-select" style="min-width:auto">
       <option value="5" {{if eq .Pager.PageSize 5}}selected{{end}}>5</option>
       <option value="10" {{if eq .Pager.PageSize 10}}selected{{end}}>10</option>
       <option value="20" {{if eq .Pager.PageSize 20}}selected{{end}}>20</option>

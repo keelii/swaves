@@ -3,6 +3,8 @@
 */}}
 {{ if .Error }}
   <div class="errors">
-    <p class="error-message">{{ .Error }}</p>
+    <div role="alert" data-variant="error">
+      <strong>Error:</strong> {{ .Error }}
+    </div>
   </div>
 {{ end }}

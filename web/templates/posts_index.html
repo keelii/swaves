@@ -65,7 +65,13 @@
         <span>-</span>
       {{ end }}
     </td>
-    <td>{{ .Post.Status }}</td>
+    <td>
+        {{ if eq .Post.Status "published" }}
+          <span class="badge success">已发布</span>
+        {{ else }}
+          <span class="badge secondary">草稿</span>
+        {{ end }}
+    </td>
     <td>{{ relativeTime .Post.CreatedAt }}</td>
     <td>{{ relativeTime .Post.UpdatedAt }}</td>
     {{ template "partials/table_row_actions" dict "BaseURL" "/admin/posts" "ID" .Post.ID }}

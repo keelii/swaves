@@ -84,12 +84,12 @@
             {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
         </form>
         <div>
-          <a href="/admin/categories/{{ .Category.ID }}/edit">Edit</a>
-          <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
+          {{ template "partials/action_icon_link" dict "href" (printf "/admin/categories/%d/edit" .Category.ID) "name" "square-pen" "label" "编辑" }}
+          {{ template "partials/action_icon_link" dict "href" (printf "/admin/categories/new?parent_id=%d" .Category.ID) "name" "plus" "label" "添加" }}
         </div>
         <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
           <button type="submit">
-              {{ template "partials/action_btn_content" dict "name" "trash-2" "size" "20" "label" "删除" }}
+              {{ template "partials/action_btn_content" dict "name" "trash-2" "size" "14" "label" "删除" }}
           </button>
         </form>
       </div>
