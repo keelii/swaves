@@ -8,9 +8,9 @@ import (
 	"swaves/internal/db"
 	"swaves/internal/jobs"
 	"swaves/internal/middleware"
+	"swaves/internal/site"
 	"swaves/internal/store"
 	"swaves/internal/types"
-	"swaves/internal/ui"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
@@ -73,7 +73,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 	//fmt.Println(md.ParseMarkdown(``))
 
 	admin.RegisterRoutes(app, globalStore)
-	ui.RegisterRoutes(app, globalStore)
+	site.RegisterRoutes(app, globalStore)
 	api.RegisterRoutes(app)
 
 	return SwavesApp{
