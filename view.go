@@ -215,15 +215,62 @@ func NewViewEngine() *html.Engine {
 		s = strings.ReplaceAll(s, "{{year}}", time.Now().Format("2006"))
 		return s
 	})
-	// 前台 URL（用于后台列表中「URL 标识」列加链接）
+	// share/context.go 中的公共函数注册到模板（接收 *db.Post 的已做 nil 安全包装）
+	engine.AddFunc("GetBasePath", share.GetBasePath)
+	engine.AddFunc("GetPagePath", share.GetPagePath)
+	engine.AddFunc("GetSiteUrl", share.GetSiteUrl)
+	engine.AddFunc("GetSiteAuthor", share.GetSiteAuthor)
+	engine.AddFunc("GetSiteCopyright", share.GetSiteCopyright)
+	engine.AddFunc("GetCategoryIndex", share.GetCategoryIndex)
+	engine.AddFunc("GetTagIndex", share.GetTagIndex)
+	engine.AddFunc("GetRSSUrl", share.GetRSSUrl)
+	engine.AddFunc("GetAdminUrl", share.GetAdminUrl)
+	engine.AddFunc("GetTagUrl", share.GetTagUrl)
+	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
 	engine.AddFunc("GetPostUrl", func(p *db.Post) string {
 		if p == nil {
 			return ""
 		}
 		return share.GetPostUrl(*p)
 	})
-	engine.AddFunc("GetTagUrl", share.GetTagUrl)
-	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
+	engine.AddFunc("GetPageUrl", func(p *db.Post) string {
+		if p == nil {
+			return ""
+		}
+		return share.GetPageUrl(*p)
+	})
+	engine.AddFunc("GetArticleUrl", func(p *db.Post) string {
+		if p == nil {
+			return ""
+		}
+		return share.GetArticleUrl(*p)
+	})
+	engine.AddFunc("GetPostAbsUrl", func(p *db.Post) string {
+		if p == nil {
+			return ""
+		}
+		return share.GetPostAbsUrl(*p)
+	})
+	engine.AddFunc("GetAdminPostUrl", func(p *db.Post) string {
+		if p == nil {
+			return ""
+		}
+		return share.GetAdminPostUrl(*p)
+	})
+	engine.AddFunc("GetAdminEditPostUrl", func(p *db.Post) string {
+		if p == nil {
+			return ""
+		}
+		return share.GetAdminEditPostUrl(*p)
+	})
+	// GetArticlePublishedDate 返回 map[string]string，键为 Year / Month / Day，便于模板使用
+	engine.AddFunc("GetArticlePublishedDate", func(p *db.Post) map[string]string {
+		if p == nil {
+			return nil
+		}
+		y, m, d := share.GetArticlePublishedDate(*p)
+		return map[string]string{"Year": y, "Month": m, "Day": d}
+	})
 	engine.Reload(true)
 
 	return engine

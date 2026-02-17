@@ -32,43 +32,6 @@ func GetPageUrl(post db.Post) string {
 	return GetPagePath() + "/" + post.Slug
 }
 
-//func PostPathToRegExp() string {
-//	postPath := store.GetSetting("post_url_prefix")
-//	postPath = strings.ReplaceAll(postPath, "{year}", `(?P<year>\d{4})`)
-//	postPath = strings.ReplaceAll(postPath, "{month}", `(?P<month>\d{2})`)
-//	postPath = strings.ReplaceAll(postPath, "{day}", `(?P<day>\d{2})`)
-//	postPath += `/(?P<slug>[a-z0-9-]+)`
-//	return "^" + postPath + "$"
-//}
-
-//func MatchRouter(dst string) map[string]string {
-//	result := map[string]string{}
-//
-//	pattern := PostPathToRegExp()
-//	// 加上开始和结束锚点，确保完全匹配
-//
-//	re, err := regexp.Compile(pattern)
-//	if err != nil {
-//		return result
-//	}
-//
-//	matches := re.FindStringSubmatch(dst)
-//	names := re.SubexpNames()
-//
-//	if len(matches) == 0 || len(names) == 0 {
-//		return result
-//	}
-//	fmt.Println(len(matches), len(names))
-//
-//	for i, name := range names {
-//		if i != 0 && name != "" {
-//			result[name] = matches[i]
-//		}
-//	}
-//
-//	return result
-//}
-
 func GetArticlePublishedDate(post db.Post) (string, string, string) {
 	published := time.Unix(post.PublishedAt, 0)
 	y := published.Format("2006")
@@ -114,4 +77,17 @@ func GetCategoryUrl(category db.Category) string {
 }
 func GetTagUrl(tag db.Tag) string {
 	return GetTagIndex() + "/" + tag.Slug
+}
+
+func GetRSSUrl() string {
+	return store.GetSetting("rss_path")
+}
+func GetAdminUrl() string {
+	return store.GetSetting("admin_path")
+}
+func GetAdminPostUrl(post db.Post) string {
+	return fmt.Sprintf("%s%s", GetAdminUrl(), GetPostUrl(post))
+}
+func GetAdminEditPostUrl(post db.Post) string {
+	return fmt.Sprintf("%s%s/posts/%d/edit", GetAdminUrl(), GetBasePath(), post.ID)
 }

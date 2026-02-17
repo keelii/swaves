@@ -1,17 +1,17 @@
 <nav>
-  <a href="{{ settings "base_path" }}">首页</a>
+  <a href="{{ GetBasePath }}">首页</a>
   /
-  <a href="{{ settings "category_url_prefix" }}">分类</a>
+  <a href="{{ GetCategoryIndex }}">分类</a>
   /
-  <a href="{{ settings "tag_url_prefix" }}">标签</a>
+  <a href="{{ GetTagIndex }}">标签</a>
   {{if gt (len .Pages) 0 }}
   /
     {{ range .Pages}}
       <a href="{{ .PermLink }}">{{ .Title }}</a>
     {{ end }}
   {{end}}
-  / <a href="{{ settings "rss_path" }}">RSS</a>
+  / <a href="{{ GetRSSUrl }}">RSS</a>
   {{if .IsLogin}}
-    / <a href="{{ settings "admin_path" }}">管理</a>
+    / <a href="{{ GetAdminUrl }}">管理</a>
   {{end}}
 </nav>
