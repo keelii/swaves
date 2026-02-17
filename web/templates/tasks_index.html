@@ -43,13 +43,15 @@
     <td>{{ if .LastRunAt }}{{ relativeTime .LastRunAt }}{{ else }}-{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>
-      <a href="/admin/tasks/{{ .ID }}/edit" style="margin-right: 10px;">编辑</a>
-      <form id="form" method="POST" action="/admin/tasks/{{ .Code }}/trigger" style="display: inline-block; margin-right: 10px;">
-        <button type="submit">执行</button>
-      </form>
-      <form id="form" method="POST" action="/admin/tasks/{{ .ID }}/delete" style="display: inline-block;">
-        <button type="submit">删除</button>
-      </form>
+      <div class="row-actions">
+        {{ template "partials/action_icon_link" dict "href" (printf "/admin/tasks/%d/edit" .ID) "name" "square-pen" "label" "编辑" }}
+        <form id="form" method="POST" action="/admin/tasks/{{ .Code }}/trigger">
+          {{ template "partials/action_icon_button" dict "type" "submit" "name" "terminal" "label" "执行" "danger" true }}
+        </form>
+        <form id="form" method="POST" action="/admin/tasks/{{ .ID }}/delete">
+          {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+        </form>
+      </div>
     </td>
   </tr>
   {{ else }}

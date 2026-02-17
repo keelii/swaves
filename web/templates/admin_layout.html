@@ -86,6 +86,39 @@
           display:flex;
           justify-content: space-between;
       }
+      .row-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+      }
+      .row-actions form {
+          margin: 0;
+      }
+      .row-action-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          margin: 0;
+          color: var(--nc-tx-2);
+          background: var(--nc-bg-1);
+          border: 1px solid var(--nc-bg-3);
+          border-radius: 4px;
+          cursor: pointer;
+          text-decoration: none;
+      }
+      .row-action-btn:hover {
+          background: var(--nc-bg-1);
+          color: var(--nc-lk-1);
+          border-color: var(--nc-lk-1);
+      }
+      .row-action-btn svg {
+          width: 14px;
+          height: 14px;
+          pointer-events: none;
+      }
   </style>
 </head>
 <body>
@@ -101,11 +134,13 @@
       {{template "partials/actions" .}}
       <div class="nav-user">
           {{ if .IsLogin }}
-            <span>欢迎，管理员</span> <a href="/admin/logout">退出</a>
+            <span>欢迎，{{ settings "author" }}</span> <a href="/admin/logout">退出</a>
           {{ else }}
             <span>请先</span> <a href="/admin/login">登录</a>
           {{ end }}
-        <div class="user-avatar">A</div>
+        <div class="user-avatar">
+            <img width="32" height="32" src="{{ settings "author_avatar" }}" alt="{{ settings "author" }}">
+        </div>
       </div>
     </div>
   </div>

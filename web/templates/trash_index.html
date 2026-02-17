@@ -59,9 +59,11 @@
       <td>{{ .Status }}</td>
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form id="form" method="post" style="display:inline" action="/admin/trash/posts/{{ .ID }}/restore">
-          <button type="submit">Restore</button>
-        </form>
+        <div class="row-actions">
+          <form id="form" method="post" action="/admin/trash/posts/{{ .ID }}/restore">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          </form>
+        </div>
       </td>
     </tr>
     {{ end }}
@@ -92,9 +94,11 @@
       <td>{{ .Slug }}</td>
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form id="form" method="post" style="display:inline" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
-          <button type="submit">Restore</button>
-        </form>
+        <div class="row-actions">
+          <form id="form" method="post" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+          </form>
+        </div>
       </td>
     </tr>
     {{ end }}
@@ -125,9 +129,11 @@
       <td>{{ .Slug }}</td>
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form id="form" method="post" style="display:inline" action="/admin/trash/tags/{{ .ID }}/restore">
-          <button type="submit">Restore</button>
-        </form>
+        <div class="row-actions">
+          <form id="form" method="post" action="/admin/trash/tags/{{ .ID }}/restore">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+          </form>
+        </div>
       </td>
     </tr>
     {{ end }}
@@ -162,9 +168,11 @@
       <td>{{ .Description }}</td>
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form id="form" method="post" style="display:inline" action="/admin/trash/categories/{{ .ID }}/restore">
-          <button type="submit">Restore</button>
-        </form>
+        <div class="row-actions">
+          <form id="form" method="post" action="/admin/trash/categories/{{ .ID }}/restore">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+          </form>
+        </div>
       </td>
     </tr>
     {{ end }}
@@ -195,9 +203,11 @@
       <td>{{ .To }}</td>
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
-        <form id="form" method="post" style="display:inline" action="/admin/trash/redirects/{{ .ID }}/restore">
-          <button type="submit">Restore</button>
-        </form>
+        <div class="row-actions">
+          <form id="form" method="post" action="/admin/trash/redirects/{{ .ID }}/restore">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+          </form>
+        </div>
       </td>
     </tr>
     {{ end }}
@@ -207,4 +217,3 @@
   <p>No deleted redirects.</p>
   {{ end }}
 {{ end }}
-

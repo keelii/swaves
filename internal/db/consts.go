@@ -301,6 +301,7 @@ var DefaultSettings = []Setting{
 	{Sort: 2, Kind: "General", Name: "Site Description", Code: "site_desc", Type: "text", Value: "声音是一种机械波，而博客是一种思想波。", Description: "站点描述"},
 	{Sort: 2, Kind: "General", Name: "Site Copyright", Code: "site_copyright", Type: "text", Value: "Copyright © {{year}} keelii", Description: "站点版权"},
 	{Sort: 4, Kind: "General", Name: "Author", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
+	{Sort: 4, Kind: "General", Name: "Author avatar", Code: "author_avatar", Type: "text", Value: "https://cdn.v2ex.com/avatar/1592/1040/7682_large.png", Description: "头像"},
 	{Sort: 5, Kind: "General", Name: "Keywords", Code: "keyword", Type: "text", Value: "前端开发,编程,javascript,typescript,css,html,nodejs,python,java", Description: "关键字"},
 	{Sort: 6, Kind: "General", Name: "Language", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
 	{Sort: 7, Kind: "General", Name: "Charset", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},

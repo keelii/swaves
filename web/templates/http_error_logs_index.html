@@ -32,9 +32,11 @@
       {{ else }}-{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>
-      <form id="form" method="post" style="display:inline" action="/admin/http-error-logs/{{ .ID }}/delete">
-        <button type="submit">删除</button>
-      </form>
+      <div class="row-actions">
+        <form id="form" method="post" action="/admin/http-error-logs/{{ .ID }}/delete">
+          {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+        </form>
+      </div>
     </td>
   </tr>
   {{ else }}
@@ -50,4 +52,3 @@
   </tr>
   </tfoot>
 </table>
-
