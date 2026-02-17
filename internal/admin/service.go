@@ -184,6 +184,11 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 	if err := db.UpdatePost(dbx, p); err != nil {
 		return err
 	}
+	if in.Action == UpdatePostActionPublish {
+		if err := db.PublishPost(dbx, p.ID); err != nil {
+			return err
+		}
+	}
 
 	// 更新标签关联
 	if err := db.SetPostTags(dbx, id, in.TagIDs); err != nil {

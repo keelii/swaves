@@ -26,8 +26,33 @@ func openTestDB(t *testing.T) *DB {
 
 func softDeleteByTable(db *DB, t *testing.T, table TableName, id int64) {
 	t.Helper()
-	if err := SoftDeleteRecord(db, table, id); err != nil {
+	if err := Delete(db, specFromTable(table), id); err != nil {
 		t.Fatalf("soft delete %s failed: %v", table, err)
+	}
+}
+
+func specFromTable(table TableName) TableSpec {
+	switch table {
+	case TablePosts:
+		return specPosts
+	case TableEncryptedPosts:
+		return specEncryptedPosts
+	case TableTags:
+		return specTags
+	case TableRedirects:
+		return specRedirects
+	case TableSettings:
+		return specSettings
+	case TableTasks:
+		return specTasks
+	case TableCategories:
+		return specCategories
+	case TableHttpErrorLogs:
+		return specHttpErrorLogs
+	case TableTaskRuns:
+		return specTaskRuns
+	default:
+		return TableSpec{Name: table, HasDeletedAt: true}
 	}
 }
 
@@ -1527,7 +1552,7 @@ func TestUpdateTaskStatus(t *testing.T) {
 	}
 }
 
-// ========== List 功能测试 ==========
+// ========== Read 功能测试 ==========
 
 func TestListDeletedPosts(t *testing.T) {
 	db := openTestDB(t)
@@ -1998,7 +2023,7 @@ func TestSoftDeleteRecord(t *testing.T) {
 	p := &Post{Title: "SoftDelete Test", Slug: "softdelete-test", Content: "c", Status: "published"}
 	CreatePost(db, p)
 
-	if err := SoftDeleteRecord(db, TablePosts, p.ID); err != nil {
+	if err := Delete(db, specPosts, p.ID); err != nil {
 		t.Fatalf("SoftDeleteRecord failed: %v", err)
 	}
 
@@ -2012,7 +2037,7 @@ func TestSoftDeleteRecord(t *testing.T) {
 	tag := &Tag{Name: "SoftDelete Tag", Slug: "softdelete-tag"}
 	_, _ = CreateTag(db, tag)
 
-	if err := SoftDeleteRecord(db, TableTags, tag.ID); err != nil {
+	if err := Delete(db, specTags, tag.ID); err != nil {
 		t.Fatalf("SoftDeleteRecord for tags failed: %v", err)
 	}
 
@@ -2031,7 +2056,7 @@ func TestRestoreRecord(t *testing.T) {
 	CreatePost(db, p)
 
 	// 先软删除
-	if err := SoftDeleteRecord(db, TablePosts, p.ID); err != nil {
+	if err := Delete(db, specPosts, p.ID); err != nil {
 		t.Fatalf("SoftDeleteRecord failed: %v", err)
 	}
 
@@ -2054,7 +2079,7 @@ func TestRestoreRecord(t *testing.T) {
 	CreateCategory(db, c)
 
 	// 先软删除
-	if err := SoftDeleteRecord(db, TableCategories, c.ID); err != nil {
+	if err := Delete(db, specCategories, c.ID); err != nil {
 		t.Fatalf("SoftDeleteRecord for categories failed: %v", err)
 	}
 
@@ -2082,7 +2107,7 @@ func TestHardDeleteRecord(t *testing.T) {
 	postID := p.ID
 
 	// 硬删除
-	if err := HardDeleteRecord(db, TablePosts, p.ID); err != nil {
+	if err := HardDelete(db, specPosts, p.ID); err != nil {
 		t.Fatalf("HardDeleteRecord failed: %v", err)
 	}
 
@@ -2099,7 +2124,7 @@ func TestHardDeleteRecord(t *testing.T) {
 	redirectID := r.ID
 
 	// 硬删除
-	if err := HardDeleteRecord(db, TableRedirects, r.ID); err != nil {
+	if err := HardDelete(db, specRedirects, r.ID); err != nil {
 		t.Fatalf("HardDeleteRecord for redirects failed: %v", err)
 	}
 
@@ -2117,49 +2142,60 @@ func TestGetRecordByID(t *testing.T) {
 	p := &Post{Title: "GetByID Test", Slug: "getbyid-test", Content: "c", Status: "published"}
 	CreatePost(db, p)
 
-	result, err := GetRecordByID(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", p.ID, func(row *sql.Row) (interface{}, error) {
+	result, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{p.ID},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
 		var post Post
 		var deletedAt sql.NullInt64
-		if err := row.Scan(
+		if err := rows.Scan(
 			&post.ID, &post.Title, &post.Slug, &post.Content, &post.Status,
 			&post.CreatedAt, &post.UpdatedAt, &deletedAt,
 		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("test")
-			}
 			return nil, err
 		}
 		if deletedAt.Valid {
 			post.DeletedAt = &deletedAt.Int64
 		}
-		return &post, nil
+		return post, nil
 	})
 	if err != nil {
 		t.Fatalf("GetRecordByID failed: %v", err)
 	}
 
-	post := result.(*Post)
+	item, ok := firstResult(result)
+	if !ok {
+		t.Fatalf("expected record, got none")
+	}
+	post := item.(Post)
 	if post.Title != "GetByID Test" {
 		t.Fatalf("unexpected title: %s", post.Title)
 	}
 
 	// 测试不存在的记录
-	_, err = GetRecordByID(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", 99999, func(row *sql.Row) (interface{}, error) {
+	empty, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{int64(99999)},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
 		var post Post
 		var deletedAt sql.NullInt64
-		if err := row.Scan(
+		if err := rows.Scan(
 			&post.ID, &post.Title, &post.Slug, &post.Content, &post.Status,
 			&post.CreatedAt, &post.UpdatedAt, &deletedAt,
 		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("test")
-			}
 			return nil, err
 		}
 		return &post, nil
 	})
-	if !IsErrNotFound(err) {
-		t.Fatalf("expected ErrNotFound, got %v", err)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Fatalf("expected no records, got %d", len(empty))
 	}
 }
 
@@ -2169,7 +2205,7 @@ func TestListRecords(t *testing.T) {
 	// 创建多个 posts
 	for i := 0; i < 3; i++ {
 		p := &Post{
-			Title:   fmt.Sprintf("List Test %d", i),
+			Title:   fmt.Sprintf("Read Test %d", i),
 			Slug:    fmt.Sprintf("list-test-%d", i),
 			Content: "c",
 			Status:  "published",
@@ -2178,7 +2214,13 @@ func TestListRecords(t *testing.T) {
 	}
 
 	// 测试列出所有记录
-	results, err := ListRecords(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", "", "created_at DESC", nil, 10, 0, func(rows *sql.Rows) (interface{}, error) {
+	results, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, created_at, updated_at, deleted_at",
+		WhereClause:  "",
+		OrderBy:      "created_at DESC",
+		WhereArgs:    nil,
+		Limit:        10,
+	}, func(rows *sql.Rows) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
@@ -2200,7 +2242,13 @@ func TestListRecords(t *testing.T) {
 	}
 
 	// 测试带条件查询
-	results, err = ListRecords(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", "status=?", "created_at DESC", []interface{}{"published"}, 10, 0, func(rows *sql.Rows) (interface{}, error) {
+	results, err = Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, created_at, updated_at, deleted_at",
+		WhereClause:  "status=?",
+		OrderBy:      "created_at DESC",
+		WhereArgs:    []interface{}{"published"},
+		Limit:        10,
+	}, func(rows *sql.Rows) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
@@ -2222,7 +2270,13 @@ func TestListRecords(t *testing.T) {
 	}
 
 	// 测试分页
-	results, err = ListRecords(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", "", "created_at DESC", nil, 2, 0, func(rows *sql.Rows) (interface{}, error) {
+	results, err = Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, created_at, updated_at, deleted_at",
+		WhereClause:  "",
+		OrderBy:      "created_at DESC",
+		WhereArgs:    nil,
+		Limit:        2,
+	}, func(rows *sql.Rows) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
@@ -2256,8 +2310,8 @@ func TestListDeletedRecords(t *testing.T) {
 	CreatePost(db, p2)
 	CreatePost(db, p3)
 
-	SoftDeleteRecord(db, TablePosts, p1.ID)
-	SoftDeleteRecord(db, TablePosts, p2.ID)
+	Delete(db, specPosts, p1.ID)
+	Delete(db, specPosts, p2.ID)
 
 	// 测试列出已删除记录
 	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
@@ -2308,13 +2362,13 @@ func TestCountRecords(t *testing.T) {
 
 	// 软删除第一个 tag
 	if len(createdTags) > 0 {
-		if err := SoftDeleteRecord(db, TableTags, createdTags[0].ID); err != nil {
+		if err := Delete(db, specTags, createdTags[0].ID); err != nil {
 			t.Fatalf("SoftDeleteRecord failed: %v", err)
 		}
 	}
 
 	// 测试统计所有记录（不包括已删除）
-	count, err := CountRecords(db, TableTags, "", nil)
+	count, err := Count(db, specTags, "", nil)
 	if err != nil {
 		t.Fatalf("CountRecords failed: %v", err)
 	}
@@ -2323,7 +2377,7 @@ func TestCountRecords(t *testing.T) {
 	}
 
 	// 测试带条件统计
-	count, err = CountRecords(db, TableTags, "slug LIKE ?", []interface{}{"count-test%"})
+	count, err = Count(db, specTags, "slug LIKE ?", []interface{}{"count-test%"})
 	if err != nil {
 		t.Fatalf("CountRecords with where clause failed: %v", err)
 	}

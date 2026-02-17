@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"swaves/internal/share"
 	"swaves/internal/store"
 	"time"
 
@@ -23,9 +24,9 @@ func GenerateRSS(posts []DisplayPost, ctx *fiber.Ctx, page int, total int) (stri
 	// 创建 Feed
 	feed := &feeds.Feed{
 		Title:       title,
-		Link:        &feeds.Link{Href: GetSiteUrl()},
+		Link:        &feeds.Link{Href: share.GetSiteUrl()},
 		Description: fmt.Sprintf("博客第 %d 页文章 RSS，共 %d 篇", page, total),
-		Author:      &feeds.Author{Name: GetSiteAuthor()},
+		Author:      &feeds.Author{Name: share.GetSiteAuthor()},
 		Created:     time.Now(),
 	}
 
@@ -34,9 +35,9 @@ func GenerateRSS(posts []DisplayPost, ctx *fiber.Ctx, page int, total int) (stri
 		item := &feeds.Item{
 			Title:       p.Title,
 			Content:     p.HTML,
-			Link:        &feeds.Link{Href: GetPostAbsUrl(p.Raw())},
+			Link:        &feeds.Link{Href: share.GetPostAbsUrl(p.Raw())},
 			Description: "",
-			Author:      &feeds.Author{Name: GetSiteAuthor()},
+			Author:      &feeds.Author{Name: share.GetSiteAuthor()},
 			Created:     time.Unix(p.CreatedAt, 0),
 		}
 		feed.Items = append(feed.Items, item)

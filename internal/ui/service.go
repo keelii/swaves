@@ -4,6 +4,7 @@ import (
 	"log"
 	"swaves/internal/db"
 	"swaves/internal/md"
+	"swaves/internal/share"
 	"swaves/internal/types"
 )
 
@@ -24,7 +25,7 @@ func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination) []D
 		mdResult := md.ParseMarkdown(p.Content, false)
 		res = append(res, DisplayPost{
 			Post:     p,
-			PermLink: GetPostUrl(p),
+			PermLink: share.GetPostUrl(p),
 			HTML:     mdResult.HTML,
 		})
 	}
@@ -40,7 +41,7 @@ func ListPages(dbx *db.DB) []DisplayPostInfo {
 			ID:          p.ID,
 			Title:       p.Title,
 			Slug:        p.Slug,
-			PermLink:    GetPostUrl(p),
+			PermLink:    share.GetPostUrl(p),
 			PublishedAt: p.PublishedAt,
 			CreatedAt:   p.CreatedAt,
 			UpdatedAt:   p.UpdatedAt,
@@ -58,7 +59,7 @@ func postToPostInfo(p *db.Post) *DisplayPostInfo {
 		ID:          p.ID,
 		Title:       p.Title,
 		Slug:        p.Slug,
-		PermLink:    GetPostUrl(*p),
+		PermLink:    share.GetPostUrl(*p),
 		PublishedAt: p.PublishedAt,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
@@ -82,7 +83,7 @@ func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
 			Post:     *p.Post,
 			Prev:     postToPostInfo(prev),
 			Next:     postToPostInfo(next),
-			PermLink: GetPostUrl(*p.Post),
+			PermLink: share.GetPostUrl(*p.Post),
 			HTML:     md.ParseMarkdown(p.Post.Content, true).HTML,
 		},
 		Tags:     toDisplayTags(p.Tags),
@@ -101,7 +102,7 @@ func ListCategories(dbx *db.DB) []DisplayItem {
 			ID:        c.ID,
 			Name:      c.Name,
 			Slug:      c.Slug,
-			PermLink:  GetCategoryUrl(c),
+			PermLink:  share.GetCategoryUrl(c),
 			PostCount: c.PostCount,
 			CreatedAt: c.CreatedAt,
 			UpdatedAt: c.UpdatedAt,
@@ -120,7 +121,7 @@ func ListTags(dbx *db.DB) []DisplayItem {
 			ID:        c.ID,
 			Name:      c.Name,
 			Slug:      c.Slug,
-			PermLink:  GetTagUrl(c),
+			PermLink:  share.GetTagUrl(c),
 			PostCount: c.PostCount,
 			CreatedAt: c.CreatedAt,
 			UpdatedAt: c.UpdatedAt,
@@ -140,7 +141,7 @@ func GetCategoryBySlug(dbx *db.DB, slug string) *DisplayItem {
 		ID:        category.ID,
 		Name:      category.Name,
 		Slug:      category.Slug,
-		PermLink:  GetCategoryUrl(*category),
+		PermLink:  share.GetCategoryUrl(*category),
 		PostCount: category.PostCount,
 		CreatedAt: category.CreatedAt,
 		UpdatedAt: category.UpdatedAt,
@@ -156,7 +157,7 @@ func GetTagBySlug(dbx *db.DB, slug string) *DisplayItem {
 		ID:        tag.ID,
 		Name:      tag.Name,
 		Slug:      tag.Slug,
-		PermLink:  GetTagUrl(*tag),
+		PermLink:  share.GetTagUrl(*tag),
 		PostCount: tag.PostCount,
 		CreatedAt: tag.CreatedAt,
 		UpdatedAt: tag.UpdatedAt,
@@ -181,7 +182,7 @@ func ListPostsByCategory(dbx *db.DB, categoryID int64, pager *types.Pagination) 
 			ID:          p.Post.ID,
 			Title:       p.Post.Title,
 			Slug:        p.Post.Slug,
-			PermLink:    GetPostUrl(*p.Post),
+			PermLink:    share.GetPostUrl(*p.Post),
 			Tags:        toDisplayTags(p.Tags),
 			Category:    toDisplayCategory(p.Category),
 			PublishedAt: p.Post.PublishedAt,
@@ -211,7 +212,7 @@ func ListPostsByTag(dbx *db.DB, tagID int64, pager *types.Pagination) []DisplayP
 			ID:          p.Post.ID,
 			Title:       p.Post.Title,
 			Slug:        p.Post.Slug,
-			PermLink:    GetPostUrl(*p.Post),
+			PermLink:    share.GetPostUrl(*p.Post),
 			Tags:        toDisplayTags(p.Tags),
 			Category:    toDisplayCategory(p.Category),
 			PublishedAt: p.Post.PublishedAt,
@@ -229,7 +230,7 @@ func toDisplayTags(tags []db.Tag) []DisplayItem {
 			ID:        t.ID,
 			Name:      t.Name,
 			Slug:      t.Slug,
-			PermLink:  GetTagUrl(t),
+			PermLink:  share.GetTagUrl(t),
 			PostCount: t.PostCount,
 			CreatedAt: t.CreatedAt,
 			UpdatedAt: t.UpdatedAt,
@@ -245,7 +246,7 @@ func toDisplayCategory(category *db.Category) *DisplayItem {
 		ID:        category.ID,
 		Name:      category.Name,
 		Slug:      category.Slug,
-		PermLink:  GetCategoryUrl(*category),
+		PermLink:  share.GetCategoryUrl(*category),
 		PostCount: category.PostCount,
 		CreatedAt: category.CreatedAt,
 		UpdatedAt: category.UpdatedAt,

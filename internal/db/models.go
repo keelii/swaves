@@ -83,40 +83,137 @@ func now() int64 {
 // 通用基础函数（按 CRUD 顺序排列）
 // ============================================================================
 
-// TableConfig 表配置，用于通用查询
-type TableConfig struct {
-	TableName      string                               // 表名
-	SelectFields   string                               // SELECT 字段列表
-	IDField        string                               // ID 字段名，默认为 "id"
-	DeletedAtField string                               // deleted_at 字段名，默认为 "deleted_at"
-	DefaultOrderBy string                               // 默认排序，如 "created_at DESC"
-	ScanFunc       func(*sql.Rows) (interface{}, error) // 扫描函数
+// TableSpec 表配置，用于通用 CRUD
+type TableSpec struct {
+	Name         TableName
+	IDField      string
+	HasDeletedAt bool
+	DeletedAtCol string
+	HardDelete   bool
+	HasCreatedAt bool
+	CreatedAtCol string
+	HasUpdatedAt bool
+	UpdatedAtCol string
+	DefaultOrder string
 }
+
+func (s TableSpec) idField() string {
+	if s.IDField == "" {
+		return "id"
+	}
+	return s.IDField
+}
+
+func (s TableSpec) deletedAtCol() string {
+	if s.DeletedAtCol == "" {
+		return "deleted_at"
+	}
+	return s.DeletedAtCol
+}
+
+func (s TableSpec) createdAtCol() string {
+	if s.CreatedAtCol == "" {
+		return "created_at"
+	}
+	return s.CreatedAtCol
+}
+
+func (s TableSpec) updatedAtCol() string {
+	if s.UpdatedAtCol == "" {
+		return "updated_at"
+	}
+	return s.UpdatedAtCol
+}
+
+func (s TableSpec) defaultOrder() string {
+	if s.DefaultOrder == "" {
+		return "created_at DESC"
+	}
+	return s.DefaultOrder
+}
+
+var (
+	specPosts = TableSpec{
+		Name:         TablePosts,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+	specEncryptedPosts = TableSpec{
+		Name:         TableEncryptedPosts,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+	specTags = TableSpec{
+		Name:         TableTags,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+	specRedirects = TableSpec{
+		Name:         TableRedirects,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+	specSettings = TableSpec{
+		Name:         TableSettings,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+	specHttpErrorLogs = TableSpec{
+		Name:         TableHttpErrorLogs,
+		HasDeletedAt: false,
+		HardDelete:   true,
+		HasCreatedAt: true,
+	}
+	specTasks = TableSpec{
+		Name:         TableTasks,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+	specTaskRuns = TableSpec{
+		Name:         TableTaskRuns,
+		HasDeletedAt: false,
+		HasCreatedAt: true,
+	}
+	specCategories = TableSpec{
+		Name:         TableCategories,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+)
 
 // ============================================================================
 // Create 操作（创建）
 // ============================================================================
 
-// CreateRecord 创建记录（通用）
-// tableName: 表名
-// data: 字段名和值的映射，字段名应排除 id 和 deleted_at
-// 注意：由于 map 迭代顺序不确定，建议使用有序的数据结构或确保字段顺序一致
-func CreateRecord(db *DB, tableName TableName, data map[string]interface{}) (int64, error) {
+// Create 核心 Create
+func Create(db *DB, spec TableSpec, data map[string]interface{}) (int64, error) {
 	if db == nil {
-		return 0, errors.New("db is nil")
+		log.Fatal("db is nil")
 	}
-	if tableName == "" {
-		return 0, errors.New("tableName is empty")
+	if spec.Name == "" {
+		log.Fatal("table name is empty")
 	}
 	if len(data) == 0 {
-		return 0, errors.New("no data to insert")
+		log.Fatal("no data to insert")
+	}
+
+	if spec.HasCreatedAt {
+		ensureTimeField(data, spec.createdAtCol())
+	}
+	if spec.HasUpdatedAt {
+		ensureTimeField(data, spec.updatedAtCol())
 	}
 
 	cols := make([]string, 0, len(data))
 	placeholders := make([]string, 0, len(data))
 	args := make([]interface{}, 0, len(data))
-
-	// 保证插入列与参数顺序一致
 	for k, v := range data {
 		cols = append(cols, k)
 		placeholders = append(placeholders, "?")
@@ -125,14 +222,13 @@ func CreateRecord(db *DB, tableName TableName, data map[string]interface{}) (int
 
 	query := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s)",
-		string(tableName),
+		string(spec.Name),
 		strings.Join(cols, ", "),
 		strings.Join(placeholders, ", "),
 	)
-
 	res, err := db.Exec(query, args...)
 	if err != nil {
-		return 0, WrapInternalErr("CreateRecord", err)
+		return 0, WrapInternalErr("Create", err)
 	}
 	id, _ := res.LastInsertId()
 	return id, nil
@@ -142,62 +238,47 @@ func CreateRecord(db *DB, tableName TableName, data map[string]interface{}) (int
 // Read 操作（查询）
 // ============================================================================
 
-// GetRecordByID 根据 ID 获取记录（通用）
-// selectFields: SELECT 字段列表，如 "id, name, slug, created_at, updated_at, deleted_at"
-// scanFunc: 扫描函数，将 rows.Scan 的结果转换为具体类型
-func GetRecordByID(db *DB, tableName TableName, selectFields string, id int64, scanFunc func(*sql.Row) (interface{}, error)) (interface{}, error) {
-	row := db.QueryRow(
-		`SELECT `+selectFields+` FROM `+string(tableName)+` WHERE id=? AND deleted_at IS NULL`,
-		id,
-	)
-	return scanFunc(row)
+// ReadOptions 查询参数
+type ReadOptions struct {
+	SelectFields string
+	WhereClause  string
+	OrderBy      string
+	WhereArgs    []interface{}
+	Limit        int
+	Offset       int
 }
 
-// GetRecordByField 根据指定字段获取记录（通用）
-// selectFields: SELECT 字段列表，如 "id, name, slug, created_at, updated_at, deleted_at"
-// fieldName: 查询字段名，如 "code", "from_path"
-// fieldValue: 查询字段值
-// scanFunc: 扫描函数，将 rows.Scan 的结果转换为具体类型
-func GetRecordByField(db *DB, tableName TableName, selectFields, fieldName string, fieldValue interface{}, scanFunc func(*sql.Row) (interface{}, error)) (interface{}, error) {
-	row := db.QueryRow(
-		`SELECT `+selectFields+` FROM `+string(tableName)+` WHERE `+fieldName+`=? AND deleted_at IS NULL`,
-		fieldValue,
-	)
-	return scanFunc(row)
-}
-
-// ListRecords 列出记录（通用，支持分页）
-// selectFields: SELECT 字段列表
-// whereClause: WHERE 子句，如 "status=?" 或 ""（空字符串表示无条件）
-// whereArgs: WHERE 参数
-// orderBy: ORDER BY 子句，如 "created_at DESC" 或 ""（使用默认排序）
-// limit, offset: 分页参数
-// scanFunc: 扫描函数，将 rows.Scan 的结果转换为具体类型
-func ListRecords(db *DB, tableName TableName, selectFields, whereClause, orderBy string, whereArgs []interface{}, limit, offset int, scanFunc func(*sql.Rows) (interface{}, error)) ([]interface{}, error) {
-	query := `SELECT ` + selectFields + ` FROM ` + string(tableName)
-	args := []interface{}{}
-
-	if whereClause != "" {
-		query += ` WHERE ` + whereClause
-		args = append(args, whereArgs...)
-	} else {
-		query += ` WHERE deleted_at IS NULL`
+// Read 核心 Read（统一返回多条）
+func Read(db *DB, spec TableSpec, opts ReadOptions, scanFunc func(*sql.Rows) (interface{}, error)) ([]interface{}, error) {
+	where := opts.WhereClause
+	args := append([]interface{}{}, opts.WhereArgs...)
+	if err := validateWhereArgs(where, args); err != nil {
+		return nil, WrapInternalErr("Read.whereArgs", err)
 	}
-
-	if orderBy != "" {
-		query += ` ORDER BY ` + orderBy
-	} else {
-		query += ` ORDER BY created_at DESC`
+	if spec.HasDeletedAt {
+		where = appendWhere(where, spec.deletedAtCol()+" IS NULL")
 	}
-
-	if limit > 0 {
-		query += ` LIMIT ? OFFSET ?`
-		args = append(args, limit, offset)
+	query := `SELECT ` + opts.SelectFields + ` FROM ` + string(spec.Name)
+	if where != "" {
+		query += ` WHERE ` + where
+	}
+	if opts.OrderBy != "" {
+		query += ` ORDER BY ` + opts.OrderBy
+	} else {
+		query += ` ORDER BY ` + spec.defaultOrder()
+	}
+	if opts.Limit > 0 {
+		query += ` LIMIT ?`
+		args = append(args, opts.Limit)
+		if opts.Offset > 0 {
+			query += ` OFFSET ?`
+			args = append(args, opts.Offset)
+		}
 	}
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, WrapInternalErr("ListRecords", err)
+		return nil, WrapInternalErr("Read", err)
 	}
 	defer rows.Close()
 
@@ -205,7 +286,7 @@ func ListRecords(db *DB, tableName TableName, selectFields, whereClause, orderBy
 	for rows.Next() {
 		item, err := scanFunc(rows)
 		if err != nil {
-			return nil, WrapInternalErr("ListRecords.scan", err)
+			return nil, WrapInternalErr("Read.scan", err)
 		}
 		res = append(res, item)
 	}
@@ -238,22 +319,23 @@ func ListDeletedRecords(db *DB, tableName TableName, selectFields, orderBy strin
 	return res, nil
 }
 
-// CountRecords 统计记录数（通用）
-func CountRecords(db *DB, tableName TableName, whereClause string, whereArgs []interface{}) (int, error) {
-	query := `SELECT COUNT(*) FROM ` + string(tableName)
-	args := []interface{}{}
-
-	if whereClause != "" {
-		query += ` WHERE ` + whereClause
-		args = append(args, whereArgs...)
-	} else {
-		query += ` WHERE deleted_at IS NULL`
+// Count 通用 Count（会自动处理 soft delete）
+func Count(db *DB, spec TableSpec, whereClause string, whereArgs []interface{}) (int, error) {
+	where := whereClause
+	args := append([]interface{}{}, whereArgs...)
+	if err := validateWhereArgs(where, args); err != nil {
+		return 0, WrapInternalErr("Count.whereArgs", err)
 	}
-
+	if spec.HasDeletedAt {
+		where = appendWhere(where, spec.deletedAtCol()+" IS NULL")
+	}
+	query := `SELECT COUNT(*) FROM ` + string(spec.Name)
+	if where != "" {
+		query += ` WHERE ` + where
+	}
 	var count int
-	err := db.QueryRow(query, args...).Scan(&count)
-	if err != nil {
-		return 0, WrapInternalErr("CountRecords", err)
+	if err := db.QueryRow(query, args...).Scan(&count); err != nil {
+		return 0, WrapInternalErr("Count", err)
 	}
 	return count, nil
 }
@@ -262,61 +344,38 @@ func CountRecords(db *DB, tableName TableName, whereClause string, whereArgs []i
 // Update 操作（更新）
 // ============================================================================
 
-// UpdateRecord 更新记录（通用）
-// tableName: 表名
-// id: 记录 ID
-// data: 要更新的字段名和值的映射
-// 注意：由于 map 迭代顺序不确定，建议使用有序的数据结构或确保字段顺序一致
-func UpdateRecord(db *DB, tableName TableName, id int64, data map[string]interface{}) error {
-	if db == nil {
-		return errors.New("db is nil")
+// Update 核心 Update
+func Update(db *DB, spec TableSpec, id int64, data map[string]interface{}) error {
+	if spec.HasUpdatedAt {
+		data[spec.updatedAtCol()] = now()
 	}
-	if tableName == "" {
-		return errors.New("tableName is empty")
-	}
-	if len(data) == 0 {
-		return errors.New("no data to update")
-	}
-
 	setPairs := make([]string, 0, len(data))
 	args := make([]interface{}, 0, len(data)+1)
-
-	// 构建 SET 子句，禁止更新 created_at
 	for k, v := range data {
-		if k == "created_at" {
+		if k == spec.createdAtCol() {
 			continue
 		}
 		setPairs = append(setPairs, k+"=?")
 		args = append(args, v)
 	}
 	if len(setPairs) == 0 {
-		return errors.New("no data to update after excluding created_at")
+		return errors.New("no data to update")
 	}
-
-	// 添加 WHERE 条件的参数
 	args = append(args, id)
 
-	query := fmt.Sprintf(
-		"UPDATE %s SET %s WHERE id=? AND deleted_at IS NULL",
-		string(tableName),
-		strings.Join(setPairs, ", "),
-	)
-
-	_, err := db.Exec(query, args...)
-	if err != nil {
-		return WrapInternalErr("UpdateRecord", err)
+	where := spec.idField() + "=?"
+	if spec.HasDeletedAt {
+		where += " AND " + spec.deletedAtCol() + " IS NULL"
 	}
-	return nil
-}
 
-// RestoreRecord 恢复软删除的记录（通用）
-func RestoreRecord(db *DB, tableName TableName, id int64) error {
-	_, err := db.Exec(
-		`UPDATE `+string(tableName)+` SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL`,
-		id,
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s WHERE %s",
+		string(spec.Name),
+		strings.Join(setPairs, ", "),
+		where,
 	)
-	if err != nil {
-		return WrapInternalErr("RestoreRecord", err)
+	if _, err := db.Exec(query, args...); err != nil {
+		return WrapInternalErr("Update", err)
 	}
 	return nil
 }
@@ -325,29 +384,295 @@ func RestoreRecord(db *DB, tableName TableName, id int64) error {
 // Delete 操作（删除）
 // ============================================================================
 
-// SoftDeleteRecord 软删除记录（通用）
-func SoftDeleteRecord(db *DB, tableName TableName, id int64) error {
+// Delete 核心 Delete（软删）
+func Delete(db *DB, spec TableSpec, id int64) error {
+	if spec.HardDelete || !spec.HasDeletedAt {
+		return HardDelete(db, spec, id)
+	}
 	ts := now()
 	_, err := db.Exec(
-		`UPDATE `+string(tableName)+` SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
+		`UPDATE `+string(spec.Name)+` SET `+spec.deletedAtCol()+`=? WHERE `+spec.idField()+`=? AND `+spec.deletedAtCol()+` IS NULL`,
 		ts, id,
 	)
 	if err != nil {
-		return WrapInternalErr("SoftDeleteRecord", err)
+		return WrapInternalErr("Delete.Soft", err)
 	}
 	return nil
 }
 
-// HardDeleteRecord 硬删除记录（通用）
-func HardDeleteRecord(db *DB, tableName TableName, id int64) error {
+// HardDelete 物理删除
+func HardDelete(db *DB, spec TableSpec, id int64) error {
+	_, err := db.Exec(`DELETE FROM `+string(spec.Name)+` WHERE `+spec.idField()+`=?`, id)
+	if err != nil {
+		return WrapInternalErr("HardDelete", err)
+	}
+	return nil
+}
+
+// Restore 恢复软删除的记录
+func Restore(db *DB, spec TableSpec, id int64) error {
+	if !spec.HasDeletedAt {
+		return nil
+	}
 	_, err := db.Exec(
-		`DELETE FROM `+string(tableName)+` WHERE id=?`,
+		`UPDATE `+string(spec.Name)+` SET `+spec.deletedAtCol()+`=NULL WHERE `+spec.idField()+`=? AND `+spec.deletedAtCol()+` IS NOT NULL`,
 		id,
 	)
 	if err != nil {
-		return WrapInternalErr("HardDeleteRecord", err)
+		return WrapInternalErr("Restore", err)
 	}
 	return nil
+}
+
+func appendWhere(whereClause, cond string) string {
+	if whereClause == "" {
+		return cond
+	}
+	return whereClause + " AND " + cond
+}
+
+func validateWhereArgs(where string, args []interface{}) error {
+	if where == "" {
+		if len(args) != 0 {
+			return errors.New("where args provided but where clause is empty")
+		}
+		return nil
+	}
+	count := strings.Count(where, "?")
+	if count != len(args) {
+		return fmt.Errorf("where args count mismatch: want %d, got %d", count, len(args))
+	}
+	return nil
+}
+
+func ensureTimeField(data map[string]interface{}, key string) {
+	if v, ok := data[key]; ok {
+		switch tv := v.(type) {
+		case int64:
+			if tv != 0 {
+				return
+			}
+		case *int64:
+			if tv != nil && *tv != 0 {
+				return
+			}
+		case int:
+			if tv != 0 {
+				return
+			}
+		}
+	}
+	data[key] = now()
+}
+
+func firstResult(results []interface{}) (interface{}, bool) {
+	if len(results) == 0 {
+		return nil, false
+	}
+	return results[0], true
+}
+
+type sqlScanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func scanPost(scanner sqlScanner, withContent bool) (Post, error) {
+	var p Post
+	var deletedAt sql.NullInt64
+	if withContent {
+		if err := scanner.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
+		); err != nil {
+			return Post{}, err
+		}
+	} else {
+		if err := scanner.Scan(
+			&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
+			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
+		); err != nil {
+			return Post{}, err
+		}
+	}
+	if deletedAt.Valid {
+		p.DeletedAt = &deletedAt.Int64
+	}
+	return p, nil
+}
+
+func scanTag(scanner sqlScanner) (Tag, error) {
+	var t Tag
+	var deletedAt sql.NullInt64
+	if err := scanner.Scan(
+		&t.ID, &t.Name, &t.Slug,
+		&t.CreatedAt, &t.UpdatedAt, &deletedAt,
+	); err != nil {
+		return Tag{}, err
+	}
+	if deletedAt.Valid {
+		t.DeletedAt = &deletedAt.Int64
+	}
+	return t, nil
+}
+
+func scanCategory(scanner sqlScanner) (Category, error) {
+	var c Category
+	var parentID sql.NullInt64
+	var deletedAt sql.NullInt64
+	if err := scanner.Scan(
+		&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
+		&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+	); err != nil {
+		return Category{}, err
+	}
+	if parentID.Valid {
+		c.ParentID = parentID.Int64
+	}
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Int64
+	}
+	return c, nil
+}
+
+func scanRedirect(scanner sqlScanner) (Redirect, error) {
+	var r Redirect
+	var deletedAt sql.NullInt64
+	var status sql.NullInt64
+	var enabled sql.NullInt64
+	if err := scanner.Scan(
+		&r.ID, &r.From, &r.To, &status, &enabled,
+		&r.CreatedAt, &r.UpdatedAt, &deletedAt,
+	); err != nil {
+		return Redirect{}, err
+	}
+	if status.Valid {
+		r.Status = int(status.Int64)
+	} else {
+		r.Status = 301
+	}
+	if enabled.Valid {
+		r.Enabled = int(enabled.Int64)
+	} else {
+		r.Enabled = 1
+	}
+	if deletedAt.Valid {
+		r.DeletedAt = &deletedAt.Int64
+	}
+	return r, nil
+}
+
+func scanSetting(scanner sqlScanner) (Setting, error) {
+	var s Setting
+	var deletedAt sql.NullInt64
+	if err := scanner.Scan(
+		&s.ID,
+		&s.Kind,
+		&s.Name,
+		&s.Code,
+		&s.Type,
+		&s.Options,
+		&s.Attrs,
+		&s.Value,
+		&s.DefaultOptionValue,
+		&s.Description,
+		&s.Sort,
+		&s.Charset,
+		&s.Author,
+		&s.Keywords,
+		&s.Reload,
+		&s.CreatedAt,
+		&s.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		return Setting{}, err
+	}
+	if deletedAt.Valid {
+		s.DeletedAt = &deletedAt.Int64
+	}
+	return s, nil
+}
+
+func scanTask(scanner sqlScanner) (Task, error) {
+	var t Task
+	var lastRun sql.NullInt64
+	var lastStatus sql.NullString
+	var deletedAt sql.NullInt64
+	if err := scanner.Scan(
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
+		&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deletedAt,
+	); err != nil {
+		return Task{}, err
+	}
+	if lastRun.Valid {
+		t.LastRunAt = &lastRun.Int64
+	}
+	if lastStatus.Valid {
+		t.LastStatus = lastStatus.String
+	}
+	if deletedAt.Valid {
+		t.DeletedAt = &deletedAt.Int64
+	}
+	return t, nil
+}
+
+func scanEncryptedPost(scanner sqlScanner, decrypt bool) (EncryptedPost, error) {
+	var p EncryptedPost
+	var deletedAt sql.NullInt64
+	var expiresAt sql.NullInt64
+	var encryptedContent string
+	if err := scanner.Scan(
+		&p.ID, &p.Title, &p.Slug, &encryptedContent, &p.Password,
+		&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
+	); err != nil {
+		return EncryptedPost{}, err
+	}
+	if expiresAt.Valid {
+		p.ExpiresAt = &expiresAt.Int64
+	}
+	if deletedAt.Valid {
+		p.DeletedAt = &deletedAt.Int64
+	}
+	if decrypt {
+		decryptedContent, err := DecryptContent(encryptedContent)
+		if err != nil {
+			return EncryptedPost{}, WrapInternalErr("scanEncryptedPost.DecryptContent", err)
+		}
+		p.Content = decryptedContent
+	} else {
+		p.Content = encryptedContent
+	}
+	return p, nil
+}
+
+func scanHttpErrorLog(scanner sqlScanner) (HttpErrorLog, error) {
+	var l HttpErrorLog
+	if err := scanner.Scan(
+		&l.ID,
+		&l.ReqID,
+		&l.ClientIP,
+		&l.Method,
+		&l.Path,
+		&l.Status,
+		&l.UserAgent,
+		&l.QueryParams,
+		&l.BodyParams,
+		&l.CreatedAt,
+		&l.ExpiredAt,
+	); err != nil {
+		return HttpErrorLog{}, err
+	}
+	return l, nil
+}
+
+func scanTaskRun(scanner sqlScanner) (TaskRun, error) {
+	var r TaskRun
+	if err := scanner.Scan(
+		&r.ID, &r.TaskCode, &r.RunID, &r.Status, &r.Message,
+		&r.StartedAt, &r.FinishedAt, &r.Duration, &r.CreatedAt,
+	); err != nil {
+		return TaskRun{}, err
+	}
+	return r, nil
 }
 
 // PostKind 文章类型
@@ -378,17 +703,10 @@ type PostWithRelation struct {
 }
 
 func CreatePost(db *DB, p *Post) (int64, error) {
-	if p.CreatedAt == 0 {
-		p.CreatedAt = now()
-	}
-	if p.UpdatedAt == 0 {
-		p.UpdatedAt = p.CreatedAt
-	}
-
 	if p.Status == "published" && p.PublishedAt == 0 {
 		p.PublishedAt = now()
 	}
-	id, err := CreateRecord(db, TablePosts, map[string]interface{}{
+	id, err := Create(db, specPosts, map[string]interface{}{
 		"title":        p.Title,
 		"slug":         p.Slug,
 		"content":      p.Content,
@@ -406,59 +724,68 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 }
 
 func GetPostByID(db *DB, id int64) (*Post, error) {
-	result, err := GetRecordByID(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
-		var p Post
-		var deletedAt sql.NullInt64
-		if err := row.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetPostByID")
-			}
+	result, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		p, err := scanPost(rows, true)
+		if err != nil {
 			return nil, WrapInternalErr("GetPostByID", err)
 		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
-		}
-		return &p, nil
+		return p, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetPostByID", err)
 	}
-	return result.(*Post), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetPostByID")
+	}
+	p := item.(Post)
+	return &p, nil
 }
 
 func UpdatePost(db *DB, p *Post) error {
-	p.UpdatedAt = now()
 	data := map[string]interface{}{
-		"title":      p.Title,
-		"content":    p.Content,
-		"status":     p.Status,
-		"kind":       p.Kind,
-		"updated_at": p.UpdatedAt,
+		"title":   p.Title,
+		"content": p.Content,
+		"kind":    p.Kind,
 	}
-	// published_at 一旦被设置则不再更新，仅当当前为 0 且要写入非 0 时才更新
-	var currentPublishedAt int64
-	if err := db.QueryRow(`SELECT published_at FROM `+string(TablePosts)+` WHERE id=? AND deleted_at IS NULL`, p.ID).Scan(&currentPublishedAt); err == nil && currentPublishedAt == 0 && p.PublishedAt > 0 {
-		data["published_at"] = p.PublishedAt
-	}
-	if err := UpdateRecord(db, TablePosts, p.ID, data); err != nil {
+	if err := Update(db, specPosts, p.ID, data); err != nil {
 		return err
+	}
+	return nil
+}
+
+// PublishPost 将文章发布：仅在 published_at 为 0 时写入发布时间
+func PublishPost(db *DB, id int64) error {
+	ts := now()
+	_, err := db.Exec(
+		`UPDATE `+string(TablePosts)+` 
+		 SET status='published',
+		     published_at=CASE WHEN published_at=0 THEN ? ELSE published_at END,
+		     updated_at=?
+		 WHERE id=? AND deleted_at IS NULL`,
+		ts, ts, id,
+	)
+	if err != nil {
+		return WrapInternalErr("PublishPost", err)
 	}
 	return nil
 }
 
 // CountPostsByKind 按类型统计文章数（未删除）
 func CountPostsByKind(db *DB, kind PostKind) (int, error) {
-	return CountRecords(db, TablePosts, "deleted_at IS NULL AND kind = ?", []interface{}{kind})
+	return Count(db, specPosts, "kind = ?", []interface{}{kind})
 }
 
 // ListPublishedPosts 分页列出已发布文章（用于 RSS 等），返回 []Post
 func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
-	total, err := CountRecords(db, TablePosts, "deleted_at IS NULL AND status = ?", []interface{}{"published"})
+	total, err := Count(db, specPosts, "status = ? AND kind = ?", []interface{}{"published", kind})
 	if err != nil {
-		log.Printf("[db] ListPublishedPosts CountRecords: %v", err)
+		log.Printf("[db] ListPublishedPosts Count: %v", err)
 		return []Post{}
 	}
 	if kind == PostKindPage {
@@ -466,65 +793,55 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		pager.PageSize = 1024
 	}
 	offset := (pager.Page - 1) * pager.PageSize
-	rows, err := db.Query(`
-		SELECT id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at
-		FROM `+string(TablePosts)+`
-		WHERE deleted_at IS NULL AND status = ? AND kind = ?
-		ORDER BY published_at DESC
-		LIMIT ? OFFSET ?
-	`, "published", kind, pager.PageSize, offset)
+	opts := ReadOptions{
+		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		WhereClause:  "status = ? AND kind = ?",
+		OrderBy:      "published_at DESC",
+		WhereArgs:    []interface{}{"published", kind},
+		Limit:        pager.PageSize,
+	}
+	if offset > 0 {
+		opts.Offset = offset
+	}
+	results, err := Read(db, specPosts, opts, func(rows *sql.Rows) (interface{}, error) {
+		p, err := scanPost(rows, true)
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	})
 	if err != nil {
-		log.Printf("[db] ListPublishedPosts Query: %v", err)
+		log.Printf("[db] ListPublishedPosts Read: %v", err)
 		return []Post{}
 	}
-	defer rows.Close()
-	var res []Post
-	for rows.Next() {
-		var p Post
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-		); err != nil {
-			log.Printf("[db] ListPublishedPosts Scan: %v", err)
-			return []Post{}
-		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
-		}
-		res = append(res, p)
+	res := make([]Post, len(results))
+	for i, v := range results {
+		res[i] = v.(Post)
 	}
 	pager.Total = total
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
 	return res
 }
 func ListPublishedPages(db *DB) []Post {
-	rows, err := db.Query(`
-		SELECT id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at
-		FROM `+string(TablePosts)+`
-		WHERE deleted_at IS NULL AND status = ? AND kind = ?
-		ORDER BY published_at DESC
-	`, "published", PostKindPage)
+	results, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at",
+		WhereClause:  "status = ? AND kind = ?",
+		OrderBy:      "published_at DESC",
+		WhereArgs:    []interface{}{"published", PostKindPage},
+	}, func(rows *sql.Rows) (interface{}, error) {
+		p, err := scanPost(rows, false)
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	})
 	if err != nil {
-		log.Printf("[db] ListPublishedPages: %v", err)
+		log.Printf("[db] ListPublishedPages Read: %v", err)
 		return []Post{}
 	}
-	defer rows.Close()
-	var res []Post
-	for rows.Next() {
-		var p Post
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-		); err != nil {
-			log.Printf("[db] ListPublishedPages Scan: %v", err)
-			return []Post{}
-		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
-		}
-		res = append(res, p)
+	res := make([]Post, len(results))
+	for i, v := range results {
+		res[i] = v.(Post)
 	}
 	return res
 }
@@ -551,7 +868,7 @@ func listPostsFilterClause(opts *PostQueryOptions) (clause string, args []interf
 }
 
 func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
-	whereBase := "deleted_at IS NULL"
+	whereBase := ""
 	whereArgs := []interface{}{}
 	if opts.Kind != nil {
 		whereBase += " AND kind = ?"
@@ -561,9 +878,10 @@ func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
 	whereBase += filterClause
 	whereArgs = append(whereArgs, filterArgs...)
 
-	total, err := CountRecords(db, TablePosts, whereBase, whereArgs)
+	whereBase = strings.TrimPrefix(whereBase, " AND ")
+	total, err := Count(db, specPosts, whereBase, whereArgs)
 	if err != nil {
-		return nil, WrapInternalErr("ListPosts.CountRecords", err)
+		return nil, WrapInternalErr("ListPosts.Count", err)
 	}
 
 	pager := opts.Pager
@@ -572,9 +890,10 @@ func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
 	if opts.WithContent {
 		selectFields = "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at"
 	}
+	whereQuery := appendWhere(whereBase, specPosts.deletedAtCol()+" IS NULL")
 	query := `SELECT ` + selectFields + `
 		FROM ` + string(TablePosts) + `
-		WHERE ` + whereBase + `
+		WHERE ` + whereQuery + `
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?`
 	args := append(whereArgs, pager.PageSize, offset)
@@ -586,25 +905,9 @@ func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
 
 	var posts []*Post
 	for rows.Next() {
-		var p Post
-		var deletedAt sql.NullInt64
-		if opts.WithContent {
-			if err := rows.Scan(
-				&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-			); err != nil {
-				return nil, WrapInternalErr("ListPosts.Scan", err)
-			}
-		} else {
-			if err := rows.Scan(
-				&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
-				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-			); err != nil {
-				return nil, WrapInternalErr("ListPosts.Scan", err)
-			}
-		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
+		p, err := scanPost(rows, opts.WithContent)
+		if err != nil {
+			return nil, WrapInternalErr("ListPosts.Scan", err)
 		}
 		posts = append(posts, &p)
 	}
@@ -644,11 +947,11 @@ func ListPostsByCategory(db *DB, options *PostQueryOptions) ([]PostWithRelation,
 }
 
 func SoftDeletePost(db *DB, id int64) error {
-	return SoftDeleteRecord(db, TablePosts, id)
+	return Delete(db, specPosts, id)
 }
 
 func RestorePost(db *DB, id int64) error {
-	return RestoreRecord(db, TablePosts, id)
+	return Restore(db, specPosts, id)
 }
 
 func ListDeletedPosts(db *DB) ([]Post, error) {
@@ -689,66 +992,50 @@ type EncryptedPost struct {
 }
 
 func GetEncryptedPostByID(db *DB, id int64) (*EncryptedPost, error) {
-	result, err := GetRecordByID(db, TableEncryptedPosts, "id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
-		var p EncryptedPost
-		var deletedAt sql.NullInt64
-		var expiresAt sql.NullInt64
-		var encryptedContent string
-		if err := row.Scan(
-			&p.ID, &p.Title, &p.Slug, &encryptedContent, &p.Password,
-			&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetEncryptedPostByID")
-			}
+	result, err := Read(db, specEncryptedPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		p, err := scanEncryptedPost(rows, true)
+		if err != nil {
 			return nil, WrapInternalErr("GetEncryptedPostByID", err)
 		}
-		if expiresAt.Valid {
-			p.ExpiresAt = &expiresAt.Int64
-		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
-		}
-
-		// 解密 content（使用系统密钥，不依赖 password 字段）
-		decryptedContent, err := DecryptContent(encryptedContent)
-		if err != nil {
-			return nil, WrapInternalErr("GetEncryptedPostByID.DecryptContent", err)
-		}
-		p.Content = decryptedContent
-
-		return &p, nil
+		return p, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetEncryptedPostByID", err)
 	}
-	return result.(*EncryptedPost), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetEncryptedPostByID")
+	}
+	p := item.(EncryptedPost)
+	return &p, nil
 }
 
 func UpdateEncryptedPost(db *DB, p *EncryptedPost) error {
-	p.UpdatedAt = now()
-
 	// 加密 content（使用系统密钥，不依赖 password 字段）
 	encryptedContent, err := EncryptContent(p.Content)
 	if err != nil {
 		return WrapInternalErr("UpdateEncryptedPost.EncryptContent", err)
 	}
 
-	return UpdateRecord(db, TableEncryptedPosts, p.ID, map[string]interface{}{
+	return Update(db, specEncryptedPosts, p.ID, map[string]interface{}{
 		"title":      p.Title,
 		"content":    encryptedContent,
 		"password":   p.Password,
 		"expires_at": p.ExpiresAt,
-		"updated_at": p.UpdatedAt,
 	})
 }
 
 func SoftDeleteEncryptedPost(db *DB, id int64) error {
-	return SoftDeleteRecord(db, TableEncryptedPosts, id)
+	return Delete(db, specEncryptedPosts, id)
 }
 
 func RestoreEncryptedPost(db *DB, id int64) error {
-	return RestoreRecord(db, TableEncryptedPosts, id)
+	return Restore(db, specEncryptedPosts, id)
 }
 
 // SoftDeleteExpiredEncryptedPosts 软删除所有已过期的加密文章（expires_at IS NOT NULL AND expires_at < beforeUnix），返回删除条数
@@ -766,20 +1053,9 @@ func SoftDeleteExpiredEncryptedPosts(db *DB, beforeUnix int64) (int64, error) {
 
 func ListDeletedEncryptedPosts(db *DB) ([]EncryptedPost, error) {
 	results, err := ListDeletedRecords(db, TableEncryptedPosts, "id, title, slug, content, password, expires_at, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
-		var p EncryptedPost
-		var deletedAt sql.NullInt64
-		var expiresAt sql.NullInt64
-		if err := rows.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Password,
-			&expiresAt, &p.CreatedAt, &p.UpdatedAt, &deletedAt,
-		); err != nil {
+		p, err := scanEncryptedPost(rows, false)
+		if err != nil {
 			return nil, WrapInternalErr("ListDeletedEncryptedPosts.Scan", err)
-		}
-		if expiresAt.Valid {
-			p.ExpiresAt = &expiresAt.Int64
-		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
 		}
 		return p, nil
 	})
@@ -797,12 +1073,6 @@ func CreateEncryptedPost(db *DB, p *EncryptedPost) (int64, error) {
 	if p.Slug == "" {
 		p.Slug = uuid.NewString()
 	}
-	if p.CreatedAt == 0 {
-		p.CreatedAt = now()
-	}
-	if p.UpdatedAt == 0 {
-		p.UpdatedAt = p.CreatedAt
-	}
 
 	// 加密 content（使用系统密钥，不依赖 password 字段）
 	encryptedContent, err := EncryptContent(p.Content)
@@ -810,7 +1080,7 @@ func CreateEncryptedPost(db *DB, p *EncryptedPost) (int64, error) {
 		return 0, WrapInternalErr("CreateEncryptedPost.EncryptContent", err)
 	}
 
-	id, err := CreateRecord(db, TableEncryptedPosts, map[string]interface{}{
+	id, err := Create(db, specEncryptedPosts, map[string]interface{}{
 		"title":      p.Title,
 		"slug":       p.Slug,
 		"content":    encryptedContent,
@@ -837,14 +1107,7 @@ type Tag struct {
 }
 
 func CreateTag(db *DB, t *Tag) (int64, error) {
-	if t.CreatedAt == 0 {
-		t.CreatedAt = now()
-	}
-	if t.UpdatedAt == 0 {
-		t.UpdatedAt = t.CreatedAt
-	}
-
-	id, err := CreateRecord(db, TableTags, map[string]interface{}{
+	id, err := Create(db, specTags, map[string]interface{}{
 		"name":       t.Name,
 		"slug":       t.Slug,
 		"created_at": t.CreatedAt,
@@ -858,68 +1121,66 @@ func CreateTag(db *DB, t *Tag) (int64, error) {
 }
 
 func GetTagBySlug(db *DB, slug string) (*Tag, error) {
-	result, err := GetRecordByField(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
-		var t Tag
-		var deletedAt sql.NullInt64
-		if err := row.Scan(
-			&t.ID, &t.Name, &t.Slug,
-			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetTagBySlug")
-			}
+	result, err := Read(db, specTags, ReadOptions{
+		SelectFields: "id, name, slug, created_at, updated_at, deleted_at",
+		WhereClause:  "slug=?",
+		WhereArgs:    []interface{}{slug},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		t, err := scanTag(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetTagBySlug.Scan", err)
 		}
-		if deletedAt.Valid {
-			t.DeletedAt = &deletedAt.Int64
-		}
-		return &t, nil
+		return t, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetTagBySlug", err)
 	}
-	return result.(*Tag), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetTagBySlug")
+	}
+	t := item.(Tag)
+	return &t, nil
 }
 
 func GetTagByID(db *DB, id int64) (*Tag, error) {
-	result, err := GetRecordByID(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
-		var t Tag
-		var deletedAt sql.NullInt64
-		if err := row.Scan(
-			&t.ID, &t.Name, &t.Slug,
-			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetTagByID")
-			}
+	result, err := Read(db, specTags, ReadOptions{
+		SelectFields: "id, name, slug, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		t, err := scanTag(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetTagByID.Scan", err)
 		}
-		if deletedAt.Valid {
-			t.DeletedAt = &deletedAt.Int64
-		}
-		return &t, nil
+		return t, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetTagByID", err)
 	}
-	return result.(*Tag), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetTagByID")
+	}
+	t := item.(Tag)
+	return &t, nil
 }
 
 func UpdateTag(db *DB, t *Tag) error {
-	t.UpdatedAt = now()
-	return UpdateRecord(db, TableTags, t.ID, map[string]interface{}{
-		"name":       t.Name,
-		"slug":       t.Slug,
-		"updated_at": t.UpdatedAt,
+	return Update(db, specTags, t.ID, map[string]interface{}{
+		"name": t.Name,
+		"slug": t.Slug,
 	})
 }
 
 func SoftDeleteTag(db *DB, id int64) error {
-	return SoftDeleteRecord(db, TableTags, id)
+	return Delete(db, specTags, id)
 }
 
 func RestoreTag(db *DB, id int64) error {
-	return RestoreRecord(db, TableTags, id)
+	return Restore(db, specTags, id)
 }
 
 // UpdateTagCreatedAtIfEarlier 仅当 createdAt 早于当前 created_at 时更新（导入时用于“按最早出现该标签的文章创建时间”）
@@ -935,17 +1196,16 @@ func UpdateTagCreatedAtIfEarlier(db *DB, id int64, createdAt int64) error {
 }
 
 func ListTags(db *DB, withPostCount bool) ([]Tag, error) {
-	results, err := ListRecords(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", "", "name", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
-		var t Tag
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&t.ID, &t.Name, &t.Slug,
-			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
-		); err != nil {
+	results, err := Read(db, specTags, ReadOptions{
+		SelectFields: "id, name, slug, created_at, updated_at, deleted_at",
+		WhereClause:  "",
+		OrderBy:      "",
+		WhereArgs:    nil,
+		Limit:        0,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		t, err := scanTag(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListTags.Scan", err)
-		}
-		if deletedAt.Valid {
-			t.DeletedAt = &deletedAt.Int64
 		}
 		return t, nil
 	})
@@ -976,16 +1236,9 @@ func ListTags(db *DB, withPostCount bool) ([]Tag, error) {
 
 func ListDeletedTags(db *DB) ([]Tag, error) {
 	results, err := ListDeletedRecords(db, TableTags, "id, name, slug, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
-		var t Tag
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&t.ID, &t.Name, &t.Slug,
-			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
-		); err != nil {
+		t, err := scanTag(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListDeletedTags.Scan", err)
-		}
-		if deletedAt.Valid {
-			t.DeletedAt = &deletedAt.Int64
 		}
 		return t, nil
 	})
@@ -1014,16 +1267,9 @@ func GetPostTags(db *DB, postID int64) ([]Tag, error) {
 
 	var tags []Tag
 	for rows.Next() {
-		var t Tag
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&t.ID, &t.Name, &t.Slug,
-			&t.CreatedAt, &t.UpdatedAt, &deletedAt,
-		); err != nil {
+		t, err := scanTag(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetPostTags.Scan", err)
-		}
-		if deletedAt.Valid {
-			t.DeletedAt = &deletedAt.Int64
 		}
 		tags = append(tags, t)
 	}
@@ -1185,26 +1431,27 @@ func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
 
 func GetPostBySlug(db *DB, slug string) (Post, error) {
 	var p Post
-	result, err := GetRecordByField(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
-		var deletedAt sql.NullInt64
-		if err := row.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
-			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetPostBySlug")
-			}
+	result, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		WhereClause:  "slug=?",
+		WhereArgs:    []interface{}{slug},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		p2, err := scanPost(rows, true)
+		if err != nil {
 			return nil, WrapInternalErr("GetPostBySlug.Scan", err)
 		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
-		}
-		return &p, nil
+		return p2, nil
 	})
 	if err != nil {
 		return Post{}, WrapInternalErr("GetPostBySlug", err)
 	}
-	return *result.(*Post), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return Post{}, ErrNotFound("GetPostBySlug")
+	}
+	p = item.(Post)
+	return p, nil
 }
 
 // GetPostBySlugWithRelation 按 slug 查询文章并带出关联的分类与标签，返回 PostWithRelation
@@ -1234,7 +1481,8 @@ func GetPrevNextPost(db *DB, publishedAt int64) (prev, next *Post, err error) {
 		ORDER BY published_at DESC, id DESC
 		LIMIT 1
 	`, "published", PostKindPost, publishedAt)
-	prev, err = scanPostRow(prevRow)
+	p, err := scanPost(prevRow, false)
+	prev = &p
 	if err != nil && err != sql.ErrNoRows {
 		return nil, nil, WrapInternalErr("GetPrevNextPost.prev", err)
 	}
@@ -1250,7 +1498,8 @@ func GetPrevNextPost(db *DB, publishedAt int64) (prev, next *Post, err error) {
 		ORDER BY published_at ASC, id ASC
 		LIMIT 1
 	`, "published", PostKindPost, publishedAt)
-	next, err = scanPostRow(nextRow)
+	p, err = scanPost(nextRow, false)
+	next = &p
 	if err != nil && err != sql.ErrNoRows {
 		return nil, nil, WrapInternalErr("GetPrevNextPost.next", err)
 	}
@@ -1259,23 +1508,6 @@ func GetPrevNextPost(db *DB, publishedAt int64) (prev, next *Post, err error) {
 		err = nil // ErrNoRows 仅表示 prev/next 不存在，不作为错误返回
 	}
 	return prev, next, err
-}
-
-// scanPostRow 从 *sql.Row 扫描为 *Post，若 ErrNoRows 则返回 (nil, sql.ErrNoRows)
-func scanPostRow(row *sql.Row) (*Post, error) {
-	var p Post
-	var deletedAt sql.NullInt64
-	err := row.Scan(
-		&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
-		&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	if deletedAt.Valid {
-		p.DeletedAt = &deletedAt.Int64
-	}
-	return &p, nil
 }
 
 // likePattern 对关键词做 LIKE 通配符转义，用于 '%'||?||'%' 的 ?
@@ -1352,26 +1584,31 @@ func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRela
 
 	var posts []*Post
 	for rows.Next() {
-		var p Post
-		var deletedAt sql.NullInt64
 		var score int
+		var p Post
+		var err error
 		if opts.WithContent {
-			if err := rows.Scan(
+			var deletedAt sql.NullInt64
+			if err = rows.Scan(
 				&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
 				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
 			); err != nil {
 				return nil, WrapInternalErr("ListPostsBySearch.Scan", err)
 			}
+			if deletedAt.Valid {
+				p.DeletedAt = &deletedAt.Int64
+			}
 		} else {
-			if err := rows.Scan(
+			var deletedAt sql.NullInt64
+			if err = rows.Scan(
 				&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
 				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
 			); err != nil {
 				return nil, WrapInternalErr("ListPostsBySearch.Scan", err)
 			}
-		}
-		if deletedAt.Valid {
-			p.DeletedAt = &deletedAt.Int64
+			if deletedAt.Valid {
+				p.DeletedAt = &deletedAt.Int64
+			}
 		}
 		posts = append(posts, &p)
 	}
@@ -1545,131 +1782,93 @@ type Redirect struct {
 }
 
 func GetRedirectByID(db *DB, id int64) (*Redirect, error) {
-	result, err := GetRecordByID(db, TableRedirects, "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
-		var r Redirect
-		var deletedAt sql.NullInt64
-		var status sql.NullInt64
-		var enabled sql.NullInt64
-		if err := row.Scan(
-			&r.ID, &r.From, &r.To, &status, &enabled,
-			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetRedirectByID")
-			}
+	result, err := Read(db, specRedirects, ReadOptions{
+		SelectFields: "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		r, err := scanRedirect(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetRedirectByID.Scan", err)
 		}
-		if status.Valid {
-			r.Status = int(status.Int64)
-		} else {
-			r.Status = 301 // default
-		}
-		if enabled.Valid {
-			r.Enabled = int(enabled.Int64)
-		} else {
-			r.Enabled = 1 // default
-		}
-		if deletedAt.Valid {
-			r.DeletedAt = &deletedAt.Int64
-		}
-		return &r, nil
+		return r, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetRedirectByID", err)
 	}
-	return result.(*Redirect), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetRedirectByID")
+	}
+	r := item.(Redirect)
+	return &r, nil
 }
 
 // GetRedirectByFrom 根据 from_path 路径查找 redirect
 func GetRedirectByFrom(db *DB, fromPath string) (*Redirect, error) {
-	result, err := GetRecordByField(db, TableRedirects, "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at", "from_path", fromPath, func(row *sql.Row) (interface{}, error) {
-		var r Redirect
-		var deletedAt sql.NullInt64
-		var status sql.NullInt64
-		var enabled sql.NullInt64
-		if err := row.Scan(
-			&r.ID, &r.From, &r.To, &status, &enabled,
-			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetRedirectByFrom")
-			}
+	result, err := Read(db, specRedirects, ReadOptions{
+		SelectFields: "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at",
+		WhereClause:  "from_path=?",
+		WhereArgs:    []interface{}{fromPath},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		r, err := scanRedirect(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetRedirectByFrom.Scan", err)
 		}
-		if status.Valid {
-			r.Status = int(status.Int64)
-		} else {
-			r.Status = 301 // default
-		}
-		if enabled.Valid {
-			r.Enabled = int(enabled.Int64)
-		} else {
-			r.Enabled = 1 // default
-		}
-		if deletedAt.Valid {
-			r.DeletedAt = &deletedAt.Int64
-		}
-		return &r, nil
+		return r, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetRedirectByFrom", err)
 	}
-	return result.(*Redirect), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetRedirectByFrom")
+	}
+	r := item.(Redirect)
+	return &r, nil
 }
 
 func UpdateRedirect(db *DB, r *Redirect) error {
-	r.UpdatedAt = now()
 	if r.Status == 0 {
 		r.Status = 301 // default
 	}
-	return UpdateRecord(db, TableRedirects, r.ID, map[string]interface{}{
-		"from_path":  r.From,
-		"to_path":    r.To,
-		"status":     r.Status,
-		"enabled":    r.Enabled,
-		"updated_at": r.UpdatedAt,
+	return Update(db, specRedirects, r.ID, map[string]interface{}{
+		"from_path": r.From,
+		"to_path":   r.To,
+		"status":    r.Status,
+		"enabled":   r.Enabled,
 	})
 }
 
 func SoftDeleteRedirect(db *DB, id int64) error {
-	return SoftDeleteRecord(db, TableRedirects, id)
+	return Delete(db, specRedirects, id)
 }
 
 func RestoreRedirect(db *DB, id int64) error {
-	return RestoreRecord(db, TableRedirects, id)
+	return Restore(db, specRedirects, id)
 }
 
 func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 	// 获取总数
-	total, err := CountRecords(db, TableRedirects, "", nil)
+	total, err := Count(db, specRedirects, "", nil)
 	if err != nil {
 		return nil, 0, WrapInternalErr("ListRedirects.Count", err)
 	}
 
 	// 查询列表
-	results, err := ListRecords(db, TableRedirects, "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at", "", "created_at DESC", nil, limit, offset, func(rows *sql.Rows) (interface{}, error) {
-		var r Redirect
-		var deletedAt sql.NullInt64
-		var status sql.NullInt64
-		var enabled sql.NullInt64
-		if err := rows.Scan(
-			&r.ID, &r.From, &r.To, &status, &enabled,
-			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
-		); err != nil {
+	results, err := Read(db, specRedirects, ReadOptions{
+		SelectFields: "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at",
+		WhereClause:  "",
+		OrderBy:      "",
+		WhereArgs:    nil,
+		Limit:        limit,
+		Offset:       offset,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		r, err := scanRedirect(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListRedirects.Scan", err)
-		}
-		if status.Valid {
-			r.Status = int(status.Int64)
-		} else {
-			r.Status = 301 // default
-		}
-		if enabled.Valid {
-			r.Enabled = int(enabled.Int64)
-		} else {
-			r.Enabled = 1 // default
-		}
-		if deletedAt.Valid {
-			r.DeletedAt = &deletedAt.Int64
 		}
 		return r, nil
 	})
@@ -1686,28 +1885,9 @@ func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
 
 func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 	results, err := ListDeletedRecords(db, TableRedirects, "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
-		var r Redirect
-		var deletedAt sql.NullInt64
-		var status sql.NullInt64
-		var enabled sql.NullInt64
-		if err := rows.Scan(
-			&r.ID, &r.From, &r.To, &status, &enabled,
-			&r.CreatedAt, &r.UpdatedAt, &deletedAt,
-		); err != nil {
+		r, err := scanRedirect(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListDeletedRedirects.Scan", err)
-		}
-		if status.Valid {
-			r.Status = int(status.Int64)
-		} else {
-			r.Status = 301 // default
-		}
-		if enabled.Valid {
-			r.Enabled = int(enabled.Int64)
-		} else {
-			r.Enabled = 1 // default
-		}
-		if deletedAt.Valid {
-			r.DeletedAt = &deletedAt.Int64
 		}
 		return r, nil
 	})
@@ -1722,12 +1902,6 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 }
 
 func CreateRedirect(db *DB, r *Redirect) (int64, error) {
-	if r.CreatedAt == 0 {
-		r.CreatedAt = now()
-	}
-	if r.UpdatedAt == 0 {
-		r.UpdatedAt = r.CreatedAt
-	}
 	if r.Status == 0 {
 		r.Status = 301 // default
 	}
@@ -1735,7 +1909,7 @@ func CreateRedirect(db *DB, r *Redirect) (int64, error) {
 		r.Enabled = 1 // default
 	}
 
-	id, err := CreateRecord(db, TableRedirects, map[string]interface{}{
+	id, err := Create(db, specRedirects, map[string]interface{}{
 		"from_path":  r.From,
 		"to_path":    r.To,
 		"status":     r.Status,
@@ -1786,13 +1960,6 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 		s.Kind = "default"
 	}
 
-	if s.CreatedAt == 0 {
-		s.CreatedAt = now()
-	}
-	if s.UpdatedAt == 0 {
-		s.UpdatedAt = s.CreatedAt
-	}
-
 	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
 	if s.Type == "password" && s.Value != "" && len(s.Value) < 60 {
 		hashed, err := bcrypt.GenerateFromPassword(
@@ -1805,7 +1972,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 		s.Value = string(hashed)
 	}
 
-	id, err := CreateRecord(db, TableSettings, map[string]interface{}{
+	id, err := Create(db, specSettings, map[string]interface{}{
 		"kind":                 s.Kind,
 		"name":                 s.Name,
 		"code":                 s.Code,
@@ -1832,89 +1999,51 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 }
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
-	result, err := GetRecordByField(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at", "code", code, func(row *sql.Row) (interface{}, error) {
-		var s Setting
-		var deletedAt sql.NullInt64
-
-		err := row.Scan(
-			&s.ID,
-			&s.Kind,
-			&s.Name,
-			&s.Code,
-			&s.Type,
-			&s.Options,
-			&s.Attrs,
-			&s.Value,
-			&s.DefaultOptionValue,
-			&s.Description,
-			&s.Sort,
-			&s.Charset,
-			&s.Author,
-			&s.Keywords,
-			&s.Reload,
-			&s.CreatedAt,
-			&s.UpdatedAt,
-			&deletedAt,
-		)
+	result, err := Read(db, specSettings, ReadOptions{
+		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		WhereClause:  "code=?",
+		WhereArgs:    []interface{}{code},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		s, err := scanSetting(rows)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetSettingByCode")
-			}
 			return nil, WrapInternalErr("GetSettingByCode.Scan", err)
 		}
-
-		if deletedAt.Valid {
-			s.DeletedAt = &deletedAt.Int64
-		}
-		return &s, nil
+		return s, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetSettingByCode", err)
 	}
-	return result.(*Setting), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetSettingByCode")
+	}
+	s := item.(Setting)
+	return &s, nil
 }
 
 func GetSettingByID(db *DB, id int64) (*Setting, error) {
-	result, err := GetRecordByID(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
-		var s Setting
-		var deletedAt sql.NullInt64
-
-		err := row.Scan(
-			&s.ID,
-			&s.Kind,
-			&s.Name,
-			&s.Code,
-			&s.Type,
-			&s.Options,
-			&s.Attrs,
-			&s.Value,
-			&s.DefaultOptionValue,
-			&s.Description,
-			&s.Sort,
-			&s.Charset,
-			&s.Author,
-			&s.Keywords,
-			&s.Reload,
-			&s.CreatedAt,
-			&s.UpdatedAt,
-			&deletedAt,
-		)
+	result, err := Read(db, specSettings, ReadOptions{
+		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		s, err := scanSetting(rows)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetSettingByID")
-			}
 			return nil, WrapInternalErr("GetSettingByID.Scan", err)
 		}
-
-		if deletedAt.Valid {
-			s.DeletedAt = &deletedAt.Int64
-		}
-		return &s, nil
+		return s, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetSettingByID", err)
 	}
-	return result.(*Setting), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetSettingByID")
+	}
+	s := item.(Setting)
+	return &s, nil
 }
 
 func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
@@ -1925,33 +2054,16 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 		whereArgs = append(whereArgs, kind)
 	}
 
-	results, err := ListRecords(db, TableSettings, "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at", whereClause, "", whereArgs, 0, 0, func(rows *sql.Rows) (interface{}, error) {
-		var s Setting
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&s.ID,
-			&s.Kind,
-			&s.Name,
-			&s.Code,
-			&s.Type,
-			&s.Options,
-			&s.Attrs,
-			&s.Value,
-			&s.DefaultOptionValue,
-			&s.Description,
-			&s.Sort,
-			&s.Charset,
-			&s.Author,
-			&s.Keywords,
-			&s.Reload,
-			&s.CreatedAt,
-			&s.UpdatedAt,
-			&deletedAt,
-		); err != nil {
+	results, err := Read(db, specSettings, ReadOptions{
+		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		WhereClause:  whereClause,
+		OrderBy:      "",
+		WhereArgs:    whereArgs,
+		Limit:        0,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		s, err := scanSetting(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListSettingsByKind.Scan", err)
-		}
-		if deletedAt.Valid {
-			s.DeletedAt = &deletedAt.Int64
 		}
 		return s, nil
 	})
@@ -1971,8 +2083,6 @@ func ListAllSettings(db *DB) ([]Setting, error) {
 }
 
 func UpdateSetting(db *DB, s *Setting) error {
-	s.UpdatedAt = now()
-
 	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
 	if s.Type == "password" && s.Value != "" && len(s.Value) < 60 {
 		hashed, err := bcrypt.GenerateFromPassword(
@@ -1985,7 +2095,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 		s.Value = string(hashed)
 	}
 
-	err := UpdateRecord(db, TableSettings, s.ID, map[string]interface{}{
+	err := Update(db, specSettings, s.ID, map[string]interface{}{
 		"kind":                 s.Kind,
 		"name":                 s.Name,
 		"type":                 s.Type,
@@ -1999,7 +2109,6 @@ func UpdateSetting(db *DB, s *Setting) error {
 		"author":               s.Author,
 		"keywords":             s.Keywords,
 		"reload":               s.Reload,
-		"updated_at":           s.UpdatedAt,
 	})
 
 	if OnDatabaseChanged != nil {
@@ -2048,12 +2157,7 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 }
 
 func DeleteSetting(db *DB, id int64) error {
-	ts := now()
-	_, err := db.Exec(
-		`UPDATE `+string(TableSettings)+` SET deleted_at=? WHERE id=? AND deleted_at IS NULL`,
-		ts, id,
-	)
-	if err != nil {
+	if err := Delete(db, specSettings, id); err != nil {
 		return WrapInternalErr("DeleteSetting", err)
 	}
 
@@ -2123,7 +2227,7 @@ func CreateHttpErrorLog(db *DB, l *HttpErrorLog) (int64, error) {
 		l.ExpiredAt = l.CreatedAt + 7*24*60*60
 	}
 
-	id, err := CreateRecord(db, TableHttpErrorLogs, map[string]interface{}{
+	id, err := Create(db, specHttpErrorLogs, map[string]interface{}{
 		"req_id":       l.ReqID,
 		"client_ip":    l.ClientIP,
 		"method":       l.Method,
@@ -2143,22 +2247,16 @@ func CreateHttpErrorLog(db *DB, l *HttpErrorLog) (int64, error) {
 }
 
 func ListHttpErrorLogs(db *DB, limit, offset int) ([]HttpErrorLog, error) {
-	// http_error_logs 表没有 deleted_at 字段，使用 "1=1" 避免通用函数自动添加 deleted_at 条件
-	results, err := ListRecords(db, TableHttpErrorLogs, "id, req_id, client_ip, method, path, status, user_agent, query_params, body_params, created_at, expired_at", "1=1", "created_at DESC", nil, limit, offset, func(rows *sql.Rows) (interface{}, error) {
-		var l HttpErrorLog
-		if err := rows.Scan(
-			&l.ID,
-			&l.ReqID,
-			&l.ClientIP,
-			&l.Method,
-			&l.Path,
-			&l.Status,
-			&l.UserAgent,
-			&l.QueryParams,
-			&l.BodyParams,
-			&l.CreatedAt,
-			&l.ExpiredAt,
-		); err != nil {
+	results, err := Read(db, specHttpErrorLogs, ReadOptions{
+		SelectFields: "id, req_id, client_ip, method, path, status, user_agent, query_params, body_params, created_at, expired_at",
+		WhereClause:  "",
+		OrderBy:      "",
+		WhereArgs:    nil,
+		Limit:        limit,
+		Offset:       offset,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		l, err := scanHttpErrorLog(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListHttpErrorLogs.Scan", err)
 		}
 		return l, nil
@@ -2175,19 +2273,24 @@ func ListHttpErrorLogs(db *DB, limit, offset int) ([]HttpErrorLog, error) {
 }
 
 func CountHttpErrorLogs(db *DB) (int, error) {
-	// http_error_logs 表没有 deleted_at 字段，使用 "1=1" 避免通用函数自动添加 deleted_at 条件
-	return CountRecords(db, TableHttpErrorLogs, "1=1", nil)
+	return Count(db, specHttpErrorLogs, "", nil)
 }
 
 func DeleteHttpErrorLog(db *DB, id int64) error {
-	return HardDeleteRecord(db, TableHttpErrorLogs, id)
+	return HardDelete(db, specHttpErrorLogs, id)
 }
 
 var AppSettings atomic.Value // map[string]string
 
 // LoadSettingsToMap 从 settings 表加载 code -> value 映射
 func LoadSettingsToMap(db *DB) (map[string]string, error) {
-	results, err := ListRecords(db, TableSettings, "code, value", "", "", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
+	results, err := Read(db, specSettings, ReadOptions{
+		SelectFields: "code, value",
+		WhereClause:  "",
+		OrderBy:      "",
+		WhereArgs:    nil,
+		Limit:        0,
+	}, func(rows *sql.Rows) (interface{}, error) {
 		var code, value string
 		if err := rows.Scan(&code, &value); err != nil {
 			return nil, WrapInternalErr("LoadSettingsToMap.Scan", err)
@@ -2248,7 +2351,7 @@ func CreateTask(db *DB, task *Task) (int64, error) {
 	task.CreatedAt = now
 	task.UpdatedAt = now
 
-	id, err := CreateRecord(db, TableTasks, map[string]interface{}{
+	id, err := Create(db, specTasks, map[string]interface{}{
 		"code":        task.Code,
 		"name":        task.Name,
 		"description": task.Description,
@@ -2266,95 +2369,64 @@ func CreateTask(db *DB, task *Task) (int64, error) {
 }
 
 func GetTaskByID(db *DB, id int64) (*Task, error) {
-	result, err := GetRecordByID(db, TableTasks, "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
-		var t Task
-		var lastRun sql.NullInt64
-		var lastStatus sql.NullString
-		var deleted sql.NullInt64
-
-		if err := row.Scan(
-			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
-			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetTaskByID")
-			}
+	result, err := Read(db, specTasks, ReadOptions{
+		SelectFields: "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		t, err := scanTask(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetTaskByID.Scan", err)
 		}
-
-		if lastRun.Valid {
-			t.LastRunAt = &lastRun.Int64
-		}
-		if lastStatus.Valid {
-			t.LastStatus = lastStatus.String
-		}
-		if deleted.Valid {
-			t.DeletedAt = &deleted.Int64
-		}
-
-		return &t, nil
+		return t, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetTaskByID", err)
 	}
-	return result.(*Task), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetTaskByID")
+	}
+	t := item.(Task)
+	return &t, nil
 }
 
 func GetTaskByCode(db *DB, code string) (*Task, error) {
-	result, err := GetRecordByField(db, TableTasks, "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at", "code", code, func(row *sql.Row) (interface{}, error) {
-		var t Task
-		var lastRun sql.NullInt64
-		var lastStatus sql.NullString
-		var deleted sql.NullInt64
-
-		if err := row.Scan(
-			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
-			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetTaskByCode")
-			}
+	result, err := Read(db, specTasks, ReadOptions{
+		SelectFields: "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at",
+		WhereClause:  "code=?",
+		WhereArgs:    []interface{}{code},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		t, err := scanTask(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetTaskByCode.Scan", err)
 		}
-
-		if lastRun.Valid {
-			t.LastRunAt = &lastRun.Int64
-		}
-		if lastStatus.Valid {
-			t.LastStatus = lastStatus.String
-		}
-		if deleted.Valid {
-			t.DeletedAt = &deleted.Int64
-		}
-
-		return &t, nil
+		return t, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetTaskByCode", err)
 	}
-	return result.(*Task), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetTaskByCode")
+	}
+	t := item.(Task)
+	return &t, nil
 }
 
 func ListTasks(db *DB) ([]Task, error) {
-	results, err := ListRecords(db, TableTasks, "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at", "", "id DESC", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
-		var t Task
-		var lastRun sql.NullInt64
-		var lastStatus sql.NullString
-		var deleted sql.NullInt64
-		if err := rows.Scan(
-			&t.ID, &t.Code, &t.Name, &t.Description, &t.Schedule, &t.Enabled, &t.Kind,
-			&lastRun, &lastStatus, &t.CreatedAt, &t.UpdatedAt, &deleted,
-		); err != nil {
+	results, err := Read(db, specTasks, ReadOptions{
+		SelectFields: "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at",
+		WhereClause:  "",
+		OrderBy:      "",
+		WhereArgs:    nil,
+		Limit:        0,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		t, err := scanTask(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListTasks.Scan", err)
-		}
-		if lastRun.Valid {
-			t.LastRunAt = &lastRun.Int64
-		}
-		if lastStatus.Valid {
-			t.LastStatus = lastStatus.String
-		}
-		if deleted.Valid {
-			t.DeletedAt = &deleted.Int64
 		}
 		return t, nil
 	})
@@ -2369,19 +2441,17 @@ func ListTasks(db *DB) ([]Task, error) {
 }
 
 func UpdateTask(db *DB, task *Task) error {
-	task.UpdatedAt = now()
 	enabled := 0
 	if task.Enabled == 1 {
 		enabled = 1
 	}
 	// Code 不可修改，不更新 code 字段
-	return UpdateRecord(db, TableTasks, task.ID, map[string]interface{}{
+	return Update(db, specTasks, task.ID, map[string]interface{}{
 		"name":        task.Name,
 		"description": task.Description,
 		"schedule":    task.Schedule,
 		"enabled":     enabled,
 		"kind":        task.Kind,
-		"updated_at":  task.UpdatedAt,
 	})
 }
 func UpdateTaskStatus(db *DB, taskCode string, lastStatus string, lastRunAt int64) error {
@@ -2397,7 +2467,7 @@ func UpdateTaskStatus(db *DB, taskCode string, lastStatus string, lastRunAt int6
 }
 
 func SoftDeleteTask(db *DB, id int64) error {
-	return SoftDeleteRecord(db, TableTasks, id)
+	return Delete(db, specTasks, id)
 }
 
 func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
@@ -2415,7 +2485,7 @@ func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
 		run.Duration = 0
 	}
 
-	id, err := CreateRecord(db, TableTaskRuns, map[string]interface{}{
+	id, err := Create(db, specTaskRuns, map[string]interface{}{
 		"task_code":   run.TaskCode,
 		"run_id":      run.RunID,
 		"status":      run.Status,
@@ -2441,7 +2511,6 @@ func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
 }
 
 func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun, error) {
-	// task_runs 表没有 deleted_at 字段，使用 whereClause 构建条件
 	whereClause := "1=1"
 	whereArgs := []interface{}{}
 
@@ -2455,12 +2524,15 @@ func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun,
 		whereArgs = append(whereArgs, status)
 	}
 
-	results, err := ListRecords(db, TableTaskRuns, "id, task_code, run_id, status, message, started_at, finished_at, duration, created_at", whereClause, "created_at DESC", whereArgs, limit, 0, func(rows *sql.Rows) (interface{}, error) {
-		var r TaskRun
-		if err := rows.Scan(
-			&r.ID, &r.TaskCode, &r.RunID, &r.Status, &r.Message,
-			&r.StartedAt, &r.FinishedAt, &r.Duration, &r.CreatedAt,
-		); err != nil {
+	results, err := Read(db, specTaskRuns, ReadOptions{
+		SelectFields: "id, task_code, run_id, status, message, started_at, finished_at, duration, created_at",
+		WhereClause:  whereClause,
+		OrderBy:      "",
+		WhereArgs:    whereArgs,
+		Limit:        limit,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		r, err := scanTaskRun(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListTaskRuns.Scan", err)
 		}
 		return r, nil
@@ -2546,74 +2618,55 @@ type Category struct {
 }
 
 func GetCategoryByID(db *DB, id int64) (*Category, error) {
-	result, err := GetRecordByID(db, TableCategories, "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at", id, func(row *sql.Row) (interface{}, error) {
-		var c Category
-		var parentID sql.NullInt64
-		var deletedAt sql.NullInt64
-
-		err := row.Scan(
-			&c.ID,
-			&parentID,
-			&c.Name,
-			&c.Slug,
-			&c.Description,
-			&c.Sort,
-			&c.CreatedAt,
-			&c.UpdatedAt,
-			&deletedAt,
-		)
+	result, err := Read(db, specCategories, ReadOptions{
+		SelectFields: "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		c, err := scanCategory(rows)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetCategoryByID")
-			}
 			return nil, WrapInternalErr("GetCategoryByID.Scan", err)
 		}
-
-		if parentID.Valid {
-			c.ParentID = parentID.Int64
-		}
-		if deletedAt.Valid {
-			c.DeletedAt = &deletedAt.Int64
-		}
-
-		return &c, nil
+		return c, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetCategoryByID", err)
 	}
-	return result.(*Category), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetCategoryByID")
+	}
+	c := item.(Category)
+	return &c, nil
 }
 
 func GetCategoryBySlug(db *DB, slug string) (*Category, error) {
-	result, err := GetRecordByField(db, TableCategories, "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at", "slug", slug, func(row *sql.Row) (interface{}, error) {
-		var c Category
-		var parentID sql.NullInt64
-		var deletedAt sql.NullInt64
-		if err := row.Scan(
-			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
-			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
-		); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, ErrNotFound("GetCategoryBySlug")
-			}
+	result, err := Read(db, specCategories, ReadOptions{
+		SelectFields: "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at",
+		WhereClause:  "slug=?",
+		WhereArgs:    []interface{}{slug},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		c, err := scanCategory(rows)
+		if err != nil {
 			return nil, WrapInternalErr("GetCategoryBySlug.Scan", err)
 		}
-		if parentID.Valid {
-			c.ParentID = parentID.Int64
-		}
-		if deletedAt.Valid {
-			c.DeletedAt = &deletedAt.Int64
-		}
-		return &c, nil
+		return c, nil
 	})
 	if err != nil {
 		return nil, WrapInternalErr("GetCategoryBySlug", err)
 	}
-	return result.(*Category), nil
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetCategoryBySlug")
+	}
+	c := item.(Category)
+	return &c, nil
 }
 
 func CategoryExists(db *DB, id int64) (bool, error) {
-	cnt, err := CountRecords(db, TableCategories, "id=?", []interface{}{id})
+	cnt, err := Count(db, specCategories, "id=?", []interface{}{id})
 	return cnt > 0, err
 }
 
@@ -2646,13 +2699,6 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 		return 0, WrapInternalErr("CreateCategory.CheckSlug", err)
 	}
 
-	if c.CreatedAt == 0 {
-		c.CreatedAt = now()
-	}
-	if c.UpdatedAt == 0 {
-		c.UpdatedAt = c.CreatedAt
-	}
-
 	var parentID interface{}
 	if c.ParentID == 0 {
 		parentID = nil
@@ -2660,7 +2706,7 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 		parentID = c.ParentID
 	}
 
-	id, err := CreateRecord(db, TableCategories, map[string]interface{}{
+	id, err := Create(db, specCategories, map[string]interface{}{
 		"parent_id":   parentID,
 		"name":        c.Name,
 		"slug":        c.Slug,
@@ -2688,32 +2734,17 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 }
 
 func ListCategories(db *DB, withPostCount bool) ([]Category, error) {
-	results, err := ListRecords(db, TableCategories, "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at", "", "sort", nil, 0, 0, func(rows *sql.Rows) (interface{}, error) {
-		var c Category
-		var parentID sql.NullInt64
-		var deletedAt sql.NullInt64
-
-		if err := rows.Scan(
-			&c.ID,
-			&parentID,
-			&c.Name,
-			&c.Slug,
-			&c.Description,
-			&c.Sort,
-			&c.CreatedAt,
-			&c.UpdatedAt,
-			&deletedAt,
-		); err != nil {
+	results, err := Read(db, specCategories, ReadOptions{
+		SelectFields: "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at",
+		WhereClause:  "",
+		OrderBy:      "",
+		WhereArgs:    nil,
+		Limit:        0,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		c, err := scanCategory(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListCategories.Scan", err)
 		}
-
-		if parentID.Valid {
-			c.ParentID = parentID.Int64
-		}
-		if deletedAt.Valid {
-			c.DeletedAt = &deletedAt.Int64
-		}
-
 		return c, nil
 	})
 	if err != nil {
@@ -2742,8 +2773,6 @@ func ListCategories(db *DB, withPostCount bool) ([]Category, error) {
 }
 
 func UpdateCategory(db *DB, c *Category) error {
-	c.UpdatedAt = now()
-
 	// 如果slug或parent_id改变了，需要检查唯一性
 	var existingID int64
 	var err error
@@ -2769,13 +2798,12 @@ func UpdateCategory(db *DB, c *Category) error {
 		parentID = c.ParentID
 	}
 
-	return UpdateRecord(db, TableCategories, c.ID, map[string]interface{}{
+	return Update(db, specCategories, c.ID, map[string]interface{}{
 		"parent_id":   parentID,
 		"name":        c.Name,
 		"slug":        c.Slug,
 		"description": c.Description,
 		"sort":        c.Sort,
-		"updated_at":  c.UpdatedAt,
 	})
 }
 
@@ -2833,11 +2861,11 @@ func UpdateCategoryParent(db *DB, id int64, newParentID int64) error {
 }
 
 func SoftDeleteCategory(db *DB, id int64) error {
-	return SoftDeleteRecord(db, TableCategories, id)
+	return Delete(db, specCategories, id)
 }
 
 func RestoreCategory(db *DB, id int64) error {
-	return RestoreRecord(db, TableCategories, id)
+	return Restore(db, specCategories, id)
 }
 
 // UpdateCategoryCreatedAtIfEarlier 仅当 createdAt 早于当前 created_at 时更新（导入时用于“按最早出现该分类的文章创建时间”）
@@ -2854,20 +2882,9 @@ func UpdateCategoryCreatedAtIfEarlier(db *DB, id int64, createdAt int64) error {
 
 func ListDeletedCategories(db *DB) ([]Category, error) {
 	results, err := ListDeletedRecords(db, TableCategories, "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
-		var c Category
-		var parentID sql.NullInt64
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
-			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
-		); err != nil {
+		c, err := scanCategory(rows)
+		if err != nil {
 			return nil, WrapInternalErr("ListDeletedCategories.Scan", err)
-		}
-		if parentID.Valid {
-			c.ParentID = parentID.Int64
-		}
-		if deletedAt.Valid {
-			c.DeletedAt = &deletedAt.Int64
 		}
 		return c, nil
 	})
@@ -2891,23 +2908,12 @@ func GetPostCategory(db *DB, postID int64) (*Category, error) {
 		LIMIT 1
 	`, postID)
 
-	var c Category
-	var parentID sql.NullInt64
-	var deletedAt sql.NullInt64
-	if err := row.Scan(
-		&c.ID, &parentID, &c.Name, &c.Slug, &c.Description, &c.Sort,
-		&c.CreatedAt, &c.UpdatedAt, &deletedAt,
-	); err != nil {
+	c, err := scanCategory(row)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, WrapInternalErr("GetPostCategory.Scan", err)
-	}
-	if parentID.Valid {
-		c.ParentID = parentID.Int64
-	}
-	if deletedAt.Valid {
-		c.DeletedAt = &deletedAt.Int64
 	}
 	return &c, nil
 }

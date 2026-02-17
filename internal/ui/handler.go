@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
+	"swaves/internal/share"
 	"swaves/internal/store"
 	"swaves/internal/types"
 
@@ -54,19 +55,20 @@ func (h Handler) GetHome(c *fiber.Ctx) error {
 		"Pager":    pager,
 	}, "")
 }
-func (h Handler) GetPost(c *fiber.Ctx) error {
-	matched := MatchRouter(c.Path())
-	if len(matched) == 0 {
-		return c.Status(fiber.StatusNotFound).SendString("post not found")
-	}
 
-	post := GetPostBySlug(h.Model, matched["slug"])
-
-	return RenderUIView(c, "ui/post", fiber.Map{
-		"Post": post,
-		//"Pages": ListPages(h.Model),
-	}, "")
-}
+//func (h Handler) GetPost(c *fiber.Ctx) error {
+//	matched := MatchRouter(c.Path())
+//	if len(matched) == 0 {
+//		return c.Status(fiber.StatusNotFound).SendString("post not found")
+//	}
+//
+//	post := GetPostBySlug(h.Model, matched["slug"])
+//
+//	return RenderUIView(c, "ui/post", fiber.Map{
+//		"Post": post,
+//		//"Pages": ListPages(h.Model),
+//	}, "")
+//}
 
 func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	year := c.Params("year")
@@ -83,7 +85,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("page not found")
 	}
 
-	y, m, d := GetArticlePublishedDate(post.Post)
+	y, m, d := share.GetArticlePublishedDate(post.Post)
 
 	if y != year || m != month || d != day {
 		return c.Status(fiber.StatusNotFound).SendString("page not found, maybe the date is wrong")
@@ -158,7 +160,7 @@ func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
 		"IsCategory": true,
 		"Entity":     category,
 		"List":       posts,
-		"ListPage":   GetCategoryIndex(),
+		"ListPage":   share.GetCategoryIndex(),
 		"Pages":      ListPages(h.Model),
 	}, "")
 }
@@ -176,7 +178,7 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 		"IsTag":    true,
 		"Entity":   tag,
 		"List":     posts,
-		"ListPage": GetTagIndex(),
+		"ListPage": share.GetTagIndex(),
 		"Pages":    ListPages(h.Model),
 	}, "")
 }
