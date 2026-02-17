@@ -1,4 +1,75 @@
-<p>{{ if .IsLogin }} You are login. {{ end }}</p>
+<style>
+  /*.dashboard-grid {*/
+  /*  display: grid;*/
+  /*  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));*/
+  /*  gap: 12px;*/
+  /*  margin-bottom: 16px;*/
+  /*}*/
+</style>
 
-<a href="/admin/login">Sign</a>
-<a href="/admin/logout">Logout</a>
+<div class="dashboard-grid">
+  <div class="card">
+    <header>
+      <h3>站点 UV（累计去重）</h3>
+    </header>
+    <p class="dashboard-value">{{ if .SiteUV }}{{ .SiteUV }}{{ else }}0{{ end }}</p>
+  </div>
+</div>
+
+{{ template "partials/error_message" . }}
+
+<h4 class="dashboard-section-title">文章 UV Top 10</h4>
+<table class="dashboard-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>标题</th>
+      <th>UV</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ if .TopPosts }}
+      {{ range $index, $item := .TopPosts }}
+      <tr>
+        <td>{{ add $index 1 }}</td>
+        <td>{{ $item.Title }}</td>
+        <td>{{ $item.UV }}</td>
+        <td><a href="/admin/posts/{{ $item.PostID }}/edit">编辑</a></td>
+      </tr>
+      {{ end }}
+    {{ else }}
+      <tr>
+        <td colspan="4">暂无 UV 数据</td>
+      </tr>
+    {{ end }}
+  </tbody>
+</table>
+
+<h4 class="dashboard-section-title">页面 UV Top 10</h4>
+<table class="dashboard-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>标题</th>
+      <th>UV</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ if .TopPages }}
+      {{ range $index, $item := .TopPages }}
+      <tr>
+        <td>{{ add $index 1 }}</td>
+        <td>{{ $item.Title }}</td>
+        <td>{{ $item.UV }}</td>
+        <td><a href="/admin/posts/{{ $item.PostID }}/edit">编辑</a></td>
+      </tr>
+      {{ end }}
+    {{ else }}
+      <tr>
+        <td colspan="4">暂无页面 UV 数据</td>
+      </tr>
+    {{ end }}
+  </tbody>
+</table>

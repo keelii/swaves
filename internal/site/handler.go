@@ -32,7 +32,7 @@ func (h Handler) trackUV(c *fiber.Ctx, entityType db.UVEntityType, entityID int6
 }
 
 func (h Handler) trackEntityUV(c *fiber.Ctx, entityType db.UVEntityType, entityID int64) {
-	visitorID, _ := c.Locals(middleware.VisitorIDLocalKey).(string)
+	visitorID := middleware.GetOrCreateVisitorID(c, "")
 	if visitorID == "" {
 		return
 	}

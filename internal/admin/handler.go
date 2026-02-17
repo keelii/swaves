@@ -109,7 +109,36 @@ func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
 }
 
 func (h *Handler) GetHome(c *fiber.Ctx) error {
-	return RenderAdminView(c, "admin_home", fiber.Map{"Title": "Admin Home"}, "")
+	siteUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	topPosts, err := db.ListTopUVPosts(h.Model, 10)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	topPages, err := db.ListTopUVPages(h.Model, 10)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	return RenderAdminView(c, "admin_home", fiber.Map{
+		"Title":    "工作台",
+		"SiteUV":   siteUV,
+		"TopPosts": topPosts,
+		"TopPages": topPages,
+	}, "")
 }
 
 /* ---------- GET /admin/login ---------- */
@@ -2057,26 +2086,8 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 // Metrics
 func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
-	siteUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
-	if err != nil {
-		return RenderAdminView(c, "metrics", fiber.Map{
-			"Title": "性能监控",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	topPosts, err := db.ListTopUVPosts(h.Model, 10)
-	if err != nil {
-		return RenderAdminView(c, "metrics", fiber.Map{
-			"Title": "性能监控",
-			"Error": err.Error(),
-		}, "")
-	}
-
 	return RenderAdminView(c, "metrics", fiber.Map{
-		"Title":    "性能监控",
-		"SiteUV":   siteUV,
-		"TopPosts": topPosts,
+		"Title": "性能监控",
 	}, "")
 }
 

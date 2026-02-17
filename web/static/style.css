@@ -246,6 +246,17 @@ button .btn-icon {
   color: var(--ui-warning);
 }
 
+/* ===== card.css ===== */
+.card {
+  background-color: var(--ui-card);
+  color: var(--ui-card-foreground);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-medium);
+  box-shadow: var(--ui-shadow-small);
+  padding: var(--ui-space-6);
+  overflow: hidden;
+}
+
 
 .error-message {
   color: #c00;

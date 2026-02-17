@@ -11,7 +11,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"swaves/internal/consts"
 	"swaves/internal/types"
@@ -71,282 +70,11 @@ func InitDatabase(db *DB) error {
 		}
 	}
 
-	if err := migrateUVUniqueStorage(db); err != nil {
-		return WrapInternalErr("InitDatabase.MigrateUVUniqueStorage", err)
-	}
-
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
 	}
 
 	return nil
-}
-
-func migrateUVUniqueStorage(db *DB) error {
-	need, err := needsUVUniqueStorageMigration(db)
-	if err != nil {
-		return err
-	}
-	if !need {
-		return nil
-	}
-
-	return rebuildUVUniqueTable(db)
-}
-
-func needsUVUniqueStorageMigration(db *DB) (bool, error) {
-	rows, err := db.Query(`PRAGMA table_info(` + string(TableUVUnique) + `)`)
-	if err != nil {
-		return false, WrapInternalErr("needsUVUniqueStorageMigration.TableInfo", err)
-	}
-	defer rows.Close()
-
-	entityTypeColumnType := ""
-	visitorIDColumnType := ""
-	pkEntityType := 0
-	pkEntityID := 0
-	pkVisitorID := 0
-	hasID := false
-
-	for rows.Next() {
-		var (
-			cid       int
-			name      string
-			colType   string
-			notNull   int
-			dfltValue sql.NullString
-			pk        int
-		)
-		if err = rows.Scan(&cid, &name, &colType, &notNull, &dfltValue, &pk); err != nil {
-			return false, WrapInternalErr("needsUVUniqueStorageMigration.ScanTableInfo", err)
-		}
-		switch name {
-		case "entity_type":
-			entityTypeColumnType = strings.ToUpper(strings.TrimSpace(colType))
-			pkEntityType = pk
-		case "entity_id":
-			pkEntityID = pk
-		case "visitor_id":
-			visitorIDColumnType = strings.ToUpper(strings.TrimSpace(colType))
-			pkVisitorID = pk
-		case "id":
-			hasID = true
-		}
-	}
-	if err = rows.Err(); err != nil {
-		return false, WrapInternalErr("needsUVUniqueStorageMigration.TableInfoRows", err)
-	}
-
-	var createSQL string
-	if err = db.QueryRow(
-		`SELECT sql FROM sqlite_master WHERE type='table' AND name = ?`,
-		string(TableUVUnique),
-	).Scan(&createSQL); err != nil {
-		return false, WrapInternalErr("needsUVUniqueStorageMigration.QueryCreateSQL", err)
-	}
-
-	if entityTypeColumnType != "INTEGER" ||
-		visitorIDColumnType != "BLOB" ||
-		hasID ||
-		pkEntityType != 1 ||
-		pkEntityID != 2 ||
-		pkVisitorID != 3 ||
-		!strings.Contains(strings.ToUpper(createSQL), "WITHOUT ROWID") {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func rebuildUVUniqueTable(db *DB) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.Begin", err)
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
-	newTable := string(TableUVUnique) + "__new"
-
-	if _, err = tx.Exec(`DROP TABLE IF EXISTS ` + newTable); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.DropTempTable", err)
-	}
-
-	if _, err = tx.Exec(`CREATE TABLE ` + newTable + ` (
-		entity_type INTEGER NOT NULL CHECK (entity_type IN (1, 2, 3, 4)),
-		entity_id INTEGER NOT NULL DEFAULT 0,
-		visitor_id BLOB NOT NULL,
-		first_seen_at INTEGER NOT NULL,
-		last_seen_at INTEGER NOT NULL,
-		PRIMARY KEY(entity_type, entity_id, visitor_id)
-	) WITHOUT ROWID`); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.CreateTempTable", err)
-	}
-
-	insertStmt, err := tx.Prepare(
-		`INSERT INTO ` + newTable + ` (entity_type, entity_id, visitor_id, first_seen_at, last_seen_at)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(entity_type, entity_id, visitor_id) DO UPDATE SET
-			first_seen_at = MIN(first_seen_at, excluded.first_seen_at),
-			last_seen_at = MAX(last_seen_at, excluded.last_seen_at)`,
-	)
-	if err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.PrepareInsert", err)
-	}
-	defer insertStmt.Close()
-
-	rows, err := tx.Query(
-		`SELECT entity_type, entity_id, visitor_id, first_seen_at, last_seen_at FROM ` + string(TableUVUnique),
-	)
-	if err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.QueryOldRows", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var (
-			entityTypeRaw interface{}
-			entityID      int64
-			visitorIDRaw  interface{}
-			firstSeenAt   int64
-			lastSeenAt    int64
-		)
-		if err = rows.Scan(&entityTypeRaw, &entityID, &visitorIDRaw, &firstSeenAt, &lastSeenAt); err != nil {
-			return WrapInternalErr("rebuildUVUniqueTable.ScanOldRow", err)
-		}
-
-		entityType, ok := normalizeUVEntityTypeRaw(entityTypeRaw)
-		if !ok {
-			continue
-		}
-		visitorID := normalizeVisitorIDRaw(visitorIDRaw)
-		if len(visitorID) != UVVisitorIDBytes {
-			continue
-		}
-
-		if _, err = insertStmt.Exec(entityType, entityID, visitorID, firstSeenAt, lastSeenAt); err != nil {
-			return WrapInternalErr("rebuildUVUniqueTable.InsertNewRow", err)
-		}
-	}
-	if err = rows.Err(); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.RowsErr", err)
-	}
-
-	if _, err = tx.Exec(`DROP TABLE ` + string(TableUVUnique)); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.DropOldTable", err)
-	}
-
-	if _, err = tx.Exec(`ALTER TABLE ` + newTable + ` RENAME TO ` + string(TableUVUnique)); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.RenameTable", err)
-	}
-
-	if _, err = tx.Exec(`CREATE INDEX IF NOT EXISTS idx_uv_unique_entity_last_seen
-		ON ` + string(TableUVUnique) + ` (entity_type, entity_id, last_seen_at DESC)`); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.CreateEntityLastSeenIndex", err)
-	}
-
-	if _, err = tx.Exec(`CREATE INDEX IF NOT EXISTS idx_uv_unique_visitor_id
-		ON ` + string(TableUVUnique) + ` (visitor_id)`); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.CreateVisitorIndex", err)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return WrapInternalErr("rebuildUVUniqueTable.Commit", err)
-	}
-
-	return nil
-}
-
-func normalizeUVEntityTypeRaw(raw interface{}) (UVEntityType, bool) {
-	switch v := raw.(type) {
-	case int64:
-		uvEntityType := UVEntityType(v)
-		return uvEntityType, uvEntityType.IsValid()
-	case []byte:
-		return normalizeUVEntityTypeString(string(v))
-	case string:
-		return normalizeUVEntityTypeString(v)
-	default:
-		return 0, false
-	}
-}
-
-func normalizeUVEntityTypeString(value string) (UVEntityType, bool) {
-	raw := strings.TrimSpace(strings.ToLower(value))
-	if raw == "" {
-		return 0, false
-	}
-
-	if n, err := strconv.Atoi(raw); err == nil {
-		uvEntityType := UVEntityType(n)
-		return uvEntityType, uvEntityType.IsValid()
-	}
-
-	switch raw {
-	case "site":
-		return UVEntitySite, true
-	case "post":
-		return UVEntityPost, true
-	case "category":
-		return UVEntityCategory, true
-	case "tag":
-		return UVEntityTag, true
-	default:
-		return 0, false
-	}
-}
-
-func normalizeVisitorIDRaw(raw interface{}) []byte {
-	switch v := raw.(type) {
-	case []byte:
-		if len(v) == UVVisitorIDBytes {
-			return copyFixedBytes(v, UVVisitorIDBytes)
-		}
-		s := strings.TrimSpace(string(v))
-		if s != "" {
-			return visitorIDBytesFromString(s)
-		}
-		return hashVisitorIDBytes(v)
-	case string:
-		return visitorIDBytesFromString(strings.TrimSpace(v))
-	default:
-		return nil
-	}
-}
-
-func visitorIDBytesFromString(visitorID string) []byte {
-	if visitorID == "" {
-		return nil
-	}
-
-	decoded, err := base64.RawURLEncoding.DecodeString(visitorID)
-	if err == nil && len(decoded) == UVVisitorIDBytes {
-		return copyFixedBytes(decoded, UVVisitorIDBytes)
-	}
-
-	if parsedUUID, err := uuid.Parse(visitorID); err == nil {
-		return copyFixedBytes(parsedUUID[:], UVVisitorIDBytes)
-	}
-
-	return hashVisitorIDBytes([]byte(visitorID))
-}
-
-func hashVisitorIDBytes(data []byte) []byte {
-	if len(data) == 0 {
-		return nil
-	}
-	sum := sha256.Sum256(data)
-	return copyFixedBytes(sum[:], UVVisitorIDBytes)
-}
-
-func copyFixedBytes(src []byte, size int) []byte {
-	if len(src) < size {
-		return nil
-	}
-	dst := make([]byte, size)
-	copy(dst, src[:size])
-	return dst
 }
 
 func now() int64 {
@@ -994,7 +722,7 @@ func parseVisitorIDBytes(visitorID string) ([]byte, error) {
 		return nil, errors.New("visitor_id is invalid")
 	}
 
-	return copyFixedBytes(decoded, UVVisitorIDBytes), nil
+	return decoded, nil
 }
 
 type UVUnique struct {
@@ -1029,12 +757,77 @@ func UpsertUVUnique(db *DB, entityType UVEntityType, entityID int64, visitorID s
 		entityType, entityID, visitorIDBytes, ts, ts, ts-UVLastSeenUpdateMinIntervalSeconds,
 	)
 	if err != nil {
+		if isUVUpsertConflictTargetErr(err) {
+			return upsertUVUniqueCompat(db, entityType, entityID, visitorIDBytes, ts)
+		}
 		return false, WrapInternalErr("UpsertUVUnique.Upsert", err)
 	}
 
 	affected, err := res.RowsAffected()
 	if err != nil {
 		return false, WrapInternalErr("UpsertUVUnique.RowsAffected", err)
+	}
+	return affected > 0, nil
+}
+
+func isUVUpsertConflictTargetErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(
+		strings.ToLower(err.Error()),
+		"on conflict clause does not match any primary key or unique constraint",
+	)
+}
+
+func upsertUVUniqueCompat(db *DB, entityType UVEntityType, entityID int64, visitorIDBytes []byte, ts int64) (bool, error) {
+	threshold := ts - UVLastSeenUpdateMinIntervalSeconds
+
+	var lastSeenAt int64
+	err := db.QueryRow(
+		`SELECT last_seen_at
+		FROM `+string(TableUVUnique)+`
+		WHERE entity_type = ? AND entity_id = ? AND visitor_id = ?
+		ORDER BY last_seen_at DESC
+		LIMIT 1`,
+		entityType, entityID, visitorIDBytes,
+	).Scan(&lastSeenAt)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, WrapInternalErr("UpsertUVUnique.CompatSelect", err)
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		res, insertErr := db.Exec(
+			`INSERT INTO `+string(TableUVUnique)+` (entity_type, entity_id, visitor_id, first_seen_at, last_seen_at)
+			VALUES (?, ?, ?, ?, ?)`,
+			entityType, entityID, visitorIDBytes, ts, ts,
+		)
+		if insertErr != nil {
+			return false, WrapInternalErr("UpsertUVUnique.CompatInsert", insertErr)
+		}
+		affected, rowsErr := res.RowsAffected()
+		if rowsErr != nil {
+			return false, WrapInternalErr("UpsertUVUnique.CompatInsertRowsAffected", rowsErr)
+		}
+		return affected > 0, nil
+	}
+
+	if lastSeenAt >= threshold {
+		return false, nil
+	}
+
+	res, updateErr := db.Exec(
+		`UPDATE `+string(TableUVUnique)+`
+		SET last_seen_at = ?
+		WHERE entity_type = ? AND entity_id = ? AND visitor_id = ? AND last_seen_at < ?`,
+		ts, entityType, entityID, visitorIDBytes, threshold,
+	)
+	if updateErr != nil {
+		return false, WrapInternalErr("UpsertUVUnique.CompatUpdate", updateErr)
+	}
+	affected, rowsErr := res.RowsAffected()
+	if rowsErr != nil {
+		return false, WrapInternalErr("UpsertUVUnique.CompatUpdateRowsAffected", rowsErr)
 	}
 	return affected > 0, nil
 }
@@ -1064,6 +857,14 @@ func CountUVUnique(db *DB, entityType UVEntityType, entityID int64) (int, error)
 }
 
 func ListTopUVPosts(db *DB, limit int) ([]UVPostRank, error) {
+	return listTopUVPostsByKind(db, PostKindPost, limit)
+}
+
+func ListTopUVPages(db *DB, limit int) ([]UVPostRank, error) {
+	return listTopUVPostsByKind(db, PostKindPage, limit)
+}
+
+func listTopUVPostsByKind(db *DB, kind PostKind, limit int) ([]UVPostRank, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -1084,10 +885,10 @@ func ListTopUVPosts(db *DB, limit int) ([]UVPostRank, error) {
 			AND p.kind = ?
 			AND p.status = ?
 		ORDER BY u.uv DESC, p.published_at DESC, p.id DESC`,
-		UVEntityPost, limit, PostKindPost, "published",
+		UVEntityPost, limit, kind, "published",
 	)
 	if err != nil {
-		return nil, WrapInternalErr("ListTopUVPosts.Query", err)
+		return nil, WrapInternalErr("listTopUVPostsByKind.Query", err)
 	}
 	defer rows.Close()
 
@@ -1095,12 +896,12 @@ func ListTopUVPosts(db *DB, limit int) ([]UVPostRank, error) {
 	for rows.Next() {
 		var item UVPostRank
 		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.UV); err != nil {
-			return nil, WrapInternalErr("ListTopUVPosts.Scan", err)
+			return nil, WrapInternalErr("listTopUVPostsByKind.Scan", err)
 		}
 		res = append(res, item)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, WrapInternalErr("ListTopUVPosts.Rows", err)
+		return nil, WrapInternalErr("listTopUVPostsByKind.Rows", err)
 	}
 
 	return res, nil
