@@ -115,37 +115,53 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 /* ---------- GET /admin/login ---------- */
 
 func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
-	return RenderAdminView(c, "admin_login", fiber.Map{"Title": "Admin Login"}, "base")
+	return RenderAdminView(c, "admin_login", fiber.Map{
+		"Title":     "Admin Login",
+		"ReturnUrl": c.Query("returnUrl"),
+	}, "base")
 }
 
 /* ---------- POST /admin/login ---------- */
 
 func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
+	returnUrl := c.FormValue("returnUrl")
 	password := c.FormValue("password")
 	if password == "" {
 		return RenderAdminView(c, "admin_login", fiber.Map{
-			"Title": "Admin Login",
-			"Error": "password is empty",
+			"Title":     "Admin Login",
+			"Error":     "password is empty",
+			"ReturnUrl": returnUrl,
 		}, "base")
 	}
 
 	if err := h.Service.CheckPassword(password); err != nil {
 		return RenderAdminView(c, "admin_login", fiber.Map{
-			"Title": "Admin Login",
-			"Error": "Invalid password",
+			"Title":     "Admin Login",
+			"Error":     "Invalid password",
+			"ReturnUrl": returnUrl,
 		}, "base")
 	}
 
 	succ := h.Session.SaveSession(c)
 
 	if succ {
-		return c.Redirect("/admin")
+		return redirectAfterLogin(c)
 	}
 
 	return RenderAdminView(c, "admin_login", fiber.Map{
-		"Title": "Admin Login",
-		"Error": "Invalid Error",
+		"Title":     "Admin Login",
+		"Error":     "Invalid Error",
+		"ReturnUrl": returnUrl,
 	}, "base")
+}
+
+// redirectAfterLogin 从表单读取 returnUrl，校验后重定向，避免开放重定向
+func redirectAfterLogin(c *fiber.Ctx) error {
+	returnUrl := strings.TrimSpace(c.FormValue("returnUrl"))
+	if returnUrl != "" && strings.HasPrefix(returnUrl, "/") && !strings.Contains(returnUrl, "//") {
+		return c.Redirect(returnUrl)
+	}
+	return c.Redirect("/admin")
 }
 
 /* ---------- POST /admin/logout ---------- */

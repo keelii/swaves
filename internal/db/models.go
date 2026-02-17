@@ -925,29 +925,28 @@ func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
 	if opts.WithContent {
 		selectFields = "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at"
 	}
-	whereQuery := appendWhere(whereBase, specPosts.deletedAtCol()+" IS NULL")
-	query := `SELECT ` + selectFields + `
-		FROM ` + string(TablePosts) + `
-		WHERE ` + whereQuery + `
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?`
-	args := append(whereArgs, pager.PageSize, offset)
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, WrapInternalErr("ListPosts", err)
-	}
-	defer rows.Close()
-
-	var posts []*Post
-	for rows.Next() {
+	results, err := Read(db, specPosts, ReadOptions{
+		SelectFields: selectFields,
+		WhereClause:  whereBase,
+		OrderBy:      "created_at DESC",
+		WhereArgs:    whereArgs,
+		Limit:        pager.PageSize,
+		Offset:       offset,
+	}, func(rows *sql.Rows) (interface{}, error) {
 		p, err := scanPost(rows, opts.WithContent)
 		if err != nil {
 			return nil, WrapInternalErr("ListPosts.Scan", err)
 		}
-		posts = append(posts, &p)
+		return p, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("ListPosts", err)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, WrapInternalErr("ListPosts.rows.Err", err)
+
+	posts := make([]*Post, 0, len(results))
+	for _, item := range results {
+		p := item.(Post)
+		posts = append(posts, &p)
 	}
 
 	postIDs := make([]int64, len(posts))
@@ -1512,43 +1511,50 @@ func GetPostBySlugWithRelation(db *DB, slug string) (PostWithRelation, error) {
 // GetPrevNextPost 按当前文章 ID 查询前一篇、后一篇（按 published_at 排序，仅已发布文章）
 // prev 为 published_at 小于当前文章的最近一篇，next 为 published_at 大于当前文章的最近一篇；若不存在则对应为 nil
 func GetPrevNextPost(db *DB, publishedAt int64) (prev, next *Post, err error) {
-	baseWhere := `deleted_at IS NULL AND status = ? AND kind = ?`
+	loadOne := func(where string, args []interface{}, orderBy string) (*Post, error) {
+		results, err := Read(db, specPosts, ReadOptions{
+			SelectFields: "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at",
+			WhereClause:  where,
+			OrderBy:      orderBy,
+			WhereArgs:    args,
+			Limit:        1,
+		}, func(rows *sql.Rows) (interface{}, error) {
+			p, err := scanPost(rows, false)
+			if err != nil {
+				return nil, WrapInternalErr("GetPrevNextPost.Scan", err)
+			}
+			return p, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		item, ok := firstResult(results)
+		if !ok {
+			return nil, nil
+		}
+		p := item.(Post)
+		return &p, nil
+	}
 
-	// 前一篇: published_at < 当前，ORDER BY published_at DESC
-	prevRow := db.QueryRow(`
-		SELECT id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at
-		FROM `+string(TablePosts)+`
-		WHERE `+baseWhere+` AND published_at > 0 AND published_at < ?
-		ORDER BY published_at DESC, id DESC
-		LIMIT 1
-	`, "published", PostKindPost, publishedAt)
-	p, err := scanPost(prevRow, false)
-	prev = &p
-	if err != nil && err != sql.ErrNoRows {
+	prev, err = loadOne(
+		"status = ? AND kind = ? AND published_at > 0 AND published_at < ?",
+		[]interface{}{"published", PostKindPost, publishedAt},
+		"published_at DESC, id DESC",
+	)
+	if err != nil {
 		return nil, nil, WrapInternalErr("GetPrevNextPost.prev", err)
 	}
-	if err == sql.ErrNoRows {
-		prev = nil
-	}
 
-	// 后一篇: published_at > 当前，ORDER BY published_at ASC
-	nextRow := db.QueryRow(`
-		SELECT id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at
-		FROM `+string(TablePosts)+`
-		WHERE `+baseWhere+` AND published_at > ?
-		ORDER BY published_at ASC, id ASC
-		LIMIT 1
-	`, "published", PostKindPost, publishedAt)
-	p, err = scanPost(nextRow, false)
-	next = &p
-	if err != nil && err != sql.ErrNoRows {
+	next, err = loadOne(
+		"status = ? AND kind = ? AND published_at > ?",
+		[]interface{}{"published", PostKindPost, publishedAt},
+		"published_at ASC, id ASC",
+	)
+	if err != nil {
 		return nil, nil, WrapInternalErr("GetPrevNextPost.next", err)
 	}
-	if err == sql.ErrNoRows {
-		next = nil
-		err = nil // ErrNoRows 仅表示 prev/next 不存在，不作为错误返回
-	}
-	return prev, next, err
+
+	return prev, next, nil
 }
 
 // likePattern 对关键词做 LIKE 通配符转义，用于 '%'||?||'%' 的 ?
@@ -1576,15 +1582,15 @@ func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRela
 	likeCond := `(title LIKE '%' || ? || '%' ESCAPE '\' OR slug LIKE '%' || ? || '%' ESCAPE '\' OR content LIKE '%' || ? || '%' ESCAPE '\')`
 	filterClause, filterArgs := listPostsFilterClause(opts)
 
-	countQuery := `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND ` + likeCond + filterClause
+	countWhere := likeCond + filterClause
 	countArgs := []interface{}{pattern, pattern, pattern}
 	countArgs = append(countArgs, filterArgs...)
 	if opts.Kind != nil {
-		countQuery = `SELECT COUNT(*) FROM ` + string(TablePosts) + ` WHERE deleted_at IS NULL AND kind = ? AND ` + likeCond + filterClause
+		countWhere = "kind = ? AND " + countWhere
 		countArgs = append([]interface{}{*opts.Kind}, countArgs...)
 	}
-	var total int
-	if err := db.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
+	total, err := Count(db, specPosts, countWhere, countArgs)
+	if err != nil {
 		return nil, WrapInternalErr("ListPostsBySearch.Count", err)
 	}
 	if total == 0 {
@@ -2186,15 +2192,9 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 		value = string(hashed)
 	}
 
-	_, err = db.Exec(
-		`UPDATE `+string(TableSettings)+`
-		 SET value=?, updated_at=?
-		 WHERE code=? AND deleted_at IS NULL`,
-		value,
-		now(),
-		code,
-	)
-	if err != nil {
+	if err = Update(db, specSettings, setting.ID, map[string]interface{}{
+		"value": value,
+	}); err != nil {
 		return WrapInternalErr("UpdateSettingByCode", err)
 	}
 
@@ -2504,12 +2504,18 @@ func UpdateTask(db *DB, task *Task) error {
 	})
 }
 func UpdateTaskStatus(db *DB, taskCode string, lastStatus string, lastRunAt int64) error {
-	_, err := db.Exec(`UPDATE `+string(TableTasks)+`
-		SET last_status=?, last_run_at=?
-		WHERE code=? AND deleted_at IS NULL`,
-		lastStatus, lastRunAt, taskCode,
-	)
+	task, err := GetTaskByCode(db, taskCode)
 	if err != nil {
+		if IsErrNotFound(err) {
+			return nil
+		}
+		return WrapInternalErr("UpdateTaskStatus.GetTaskByCode", err)
+	}
+
+	if err = Update(db, specTasks, task.ID, map[string]interface{}{
+		"last_status": lastStatus,
+		"last_run_at": lastRunAt,
+	}); err != nil {
 		return WrapInternalErr("UpdateTaskStatus", err)
 	}
 	return nil
@@ -2601,22 +2607,18 @@ func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 		return errors.New("run.ID is zero")
 	}
 
-	// 更新 task_runs 表
-	_, err := db.Exec(`
-		UPDATE `+string(TableTaskRuns)+`
-		SET status=?, message=?, finished_at=?, duration=?
-		WHERE id=?
-	`, run.Status, run.Message, run.FinishedAt, run.Duration, run.ID)
-	if err != nil {
+	if err := Update(db, specTaskRuns, run.ID, map[string]interface{}{
+		"status":      run.Status,
+		"message":     run.Message,
+		"finished_at": run.FinishedAt,
+		"duration":    run.Duration,
+	}); err != nil {
 		return WrapInternalErr("UpdateTaskRunStatus", err)
 	}
 
-	// 同步更新 tasks 表的 last_run_at 和 last_status 字段
-	_, _ = db.Exec(`
-		UPDATE `+string(TableTasks)+`
-		SET last_run_at=?, last_status=?, updated_at=?
-		WHERE code=? AND deleted_at IS NULL
-	`, run.StartedAt, run.Status, now(), run.TaskCode)
+	if err := UpdateTaskStatus(db, run.TaskCode, run.Status, run.StartedAt); err != nil {
+		return WrapInternalErr("UpdateTaskRunStatus.UpdateTaskStatus", err)
+	}
 	return nil
 }
 
@@ -2772,10 +2774,9 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 	// 如果 sort 为 0（默认值），则设置为 id
 	if c.Sort == 0 {
 		c.Sort = id
-		_, err = db.Exec(`
-			UPDATE `+string(TableCategories)+` SET sort=? WHERE id=?
-		`, c.Sort, id)
-		if err != nil {
+		if err = Update(db, specCategories, id, map[string]interface{}{
+			"sort": c.Sort,
+		}); err != nil {
 			return 0, WrapInternalErr("CreateCategory.UpdateSort", err)
 		}
 	}
@@ -2900,10 +2901,9 @@ func UpdateCategoryParent(db *DB, id int64, newParentID int64) error {
 		parentID = newParentID
 	}
 
-	_, err = db.Exec(`
-		UPDATE `+string(TableCategories)+` SET parent_id=?, updated_at=? WHERE id=?
-	`, parentID, now(), id)
-	if err != nil {
+	if err = Update(db, specCategories, id, map[string]interface{}{
+		"parent_id": parentID,
+	}); err != nil {
 		return WrapInternalErr("UpdateCategoryParent", err)
 	}
 	return nil

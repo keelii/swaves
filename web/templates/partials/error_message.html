@@ -2,5 +2,7 @@
 使用方式: {{ template "partials/error_message" . }}
 */}}
 {{ if .Error }}
-<p class="error-message">{{ .Error }}</p>
+  <div class="errors">
+    <p class="error-message">{{ .Error }}</p>
+  </div>
 {{ end }}

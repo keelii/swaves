@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/url"
 	"swaves/internal/types"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,6 +17,7 @@ func RequireAdmin(store *types.SessionStore, loginRoute string) fiber.Handler {
 		if succ {
 			return c.Next()
 		}
-		return c.Redirect(loginRoute)
+		dest := loginRoute + "?returnUrl=" + url.QueryEscape(c.OriginalURL())
+		return c.Redirect(dest)
 	}
 }

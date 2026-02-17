@@ -97,7 +97,10 @@
       <h1 class="login-title">开始吧，{{ settings "author" }}</h1>
     </div>
 
+    {{ template "partials/error_message" . }}
+
     <form id="form" method="POST" action="/admin/login">
+      {{ if .ReturnUrl }}<input type="hidden" name="returnUrl" value="{{ .ReturnUrl }}">{{ end }}
       <div class="form-group">
         <div class="password-wrapper">
           <input
