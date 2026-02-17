@@ -1,151 +1,129 @@
 <style>
-  .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+  /*.btn {*/
+  /*    display: inline-flex;*/
+  /*    align-items: center;*/
+  /*    justify-content: center;*/
 
-      padding: 4px 10px;
-      font-size: 14px;
+  /*    padding: 4px 10px;*/
+  /*    font-size: 14px;*/
 
-      color: #222;
-      background: #fff;
-      border: 1px solid #d0d7de;
-      border-radius: 4px;
+  /*    color: var(--foreground);*/
+  /*    background: var(--card);*/
+  /*    border: 1px solid var(--border);*/
+  /*    border-radius: var(--radius-medium);*/
 
-      cursor: pointer;
-      text-decoration: none;
-      white-space: nowrap;
+  /*    cursor: pointer;*/
+  /*    text-decoration: none;*/
+  /*    white-space: nowrap;*/
 
-      transition: background-color .12s ease,
-      border-color .12s ease,
-      box-shadow .12s ease;
-  }
-  .btn.primary {
-      background: var(--nc-lk-1);
-      border-color: var(--nc-lk-1);
-      color: var(--nc-lk-tx);
-  }
-  .btn.primary:hover {
-      color: var(--nc-lk-tx);
-      background: var(--nc-lk-2);
-  }
-
-  .btn:hover {
-      background: #f6f8fa;
-  }
-
-  .btn:active {
-      background: #eaeef2;
-  }
-
-  .btn:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(9,105,218,.25);
-  }
-  .btn .btn-icon {
-      display: inline-flex;
-      margin-right: 6px;
-      line-height: 0;
-  }
-  .btn .btn-icon svg {
-      width: 14px;
-      height: 14px;
-  }
+  /*    transition: background-color var(--transition-fast),*/
+  /*    border-color var(--transition-fast),*/
+  /*    box-shadow var(--transition-fast);*/
+  /*}*/
+  /*.btn .btn-icon {*/
+  /*    display: inline-flex;*/
+  /*    margin-right: 6px;*/
+  /*    line-height: 0;*/
+  /*}*/
+  /*.btn .btn-icon svg {*/
+  /*    width: 14px;*/
+  /*    height: 14px;*/
+  /*}*/
 </style>
-<div class="actions salign">
+<div class="actions flex justify-between">
   <div class="left">
       {{ if eq .UrlPath "/admin/posts/new" }}
-        <button type="submit" form="form" name="action" value="save" class="btn primary">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
-        <button type="submit" form="form" name="action" value="publish" class="btn primary">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "发布" }}</button>
+        <button type="submit" form="form" name="action" value="save" class="button">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
+        <button type="submit" form="form" name="action" value="publish" class="button">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "发布" }}</button>
       {{ else if eq .UrlPath "/admin/tags/new" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
       {{ else if eq .UrlPath "/admin/categories/new" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
       {{ else if eq .UrlPath "/admin/encrypted-posts/new" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
       {{ else if eq .UrlPath "/admin/redirects/new" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
       {{ else if eq .UrlPath "/admin/tasks/new" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
       {{ else if eq .UrlPath "/admin/settings/new" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
       {{ else if eq .UrlPath "/admin/import" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "plus" "label" "导入" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "plus" "label" "导入" }}</a>
       {{ else if eq .UrlPath "/admin/import/preview" }}
-        <a class="btn primary" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "plus" "label" "全部导入" }}</a>
+        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "partials/action_btn_content" dict "name" "plus" "label" "全部导入" }}</a>
       {{ else if eq .UrlPath "/admin/settings/all" }}
-        <button type="submit" form="form" class="btn primary">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
+        <button type="submit" form="form" class="button">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
       {{ else if match .UrlPath "^/admin/posts/\\d+/edit$" }}
         {{ if and .Post (gt .Post.PublishedAt 0) }}
-        <button type="submit" form="form" name="action" value="update" class="btn primary">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "更新" }}</button>
+        <button type="submit" form="form" name="action" value="update" class="button">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "更新" }}</button>
         {{ else }}
-        <button type="submit" form="form" name="action" value="save" class="btn primary">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
-        <button type="submit" form="form" name="action" value="publish" class="btn primary">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "发布" }}</button>
+        <button type="submit" form="form" name="action" value="save" class="button">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
+        <button type="submit" form="form" name="action" value="publish" class="button">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "发布" }}</button>
         {{ end }}
       {{ else if match .UrlPath "^/admin/(tags|categories|encrypted-posts|redirects|tasks|settings)/\\d+/edit$" }}
-        <button type="submit" form="form" class="btn primary">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
+        <button type="submit" form="form" class="button">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
       {{ end }}
       {{ if eq .UrlPath "/admin/posts" }}
-        <a class="btn primary" href="/admin/posts/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建文章" }}</a>
+        <a class="button" href="/admin/posts/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建文章" }}</a>
       {{ else if eq .UrlPath "/admin/tags" }}
-        <a class="btn primary" href="/admin/tags/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建标签" }}</a>
+        <a class="button" href="/admin/tags/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建标签" }}</a>
       {{ else if eq .UrlPath "/admin/categories" }}
-        <a class="btn primary" href="/admin/categories/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
-        <a class="btn primary" href="/admin/categories/tree">{{ template "partials/action_btn_content" dict "name" "list-tree" "label" "分类树" }}</a>
+        <a class="button" href="/admin/categories/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
+        <a class="button" href="/admin/categories/tree">{{ template "partials/action_btn_content" dict "name" "list-tree" "label" "分类树" }}</a>
       {{ else if eq .UrlPath "/admin/encrypted-posts" }}
-        <a class="btn primary" href="/admin/encrypted-posts/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建加密文章" }}</a>
+        <a class="button" href="/admin/encrypted-posts/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建加密文章" }}</a>
       {{ else if eq .UrlPath "/admin/redirects" }}
-        <a class="btn primary" href="/admin/redirects/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建重定向" }}</a>
+        <a class="button" href="/admin/redirects/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建重定向" }}</a>
       {{ else if eq .UrlPath "/admin/tasks" }}
-        <a class="btn primary" href="/admin/tasks/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建任务" }}</a>
+        <a class="button" href="/admin/tasks/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建任务" }}</a>
       {{ else if eq .UrlPath "/admin/settings" }}
-        <a class="btn primary" href="/admin/settings/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建设置" }}</a>
-        <a class="btn primary" href="/admin/settings/all">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "编辑全部" }}</a>
+        <a class="button" href="/admin/settings/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建设置" }}</a>
+        <a class="button" href="/admin/settings/all">{{ template "partials/action_btn_content" dict "name" "square-pen" "label" "编辑全部" }}</a>
       {{ else if eq .UrlPath "/admin/settings/all" }}
-        <a class="btn primary" href="/admin/settings">{{ template "partials/action_btn_content" dict "name" "list" "label" "返回列表" }}</a>
+        <a class="button" href="/admin/settings">{{ template "partials/action_btn_content" dict "name" "list" "label" "返回列表" }}</a>
       {{ else if eq .UrlPath "/admin/categories/tree" }}
-        <a class="btn primary" href="/admin/categories/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
-        <a class="btn primary" href="/admin/categories">{{ template "partials/action_btn_content" dict "name" "list" "label" "分类列表" }}</a>
+        <a class="button" href="/admin/categories/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
+        <a class="button" href="/admin/categories">{{ template "partials/action_btn_content" dict "name" "list" "label" "分类列表" }}</a>
       {{ else if hasPrefix .UrlPath "/admin/tasks/" }}
           {{ if hasSuffix .UrlPath "/runs" }}
-            <a class="btn primary" href="/admin/tasks">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回任务" }}</a>
+            <a class="button" href="/admin/tasks">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回任务" }}</a>
           {{ end }}
       {{ else if eq .UrlPath "/admin/posts/new" }}
-        <a class="btn primary" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/tags/new" }}
-        <a class="btn primary" href="/admin/tags">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/tags">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/categories/new" }}
-        <a class="btn primary" href="/admin/categories">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/categories">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/encrypted-posts/new" }}
-        <a class="btn primary" href="/admin/encrypted-posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/encrypted-posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/redirects/new" }}
-        <a class="btn primary" href="/admin/redirects">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/redirects">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/tasks/new" }}
-        <a class="btn primary" href="/admin/tasks">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/tasks">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/settings/new" }}
-        <a class="btn primary" href="/admin/settings">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/settings">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/import" }}
-        <a class="btn primary" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/import/preview" }}
-        <a class="btn primary" href="/admin/import">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/import">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if eq .UrlPath "/admin/export" }}
-        <a class="btn primary" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if match .UrlPath "^/admin/posts/\\d+/edit$" }}
-        <a class="btn primary" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if match .UrlPath "^/admin/tags/\\d+/edit$" }}
-        <a class="btn primary" href="/admin/tags">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/tags">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if match .UrlPath "^/admin/categories/\\d+/edit$" }}
-        <a class="btn primary" href="/admin/categories">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/categories">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if match .UrlPath "^/admin/encrypted-posts/\\d+/edit$" }}
-        <a class="btn primary" href="/admin/encrypted-posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/encrypted-posts">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if match .UrlPath "^/admin/redirects/\\d+/edit$" }}
-        <a class="btn primary" href="/admin/redirects">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/redirects">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if match .UrlPath "^/admin/tasks/\\d+/edit$" }}
-        <a class="btn primary" href="/admin/tasks">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/tasks">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else if match .UrlPath "^/admin/settings/\\d+/edit$" }}
-        <a class="btn primary" href="/admin/settings">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin/settings">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else }}
-        <a class="btn primary" href="/admin">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="/admin">{{ template "partials/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ end }}
   </div>
   <div class="right">

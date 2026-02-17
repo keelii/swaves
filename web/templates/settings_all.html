@@ -13,7 +13,7 @@
 
   <p>
     <label>
-      {{ .Name }}{{ if eq .Reload 1 }} <small style="color: var(--nc-lk-1);">（需重启生效）</small>{{ end }}
+      {{ .Name }}{{ if eq .Reload 1 }} <small style="color: var(--primary);">（需重启生效）</small>{{ end }}
       {{ if .Description }}
       <small>{{ .Description }}</small><br>
       {{ end }}
@@ -31,7 +31,7 @@
       {{ else if eq .Type "url" }}
         <input type="url" name="setting_{{ $code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }}>
       {{ else if eq .Type "range" }}
-        <span class="range-wrap ivalign gap-h">
+        <span class="range-wrap inline-flex items-center gap-2">
           <input type="range" id="setting_{{ $code }}_range" name="setting_{{ $code }}" value="{{ .Value }}"{{ renderAttrs .AttrsParsed }} data-range-value{{ if eq $code "font_size" }} data-unit=" px"{{ end }}>
           <output class="range-value" for="setting_{{ $code }}_range">{{ .Value }}{{ if eq $code "font_size" }} px{{ end }}</output>
         </span>
@@ -41,18 +41,18 @@
         <textarea name="setting_{{ $code }}"{{ renderAttrs .AttrsParsed }}>{{ .Value }}</textarea>
       {{ else if eq .Type "radio" }}
         {{ $currentValue := or .Value .DefaultOptionValue }}
-        <div class="flex gap-1">
+        <div class="flex gap-4">
         {{ range .OptionsParsed }}
-          <label class="ivalign gap-h">
+          <label class="inline-flex items-center gap-2">
             <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
             {{ .label }}
           </label>
         {{ end }}
         </div>
       {{ else if eq .Type "checkbox" }}
-        <div class="flex gap-1">
+        <div class="flex gap-4">
         {{ range .OptionsParsed }}
-          <label class="ivalign gap-h">
+          <label class="inline-flex items-center gap-2">
             <input type="checkbox" name="setting_{{ $code }}" value="{{ .value }}" {{ if index $.CheckboxValues .value }}checked{{ end }}{{ renderAttrs $.AttrsParsed }}>
             {{ .label }}
           </label>

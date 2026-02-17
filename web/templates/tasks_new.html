@@ -1,7 +1,7 @@
 <form id="form" method="post" action="/admin/tasks/new">
 
   <p>
-    <label class="valign gap-h">
+    <label class="flex items-center gap-2">
       是否启用 {{ template "partials/toggle" dict "ID" "task_enabled_new" "Name" "enabled" "Checked" true "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
     </label>
   </p>

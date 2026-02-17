@@ -12,7 +12,7 @@
     </div>
     <div class="tab-nav-right">
         {{ if or .FilterTagName .FilterCategoryName }}
-        <div class="ivalign gap-1" style="">
+        <div class="inline-flex items-center gap-4" style="">
           {{ $tag := concat "标签 " .FilterTagName }}
           {{ $cat := concat "分类 " .FilterCategoryName }}
           {{ if .FilterTagName }}{{ template "partials/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}

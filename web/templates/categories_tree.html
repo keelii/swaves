@@ -21,10 +21,10 @@
     }
 
     /* 横向排列区 */
-    .category-item>div.valign {
+    .category-item > div.flex.items-center {
       padding-left: 10px;
     }
-    .category-item .valign {
+    .category-item .flex.items-center {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -33,12 +33,12 @@
     }
 
     /* hover 提示层级关系 */
-    .category-item .valign:hover {
+    .category-item .flex.items-center:hover {
         background: #f6f7f8;
     }
 
     /* ID */
-    .category-item .valign > div:first-child {
+    .category-item .flex.items-center > div:first-child {
         /*width: 32px;*/
         color: #999;
         font-size: 12px;
@@ -71,7 +71,7 @@
 </style>
 {{ define "category_item" }}
   <li class="category-item">
-    <div class="valign">
+    <div class="flex items-center">
       <div>{{ .Category.Sort }}</div>
       <div>
         <strong>{{ .Category.Name }}</strong>
@@ -79,7 +79,7 @@
             <span>- {{ .Category.Description }}</span>
           {{ end }}
       </div>
-      <div class="salign valign" style="flex-grow: 1; width: 300px; justify-content: end;">
+      <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">
             {{ template "partials/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
         </form>

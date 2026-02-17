@@ -1,4 +1,4 @@
-<form method="get" action="/admin/posts" class="valign" id="posts-search-form">
+<form method="get" action="/admin/posts" class="flex items-center" id="posts-search-form">
   <input type="hidden" name="kind" value="{{ or .KindQuery "0" }}">
   {{ if .FilterTagIDStr }}<input type="hidden" name="tag" value="{{ .FilterTagIDStr }}">{{ end }}
   {{ if .FilterCategoryIDStr }}<input type="hidden" name="category" value="{{ .FilterCategoryIDStr }}">{{ end }}

@@ -7,7 +7,7 @@
     height: auto;
     min-height: 280px;
     overflow: visible;
-    /*border-top: 1px solid var(--nc-bg-3);*/
+    /*border-top: 1px solid var(--border);*/
     /*border-radius: 0 4px 4px 4px;*/
   }
   .markdown-editor-wrap .tab-pane {
@@ -48,68 +48,74 @@
     flex: 1;
     min-height: 200px;
     padding: 0.75em 1em;
-    border: 1px solid var(--nc-bg-3);
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: var(--nc-bg-1);
+    background: var(--card);
     overflow: auto;
   }
   .markdown-preview-box:empty::before {
     content: "预览将在此处显示…";
-    color: var(--nc-tx-g-9);
-  }
-  .markdown-preview-box li p,
-  .markdown-preview-box p img {
-    margin-bottom: 0;
-  }
-  .markdown-editor-wrap #toc li::marker {
-    color: var(--nc-tx-g-9);
-  }
-  .markdown-editor-wrap #toc a {
-    color: var(--nc-tx-g-6);
+    color: var(--muted-foreground);
   }
   .markdown-editor-wrap .split-toc-wrap {
     min-width: 0;
     display: flex;
     flex-direction: column;
   }
-  .markdown-editor-wrap #toc {
-    background: var(--nc-bg-2);
-    border-radius: 4px;
-    flex: 1;
-    overflow: auto;
+
+  /*.toc {*/
+  /*  max-height: calc(100vh - 50px);*/
+  /*}*/
+  /*.toc a, .toc li {*/
+  /*  font-size: 16px;*/
+  /*}*/
+  /*.toc ol {*/
+  /*  padding-left: 1em;*/
+  /*}*/
+  .toc ol { list-style-type: decimal }
+  .toc ol ol { list-style-type: lower-alpha }
+  .toc ol ol ol { list-style-type: lower-roman }
+  .toc ol ol ol ol { list-style-type: lower-greek }
+  .toc ol ol ol ol ol { list-style-type: decimal }
+  .toc ol ol ol ol ol ol { list-style-type: lower-alpha }
+  .toc-toggle {
+    display: none;
   }
-  .markdown-editor-wrap #toc-title {
-    /*display: none;*/
-    padding: 1em;
-    font-size: 1.2em;
-    margin: 0;
-    border-bottom: 1px solid var(--nc-bg-3);
-  }
-  .markdown-editor-wrap #toc-list {
-    padding: 0.5em 0 0 0;
-  }
-  .markdown-editor-wrap #toc-list > li {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  .markdown-editor-wrap #toc-list > li ul {
-    padding-left: 2em;
-    list-style-type: decimal;
-  }
-  .markdown-editor-wrap #toc-list > li ul ul {
-    padding-left: 1.5em;
-    list-style-type: lower-alpha;
-  }
-  .markdown-editor-wrap #toc-list > li ul ul ul {
-    list-style-type: lower-roman;
-  }
-  .markdown-editor-wrap #toc-list > li ul ul ul {
-    list-style-type: lower-greek;
-  }
-  #split-toc {
+  .toc-title {
     position: sticky;
-    top: 0;
+    padding: 0 1em;
+    margin: 0;
+    height: 40px;
+    line-height: 40px;
+    font-size: 18px;
+    font-style: normal;
+    font-weight: bold;
+    border-bottom: 1px solid #eee;
+  }
+  .toc .toc-list {
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.5em 0.5em 0.5em 1.5em;
+    /*height: calc(100% - 40px);*/
+    box-sizing: border-box;
+  }
+  .toc-list::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .toc-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .toc-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    transition: background 0.2s ease;
+  }
+
+  .toc-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
   }
 </style>
 <div class="markdown-editor-wrap">
@@ -181,7 +187,7 @@ $(function() {
       .then(function(res) {
         if (res && res.data != null) {
           $preview.html(res.data);
-          $('#toc').appendTo($('#split-toc').empty());
+          $('.toc').appendTo($('#split-toc').empty());
           if (typeof MathJax !== 'undefined') {
             // console.log(MathJax.typesetPromise)
             MathJax.typesetPromise([$preview[0]])

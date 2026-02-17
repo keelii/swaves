@@ -6,85 +6,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
   <!-- https://github.com/edwardtufte/tufte-css -->
-  <link rel="stylesheet" href="/static/new.css" />
+  <link rel="stylesheet" href="/static/oat/oat.min.css" />
   <link rel="stylesheet" href="/static/style.css" />
   <script src="/static/jquery-4.0.0.slim.min.js"></script>
-  {{ if eq (settings "mode") "dark"}}
   <style>
       :root {
-          --nc-tx-1: #ffffff;
-          --nc-tx-2: #eeeeee;
-          --nc-bg-1: #000000;
-          --nc-bg-2: #111111;
-          --nc-bg-3: #222222;
-          --nc-lk-1: #3291FF;
-          --nc-lk-2: #0070F3;
-          --nc-lk-tx: #FFFFFF;
-          --nc-ac-1: #7928CA;
-          --nc-ac-tx: #FFFFFF;
-      }
-  </style>
-  {{ else }}
-    <style>
-        :root {
-            --nc-tx-2: #433;
-            --nc-bg-2: #f5f6f7;
-            --ui-font-size: {{ settings "font_size"}}px;
-        }
-    </style>
-  {{ end }}
-  <style>
-      body {
-          /*-max-width: var(--admin_main_width);*/
-          /*font-size: var(--ui-font-size);*/
+        --admin-font-size: {{ settings "font_size"}}px;
+        /*--font-sans: -apple-system, system-ui, sans-serif;*/
+        /*--font-sans: Inter, -apple-system, "system-ui", "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";*/
       }
       .content-body {
-          font-size: var(--ui-font-size);
+          font-size: var(--admin-font-size);
       }
-      svg {
-          vertical-align: text-bottom;
-      }
-      nav, form, button {
-          margin-bottom: 0;
-      }
-      table th {
-          white-space: nowrap;
-      }
-      textarea, select, input {
-          margin-bottom: 0;
-      }
-      .text-overflow {
-          width: 5em;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-      }
-      .flex {
-          display: flex;
-      }
-      .gap-h { gap: 0.5em; }
-      .gap-1 { gap: 1em; }
-      .gap-2 { gap: 2em; }
-      .gap-3 { gap: 3em; }
       .inline-flex {
           display: inline-flex;
       }
-      .valign {
-          display: flex;
-          align-items: center;
-          /*gap: 5px;*/
-      }
-      .ivalign {
-          display: inline-flex;
-          align-items: center;
-          /*gap: 5px;*/
-      }
       .grow {
           flex-grow: 1;
-      }
-      .salign {
-          display:flex;
-          justify-content: space-between;
       }
       .row-actions {
           display: inline-flex;
@@ -94,7 +32,7 @@
       .row-actions form {
           margin: 0;
       }
-      .row-action-btn {
+      .row-actions .row-action-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -102,35 +40,30 @@
           height: 28px;
           padding: 0;
           margin: 0;
-          color: var(--nc-tx-2);
-          background: var(--nc-bg-1);
-          border: 1px solid var(--nc-bg-3);
-          border-radius: 4px;
+          color: var(--foreground);
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-medium);
           cursor: pointer;
           text-decoration: none;
       }
       .row-action-btn:hover {
-          background: var(--nc-bg-1);
-          color: var(--nc-lk-1);
-          border-color: var(--nc-lk-1);
-      }
-      .row-action-btn svg {
-          width: 14px;
-          height: 14px;
-          pointer-events: none;
+          background: var(--card);
+          color: var(--primary);
+          border-color: var(--primary);
       }
   </style>
 </head>
-<body>
+<body{{ if eq (settings "mode") "dark" }} data-theme="dark"{{ end }}>
 
 <div class="admin-container">
   <!-- 顶部导航 -->
-  <div class="top-navigation salign">
+  <div class="top-navigation flex justify-between">
     <div class="nav-brand">
       <span class="menu-toggle-btn" onclick="toggleSidebar()">☰</span>
       {{ settings "site_name" }} Admin
     </div>
-    <div class="nav-actions salign grow">
+    <div class="nav-actions flex justify-between grow">
       {{template "partials/actions" .}}
       <div class="nav-user">
           {{ if .IsLogin }}

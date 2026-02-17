@@ -1,17 +1,17 @@
 <form id="form" method="post" action="/admin/posts/new">
 
-  <div class="salign gap-1">
+  <div class="flex justify-between gap-4">
     <div class="grow">
       <p>
         <input style="width:100%;" type="text" name="title" id="title" required placeholder="文章标题">
       </p>
     </div>
     <div class="grow">
-      <div class="flex gap-1">
+      <div class="flex gap-4">
         <div class="grow">
           <input style="width:100%;" type="text" name="slug" id="slug" required placeholder="url-friendly-slug">
         </div>
-        <div class="valign gap-1">
+        <div class="flex items-center gap-4">
           <button onclick="autoSetSlug()" type="button">Auto</button>
           <button onclick="autoTranslate()" type="button">Translate</button>
         </div>
@@ -32,7 +32,7 @@
   </div>
 
   <p>
-    <label class="valign gap-h">
+    <label class="flex items-center gap-2">
       Kind (类型)<br>
       {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" "0" }}
     </label>

@@ -8,7 +8,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--nc-bg-2);
+        background: var(--muted);
     }
 
     .login-container {
@@ -30,13 +30,13 @@
     .login-title {
         font-size: 1.5rem;
         font-weight: bold;
-        color: var(--nc-tx-1);
+        color: var(--foreground);
         margin: 0;
     }
 
     .login-subtitle {
         font-size: 0.9rem;
-        color: var(--nc-tx-2);
+        color: var(--muted-foreground);
         margin-top: 0.25rem;
     }
 
@@ -47,10 +47,10 @@
     .form-input {
         width: 100%;
         padding: 0.75rem 1rem;
-        border: 1px solid var(--nc-bg-3);
+        border: 1px solid var(--border);
         border-radius: 4px;
-        background: var(--nc-bg-1);
-        color: var(--nc-tx-1);
+        background: var(--card);
+        color: var(--foreground);
     }
 
     .password-wrapper {
@@ -60,8 +60,8 @@
     .login-button {
         width: 100%;
         padding: 0.75rem 1rem;
-        color: white;
-        background: var(--nc-lk-1);
+        color: var(--primary-foreground);
+        background: var(--primary);
         border: none;
         border-radius: 4px;
         cursor: pointer;
@@ -69,7 +69,7 @@
     }
 
     .login-button:hover {
-        background: var(--nc-lk-2);
+        background: var(--admin-primary-hover);
         box-shadow: 0 4px 8px rgba(0, 116, 217, 0.3);
         transform: translateY(-1px);
     }

@@ -5,11 +5,11 @@
   <title>{{ .Title }} - {{ settings "site_name" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="/static/new.css" />
+  <link rel="stylesheet" href="/static/oat/oat.min.css" />
   <link rel="stylesheet" href="/static/style.css" />
   <title>{{ .Title }}</title>
 </head>
-<body>
+<body{{ if eq (settings "mode") "dark" }} data-theme="dark"{{ end }}>
 {{embed}}
 </body>
 </html>

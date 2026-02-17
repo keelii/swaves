@@ -1,7 +1,7 @@
 <p>
-  <div class="ivalign gap-1">
+  <div class="inline-flex items-center gap-4">
     {{ range .Options }}
-    <label class="ivalign gap-h">
+    <label class="inline-flex items-center gap-2">
       <input type="radio" name="{{ $.Name }}" value="{{ .Value }}"{{ if eq $.Selected .Value }} checked{{ end }}>
       {{ .Label }}
     </label>

@@ -1013,6 +1013,16 @@ func CountPostsByKind(db *DB, kind PostKind) (int, error) {
 	return Count(db, specPosts, "kind = ?", []interface{}{kind})
 }
 
+// CountCategories 统计分类数（未删除）
+func CountCategories(db *DB) (int, error) {
+	return Count(db, specCategories, "", nil)
+}
+
+// CountTags 统计标签数（未删除）
+func CountTags(db *DB) (int, error) {
+	return Count(db, specTags, "", nil)
+}
+
 // ListPublishedPosts 分页列出已发布文章（用于 RSS 等），返回 []Post
 func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 	if pager == nil {

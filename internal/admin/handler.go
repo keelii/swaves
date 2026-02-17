@@ -117,6 +117,38 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 		}, "")
 	}
 
+	postCount, err := db.CountPostsByKind(h.Model, db.PostKindPost)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	pageCount, err := db.CountPostsByKind(h.Model, db.PostKindPage)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	categoryCount, err := db.CountCategories(h.Model)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	tagCount, err := db.CountTags(h.Model)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
 	topPosts, err := db.ListTopUVPosts(h.Model, 10)
 	if err != nil {
 		return RenderAdminView(c, "admin_home", fiber.Map{
@@ -134,10 +166,14 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "admin_home", fiber.Map{
-		"Title":    "工作台",
-		"SiteUV":   siteUV,
-		"TopPosts": topPosts,
-		"TopPages": topPages,
+		"Title":         "工作台",
+		"SiteUV":        siteUV,
+		"PostCount":     postCount,
+		"PageCount":     pageCount,
+		"CategoryCount": categoryCount,
+		"TagCount":      tagCount,
+		"TopPosts":      topPosts,
+		"TopPages":      topPages,
 	}, "")
 }
 

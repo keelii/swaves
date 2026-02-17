@@ -25,12 +25,12 @@
         <input type="text" name="items[{{ .Index }}][created_at]" value="{{ .CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">
       </td>
       <td>
-        <label class="ivalign gap-h"><input type="radio" name="items[{{ .Index }}][status]" value="draft" {{ if eq .Status "draft" }}checked{{ end }}> draft</label>
-        <label class="ivalign gap-h"><input type="radio" name="items[{{ .Index }}][status]" value="published" {{ if eq .Status "published" }}checked{{ end }}> published</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="items[{{ .Index }}][status]" value="draft" {{ if eq .Status "draft" }}checked{{ end }}> draft</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="items[{{ .Index }}][status]" value="published" {{ if eq .Status "published" }}checked{{ end }}> published</label>
       </td>
       <td>
-        <label class="ivalign gap-h"><input type="radio" name="items[{{ .Index }}][kind]" value="0" {{ if or (eq .Kind "0") (eq .Kind "") }}checked{{ end }}> post</label>
-        <label class="ivalign gap-h"><input type="radio" name="items[{{ .Index }}][kind]" value="1" {{ if eq .Kind "1" }}checked{{ end }}> page</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="items[{{ .Index }}][kind]" value="0" {{ if or (eq .Kind "0") (eq .Kind "") }}checked{{ end }}> post</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="items[{{ .Index }}][kind]" value="1" {{ if eq .Kind "1" }}checked{{ end }}> page</label>
       </td>
       <td>
         <input type="text" name="items[{{ .Index }}][tags]" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">

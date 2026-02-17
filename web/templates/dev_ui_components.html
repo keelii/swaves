@@ -45,7 +45,7 @@
 
 
   <h3>.tab-card（默认）</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">带圆角卡片式 Tab，当前项白底+下边线。</p>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">带圆角卡片式 Tab，当前项白底+下边线。</p>
   <div class="tab-card">
     <div class="tab-nav">
       <div class="tab-item active">
@@ -63,7 +63,7 @@
 
 <section style="margin-bottom: 2em;">
   <h3>.tab-nav-right（右侧自定义区域）</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">在 .tab-nav 内放置 .tab-nav-right，左侧为 tab-item，右侧为自定义内容（按钮、链接等）。</p>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">在 .tab-nav 内放置 .tab-nav-right，左侧为 tab-item，右侧为自定义内容（按钮、链接等）。</p>
   <div class="tab-card">
     <div class="tab-nav">
       <div class="tab-item active">
@@ -90,7 +90,7 @@
         <a href="#">预览</a>
       </div>
       <div class="tab-nav-right">
-        <span style="font-size: 0.9em; color: var(--nc-tx-2);">字数 0</span>
+        <span style="font-size: 0.9em; color: var(--foreground);">字数 0</span>
       </div>
     </div>
     <div class="tab-content">
@@ -101,7 +101,7 @@
 
 <section style="margin-bottom: 2em;">
   <h3>.tab-card.simple</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">仅下划线，当前项蓝色下边线。</p>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">仅下划线，当前项蓝色下边线。</p>
   <div class="tab-card simple">
     <div class="tab-nav">
       <div class="tab-item active">
@@ -118,17 +118,17 @@
 </section>
 
 <section style="margin-bottom: 2em;">
-  <h3>.salign / .valign / .ivalign + .gap-*</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">salign：两端对齐；valign：垂直居中（flex）；ivalign：行内 flex 垂直居中；gap-h / gap-1 / gap-2 间距。</p>
-  <div class="salign gap-1" style="margin-bottom: 0.5em;">
+  <h3>.flex justify-between / .flex items-center / .inline-flex items-center + .gap-*</h3>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">flex justify-between：两端对齐；flex items-center：垂直居中（flex）；inline-flex items-center：行内 flex 垂直居中；gap-2 / gap-4 间距。</p>
+  <div class="flex justify-between gap-4" style="margin-bottom: 0.5em;">
     <span>左侧</span>
     <span>右侧</span>
   </div>
-  <div class="valign gap-1" style="margin-bottom: 0.5em;">
-    <label class="ivalign gap-h"><input type="radio" name="demo" value="a"> 选项 A</label>
-    <label class="ivalign gap-h"><input type="radio" name="demo" value="b"> 选项 B</label>
+  <div class="flex items-center gap-4" style="margin-bottom: 0.5em;">
+    <label class="inline-flex items-center gap-2"><input type="radio" name="demo" value="a"> 选项 A</label>
+    <label class="inline-flex items-center gap-2"><input type="radio" name="demo" value="b"> 选项 B</label>
   </div>
-  <div class="ivalign gap-h">
+  <div class="inline-flex items-center gap-2">
     <button type="button" class="btn">按钮</button>
     <a href="#" class="btn primary">主按钮</a>
   </div>
@@ -136,21 +136,21 @@
 
 <section style="margin-bottom: 2em;">
   <h3>.btn / .btn.primary</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">普通按钮与主色按钮（与 partials/actions 一致）。</p>
-  <div class="salign gap-1">
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">普通按钮与主色按钮（与 partials/actions 一致）。</p>
+  <div class="flex justify-between gap-4">
     <a href="#" class="btn">取消</a>
     <a href="#" class="btn primary">保存</a>
   </div>
 </section>
 
 <section style="margin-bottom: 2em;">
-  <h3>.actions.salign</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">操作栏：左侧链接组 + 右侧链接组。</p>
-  <div class="actions salign">
+  <h3>.actions.flex justify-between</h3>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">操作栏：左侧链接组 + 右侧链接组。</p>
+  <div class="actions flex justify-between">
     <div class="left">
       <a class="btn primary" href="#">新建</a>
     </div>
-    <div class="right salign gap-1">
+    <div class="right flex justify-between gap-4">
       <a href="#">链接一</a>
       <a href="#">链接二</a>
     </div>
@@ -159,8 +159,8 @@
 
 <section style="margin-bottom: 2em;">
   <h3>.tag（圆角标签 + 删除 icon）</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">使用 partials/tag_item：传入 Label；需删除 icon 时传 RemoveHref（链接）。</p>
-  <div class="ivalign gap-1" style="flex-wrap: wrap;">
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">使用 partials/tag_item：传入 Label；需删除 icon 时传 RemoveHref（链接）。</p>
+  <div class="inline-flex items-center gap-4" style="flex-wrap: wrap;">
     {{ template "partials/tag_item" dict "Label" "标签一" "RemoveHref" "#" }}
     {{ template "partials/tag_item" dict "Label" "标签二" }}
     {{ template "partials/tag_item" dict "Label" "可删除" "RemoveHref" "#" }}
@@ -168,9 +168,9 @@
 </section>
 
 <section style="margin-bottom: 2em;">
-  <h3>分页 .ivalign .gap-*</h3>
-  <p style="color: var(--nc-tx-2, #666); font-size: 0.9em; margin-top: 0.25em;">与 partials/pagination 一致的布局示意。</p>
-  <div class="ivalign gap-1">
+  <h3>分页 .inline-flex items-center .gap-*</h3>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">与 partials/pagination 一致的布局示意。</p>
+  <div class="inline-flex items-center gap-4">
     <span>共 100 条</span>
     <a href="#">上一页</a>
     <span>1 / 10</span>

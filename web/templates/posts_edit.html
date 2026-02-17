@@ -1,5 +1,5 @@
 <form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
-  <div class="valign gap-1" style="margin-bottom: 1em;">
+  <div class="flex items-center gap-4" style="margin-bottom: 1em;">
     <span style="min-width: 30%">
       <input type="text" style="width: 100%" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
     </span>
@@ -7,7 +7,7 @@
     {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
   </div>
 
-  <div class="salign gap-1">
+  <div class="flex justify-between gap-4">
     <div class="grow">
       {{ template "partials/tag_select" . }}
     </div>
