@@ -114,7 +114,7 @@ func NewViewEngine() *html.Engine {
 		if tsInt64 == 0 {
 			return "-"
 		}
-		return time.Unix(tsInt64, 0).Format("2006-01-02")
+		return time.Unix(tsInt64, 0).Format("2006年1月2日 15:04")
 	})
 	// formatDateTimeLocal 将 Unix timestamp 转换为 datetime-local 输入格式 (YYYY-MM-DDTHH:mm)
 	engine.AddFunc("formatDateTimeLocal", func(ts interface{}) string {

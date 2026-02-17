@@ -1,6 +1,7 @@
 package site
 
 import (
+	"swaves/internal/middleware"
 	"swaves/internal/store"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,6 +14,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	)
 
 	uiGroup := app.Group(store.GetSetting("base_path"))
+	uiGroup.Use(middleware.EnsureVisitorID(""))
 
 	uiGroup.Get("/", handler.GetHome)
 	// RSS

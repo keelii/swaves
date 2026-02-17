@@ -22,6 +22,7 @@ const (
 	TablePostCategories TableName = "t_post_categories"
 	TableTaskRuns       TableName = "t_task_runs"
 	TableHttpErrorLogs  TableName = "t_http_error_logs"
+	TableUVUnique       TableName = "t_uv_unique"
 )
 
 const InitialSQL = `
@@ -190,6 +191,21 @@ const InitialSQL = `
 		created_at INTEGER NOT NULL,
 		expired_at INTEGER NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS ` + TableUVUnique + ` (
+		entity_type INTEGER NOT NULL CHECK (entity_type IN (1, 2, 3, 4)),
+		entity_id INTEGER NOT NULL DEFAULT 0,
+		visitor_id BLOB NOT NULL,
+		first_seen_at INTEGER NOT NULL,
+		last_seen_at INTEGER NOT NULL,
+		PRIMARY KEY(entity_type, entity_id, visitor_id)
+	) WITHOUT ROWID;
+
+	CREATE INDEX IF NOT EXISTS idx_uv_unique_entity_last_seen
+	ON ` + TableUVUnique + ` (entity_type, entity_id, last_seen_at DESC);
+
+	CREATE INDEX IF NOT EXISTS idx_uv_unique_visitor_id
+	ON ` + TableUVUnique + ` (visitor_id);
 `
 const InternalLang = `[
 	  {"label": "简体中文（中国大陆）", "value": "zh-CN"},

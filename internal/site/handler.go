@@ -2,6 +2,7 @@ package site
 
 import (
 	"fmt"
+	"log"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
 	"swaves/internal/share"
@@ -15,6 +16,30 @@ type Handler struct {
 	Model   *db.DB
 	Session *types.SessionStore
 	Service *Service
+}
+
+func (h Handler) trackSiteUV(c *fiber.Ctx) {
+	h.trackEntityUV(c, db.UVEntitySite, 0)
+}
+
+func (h Handler) trackUV(c *fiber.Ctx, entityType db.UVEntityType, entityID int64) {
+	if !entityType.IsValid() || entityID <= 0 {
+		h.trackSiteUV(c)
+		return
+	}
+
+	h.trackEntityUV(c, entityType, entityID)
+}
+
+func (h Handler) trackEntityUV(c *fiber.Ctx, entityType db.UVEntityType, entityID int64) {
+	visitorID, _ := c.Locals(middleware.VisitorIDLocalKey).(string)
+	if visitorID == "" {
+		return
+	}
+
+	if _, err := db.UpsertUVUnique(h.Model, entityType, entityID, visitorID); err != nil {
+		log.Printf("track entity uv failed: %v", err)
+	}
 }
 
 func RenderUIView(c *fiber.Ctx, view string, data fiber.Map, layout string) error {
@@ -48,6 +73,7 @@ func (h Handler) GetDate(c *fiber.Ctx) error {
 func (h Handler) GetHome(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
+	h.trackSiteUV(c)
 
 	return RenderUIView(c, "ui/home", fiber.Map{
 		"Articles": articles,
@@ -91,6 +117,8 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("page not found, maybe the date is wrong")
 	}
 
+	h.trackUV(c, db.UVEntityPost, post.Post.ID)
+
 	return RenderUIView(c, "ui/post", fiber.Map{
 		"Post": post,
 		//"Pages": ListPages(h.Model),
@@ -102,6 +130,8 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	if post == nil {
 		return c.Status(fiber.StatusNotFound).SendString("page not found")
 	}
+
+	h.trackUV(c, db.UVEntityPost, post.Post.ID)
 
 	return RenderUIView(c, "ui/post", fiber.Map{
 		"Post": post,
@@ -127,6 +157,7 @@ func (h Handler) GetCategoryIndex(c *fiber.Ctx) error {
 	}
 
 	pages := ListPages(h.Model)
+	h.trackSiteUV(c)
 	return RenderUIView(c, "ui/list", fiber.Map{
 		"Title": "Categories",
 		"Pages": pages,
@@ -140,6 +171,7 @@ func (h Handler) GetTagIndex(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("tags not found")
 	}
 
+	h.trackSiteUV(c)
 	return RenderUIView(c, "ui/list", fiber.Map{
 		"Title": "Tags",
 		"Pages": ListPages(h.Model),
@@ -153,6 +185,8 @@ func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
 	if category == nil {
 		return c.Status(fiber.StatusNotFound).SendString("category not found")
 	}
+
+	h.trackUV(c, db.UVEntityCategory, category.ID)
 
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
 
@@ -171,6 +205,8 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 	if tag == nil {
 		return c.Status(fiber.StatusNotFound).SendString("tag not found")
 	}
+
+	h.trackUV(c, db.UVEntityTag, tag.ID)
 
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
 

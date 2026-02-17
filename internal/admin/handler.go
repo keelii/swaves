@@ -2057,8 +2057,26 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 
 // Metrics
 func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
+	siteUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
+	if err != nil {
+		return RenderAdminView(c, "metrics", fiber.Map{
+			"Title": "性能监控",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	topPosts, err := db.ListTopUVPosts(h.Model, 10)
+	if err != nil {
+		return RenderAdminView(c, "metrics", fiber.Map{
+			"Title": "性能监控",
+			"Error": err.Error(),
+		}, "")
+	}
+
 	return RenderAdminView(c, "metrics", fiber.Map{
-		"Title": "性能监控",
+		"Title":    "性能监控",
+		"SiteUV":   siteUV,
+		"TopPosts": topPosts,
 	}, "")
 }
 

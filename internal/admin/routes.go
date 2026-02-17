@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"swaves/internal/consts"
+	"swaves/internal/middleware"
 	"swaves/internal/store"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,6 +15,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	)
 
 	adminGroup := app.Group(store.GetSetting("admin_path"))
+	adminGroup.Use(middleware.RequireAdmin(gStore.Session, consts.LoginRoutePath))
 
 	adminGroup.Get("/", handler.GetHome)
 	adminGroup.Get("/panic", func(c *fiber.Ctx) error {

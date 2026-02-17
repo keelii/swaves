@@ -49,9 +49,6 @@ func NewApp(config types.AppConfig) SwavesApp {
 		ChartJsURL: "/static/metrics/Chart.bundle.min.js",
 	}))
 
-	// Auth
-	app.Use(middleware.RequireAdmin(globalStore.Session, consts.LoginRoutePath))
-
 	//app.Use(limiter.New())
 	app.Use(middleware.AdminViewContext(globalStore.Session))
 	app.Use(middleware.GlobalSettings(consts.GlobalSettingKey))
