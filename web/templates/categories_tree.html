@@ -88,7 +88,9 @@
           <a href="/admin/categories/new?parent_id={{ .Category.ID }}">Add</a>
         </div>
         <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
-          <button type="submit">Delete</button>
+          <button type="submit">
+              {{ template "partials/action_btn_content" dict "name" "trash-2" "size" "20" "label" "删除" }}
+          </button>
         </form>
       </div>
     </div>

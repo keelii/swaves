@@ -990,6 +990,10 @@ func SoftDeletePost(db *DB, id int64) error {
 	return Delete(db, specPosts, id)
 }
 
+func HardDeletePost(db *DB, id int64) error {
+	return HardDelete(db, specPosts, id)
+}
+
 func RestorePost(db *DB, id int64) error {
 	return Restore(db, specPosts, id)
 }
@@ -1072,6 +1076,10 @@ func UpdateEncryptedPost(db *DB, p *EncryptedPost) error {
 
 func SoftDeleteEncryptedPost(db *DB, id int64) error {
 	return Delete(db, specEncryptedPosts, id)
+}
+
+func HardDeleteEncryptedPost(db *DB, id int64) error {
+	return HardDelete(db, specEncryptedPosts, id)
 }
 
 func RestoreEncryptedPost(db *DB, id int64) error {
@@ -1217,6 +1225,10 @@ func UpdateTag(db *DB, t *Tag) error {
 
 func SoftDeleteTag(db *DB, id int64) error {
 	return Delete(db, specTags, id)
+}
+
+func HardDeleteTag(db *DB, id int64) error {
+	return HardDelete(db, specTags, id)
 }
 
 func RestoreTag(db *DB, id int64) error {
@@ -1899,6 +1911,10 @@ func UpdateRedirect(db *DB, r *Redirect) error {
 
 func SoftDeleteRedirect(db *DB, id int64) error {
 	return Delete(db, specRedirects, id)
+}
+
+func HardDeleteRedirect(db *DB, id int64) error {
+	return HardDelete(db, specRedirects, id)
 }
 
 func RestoreRedirect(db *DB, id int64) error {
@@ -2911,6 +2927,10 @@ func UpdateCategoryParent(db *DB, id int64, newParentID int64) error {
 
 func SoftDeleteCategory(db *DB, id int64) error {
 	return Delete(db, specCategories, id)
+}
+
+func HardDeleteCategory(db *DB, id int64) error {
+	return HardDelete(db, specCategories, id)
 }
 
 func RestoreCategory(db *DB, id int64) error {

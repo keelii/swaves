@@ -63,6 +63,9 @@
           <form id="form" method="post" action="/admin/trash/posts/{{ .ID }}/restore">
             {{ template "partials/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
           </form>
+          <form id="form" method="post" action="/admin/trash/posts/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
+          </form>
         </div>
       </td>
     </tr>
@@ -96,7 +99,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
-            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          </form>
+          <form id="form" method="post" action="/admin/trash/encrypted-posts/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
       </td>
@@ -131,7 +137,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="/admin/trash/tags/{{ .ID }}/restore">
-            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          </form>
+          <form id="form" method="post" action="/admin/trash/tags/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
       </td>
@@ -170,7 +179,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="/admin/trash/categories/{{ .ID }}/restore">
-            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          </form>
+          <form id="form" method="post" action="/admin/trash/categories/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
       </td>
@@ -205,7 +217,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="/admin/trash/redirects/{{ .ID }}/restore">
-            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "恢复" }}
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          </form>
+          <form id="form" method="post" action="/admin/trash/redirects/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
       </td>

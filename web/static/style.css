@@ -10,10 +10,31 @@ body {
 }
 select {
   min-width: 165.5px;
+  padding-right: 2rem;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5L8 10.5L12 6.5' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 14px 14px;
+}
+
+select[multiple],
+select[size]:not([size="1"]) {
+  padding-right: 0.5rem;
+  background-image: none;
 }
 mark {
   background-color: mark;
   padding: 0;
+}
+button {
+  display: inline-flex;
+  align-items: center;
+}
+button .btn-icon {
+  margin-right: 0.5em;
 }
 
 .error-message {
@@ -575,5 +596,3 @@ input[type="range"] {
 /*  background: var(--nc-bg-3);*/
 /*  opacity: 1;*/
 /*}*/
-
-

@@ -1429,6 +1429,19 @@ func (h *Handler) PostRestorePostHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/trash")
 }
 
+func (h *Handler) PostHardDeletePostHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := HardDeletePostService(h.Model, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
 func (h *Handler) PostRestoreEncryptedPostHandler(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
@@ -1436,6 +1449,19 @@ func (h *Handler) PostRestoreEncryptedPostHandler(c *fiber.Ctx) error {
 	}
 
 	if err := RestoreEncryptedPostService(h.Model, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
+func (h *Handler) PostHardDeleteEncryptedPostHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := HardDeleteEncryptedPostService(h.Model, id); err != nil {
 		return err
 	}
 
@@ -1455,6 +1481,19 @@ func (h *Handler) PostRestoreTagHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/trash")
 }
 
+func (h *Handler) PostHardDeleteTagHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := HardDeleteTagService(h.Model, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
 func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
@@ -1468,6 +1507,19 @@ func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/trash")
 }
 
+func (h *Handler) PostHardDeleteRedirectHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := HardDeleteRedirectService(h.Model, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
 func (h *Handler) PostRestoreCategoryHandler(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
@@ -1475,6 +1527,19 @@ func (h *Handler) PostRestoreCategoryHandler(c *fiber.Ctx) error {
 	}
 
 	if err := RestoreCategoryService(h.Model, id); err != nil {
+		return err
+	}
+
+	return c.Redirect("/admin/trash")
+}
+
+func (h *Handler) PostHardDeleteCategoryHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := HardDeleteCategoryService(h.Model, id); err != nil {
 		return err
 	}
 

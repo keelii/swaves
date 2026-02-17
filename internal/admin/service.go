@@ -931,20 +931,40 @@ func RestorePostService(dbx *db.DB, id int64) error {
 	return db.RestorePost(dbx, id)
 }
 
+func HardDeletePostService(dbx *db.DB, id int64) error {
+	return db.HardDeletePost(dbx, id)
+}
+
 func RestoreEncryptedPostService(dbx *db.DB, id int64) error {
 	return db.RestoreEncryptedPost(dbx, id)
+}
+
+func HardDeleteEncryptedPostService(dbx *db.DB, id int64) error {
+	return db.HardDeleteEncryptedPost(dbx, id)
 }
 
 func RestoreTagService(dbx *db.DB, id int64) error {
 	return db.RestoreTag(dbx, id)
 }
 
+func HardDeleteTagService(dbx *db.DB, id int64) error {
+	return db.HardDeleteTag(dbx, id)
+}
+
 func RestoreRedirectService(dbx *db.DB, id int64) error {
 	return db.RestoreRedirect(dbx, id)
 }
 
+func HardDeleteRedirectService(dbx *db.DB, id int64) error {
+	return db.HardDeleteRedirect(dbx, id)
+}
+
 func RestoreCategoryService(dbx *db.DB, id int64) error {
 	return db.RestoreCategory(dbx, id)
+}
+
+func HardDeleteCategoryService(dbx *db.DB, id int64) error {
+	return db.HardDeleteCategory(dbx, id)
 }
 
 // HttpErrorLogs

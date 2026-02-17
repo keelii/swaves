@@ -1,3 +1,3 @@
 <button type="{{ if .type }}{{ .type }}{{ else }}button{{ end }}" class="row-action-btn{{ if .danger }} row-action-btn-danger{{ end }}" aria-label="{{ .label }}" title="{{ .label }}">
-  {{ template "partials/lucide_icon" dict "name" .name }}
+  {{ template "partials/lucide_icon" dict "name" .name "size" .size }}
 </button>

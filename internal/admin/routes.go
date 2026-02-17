@@ -81,10 +81,15 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 
 	adminGroup.Get("/trash", handler.GetTrashHandler)
 	adminGroup.Post("/trash/posts/:id/restore", handler.PostRestorePostHandler)
+	adminGroup.Post("/trash/posts/:id/delete", handler.PostHardDeletePostHandler)
 	adminGroup.Post("/trash/encrypted-posts/:id/restore", handler.PostRestoreEncryptedPostHandler)
+	adminGroup.Post("/trash/encrypted-posts/:id/delete", handler.PostHardDeleteEncryptedPostHandler)
 	adminGroup.Post("/trash/tags/:id/restore", handler.PostRestoreTagHandler)
+	adminGroup.Post("/trash/tags/:id/delete", handler.PostHardDeleteTagHandler)
 	adminGroup.Post("/trash/categories/:id/restore", handler.PostRestoreCategoryHandler)
+	adminGroup.Post("/trash/categories/:id/delete", handler.PostHardDeleteCategoryHandler)
 	adminGroup.Post("/trash/redirects/:id/restore", handler.PostRestoreRedirectHandler)
+	adminGroup.Post("/trash/redirects/:id/delete", handler.PostHardDeleteRedirectHandler)
 
 	adminGroup.Get("/http-error-logs", handler.GetHttpErrorLogListHandler)
 	adminGroup.Post("/http-error-logs/:id/delete", handler.PostDeleteHttpErrorLogHandler)
