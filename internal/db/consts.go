@@ -75,6 +75,19 @@ const InitialSQL = `
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER
 	);
+	UPDATE ` + TablePostCategories + `
+	SET deleted_at = strftime('%s','now'),
+		updated_at = strftime('%s','now')
+	WHERE deleted_at IS NULL
+	  AND id NOT IN (
+		SELECT MIN(id)
+		FROM ` + TablePostCategories + `
+		WHERE deleted_at IS NULL
+		GROUP BY post_id, category_id
+	  );
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_post_categories_unique_active
+	ON ` + TablePostCategories + ` (post_id, category_id)
+	WHERE deleted_at IS NULL;
 
 	CREATE TABLE IF NOT EXISTS ` + TableTags + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

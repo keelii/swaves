@@ -10,6 +10,9 @@
     {{if .Post.Tags}}
       {{template "ui/tag_list" dict "Items" .Post.Tags "Label" true}}
     {{end}}
+      {{if .IsLogin}}
+        / <a href="{{ GetAdminEditPostUrl .Post.Raw }}">管理</a>
+      {{end}}
   </nav>
 </header>
 <article>

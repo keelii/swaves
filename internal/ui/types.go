@@ -25,6 +25,10 @@ type DisplayPostWithRelation struct {
 	Category *DisplayItem
 }
 
+func (receiver DisplayPostWithRelation) Raw() *db.Post {
+	return &receiver.Post
+}
+
 // DisplayPostInfo 包含了 Post 的基本信息，适用于在列表中显示，没有 HTML 内容 和 content
 type DisplayPostInfo struct {
 	ID          int64

@@ -1933,9 +1933,51 @@ func TestAttachCategoryToPost(t *testing.T) {
 		t.Fatalf("expected category ID %d, got %d", cat.ID, gotCat.ID)
 	}
 
-	// 再次关联应该不报错（INSERT OR IGNORE）
+	// 再次关联应该不报错并保持幂等
 	if err := AttachCategoryToPost(db, post.ID, cat.ID); err != nil {
 		t.Fatalf("AttachCategoryToPost duplicate should not error: %v", err)
+	}
+
+	var activeCount int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM `+string(TablePostCategories)+` WHERE post_id=? AND category_id=? AND deleted_at IS NULL`,
+		post.ID, cat.ID,
+	).Scan(&activeCount); err != nil {
+		t.Fatalf("count active post-category relation failed: %v", err)
+	}
+	if activeCount != 1 {
+		t.Fatalf("expected exactly 1 active relation, got %d", activeCount)
+	}
+}
+
+func TestAttachCategoryToPost_RestoreSoftDeleted(t *testing.T) {
+	db := openTestDB(t)
+
+	post := &Post{Title: "Restore Cat Post", Slug: "restore-cat-post", Content: "c", Status: "published"}
+	cat := &Category{Name: "Restore Cat", Slug: "restore-cat", Sort: 1}
+
+	CreatePost(db, post)
+	CreateCategory(db, cat)
+
+	if err := AttachCategoryToPost(db, post.ID, cat.ID); err != nil {
+		t.Fatalf("AttachCategoryToPost failed: %v", err)
+	}
+	if err := DetachCategoryFromPost(db, post.ID, cat.ID); err != nil {
+		t.Fatalf("DetachCategoryFromPost failed: %v", err)
+	}
+	if err := AttachCategoryToPost(db, post.ID, cat.ID); err != nil {
+		t.Fatalf("AttachCategoryToPost reattach failed: %v", err)
+	}
+
+	var totalCount int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM `+string(TablePostCategories)+` WHERE post_id=? AND category_id=?`,
+		post.ID, cat.ID,
+	).Scan(&totalCount); err != nil {
+		t.Fatalf("count total post-category relation failed: %v", err)
+	}
+	if totalCount != 1 {
+		t.Fatalf("expected relation row to be restored, got %d rows", totalCount)
 	}
 }
 

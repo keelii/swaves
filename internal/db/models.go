@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"swaves/internal/consts"
 	"swaves/internal/types"
 	"sync/atomic"
 	"time"
@@ -290,6 +291,9 @@ func Read(db *DB, spec TableSpec, opts ReadOptions, scanFunc func(*sql.Rows) (in
 		}
 		res = append(res, item)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, WrapInternalErr("Read.rows.Err", err)
+	}
 	return res, nil
 }
 
@@ -315,6 +319,9 @@ func ListDeletedRecords(db *DB, tableName TableName, selectFields, orderBy strin
 			return nil, WrapInternalErr("ListDeletedRecords.scan", err)
 		}
 		res = append(res, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListDeletedRecords.rows.Err", err)
 	}
 	return res, nil
 }
@@ -783,6 +790,16 @@ func CountPostsByKind(db *DB, kind PostKind) (int, error) {
 
 // ListPublishedPosts 分页列出已发布文章（用于 RSS 等），返回 []Post
 func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
+	if pager == nil {
+		pager = &types.Pagination{}
+	}
+	if pager.Page < 1 {
+		pager.Page = consts.DefaultPage
+	}
+	if pager.PageSize < 1 {
+		pager.PageSize = consts.DefaultPageSize
+	}
+
 	total, err := Count(db, specPosts, "status = ? AND kind = ?", []interface{}{"published", kind})
 	if err != nil {
 		log.Printf("[db] ListPublishedPosts Count: %v", err)
@@ -855,6 +872,22 @@ type PostQueryOptions struct {
 	WithContent bool // 是否查询 content 字段
 }
 
+func normalizePostQueryOptions(opts *PostQueryOptions) *PostQueryOptions {
+	if opts == nil {
+		opts = &PostQueryOptions{}
+	}
+	if opts.Pager == nil {
+		opts.Pager = &types.Pagination{}
+	}
+	if opts.Pager.Page < 1 {
+		opts.Pager.Page = consts.DefaultPage
+	}
+	if opts.Pager.PageSize < 1 {
+		opts.Pager.PageSize = consts.DefaultPageSize
+	}
+	return opts
+}
+
 func listPostsFilterClause(opts *PostQueryOptions) (clause string, args []interface{}) {
 	if opts.TagID != 0 {
 		clause += ` AND id IN (SELECT post_id FROM ` + string(TablePostTags) + ` WHERE tag_id=? AND deleted_at IS NULL)`
@@ -868,6 +901,8 @@ func listPostsFilterClause(opts *PostQueryOptions) (clause string, args []interf
 }
 
 func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
+	opts = normalizePostQueryOptions(opts)
+
 	whereBase := ""
 	whereArgs := []interface{}{}
 	if opts.Kind != nil {
@@ -919,8 +954,14 @@ func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
 	for i, p := range posts {
 		postIDs[i] = p.ID
 	}
-	tagsByPost, _ := getPostTagsByPostIDs(db, postIDs)
-	categoriesByPost, _ := getPostCategoriesByPostIDs(db, postIDs)
+	tagsByPost, err := getPostTagsByPostIDs(db, postIDs)
+	if err != nil {
+		return nil, WrapInternalErr("ListPosts.GetPostTags", err)
+	}
+	categoriesByPost, err := getPostCategoriesByPostIDs(db, postIDs)
+	if err != nil {
+		return nil, WrapInternalErr("ListPosts.GetPostCategories", err)
+	}
 
 	res := make([]PostWithRelation, 0, len(posts))
 	for _, p := range posts {
@@ -1433,8 +1474,8 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	var p Post
 	result, err := Read(db, specPosts, ReadOptions{
 		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
-		WhereClause:  "slug=?",
-		WhereArgs:    []interface{}{slug},
+		WhereClause:  "slug=? AND status=? AND published_at>0",
+		WhereArgs:    []interface{}{slug, "published"},
 		Limit:        1,
 	}, func(rows *sql.Rows) (interface{}, error) {
 		p2, err := scanPost(rows, true)
@@ -1525,6 +1566,8 @@ func likePattern(q string) string {
 
 // ListPostsBySearch 后台文章搜索：单条 SQL，优先级 title(10) > slug(5) > content(1)，ORDER BY score DESC, published_at DESC；支持 tag/category 过滤
 func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRelation, error) {
+	opts = normalizePostQueryOptions(opts)
+
 	q = strings.TrimSpace(q)
 	if q == "" {
 		return []PostWithRelation{}, nil
@@ -1620,8 +1663,14 @@ func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRela
 	for i, p := range posts {
 		postIDs[i] = p.ID
 	}
-	tagsByPost, _ := getPostTagsByPostIDs(db, postIDs)
-	categoriesByPost, _ := getPostCategoriesByPostIDs(db, postIDs)
+	tagsByPost, err := getPostTagsByPostIDs(db, postIDs)
+	if err != nil {
+		return nil, WrapInternalErr("ListPostsBySearch.GetPostTags", err)
+	}
+	categoriesByPost, err := getPostCategoriesByPostIDs(db, postIDs)
+	if err != nil {
+		return nil, WrapInternalErr("ListPostsBySearch.GetPostCategories", err)
+	}
 
 	res := make([]PostWithRelation, 0, len(posts))
 	for _, p := range posts {
@@ -2591,7 +2640,7 @@ func WrapInternalErr(label string, err error) error {
 		return nil
 	}
 	log.Printf("[db] %s: %v", label, err)
-	return fmt.Errorf("%s: %w", label, err)
+	return fmt.Errorf("%s: %w", label, errors.Join(errInternalSentinel, err))
 }
 
 // IsErrInternalError 判断是否为内部错误（由 ErrInternalError 或包含 errInternalSentinel 的包装产生）
@@ -2778,11 +2827,11 @@ func UpdateCategory(db *DB, c *Category) error {
 	var err error
 	if c.ParentID == 0 {
 		err = db.QueryRow(`
-			SELECT id FROM `+string(TableCategories)+` WHERE (parent_id IS NULL OR parent_id=0) AND slug=? AND id!=? AND deleted_at IS NULL
+			SELECT id FROM `+string(TableCategories)+` WHERE (parent_id IS NULL OR parent_id=0) AND slug=? AND id!=?
 		`, c.Slug, c.ID).Scan(&existingID)
 	} else {
 		err = db.QueryRow(`
-			SELECT id FROM `+string(TableCategories)+` WHERE parent_id=? AND slug=? AND id!=? AND deleted_at IS NULL
+			SELECT id FROM `+string(TableCategories)+` WHERE parent_id=? AND slug=? AND id!=?
 		`, c.ParentID, c.Slug, c.ID).Scan(&existingID)
 	}
 	if err == nil {
@@ -2920,15 +2969,81 @@ func GetPostCategory(db *DB, postID int64) (*Category, error) {
 
 func AttachCategoryToPost(db *DB, postID, categoryID int64) error {
 	ts := now()
-	_, err := db.Exec(
-		`INSERT OR IGNORE INTO `+string(TablePostCategories)+`
-		(post_id, category_id, created_at, updated_at)
-		 VALUES (?, ?, ?, ?)`,
-		postID, categoryID, ts, ts,
+	tx, err := db.Begin()
+	if err != nil {
+		return WrapInternalErr("AttachCategoryToPost.Begin", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	// 单篇文章最多保留一个有效分类：先软删其他分类关联
+	if _, err = tx.Exec(
+		`UPDATE `+string(TablePostCategories)+`
+		 SET deleted_at=?, updated_at=?
+		 WHERE post_id=? AND category_id<>? AND deleted_at IS NULL`,
+		ts, ts, postID, categoryID,
+	); err != nil {
+		return WrapInternalErr("AttachCategoryToPost.ClearOthers", err)
+	}
+
+	// 已存在激活关联时直接返回（幂等）
+	res, err := tx.Exec(
+		`UPDATE `+string(TablePostCategories)+`
+		 SET updated_at=?
+		 WHERE post_id=? AND category_id=? AND deleted_at IS NULL`,
+		ts, postID, categoryID,
 	)
 	if err != nil {
-		return WrapInternalErr("AttachCategoryToPost", err)
+		return WrapInternalErr("AttachCategoryToPost.TouchActive", err)
 	}
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected > 0 {
+		if err = tx.Commit(); err != nil {
+			return WrapInternalErr("AttachCategoryToPost.CommitTouch", err)
+		}
+		committed = true
+		return nil
+	}
+
+	// 优先恢复最近一条已软删除的关联，避免重复堆积历史行
+	res, err = tx.Exec(
+		`UPDATE `+string(TablePostCategories)+`
+		 SET deleted_at=NULL, updated_at=?
+		 WHERE id = (
+			SELECT id FROM `+string(TablePostCategories)+`
+			WHERE post_id=? AND category_id=? AND deleted_at IS NOT NULL
+			ORDER BY id DESC
+			LIMIT 1
+		 )`,
+		ts, postID, categoryID,
+	)
+	if err != nil {
+		return WrapInternalErr("AttachCategoryToPost.Restore", err)
+	}
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected > 0 {
+		if err = tx.Commit(); err != nil {
+			return WrapInternalErr("AttachCategoryToPost.CommitRestore", err)
+		}
+		committed = true
+		return nil
+	}
+
+	if _, err = tx.Exec(
+		`INSERT OR IGNORE INTO `+string(TablePostCategories)+`
+		 (post_id, category_id, created_at, updated_at)
+		 VALUES (?, ?, ?, ?)`,
+		postID, categoryID, ts, ts,
+	); err != nil {
+		return WrapInternalErr("AttachCategoryToPost.Insert", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return WrapInternalErr("AttachCategoryToPost.CommitInsert", err)
+	}
+	committed = true
 	return nil
 }
 
