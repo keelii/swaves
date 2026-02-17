@@ -296,7 +296,7 @@ const InternalTimezone = `[
 
 var DefaultSettings = []Setting{
 	{Sort: 1, Kind: "General", Name: "Site URL", Code: "site_url", Type: "text", Value: "http://keelii.com", Description: "站点地址，不包括路径"},
-	{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "swaves", Description: "站点名称"},
+	{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_name", Type: "text", Value: "Swaves", Description: "站点名称"},
 	{Sort: 2, Kind: "General", Name: "Site Name", Code: "site_title", Type: "text", Value: "Nothing", Description: "站点标题"},
 	{Sort: 2, Kind: "General", Name: "Site Description", Code: "site_desc", Type: "text", Value: "声音是一种机械波，而博客是一种思想波。", Description: "站点描述"},
 	{Sort: 2, Kind: "General", Name: "Site Copyright", Code: "site_copyright", Type: "text", Value: "Copyright © {{year}} keelii", Description: "站点版权"},
