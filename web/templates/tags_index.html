@@ -16,7 +16,7 @@
   <tr>
     <td>{{ .ID }}</td>
     <td>{{ .Name }}</td>
-    <td>{{ .Slug }}</td>
+    <td><a href="{{ GetTagUrl . }}" target="_blank" rel="noopener">{{ .Slug }}</a></td>
     <td><a href="/admin/posts?kind=0&tag={{ .ID }}">{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</a></td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>

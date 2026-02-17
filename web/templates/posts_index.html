@@ -50,7 +50,7 @@
   <tr>
     <td>{{ .Post.ID }}</td>
     <td>{{ if $.SearchQuery }}{{ highlight .Post.Title $.SearchQuery }}{{ else }}{{ .Post.Title }}{{ end }}</td>
-    <td>{{ if $.SearchQuery }}{{ highlight .Post.Slug $.SearchQuery }}{{ else }}{{ .Post.Slug }}{{ end }}</td>
+    <td><a href="{{ GetPostUrl .Post }}" target="_blank" rel="noopener">{{ if $.SearchQuery }}{{ highlight .Post.Slug $.SearchQuery }}{{ else }}{{ .Post.Slug }}{{ end }}</a></td>
     <td>
       {{ if .Tags }}
         {{ range $index, $t := .Tags }}{{ if $index }}, {{ end }}<a href="/admin/posts?kind={{ $.KindQuery }}{{ if $.SearchQueryEscaped }}&q={{ $.SearchQueryEscaped }}{{ end }}{{ if $.FilterCategoryIDStr }}&category={{ $.FilterCategoryIDStr }}{{ end }}&tag={{ $t.ID }}">{{ $t.Name }}</a>{{ end }}

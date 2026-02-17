@@ -19,7 +19,7 @@
   <tr>
     <td>{{ .ID }}</td>
     <td>{{ .Name }}</td>
-    <td>{{ .Slug }}</td>
+    <td><a href="{{ GetCategoryUrl . }}" target="_blank" rel="noopener">{{ .Slug }}</a></td>
     <td>
       {{ if eq .ParentID 0 }}
         <span>-</span>

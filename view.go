@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"swaves/internal/consts"
+	"swaves/internal/db"
+	"swaves/internal/share"
 	"swaves/internal/store"
 	"time"
 
@@ -213,6 +215,15 @@ func NewViewEngine() *html.Engine {
 		s = strings.ReplaceAll(s, "{{year}}", time.Now().Format("2006"))
 		return s
 	})
+	// 前台 URL（用于后台列表中「URL 标识」列加链接）
+	engine.AddFunc("GetPostUrl", func(p *db.Post) string {
+		if p == nil {
+			return ""
+		}
+		return share.GetPostUrl(*p)
+	})
+	engine.AddFunc("GetTagUrl", share.GetTagUrl)
+	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
 	engine.Reload(true)
 
 	return engine
