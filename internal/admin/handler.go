@@ -12,6 +12,7 @@ import (
 	"strings"
 	"swaves/helper"
 	"swaves/internal/db"
+	job "swaves/internal/jobs"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 	"swaves/internal/types"
@@ -1986,9 +1987,11 @@ func (h *Handler) PostTriggerTaskHandler(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := CreatePendingRunService(h.Model, taskCode); err != nil {
+	task, err := db.GetTaskByCode(h.Model, taskCode)
+	if err != nil {
 		return err
 	}
+	go job.ExecuteTask(h.Model, *task)
 
 	return c.Redirect("/admin/tasks")
 }

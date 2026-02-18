@@ -3,10 +3,10 @@
 <table>
   <thead>
   <tr>
-    <th>任务代码</th>
-    <th>运行ID</th>
-    <th>状态</th>
-    <th>消息</th>
+    <th class="cell-wsn">任务代码</th>
+    <th>记录ID</th>
+    <th class="cell-status">状态</th>
+    <th class="cell-message">消息</th>
     <th>耗时（毫秒）</th>
     <th>开始时间</th>
     <th>结束时间</th>
@@ -18,13 +18,25 @@
   {{ range .Runs }}
   <tr>
     <td>{{ .TaskCode }}</td>
-    <td>{{ .RunID }}</td>
-    <td>{{ .Status }}</td>
-    <td>{{ .Message }}</td>
+    <td>{{ .ID }}</td>
+    <td>
+        {{ if eq .Status "success" }}
+            <div class="badge success">成功</div>
+        {{ else }}
+          <div class="badge danger">失败</div>
+        {{ end }}
+    </td>
+    <td>
+        {{ if eq .Status "success" }}
+            {{ .Message }}
+        {{ else }}
+            <span class="text-danger">{{ .Message }}</span>
+        {{ end }}
+    </td>
     <td>{{ .Duration }}</td>
-    <td>{{ relativeTime .StartedAt }}</td>
-    <td>{{ relativeTime .FinishedAt }}</td>
-    <td>{{ relativeTime .CreatedAt }}</td>
+    <td>{{ formatTime .StartedAt }}</td>
+    <td>{{ formatTime .FinishedAt }}</td>
+    <td>{{ formatTime .CreatedAt }}</td>
   </tr>
   {{ else }}
   <tr>

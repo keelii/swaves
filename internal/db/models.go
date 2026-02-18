@@ -73,6 +73,9 @@ func InitDatabase(db *DB) error {
 	if err := ensureLikeTableName(db); err != nil {
 		return err
 	}
+	if err := ensureTaskRunsSchema(db); err != nil {
+		return err
+	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
@@ -217,6 +220,50 @@ func ensureLikeTableSchema(db *DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_likes_visitor_id ON ` + string(TableLikes) + ` (visitor_id)`,
 	); err != nil {
 		return WrapInternalErr("ensureLikeTableSchema.CreateVisitorIndex", err)
+	}
+
+	return nil
+}
+
+func ensureTaskRunsSchema(db *DB) error {
+	hasRunID, err := tableColumnExists(db, string(TableTaskRuns), "run_id")
+	if err != nil {
+		return WrapInternalErr("ensureTaskRunsSchema.HasRunID", err)
+	}
+	if !hasRunID {
+		return nil
+	}
+
+	const rebuiltTaskRunsTable = "t_task_runs_rebuild"
+	if _, err = db.Exec(`DROP TABLE IF EXISTS ` + rebuiltTaskRunsTable); err != nil {
+		return WrapInternalErr("ensureTaskRunsSchema.DropRebuildTable", err)
+	}
+	if _, err = db.Exec(`CREATE TABLE ` + rebuiltTaskRunsTable + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		task_code TEXT NOT NULL,
+		status TEXT NOT NULL,
+		message TEXT NOT NULL DEFAULT '',
+		started_at INTEGER NOT NULL,
+		finished_at INTEGER NOT NULL,
+		duration INTEGER NOT NULL,
+		created_at INTEGER NOT NULL
+	)`); err != nil {
+		return WrapInternalErr("ensureTaskRunsSchema.CreateRebuildTable", err)
+	}
+
+	if _, err = db.Exec(
+		`INSERT INTO ` + rebuiltTaskRunsTable + ` (id, task_code, status, message, started_at, finished_at, duration, created_at)
+		 SELECT id, task_code, status, message, started_at, finished_at, duration, created_at
+		 FROM ` + string(TableTaskRuns),
+	); err != nil {
+		return WrapInternalErr("ensureTaskRunsSchema.CopyRows", err)
+	}
+
+	if _, err = db.Exec(`DROP TABLE ` + string(TableTaskRuns)); err != nil {
+		return WrapInternalErr("ensureTaskRunsSchema.DropOldTable", err)
+	}
+	if _, err = db.Exec(`ALTER TABLE ` + rebuiltTaskRunsTable + ` RENAME TO ` + string(TableTaskRuns)); err != nil {
+		return WrapInternalErr("ensureTaskRunsSchema.RenameRebuildTable", err)
 	}
 
 	return nil
@@ -862,7 +909,7 @@ func scanHttpErrorLog(scanner sqlScanner) (HttpErrorLog, error) {
 func scanTaskRun(scanner sqlScanner) (TaskRun, error) {
 	var r TaskRun
 	if err := scanner.Scan(
-		&r.ID, &r.TaskCode, &r.RunID, &r.Status, &r.Message,
+		&r.ID, &r.TaskCode, &r.Status, &r.Message,
 		&r.StartedAt, &r.FinishedAt, &r.Duration, &r.CreatedAt,
 	); err != nil {
 		return TaskRun{}, err
@@ -3036,15 +3083,25 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 	whereClause := ""
 	whereArgs := []interface{}{}
+	orderBy := "sort ASC, id ASC"
 	if kind != "" {
 		whereClause = "kind=?"
 		whereArgs = append(whereArgs, kind)
+	} else {
+		orderBy = `CASE kind
+			WHEN 'General' THEN 1
+			WHEN 'Appearance' THEN 2
+			WHEN 'Post' THEN 3
+			WHEN '数据备份' THEN 4
+			WHEN 'ThirdPart' THEN 5
+			ELSE 999
+		END, kind ASC, sort ASC, id ASC`
 	}
 
 	results, err := Read(db, specSettings, ReadOptions{
 		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
 		WhereClause:  whereClause,
-		OrderBy:      "",
+		OrderBy:      orderBy,
 		WhereArgs:    whereArgs,
 		Limit:        0,
 	}, func(rows *sql.Rows) (interface{}, error) {
@@ -3163,7 +3220,31 @@ func CheckPassword(db *DB, raw string) error {
 }
 
 // EnsureDefaultSettings 确保存在默认配置项
+var deprecatedDefaultSettingCodes = []string{
+	"sync_push_provider",
+	"sync_push_webdav_username",
+	"sync_push_s3_bucket",
+	"sync_push_s3_prefix",
+	"sync_push_s3_region",
+	"sync_push_s3_force_path_style",
+	"sync_push_retry_max",
+	"sync_push_retry_backoff_sec",
+}
+
+var dataBackupSettingCodes = []string{
+	"backup_local_dir",
+	"backup_local_interval_min",
+	"backup_local_max_count",
+	"sync_push_enabled",
+	"sync_push_endpoint",
+	"sync_push_timeout_sec",
+}
+
 func EnsureDefaultSettings(db *DB) error {
+	if err := removeDeprecatedDefaultSettings(db); err != nil {
+		return err
+	}
+
 	for _, s := range DefaultSettings {
 		// 检查是否已存在
 		_, err := GetSettingByCode(db, s.Code)
@@ -3178,6 +3259,49 @@ func EnsureDefaultSettings(db *DB) error {
 
 		// 不存在，创建
 		if _, err := CreateSetting(db, &s); err != nil {
+			return err
+		}
+	}
+
+	if err := ensureDataBackupSettingKinds(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeDeprecatedDefaultSettings(db *DB) error {
+	for _, code := range deprecatedDefaultSettingCodes {
+		s, err := GetSettingByCode(db, code)
+		if err != nil {
+			if IsErrNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if err := DeleteSetting(db, s.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ensureDataBackupSettingKinds(db *DB) error {
+	for _, code := range dataBackupSettingCodes {
+		s, err := GetSettingByCode(db, code)
+		if err != nil {
+			if IsErrNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if s.Kind == "数据备份" {
+			continue
+		}
+		if err := Update(db, specSettings, s.ID, map[string]interface{}{
+			"kind": "数据备份",
+		}); err != nil {
 			return err
 		}
 	}
@@ -3318,7 +3442,6 @@ type Task struct {
 type TaskRun struct {
 	ID         int64
 	TaskCode   string
-	RunID      string
 	Status     string
 	Message    string
 	StartedAt  int64
@@ -3459,7 +3582,6 @@ func SoftDeleteTask(db *DB, id int64) error {
 
 func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
 	now := time.Now().Unix()
-	run.RunID = uuid.NewString()
 	run.CreatedAt = now
 
 	if run.StartedAt == 0 {
@@ -3474,7 +3596,6 @@ func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
 
 	id, err := Create(db, specTaskRuns, map[string]interface{}{
 		"task_code":   run.TaskCode,
-		"run_id":      run.RunID,
 		"status":      run.Status,
 		"message":     run.Message,
 		"started_at":  run.StartedAt,
@@ -3512,7 +3633,7 @@ func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun,
 	}
 
 	results, err := Read(db, specTaskRuns, ReadOptions{
-		SelectFields: "id, task_code, run_id, status, message, started_at, finished_at, duration, created_at",
+		SelectFields: "id, task_code, status, message, started_at, finished_at, duration, created_at",
 		WhereClause:  whereClause,
 		OrderBy:      "",
 		WhereArgs:    whereArgs,

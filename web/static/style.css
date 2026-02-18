@@ -38,6 +38,13 @@ body {
 svg {
   rect:focus { outline: none }
 }
+
+.text-danger {
+  color: var(--danger);
+}
+.text-success {
+  color: var(--success);
+}
 .salign {
   display: flex;
   justify-content: space-between;
@@ -578,7 +585,17 @@ input[type="range"] {
   width: 4em;
 }
 
-table :is(th, td).col-id {
+table :is(th, td).cell-id {
   width: 4em;
   white-space: nowrap;
+}
+
+.cell-wsn {
+  white-space: nowrap;
+}
+.cell-status {
+  width: 6em;
+}
+.cell-message {
+  width: 30em;
 }

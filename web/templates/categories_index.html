@@ -1,7 +1,7 @@
 <table>
   <thead>
   <tr>
-    <th class="col-id">ID</th>
+    <th class="cell-id">ID</th>
     <th>名称</th>
     <th>URL标识</th>
     <th>父级</th>
@@ -17,7 +17,7 @@
   <tbody>
   {{ range .Categories }}
   <tr>
-    <td class="col-id">{{ .ID }}</td>
+    <td class="cell-id">{{ .ID }}</td>
     <td>{{ .Name }}</td>
     <td><a href="{{ GetCategoryUrl . }}" target="_blank" rel="noopener">{{ .Slug }}</a></td>
     <td>

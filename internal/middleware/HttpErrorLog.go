@@ -17,7 +17,7 @@ func HttpErrorLogMiddleware(gStore *store.GlobalStore) fiber.Handler {
 		err := c.Next()
 
 		status := c.Response().StatusCode()
-		if status == 200 {
+		if status < 400 {
 			return err
 		}
 

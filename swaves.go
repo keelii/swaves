@@ -31,7 +31,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 
 	//defer globalStore.Close()
 
-	go job.InitRegistry(globalStore, config) // 每 5 秒扫描 pending
+	go job.InitRegistry(globalStore, config) // 初始化定时任务
 
 	store.InitSettings(globalStore)
 	app := fiber.New(fiber.Config{

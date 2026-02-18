@@ -1,16 +1,16 @@
 <table>
   <thead>
   <tr>
-    <th class="col-id">ID</th>
-    <th>代码</th>
+    <th class="cell-id">ID</th>
+    <th class="cell-wsn">编码</th>
     <th>名称</th>
     <th>描述</th>
     <th>调度</th>
-    <th>启用</th>
-    <th>运行次数</th>
-    <th>最后状态</th>
-    <th>最后运行时间</th>
-    <th>创建时间</th>
+    <th class="cell-status">状态</th>
+    <th>执行记录</th>
+    <th class="cell-status">最后状态</th>
+    <th>最后执行时间</th>
+    <th style="display: none">创建时间</th>
     <th>操作</th>
   </tr>
   </thead>
@@ -18,39 +18,47 @@
   <tbody>
   {{ range .Tasks }}
   <tr>
-    <td class="col-id">{{ .ID }}</td>
+    <td class="cell-id">{{ .ID }}</td>
     <td>{{ .Code }}</td>
     <td>{{ .Name }}</td>
     <td>{{ .Description }}</td>
     <td>{{ .Schedule }}</td>
-    <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
+    <td>
+        {{ if eq .Enabled 1 }}
+            <div class="badge success">启用</div>
+        {{ else }}
+          <div class="badge secondary">停用</div>
+        {{ end }}
+    </td>
     <td><a href="/admin/tasks/{{ .Code }}/runs">执行记录</a></td>
     <td>
       {{ if .LastStatus }}
         {{ if eq .LastStatus "success" }}
-          成功
+          <div class="badge success">成功</div>
         {{ else if eq .LastStatus "error" }}
-          失败
+          <div class="badge danger">失败</div>
         {{ else if eq .LastStatus "pending" }}
-          待执行
+          <div class="badge secondary">待执行</div>
         {{ else }}
-          {{ .LastStatus }}
+          <div class="badge outline">{{ .LastStatus }}</div>
         {{ end }}
       {{ else }}
         -
       {{ end }}
     </td>
-    <td>{{ if .LastRunAt }}{{ relativeTime .LastRunAt }}{{ else }}-{{ end }}</td>
-    <td>{{ relativeTime .CreatedAt }}</td>
+    <td>{{ if .LastRunAt }}{{ formatTime .LastRunAt }}{{ else }}-{{ end }}</td>
+    <td style="display: none">{{ formatTime .CreatedAt }}</td>
     <td>
       <div class="row-actions">
         {{ template "partials/action_icon_link" dict "href" (printf "/admin/tasks/%d/edit" .ID) "name" "square-pen" "label" "编辑" }}
         <form id="form" method="POST" action="/admin/tasks/{{ .Code }}/trigger">
           {{ template "partials/action_icon_button" dict "type" "submit" "name" "terminal" "label" "执行" "danger" true }}
         </form>
-        <form id="form" method="POST" action="/admin/tasks/{{ .ID }}/delete">
-          {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
-        </form>
+          {{ if ne .Kind 0 }}
+            <form id="form" method="POST" action="/admin/tasks/{{ .ID }}/delete">
+                {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+            </form>
+          {{ end }}
       </div>
     </td>
   </tr>

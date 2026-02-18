@@ -1,6 +1,7 @@
 package job
 
 import (
+	"fmt"
 	"log"
 	"swaves/internal/db"
 	"swaves/internal/store"
@@ -51,6 +52,20 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 		Func: DeleteExpiredEncryptedPostsJob,
 	})
 
+	RegisterJob("remote_backup_data", JobItem{
+		Kind: db.TaskUser,
+		Func: PushSystemDataJob,
+	})
+
+	ensureBuiltinTask(gStore.Model, db.Task{
+		Code:        "remote_backup_data",
+		Name:        "系统数据推送",
+		Description: "每天推送系统快照到配置的 S3 API 兼容存储（含 R2）",
+		Schedule:    "@daily",
+		Enabled:     0,
+		Kind:        db.TaskUser,
+	})
+
 	tasks, err := db.ListTasks(gStore.Model)
 	if err != nil {
 		log.Printf("[task] fetch tasks failed: %v", err)
@@ -59,13 +74,21 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 	for task := range tasks {
 		t := tasks[task]
 
+		if t.Enabled != 1 {
+			continue
+		}
+		if _, ok := registry.jobs[t.Code]; !ok {
+			log.Printf("[task] skip unregistered task code: %s", t.Code)
+			continue
+		}
+
 		log.Printf("add cron job<%s>: %s", t.Schedule, t.Code)
-		//c.AddFunc("@every 10s", func() {
-		//	log.Printf("[task] cron job every 10s")
-		//})
-		c.AddFunc(t.Schedule, func() {
+		_, err = c.AddFunc(t.Schedule, func() {
 			ExecuteTask(gStore.Model, t)
 		})
+		if err != nil {
+			log.Printf("[task] add cron failed code=%s schedule=%s: %v", t.Code, t.Schedule, err)
+		}
 	}
 	c.Start()
 	defer c.Stop()
@@ -75,31 +98,56 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 }
 
 func ExecuteTask(dbx *db.DB, t db.Task) {
-	var err error
-	var ret string
+	if registry == nil {
+		log.Printf("[task] registry not initialized for task: %s", t.Code)
+		return
+	}
 
-	ret, err = registry.jobs[t.Code].Func(registry)
+	startAt := time.Now()
+	jobItem, ok := registry.jobs[t.Code]
+	if !ok {
+		err := fmt.Errorf("job not registered: %s", t.Code)
+		log.Printf("[task] %v", err)
+		_ = db.UpdateTaskStatus(dbx, t.Code, "error", startAt.Unix())
+		if t.Kind == db.TaskUser {
+			_, _ = db.CreateTaskRun(dbx, &db.TaskRun{
+				TaskCode:   t.Code,
+				Status:     "error",
+				Message:    err.Error(),
+				StartedAt:  startAt.Unix(),
+				FinishedAt: time.Now().Unix(),
+				Duration:   int64(time.Since(startAt).Milliseconds()),
+			})
+		}
+		return
+	}
+
+	ret, err := jobItem.Func(registry)
+	status := "success"
 	if err != nil {
+		status = "error"
 		log.Printf("[task] execute job %s failed: %v", t.Code, err)
 	} else {
 		log.Printf("[task] execute job %s success: %s", t.Code, ret)
 	}
+	_ = db.UpdateTaskStatus(dbx, t.Code, status, startAt.Unix())
 
 	if t.Kind == db.TaskInternal {
 		return
 	}
 
+	finishAt := time.Now()
 	taskRun := &db.TaskRun{
-		TaskCode:  t.Code,
-		Status:    "success",
-		Message:   ret,
-		CreatedAt: time.Now().Unix(),
+		TaskCode:   t.Code,
+		Status:     status,
+		Message:    ret,
+		StartedAt:  startAt.Unix(),
+		FinishedAt: finishAt.Unix(),
+		Duration:   int64(finishAt.Sub(startAt).Milliseconds()),
 	}
 	if err != nil {
-		taskRun.Status = "error"
 		taskRun.Message = err.Error()
 	}
-	taskRun.FinishedAt = time.Now().Unix()
 
 	_, err = db.CreateTaskRun(dbx, taskRun)
 	if err != nil {
@@ -116,4 +164,19 @@ func RegisterJob(code string, job JobItem) {
 	mu.Lock()
 	defer mu.Unlock()
 	registry.jobs[code] = job
+}
+
+func ensureBuiltinTask(dbx *db.DB, task db.Task) {
+	_, err := db.GetTaskByCode(dbx, task.Code)
+	if err == nil {
+		return
+	}
+	if !db.IsErrNotFound(err) {
+		log.Printf("[task] ensure builtin task %s failed: %v", task.Code, err)
+		return
+	}
+
+	if _, err = db.CreateTask(dbx, &task); err != nil {
+		log.Printf("[task] create builtin task %s failed: %v", task.Code, err)
+	}
 }

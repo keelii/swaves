@@ -1,7 +1,7 @@
 <table>
   <thead>
   <tr>
-    <th class="col-id">ID</th>
+    <th class="cell-id">ID</th>
     <th>标题</th>
     <th>URL标识</th>
     <th>过期时间</th>
@@ -14,7 +14,7 @@
   <tbody>
   {{ range .Posts }}
   <tr>
-    <td class="col-id">{{ .ID }}</td>
+    <td class="cell-id">{{ .ID }}</td>
     <td>{{ .Title }}</td>
     <td>{{ .Slug }}</td>
     <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}Never{{ end }}</td>

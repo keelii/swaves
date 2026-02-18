@@ -134,17 +134,16 @@ const InitialSQL = `
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER
 	);
-	DELETE FROM ` + TableTasks + ` WHERE code = 'database_backup';
-    INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
-		('database_backup', '数据备份', '定备份置数据库', '@daily', 1, 0, strftime('%s','now'), strftime('%s','now'));
-	DELETE FROM ` + TableTasks + ` WHERE code = 'clear_encrypted_posts';
-    INSERT INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
-		('clear_encrypted_posts', '清理过期加密文章', '定时清理加密文章', '@every 1m', 1, 0, strftime('%s','now'), strftime('%s','now'));
+	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
+		('database_backup', '数据备份', '定时备份数据库', '@daily', 1, 0, strftime('%s','now'), strftime('%s','now'));
+	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
+		('clear_encrypted_posts', '清理过期加密文章', '定时清理加密文章', '@every 1m', 1, 1, strftime('%s','now'), strftime('%s','now'));
+	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
+		('remote_backup_data', '远程备份数据', '备份数据库到远程', '@every 1d', 1, 1, strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		task_code TEXT NOT NULL, -- 对应 ` + TableTasks + `.code
-		run_id TEXT NOT NULL, -- 本次执行唯一标识 UUID
 		status TEXT NOT NULL, -- "pending", "success" 或 "error"
 		message TEXT NOT NULL DEFAULT '',
 		started_at INTEGER NOT NULL,
@@ -350,6 +349,12 @@ var DefaultSettings = []Setting{
 	{Sort: 13, Kind: "Post", Name: "Post Url Prefix", Code: "post_url_prefix", Reload: 1, Type: "text", Value: "/{datetime}", Attrs: consts.PostUrlPrefixValidatorJSON, Description: "文章 URL 前缀"},
 	{Sort: 15, Kind: "Post", Name: "Tag Url Prefix", Code: "tag_url_prefix", Reload: 1, Type: "text", Value: "/tags", Attrs: consts.UrlPrefixValidatorJSON, Description: "标签 URL 前缀"},
 	{Sort: 17, Kind: "Post", Name: "Category Url Prefix", Code: "category_url_prefix", Reload: 1, Type: "text", Value: "/categories", Attrs: consts.UrlPrefixValidatorJSON, Description: "分类 URL 前缀"},
-	{Sort: 19, Kind: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
-	{Sort: 21, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
+	{Sort: 19, Kind: "数据备份", Name: "本地备份目录", Code: "backup_local_dir", Type: "text", Value: "backups", Description: "本地备份目录（支持绝对路径或相对程序根目录路径）"},
+	{Sort: 20, Kind: "数据备份", Name: "本地备份间隔 (min)", Code: "backup_local_interval_min", Type: "number", Value: "1440", DefaultOptionValue: "1440", Description: "两次本地备份之间的最小间隔（分钟）", Attrs: `{"min": 1, "max": 10080}`},
+	{Sort: 21, Kind: "数据备份", Name: "本地备份最大数量", Code: "backup_local_max_count", Type: "number", Value: "30", DefaultOptionValue: "30", Description: "本地仅保留最新 N 个备份文件", Attrs: `{"min": 1, "max": 500}`},
+	{Sort: 22, Kind: "数据备份", Name: "S3 远程备份开启", Code: "sync_push_enabled", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "是否启用通过 S3 API 的远程备份任务", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
+	{Sort: 23, Kind: "数据备份", Name: "S3 API Endpoint", Code: "sync_push_endpoint", Type: "url", Value: "", Description: "S3 API Endpoint，可在 URL 路径中带 bucket（示例：https://s3.example.com/my-bucket）"},
+	{Sort: 24, Kind: "数据备份", Name: "S3 远程备份超时 (sec)", Code: "sync_push_timeout_sec", Type: "number", Value: "60", DefaultOptionValue: "60", Description: "S3 远程备份超时时间（秒）", Attrs: `{"min": 1, "max": 600}`},
+	{Sort: 27, Kind: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
+	{Sort: 28, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 }

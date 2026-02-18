@@ -886,6 +886,117 @@ func TestSettingsLifecycleAndPassword(t *testing.T) {
 	}
 }
 
+func TestListSettingsOrder(t *testing.T) {
+	db := openTestDB(t)
+
+	settingA := &Setting{
+		Code:  uniqueValue("setting_order"),
+		Kind:  "OrderKind",
+		Name:  "A",
+		Type:  "text",
+		Value: "a",
+		Sort:  20,
+	}
+	if _, err := CreateSetting(db, settingA); err != nil {
+		t.Fatalf("CreateSetting A failed: %v", err)
+	}
+
+	settingB := &Setting{
+		Code:  uniqueValue("setting_order"),
+		Kind:  "OrderKind",
+		Name:  "B",
+		Type:  "text",
+		Value: "b",
+		Sort:  10,
+	}
+	if _, err := CreateSetting(db, settingB); err != nil {
+		t.Fatalf("CreateSetting B failed: %v", err)
+	}
+
+	settingC := &Setting{
+		Code:  uniqueValue("setting_order"),
+		Kind:  "OrderKind",
+		Name:  "C",
+		Type:  "text",
+		Value: "c",
+		Sort:  10,
+	}
+	if _, err := CreateSetting(db, settingC); err != nil {
+		t.Fatalf("CreateSetting C failed: %v", err)
+	}
+
+	orderedByKind, err := ListSettingsByKind(db, "OrderKind")
+	if err != nil {
+		t.Fatalf("ListSettingsByKind failed: %v", err)
+	}
+	if len(orderedByKind) != 3 {
+		t.Fatalf("expected 3 settings, got %d", len(orderedByKind))
+	}
+	if orderedByKind[0].Code != settingB.Code || orderedByKind[1].Code != settingC.Code || orderedByKind[2].Code != settingA.Code {
+		t.Fatalf(
+			"unexpected kind order: got [%s, %s, %s], want [%s, %s, %s]",
+			orderedByKind[0].Code,
+			orderedByKind[1].Code,
+			orderedByKind[2].Code,
+			settingB.Code,
+			settingC.Code,
+			settingA.Code,
+		)
+	}
+
+	kindRank := func(kind string) int {
+		switch kind {
+		case "General":
+			return 1
+		case "Appearance":
+			return 2
+		case "Post":
+			return 3
+		case "数据备份":
+			return 4
+		case "ThirdPart":
+			return 5
+		default:
+			return 999
+		}
+	}
+
+	all, err := ListAllSettings(db)
+	if err != nil {
+		t.Fatalf("ListAllSettings failed: %v", err)
+	}
+	if len(all) == 0 {
+		t.Fatal("expected settings")
+	}
+
+	prevRank := -1
+	prevKind := ""
+	prevSort := int64(0)
+	for i, s := range all {
+		rank := kindRank(s.Kind)
+		if i == 0 {
+			prevRank = rank
+			prevKind = s.Kind
+			prevSort = s.Sort
+			continue
+		}
+
+		if rank < prevRank {
+			t.Fatalf("kind order not stable at index %d: rank %d < prev %d", i, rank, prevRank)
+		}
+		if rank == prevRank && s.Kind < prevKind {
+			t.Fatalf("kind order not stable at index %d: kind %s < prev %s", i, s.Kind, prevKind)
+		}
+		if rank == prevRank && s.Kind == prevKind && s.Sort < prevSort {
+			t.Fatalf("sort order not stable at index %d: sort %d < prev %d (kind=%s)", i, s.Sort, prevSort, s.Kind)
+		}
+
+		prevRank = rank
+		prevKind = s.Kind
+		prevSort = s.Sort
+	}
+}
+
 func TestHttpErrorLogLifecycle(t *testing.T) {
 	db := openTestDB(t)
 
@@ -986,8 +1097,8 @@ func TestTaskAndTaskRunLifecycle(t *testing.T) {
 	if _, err := CreateTaskRun(db, run); err != nil {
 		t.Fatalf("CreateTaskRun failed: %v", err)
 	}
-	if run.ID == 0 || run.RunID == "" {
-		t.Fatalf("run id fields not set: %+v", run)
+	if run.ID == 0 {
+		t.Fatalf("run id field not set: %+v", run)
 	}
 
 	runs, err := ListTaskRuns(db, task.Code, "", 10)
