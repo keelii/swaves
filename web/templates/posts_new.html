@@ -1,15 +1,20 @@
 <form id="form" method="post" action="/admin/posts/new">
+  {{ $draftTitle := or .DraftTitle "" }}
+  {{ $draftSlug := or .DraftSlug "" }}
+  {{ $draftKind := or .DraftKind "0" }}
+  {{ $draftCategoryID := .DraftCategoryID }}
+  {{ $draftContent := or .DraftContent "" }}
   <div class="row">
     <div class="col-6">
       <label data-field>
         文章标题
-        <input style="width:100%;" type="text" name="title" id="title" required placeholder="文章标题">
+        <input class="w-100" type="text" name="title" id="title" required placeholder="文章标题" value="{{ $draftTitle }}">
       </label>
       <label data-field>
         文章 URL 地址
-        <span class="salign gap-4">
-      <input class="grow" type="text" name="slug" id="slug" required placeholder="可选：默认标题">
-      <button class="grow outline" onclick="autoSetSlug()" type="button">Auto</button>
+        <span class="hstack">
+      <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ $draftSlug }}" style="flex: 1;">
+      <button class="outline" onclick="autoSetSlug()" type="button">Auto</button>
     </span>
         <script>
           function autoSetSlug() {
@@ -22,7 +27,7 @@
 
       <fieldset class="hstack">
         <legend>Kind (类型)</legend>
-          {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" "0" }}
+          {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" $draftKind }}
       </fieldset>
 
       <label data-field>
@@ -32,12 +37,11 @@
 
       <label data-field>
         分类
-          {{ template "partials/category_select" dict "Root" $ }}
+          {{ template "partials/category_select" dict "Root" $ "SelectedID" $draftCategoryID }}
       </label>
 
 
     </div>
   </div>
-  {{ template "partials/markdown_preview" dict "Value" "" "Required" true }}
+  {{ template "partials/markdown_preview" dict "Value" $draftContent "Required" true }}
 </form>
-

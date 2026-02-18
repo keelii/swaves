@@ -536,6 +536,10 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
+	return h.renderPostNew(c, nil)
+}
+
+func (h *Handler) renderPostNew(c *fiber.Ctx, data fiber.Map) error {
 	tags, err := GetAllTags(h.Model)
 	if err != nil {
 		return err
@@ -546,42 +550,84 @@ func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "posts_new", fiber.Map{
-		"Title":      "New Post",
-		"Tags":       tags,
-		"Categories": categories,
-	}, "")
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if _, ok := data["DraftTitle"]; !ok {
+		data["DraftTitle"] = ""
+	}
+	if _, ok := data["DraftSlug"]; !ok {
+		data["DraftSlug"] = ""
+	}
+	if _, ok := data["DraftContent"]; !ok {
+		data["DraftContent"] = ""
+	}
+	if _, ok := data["DraftKind"]; !ok {
+		data["DraftKind"] = "0"
+	}
+	if _, ok := data["DraftCategoryID"]; !ok {
+		data["DraftCategoryID"] = int64(0)
+	}
+	if _, ok := data["SelectedTagNames"]; !ok {
+		data["SelectedTagNames"] = ""
+	}
+
+	data["Title"] = "New Post"
+	data["Tags"] = tags
+	data["Categories"] = categories
+
+	return RenderAdminView(c, "posts_new", data, "")
+}
+
+func (h *Handler) renderPostNewWithDraft(c *fiber.Ctx, err error, data fiber.Map) error {
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if err != nil {
+		data["Error"] = err.Error()
+	}
+	return h.renderPostNew(c, data)
 }
 
 func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
-	// 解析标签：name="tags" 逗号分隔，每段为标签名（存在则关联，不存在则创建）
-	tagIDs := parseTagsFromCommaSeparated(h.Model, c.FormValue("tags"))
+	// 草稿字段：创建失败后回填
+	title := c.FormValue("title")
+	slug := strings.TrimSpace(c.FormValue("slug"))
+	content := c.FormValue("content")
+	tagNames := c.FormValue("tags")
 
 	// 解析分类 ID（单选）
 	var categoryID int64
-	categoriesStr := c.FormValue("categories")
+	categoriesStr := strings.TrimSpace(c.FormValue("categories"))
 	if categoriesStr != "" {
 		if id, err := strconv.ParseInt(categoriesStr, 10, 64); err == nil {
 			categoryID = id
 		}
 	}
 
+	draftKind := c.FormValue("kind")
 	kind := db.PostKindPost
-	if c.FormValue("kind") == "1" {
+	if draftKind == "1" {
 		kind = db.PostKindPage
+	} else {
+		draftKind = "0"
 	}
 
-	slug := strings.TrimSpace(c.FormValue("slug"))
-	if !helper.IsSlug(slug) {
-		tags, _ := GetAllTags(h.Model)
-		categories, _ := GetAllCategoriesFlat(h.Model)
-		return RenderAdminView(c, "posts_new", fiber.Map{
-			"Title":      "New Post",
-			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
-			"Tags":       tags,
-			"Categories": categories,
-		}, "")
+	draft := fiber.Map{
+		"DraftTitle":       title,
+		"DraftSlug":        slug,
+		"DraftContent":     content,
+		"DraftKind":        draftKind,
+		"DraftCategoryID":  categoryID,
+		"SelectedTagNames": tagNames,
 	}
+
+	if !helper.IsSlug(slug) {
+		return h.renderPostNewWithDraft(c, errSlugInvalid("010", slug), draft)
+	}
+
+	// 解析标签：name="tags" 逗号分隔，每段为标签名（存在则关联，不存在则创建）
+	tagIDs := parseTagsFromCommaSeparated(h.Model, tagNames)
 
 	// 新建：action= publish 发布，否则保存为草稿
 	status := "draft"
@@ -590,9 +636,9 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 	}
 
 	in := CreatePostInput{
-		Title:      c.FormValue("title"),
+		Title:      title,
 		Slug:       slug,
-		Content:    c.FormValue("content"),
+		Content:    content,
 		Status:     status,
 		Kind:       kind,
 		TagIDs:     tagIDs,
@@ -600,7 +646,7 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 	}
 
 	if err := CreatePostService(h.Model, in); err != nil {
-		return err
+		return h.renderPostNewWithDraft(c, err, draft)
 	}
 
 	return c.Redirect("/admin/posts")
@@ -756,7 +802,7 @@ func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
 	if !helper.IsSlug(slug) {
 		return RenderAdminView(c, "tags_new", fiber.Map{
 			"Title": "New Tag",
-			"Error": "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+			"Error": errSlugInvalid("011", slug).Error(),
 		}, "")
 	}
 	in := CreateTagInput{
@@ -799,7 +845,7 @@ func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
 		return RenderAdminView(c, "tags_edit", fiber.Map{
 			"Title": "Edit Tag",
 			"Tag":   tag,
-			"Error": "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+			"Error": errSlugInvalid("012", slug).Error(),
 		}, "")
 	}
 	in := UpdateTagInput{
@@ -1155,7 +1201,7 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_new", fiber.Map{
 			"Title":      "New Category",
-			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+			"Error":      errSlugInvalid("013", slug).Error(),
 			"Categories": all,
 		}, "")
 	}
@@ -1267,7 +1313,7 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_edit", fiber.Map{
 			"Title":      "Edit Category",
-			"Error":      "slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头",
+			"Error":      errSlugInvalid("014", slug).Error(),
 			"Category":   category,
 			"Categories": all,
 		}, "")
@@ -2296,7 +2342,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 			return RenderAdminView(c, "import_preview", fiber.Map{
 				"Title": "Import Preview",
 				"Items": items,
-				"Error": fmt.Sprintf("第 %d 条记录的 slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头", item.Index+1),
+				"Error": fmt.Sprintf("%s（第 %d 条记录）", errSlugInvalid("015", strings.TrimSpace(item.Slug)).Error(), item.Index+1),
 			}, "")
 		}
 	}

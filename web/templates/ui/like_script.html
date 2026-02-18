@@ -14,7 +14,8 @@
     }
 
     function updateLikeButton(button, likeCount) {
-      button.textContent = "点赞 (" + likeCount + ")";
+      console.log(button.getAttribute("data-text"))
+      button.textContent = button.getAttribute("data-text").replace("{CNT}", likeCount);
     }
 
     async function handleLikeSubmit(event) {
@@ -54,10 +55,6 @@
 
     var forms = document.querySelectorAll("[data-like-form]");
     forms.forEach(function (form) {
-      if (form.dataset.likeBound === "1") {
-        return;
-      }
-      form.dataset.likeBound = "1";
       form.addEventListener("submit", handleLikeSubmit);
     });
   })();

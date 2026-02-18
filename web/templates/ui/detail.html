@@ -12,6 +12,7 @@
         <input type="hidden" name="return_url" value="{{ .UrlPath }}">
         <button
           type="submit"
+          data-text="点赞 ({CNT})"
           data-like-button
         >点赞 ({{ if .LikeCount }}{{ .LikeCount }}{{ else }}0{{ end }})</button>
       </form>

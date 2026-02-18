@@ -97,7 +97,7 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		return errors.New("title and slug required")
 	}
 	if !helper.IsSlug(in.Slug) {
-		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+		return errSlugInvalid("001", in.Slug)
 	}
 
 	if strings.TrimSpace(in.Content) == "" {
@@ -287,7 +287,7 @@ func CreateTagService(dbx *db.DB, in CreateTagInput) error {
 		slug = "tag"
 	}
 	if !helper.IsSlug(slug) {
-		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+		return errSlugInvalid("002", slug)
 	}
 
 	t := &db.Tag{
@@ -309,7 +309,7 @@ func CreateTagByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Tag, err
 		slug = "tag"
 	}
 	if !helper.IsSlug(slug) {
-		return nil, errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+		return nil, errSlugInvalid("003", slug)
 	}
 
 	// 检查标签是否已存在
@@ -373,7 +373,7 @@ func UpdateTagService(dbx *db.DB, id int64, in UpdateTagInput) error {
 		return err
 	}
 	if in.Slug != "" && !helper.IsSlug(in.Slug) {
-		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+		return errSlugInvalid("004", in.Slug)
 	}
 	t.Name = in.Name
 	t.Slug = in.Slug
@@ -760,7 +760,7 @@ func CreateCategoryService(dbx *db.DB, in CreateCategoryInput) error {
 	}
 	slug := in.Slug
 	if slug != "" && !helper.IsSlug(slug) {
-		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+		return errSlugInvalid("005", slug)
 	}
 
 	c := &db.Category{
@@ -785,7 +785,7 @@ func CreateCategoryByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Cat
 		slug = "category"
 	}
 	if !helper.IsSlug(slug) {
-		return nil, errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+		return nil, errSlugInvalid("006", slug)
 	}
 
 	// 检查分类是否已存在（根据名称和 slug，由于是单选，只需要检查顶级分类中是否存在相同的 slug）
@@ -856,7 +856,7 @@ func UpdateCategoryService(dbx *db.DB, id int64, in UpdateCategoryInput) error {
 		return err
 	}
 	if in.Slug != "" && !helper.IsSlug(in.Slug) {
-		return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+		return errSlugInvalid("007", in.Slug)
 	}
 
 	c.ParentID = in.ParentID
@@ -1570,7 +1570,7 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 			slug = "post"
 		}
 		if !helper.IsSlug(slug) {
-			return errors.New("slug 格式不合法，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+			return errSlugInvalid("008", slug)
 		}
 	}
 
@@ -1678,7 +1678,7 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 			slug = "post"
 		}
 		if !helper.IsSlug(slug) {
-			return errors.New("slug 格式不合法: " + item.Slug + "，仅允许小写字母、数字、连字符、下划线，且以字母或数字开头")
+			return errSlugInvalid("009", item.Slug)
 		}
 
 		// 创建 post；导入时已发布则 published_at 默认为 created_at
