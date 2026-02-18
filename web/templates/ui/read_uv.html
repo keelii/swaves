@@ -1,0 +1,4 @@
+<span class="read-uv" title="阅读数">
+  {{ template "partials/lucide_icon" dict "name" "book-open-check" "size" "16" }}
+  <span>{{ if .Count }}{{ .Count }}{{ else }}0{{ end }}</span>
+</span>

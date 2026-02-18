@@ -13,9 +13,9 @@
       <label data-field>
         文章 URL 标识
         <span class="hstack">
-      <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ $draftSlug }}" style="flex: 1;">
-      <button class="outline" onclick="autoSetSlug()" type="button">Auto</button>
-    </span>
+          <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ $draftSlug }}" style="flex: 1;">
+          <button class="outline" onclick="autoSetSlug()" type="button">Auto</button>
+        </span>
         <script>
           function autoSetSlug() {
             fetch('/api/slug?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){

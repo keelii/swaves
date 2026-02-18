@@ -1,26 +1,20 @@
 <header>
   <h1>{{ .Post.Title }}</h1>
-  <nav>
+  <nav class="valign">
     <span class="author">{{ settings "author" }}</span>
     <span>{{ articleTime .Post.PublishedAt }}</span>
-    · <a href="{{ settings "base_path" }}">首页</a>
+    <a href="{{ settings "base_path" }}">首页</a>
     {{if .Post.Category}}
       {{template "ui/category_item" dict "Item" .Post.Category "Label" true}}
     {{end}}
     {{if .Post.Tags}}
       {{template "ui/tag_list" dict "Items" .Post.Tags "Label" true}}
     {{end}}
-      {{if .IsLogin}}
-        / <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
-      {{end}}
-      / <form method="post" action="{{ GetBasePath }}/_action/like/{{ .LikeType }}/{{ .Post.ID }}" style="display:inline;" data-like-form>
-        <input type="hidden" name="return_url" value="{{ .UrlPath }}">
-        <button
-          type="submit"
-          data-text="点赞 ({CNT})"
-          data-like-button
-        >点赞 ({{ if .LikeCount }}{{ .LikeCount }}{{ else }}0{{ end }})</button>
-      </form>
+    {{ template "ui/read_uv" dict "Count" .ReadUV }}
+    {{ template "ui/like_action" dict "LikeType" .LikeType "EntityID" .Post.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
+    {{if .IsLogin}}
+       <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
+    {{end}}
   </nav>
 </header>
 <article>
@@ -38,4 +32,3 @@
       {{end}}
   </p>
 </section>
-{{ template "ui/like_script" . }}

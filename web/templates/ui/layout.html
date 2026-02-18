@@ -11,6 +11,37 @@
       background: none;
       border: none;
       padding: 0;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2em;
+    }
+    button[data-liked="1"] {
+      color: rgb(249, 24, 128);
+    }
+    button[data-liked="1"] svg {
+      fill: rgb(249, 24, 128);
+    }
+    svg {
+      vertical-align: text-bottom;
+    }
+
+    button[data-like-button]:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .valign {
+      display: flex;
+      align-items: center;
+      gap: 0.8em;
+    }
+    .read-uv {
+      /*display: inline-flex;*/
+      /*align-items: center;*/
+      /*gap: 0.2em;*/
     }
 
     .page-link-num {

@@ -45,6 +45,15 @@ func (h Handler) trackEntityUV(c *fiber.Ctx, entityType db.UVEntityType, entityI
 	}
 }
 
+func (h Handler) getEntityUVCount(entityType db.UVEntityType, entityID int64) int {
+	count, err := db.CountUVUnique(h.Model, entityType, entityID)
+	if err != nil {
+		log.Printf("count entity uv failed: %v", err)
+		return 0
+	}
+	return count
+}
+
 func (h Handler) getEntityLikeState(c *fiber.Ctx, entityType db.UVEntityType, entityID int64) (int, bool) {
 	likeCount, err := db.CountEntityLikes(h.Model, entityType, entityID)
 	if err != nil {
@@ -224,10 +233,12 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
+	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
 	likeCount, liked := h.getEntityLikeState(c, db.UVEntityPost, post.Post.ID)
 
 	return RenderUIView(c, "ui/post", fiber.Map{
 		"Post":      post,
+		"ReadUV":    readUV,
 		"LikeCount": likeCount,
 		"Liked":     liked,
 		"LikeType":  "post",
@@ -242,10 +253,12 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
+	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
 	likeCount, liked := h.getEntityLikeState(c, db.UVEntityPost, post.Post.ID)
 
 	return RenderUIView(c, "ui/post", fiber.Map{
 		"Post":      post,
+		"ReadUV":    readUV,
 		"LikeCount": likeCount,
 		"Liked":     liked,
 		"LikeType":  "post",
