@@ -1407,53 +1407,61 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	// 转换为视图结构，解析 options 和 attrs，保持原有顺序
-	settingsViews := make([]SettingView, 0, len(settings))
+	// 按 kind 分组，key=kind，value=settings，保持查询结果顺序
+	settingsByKind := make(map[string][]SettingView)
+	settingKinds := make([]string, 0)
 	for _, s := range settings {
-		view := SettingView{Setting: s}
+		view := buildSettingView(s)
 
-		// 解析 options（如果是 radio、checkbox 或 select）
-		if (s.Type == "select" || s.Type == "radio" || s.Type == "checkbox") && s.Options != "" {
-			var options []map[string]string
-			err := json.Unmarshal([]byte(s.Options), &options)
-			if err == nil {
-				view.OptionsParsed = options
-			} else {
-				log.Println("Error parsing options for setting", s.Options, err)
-			}
+		if _, ok := settingsByKind[s.Kind]; !ok {
+			settingKinds = append(settingKinds, s.Kind)
 		}
-
-		// 对于 checkbox，解析当前值并创建选中状态映射
-		if s.Type == "checkbox" {
-			view.CheckboxValues = make(map[string]bool)
-			if s.Value != "" {
-				values := strings.Split(s.Value, ",")
-				for _, v := range values {
-					view.CheckboxValues[strings.TrimSpace(v)] = true
-				}
-			}
-		}
-
-		// 解析 attrs（HTML 属性）
-		view.AttrsParsed = make(map[string]interface{}) // 初始化为空 map，避免 nil
-		if s.Attrs != "" {
-			var attrs map[string]interface{}
-			err := json.Unmarshal([]byte(s.Attrs), &attrs)
-			if err == nil {
-				view.AttrsParsed = attrs
-			} else {
-				log.Println("Error parsing attrs for setting", s.Attrs, err)
-			}
-		}
-
-		settingsViews = append(settingsViews, view)
+		settingsByKind[s.Kind] = append(settingsByKind[s.Kind], view)
 	}
 
 	return RenderAdminView(c, "settings_all", fiber.Map{
-		"Title":    "Settings - Edit All",
-		"Settings": settingsViews,
-		"Kind":     kind,
+		"Title":          "Settings - Edit All",
+		"SettingsByKind": settingsByKind,
+		"SettingKinds":   settingKinds,
+		"Kind":           kind,
 	}, "")
+}
+
+func buildSettingView(s db.Setting) SettingView {
+	view := SettingView{Setting: s}
+
+	if (s.Type == "select" || s.Type == "radio" || s.Type == "checkbox") && s.Options != "" {
+		var options []map[string]string
+		err := json.Unmarshal([]byte(s.Options), &options)
+		if err == nil {
+			view.OptionsParsed = options
+		} else {
+			log.Println("Error parsing options for setting", s.Options, err)
+		}
+	}
+
+	if s.Type == "checkbox" {
+		view.CheckboxValues = make(map[string]bool)
+		if s.Value != "" {
+			values := strings.Split(s.Value, ",")
+			for _, v := range values {
+				view.CheckboxValues[strings.TrimSpace(v)] = true
+			}
+		}
+	}
+
+	view.AttrsParsed = make(map[string]interface{})
+	if s.Attrs != "" {
+		var attrs map[string]interface{}
+		err := json.Unmarshal([]byte(s.Attrs), &attrs)
+		if err == nil {
+			view.AttrsParsed = attrs
+		} else {
+			log.Println("Error parsing attrs for setting", s.Attrs, err)
+		}
+	}
+
+	return view
 }
 
 func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
