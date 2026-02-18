@@ -70,11 +70,80 @@ func InitDatabase(db *DB) error {
 		}
 	}
 
+	if err := ensureLikeTableName(db); err != nil {
+		return err
+	}
+
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
 	}
 
 	return nil
+}
+
+func ensureLikeTableName(db *DB) error {
+	const legacyLikeTableName = "t_entity_likes"
+
+	legacyExists, err := tableExists(db, legacyLikeTableName)
+	if err != nil {
+		return WrapInternalErr("ensureLikeTableName.LegacyExists", err)
+	}
+	if !legacyExists {
+		return nil
+	}
+
+	newExists, err := tableExists(db, string(TableLikes))
+	if err != nil {
+		return WrapInternalErr("ensureLikeTableName.NewExists", err)
+	}
+	if !newExists {
+		if _, err = db.Exec(`ALTER TABLE ` + legacyLikeTableName + ` RENAME TO ` + string(TableLikes)); err != nil {
+			return WrapInternalErr("ensureLikeTableName.Rename", err)
+		}
+	} else {
+		_, err = db.Exec(
+			`INSERT INTO ` + string(TableLikes) + ` (entity_type, entity_id, visitor_id, status, created_at, updated_at)
+			SELECT entity_type, entity_id, visitor_id, status, created_at, updated_at
+			FROM ` + legacyLikeTableName + `
+			WHERE 1 = 1
+			ON CONFLICT(entity_type, entity_id, visitor_id) DO UPDATE SET
+				status = excluded.status,
+				created_at = MIN(` + string(TableLikes) + `.created_at, excluded.created_at),
+				updated_at = MAX(` + string(TableLikes) + `.updated_at, excluded.updated_at)`,
+		)
+		if err != nil {
+			return WrapInternalErr("ensureLikeTableName.Merge", err)
+		}
+
+		if _, err = db.Exec(`DROP TABLE IF EXISTS ` + legacyLikeTableName); err != nil {
+			return WrapInternalErr("ensureLikeTableName.DropLegacy", err)
+		}
+	}
+
+	if _, err = db.Exec(
+		`CREATE INDEX IF NOT EXISTS idx_likes_entity_status ON ` + string(TableLikes) + ` (entity_type, entity_id, status)`,
+	); err != nil {
+		return WrapInternalErr("ensureLikeTableName.CreateEntityStatusIndex", err)
+	}
+
+	if _, err = db.Exec(
+		`CREATE INDEX IF NOT EXISTS idx_likes_visitor_id ON ` + string(TableLikes) + ` (visitor_id)`,
+	); err != nil {
+		return WrapInternalErr("ensureLikeTableName.CreateVisitorIndex", err)
+	}
+
+	return nil
+}
+
+func tableExists(db *DB, tableName string) (bool, error) {
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`,
+		tableName,
+	).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func now() int64 {
@@ -740,6 +809,61 @@ type UVPostRank struct {
 	UV     int
 }
 
+type UVCategoryRank struct {
+	CategoryID int64
+	Name       string
+	Slug       string
+	UV         int
+}
+
+type UVTagRank struct {
+	TagID int64
+	Name  string
+	Slug  string
+	UV    int
+}
+
+type LikePostRank struct {
+	PostID int64
+	Title  string
+	Slug   string
+	Likes  int
+}
+
+type LikeCategoryRank struct {
+	CategoryID int64
+	Name       string
+	Slug       string
+	Likes      int
+}
+
+type LikeTagRank struct {
+	TagID int64
+	Name  string
+	Slug  string
+	Likes int
+}
+
+type LikeStatus int
+
+const (
+	LikeStatusInactive LikeStatus = 0
+	LikeStatusActive   LikeStatus = 1
+)
+
+func (s LikeStatus) IsValid() bool {
+	return s == LikeStatusInactive || s == LikeStatusActive
+}
+
+type EntityLike struct {
+	EntityType UVEntityType
+	EntityID   int64
+	VisitorID  []byte
+	Status     LikeStatus
+	CreatedAt  int64
+	UpdatedAt  int64
+}
+
 func UpsertUVUnique(db *DB, entityType UVEntityType, entityID int64, visitorID string) (bool, error) {
 	if !entityType.IsValid() {
 		return false, errors.New("entity_type is invalid")
@@ -856,12 +980,298 @@ func CountUVUnique(db *DB, entityType UVEntityType, entityID int64) (int, error)
 	return count, nil
 }
 
+func CountActiveVisitors(db *DB, sinceSeconds int64) (int, error) {
+	if sinceSeconds <= 0 {
+		sinceSeconds = 30 * 24 * 60 * 60
+	}
+
+	threshold := now() - sinceSeconds
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(DISTINCT visitor_id)
+		FROM `+string(TableUVUnique)+`
+		WHERE last_seen_at >= ?`,
+		threshold,
+	).Scan(&count); err != nil {
+		return 0, WrapInternalErr("CountActiveVisitors", err)
+	}
+
+	return count, nil
+}
+
+func CountPostUVByIDs(db *DB, postIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(postIDs))
+	if len(postIDs) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(postIDs))
+	args := make([]interface{}, 0, len(postIDs)+1)
+	args = append(args, UVEntityPost)
+	for i, id := range postIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+		result[id] = 0
+	}
+
+	query := fmt.Sprintf(
+		`SELECT entity_id, COUNT(*) AS uv
+		FROM %s
+		WHERE entity_type = ?
+			AND entity_id IN (%s)
+		GROUP BY entity_id`,
+		string(TableUVUnique),
+		strings.Join(placeholders, ","),
+	)
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, WrapInternalErr("CountPostUVByIDs.Query", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var postID int64
+		var uv int
+		if err = rows.Scan(&postID, &uv); err != nil {
+			return nil, WrapInternalErr("CountPostUVByIDs.Scan", err)
+		}
+		result[postID] = uv
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("CountPostUVByIDs.Rows", err)
+	}
+
+	return result, nil
+}
+
 func ListTopUVPosts(db *DB, limit int) ([]UVPostRank, error) {
 	return listTopUVPostsByKind(db, PostKindPost, limit)
 }
 
 func ListTopUVPages(db *DB, limit int) ([]UVPostRank, error) {
 	return listTopUVPostsByKind(db, PostKindPage, limit)
+}
+
+func ListTopUVCategories(db *DB, limit int) ([]UVCategoryRank, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := db.Query(
+		`SELECT c.id, c.name, c.slug, u.uv
+		FROM (
+			SELECT entity_id, COUNT(*) AS uv
+			FROM `+string(TableUVUnique)+`
+			WHERE entity_type = ?
+			GROUP BY entity_id
+			ORDER BY uv DESC
+			LIMIT ?
+		) AS u
+		INNER JOIN `+string(TableCategories)+` AS c
+			ON c.id = u.entity_id
+		WHERE c.deleted_at IS NULL
+		ORDER BY u.uv DESC, c.sort ASC, c.id ASC`,
+		UVEntityCategory, limit,
+	)
+	if err != nil {
+		return nil, WrapInternalErr("ListTopUVCategories.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]UVCategoryRank, 0, limit)
+	for rows.Next() {
+		var item UVCategoryRank
+		if err = rows.Scan(&item.CategoryID, &item.Name, &item.Slug, &item.UV); err != nil {
+			return nil, WrapInternalErr("ListTopUVCategories.Scan", err)
+		}
+		res = append(res, item)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListTopUVCategories.Rows", err)
+	}
+
+	return res, nil
+}
+
+func ListTopUVTags(db *DB, limit int) ([]UVTagRank, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := db.Query(
+		`SELECT t.id, t.name, t.slug, u.uv
+		FROM (
+			SELECT entity_id, COUNT(*) AS uv
+			FROM `+string(TableUVUnique)+`
+			WHERE entity_type = ?
+			GROUP BY entity_id
+			ORDER BY uv DESC
+			LIMIT ?
+		) AS u
+		INNER JOIN `+string(TableTags)+` AS t
+			ON t.id = u.entity_id
+		WHERE t.deleted_at IS NULL
+		ORDER BY u.uv DESC, t.id DESC`,
+		UVEntityTag, limit,
+	)
+	if err != nil {
+		return nil, WrapInternalErr("ListTopUVTags.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]UVTagRank, 0, limit)
+	for rows.Next() {
+		var item UVTagRank
+		if err = rows.Scan(&item.TagID, &item.Name, &item.Slug, &item.UV); err != nil {
+			return nil, WrapInternalErr("ListTopUVTags.Scan", err)
+		}
+		res = append(res, item)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListTopUVTags.Rows", err)
+	}
+
+	return res, nil
+}
+
+func ListTopLikedPosts(db *DB, limit int) ([]LikePostRank, error) {
+	return listTopLikedPostsByKind(db, PostKindPost, limit)
+}
+
+func ListTopLikedPages(db *DB, limit int) ([]LikePostRank, error) {
+	return listTopLikedPostsByKind(db, PostKindPage, limit)
+}
+
+func listTopLikedPostsByKind(db *DB, kind PostKind, limit int) ([]LikePostRank, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := db.Query(
+		`SELECT p.id, p.title, p.slug, l.likes
+		FROM (
+			SELECT entity_id, COUNT(*) AS likes
+			FROM `+string(TableLikes)+`
+			WHERE entity_type = ?
+				AND status = ?
+			GROUP BY entity_id
+			ORDER BY likes DESC
+			LIMIT ?
+		) AS l
+		INNER JOIN `+string(TablePosts)+` AS p
+			ON p.id = l.entity_id
+		WHERE p.deleted_at IS NULL
+			AND p.kind = ?
+			AND p.status = ?
+		ORDER BY l.likes DESC, p.published_at DESC, p.id DESC`,
+		UVEntityPost, LikeStatusActive, limit, kind, "published",
+	)
+	if err != nil {
+		return nil, WrapInternalErr("listTopLikedPostsByKind.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]LikePostRank, 0, limit)
+	for rows.Next() {
+		var item LikePostRank
+		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.Likes); err != nil {
+			return nil, WrapInternalErr("listTopLikedPostsByKind.Scan", err)
+		}
+		res = append(res, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("listTopLikedPostsByKind.Rows", err)
+	}
+
+	return res, nil
+}
+
+func ListTopLikedCategories(db *DB, limit int) ([]LikeCategoryRank, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := db.Query(
+		`SELECT c.id, c.name, c.slug, l.likes
+		FROM (
+			SELECT entity_id, COUNT(*) AS likes
+			FROM `+string(TableLikes)+`
+			WHERE entity_type = ?
+				AND status = ?
+			GROUP BY entity_id
+			ORDER BY likes DESC
+			LIMIT ?
+		) AS l
+		INNER JOIN `+string(TableCategories)+` AS c
+			ON c.id = l.entity_id
+		WHERE c.deleted_at IS NULL
+		ORDER BY l.likes DESC, c.sort ASC, c.id ASC`,
+		UVEntityCategory, LikeStatusActive, limit,
+	)
+	if err != nil {
+		return nil, WrapInternalErr("ListTopLikedCategories.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]LikeCategoryRank, 0, limit)
+	for rows.Next() {
+		var item LikeCategoryRank
+		if err = rows.Scan(&item.CategoryID, &item.Name, &item.Slug, &item.Likes); err != nil {
+			return nil, WrapInternalErr("ListTopLikedCategories.Scan", err)
+		}
+		res = append(res, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListTopLikedCategories.Rows", err)
+	}
+
+	return res, nil
+}
+
+func ListTopLikedTags(db *DB, limit int) ([]LikeTagRank, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := db.Query(
+		`SELECT t.id, t.name, t.slug, l.likes
+		FROM (
+			SELECT entity_id, COUNT(*) AS likes
+			FROM `+string(TableLikes)+`
+			WHERE entity_type = ?
+				AND status = ?
+			GROUP BY entity_id
+			ORDER BY likes DESC
+			LIMIT ?
+		) AS l
+		INNER JOIN `+string(TableTags)+` AS t
+			ON t.id = l.entity_id
+		WHERE t.deleted_at IS NULL
+		ORDER BY l.likes DESC, t.id DESC`,
+		UVEntityTag, LikeStatusActive, limit,
+	)
+	if err != nil {
+		return nil, WrapInternalErr("ListTopLikedTags.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]LikeTagRank, 0, limit)
+	for rows.Next() {
+		var item LikeTagRank
+		if err = rows.Scan(&item.TagID, &item.Name, &item.Slug, &item.Likes); err != nil {
+			return nil, WrapInternalErr("ListTopLikedTags.Scan", err)
+		}
+		res = append(res, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListTopLikedTags.Rows", err)
+	}
+
+	return res, nil
 }
 
 func listTopUVPostsByKind(db *DB, kind PostKind, limit int) ([]UVPostRank, error) {
@@ -905,6 +1315,115 @@ func listTopUVPostsByKind(db *DB, kind PostKind, limit int) ([]UVPostRank, error
 	}
 
 	return res, nil
+}
+
+func UpsertEntityLike(db *DB, entityType UVEntityType, entityID int64, visitorID string, status LikeStatus) error {
+	if !isLikeEntityTypeSupported(entityType) {
+		return errors.New("entity_type is invalid for like")
+	}
+	if entityID <= 0 {
+		return errors.New("entity_id is invalid")
+	}
+	if !status.IsValid() {
+		return errors.New("like status is invalid")
+	}
+
+	visitorIDBytes, err := parseVisitorIDBytes(visitorID)
+	if err != nil {
+		return err
+	}
+
+	ts := now()
+	_, err = db.Exec(
+		`INSERT INTO `+string(TableLikes)+` (entity_type, entity_id, visitor_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(entity_type, entity_id, visitor_id) DO UPDATE SET
+			status = excluded.status,
+			updated_at = excluded.updated_at`,
+		entityType, entityID, visitorIDBytes, status, ts, ts,
+	)
+	if err != nil {
+		return WrapInternalErr("UpsertEntityLike", err)
+	}
+
+	return nil
+}
+
+func CountEntityLikes(db *DB, entityType UVEntityType, entityID int64) (int, error) {
+	if !isLikeEntityTypeSupported(entityType) {
+		return 0, errors.New("entity_type is invalid for like")
+	}
+	if entityID <= 0 {
+		return 0, errors.New("entity_id is invalid")
+	}
+
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*)
+		FROM `+string(TableLikes)+`
+		WHERE entity_type = ?
+			AND entity_id = ?
+			AND status = ?`,
+		entityType, entityID, LikeStatusActive,
+	).Scan(&count); err != nil {
+		return 0, WrapInternalErr("CountEntityLikes", err)
+	}
+	return count, nil
+}
+
+func CountTotalLikes(db *DB) (int, error) {
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*)
+		FROM `+string(TableLikes)+`
+		WHERE status = ?`,
+		LikeStatusActive,
+	).Scan(&count); err != nil {
+		return 0, WrapInternalErr("CountTotalLikes", err)
+	}
+	return count, nil
+}
+
+func IsEntityLikedByVisitor(db *DB, entityType UVEntityType, entityID int64, visitorID string) (bool, error) {
+	if !isLikeEntityTypeSupported(entityType) {
+		return false, errors.New("entity_type is invalid for like")
+	}
+	if entityID <= 0 {
+		return false, errors.New("entity_id is invalid")
+	}
+
+	visitorIDBytes, err := parseVisitorIDBytes(visitorID)
+	if err != nil {
+		return false, err
+	}
+
+	var status int
+	err = db.QueryRow(
+		`SELECT status
+		FROM `+string(TableLikes)+`
+		WHERE entity_type = ?
+			AND entity_id = ?
+			AND visitor_id = ?
+		LIMIT 1`,
+		entityType, entityID, visitorIDBytes,
+	).Scan(&status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, WrapInternalErr("IsEntityLikedByVisitor", err)
+	}
+
+	return status == int(LikeStatusActive), nil
+}
+
+func isLikeEntityTypeSupported(entityType UVEntityType) bool {
+	switch entityType {
+	case UVEntityPost, UVEntityCategory, UVEntityTag:
+		return true
+	default:
+		return false
+	}
 }
 
 // PostKind 文章类型

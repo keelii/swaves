@@ -23,6 +23,7 @@ const (
 	TableTaskRuns       TableName = "t_task_runs"
 	TableHttpErrorLogs  TableName = "t_http_error_logs"
 	TableUVUnique       TableName = "t_uv_unique"
+	TableLikes          TableName = "t_likes"
 )
 
 const InitialSQL = `
@@ -206,6 +207,22 @@ const InitialSQL = `
 
 	CREATE INDEX IF NOT EXISTS idx_uv_unique_visitor_id
 	ON ` + TableUVUnique + ` (visitor_id);
+
+	CREATE TABLE IF NOT EXISTS ` + TableLikes + ` (
+		entity_type INTEGER NOT NULL CHECK (entity_type IN (2, 3, 4)),
+		entity_id INTEGER NOT NULL,
+		visitor_id BLOB NOT NULL,
+		status INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0, 1)),
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL,
+		PRIMARY KEY(entity_type, entity_id, visitor_id)
+	) WITHOUT ROWID;
+
+	CREATE INDEX IF NOT EXISTS idx_likes_entity_status
+	ON ` + TableLikes + ` (entity_type, entity_id, status);
+
+	CREATE INDEX IF NOT EXISTS idx_likes_visitor_id
+	ON ` + TableLikes + ` (visitor_id);
 `
 const InternalLang = `[
 	  {"label": "简体中文（中国大陆）", "value": "zh-CN"},

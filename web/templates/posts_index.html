@@ -39,6 +39,7 @@
     <th>标签</th>
     <th>分类</th>
     <th>状态</th>
+    <th>阅读UV</th>
     <th>创建时间</th>
     <th>更新时间</th>
     <th>操作</th>
@@ -72,23 +73,23 @@
           <span class="badge secondary">草稿</span>
         {{ end }}
     </td>
+    <td>{{ $uv := index $.PostUVMap .Post.ID }}{{ if $uv }}{{ $uv }}{{ else }}0{{ end }}</td>
     <td>{{ relativeTime .Post.CreatedAt }}</td>
     <td>{{ relativeTime .Post.UpdatedAt }}</td>
     {{ template "partials/table_row_actions" dict "BaseURL" "/admin/posts" "ID" .Post.ID }}
   </tr>
   {{ else }}
-  {{ template "partials/table_empty" dict "ColSpan" 9 "Message" "No posts" }}
+  {{ template "partials/table_empty" dict "ColSpan" 10 "Message" "No posts" }}
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="9">
+    <td colspan="10">
       {{template "partials/pagination" .}}
     </td>
   </tr>
   </tfoot>
 </table>
-
 
 

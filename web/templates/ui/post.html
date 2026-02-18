@@ -13,6 +13,10 @@
       {{if .IsLogin}}
         / <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
       {{end}}
+      / <form method="post" action="{{ GetBasePath }}/_action/like/{{ .LikeType }}/{{ .Post.ID }}" style="display:inline;">
+        <input type="hidden" name="return_url" value="{{ .UrlPath }}">
+        <button type="submit">{{ if .Liked }}取消点赞{{ else }}点赞{{ end }} ({{ if .LikeCount }}{{ .LikeCount }}{{ else }}0{{ end }})</button>
+      </form>
   </nav>
 </header>
 <article>

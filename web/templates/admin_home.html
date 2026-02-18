@@ -1,14 +1,16 @@
 <style>
   .dashboard-label {
-    color: var(--muted-foreground, var(--foreground));
-    font-size: 12px;
-    margin-bottom: 8px;
+    font-size: var(--text-8);
   }
 
   .dashboard-number {
-    font-size: 2em;
-    line-height: 1;
-    margin: 0;
+    font-size: var(--text-3);
+  }
+
+  .dashboard-sub {
+    color: var(--muted-foreground, var(--foreground));
+    font-size: 12px;
+    margin-top: 8px;
   }
 
   .quick-link .btn {
@@ -17,106 +19,71 @@
 </style>
 
 <div class="row dashboard-row-nowrap">
-  <div class="col-4 mb-2">
+  <div class="col-2 mb-2">
     <div class="card">
-      <div class="dashboard-label">站点 UV（累计去重）</div>
-      <p class="dashboard-number">{{ if .SiteUV }}{{ .SiteUV }}{{ else }}0{{ end }}</p>
+      <div class="dashboard-label">活跃用户（30天）</div>
+      <div class="dashboard-number">{{ if .ActiveUsers }}{{ .ActiveUsers }}{{ else }}0{{ end }}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
-      <div class="dashboard-label">文章数量</div>
-      <p class="dashboard-number">{{ if .PostCount }}{{ .PostCount }}{{ else }}0{{ end }}</p>
+      <div class="dashboard-label">总访问次数（UV）</div>
+      <div class="dashboard-number">{{ if .TotalUV }}{{ .TotalUV }}{{ else }}0{{ end }}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
-      <div class="dashboard-label">页面数量</div>
-      <p class="dashboard-number">{{ if .PageCount }}{{ .PageCount }}{{ else }}0{{ end }}</p>
+      <div class="dashboard-label">总点赞次数</div>
+      <div class="dashboard-number">{{ if .TotalLikes }}{{ .TotalLikes }}{{ else }}0{{ end }}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
-      <div class="dashboard-label">分类数量</div>
-      <p class="dashboard-number">{{ if .CategoryCount }}{{ .CategoryCount }}{{ else }}0{{ end }}</p>
+      <div class="dashboard-label">文章总数</div>
+      <div class="dashboard-number">{{ if .PostCount }}{{ .PostCount }}{{ else }}0{{ end }}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
-      <div class="dashboard-label">标签数量</div>
-      <p class="dashboard-number">{{ if .TagCount }}{{ .TagCount }}{{ else }}0{{ end }}</p>
+      <div class="dashboard-label">分类总数</div>
+      <div class="dashboard-number">{{ if .CategoryCount }}{{ .CategoryCount }}{{ else }}0{{ end }}</div>
+    </div>
+  </div>
+  <div class="col-2 mb-2">
+    <div class="card">
+      <div class="dashboard-label">标签总数</div>
+      <div class="dashboard-number">{{ if .TagCount }}{{ .TagCount }}{{ else }}0{{ end }}</div>
     </div>
   </div>
 </div>
 
 <h4 class="mt-4 mb-2">快捷操作</h4>
 <div class="row dashboard-row-nowrap">
-  <a class="button primary" href="/admin/posts/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建文章" }}</a>
-  <a class="button" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "list" "label" "文章列表" }}</a>
-  <a class="button" href="/admin/categories/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
-  <a class="button" href="/admin/tags/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建标签" }}</a>
-  <a class="button" href="/admin/import">{{ template "partials/action_btn_content" dict "name" "import" "label" "导入数据" }}</a>
-  <a class="button" href="/admin/export">{{ template "partials/action_btn_content" dict "name" "list" "label" "导出数据" }}</a>
+  <div class="col-2 mb-2 quick-link">
+    <a class="btn primary" href="/admin/posts/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建文章" }}</a>
+  </div>
+  <div class="col-2 mb-2 quick-link">
+    <a class="btn" href="/admin/posts">{{ template "partials/action_btn_content" dict "name" "list" "label" "文章列表" }}</a>
+  </div>
+  <div class="col-2 mb-2 quick-link">
+    <a class="btn" href="/admin/categories/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
+  </div>
+  <div class="col-2 mb-2 quick-link">
+    <a class="btn" href="/admin/tags/new">{{ template "partials/action_btn_content" dict "name" "plus" "label" "新建标签" }}</a>
+  </div>
+  <div class="col-2 mb-2 quick-link">
+    <a class="btn" href="/admin/import">{{ template "partials/action_btn_content" dict "name" "import" "label" "导入数据" }}</a>
+  </div>
+  <div class="col-2 mb-2 quick-link">
+    <a class="btn" href="/admin/export">{{ template "partials/action_btn_content" dict "name" "list" "label" "导出数据" }}</a>
+  </div>
 </div>
 
 <div class="row mt-4">
-  <section class="col-6">
-    <h4 class="mb-2">文章 UV Top 10</h4>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>标题</th>
-          <th class="text-right">UV</th>
-          <th class="text-right">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{ if .TopPosts }}
-          {{ range $index, $item := .TopPosts }}
-          <tr>
-            <td>{{ add $index 1 }}</td>
-            <td>{{ $item.Title }}</td>
-            <td class="text-right">{{ $item.UV }}</td>
-            <td class="text-right"><a href="/admin/posts/{{ $item.PostID }}/edit">编辑</a></td>
-          </tr>
-          {{ end }}
-        {{ else }}
-          <tr>
-            <td colspan="4">暂无文章 UV 数据</td>
-          </tr>
-        {{ end }}
-      </tbody>
-    </table>
-  </section>
-
-  <section class="col-6">
-    <h4 class="mb-2">页面 UV Top 10</h4>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>标题</th>
-          <th class="text-right">UV</th>
-          <th class="text-right">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{ if .TopPages }}
-          {{ range $index, $item := .TopPages }}
-          <tr>
-            <td>{{ add $index 1 }}</td>
-            <td>{{ $item.Title }}</td>
-            <td class="text-right">{{ $item.UV }}</td>
-            <td class="text-right"><a href="/admin/posts/{{ $item.PostID }}/edit">编辑</a></td>
-          </tr>
-          {{ end }}
-        {{ else }}
-          <tr>
-            <td colspan="4">暂无页面 UV 数据</td>
-          </tr>
-        {{ end }}
-      </tbody>
-    </table>
-  </section>
+  <div class="col-12">
+    <div class="card">
+      <div class="dashboard-label">UV 统计图表</div>
+      <p class="dashboard-note">图表形态待确认，当前先保留此区域。</p>
+    </div>
+  </div>
 </div>

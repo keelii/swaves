@@ -3,6 +3,9 @@ package site
 import (
 	"fmt"
 	"log"
+	"net/url"
+	"strconv"
+	"strings"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
 	"swaves/internal/share"
@@ -39,6 +42,99 @@ func (h Handler) trackEntityUV(c *fiber.Ctx, entityType db.UVEntityType, entityI
 
 	if _, err := db.UpsertUVUnique(h.Model, entityType, entityID, visitorID); err != nil {
 		log.Printf("track entity uv failed: %v", err)
+	}
+}
+
+func (h Handler) getEntityLikeState(c *fiber.Ctx, entityType db.UVEntityType, entityID int64) (int, bool) {
+	likeCount, err := db.CountEntityLikes(h.Model, entityType, entityID)
+	if err != nil {
+		log.Printf("count entity like failed: %v", err)
+		return 0, false
+	}
+
+	visitorID := middleware.GetOrCreateVisitorID(c, "")
+	if visitorID == "" {
+		return likeCount, false
+	}
+
+	liked, err := db.IsEntityLikedByVisitor(h.Model, entityType, entityID, visitorID)
+	if err != nil {
+		log.Printf("check entity like failed: %v", err)
+		return likeCount, false
+	}
+
+	return likeCount, liked
+}
+
+func parseLikeEntityType(value string) (db.UVEntityType, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "post":
+		return db.UVEntityPost, true
+	case "category":
+		return db.UVEntityCategory, true
+	case "tag":
+		return db.UVEntityTag, true
+	default:
+		return 0, false
+	}
+}
+
+func isSafeReturnPath(path string) bool {
+	if path == "" || !strings.HasPrefix(path, "/") {
+		return false
+	}
+	return !strings.Contains(path, "//")
+}
+
+func getSiteFallbackPath() string {
+	basePath := store.GetSetting("base_path")
+	if basePath == "" {
+		return "/"
+	}
+	return basePath
+}
+
+func resolveReturnPath(c *fiber.Ctx) string {
+	if path := strings.TrimSpace(c.FormValue("return_url")); isSafeReturnPath(path) {
+		return path
+	}
+	referer := strings.TrimSpace(c.Get("Referer"))
+	if isSafeReturnPath(referer) {
+		return referer
+	}
+	if referer != "" {
+		if parsed, err := url.Parse(referer); err == nil {
+			candidate := parsed.EscapedPath()
+			if parsed.RawQuery != "" {
+				candidate += "?" + parsed.RawQuery
+			}
+			if isSafeReturnPath(candidate) {
+				return candidate
+			}
+		}
+	}
+	return getSiteFallbackPath()
+}
+
+func (h Handler) ensureLikeEntityExists(entityType db.UVEntityType, entityID int64) error {
+	switch entityType {
+	case db.UVEntityPost:
+		post, err := db.GetPostByID(h.Model, entityID)
+		if err != nil {
+			return err
+		}
+		if post.Status != "published" || post.PublishedAt <= 0 {
+			return db.ErrNotFound("PostEntityLike.Post")
+		}
+		return nil
+	case db.UVEntityCategory:
+		_, err := db.GetCategoryByID(h.Model, entityID)
+		return err
+	case db.UVEntityTag:
+		_, err := db.GetTagByID(h.Model, entityID)
+		return err
+	default:
+		return fiber.ErrBadRequest
 	}
 }
 
@@ -118,9 +214,13 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
+	likeCount, liked := h.getEntityLikeState(c, db.UVEntityPost, post.Post.ID)
 
 	return RenderUIView(c, "ui/post", fiber.Map{
-		"Post": post,
+		"Post":      post,
+		"LikeCount": likeCount,
+		"Liked":     liked,
+		"LikeType":  "post",
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -132,9 +232,13 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
+	likeCount, liked := h.getEntityLikeState(c, db.UVEntityPost, post.Post.ID)
 
 	return RenderUIView(c, "ui/post", fiber.Map{
-		"Post": post,
+		"Post":      post,
+		"LikeCount": likeCount,
+		"Liked":     liked,
+		"LikeType":  "post",
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -187,12 +291,16 @@ func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityCategory, category.ID)
+	likeCount, liked := h.getEntityLikeState(c, db.UVEntityCategory, category.ID)
 
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
 
 	return RenderUIView(c, "ui/detail", fiber.Map{
 		"IsCategory": true,
 		"Entity":     category,
+		"LikeCount":  likeCount,
+		"Liked":      liked,
+		"LikeType":   "category",
 		"List":       posts,
 		"ListPage":   share.GetCategoryIndex(),
 		"Pages":      ListPages(h.Model),
@@ -207,16 +315,60 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityTag, tag.ID)
+	likeCount, liked := h.getEntityLikeState(c, db.UVEntityTag, tag.ID)
 
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
 
 	return RenderUIView(c, "ui/detail", fiber.Map{
-		"IsTag":    true,
-		"Entity":   tag,
-		"List":     posts,
-		"ListPage": share.GetTagIndex(),
-		"Pages":    ListPages(h.Model),
+		"IsTag":     true,
+		"Entity":    tag,
+		"LikeCount": likeCount,
+		"Liked":     liked,
+		"LikeType":  "tag",
+		"List":      posts,
+		"ListPage":  share.GetTagIndex(),
+		"Pages":     ListPages(h.Model),
 	}, "")
+}
+
+func (h Handler) PostEntityLike(c *fiber.Ctx) error {
+	entityType, ok := parseLikeEntityType(c.Params("entityType"))
+	if !ok {
+		return fiber.ErrBadRequest
+	}
+
+	entityID, err := strconv.ParseInt(c.Params("entityID"), 10, 64)
+	if err != nil || entityID <= 0 {
+		return fiber.ErrBadRequest
+	}
+
+	if err = h.ensureLikeEntityExists(entityType, entityID); err != nil {
+		if db.IsErrNotFound(err) {
+			return fiber.ErrNotFound
+		}
+		return err
+	}
+
+	visitorID := middleware.GetOrCreateVisitorID(c, "")
+	if visitorID == "" {
+		return fiber.ErrBadRequest
+	}
+
+	liked, err := db.IsEntityLikedByVisitor(h.Model, entityType, entityID, visitorID)
+	if err != nil {
+		return err
+	}
+
+	nextStatus := db.LikeStatusActive
+	if liked {
+		nextStatus = db.LikeStatusInactive
+	}
+
+	if err = db.UpsertEntityLike(h.Model, entityType, entityID, visitorID, nextStatus); err != nil {
+		return err
+	}
+
+	return c.Redirect(resolveReturnPath(c))
 }
 
 func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {

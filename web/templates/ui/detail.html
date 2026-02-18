@@ -8,6 +8,10 @@
       {{if .IsTag}}
       / <a href="{{ settings "tag_url_prefix" }}">标签</a>
       {{end}}
+      / <form method="post" action="{{ GetBasePath }}/_action/like/{{ .LikeType }}/{{ .Entity.ID }}" style="display:inline;">
+        <input type="hidden" name="return_url" value="{{ .UrlPath }}">
+        <button type="submit">{{ if .Liked }}取消点赞{{ else }}点赞{{ end }} ({{ if .LikeCount }}{{ .LikeCount }}{{ else }}0{{ end }})</button>
+      </form>
     </nav>
   </header>
   <ul>

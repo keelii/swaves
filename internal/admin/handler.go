@@ -109,7 +109,23 @@ func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
 }
 
 func (h *Handler) GetHome(c *fiber.Ctx) error {
-	siteUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
+	totalUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	activeUsers, err := db.CountActiveVisitors(h.Model, 30*24*60*60)
+	if err != nil {
+		return RenderAdminView(c, "admin_home", fiber.Map{
+			"Title": "工作台",
+			"Error": err.Error(),
+		}, "")
+	}
+
+	totalLikes, err := db.CountTotalLikes(h.Model)
 	if err != nil {
 		return RenderAdminView(c, "admin_home", fiber.Map{
 			"Title": "工作台",
@@ -149,31 +165,14 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	topPosts, err := db.ListTopUVPosts(h.Model, 10)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	topPages, err := db.ListTopUVPages(h.Model, 10)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
 	return RenderAdminView(c, "admin_home", fiber.Map{
 		"Title":         "工作台",
-		"SiteUV":        siteUV,
-		"PostCount":     postCount,
-		"PageCount":     pageCount,
+		"ActiveUsers":   activeUsers,
+		"TotalUV":       totalUV,
+		"TotalLikes":    totalLikes,
+		"PostCount":     postCount + pageCount,
 		"CategoryCount": categoryCount,
 		"TagCount":      tagCount,
-		"TopPosts":      topPosts,
-		"TopPages":      topPages,
 	}, "")
 }
 
@@ -284,6 +283,17 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	postIDs := make([]int64, 0, len(posts))
+	for _, item := range posts {
+		if item.Post != nil && item.Post.ID > 0 {
+			postIDs = append(postIDs, item.Post.ID)
+		}
+	}
+	postUVMap, err := db.CountPostUVByIDs(h.Model, postIDs)
+	if err != nil {
+		return err
+	}
+
 	kindQuery := "0"
 	if kind == db.PostKindPage {
 		kindQuery = "1"
@@ -340,6 +350,7 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 		"FilterCategoryName":      filterCategoryName,
 		"FilterTagRemoveURL":      filterTagRemoveURL,
 		"FilterCategoryRemoveURL": filterCategoryRemoveURL,
+		"PostUVMap":               postUVMap,
 	}, "")
 }
 func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
