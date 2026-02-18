@@ -1,24 +1,20 @@
-
 <form id="form" method="post" action="/admin/encrypted-posts/new">
-  <p>
-    <label>
-      Title<br>
-      <input type="text" name="title" required placeholder="加密文章标题">
-    </label>
-  </p>
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        文章标题
+        <input class="w-100" type="text" name="title" required placeholder="加密文章标题">
+      </label>
 
-  <p>
-    <label>
-      Password (only for others)<br>
-      <input type="password" name="password" placeholder="可选密码（仅用于他人访问）">
-    </label>
-  </p>
+      <label data-field>
+        访问密码（仅用于他人访问）
+        <input class="w-100" type="password" name="password" placeholder="可选密码（仅用于他人访问）">
+      </label>
 
-  <p>
-    {{ template "partials/expires_at_field" dict "CustomDate" "" "HasExpiry" false }}
-  </p>
+      {{ template "partials/expires_at_field" dict "Label" "过期时间" "CustomDate" "" "HasExpiry" false }}
+    </div>
+  </div>
 
   {{ template "partials/markdown_preview" dict "Placeholder" "加密文章内容（支持 Markdown）" "Value" "" "Required" true }}
 
 </form>
-

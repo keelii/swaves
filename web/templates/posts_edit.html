@@ -1,19 +1,33 @@
 <form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
-  <div class="flex items-center gap-4" style="margin-bottom: 1em;">
-    <span style="min-width: 30%">
-      <input type="text" style="width: 100%" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
-    </span>
-    <span>/{{ .Post.Slug }}</span>
-    {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
-  </div>
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        文章标题
+        <input class="w-100" type="text" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
+      </label>
 
-  <div class="flex justify-between gap-4">
-    <div class="grow">
-      {{ template "partials/tag_select" . }}
-    </div>
+      <label data-field>
+        文章 URL 地址
+        <span class="hstack">
+          <span>/</span>
+          <input type="text" value="{{ .Post.Slug }}" disabled style="flex: 1;">
+        </span>
+      </label>
 
-    <div class="grow">
-      {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
+      <fieldset class="hstack">
+        <legend>Kind (类型)</legend>
+        {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
+      </fieldset>
+
+      <label data-field>
+        标签
+        {{ template "partials/tag_select" . }}
+      </label>
+
+      <label data-field>
+        分类
+        {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
+      </label>
     </div>
   </div>
 

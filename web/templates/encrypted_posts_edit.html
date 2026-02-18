@@ -1,22 +1,29 @@
-
 <form id="form" method="post" action="/admin/encrypted-posts/{{ .Post.ID }}/edit">
-  <p>
-    <input type="text" name="title" value="{{ .Post.Title }}" required placeholder="加密文章标题">
-  </p>
+  {{ $displayDate := "" }}{{ if .Post.ExpiresAt }}{{ $displayDate = formatTime .Post.ExpiresAt }}{{ end }}
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        文章标题
+        <input class="w-100" type="text" name="title" value="{{ .Post.Title }}" required placeholder="加密文章标题">
+      </label>
 
-  <p>
-    <input type="text" name="slug" value="{{ .Post.Slug }}" disabled>
-  </p>
+      <label data-field>
+        文章 URL 地址
+        <span class="hstack">
+          <span>/</span>
+          <input type="text" value="{{ .Post.Slug }}" disabled style="flex: 1;">
+        </span>
+      </label>
 
-  <p>
-    <input type="password" name="password" placeholder="留空以保持当前密码">
-  </p>
+      <label data-field>
+        访问密码（留空以保持当前密码）
+        <input class="w-100" type="password" name="password" placeholder="留空以保持当前密码">
+      </label>
 
-  <p>
-    {{ $displayDate := "" }}{{ if .Post.ExpiresAt }}{{ $displayDate = formatTime .Post.ExpiresAt }}{{ end }}
-  </p>
+      {{ template "partials/expires_at_field" dict "Label" "过期时间" "ReadOnly" true "HasExpiry" .Post.ExpiresAt "DisplayDate" $displayDate }}
+    </div>
+  </div>
 
   {{ template "partials/markdown_preview" dict "Placeholder" "加密文章内容（支持 Markdown）" "Value" .Post.Content }}
 
 </form>
-
