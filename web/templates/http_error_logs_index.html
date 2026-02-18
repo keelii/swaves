@@ -40,13 +40,13 @@
     </td>
   </tr>
   {{ else }}
-  {{ template "partials/table_empty" dict "ColSpan" 12 "Message" "No logs" }}
+  {{ template "partials/table_empty" dict "ColSpan" 11 "Message" "No logs" }}
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="12">
+    <td colspan="11">
       {{template "partials/pagination" .}}
     </td>
   </tr>
