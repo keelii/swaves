@@ -1279,23 +1279,23 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 	v4 := testVisitorID(4)
 	v5 := testVisitorID(5)
 
-	if err := UpsertEntityLike(db, UVEntityPost, post.ID, v1, LikeStatusActive); err != nil {
+	if err := UpsertEntityLike(db, post.ID, v1, LikeStatusActive); err != nil {
 		t.Fatalf("UpsertEntityLike post v1 failed: %v", err)
 	}
-	if err := UpsertEntityLike(db, UVEntityPost, post.ID, v2, LikeStatusActive); err != nil {
+	if err := UpsertEntityLike(db, post.ID, v2, LikeStatusActive); err != nil {
 		t.Fatalf("UpsertEntityLike post v2 failed: %v", err)
 	}
-	if err := UpsertEntityLike(db, UVEntityPost, page.ID, v3, LikeStatusActive); err != nil {
+	if err := UpsertEntityLike(db, page.ID, v3, LikeStatusActive); err != nil {
 		t.Fatalf("UpsertEntityLike page v3 failed: %v", err)
 	}
-	if err := UpsertEntityLike(db, UVEntityPost, page.ID, v4, LikeStatusInactive); err != nil {
+	if err := UpsertEntityLike(db, page.ID, v4, LikeStatusInactive); err != nil {
 		t.Fatalf("UpsertEntityLike page v4 inactive failed: %v", err)
 	}
-	if err := UpsertEntityLike(db, UVEntityPost, draft.ID, v5, LikeStatusActive); err != nil {
+	if err := UpsertEntityLike(db, draft.ID, v5, LikeStatusActive); err != nil {
 		t.Fatalf("UpsertEntityLike draft v5 failed: %v", err)
 	}
 
-	postLikes, err := CountEntityLikes(db, UVEntityPost, post.ID)
+	postLikes, err := CountEntityLikes(db, post.ID)
 	if err != nil {
 		t.Fatalf("CountEntityLikes post failed: %v", err)
 	}
@@ -1303,7 +1303,7 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 		t.Fatalf("expected post likes 2, got %d", postLikes)
 	}
 
-	pageLikes, err := CountEntityLikes(db, UVEntityPost, page.ID)
+	pageLikes, err := CountEntityLikes(db, page.ID)
 	if err != nil {
 		t.Fatalf("CountEntityLikes page failed: %v", err)
 	}
@@ -1311,7 +1311,7 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 		t.Fatalf("expected page likes 1, got %d", pageLikes)
 	}
 
-	liked, err := IsEntityLikedByVisitor(db, UVEntityPost, post.ID, v1)
+	liked, err := IsEntityLikedByVisitor(db, post.ID, v1)
 	if err != nil {
 		t.Fatalf("IsEntityLikedByVisitor post v1 failed: %v", err)
 	}
@@ -1319,7 +1319,7 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 		t.Fatal("expected post v1 liked=true")
 	}
 
-	liked, err = IsEntityLikedByVisitor(db, UVEntityPost, page.ID, v4)
+	liked, err = IsEntityLikedByVisitor(db, page.ID, v4)
 	if err != nil {
 		t.Fatalf("IsEntityLikedByVisitor page v4 failed: %v", err)
 	}
@@ -1356,7 +1356,7 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 		}
 	}
 
-	if err := UpsertEntityLike(db, UVEntityPost, post.ID, "bad_visitor", LikeStatusActive); err == nil {
+	if err := UpsertEntityLike(db, post.ID, "bad_visitor", LikeStatusActive); err == nil {
 		t.Fatal("expected invalid visitor id error")
 	}
 }
@@ -1427,9 +1427,9 @@ func TestEnsureLikeTableNameMergesLegacyData(t *testing.T) {
 
 	sharedVisitor := []byte("shared-visitor")
 	if _, err := db.Exec(
-		`INSERT INTO `+string(TableLikes)+` (entity_type, entity_id, visitor_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		UVEntityPost, int64(200), sharedVisitor, LikeStatusInactive, int64(200), int64(250),
+		`INSERT INTO `+string(TableLikes)+` (entity_id, visitor_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)`,
+		int64(200), sharedVisitor, LikeStatusInactive, int64(200), int64(250),
 	); err != nil {
 		t.Fatalf("insert existing likes row failed: %v", err)
 	}
@@ -1465,8 +1465,8 @@ func TestEnsureLikeTableNameMergesLegacyData(t *testing.T) {
 	if err := db.QueryRow(
 		`SELECT status, created_at, updated_at
 		FROM `+string(TableLikes)+`
-		WHERE entity_type = ? AND entity_id = ? AND visitor_id = ?`,
-		UVEntityPost, int64(200), sharedVisitor,
+		WHERE entity_id = ? AND visitor_id = ?`,
+		int64(200), sharedVisitor,
 	).Scan(&status, &createdAt, &updatedAt); err != nil {
 		t.Fatalf("query merged row failed: %v", err)
 	}

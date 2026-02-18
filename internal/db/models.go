@@ -90,35 +90,55 @@ func ensureLikeTableName(db *DB) error {
 	if err != nil {
 		return WrapInternalErr("ensureLikeTableName.LegacyExists", err)
 	}
-	if !legacyExists {
-		return nil
-	}
-
-	newExists, err := tableExists(db, string(TableLikes))
-	if err != nil {
-		return WrapInternalErr("ensureLikeTableName.NewExists", err)
-	}
-	if !newExists {
-		if _, err = db.Exec(`ALTER TABLE ` + legacyLikeTableName + ` RENAME TO ` + string(TableLikes)); err != nil {
-			return WrapInternalErr("ensureLikeTableName.Rename", err)
-		}
-	} else {
-		_, err = db.Exec(
-			`INSERT INTO ` + string(TableLikes) + ` (entity_type, entity_id, visitor_id, status, created_at, updated_at)
-			SELECT entity_type, entity_id, visitor_id, status, created_at, updated_at
-			FROM ` + legacyLikeTableName + `
-			WHERE 1 = 1
-			ON CONFLICT(entity_type, entity_id, visitor_id) DO UPDATE SET
-				status = excluded.status,
-				created_at = MIN(` + string(TableLikes) + `.created_at, excluded.created_at),
-				updated_at = MAX(` + string(TableLikes) + `.updated_at, excluded.updated_at)`,
-		)
+	if legacyExists {
+		newExists, err := tableExists(db, string(TableLikes))
 		if err != nil {
-			return WrapInternalErr("ensureLikeTableName.Merge", err)
+			return WrapInternalErr("ensureLikeTableName.NewExists", err)
 		}
+		if !newExists {
+			if _, err = db.Exec(`ALTER TABLE ` + legacyLikeTableName + ` RENAME TO ` + string(TableLikes)); err != nil {
+				return WrapInternalErr("ensureLikeTableName.Rename", err)
+			}
+		} else {
+			hasEntityType, colErr := tableColumnExists(db, string(TableLikes), "entity_type")
+			if colErr != nil {
+				return WrapInternalErr("ensureLikeTableName.NewHasEntityType", colErr)
+			}
 
-		if _, err = db.Exec(`DROP TABLE IF EXISTS ` + legacyLikeTableName); err != nil {
-			return WrapInternalErr("ensureLikeTableName.DropLegacy", err)
+			if hasEntityType {
+				_, err = db.Exec(
+					`INSERT INTO ` + string(TableLikes) + ` (entity_type, entity_id, visitor_id, status, created_at, updated_at)
+					SELECT entity_type, entity_id, visitor_id, status, created_at, updated_at
+					FROM ` + legacyLikeTableName + `
+					WHERE 1 = 1
+					ON CONFLICT(entity_type, entity_id, visitor_id) DO UPDATE SET
+						status = excluded.status,
+						created_at = MIN(` + string(TableLikes) + `.created_at, excluded.created_at),
+						updated_at = MAX(` + string(TableLikes) + `.updated_at, excluded.updated_at)`,
+				)
+				if err != nil {
+					return WrapInternalErr("ensureLikeTableName.MergeLegacyToTyped", err)
+				}
+			} else {
+				_, err = db.Exec(
+					`INSERT INTO `+string(TableLikes)+` (entity_id, visitor_id, status, created_at, updated_at)
+					SELECT entity_id, visitor_id, status, created_at, updated_at
+					FROM `+legacyLikeTableName+`
+					WHERE entity_type = ?
+					ON CONFLICT(entity_id, visitor_id) DO UPDATE SET
+						status = excluded.status,
+						created_at = MIN(`+string(TableLikes)+`.created_at, excluded.created_at),
+						updated_at = MAX(`+string(TableLikes)+`.updated_at, excluded.updated_at)`,
+					UVEntityPost,
+				)
+				if err != nil {
+					return WrapInternalErr("ensureLikeTableName.MergeLegacyToPostOnly", err)
+				}
+			}
+
+			if _, err = db.Exec(`DROP TABLE IF EXISTS ` + legacyLikeTableName); err != nil {
+				return WrapInternalErr("ensureLikeTableName.DropLegacy", err)
+			}
 		}
 	}
 
@@ -129,16 +149,74 @@ func ensureLikeTableName(db *DB) error {
 		return WrapInternalErr("ensureLikeTableName.DropLegacyVisitorIndex", err)
 	}
 
-	if _, err = db.Exec(
-		`CREATE INDEX IF NOT EXISTS idx_likes_entity_status ON ` + string(TableLikes) + ` (entity_type, entity_id, status)`,
-	); err != nil {
-		return WrapInternalErr("ensureLikeTableName.CreateEntityStatusIndex", err)
+	return ensureLikeTableSchema(db)
+}
+
+func ensureLikeTableSchema(db *DB) error {
+	hasEntityType, err := tableColumnExists(db, string(TableLikes), "entity_type")
+	if err != nil {
+		return WrapInternalErr("ensureLikeTableSchema.HasEntityType", err)
+	}
+
+	if hasEntityType {
+		const rebuiltLikeTable = "t_likes_post_only_new"
+
+		if _, err = db.Exec(`DROP TABLE IF EXISTS ` + rebuiltLikeTable); err != nil {
+			return WrapInternalErr("ensureLikeTableSchema.DropRebuildTable", err)
+		}
+
+		if _, err = db.Exec(
+			`CREATE TABLE IF NOT EXISTS ` + rebuiltLikeTable + ` (
+				entity_id INTEGER NOT NULL,
+				visitor_id BLOB NOT NULL,
+				status INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0, 1)),
+				created_at INTEGER NOT NULL,
+				updated_at INTEGER NOT NULL,
+				PRIMARY KEY(entity_id, visitor_id)
+			) WITHOUT ROWID`,
+		); err != nil {
+			return WrapInternalErr("ensureLikeTableSchema.CreateRebuildTable", err)
+		}
+
+		if _, err = db.Exec(
+			`INSERT INTO `+rebuiltLikeTable+` (entity_id, visitor_id, status, created_at, updated_at)
+			SELECT entity_id, visitor_id, status, created_at, updated_at
+			FROM `+string(TableLikes)+`
+			WHERE entity_type = ?
+			ON CONFLICT(entity_id, visitor_id) DO UPDATE SET
+				status = excluded.status,
+				created_at = MIN(`+rebuiltLikeTable+`.created_at, excluded.created_at),
+				updated_at = MAX(`+rebuiltLikeTable+`.updated_at, excluded.updated_at)`,
+			UVEntityPost,
+		); err != nil {
+			return WrapInternalErr("ensureLikeTableSchema.CopyPostLikes", err)
+		}
+
+		if _, err = db.Exec(`DROP TABLE ` + string(TableLikes)); err != nil {
+			return WrapInternalErr("ensureLikeTableSchema.DropOldTable", err)
+		}
+
+		if _, err = db.Exec(`ALTER TABLE ` + rebuiltLikeTable + ` RENAME TO ` + string(TableLikes)); err != nil {
+			return WrapInternalErr("ensureLikeTableSchema.RenameRebuildTable", err)
+		}
+	}
+
+	if _, err = db.Exec(`DROP INDEX IF EXISTS idx_likes_entity_status`); err != nil {
+		return WrapInternalErr("ensureLikeTableSchema.DropEntityStatusIndex", err)
+	}
+	if _, err = db.Exec(`DROP INDEX IF EXISTS idx_likes_visitor_id`); err != nil {
+		return WrapInternalErr("ensureLikeTableSchema.DropVisitorIndex", err)
 	}
 
 	if _, err = db.Exec(
+		`CREATE INDEX IF NOT EXISTS idx_likes_entity_status ON ` + string(TableLikes) + ` (entity_id, status)`,
+	); err != nil {
+		return WrapInternalErr("ensureLikeTableSchema.CreateEntityStatusIndex", err)
+	}
+	if _, err = db.Exec(
 		`CREATE INDEX IF NOT EXISTS idx_likes_visitor_id ON ` + string(TableLikes) + ` (visitor_id)`,
 	); err != nil {
-		return WrapInternalErr("ensureLikeTableName.CreateVisitorIndex", err)
+		return WrapInternalErr("ensureLikeTableSchema.CreateVisitorIndex", err)
 	}
 
 	return nil
@@ -153,6 +231,37 @@ func tableExists(db *DB, tableName string) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func tableColumnExists(db *DB, tableName, columnName string) (bool, error) {
+	rows, err := db.Query(`PRAGMA table_info(` + tableName + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			dataType   string
+			notNull    int
+			defaultV   sql.NullString
+			primaryKey int
+		)
+		if err = rows.Scan(&cid, &name, &dataType, &notNull, &defaultV, &primaryKey); err != nil {
+			return false, err
+		}
+		if strings.EqualFold(name, columnName) {
+			return true, nil
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return false, err
+	}
+
+	return false, nil
 }
 
 func now() int64 {
@@ -886,12 +995,11 @@ func (s LikeStatus) IsValid() bool {
 }
 
 type EntityLike struct {
-	EntityType UVEntityType
-	EntityID   int64
-	VisitorID  []byte
-	Status     LikeStatus
-	CreatedAt  int64
-	UpdatedAt  int64
+	EntityID  int64
+	VisitorID []byte
+	Status    LikeStatus
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 func UpsertUVUnique(db *DB, entityType UVEntityType, entityID int64, visitorID string) (bool, error) {
@@ -1277,14 +1385,13 @@ func ListTopLikedContents(db *DB, limit int) ([]LikeContentRank, error) {
 		FROM `+string(TableLikes)+` AS l
 		INNER JOIN `+string(TablePosts)+` AS p
 			ON p.id = l.entity_id
-		WHERE l.entity_type = ?
-			AND l.status = ?
+		WHERE l.status = ?
 			AND p.deleted_at IS NULL
 			AND p.status = ?
 		GROUP BY p.id, p.title, p.slug, p.kind, p.published_at
 		ORDER BY likes DESC, p.published_at DESC, p.id DESC
 		LIMIT ?`,
-		UVEntityPost, LikeStatusActive, "published", limit,
+		LikeStatusActive, "published", limit,
 	)
 	if err != nil {
 		return nil, WrapInternalErr("ListTopLikedContents.Query", err)
@@ -1316,8 +1423,7 @@ func listTopLikedPostsByKind(db *DB, kind PostKind, limit int) ([]LikePostRank, 
 		FROM (
 			SELECT entity_id, COUNT(*) AS likes
 			FROM `+string(TableLikes)+`
-			WHERE entity_type = ?
-				AND status = ?
+			WHERE status = ?
 			GROUP BY entity_id
 			ORDER BY likes DESC
 			LIMIT ?
@@ -1328,7 +1434,7 @@ func listTopLikedPostsByKind(db *DB, kind PostKind, limit int) ([]LikePostRank, 
 			AND p.kind = ?
 			AND p.status = ?
 		ORDER BY l.likes DESC, p.published_at DESC, p.id DESC`,
-		UVEntityPost, LikeStatusActive, limit, kind, "published",
+		LikeStatusActive, limit, kind, "published",
 	)
 	if err != nil {
 		return nil, WrapInternalErr("listTopLikedPostsByKind.Query", err)
@@ -1345,90 +1451,6 @@ func listTopLikedPostsByKind(db *DB, kind PostKind, limit int) ([]LikePostRank, 
 	}
 	if err = rows.Err(); err != nil {
 		return nil, WrapInternalErr("listTopLikedPostsByKind.Rows", err)
-	}
-
-	return res, nil
-}
-
-func ListTopLikedCategories(db *DB, limit int) ([]LikeCategoryRank, error) {
-	if limit <= 0 {
-		limit = 10
-	}
-
-	rows, err := db.Query(
-		`SELECT c.id, c.name, c.slug, l.likes
-		FROM (
-			SELECT entity_id, COUNT(*) AS likes
-			FROM `+string(TableLikes)+`
-			WHERE entity_type = ?
-				AND status = ?
-			GROUP BY entity_id
-			ORDER BY likes DESC
-			LIMIT ?
-		) AS l
-		INNER JOIN `+string(TableCategories)+` AS c
-			ON c.id = l.entity_id
-		WHERE c.deleted_at IS NULL
-		ORDER BY l.likes DESC, c.sort ASC, c.id ASC`,
-		UVEntityCategory, LikeStatusActive, limit,
-	)
-	if err != nil {
-		return nil, WrapInternalErr("ListTopLikedCategories.Query", err)
-	}
-	defer rows.Close()
-
-	res := make([]LikeCategoryRank, 0, limit)
-	for rows.Next() {
-		var item LikeCategoryRank
-		if err = rows.Scan(&item.CategoryID, &item.Name, &item.Slug, &item.Likes); err != nil {
-			return nil, WrapInternalErr("ListTopLikedCategories.Scan", err)
-		}
-		res = append(res, item)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, WrapInternalErr("ListTopLikedCategories.Rows", err)
-	}
-
-	return res, nil
-}
-
-func ListTopLikedTags(db *DB, limit int) ([]LikeTagRank, error) {
-	if limit <= 0 {
-		limit = 10
-	}
-
-	rows, err := db.Query(
-		`SELECT t.id, t.name, t.slug, l.likes
-		FROM (
-			SELECT entity_id, COUNT(*) AS likes
-			FROM `+string(TableLikes)+`
-			WHERE entity_type = ?
-				AND status = ?
-			GROUP BY entity_id
-			ORDER BY likes DESC
-			LIMIT ?
-		) AS l
-		INNER JOIN `+string(TableTags)+` AS t
-			ON t.id = l.entity_id
-		WHERE t.deleted_at IS NULL
-		ORDER BY l.likes DESC, t.id DESC`,
-		UVEntityTag, LikeStatusActive, limit,
-	)
-	if err != nil {
-		return nil, WrapInternalErr("ListTopLikedTags.Query", err)
-	}
-	defer rows.Close()
-
-	res := make([]LikeTagRank, 0, limit)
-	for rows.Next() {
-		var item LikeTagRank
-		if err = rows.Scan(&item.TagID, &item.Name, &item.Slug, &item.Likes); err != nil {
-			return nil, WrapInternalErr("ListTopLikedTags.Scan", err)
-		}
-		res = append(res, item)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, WrapInternalErr("ListTopLikedTags.Rows", err)
 	}
 
 	return res, nil
@@ -1477,12 +1499,9 @@ func listTopUVPostsByKind(db *DB, kind PostKind, limit int) ([]UVPostRank, error
 	return res, nil
 }
 
-func UpsertEntityLike(db *DB, entityType UVEntityType, entityID int64, visitorID string, status LikeStatus) error {
-	if !isLikeEntityTypeSupported(entityType) {
-		return errors.New("entity_type is invalid for like")
-	}
-	if entityID <= 0 {
-		return errors.New("entity_id is invalid")
+func UpsertEntityLike(db *DB, postID int64, visitorID string, status LikeStatus) error {
+	if postID <= 0 {
+		return errors.New("post_id is invalid")
 	}
 	if !status.IsValid() {
 		return errors.New("like status is invalid")
@@ -1495,12 +1514,12 @@ func UpsertEntityLike(db *DB, entityType UVEntityType, entityID int64, visitorID
 
 	ts := now()
 	_, err = db.Exec(
-		`INSERT INTO `+string(TableLikes)+` (entity_type, entity_id, visitor_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT(entity_type, entity_id, visitor_id) DO UPDATE SET
+		`INSERT INTO `+string(TableLikes)+` (entity_id, visitor_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(entity_id, visitor_id) DO UPDATE SET
 			status = excluded.status,
 			updated_at = excluded.updated_at`,
-		entityType, entityID, visitorIDBytes, status, ts, ts,
+		postID, visitorIDBytes, status, ts, ts,
 	)
 	if err != nil {
 		return WrapInternalErr("UpsertEntityLike", err)
@@ -1509,22 +1528,18 @@ func UpsertEntityLike(db *DB, entityType UVEntityType, entityID int64, visitorID
 	return nil
 }
 
-func CountEntityLikes(db *DB, entityType UVEntityType, entityID int64) (int, error) {
-	if !isLikeEntityTypeSupported(entityType) {
-		return 0, errors.New("entity_type is invalid for like")
-	}
-	if entityID <= 0 {
-		return 0, errors.New("entity_id is invalid")
+func CountEntityLikes(db *DB, postID int64) (int, error) {
+	if postID <= 0 {
+		return 0, errors.New("post_id is invalid")
 	}
 
 	var count int
 	if err := db.QueryRow(
 		`SELECT COUNT(*)
 		FROM `+string(TableLikes)+`
-		WHERE entity_type = ?
-			AND entity_id = ?
+		WHERE entity_id = ?
 			AND status = ?`,
-		entityType, entityID, LikeStatusActive,
+		postID, LikeStatusActive,
 	).Scan(&count); err != nil {
 		return 0, WrapInternalErr("CountEntityLikes", err)
 	}
@@ -1544,12 +1559,9 @@ func CountTotalLikes(db *DB) (int, error) {
 	return count, nil
 }
 
-func IsEntityLikedByVisitor(db *DB, entityType UVEntityType, entityID int64, visitorID string) (bool, error) {
-	if !isLikeEntityTypeSupported(entityType) {
-		return false, errors.New("entity_type is invalid for like")
-	}
-	if entityID <= 0 {
-		return false, errors.New("entity_id is invalid")
+func IsEntityLikedByVisitor(db *DB, postID int64, visitorID string) (bool, error) {
+	if postID <= 0 {
+		return false, errors.New("post_id is invalid")
 	}
 
 	visitorIDBytes, err := parseVisitorIDBytes(visitorID)
@@ -1561,11 +1573,10 @@ func IsEntityLikedByVisitor(db *DB, entityType UVEntityType, entityID int64, vis
 	err = db.QueryRow(
 		`SELECT status
 		FROM `+string(TableLikes)+`
-		WHERE entity_type = ?
-			AND entity_id = ?
+		WHERE entity_id = ?
 			AND visitor_id = ?
 		LIMIT 1`,
-		entityType, entityID, visitorIDBytes,
+		postID, visitorIDBytes,
 	).Scan(&status)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1575,15 +1586,6 @@ func IsEntityLikedByVisitor(db *DB, entityType UVEntityType, entityID int64, vis
 	}
 
 	return status == int(LikeStatusActive), nil
-}
-
-func isLikeEntityTypeSupported(entityType UVEntityType) bool {
-	switch entityType {
-	case UVEntityPost, UVEntityCategory, UVEntityTag:
-		return true
-	default:
-		return false
-	}
 }
 
 // PostKind 文章类型

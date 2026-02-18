@@ -199,9 +199,12 @@ svg {
 }
 
 .menu-list {
-    list-style: none;
-    padding: 8px 0;
+  list-style: none;
+  padding: 8px 0;
 }
+/*.menu-list li {*/
+/*  margin-block-end: var(--space-1);*/
+/*}*/
 
 /* 一级菜单 */
 .menu-item {
@@ -575,3 +578,7 @@ input[type="range"] {
   width: 4em;
 }
 
+table :is(th, td).col-id {
+  width: 4em;
+  white-space: nowrap;
+}

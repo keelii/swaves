@@ -209,17 +209,16 @@ const InitialSQL = `
 	ON ` + TableUVUnique + ` (visitor_id);
 
 	CREATE TABLE IF NOT EXISTS ` + TableLikes + ` (
-		entity_type INTEGER NOT NULL CHECK (entity_type IN (2, 3, 4)),
 		entity_id INTEGER NOT NULL,
 		visitor_id BLOB NOT NULL,
 		status INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0, 1)),
 		created_at INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL,
-		PRIMARY KEY(entity_type, entity_id, visitor_id)
+		PRIMARY KEY(entity_id, visitor_id)
 	) WITHOUT ROWID;
 
 	CREATE INDEX IF NOT EXISTS idx_likes_entity_status
-	ON ` + TableLikes + ` (entity_type, entity_id, status);
+	ON ` + TableLikes + ` (entity_id, status);
 
 	CREATE INDEX IF NOT EXISTS idx_likes_visitor_id
 	ON ` + TableLikes + ` (visitor_id);

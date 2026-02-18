@@ -1,7 +1,7 @@
 <table>
   <thead>
   <tr>
-    <th>ID</th>
+    <th class="col-id">ID</th>
     <th>名称</th>
     <th>URL标识</th>
     <th>文章数量</th>
@@ -14,7 +14,7 @@
   <tbody>
   {{ range .Tags }}
   <tr>
-    <td>{{ .ID }}</td>
+    <td class="col-id">{{ .ID }}</td>
     <td>{{ .Name }}</td>
     <td><a href="{{ GetTagUrl . }}" target="_blank" rel="noopener">{{ .Slug }}</a></td>
     <td><a href="/admin/posts?kind=0&tag={{ .ID }}">{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</a></td>

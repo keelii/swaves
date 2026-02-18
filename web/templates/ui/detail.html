@@ -8,7 +8,6 @@
       {{if .IsTag}}
       / <a href="{{ settings "tag_url_prefix" }}">标签</a>
       {{end}}
-      / {{ template "ui/like_action" dict "LikeType" .LikeType "EntityID" .Entity.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
     </nav>
   </header>
   <ul>

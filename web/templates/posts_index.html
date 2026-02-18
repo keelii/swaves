@@ -28,12 +28,9 @@
 </div>
 
 <table>
-  <colgroup>
-    <col style="width: 3em">
-  </colgroup>
   <thead>
   <tr>
-    <th>ID</th>
+    <th class="col-id">ID</th>
     <th>标题</th>
     <th>URL标识</th>
     <th>标签</th>
@@ -49,7 +46,7 @@
   <tbody>
   {{ range .Posts }}
   <tr>
-    <td>{{ .Post.ID }}</td>
+    <td class="col-id">{{ .Post.ID }}</td>
     <td>{{ if $.SearchQuery }}{{ highlight .Post.Title $.SearchQuery }}{{ else }}{{ .Post.Title }}{{ end }}</td>
     <td><a href="{{ GetPostUrl .Post }}" target="_blank" rel="noopener">{{ if $.SearchQuery }}{{ highlight .Post.Slug $.SearchQuery }}{{ else }}{{ .Post.Slug }}{{ end }}</a></td>
     <td>

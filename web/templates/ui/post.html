@@ -11,7 +11,7 @@
       {{template "ui/tag_list" dict "Items" .Post.Tags "Label" true}}
     {{end}}
     {{ template "ui/read_uv" dict "Count" .ReadUV }}
-    {{ template "ui/like_action" dict "LikeType" .LikeType "EntityID" .Post.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
+    {{ template "ui/like_action" dict "PostID" .Post.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
     {{if .IsLogin}}
        <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
     {{end}}

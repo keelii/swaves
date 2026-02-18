@@ -2,7 +2,7 @@
 <table>
   <thead>
   <tr>
-    <th>ID</th>
+    <th class="col-id">ID</th>
     <th>请求ID</th>
     <th>客户端IP</th>
     <th>方法</th>
@@ -19,7 +19,7 @@
   <tbody>
   {{ range .Logs }}
   <tr>
-    <td>{{ .ID }}</td>
+    <td class="col-id">{{ .ID }}</td>
     <td>{{ .ReqID }}</td>
     <td>{{ .ClientIP }}</td>
     <td>{{ .Method }}</td>
