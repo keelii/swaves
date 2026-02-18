@@ -35,7 +35,9 @@ body {
     padding: 0;
     border-radius: 0;
 }
-
+svg {
+  rect:focus { outline: none }
+}
 .salign {
   display: flex;
   justify-content: space-between;
