@@ -2,6 +2,10 @@
   .settings-kind {
     margin-bottom: var(--space-8);
   }
+
+  .settings-item-radio {
+    align-self: center;
+  }
 </style>
 
 <form id="form" method="post" action="/admin/settings/all" class="settings-all-form">
@@ -14,12 +18,15 @@
           {{ $setting := . }}
           {{ $code := $setting.Code }}
           {{ $attrs := $setting.AttrsParsed }}
-          <div class="col-4 settings-item{{ if eq $setting.Type "textarea" }} settings-item-full{{ end }}">
+          <div class="col-4 settings-item{{ if eq $setting.Type "textarea" }} settings-item-full{{ end }}{{ if eq $setting.Type "radio" }} settings-item-radio{{ end }}">
             <label class="settings-item-label">
-              <div class="settings-item-header">
-                <span class="settings-item-title">{{ $setting.Name }}</span>
-                {{ if eq $setting.Reload 1 }}<small class="settings-item-reload">需重启生效</small>{{ end }}
-              </div>
+
+              {{ if ne $setting.Type "radio" }}
+                <div class="settings-item-header">
+                  <span class="settings-item-title">{{ $setting.Name }}</span>
+                    {{ if eq $setting.Reload 1 }}<small class="settings-item-reload">需重启生效</small>{{ end }}
+                </div>
+              {{ end }}
 
               {{ if eq $setting.Type "text" }}
                 <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
@@ -44,14 +51,13 @@
                 <textarea name="setting_{{ $code }}"{{ renderAttrs $attrs }}>{{ $setting.Value }}</textarea>
               {{ else if eq $setting.Type "radio" }}
                 {{ $currentValue := or $setting.Value $setting.DefaultOptionValue }}
-                <div class="settings-options">
+                <fieldset class="settings-options hstack">
+                  <legend>{{ $setting.Name }}</legend>
                   {{ range $setting.OptionsParsed }}
-                    <label class="settings-option">
-                      <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $attrs }}>
-                      <span>{{ .label }}</span>
-                    </label>
+                  <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $attrs }}>
+                  <span>{{ .label }}</span>
                   {{ end }}
-                </div>
+                </fieldset>
               {{ else if eq $setting.Type "checkbox" }}
                 <div class="settings-options">
                   {{ range $setting.OptionsParsed }}
