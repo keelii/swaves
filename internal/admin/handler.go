@@ -52,6 +52,9 @@ type dashboardUVTabData struct {
 	EndLabel   string
 }
 
+const dashboardActiveUsersWindowSeconds int64 = 30 * 60
+const dashboardActiveUsersWindowLabel = "30分钟"
+
 var dashboardUVRanges = []dashboardUVRangeConfig{
 	{
 		Key:              "24h",
@@ -254,7 +257,7 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	activeUsers, err := db.CountActiveVisitors(h.Model, 30*24*60*60)
+	activeUsers, err := db.CountActiveVisitors(h.Model, dashboardActiveUsersWindowSeconds)
 	if err != nil {
 		return RenderAdminView(c, "admin_home", fiber.Map{
 			"Title": "工作台",
@@ -341,16 +344,17 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "admin_home", fiber.Map{
-		"Title":            "工作台",
-		"ActiveUsers":      activeUsers,
-		"TotalUV":          totalUV,
-		"TotalLikes":       totalLikes,
-		"PostCount":        postCount + pageCount,
-		"CategoryCount":    categoryCount,
-		"TagCount":         tagCount,
-		"TopUVContents":    topUVContents,
-		"TopLikedContents": topLikedContents,
-		"UVChartTabs":      chartTabs,
+		"Title":                  "工作台",
+		"ActiveUsers":            activeUsers,
+		"ActiveUsersWindowLabel": dashboardActiveUsersWindowLabel,
+		"TotalUV":                totalUV,
+		"TotalLikes":             totalLikes,
+		"PostCount":              postCount + pageCount,
+		"CategoryCount":          categoryCount,
+		"TagCount":               tagCount,
+		"TopUVContents":          topUVContents,
+		"TopLikedContents":       topLikedContents,
+		"UVChartTabs":            chartTabs,
 	}, "")
 }
 

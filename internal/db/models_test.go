@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -1084,6 +1085,56 @@ func mustInsertUVRow(t *testing.T, db *DB, entityType UVEntityType, entityID int
 	}
 }
 
+func testVisitorID(seed byte) string {
+	raw := make([]byte, UVVisitorIDBytes)
+	for i := range raw {
+		raw[i] = seed + byte(i)
+	}
+	return base64.RawURLEncoding.EncodeToString(raw)
+}
+
+func createLegacyLikeTable(t *testing.T, db *DB) {
+	t.Helper()
+	if _, err := db.Exec(`DROP TABLE IF EXISTS t_entity_likes`); err != nil {
+		t.Fatalf("drop legacy likes table failed: %v", err)
+	}
+	if _, err := db.Exec(
+		`CREATE TABLE t_entity_likes (
+			entity_type INTEGER NOT NULL CHECK (entity_type IN (2, 3, 4)),
+			entity_id INTEGER NOT NULL,
+			visitor_id BLOB NOT NULL,
+			status INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0, 1)),
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			PRIMARY KEY(entity_type, entity_id, visitor_id)
+		) WITHOUT ROWID`,
+	); err != nil {
+		t.Fatalf("create legacy likes table failed: %v", err)
+	}
+	if _, err := db.Exec(
+		`CREATE INDEX idx_entity_likes_entity_status ON t_entity_likes (entity_type, entity_id, status)`,
+	); err != nil {
+		t.Fatalf("create legacy entity_status index failed: %v", err)
+	}
+	if _, err := db.Exec(
+		`CREATE INDEX idx_entity_likes_visitor_id ON t_entity_likes (visitor_id)`,
+	); err != nil {
+		t.Fatalf("create legacy visitor_id index failed: %v", err)
+	}
+}
+
+func mustIndexExists(t *testing.T, db *DB, indexName string) bool {
+	t.Helper()
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name=?`,
+		indexName,
+	).Scan(&count); err != nil {
+		t.Fatalf("query index exists failed: %v", err)
+	}
+	return count > 0
+}
+
 func TestCountDistinctVisitorsBetween(t *testing.T) {
 	db := openTestDB(t)
 
@@ -1141,5 +1192,296 @@ func TestListDistinctVisitorsByBucket(t *testing.T) {
 		if got := expected[item.BucketIndex]; got != item.UV {
 			t.Fatalf("bucket %d expected uv=%d got=%d", item.BucketIndex, got, item.UV)
 		}
+	}
+}
+
+func TestCountActiveVisitors(t *testing.T) {
+	db := openTestDB(t)
+
+	nowTs := time.Now().Unix()
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-a", nowTs-10*60)
+	mustInsertUVRow(t, db, UVEntityPost, 100, "visitor-a", nowTs-5*60)
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-b", nowTs-40*60)
+
+	count30m, err := CountActiveVisitors(db, 30*60)
+	if err != nil {
+		t.Fatalf("CountActiveVisitors 30m failed: %v", err)
+	}
+	if count30m != 1 {
+		t.Fatalf("expected 1 active visitor in 30m, got %d", count30m)
+	}
+
+	count60m, err := CountActiveVisitors(db, 60*60)
+	if err != nil {
+		t.Fatalf("CountActiveVisitors 60m failed: %v", err)
+	}
+	if count60m != 2 {
+		t.Fatalf("expected 2 active visitors in 60m, got %d", count60m)
+	}
+
+	countDefault, err := CountActiveVisitors(db, 0)
+	if err != nil {
+		t.Fatalf("CountActiveVisitors default failed: %v", err)
+	}
+	if countDefault != 2 {
+		t.Fatalf("expected 2 active visitors with default window, got %d", countDefault)
+	}
+}
+
+func TestListTopUVContents(t *testing.T) {
+	db := openTestDB(t)
+
+	post := mustCreatePost(t, db, "published", PostKindPost, time.Now().Unix()-300)
+	page := mustCreatePost(t, db, "published", PostKindPage, time.Now().Unix()-200)
+	draft := mustCreatePost(t, db, "draft", PostKindPost, 0)
+	deleted := mustCreatePost(t, db, "published", PostKindPost, time.Now().Unix()-100)
+	if err := SoftDeletePost(db, deleted.ID); err != nil {
+		t.Fatalf("SoftDeletePost failed: %v", err)
+	}
+
+	mustInsertUVRow(t, db, UVEntityPost, post.ID, "uv-post-1", 100)
+	mustInsertUVRow(t, db, UVEntityPost, post.ID, "uv-post-2", 110)
+	mustInsertUVRow(t, db, UVEntityPost, post.ID, "uv-post-3", 120)
+
+	mustInsertUVRow(t, db, UVEntityPost, page.ID, "uv-page-1", 130)
+	mustInsertUVRow(t, db, UVEntityPost, page.ID, "uv-page-2", 140)
+
+	mustInsertUVRow(t, db, UVEntityPost, draft.ID, "uv-draft-1", 150)
+	mustInsertUVRow(t, db, UVEntityPost, draft.ID, "uv-draft-2", 160)
+	mustInsertUVRow(t, db, UVEntityPost, deleted.ID, "uv-deleted-1", 170)
+
+	rows, err := ListTopUVContents(db, 10)
+	if err != nil {
+		t.Fatalf("ListTopUVContents failed: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 ranked contents, got %d: %+v", len(rows), rows)
+	}
+
+	if rows[0].PostID != post.ID || rows[0].UV != 3 || rows[0].Kind != PostKindPost {
+		t.Fatalf("unexpected top uv content row 0: %+v", rows[0])
+	}
+	if rows[1].PostID != page.ID || rows[1].UV != 2 || rows[1].Kind != PostKindPage {
+		t.Fatalf("unexpected top uv content row 1: %+v", rows[1])
+	}
+}
+
+func TestLikeStateAndTopLikedContents(t *testing.T) {
+	db := openTestDB(t)
+
+	post := mustCreatePost(t, db, "published", PostKindPost, time.Now().Unix()-300)
+	page := mustCreatePost(t, db, "published", PostKindPage, time.Now().Unix()-200)
+	draft := mustCreatePost(t, db, "draft", PostKindPost, 0)
+
+	v1 := testVisitorID(1)
+	v2 := testVisitorID(2)
+	v3 := testVisitorID(3)
+	v4 := testVisitorID(4)
+	v5 := testVisitorID(5)
+
+	if err := UpsertEntityLike(db, UVEntityPost, post.ID, v1, LikeStatusActive); err != nil {
+		t.Fatalf("UpsertEntityLike post v1 failed: %v", err)
+	}
+	if err := UpsertEntityLike(db, UVEntityPost, post.ID, v2, LikeStatusActive); err != nil {
+		t.Fatalf("UpsertEntityLike post v2 failed: %v", err)
+	}
+	if err := UpsertEntityLike(db, UVEntityPost, page.ID, v3, LikeStatusActive); err != nil {
+		t.Fatalf("UpsertEntityLike page v3 failed: %v", err)
+	}
+	if err := UpsertEntityLike(db, UVEntityPost, page.ID, v4, LikeStatusInactive); err != nil {
+		t.Fatalf("UpsertEntityLike page v4 inactive failed: %v", err)
+	}
+	if err := UpsertEntityLike(db, UVEntityPost, draft.ID, v5, LikeStatusActive); err != nil {
+		t.Fatalf("UpsertEntityLike draft v5 failed: %v", err)
+	}
+
+	postLikes, err := CountEntityLikes(db, UVEntityPost, post.ID)
+	if err != nil {
+		t.Fatalf("CountEntityLikes post failed: %v", err)
+	}
+	if postLikes != 2 {
+		t.Fatalf("expected post likes 2, got %d", postLikes)
+	}
+
+	pageLikes, err := CountEntityLikes(db, UVEntityPost, page.ID)
+	if err != nil {
+		t.Fatalf("CountEntityLikes page failed: %v", err)
+	}
+	if pageLikes != 1 {
+		t.Fatalf("expected page likes 1, got %d", pageLikes)
+	}
+
+	liked, err := IsEntityLikedByVisitor(db, UVEntityPost, post.ID, v1)
+	if err != nil {
+		t.Fatalf("IsEntityLikedByVisitor post v1 failed: %v", err)
+	}
+	if !liked {
+		t.Fatal("expected post v1 liked=true")
+	}
+
+	liked, err = IsEntityLikedByVisitor(db, UVEntityPost, page.ID, v4)
+	if err != nil {
+		t.Fatalf("IsEntityLikedByVisitor page v4 failed: %v", err)
+	}
+	if liked {
+		t.Fatal("expected page v4 liked=false for inactive status")
+	}
+
+	totalLikes, err := CountTotalLikes(db)
+	if err != nil {
+		t.Fatalf("CountTotalLikes failed: %v", err)
+	}
+	if totalLikes != 4 {
+		t.Fatalf("expected total likes 4, got %d", totalLikes)
+	}
+
+	topLiked, err := ListTopLikedContents(db, 10)
+	if err != nil {
+		t.Fatalf("ListTopLikedContents failed: %v", err)
+	}
+	if len(topLiked) != 2 {
+		t.Fatalf("expected 2 ranked liked contents, got %d: %+v", len(topLiked), topLiked)
+	}
+
+	if topLiked[0].PostID != post.ID || topLiked[0].Likes != 2 || topLiked[0].Kind != PostKindPost {
+		t.Fatalf("unexpected top liked row 0: %+v", topLiked[0])
+	}
+	if topLiked[1].PostID != page.ID || topLiked[1].Likes != 1 || topLiked[1].Kind != PostKindPage {
+		t.Fatalf("unexpected top liked row 1: %+v", topLiked[1])
+	}
+
+	for _, row := range topLiked {
+		if row.PostID == draft.ID {
+			t.Fatalf("draft should not appear in top liked contents: %+v", row)
+		}
+	}
+
+	if err := UpsertEntityLike(db, UVEntityPost, post.ID, "bad_visitor", LikeStatusActive); err == nil {
+		t.Fatal("expected invalid visitor id error")
+	}
+}
+
+func TestEnsureLikeTableNameRenamesLegacyTable(t *testing.T) {
+	db := openTestDB(t)
+
+	if _, err := db.Exec(`DROP TABLE IF EXISTS ` + string(TableLikes)); err != nil {
+		t.Fatalf("drop new likes table failed: %v", err)
+	}
+	createLegacyLikeTable(t, db)
+
+	visitorID := []byte("legacy-visitor")
+	if _, err := db.Exec(
+		`INSERT INTO t_entity_likes (entity_type, entity_id, visitor_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		UVEntityPost, int64(101), visitorID, LikeStatusActive, int64(100), int64(200),
+	); err != nil {
+		t.Fatalf("insert legacy like row failed: %v", err)
+	}
+
+	if err := ensureLikeTableName(db); err != nil {
+		t.Fatalf("ensureLikeTableName failed: %v", err)
+	}
+
+	legacyExists, err := tableExists(db, "t_entity_likes")
+	if err != nil {
+		t.Fatalf("check legacy table exists failed: %v", err)
+	}
+	if legacyExists {
+		t.Fatal("expected legacy table to be removed")
+	}
+
+	newExists, err := tableExists(db, string(TableLikes))
+	if err != nil {
+		t.Fatalf("check new table exists failed: %v", err)
+	}
+	if !newExists {
+		t.Fatal("expected new likes table to exist")
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM ` + string(TableLikes)).Scan(&count); err != nil {
+		t.Fatalf("count likes rows failed: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 likes row after rename migration, got %d", count)
+	}
+
+	if mustIndexExists(t, db, "idx_entity_likes_entity_status") {
+		t.Fatal("legacy index idx_entity_likes_entity_status should be dropped")
+	}
+	if mustIndexExists(t, db, "idx_entity_likes_visitor_id") {
+		t.Fatal("legacy index idx_entity_likes_visitor_id should be dropped")
+	}
+	if !mustIndexExists(t, db, "idx_likes_entity_status") {
+		t.Fatal("new index idx_likes_entity_status should exist")
+	}
+	if !mustIndexExists(t, db, "idx_likes_visitor_id") {
+		t.Fatal("new index idx_likes_visitor_id should exist")
+	}
+}
+
+func TestEnsureLikeTableNameMergesLegacyData(t *testing.T) {
+	db := openTestDB(t)
+
+	createLegacyLikeTable(t, db)
+
+	sharedVisitor := []byte("shared-visitor")
+	if _, err := db.Exec(
+		`INSERT INTO `+string(TableLikes)+` (entity_type, entity_id, visitor_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		UVEntityPost, int64(200), sharedVisitor, LikeStatusInactive, int64(200), int64(250),
+	); err != nil {
+		t.Fatalf("insert existing likes row failed: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO t_entity_likes (entity_type, entity_id, visitor_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		UVEntityPost, int64(200), sharedVisitor, LikeStatusActive, int64(100), int64(300),
+	); err != nil {
+		t.Fatalf("insert legacy shared row failed: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO t_entity_likes (entity_type, entity_id, visitor_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		UVEntityPost, int64(201), []byte("legacy-only"), LikeStatusActive, int64(110), int64(120),
+	); err != nil {
+		t.Fatalf("insert legacy-only row failed: %v", err)
+	}
+
+	if err := ensureLikeTableName(db); err != nil {
+		t.Fatalf("ensureLikeTableName failed: %v", err)
+	}
+
+	legacyExists, err := tableExists(db, "t_entity_likes")
+	if err != nil {
+		t.Fatalf("check legacy table exists failed: %v", err)
+	}
+	if legacyExists {
+		t.Fatal("legacy likes table should be dropped after merge")
+	}
+
+	var status int
+	var createdAt, updatedAt int64
+	if err := db.QueryRow(
+		`SELECT status, created_at, updated_at
+		FROM `+string(TableLikes)+`
+		WHERE entity_type = ? AND entity_id = ? AND visitor_id = ?`,
+		UVEntityPost, int64(200), sharedVisitor,
+	).Scan(&status, &createdAt, &updatedAt); err != nil {
+		t.Fatalf("query merged row failed: %v", err)
+	}
+	if status != int(LikeStatusActive) {
+		t.Fatalf("expected merged status active, got %d", status)
+	}
+	if createdAt != 100 || updatedAt != 300 {
+		t.Fatalf("unexpected merged timestamps created=%d updated=%d", createdAt, updatedAt)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM ` + string(TableLikes)).Scan(&count); err != nil {
+		t.Fatalf("count likes rows failed: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected 2 rows in likes table after merge, got %d", count)
 	}
 }

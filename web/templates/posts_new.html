@@ -1,58 +1,43 @@
 <form id="form" method="post" action="/admin/posts/new">
-
-  <div class="flex justify-between gap-4">
-    <div class="grow">
-      <p>
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        文章标题
         <input style="width:100%;" type="text" name="title" id="title" required placeholder="文章标题">
-      </p>
-    </div>
-    <div class="grow">
-      <div class="flex gap-4">
-        <div class="grow">
-          <input style="width:100%;" type="text" name="slug" id="slug" required placeholder="url-friendly-slug">
-        </div>
-        <div class="flex items-center gap-4">
-          <button onclick="autoSetSlug()" type="button">Auto</button>
-          <button onclick="autoTranslate()" type="button">Translate</button>
-        </div>
-      </div>
-      <script>
-          function autoTranslate() {
-              fetch('/api/translate?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
-                  if (json && json.data) $('#slug').val(json.data);
-              });
-          }
+      </label>
+      <label data-field>
+        文章 URL 地址
+        <span class="salign gap-4">
+      <input class="grow" type="text" name="slug" id="slug" required placeholder="可选：默认标题">
+      <button class="grow outline" onclick="autoSetSlug()" type="button">Auto</button>
+    </span>
+        <script>
           function autoSetSlug() {
-              fetch('/api/slug?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
-                  if (json && json.data) $('#slug').val(json.data);
-              });
+            fetch('/api/slug?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
+              if (json && json.data) $('#slug').val(json.data);
+            });
           }
-      </script>
+        </script>
+      </label>
+
+      <fieldset class="hstack">
+        <legend>Kind (类型)</legend>
+          {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" "0" }}
+      </fieldset>
+
+      <label data-field>
+        标签
+          {{ template "partials/tag_select" . }}
+      </label>
+
+      <label data-field>
+        分类
+          {{ template "partials/category_select" dict "Root" $ }}
+      </label>
+
+
     </div>
   </div>
-
-  <p>
-    <label class="flex items-center gap-2">
-      Kind (类型)<br>
-      {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" "0" }}
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Tags<br>
-      {{ template "partials/tag_select" . }}
-    </label>
-  </p>
-
-  <p>
-    <label>
-      Category<br>
-      {{ template "partials/category_select" dict "Root" $ }}
-    </label>
-  </p>
-
   {{ template "partials/markdown_preview" dict "Value" "" "Required" true }}
-
 </form>
 

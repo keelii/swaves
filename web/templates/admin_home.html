@@ -58,7 +58,7 @@
 <div class="row">
   <div class="col-2 mb-2">
     <div class="card">
-      <div class="dashboard-label">活跃用户（30天）</div>
+      <div class="dashboard-label">活跃用户（{{ if .ActiveUsersWindowLabel }}{{ .ActiveUsersWindowLabel }}{{ else }}30分钟{{ end }}）</div>
       <div class="dashboard-number">{{ if .ActiveUsers }}{{ .ActiveUsers }}{{ else }}0{{ end }}</div>
     </div>
   </div>

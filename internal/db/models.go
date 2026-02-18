@@ -83,6 +83,8 @@ func InitDatabase(db *DB) error {
 
 func ensureLikeTableName(db *DB) error {
 	const legacyLikeTableName = "t_entity_likes"
+	const legacyLikeEntityStatusIndex = "idx_entity_likes_entity_status"
+	const legacyLikeVisitorIndex = "idx_entity_likes_visitor_id"
 
 	legacyExists, err := tableExists(db, legacyLikeTableName)
 	if err != nil {
@@ -118,6 +120,13 @@ func ensureLikeTableName(db *DB) error {
 		if _, err = db.Exec(`DROP TABLE IF EXISTS ` + legacyLikeTableName); err != nil {
 			return WrapInternalErr("ensureLikeTableName.DropLegacy", err)
 		}
+	}
+
+	if _, err = db.Exec(`DROP INDEX IF EXISTS ` + legacyLikeEntityStatusIndex); err != nil {
+		return WrapInternalErr("ensureLikeTableName.DropLegacyEntityStatusIndex", err)
+	}
+	if _, err = db.Exec(`DROP INDEX IF EXISTS ` + legacyLikeVisitorIndex); err != nil {
+		return WrapInternalErr("ensureLikeTableName.DropLegacyVisitorIndex", err)
 	}
 
 	if _, err = db.Exec(

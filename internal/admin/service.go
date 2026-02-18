@@ -101,7 +101,7 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 	}
 
 	if strings.TrimSpace(in.Content) == "" {
-		return errors.New("content is required")
+		return errors.New("内容不能为空")
 	}
 
 	p := &db.Post{
