@@ -116,6 +116,16 @@ func resolveReturnPath(c *fiber.Ctx) string {
 	return getSiteFallbackPath()
 }
 
+func shouldReturnLikeJSON(c *fiber.Ctx) bool {
+	accept := strings.ToLower(strings.TrimSpace(c.Get(fiber.HeaderAccept)))
+	if strings.Contains(accept, fiber.MIMEApplicationJSON) {
+		return true
+	}
+
+	requestedWith := strings.ToLower(strings.TrimSpace(c.Get("X-Requested-With")))
+	return requestedWith == "xmlhttprequest"
+}
+
 func (h Handler) ensureLikeEntityExists(entityType db.UVEntityType, entityID int64) error {
 	switch entityType {
 	case db.UVEntityPost:
@@ -366,6 +376,18 @@ func (h Handler) PostEntityLike(c *fiber.Ctx) error {
 
 	if err = db.UpsertEntityLike(h.Model, entityType, entityID, visitorID, nextStatus); err != nil {
 		return err
+	}
+
+	likeCount, err := db.CountEntityLikes(h.Model, entityType, entityID)
+	if err != nil {
+		return err
+	}
+
+	if shouldReturnLikeJSON(c) {
+		return c.JSON(fiber.Map{
+			"liked":     nextStatus == db.LikeStatusActive,
+			"likeCount": likeCount,
+		})
 	}
 
 	return c.Redirect(resolveReturnPath(c))

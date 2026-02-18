@@ -1070,3 +1070,76 @@ func TestExportSQLiteWithHash(t *testing.T) {
 		t.Fatalf("unexpected second export error: %v", err)
 	}
 }
+
+func mustInsertUVRow(t *testing.T, db *DB, entityType UVEntityType, entityID int64, visitorID string, ts int64) {
+	t.Helper()
+	if visitorID == "" {
+		t.Fatal("visitorID is required")
+	}
+	if _, err := db.Exec(
+		`INSERT INTO `+string(TableUVUnique)+` (entity_type, entity_id, visitor_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?, ?)`,
+		entityType, entityID, []byte(visitorID), ts, ts,
+	); err != nil {
+		t.Fatalf("insert uv row failed: %v", err)
+	}
+}
+
+func TestCountDistinctVisitorsBetween(t *testing.T) {
+	db := openTestDB(t)
+
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-a", 100)
+	mustInsertUVRow(t, db, UVEntityPost, 101, "visitor-a", 100)
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-b", 150)
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-c", 250)
+
+	count, err := CountDistinctVisitorsBetween(db, 0, 200)
+	if err != nil {
+		t.Fatalf("CountDistinctVisitorsBetween failed: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected 2 distinct visitors in [0,200), got %d", count)
+	}
+
+	count, err = CountDistinctVisitorsBetween(db, 200, 300)
+	if err != nil {
+		t.Fatalf("CountDistinctVisitorsBetween failed: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 distinct visitor in [200,300), got %d", count)
+	}
+}
+
+func TestListDistinctVisitorsByBucket(t *testing.T) {
+	db := openTestDB(t)
+
+	start := int64(100)
+	end := int64(280)
+	bucket := int64(60)
+
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-a", 110)
+	mustInsertUVRow(t, db, UVEntityPost, 201, "visitor-a", 115) // same visitor, same bucket
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-b", 170)
+	mustInsertUVRow(t, db, UVEntityCategory, 301, "visitor-c", 170)
+	mustInsertUVRow(t, db, UVEntityTag, 401, "visitor-b", 190) // duplicate visitor in bucket 1
+	mustInsertUVRow(t, db, UVEntitySite, 0, "visitor-d", 230)
+
+	buckets, err := ListDistinctVisitorsByBucket(db, start, end, bucket)
+	if err != nil {
+		t.Fatalf("ListDistinctVisitorsByBucket failed: %v", err)
+	}
+	if len(buckets) != 3 {
+		t.Fatalf("expected 3 buckets, got %d: %+v", len(buckets), buckets)
+	}
+
+	expected := map[int]int{
+		0: 1,
+		1: 2,
+		2: 1,
+	}
+
+	for _, item := range buckets {
+		if got := expected[item.BucketIndex]; got != item.UV {
+			t.Fatalf("bucket %d expected uv=%d got=%d", item.BucketIndex, got, item.UV)
+		}
+	}
+}

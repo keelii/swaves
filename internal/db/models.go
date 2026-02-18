@@ -809,6 +809,14 @@ type UVPostRank struct {
 	UV     int
 }
 
+type UVContentRank struct {
+	PostID int64
+	Title  string
+	Slug   string
+	Kind   PostKind
+	UV     int
+}
+
 type UVCategoryRank struct {
 	CategoryID int64
 	Name       string
@@ -823,10 +831,23 @@ type UVTagRank struct {
 	UV    int
 }
 
+type UVBucketCount struct {
+	BucketIndex int
+	UV          int
+}
+
 type LikePostRank struct {
 	PostID int64
 	Title  string
 	Slug   string
+	Likes  int
+}
+
+type LikeContentRank struct {
+	PostID int64
+	Title  string
+	Slug   string
+	Kind   PostKind
 	Likes  int
 }
 
@@ -999,6 +1020,59 @@ func CountActiveVisitors(db *DB, sinceSeconds int64) (int, error) {
 	return count, nil
 }
 
+func CountDistinctVisitorsBetween(db *DB, startAt, endAt int64) (int, error) {
+	if endAt <= startAt {
+		return 0, nil
+	}
+
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(DISTINCT visitor_id)
+		FROM `+string(TableUVUnique)+`
+		WHERE last_seen_at >= ? AND last_seen_at < ?`,
+		startAt, endAt,
+	).Scan(&count); err != nil {
+		return 0, WrapInternalErr("CountDistinctVisitorsBetween", err)
+	}
+
+	return count, nil
+}
+
+func ListDistinctVisitorsByBucket(db *DB, startAt, endAt, bucketSeconds int64) ([]UVBucketCount, error) {
+	if endAt <= startAt || bucketSeconds <= 0 {
+		return []UVBucketCount{}, nil
+	}
+
+	rows, err := db.Query(
+		`SELECT CAST((last_seen_at - ?) / ? AS INTEGER) AS bucket_index,
+			COUNT(DISTINCT visitor_id) AS uv
+		FROM `+string(TableUVUnique)+`
+		WHERE last_seen_at >= ? AND last_seen_at < ?
+		GROUP BY bucket_index
+		ORDER BY bucket_index ASC`,
+		startAt, bucketSeconds, startAt, endAt,
+	)
+	if err != nil {
+		return nil, WrapInternalErr("ListDistinctVisitorsByBucket.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]UVBucketCount, 0, 32)
+	for rows.Next() {
+		var item UVBucketCount
+		if err = rows.Scan(&item.BucketIndex, &item.UV); err != nil {
+			return nil, WrapInternalErr("ListDistinctVisitorsByBucket.Scan", err)
+		}
+		res = append(res, item)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListDistinctVisitorsByBucket.Rows", err)
+	}
+
+	return res, nil
+}
+
 func CountPostUVByIDs(db *DB, postIDs []int64) (map[int64]int, error) {
 	result := make(map[int64]int, len(postIDs))
 	if len(postIDs) == 0 {
@@ -1052,6 +1126,44 @@ func ListTopUVPosts(db *DB, limit int) ([]UVPostRank, error) {
 
 func ListTopUVPages(db *DB, limit int) ([]UVPostRank, error) {
 	return listTopUVPostsByKind(db, PostKindPage, limit)
+}
+
+func ListTopUVContents(db *DB, limit int) ([]UVContentRank, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := db.Query(
+		`SELECT p.id, p.title, p.slug, p.kind, COUNT(*) AS uv
+		FROM `+string(TableUVUnique)+` AS u
+		INNER JOIN `+string(TablePosts)+` AS p
+			ON p.id = u.entity_id
+		WHERE u.entity_type = ?
+			AND p.deleted_at IS NULL
+			AND p.status = ?
+		GROUP BY p.id, p.title, p.slug, p.kind, p.published_at
+		ORDER BY uv DESC, p.published_at DESC, p.id DESC
+		LIMIT ?`,
+		UVEntityPost, "published", limit,
+	)
+	if err != nil {
+		return nil, WrapInternalErr("ListTopUVContents.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]UVContentRank, 0, limit)
+	for rows.Next() {
+		var item UVContentRank
+		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.Kind, &item.UV); err != nil {
+			return nil, WrapInternalErr("ListTopUVContents.Scan", err)
+		}
+		res = append(res, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListTopUVContents.Rows", err)
+	}
+
+	return res, nil
 }
 
 func ListTopUVCategories(db *DB, limit int) ([]UVCategoryRank, error) {
@@ -1144,6 +1256,45 @@ func ListTopLikedPosts(db *DB, limit int) ([]LikePostRank, error) {
 
 func ListTopLikedPages(db *DB, limit int) ([]LikePostRank, error) {
 	return listTopLikedPostsByKind(db, PostKindPage, limit)
+}
+
+func ListTopLikedContents(db *DB, limit int) ([]LikeContentRank, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := db.Query(
+		`SELECT p.id, p.title, p.slug, p.kind, COUNT(*) AS likes
+		FROM `+string(TableLikes)+` AS l
+		INNER JOIN `+string(TablePosts)+` AS p
+			ON p.id = l.entity_id
+		WHERE l.entity_type = ?
+			AND l.status = ?
+			AND p.deleted_at IS NULL
+			AND p.status = ?
+		GROUP BY p.id, p.title, p.slug, p.kind, p.published_at
+		ORDER BY likes DESC, p.published_at DESC, p.id DESC
+		LIMIT ?`,
+		UVEntityPost, LikeStatusActive, "published", limit,
+	)
+	if err != nil {
+		return nil, WrapInternalErr("ListTopLikedContents.Query", err)
+	}
+	defer rows.Close()
+
+	res := make([]LikeContentRank, 0, limit)
+	for rows.Next() {
+		var item LikeContentRank
+		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.Kind, &item.Likes); err != nil {
+			return nil, WrapInternalErr("ListTopLikedContents.Scan", err)
+		}
+		res = append(res, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListTopLikedContents.Rows", err)
+	}
+
+	return res, nil
 }
 
 func listTopLikedPostsByKind(db *DB, kind PostKind, limit int) ([]LikePostRank, error) {

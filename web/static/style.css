@@ -36,6 +36,10 @@ body {
     border-radius: 0;
 }
 
+.salign {
+  display: flex;
+  justify-content: space-between;
+}
 .btn-icon {
   display: inline-flex;
   align-items: center;
