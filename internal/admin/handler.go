@@ -132,7 +132,13 @@ func parseExpiresAtFromOption(option, customValue string) string {
 
 func RenderAdminView(c *fiber.Ctx, view string, data fiber.Map, layout string) error {
 	if layout == "" {
-		layout = "admin_layout"
+		layout = "admin/admin_layout"
+	} else if !strings.Contains(layout, "/") {
+		layout = "admin/" + layout
+	}
+
+	if !strings.Contains(view, "/") {
+		view = "admin/" + view
 	}
 	if data == nil {
 		data = fiber.Map{}

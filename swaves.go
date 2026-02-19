@@ -45,8 +45,8 @@ func NewApp(config types.AppConfig) SwavesApp {
 	// metrics
 	app.Get("/metrics", monitor.New(monitor.Config{
 		Title:      config.AppName + " metrics",
-		FontURL:    "/static/metrics/google-font.css",
-		ChartJsURL: "/static/metrics/Chart.bundle.min.js",
+		FontURL:    "/static/admin/metrics/google-font.css",
+		ChartJsURL: "/static/admin/metrics/Chart.bundle.min.js",
 	}))
 
 	//app.Use(limiter.New())
