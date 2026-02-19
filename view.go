@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	HTML "html"
 	"html/template"
+	"net/url"
 	"regexp"
 	"strings"
 	"swaves/internal/consts"
@@ -215,6 +218,9 @@ func NewViewEngine() *html.Engine {
 		s = strings.ReplaceAll(s, "{{year}}", time.Now().Format("2006"))
 		return s
 	})
+	engine.AddFunc("commentAvatar", func(email, author string, size int) string {
+		return buildCommentAvatarURL(email, author, size)
+	})
 	// share/context.go 中的公共函数注册到模板（接收 *db.Post 的已做 nil 安全包装）
 	engine.AddFunc("GetBasePath", share.GetBasePath)
 	engine.AddFunc("GetPagePath", share.GetPagePath)
@@ -274,6 +280,34 @@ func NewViewEngine() *html.Engine {
 	engine.Reload(true)
 
 	return engine
+}
+
+func buildCommentAvatarURL(email, author string, size int) string {
+	if size <= 0 {
+		size = 40
+	}
+	if size > 512 {
+		size = 512
+	}
+
+	seed := strings.ToLower(strings.TrimSpace(email))
+	if seed == "" {
+		authorSeed := strings.ToLower(strings.TrimSpace(author))
+		if authorSeed == "" {
+			authorSeed = "anonymous"
+		}
+		seed = "swaves:" + authorSeed
+	}
+
+	sum := md5.Sum([]byte(seed))
+	hash := hex.EncodeToString(sum[:])
+
+	query := url.Values{}
+	query.Set("s", fmt.Sprintf("%d", size))
+	query.Set("d", "identicon")
+	query.Set("r", "g")
+
+	return "https://secure.gravatar.com/avatar/" + hash + "?" + query.Encode()
 }
 
 // relativeTimeString 将 Unix 时间戳转为相对时间中文描述

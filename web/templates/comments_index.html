@@ -38,9 +38,14 @@
         <div class="text-light">post_id={{ .PostID }}</div>
       </td>
       <td>
-        <div>{{ .Author }}</div>
-        {{ if .AuthorEmail }}<div class="text-light">{{ .AuthorEmail }}</div>{{ end }}
-        {{ if .AuthorURL }}<div class="text-light">{{ .AuthorURL }}</div>{{ end }}
+        <div style="display:flex;align-items:flex-start;gap:0.5rem;">
+          <img src="{{ commentAvatar .AuthorEmail .Author 32 }}" alt="{{ .Author }}" width="32" height="32" style="border-radius:999px;display:block;">
+          <div>
+            <div>{{ .Author }}</div>
+            {{ if .AuthorEmail }}<div class="text-light">{{ .AuthorEmail }}</div>{{ end }}
+            {{ if .AuthorURL }}<div class="text-light">{{ .AuthorURL }}</div>{{ end }}
+          </div>
+        </div>
       </td>
       <td>
         {{ if gt .ParentID 0 }}

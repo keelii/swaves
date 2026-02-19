@@ -1,15 +1,18 @@
 <li class="comment-item" id="comment-{{ .ID }}">
-  <div>
-    <strong>{{ .Author }}</strong>
-    <small> · {{ relativeTime .CreatedAt }}</small>
-    {{ if gt .ParentID 0 }}
-      <small> · 回复 @{{ .ParentAuthor }}</small>
-    {{ end }}
+  <div style="display:flex;align-items:flex-start;gap:0.6rem;">
+    <img src="{{ commentAvatar .AuthorEmail .Author 40 }}" alt="{{ .Author }}" width="40" height="40" style="border-radius:999px;display:block;flex:0 0 40px;">
+    <div>
+      <strong>{{ .Author }}</strong>
+      <small> · {{ relativeTime .CreatedAt }}</small>
+      {{ if gt .ParentID 0 }}
+        <small> · 回复 @{{ .ParentAuthor }}</small>
+      {{ end }}
+    </div>
   </div>
-  <div style="white-space: pre-wrap;">{{ .Content }}</div>
-  <p>
+  <div>{{ .Content }}</div>
+  <div>
     <button type="button" data-comment-reply data-comment-id="{{ .ID }}" data-comment-author="{{ .Author }}">回复</button>
-  </p>
+  </div>
   {{ if .Children }}
     <ol class="comment-children">
       {{ range .Children }}
