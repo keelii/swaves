@@ -35,6 +35,9 @@ func GetPageUrl(post db.Post) string {
 }
 
 func GetArticlePublishedDate(post db.Post) (string, string, string) {
+	if post.PublishedAt == 0 {
+		return "", "", ""
+	}
 	published := time.Unix(post.PublishedAt, 0)
 	y := published.Format("2006")
 	m := published.Format("01")

@@ -17,8 +17,45 @@
     font-size: var(--text-5);
   }
 
-  .settings-item-radio {
-    align-self: center;
+  .settings-kind-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .settings-item-label {
+    display: block;
+    width: 40%;
+  }
+
+  .settings-item {
+    display: flex;
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .settings-item-desc {
+    color: var(--muted-foreground);
+    align-self: end;
+    padding-bottom: var(--space-1);
+  }
+
+  .settings-item-header {
+    margin-bottom: var(--space-1);
+  }
+
+  @media (max-width: 960px) {
+    .settings-item {
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .settings-item-desc {
+      flex: 1 1 auto;
+      max-width: none;
+      width: 100%;
+      padding-top: 0;
+    }
   }
 </style>
 
@@ -35,13 +72,12 @@
       {{ $kind := . }}
       <div class="settings-tab-panel" role="tabpanel">
         <section class="settings-kind">
-          <h2 class="settings-kind-title">{{ $kind }}</h2>
-          <div class="row">
+          <div class="settings-kind-fields">
             {{ range index $.SettingsByKind $kind }}
               {{ $setting := . }}
               {{ $code := $setting.Code }}
               {{ $attrs := $setting.AttrsParsed }}
-              <div class="col-4 settings-item{{ if eq $setting.Type "textarea" }} settings-item-full{{ end }}{{ if eq $setting.Type "radio" }} settings-item-radio{{ end }}">
+              <div class="settings-item">
                 <label class="settings-item-label">
 
                   {{ if ne $setting.Type "radio" }}
@@ -98,6 +134,7 @@
                     </select>
                   {{ end }}
                 </label>
+                <div class="settings-item-desc">{{ if $setting.Description }}{{ $setting.Description }}{{ else }}-{{ end }}</div>
               </div>
             {{ end }}
           </div>
