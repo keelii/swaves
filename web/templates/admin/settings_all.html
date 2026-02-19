@@ -1,4 +1,7 @@
 <style>
+  [role="tablist"] a {
+    text-decoration: none;
+  }
   .settings-kind-tabs {
     margin-bottom: var(--space-4);
   }
@@ -50,14 +53,10 @@
 </style>
 
 {{ if gt (len .SettingKinds) 0 }}
-<div class="tab-card settings-kind-tabs">
-  <div class="tab-nav">
-    {{ range .SettingKinds }}
-    <div class="tab-item{{ if eq $.ActiveKind . }} active{{ end }}">
-      <a href="/admin/settings/all?kind={{ . }}">{{ . }}</a>
-    </div>
-    {{ end }}
-  </div>
+<div class="settings-kind-tabs" role="tablist" aria-label="设置分类">
+  {{ range .SettingKinds }}
+  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="/admin/settings/all?kind={{ . }}">{{ . }}</a>
+  {{ end }}
 </div>
 
 <form id="form" method="post" action="/admin/settings/all?kind={{ .ActiveKind }}" class="settings-all-form">
