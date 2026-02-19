@@ -1039,6 +1039,76 @@ func TestListSettingsOrder(t *testing.T) {
 	}
 }
 
+func TestBuiltinPrefixFieldSettings(t *testing.T) {
+	db := openTestDB(t)
+
+	basePath, err := GetSettingByCode(db, "base_path")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(base_path) failed: %v", err)
+	}
+	if basePath.Type != "text" {
+		t.Fatalf("expected base_path type=text, got %s", basePath.Type)
+	}
+
+	prefixCodes := []string{
+		"page_path",
+		"rss_path",
+		"post_url_prefix",
+		"category_url_prefix",
+		"tag_url_prefix",
+	}
+	for _, code := range prefixCodes {
+		setting, err := GetSettingByCode(db, code)
+		if err != nil {
+			t.Fatalf("GetSettingByCode(%s) failed: %v", code, err)
+		}
+		if setting.Type != "prefix-field" {
+			t.Fatalf("expected %s type=prefix-field, got %s", code, setting.Type)
+		}
+		if setting.PrefixValue != "全局路径前缀" {
+			t.Fatalf("expected %s prefix_value=全局路径前缀, got %s", code, setting.PrefixValue)
+		}
+	}
+}
+
+func TestSettingPrefixValueLifecycle(t *testing.T) {
+	db := openTestDB(t)
+
+	code := uniqueValue("prefix_setting")
+	s := &Setting{
+		Code:        code,
+		Kind:        "Custom",
+		Name:        "Prefix Setting",
+		Type:        "prefix-field",
+		Value:       "/posts",
+		PrefixValue: "全局路径前缀",
+	}
+	if _, err := CreateSetting(db, s); err != nil {
+		t.Fatalf("CreateSetting failed: %v", err)
+	}
+
+	got, err := GetSettingByCode(db, code)
+	if err != nil {
+		t.Fatalf("GetSettingByCode failed: %v", err)
+	}
+	if got.PrefixValue != "全局路径前缀" {
+		t.Fatalf("expected prefix value 全局路径前缀, got %s", got.PrefixValue)
+	}
+
+	got.PrefixValue = "base_path"
+	if err := UpdateSetting(db, got); err != nil {
+		t.Fatalf("UpdateSetting failed: %v", err)
+	}
+
+	got2, err := GetSettingByCode(db, code)
+	if err != nil {
+		t.Fatalf("GetSettingByCode after update failed: %v", err)
+	}
+	if got2.PrefixValue != "base_path" {
+		t.Fatalf("expected prefix value base_path after update, got %s", got2.PrefixValue)
+	}
+}
+
 func TestEnsureDefaultCategories(t *testing.T) {
 	db := openTestDB(t)
 	type expectedCategory struct {

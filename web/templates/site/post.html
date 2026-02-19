@@ -108,6 +108,15 @@
     </div>
   </footer>
   </section>
+{{ else }}
+  <section>
+  <footer>
+    <div id="comments">
+      <h2>评论</h2>
+      <p><small>评论已关闭。</small></p>
+    </div>
+  </footer>
+  </section>
 {{ end }}
 
 {{ if eq .Post.Kind 0 }}

@@ -19,18 +19,18 @@
   <tbody>
   {{ range .Logs }}
   <tr>
-    <td class="cell-id">{{ .ID }}</td>
+    <td>{{ .ID }}</td>
     <td>{{ .ReqID }}</td>
     <td>{{ .ClientIP }}</td>
     <td>{{ .Method }}</td>
     <td>{{ .Path }}</td>
     <td>{{ .Status }}</td>
-    <td>{{ if .UserAgent }}{{ long_text .UserAgent 30 5 }}{{ else }}-{{ end }}</td>
+    <td>{{ if .UserAgent }}{{ long_text .UserAgent 30 1 }}{{ else }}-{{ end }}</td>
     <td>{{ if .QueryParams }}{{ .QueryParams }}{{ else }}-{{ end }}</td>
     <td>{{ if .BodyParams }}
-      {{ long_text .BodyParams 30 5 }}
+      {{ long_text .BodyParams 30 1 }}
       {{ else }}-{{ end }}</td>
-    <td>{{ relativeTime .CreatedAt }}</td>
+    <td>{{ formatTime .CreatedAt }}</td>
     <td>
       <div class="row-actions">
         <form id="form" method="post" action="/admin/http-error-logs/{{ .ID }}/delete">

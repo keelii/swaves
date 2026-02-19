@@ -18,6 +18,7 @@
         <option value="radio" {{ if eq .Setting.Type "radio" }}selected{{ end }}>radio</option>
         <option value="checkbox" {{ if eq .Setting.Type "checkbox" }}selected{{ end }}>checkbox</option>
         <option value="select" {{ if eq .Setting.Type "select" }}selected{{ end }}>select</option>
+        <option value="prefix-field" {{ if eq .Setting.Type "prefix-field" }}selected{{ end }}>prefix-field</option>
         <option value="textarea" {{ if eq .Setting.Type "textarea" }}selected{{ end }}>textarea</option>
       </select>
       <input type="hidden" name="type" value="{{ .Setting.Type }}">
@@ -28,6 +29,7 @@
 
   {{ template "admin/includes/form_field_textarea" dict "Label" "Options (JSON)" "Name" "options" "Value" .Setting.Options "Rows" 3 "Cols" 80 "Placeholder" "[{\"label\": \"Option 1\", \"value\": \"value1\"}, {\"label\": \"Option 2\", \"value\": \"value2\"}]" "Help" "(Required for radio/checkbox/select type, JSON array of {label, value})" }}
   {{ template "admin/includes/form_field_textarea" dict "Label" "Attrs (JSON)" "Name" "attrs" "Value" .Setting.Attrs "Rows" 3 "Cols" 80 "Placeholder" "{\"min\": 0, \"max\": 100, \"step\": 1}" "Help" "(Optional HTML attributes, JSON object)" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "Prefix Value" "Name" "prefix_value" "Value" .Setting.PrefixValue "Placeholder" "如：全局路径前缀（prefix-field 使用）" "Help" "(Optional: prefix label/source for prefix-field)" }}
 
   <p>
     <label>
@@ -52,6 +54,11 @@
     <label>
       {{ if eq .Setting.Type "password" }}
         <input type="password" name="value" placeholder="Leave empty to keep current"{{ renderAttrs .Setting.AttrsParsed }}>
+      {{ else if eq .Setting.Type "prefix-field" }}
+        <fieldset class="group">
+          <legend>{{ if .Setting.PrefixValue }}{{ .Setting.PrefixValue }}{{ else }}前缀{{ end }}</legend>
+          <input type="text" name="value" value="{{ .Setting.Value }}"{{ renderAttrs .Setting.AttrsParsed }} placeholder="当前值">
+        </fieldset>
       {{ else if eq .Setting.Type "textarea" }}
         <textarea name="value"{{ renderAttrs .Setting.AttrsParsed }} placeholder="当前值">{{ .Setting.Value }}</textarea>
       {{ else if eq .Setting.Type "select" }}

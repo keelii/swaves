@@ -79,9 +79,15 @@ func InitDatabase(db *DB) error {
 	if err := ensurePostCommentsSchema(db); err != nil {
 		return err
 	}
+	if err := ensureSettingsPrefixValueSchema(db); err != nil {
+		return err
+	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
+	}
+	if err := ensureBuiltinPrefixFieldSettings(db); err != nil {
+		return err
 	}
 
 	return nil
@@ -284,6 +290,49 @@ func ensurePostCommentsSchema(db *DB) error {
 	if _, err = db.Exec(`ALTER TABLE ` + string(TablePosts) + ` ADD COLUMN comment_enabled INTEGER NOT NULL DEFAULT 1`); err != nil {
 		return WrapInternalErr("ensurePostCommentsSchema.AddCommentEnabled", err)
 	}
+	return nil
+}
+
+func ensureSettingsPrefixValueSchema(db *DB) error {
+	hasPrefixValue, err := tableColumnExists(db, string(TableSettings), "prefix_value")
+	if err != nil {
+		return WrapInternalErr("ensureSettingsPrefixValueSchema.HasPrefixValue", err)
+	}
+	if hasPrefixValue {
+		return nil
+	}
+
+	if _, err = db.Exec(`ALTER TABLE ` + string(TableSettings) + ` ADD COLUMN prefix_value TEXT NOT NULL DEFAULT ''`); err != nil {
+		return WrapInternalErr("ensureSettingsPrefixValueSchema.AddPrefixValue", err)
+	}
+
+	return nil
+}
+
+func ensureBuiltinPrefixFieldSettings(db *DB) error {
+	const prefixSourceName = "全局路径前缀"
+	codes := []string{
+		"page_path",
+		"rss_path",
+		"post_url_prefix",
+		"category_url_prefix",
+		"tag_url_prefix",
+	}
+
+	for _, code := range codes {
+		if _, err := db.Exec(
+			`UPDATE `+string(TableSettings)+`
+			SET type = 'prefix-field',
+				prefix_value = ?,
+				updated_at = strftime('%s','now')
+			WHERE code = ?
+			  AND deleted_at IS NULL`,
+			prefixSourceName, code,
+		); err != nil {
+			return WrapInternalErr("ensureBuiltinPrefixFieldSettings.Update", err)
+		}
+	}
+
 	return nil
 }
 
@@ -868,6 +917,7 @@ func scanSetting(scanner sqlScanner) (Setting, error) {
 		&s.Attrs,
 		&s.Value,
 		&s.DefaultOptionValue,
+		&s.PrefixValue,
 		&s.Description,
 		&s.Sort,
 		&s.Charset,
@@ -3350,6 +3400,7 @@ type Setting struct {
 	Attrs              string // JSON string
 	Value              string
 	DefaultOptionValue string // Default value for select/radio/checkbox when options are provided
+	PrefixValue        string // Prefix field base value or source setting name
 	Description        string
 	Sort               int64
 	Charset            string
@@ -3397,6 +3448,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 		"attrs":                s.Attrs,
 		"value":                s.Value,
 		"default_option_value": s.DefaultOptionValue,
+		"prefix_value":         s.PrefixValue,
 		"description":          s.Description,
 		"sort":                 s.Sort,
 		"charset":              s.Charset,
@@ -3416,7 +3468,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
 	result, err := Read(db, specSettings, ReadOptions{
-		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
 		WhereClause:  "code=?",
 		WhereArgs:    []interface{}{code},
 		Limit:        1,
@@ -3440,7 +3492,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 
 func GetSettingByID(db *DB, id int64) (*Setting, error) {
 	result, err := Read(db, specSettings, ReadOptions{
-		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
 		WhereClause:  "id=?",
 		WhereArgs:    []interface{}{id},
 		Limit:        1,
@@ -3481,7 +3533,7 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 	}
 
 	results, err := Read(db, specSettings, ReadOptions{
-		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
 		WhereClause:  whereClause,
 		OrderBy:      orderBy,
 		WhereArgs:    whereArgs,
@@ -3529,6 +3581,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 		"attrs":                s.Attrs,
 		"value":                s.Value,
 		"default_option_value": s.DefaultOptionValue,
+		"prefix_value":         s.PrefixValue,
 		"description":          s.Description,
 		"sort":                 s.Sort,
 		"charset":              s.Charset,

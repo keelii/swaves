@@ -5,14 +5,14 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('[title]').forEach(el => {
-    const text = el.getAttribute('title');
+  document.querySelectorAll('[data-title]').forEach(el => {
+    const text = el.getAttribute('data-title');
     if (text) {
       el.setAttribute('data-tooltip', text);
       if (!el.hasAttribute('aria-label')) {
         el.setAttribute('aria-label', text);
       }
-      el.removeAttribute('title');
+      el.removeAttribute('data-title');
     }
   });
 });

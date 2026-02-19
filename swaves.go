@@ -75,6 +75,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 			return uuid.NewString()
 		},
 	}))
+	app.Use(middleware.HttpErrorLog(globalStore.Model))
 	//app.Use(logger.New(logger.Config{
 	//	TimeFormat: TimeFormat,
 	//	Format:     "${time} ${status} - ${method} ${path} ${queryParams} ${body}\n",

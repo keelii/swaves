@@ -17,6 +17,7 @@ const (
 	settingBackupLocalDir         = "backup_local_dir"
 	settingBackupLocalIntervalMin = "backup_local_interval_min"
 	settingBackupLocalMaxCount    = "backup_local_max_count"
+	clearEncryptedPostsNoopMsg    = "没有发现需要清理的文章"
 )
 
 func HelloJob() error {
@@ -203,5 +204,5 @@ func DeleteExpiredEncryptedPostsJob(reg *Registry) (string, error) {
 		return fmt.Sprintf("已软删除 %d 条过期加密文章\n", n), nil
 	}
 
-	return "没有发现需要清理的文章\n", nil
+	return clearEncryptedPostsNoopMsg + "\n", nil
 }

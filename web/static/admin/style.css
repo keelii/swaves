@@ -35,6 +35,12 @@ body {
     padding: 0;
     border-radius: 0;
 }
+table {
+  table-layout: auto;
+}
+table th {
+  white-space: nowrap;
+}
 svg {
   rect:focus { outline: none }
 }

@@ -39,6 +39,7 @@
         <option value="radio" {{ if and .Setting (eq .Setting.Type "radio") }}selected{{ end }}>radio</option>
         <option value="checkbox" {{ if and .Setting (eq .Setting.Type "checkbox") }}selected{{ end }}>checkbox</option>
         <option value="select" {{ if and .Setting (eq .Setting.Type "select") }}selected{{ end }}>select</option>
+        <option value="prefix-field" {{ if and .Setting (eq .Setting.Type "prefix-field") }}selected{{ end }}>prefix-field</option>
         <option value="textarea" {{ if and .Setting (eq .Setting.Type "textarea") }}selected{{ end }}>textarea</option>
       </select>
     </label>
@@ -77,6 +78,14 @@
           <small>(Default value for select/radio/checkbox when options are provided. Leave empty if not using options. Fill in Options field above to see dropdown.)</small>
         {{ end }}
       </div>
+    </label>
+  </p>
+
+  <p>
+    <label>
+      Prefix Value<br>
+      <input type="text" name="prefix_value" value="{{ if .Setting }}{{ .Setting.PrefixValue }}{{ end }}" placeholder="如：全局路径前缀（prefix-field 使用）">
+      <small>(Optional: prefix label/source for prefix-field)</small>
     </label>
   </p>
 
@@ -141,4 +150,3 @@ $(function() {
   if ($opt.val().trim()) update();
 });
 </script>
-

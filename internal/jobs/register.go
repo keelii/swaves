@@ -3,6 +3,7 @@ package job
 import (
 	"fmt"
 	"log"
+	"strings"
 	"swaves/internal/db"
 	"swaves/internal/store"
 	"swaves/internal/types"
@@ -136,6 +137,11 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		return
 	}
 
+	if shouldSkipTaskRun(t.Code, status, ret) {
+		log.Printf("[task] skip task run for %s: %s", t.Code, strings.TrimSpace(ret))
+		return
+	}
+
 	finishAt := time.Now()
 	taskRun := &db.TaskRun{
 		TaskCode:   t.Code,
@@ -154,6 +160,17 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		log.Printf("[task] create task run failed: %v", err)
 		return
 	}
+}
+
+func shouldSkipTaskRun(taskCode string, status string, message string) bool {
+	if status != "success" {
+		return false
+	}
+	if taskCode != "clear_encrypted_posts" {
+		return false
+	}
+
+	return strings.TrimSpace(message) == clearEncryptedPostsNoopMsg
 }
 
 // 注册 Job

@@ -1592,6 +1592,7 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 	setting.Options = c.FormValue("options")
 	setting.Attrs = c.FormValue("attrs")
 	setting.DefaultOptionValue = c.FormValue("default_option_value")
+	setting.PrefixValue = c.FormValue("prefix_value")
 	setting.Description = c.FormValue("description")
 
 	if sortStr := c.FormValue("sort"); sortStr != "" {
@@ -1683,6 +1684,7 @@ func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 		Attrs:              c.FormValue("attrs"),
 		Value:              c.FormValue("value"),
 		DefaultOptionValue: c.FormValue("default_option_value"),
+		PrefixValue:        c.FormValue("prefix_value"),
 		Description:        c.FormValue("description"),
 	}
 
