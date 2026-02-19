@@ -1410,16 +1410,9 @@ func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
-	// 获取分类参数，如果没有则显示所有
-	kind := c.Query("kind", "")
+	kind := strings.TrimSpace(c.Query("kind", ""))
 
-	var settings []db.Setting
-	var err error
-	if kind == "" {
-		settings, err = ListAllSettings(h.Model)
-	} else {
-		settings, err = ListSettingsByKind(h.Model, kind)
-	}
+	settings, err := ListAllSettings(h.Model)
 	if err != nil {
 		return err
 	}
@@ -1436,12 +1429,22 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		settingsByKind[s.Kind] = append(settingsByKind[s.Kind], view)
 	}
 
-	activeKind := strings.TrimSpace(kind)
+	activeKind := kind
 	if _, ok := settingsByKind[activeKind]; !ok {
 		activeKind = ""
 		if len(settingKinds) > 0 {
 			activeKind = settingKinds[0]
 		}
+	}
+
+	kindLinks := make(map[string]string, len(settingKinds))
+	for _, settingKind := range settingKinds {
+		kindLinks[settingKind] = "/admin/settings/all?kind=" + url.QueryEscape(settingKind)
+	}
+
+	formAction := "/admin/settings/all"
+	if activeKind != "" {
+		formAction += "?kind=" + url.QueryEscape(activeKind)
 	}
 
 	return RenderAdminView(c, "settings_all", fiber.Map{
@@ -1450,6 +1453,8 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		"SettingKinds":   settingKinds,
 		"Kind":           kind,
 		"ActiveKind":     activeKind,
+		"KindLinks":      kindLinks,
+		"FormAction":     formAction,
 	}, "")
 }
 
@@ -1497,7 +1502,9 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	validKinds := make(map[string]struct{}, len(settings))
 	for _, setting := range settings {
+		validKinds[setting.Kind] = struct{}{}
 		fieldName := "setting_" + setting.Code
 
 		// checkbox 类型需要特殊处理，可能有多个值
@@ -1526,7 +1533,17 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.Redirect("/admin/settings/all")
+	activeKind := strings.TrimSpace(c.Query("kind", ""))
+	if _, ok := validKinds[activeKind]; !ok {
+		activeKind = ""
+	}
+
+	redirectPath := "/admin/settings/all"
+	if activeKind != "" {
+		redirectPath += "?kind=" + url.QueryEscape(activeKind)
+	}
+
+	return c.Redirect(redirectPath)
 }
 
 func (h *Handler) GetSettingEditHandler(c *fiber.Ctx) error {

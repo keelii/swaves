@@ -1,10 +1,6 @@
 <style>
-  .settings-tabs {
+  .settings-kind-tabs {
     margin-bottom: var(--space-4);
-  }
-
-  .settings-tab-panel {
-    padding-top: var(--space-2);
   }
 
   .settings-kind {
@@ -59,98 +55,95 @@
   }
 </style>
 
-<form id="form" method="post" action="/admin/settings/all" class="settings-all-form">
-  {{ if gt (len .SettingKinds) 0 }}
-  <ot-tabs>
-    <div class="settings-tabs" role="tablist">
-      {{ range .SettingKinds }}
-      <button type="button" role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}">{{ . }}</button>
-      {{ end }}
-    </div>
-
+{{ if gt (len .SettingKinds) 0 }}
+<div class="tab-card settings-kind-tabs">
+  <div class="tab-nav">
     {{ range .SettingKinds }}
-      {{ $kind := . }}
-      <div class="settings-tab-panel" role="tabpanel">
-        <section class="settings-kind">
-          <div class="settings-kind-fields">
-            {{ range index $.SettingsByKind $kind }}
-              {{ $setting := . }}
-              {{ $code := $setting.Code }}
-              {{ $attrs := $setting.AttrsParsed }}
-              <div class="settings-item">
-                <label class="settings-item-label" data-setting-code="{{ $code }}" data-setting-name="{{ $setting.Name }}">
+    <div class="tab-item{{ if eq $.ActiveKind . }} active{{ end }}">
+      <a href="{{ index $.KindLinks . }}">{{ . }}</a>
+    </div>
+    {{ end }}
+  </div>
+</div>
 
-                  {{ if ne $setting.Type "radio" }}
-                    <div class="settings-item-header">
-                      <span class="settings-item-title">{{ $setting.Name }}</span>
-                    </div>
-                  {{ end }}
+<form id="form" method="post" action="{{ .FormAction }}" class="settings-all-form">
+  <section class="settings-kind">
+    <div class="settings-kind-fields">
+      {{ range index .SettingsByKind .ActiveKind }}
+        {{ $setting := . }}
+        {{ $code := $setting.Code }}
+        {{ $attrs := $setting.AttrsParsed }}
+        <div class="settings-item">
+          <label class="settings-item-label" data-setting-code="{{ $code }}" data-setting-name="{{ $setting.Name }}">
 
-                  {{ if eq $setting.Type "text" }}
-                    <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                  {{ else if eq $setting.Type "prefix-field" }}
-                    <fieldset class="group settings-prefix-field" data-prefix-source="{{ $setting.PrefixValue }}">
-                      <legend data-prefix-legend>{{ $setting.PrefixValue }}</legend>
-                      <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                    </fieldset>
-                  {{ else if eq $setting.Type "number" }}
-                    <input type="number" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                  {{ else if eq $setting.Type "date" }}
-                    <input type="date" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                  {{ else if eq $setting.Type "time" }}
-                    <input type="time" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                  {{ else if eq $setting.Type "datetime" }}
-                    <input type="datetime-local" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                  {{ else if eq $setting.Type "url" }}
-                    <input type="url" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                  {{ else if eq $setting.Type "range" }}
-                    <span class="settings-range-wrap">
-                      <input type="range" id="setting_{{ $code }}_range" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }} data-range-value{{ if eq $code "font_size" }} data-unit=" px"{{ end }}>
-                      <output class="range-value" for="setting_{{ $code }}_range">{{ $setting.Value }}{{ if eq $code "font_size" }} px{{ end }}</output>
-                    </span>
-                  {{ else if eq $setting.Type "password" }}
-                    <input type="password" name="setting_{{ $code }}" placeholder="Leave empty to keep current"{{ renderAttrs $attrs }}>
-                  {{ else if eq $setting.Type "textarea" }}
-                    <textarea name="setting_{{ $code }}"{{ renderAttrs $attrs }}>{{ $setting.Value }}</textarea>
-                  {{ else if eq $setting.Type "radio" }}
-                    {{ $currentValue := or $setting.Value $setting.DefaultOptionValue }}
-                    <fieldset class="settings-options hstack">
-                      <legend>{{ $setting.Name }}</legend>
-                      {{ range $setting.OptionsParsed }}
-                      <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $attrs }}>
-                      <span>{{ .label }}</span>
-                      {{ end }}
-                    </fieldset>
-                  {{ else if eq $setting.Type "checkbox" }}
-                    <div class="settings-options">
-                      {{ range $setting.OptionsParsed }}
-                        <label class="settings-option">
-                          <input type="checkbox" name="setting_{{ $code }}" value="{{ .value }}" {{ if index $setting.CheckboxValues .value }}checked{{ end }}{{ renderAttrs $attrs }}>
-                          <span>{{ .label }}</span>
-                        </label>
-                      {{ end }}
-                    </div>
-                  {{ else if eq $setting.Type "select" }}
-                    {{ $currentValue := or $setting.Value $setting.DefaultOptionValue }}
-                    <select name="setting_{{ $code }}"{{ renderAttrs $attrs }}>
-                      {{ range $setting.OptionsParsed }}
-                        <option value="{{ .value }}" {{ if eq $currentValue .value }}selected{{ end }}>{{ .label }}</option>
-                      {{ end }}
-                    </select>
-                  {{ end }}
-                </label>
-                <div class="settings-item-desc">{{ if $setting.Description }}{{ $setting.Description }}{{ else }}-{{ end }}</div>
+            {{ if ne $setting.Type "radio" }}
+              <div class="settings-item-header">
+                <span class="settings-item-title">{{ $setting.Name }}</span>
               </div>
             {{ end }}
-          </div>
-        </section>
-      </div>
-    {{ end }}
-  </ot-tabs>
-  {{ else }}
-  <div role="alert" data-variant="warning">暂无可编辑设置</div>
-  {{ end }}
+
+            {{ if eq $setting.Type "text" }}
+              <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "prefix-field" }}
+              <fieldset class="group settings-prefix-field" data-prefix-source="{{ $setting.PrefixValue }}">
+                <legend data-prefix-legend>{{ $setting.PrefixValue }}</legend>
+                <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+              </fieldset>
+            {{ else if eq $setting.Type "number" }}
+              <input type="number" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "date" }}
+              <input type="date" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "time" }}
+              <input type="time" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "datetime" }}
+              <input type="datetime-local" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "url" }}
+              <input type="url" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "range" }}
+              <span class="settings-range-wrap">
+                <input type="range" id="setting_{{ $code }}_range" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }} data-range-value{{ if eq $code "font_size" }} data-unit=" px"{{ end }}>
+                <output class="range-value" for="setting_{{ $code }}_range">{{ $setting.Value }}{{ if eq $code "font_size" }} px{{ end }}</output>
+              </span>
+            {{ else if eq $setting.Type "password" }}
+              <input type="password" name="setting_{{ $code }}" placeholder="Leave empty to keep current"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "textarea" }}
+              <textarea name="setting_{{ $code }}"{{ renderAttrs $attrs }}>{{ $setting.Value }}</textarea>
+            {{ else if eq $setting.Type "radio" }}
+              {{ $currentValue := or $setting.Value $setting.DefaultOptionValue }}
+              <fieldset class="settings-options hstack">
+                <legend>{{ $setting.Name }}</legend>
+                {{ range $setting.OptionsParsed }}
+                <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $attrs }}>
+                <span>{{ .label }}</span>
+                {{ end }}
+              </fieldset>
+            {{ else if eq $setting.Type "checkbox" }}
+              <div class="settings-options">
+                {{ range $setting.OptionsParsed }}
+                  <label class="settings-option">
+                    <input type="checkbox" name="setting_{{ $code }}" value="{{ .value }}" {{ if index $setting.CheckboxValues .value }}checked{{ end }}{{ renderAttrs $attrs }}>
+                    <span>{{ .label }}</span>
+                  </label>
+                {{ end }}
+              </div>
+            {{ else if eq $setting.Type "select" }}
+              {{ $currentValue := or $setting.Value $setting.DefaultOptionValue }}
+              <select name="setting_{{ $code }}"{{ renderAttrs $attrs }}>
+                {{ range $setting.OptionsParsed }}
+                  <option value="{{ .value }}" {{ if eq $currentValue .value }}selected{{ end }}>{{ .label }}</option>
+                {{ end }}
+              </select>
+            {{ end }}
+          </label>
+          <div class="settings-item-desc">{{ if $setting.Description }}{{ $setting.Description }}{{ else }}-{{ end }}</div>
+        </div>
+      {{ end }}
+    </div>
+  </section>
 </form>
+{{ else }}
+<div role="alert" data-variant="warning">暂无可编辑设置</div>
+{{ end }}
 
 <script>
 $(function() {
