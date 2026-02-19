@@ -195,8 +195,19 @@ func buildSiteErrorRedirectPath(c *fiber.Ctx, targetPath string) string {
 }
 
 func (h Handler) redirectNotFound(c *fiber.Ctx) error {
-	targetPath := getSitePath("/404")
-	return c.Redirect(buildSiteErrorRedirectPath(c, targetPath), fiber.StatusFound)
+	returnURL := strings.TrimSpace(c.Query("returnUrl"))
+	if returnURL == "" {
+		returnURL = strings.TrimSpace(c.OriginalURL())
+	}
+	returnURL = normalizeErrorReturnURL(returnURL)
+
+	c.Status(fiber.StatusNotFound)
+	return RenderUIView(c, "site/404", fiber.Map{
+		"Title":     "404 Not Found",
+		"Pages":     ListPages(h.Model),
+		"ReturnURL": returnURL,
+		"ReqID":     c.Locals("reqId"),
+	}, "")
 }
 
 func (h Handler) redirectError(c *fiber.Ctx) error {

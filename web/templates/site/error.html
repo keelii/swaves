@@ -1,15 +1,12 @@
 <header>
   <h1>页面异常</h1>
-  {{ template "site/includes/nav" . }}
+  <p>请求处理失败，请稍后重试。</p>
 </header>
 
 <article>
-  <p>请求处理失败，请稍后重试。</p>
   <p>
-    <a href="{{ .ReturnURL }}">返回来源页</a>
-    /
-    <a href="{{ GetBasePath }}">返回首页</a>
+    <a href="{{ .ReturnURL }}">返回来源页，重试</a>
+    或者 <a href="{{ GetBasePath }}">返回首页</a>
   </p>
-  <p><small>returnUrl: {{ .ReturnURL }}</small></p>
   {{ if .ReqID }}<p><small>reqId: {{ .ReqID }}</small></p>{{ end }}
 </article>
