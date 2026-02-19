@@ -1451,7 +1451,6 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		"Title":          "Settings - Edit All",
 		"SettingsByKind": settingsByKind,
 		"SettingKinds":   settingKinds,
-		"Kind":           kind,
 		"ActiveKind":     activeKind,
 		"KindLinks":      kindLinks,
 		"FormAction":     formAction,
