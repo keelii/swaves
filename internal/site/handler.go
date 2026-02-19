@@ -162,7 +162,7 @@ func (h Handler) ensureLikePostExists(postID int64) error {
 
 func RenderUIView(c *fiber.Ctx, view string, data fiber.Map, layout string) error {
 	if layout == "" {
-		layout = "ui/layout"
+		layout = "site/layout"
 	}
 	if data == nil {
 		data = fiber.Map{}
@@ -193,7 +193,7 @@ func (h Handler) GetHome(c *fiber.Ctx) error {
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
 	h.trackSiteUV(c)
 
-	return RenderUIView(c, "ui/home", fiber.Map{
+	return RenderUIView(c, "site/home", fiber.Map{
 		"Articles": articles,
 		"Pages":    ListPages(h.Model),
 		"Pager":    pager,
@@ -208,7 +208,7 @@ func (h Handler) GetHome(c *fiber.Ctx) error {
 //
 //	post := GetPostBySlug(h.Model, matched["slug"])
 //
-//	return RenderUIView(c, "ui/post", fiber.Map{
+//	return RenderUIView(c, "site/post", fiber.Map{
 //		"Post": post,
 //		//"Pages": ListPages(h.Model),
 //	}, "")
@@ -242,7 +242,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
 
-	return RenderUIView(c, "ui/post", fiber.Map{
+	return RenderUIView(c, "site/post", fiber.Map{
 		"Post":            post,
 		"ReadUV":          readUV,
 		"LikeCount":       likeCount,
@@ -267,7 +267,7 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
 
-	return RenderUIView(c, "ui/post", fiber.Map{
+	return RenderUIView(c, "site/post", fiber.Map{
 		"Post":            post,
 		"ReadUV":          readUV,
 		"LikeCount":       likeCount,
@@ -298,7 +298,7 @@ func (h Handler) GetCategoryIndex(c *fiber.Ctx) error {
 
 	pages := ListPages(h.Model)
 	h.trackSiteUV(c)
-	return RenderUIView(c, "ui/list", fiber.Map{
+	return RenderUIView(c, "site/list", fiber.Map{
 		"Title": "Categories",
 		"Pages": pages,
 		"List":  categories,
@@ -312,7 +312,7 @@ func (h Handler) GetTagIndex(c *fiber.Ctx) error {
 	}
 
 	h.trackSiteUV(c)
-	return RenderUIView(c, "ui/list", fiber.Map{
+	return RenderUIView(c, "site/list", fiber.Map{
 		"Title": "Tags",
 		"Pages": ListPages(h.Model),
 		"List":  tags,
@@ -330,7 +330,7 @@ func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
 
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
 
-	return RenderUIView(c, "ui/detail", fiber.Map{
+	return RenderUIView(c, "site/detail", fiber.Map{
 		"IsCategory": true,
 		"Entity":     category,
 		"List":       posts,
@@ -350,7 +350,7 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
 
-	return RenderUIView(c, "ui/detail", fiber.Map{
+	return RenderUIView(c, "site/detail", fiber.Map{
 		"IsTag":    true,
 		"Entity":   tag,
 		"List":     posts,
