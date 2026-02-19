@@ -303,7 +303,7 @@
             <tr>
               <td class="col-tight">{{ add $idx 1 }}</td>
               <td>
-                <a href="#" target="_blank" rel="noopener">{{ $item.Title }}</a>
+                <a href="{{ BuildPostURL $item.Kind $item.Slug $item.PublishedAt }}" target="_blank" rel="noopener">{{ $item.Title }}</a>
               </td>
               <td class="text-right col-value">{{ $item.UV }}</td>
             </tr>

@@ -1020,11 +1020,12 @@ type UVUnique struct {
 }
 
 type UVPostRank struct {
-	ID    int64
-	Title string
-	Slug  string
-	Kind  PostKind
-	UV    int
+	ID          int64
+	Title       string
+	Slug        string
+	Kind        PostKind
+	PublishedAt int64
+	UV          int
 }
 
 type UVCategoryRank struct {
@@ -1343,7 +1344,7 @@ func ListTopUVContents(db *DB, limit int) ([]UVPostRank, error) {
 	}
 
 	rows, err := db.Query(
-		`SELECT p.id, p.title, p.slug, p.kind, COUNT(*) AS uv
+		`SELECT p.id, p.title, p.slug, p.kind, p.published_at, COUNT(*) AS uv
 		FROM `+string(TableUVUnique)+` AS u
 		INNER JOIN `+string(TablePosts)+` AS p
 			ON p.id = u.entity_id
@@ -1363,7 +1364,7 @@ func ListTopUVContents(db *DB, limit int) ([]UVPostRank, error) {
 	res := make([]UVPostRank, 0, limit)
 	for rows.Next() {
 		var item UVPostRank
-		if err = rows.Scan(&item.ID, &item.Title, &item.Slug, &item.Kind, &item.UV); err != nil {
+		if err = rows.Scan(&item.ID, &item.Title, &item.Slug, &item.Kind, &item.PublishedAt, &item.UV); err != nil {
 			return nil, WrapInternalErr("ListTopUVContents.Scan", err)
 		}
 		res = append(res, item)
@@ -1554,7 +1555,7 @@ func listTopUVPostsByKind(db *DB, kind PostKind, limit int) ([]UVPostRank, error
 	}
 
 	rows, err := db.Query(
-		`SELECT p.id, p.title, p.slug, u.uv
+		`SELECT p.id, p.title, p.slug, p.published_at, u.uv
 		FROM (
 			SELECT entity_id, COUNT(*) AS uv
 			FROM `+string(TableUVUnique)+`
@@ -1579,7 +1580,7 @@ func listTopUVPostsByKind(db *DB, kind PostKind, limit int) ([]UVPostRank, error
 	res := make([]UVPostRank, 0, limit)
 	for rows.Next() {
 		var item UVPostRank
-		if err = rows.Scan(&item.ID, &item.Title, &item.Slug, &item.UV); err != nil {
+		if err = rows.Scan(&item.ID, &item.Title, &item.Slug, &item.PublishedAt, &item.UV); err != nil {
 			return nil, WrapInternalErr("listTopUVPostsByKind.Scan", err)
 		}
 		item.Kind = kind

@@ -50,6 +50,15 @@ func GetArticleUrl(post db.Post) string {
 
 	return postPath + "/" + post.Slug
 }
+
+func BuildPostURL(kind db.PostKind, slug string, publishedAt int64) string {
+	return GetPostUrl(db.Post{
+		Kind:        kind,
+		Slug:        slug,
+		PublishedAt: publishedAt,
+	})
+}
+
 func GetPostUrl(post db.Post) string {
 	base := GetBasePath()
 	if post.Kind == db.PostKindPage {

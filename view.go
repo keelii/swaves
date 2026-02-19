@@ -233,6 +233,7 @@ func NewViewEngine() *html.Engine {
 	engine.AddFunc("GetAdminUrl", share.GetAdminUrl)
 	engine.AddFunc("GetTagUrl", share.GetTagUrl)
 	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
+	engine.AddFunc("BuildPostURL", share.BuildPostURL)
 	engine.AddFunc("GetPostUrl", func(p *db.Post) string {
 		if p == nil {
 			return ""
