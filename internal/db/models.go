@@ -83,6 +83,9 @@ func InitDatabase(db *DB) error {
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
 	}
+	if err := EnsureDefaultCategories(db); err != nil {
+		log.Fatalf("ensure default categories failed: %v", err)
+	}
 
 	return nil
 }
@@ -3553,6 +3556,123 @@ func EnsureDefaultSettings(db *DB) error {
 	}
 
 	return nil
+}
+
+type defaultCategorySeed struct {
+	Name        string
+	Slug        string
+	ParentSlug  string
+	Description string
+	Sort        int64
+}
+
+var defaultCategories = []defaultCategorySeed{
+	{Name: "生活", Slug: "life", Description: "与技术主线无直接关系的个人生活内容。", Sort: 10},
+	{Name: "文娱", Slug: "entertainment", ParentSlug: "life", Description: "音乐、电影、剧集、游戏及相关文化内容。", Sort: 10},
+	{Name: "阅读", Slug: "reading", ParentSlug: "life", Description: "读书笔记、文学随笔与阅读思考。", Sort: 20},
+
+	{Name: "工作", Slug: "work", Description: "与职业实践、团队协作、工作方式相关内容。", Sort: 20},
+	{Name: "职业", Slug: "career", ParentSlug: "work", Description: "职业成长、管理协作、流程方法与职场经验。", Sort: 10},
+
+	{Name: "技术", Slug: "technology", Description: "技术内容总入口，涵盖编程与软件工程实践。", Sort: 30},
+	{Name: "编程", Slug: "programming", ParentSlug: "technology", Description: "代码实现、底层原理与工程技巧。", Sort: 10},
+	{Name: "编程语言", Slug: "programming-languages", ParentSlug: "programming", Description: "语言特性、范式对比与生态实践。", Sort: 10},
+	{Name: "操作系统", Slug: "operating-systems", ParentSlug: "programming", Description: "Linux、macOS、Windows 与进程、内存、IO 等系统机制。", Sort: 20},
+	{Name: "工具与效率", Slug: "tools-productivity", ParentSlug: "programming", Description: "IDE、CLI、自动化与开发效率优化。", Sort: 30},
+	{Name: "软件开发", Slug: "software-development", ParentSlug: "technology", Description: "从需求到上线的架构、测试、发布与维护实践。", Sort: 20},
+	{Name: "技术观点", Slug: "tech-opinions", ParentSlug: "technology", Description: "技术趋势、行业观察与观点评论。", Sort: 30},
+
+	{Name: "科技", Slug: "tech", Description: "消费科技与新品体验内容总入口。", Sort: 40},
+	{Name: "发布与动态", Slug: "tech-news", ParentSlug: "tech", Description: "发布会、新品发布与科技行业动态。", Sort: 10},
+	{Name: "产品体验", Slug: "product-hands-on", ParentSlug: "tech", Description: "设备开箱、上手评测与长期使用体验。", Sort: 20},
+	{Name: "选购建议", Slug: "buying-guides", ParentSlug: "tech", Description: "产品对比、选购建议与购买避坑。", Sort: 30},
+}
+
+// EnsureDefaultCategories 确保默认分类存在。缺失时自动补齐；若已有同 parent+slug 的分类则跳过。
+func EnsureDefaultCategories(db *DB) error {
+	activeCategoryIDBySlug := make(map[string]int64)
+
+	for _, seed := range defaultCategories {
+		parentID := int64(0)
+		if seed.ParentSlug != "" {
+			id, ok := activeCategoryIDBySlug[seed.ParentSlug]
+			if !ok {
+				parent, err := GetCategoryBySlug(db, seed.ParentSlug)
+				if err != nil {
+					if IsErrNotFound(err) {
+						continue
+					}
+					return err
+				}
+				id = parent.ID
+				activeCategoryIDBySlug[seed.ParentSlug] = id
+			}
+			parentID = id
+		}
+
+		existing, err := getCategoryByParentAndSlug(db, parentID, seed.Slug, false)
+		if err == nil {
+			activeCategoryIDBySlug[seed.Slug] = existing.ID
+			continue
+		}
+		if !IsErrNotFound(err) {
+			return err
+		}
+
+		// 该 slug 在当前 parent 下可能存在已软删除记录。此时保持用户删除意图，不自动恢复或重复创建。
+		if _, err = getCategoryByParentAndSlug(db, parentID, seed.Slug, true); err == nil {
+			continue
+		}
+		if !IsErrNotFound(err) {
+			return err
+		}
+
+		c := &Category{
+			ParentID:    parentID,
+			Name:        seed.Name,
+			Slug:        seed.Slug,
+			Description: seed.Description,
+			Sort:        seed.Sort,
+		}
+		id, err := CreateCategory(db, c)
+		if err != nil {
+			return err
+		}
+		activeCategoryIDBySlug[seed.Slug] = id
+	}
+
+	return nil
+}
+
+func getCategoryByParentAndSlug(db *DB, parentID int64, slug string, includeDeleted bool) (*Category, error) {
+	query := `
+		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
+		FROM ` + string(TableCategories) + `
+		WHERE `
+	args := make([]interface{}, 0, 2)
+
+	if parentID == 0 {
+		query += `(parent_id IS NULL OR parent_id=0) AND slug=?`
+		args = append(args, slug)
+	} else {
+		query += `parent_id=? AND slug=?`
+		args = append(args, parentID, slug)
+	}
+
+	if !includeDeleted {
+		query += ` AND deleted_at IS NULL`
+	}
+
+	query += ` LIMIT 1`
+
+	c, err := scanCategory(db.QueryRow(query, args...))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound("getCategoryByParentAndSlug")
+		}
+		return nil, WrapInternalErr("getCategoryByParentAndSlug", err)
+	}
+	return &c, nil
 }
 
 type HttpErrorLog struct {

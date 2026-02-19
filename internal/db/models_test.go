@@ -1036,6 +1036,63 @@ func TestListSettingsOrder(t *testing.T) {
 	}
 }
 
+func TestEnsureDefaultCategories(t *testing.T) {
+	db := openTestDB(t)
+
+	categories, err := ListCategories(db, false)
+	if err != nil {
+		t.Fatalf("ListCategories failed: %v", err)
+	}
+	if len(categories) != len(defaultCategories) {
+		t.Fatalf("expected %d default categories, got %d", len(defaultCategories), len(categories))
+	}
+
+	bySlug := make(map[string]Category, len(categories))
+	for _, c := range categories {
+		bySlug[c.Slug] = c
+	}
+
+	for _, seed := range defaultCategories {
+		c, ok := bySlug[seed.Slug]
+		if !ok {
+			t.Fatalf("default category missing: %s", seed.Slug)
+		}
+		if c.Name != seed.Name {
+			t.Fatalf("name mismatch for %s: got %s want %s", seed.Slug, c.Name, seed.Name)
+		}
+		if c.Description != seed.Description {
+			t.Fatalf("description mismatch for %s: got %s want %s", seed.Slug, c.Description, seed.Description)
+		}
+		if c.Sort != seed.Sort {
+			t.Fatalf("sort mismatch for %s: got %d want %d", seed.Slug, c.Sort, seed.Sort)
+		}
+		if seed.ParentSlug == "" {
+			if c.ParentID != 0 {
+				t.Fatalf("root category %s parent should be 0, got %d", seed.Slug, c.ParentID)
+			}
+			continue
+		}
+		parent, ok := bySlug[seed.ParentSlug]
+		if !ok {
+			t.Fatalf("parent missing for %s: %s", seed.Slug, seed.ParentSlug)
+		}
+		if c.ParentID != parent.ID {
+			t.Fatalf("parent mismatch for %s: got %d want %d", seed.Slug, c.ParentID, parent.ID)
+		}
+	}
+
+	if err := EnsureDefaultCategories(db); err != nil {
+		t.Fatalf("EnsureDefaultCategories should be idempotent: %v", err)
+	}
+	categoriesAfter, err := ListCategories(db, false)
+	if err != nil {
+		t.Fatalf("ListCategories after ensure failed: %v", err)
+	}
+	if len(categoriesAfter) != len(categories) {
+		t.Fatalf("expected category count unchanged after ensure, got %d want %d", len(categoriesAfter), len(categories))
+	}
+}
+
 func TestHttpErrorLogLifecycle(t *testing.T) {
 	db := openTestDB(t)
 

@@ -2771,16 +2771,17 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 			kindVal = "0"
 		}
 		item := PreviewPostItem{
-			Index:     i,
-			Title:     c.FormValue(fmt.Sprintf("items[%d][title]", i)),
-			Slug:      c.FormValue(fmt.Sprintf("items[%d][slug]", i)),
-			Content:   c.FormValue(fmt.Sprintf("items[%d][content]", i)),
-			Status:    c.FormValue(fmt.Sprintf("items[%d][status]", i)),
-			Kind:      kindVal,
-			CreatedAt: c.FormValue(fmt.Sprintf("items[%d][created_at]", i)),
-			Tags:      c.FormValue(fmt.Sprintf("items[%d][tags]", i)),
-			Category:  c.FormValue(fmt.Sprintf("items[%d][category]", i)),
-			Filename:  c.FormValue(fmt.Sprintf("items[%d][filename]", i)),
+			Index:      i,
+			Title:      c.FormValue(fmt.Sprintf("items[%d][title]", i)),
+			Slug:       c.FormValue(fmt.Sprintf("items[%d][slug]", i)),
+			Content:    c.FormValue(fmt.Sprintf("items[%d][content]", i)),
+			Status:     c.FormValue(fmt.Sprintf("items[%d][status]", i)),
+			Kind:       kindVal,
+			CreatedAt:  c.FormValue(fmt.Sprintf("items[%d][created_at]", i)),
+			Tags:       c.FormValue(fmt.Sprintf("items[%d][tags]", i)),
+			Category:   c.FormValue(fmt.Sprintf("items[%d][category]", i)),
+			Categories: c.FormValue(fmt.Sprintf("items[%d][categories]", i)),
+			Filename:   c.FormValue(fmt.Sprintf("items[%d][filename]", i)),
 		}
 		item.ContentPreview = buildImportContentPreview(item.Content)
 
@@ -2836,15 +2837,16 @@ func (h *Handler) PostImportPreviewItemHandler(c *fiber.Ctx) error {
 	}
 
 	item := PreviewPostItem{
-		Title:     c.FormValue("title"),
-		Slug:      c.FormValue("slug"),
-		Content:   c.FormValue("content"),
-		Status:    c.FormValue("status"),
-		Kind:      kindVal,
-		CreatedAt: c.FormValue("created_at"),
-		Tags:      c.FormValue("tags"),
-		Category:  c.FormValue("category"),
-		Filename:  c.FormValue("filename"),
+		Title:      c.FormValue("title"),
+		Slug:       c.FormValue("slug"),
+		Content:    c.FormValue("content"),
+		Status:     c.FormValue("status"),
+		Kind:       kindVal,
+		CreatedAt:  c.FormValue("created_at"),
+		Tags:       c.FormValue("tags"),
+		Category:   c.FormValue("category"),
+		Categories: c.FormValue("categories"),
+		Filename:   c.FormValue("filename"),
 	}
 	item.ContentPreview = buildImportContentPreview(item.Content)
 

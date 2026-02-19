@@ -308,7 +308,7 @@ func buildCommentAvatarURL(email, author string, size int) string {
 	query.Set("d", "identicon")
 	query.Set("r", "g")
 
-	return "https://secure.gravatar.com/avatar/" + hash + "?" + query.Encode()
+	return "https://cravatar.cn/avatar/" + hash + "?" + query.Encode()
 }
 
 // relativeTimeString 将 Unix 时间戳转为相对时间中文描述

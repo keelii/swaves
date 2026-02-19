@@ -590,11 +590,22 @@ input[type="range"] {
   width: 4em;
 }
 
-table :is(th, td).cell-id {
+.cell-id {
   width: 4em;
   white-space: nowrap;
 }
-
+.cell-title {
+  width: 20em;
+}
+.cell-num {
+  width: 3em;
+}
+.cell-op {
+  width: 6em;
+}
+.cell-r-time {
+  width: 6em;
+}
 .cell-wsn {
   white-space: nowrap;
 }

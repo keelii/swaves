@@ -24,7 +24,6 @@
               {{ if ne $setting.Type "radio" }}
                 <div class="settings-item-header">
                   <span class="settings-item-title">{{ $setting.Name }}</span>
-                    {{ if eq $setting.Reload 1 }}<small class="settings-item-reload">需重启生效</small>{{ end }}
                 </div>
               {{ end }}
 

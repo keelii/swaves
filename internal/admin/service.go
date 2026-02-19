@@ -1212,6 +1212,7 @@ type PreviewPostItem struct {
 	Tags           string   // 标签（逗号分隔的字符串）
 	TagsList       []string // 标签列表
 	Category       string   // 分类名称
+	Categories     string   // 分类列表（逗号分隔，首个默认关联文章）
 }
 
 const importPreviewContentLimit = 160
@@ -1226,6 +1227,31 @@ func buildImportContentPreview(content string) string {
 		return normalized
 	}
 	return string(runes[:importPreviewContentLimit]) + "..."
+}
+
+func appendUniqueTrimmed(items []string, value string) []string {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return items
+	}
+	for _, existing := range items {
+		if existing == v {
+			return items
+		}
+	}
+	return append(items, v)
+}
+
+func splitAndNormalizeCSV(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return []string{}
+	}
+	parts := strings.Split(value, ",")
+	items := make([]string, 0, len(parts))
+	for _, part := range parts {
+		items = appendUniqueTrimmed(items, part)
+	}
+	return items
 }
 
 // extractTitleFromMarkdown 从 markdown 内容中提取指定级别的标题
@@ -1466,8 +1492,9 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			tagsStr = ""
 		}
 
-		// 处理 category（单选）
+		// 处理 category（单选，导入时默认关联第一个；其余分类也会创建）
 		category := ""
+		categoryList := make([]string, 0, 4)
 		switch categorySource {
 		case CategoryFromFrontmatter:
 			// 从 frontmatter 指定字段获取
@@ -1478,13 +1505,12 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			if val, ok := result.Meta[fieldName]; ok {
 				switch v := val.(type) {
 				case string:
-					// 如果是字符串，直接使用
-					category = strings.TrimSpace(v)
+					// 兼容单值或逗号分隔字符串
+					categoryList = append(categoryList, splitAndNormalizeCSV(v)...)
 				case []interface{}:
-					// 如果是数组，使用第一个元素
-					if len(v) > 0 {
-						if str, ok := v[0].(string); ok {
-							category = strings.TrimSpace(str)
+					for _, item := range v {
+						if str, ok := item.(string); ok {
+							categoryList = appendUniqueTrimmed(categoryList, str)
 						}
 					}
 				}
@@ -1492,6 +1518,7 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 		case CategoryAutoCreate:
 			// 自动创建默认分类（使用默认分类名称 "Default"）
 			category = "Default"
+			categoryList = append(categoryList, category)
 		case CategoryNone:
 			// 留空，不设置分类
 			category = ""
@@ -1499,6 +1526,11 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			// 默认留空
 			category = ""
 		}
+		if len(categoryList) > 0 && category == "" {
+			category = categoryList[0]
+		}
+		categoryList = appendUniqueTrimmed(categoryList, category)
+		categoryCSV := strings.Join(categoryList, ", ")
 
 		items = append(items, PreviewPostItem{
 			Index:          i,
@@ -1514,6 +1546,7 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 			Tags:           tagsStr,
 			TagsList:       tagsList,
 			Category:       category,
+			Categories:     categoryCSV,
 		})
 	}
 
@@ -1770,10 +1803,25 @@ func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
 		}
 	}
 
-	if item.Category != "" {
-		category, err := CreateCategoryByName(dbx, item.Category, createdAt)
-		if err == nil {
-			if err := db.SetPostCategory(dbx, post.ID, category.ID); err != nil {
+	primaryCategory := strings.TrimSpace(item.Category)
+	categoryNames := splitAndNormalizeCSV(item.Categories)
+	if primaryCategory == "" && len(categoryNames) > 0 {
+		primaryCategory = categoryNames[0]
+	}
+	categoryNames = appendUniqueTrimmed(categoryNames, primaryCategory)
+
+	categoryIDByName := make(map[string]int64, len(categoryNames))
+	for _, categoryName := range categoryNames {
+		category, err := CreateCategoryByName(dbx, categoryName, createdAt)
+		if err != nil {
+			continue
+		}
+		categoryIDByName[categoryName] = category.ID
+	}
+
+	if primaryCategory != "" {
+		if categoryID, ok := categoryIDByName[primaryCategory]; ok {
+			if err := db.SetPostCategory(dbx, post.ID, categoryID); err != nil {
 				// category 关联失败不影响主流程
 			}
 		}

@@ -71,6 +71,7 @@
       <td>
         <input type="text" name="items[{{ .Index }}][tags]" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
         <input type="text" name="items[{{ .Index }}][category]" value="{{ .Category }}" placeholder="category name" style="width: 100%;">
+        <input type="hidden" name="items[{{ .Index }}][categories]" value="{{ .Categories }}">
       </td>
       <td>
         <div class="import-content-preview">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
@@ -123,6 +124,7 @@ $(function() {
     params.set('created_at_unix', readField($row, '[created_at_unix]'));
     params.set('tags', readField($row, '[tags]'));
     params.set('category', readField($row, '[category]'));
+    params.set('categories', readField($row, '[categories]'));
     params.set('filename', readField($row, '[filename]'));
     return params;
   }
