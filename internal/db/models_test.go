@@ -1408,10 +1408,10 @@ func TestListTopUVContents(t *testing.T) {
 		t.Fatalf("expected 2 ranked contents, got %d: %+v", len(rows), rows)
 	}
 
-	if rows[0].PostID != post.ID || rows[0].UV != 3 || rows[0].Kind != PostKindPost {
+	if rows[0].ID != post.ID || rows[0].UV != 3 || rows[0].Kind != PostKindPost {
 		t.Fatalf("unexpected top uv content row 0: %+v", rows[0])
 	}
-	if rows[1].PostID != page.ID || rows[1].UV != 2 || rows[1].Kind != PostKindPage {
+	if rows[1].ID != page.ID || rows[1].UV != 2 || rows[1].Kind != PostKindPage {
 		t.Fatalf("unexpected top uv content row 1: %+v", rows[1])
 	}
 }

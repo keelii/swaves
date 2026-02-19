@@ -5,9 +5,8 @@
   /
   <a href="{{ GetTagIndex }}">标签</a>
   {{if gt (len .Pages) 0 }}
-  /
     {{ range .Pages}}
-      <a href="{{ .PermLink }}">{{ .Title }}</a>
+      / <a href="{{ .PermLink }}">{{ .Title }}</a>
     {{ end }}
   {{end}}
   / <a href="{{ GetRSSUrl }}">RSS</a>

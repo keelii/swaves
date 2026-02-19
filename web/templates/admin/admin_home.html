@@ -302,7 +302,9 @@
           {{ range $idx, $item := .TopUVContents }}
             <tr>
               <td class="col-tight">{{ add $idx 1 }}</td>
-              <td>{{ $item.Title }}</td>
+              <td>
+                <a href="#" target="_blank" rel="noopener">{{ $item.Title }}</a>
+              </td>
               <td class="text-right col-value">{{ $item.UV }}</td>
             </tr>
           {{ end }}

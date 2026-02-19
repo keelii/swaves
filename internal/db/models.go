@@ -1020,18 +1020,11 @@ type UVUnique struct {
 }
 
 type UVPostRank struct {
-	PostID int64
-	Title  string
-	Slug   string
-	UV     int
-}
-
-type UVContentRank struct {
-	PostID int64
-	Title  string
-	Slug   string
-	Kind   PostKind
-	UV     int
+	ID    int64
+	Title string
+	Slug  string
+	Kind  PostKind
+	UV    int
 }
 
 type UVCategoryRank struct {
@@ -1344,7 +1337,7 @@ func ListTopUVPages(db *DB, limit int) ([]UVPostRank, error) {
 	return listTopUVPostsByKind(db, PostKindPage, limit)
 }
 
-func ListTopUVContents(db *DB, limit int) ([]UVContentRank, error) {
+func ListTopUVContents(db *DB, limit int) ([]UVPostRank, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -1367,10 +1360,10 @@ func ListTopUVContents(db *DB, limit int) ([]UVContentRank, error) {
 	}
 	defer rows.Close()
 
-	res := make([]UVContentRank, 0, limit)
+	res := make([]UVPostRank, 0, limit)
 	for rows.Next() {
-		var item UVContentRank
-		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.Kind, &item.UV); err != nil {
+		var item UVPostRank
+		if err = rows.Scan(&item.ID, &item.Title, &item.Slug, &item.Kind, &item.UV); err != nil {
 			return nil, WrapInternalErr("ListTopUVContents.Scan", err)
 		}
 		res = append(res, item)
@@ -1586,9 +1579,10 @@ func listTopUVPostsByKind(db *DB, kind PostKind, limit int) ([]UVPostRank, error
 	res := make([]UVPostRank, 0, limit)
 	for rows.Next() {
 		var item UVPostRank
-		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.UV); err != nil {
+		if err = rows.Scan(&item.ID, &item.Title, &item.Slug, &item.UV); err != nil {
 			return nil, WrapInternalErr("listTopUVPostsByKind.Scan", err)
 		}
+		item.Kind = kind
 		res = append(res, item)
 	}
 	if err = rows.Err(); err != nil {
