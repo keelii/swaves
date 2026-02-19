@@ -23,8 +23,10 @@ const (
 	TablePostCategories TableName = "t_post_categories"
 	TableTaskRuns       TableName = "t_task_runs"
 	TableHttpErrorLogs  TableName = "t_http_error_logs"
-	TableUVUnique       TableName = "t_uv_unique"
+	TableUniqueVisitors TableName = "t_unique_visitors"
+	TableUVUnique       TableName = TableUniqueVisitors
 	TableLikes          TableName = "t_likes"
+	TableMedia          TableName = "t_media"
 )
 
 const InitialSQL = `
@@ -244,7 +246,7 @@ const InitialSQL = `
 		expired_at INTEGER NOT NULL
 	);
 
-	CREATE TABLE IF NOT EXISTS ` + TableUVUnique + ` (
+	CREATE TABLE IF NOT EXISTS ` + TableUniqueVisitors + ` (
 		entity_type INTEGER NOT NULL CHECK (entity_type IN (1, 2, 3, 4)),
 		entity_id INTEGER NOT NULL DEFAULT 0,
 		visitor_id BLOB NOT NULL,
@@ -253,11 +255,11 @@ const InitialSQL = `
 		PRIMARY KEY(entity_type, entity_id, visitor_id)
 	) WITHOUT ROWID;
 
-	CREATE INDEX IF NOT EXISTS idx_uv_unique_entity_last_seen
-	ON ` + TableUVUnique + ` (entity_type, entity_id, last_seen_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_unique_visitors_entity_last_seen
+	ON ` + TableUniqueVisitors + ` (entity_type, entity_id, last_seen_at DESC);
 
-	CREATE INDEX IF NOT EXISTS idx_uv_unique_visitor_id
-	ON ` + TableUVUnique + ` (visitor_id);
+	CREATE INDEX IF NOT EXISTS idx_unique_visitors_visitor_id
+	ON ` + TableUniqueVisitors + ` (visitor_id);
 
 	CREATE TABLE IF NOT EXISTS ` + TableLikes + ` (
 		entity_id INTEGER NOT NULL,
@@ -273,6 +275,27 @@ const InitialSQL = `
 
 	CREATE INDEX IF NOT EXISTS idx_likes_visitor_id
 	ON ` + TableLikes + ` (visitor_id);
+
+	CREATE TABLE IF NOT EXISTS ` + TableMedia + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		kind TEXT NOT NULL,
+		provider TEXT NOT NULL,
+		provider_asset_id TEXT NOT NULL,
+		provider_delete_key TEXT NOT NULL DEFAULT '',
+		file_url TEXT NOT NULL DEFAULT '',
+		original_name TEXT NOT NULL DEFAULT '',
+		size_bytes INTEGER NOT NULL DEFAULT 0,
+		created_at INTEGER NOT NULL
+	);
+
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_media_provider_asset
+	ON ` + TableMedia + ` (provider, provider_asset_id);
+
+	CREATE INDEX IF NOT EXISTS idx_media_kind_created
+	ON ` + TableMedia + ` (kind, created_at DESC);
+
+	CREATE INDEX IF NOT EXISTS idx_media_provider_created
+	ON ` + TableMedia + ` (provider, created_at DESC);
 `
 const InternalLang = `[
 	  {"label": "简体中文（中国大陆）", "value": "zh-CN"},
@@ -412,4 +435,10 @@ var DefaultSettings = []Setting{
 	{Sort: 75, Kind: "Data", Name: "S3 远程备份超时 (sec)", Code: "sync_push_timeout_sec", Type: "number", Value: "60", DefaultOptionValue: "60", Description: "S3 远程备份超时时间（秒）", Attrs: `{"min": 1, "max": 600}`},
 	{Sort: 90, Kind: "ThirdPart", Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
 	{Sort: 91, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
+	{Sort: 92, Kind: "ThirdPart", Name: "媒体默认服务", Code: "media_default_provider", Type: "select", Value: "see", Description: "媒体上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
+	{Sort: 93, Kind: "ThirdPart", Name: "S.EE API 地址", Code: "media_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload", Description: "S.EE API 地址（可填写上传接口完整地址）"},
+	{Sort: 94, Kind: "ThirdPart", Name: "S.EE API Token", Code: "media_see_api_token", Type: "secret", Value: "", Description: "S.EE Bearer Token"},
+	{Sort: 95, Kind: "ThirdPart", Name: "ImageKit API 地址", Code: "media_imagekit_api_base", Type: "url", Value: "https://api.imagekit.io/v1", Description: "ImageKit 管理 API 根地址"},
+	{Sort: 96, Kind: "ThirdPart", Name: "ImageKit 上传地址", Code: "media_imagekit_upload_base", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API 根地址"},
+	{Sort: 97, Kind: "ThirdPart", Name: "ImageKit Private Key", Code: "media_imagekit_private_key", Type: "secret", Value: "", Description: "ImageKit 服务端 Private Key"},
 }

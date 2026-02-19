@@ -1,0 +1,387 @@
+<style>
+  .media-upload {
+    margin-bottom: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-medium);
+    background: var(--card);
+  }
+
+  .media-upload-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-medium);
+    background: var(--background);
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    text-align: center;
+    cursor: pointer;
+    padding: var(--space-4);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .media-upload-dropzone.dragover {
+    border-color: var(--primary);
+    background: var(--muted);
+  }
+
+  .media-upload-dropzone.is-uploading {
+    cursor: progress;
+    opacity: 0.7;
+  }
+
+  .media-upload-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .media-upload-subtitle {
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+
+  .media-upload-status {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+  }
+
+  .media-upload-status.error {
+    color: #b42318;
+  }
+
+  .media-upload-tip {
+    color: var(--muted-foreground);
+    margin: 0;
+    margin-top: var(--space-2);
+  }
+
+  .media-cell-url {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .media-row-actions {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 960px) {
+    .media-upload-dropzone {
+      min-height: 150px;
+    }
+  }
+</style>
+
+<section class="media-upload">
+  <input type="file" id="media-drop-input" style="display:none;" multiple>
+  <div
+    id="media-dropzone"
+    class="media-upload-dropzone"
+    data-upload-ready="{{ if .DefaultProviderReady }}1{{ else }}0{{ end }}"
+    data-upload-error="{{ .DefaultProviderError }}"
+  >
+    <p class="media-upload-title">拖拽文件到这里上传</p>
+    <p class="media-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
+    <p class="media-upload-status{{ if not .DefaultProviderReady }} error{{ end }}" id="media-upload-status">
+      当前默认服务：{{ $label := index .MediaProviderLabelMap .DefaultProvider }}{{ if $label }}{{ $label }}{{ else }}{{ .DefaultProvider }}{{ end }}
+      {{ if not .DefaultProviderReady }}（{{ .DefaultProviderError }}）{{ end }}
+    </p>
+  </div>
+  <p class="media-upload-tip">上传成功后会写入本地媒体表，后续可复制链接/Markdown，或执行远端删除。</p>
+</section>
+
+<table>
+  <thead>
+    <tr>
+      <th class="cell-id">ID</th>
+      <th>类型</th>
+      <th>服务</th>
+      <th>文件名</th>
+      <th>链接</th>
+      <th class="cell-num">大小(B)</th>
+      <th class="cell-r-time">创建时间</th>
+      <th class="cell-op">操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ range .Items }}
+      <tr data-media-id="{{ .ID }}">
+        <td class="cell-id">{{ .ID }}</td>
+        <td>{{ .Kind }}</td>
+        <td>
+          {{ $label := index $.MediaProviderLabelMap .Provider }}
+          {{ if $label }}{{ $label }}{{ else }}{{ .Provider }}{{ end }}
+        </td>
+        <td>{{ .OriginalName }}</td>
+        <td>
+          {{ if .FileURL }}
+            <a href="{{ .FileURL }}" target="_blank" rel="noopener" class="media-cell-url" title="{{ .FileURL }}">{{ .FileURL }}</a>
+          {{ else }}
+            -
+          {{ end }}
+        </td>
+        <td>{{ .SizeBytes }}</td>
+        <td>{{ formatTime .CreatedAt }}</td>
+        <td class="cell-op">
+          <div class="media-row-actions">
+            {{ if .FileURL }}
+              <button type="button" class="button outline media-copy-url" data-url="{{ .FileURL }}">复制链接</button>
+              <button type="button" class="button outline media-copy-markdown" data-url="{{ .FileURL }}" data-name="{{ .OriginalName }}">复制 Markdown</button>
+            {{ end }}
+            <button type="button" class="button outline media-delete" data-id="{{ .ID }}">删除</button>
+          </div>
+        </td>
+      </tr>
+    {{ else }}
+      {{ template "admin/includes/table_empty" dict "ColSpan" 8 "Message" "No media assets" }}
+    {{ end }}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="8">
+        {{ template "admin/includes/pagination" . }}
+      </td>
+    </tr>
+  </tfoot>
+</table>
+
+<script>
+$(function() {
+  function notify(message) {
+    window.alert(message);
+  }
+
+  var $dropzone = $('#media-dropzone');
+  var $fileInput = $('#media-drop-input');
+  var $uploadStatus = $('#media-upload-status');
+  var isUploading = false;
+  var uploadReady = ($dropzone.attr('data-upload-ready') || '') === '1';
+  var uploadError = ($dropzone.attr('data-upload-error') || '').trim();
+
+  function setUploading(working, text) {
+    isUploading = working;
+    $dropzone.toggleClass('is-uploading', working);
+    if (text) {
+      $uploadStatus.text(text);
+    }
+  }
+
+  function uploadSingleFile(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+
+    return fetch('/admin/api/media/assets', {
+      method: 'POST',
+      body: fd
+    })
+      .then(function(r) {
+        return r.json().then(function(body) {
+          return { status: r.status, body: body };
+        });
+      })
+      .then(function(ret) {
+        if (!ret.body || ret.body.ok !== true) {
+          var msg = (ret.body && ret.body.error) || ('上传失败，状态码 ' + ret.status);
+          throw new Error(msg);
+        }
+        return ret.body;
+      });
+  }
+
+  function handleFiles(fileList) {
+    if (!uploadReady) {
+      notify(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      return;
+    }
+
+    if (isUploading) {
+      return;
+    }
+
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) {
+      return;
+    }
+
+    var confirmText = files.length === 1
+      ? ('确认上传文件 "' + files[0].name + '" ?')
+      : ('确认上传这 ' + files.length + ' 个文件？');
+    if (!window.confirm(confirmText)) {
+      return;
+    }
+
+    setUploading(true, '上传中 0/' + files.length + '...');
+
+    var successCount = 0;
+    var failedCount = 0;
+    var failedNames = [];
+    var chain = Promise.resolve();
+
+    files.forEach(function(file, idx) {
+      chain = chain.then(function() {
+        setUploading(true, '上传中 ' + (idx + 1) + '/' + files.length + '...');
+        return uploadSingleFile(file).then(function() {
+          successCount += 1;
+        }).catch(function() {
+          failedCount += 1;
+          failedNames.push(file.name || '(unnamed)');
+        });
+      });
+    });
+
+    chain.finally(function() {
+      if (failedCount > 0) {
+        notify('上传完成：成功 ' + successCount + '，失败 ' + failedCount + '。失败文件：' + failedNames.join('、'));
+      } else {
+        notify('上传完成：共 ' + successCount + ' 个文件');
+      }
+
+      if (successCount > 0) {
+        window.location.reload();
+        return;
+      }
+
+      setUploading(false, '上传失败，请重试');
+    });
+  }
+
+  function copyToClipboard(text) {
+    if (!text) return Promise.reject(new Error('empty text'));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+
+    return new Promise(function(resolve, reject) {
+      var $temp = $('<textarea>').val(text).css({ position: 'fixed', top: '-999px', left: '-999px' }).appendTo('body');
+      $temp[0].focus();
+      $temp[0].select();
+      try {
+        var ok = document.execCommand('copy');
+        $temp.remove();
+        if (!ok) {
+          reject(new Error('copy failed'));
+          return;
+        }
+        resolve();
+      } catch (err) {
+        $temp.remove();
+        reject(err);
+      }
+    });
+  }
+
+  function markdownImage(url, name) {
+    var alt = (name || '').trim();
+    alt = alt.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+    return '![' + alt + '](' + url + ')';
+  }
+
+  $dropzone.on('click', function() {
+    if (!uploadReady) {
+      notify(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      return;
+    }
+
+    if (isUploading) {
+      return;
+    }
+    if ($fileInput.length) {
+      $fileInput[0].click();
+    }
+  });
+
+  $fileInput.on('change', function() {
+    handleFiles(this.files);
+    this.value = '';
+  });
+
+  $dropzone.on('dragenter dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading) {
+      $dropzone.addClass('dragover');
+    }
+  });
+
+  $dropzone.on('dragleave dragend drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $dropzone.removeClass('dragover');
+  });
+
+  $dropzone.on('drop', function(e) {
+    if (!uploadReady) {
+      notify(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      return;
+    }
+
+    if (isUploading) {
+      return;
+    }
+
+    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    if (!dt || !dt.files || !dt.files.length) {
+      return;
+    }
+
+    handleFiles(dt.files);
+  });
+
+  $(document).on('click', '.media-copy-url', function() {
+    var url = $(this).data('url') || '';
+    copyToClipboard(url).then(function() {
+      notify('已复制链接');
+    }).catch(function() {
+      notify('复制失败');
+    });
+  });
+
+  $(document).on('click', '.media-copy-markdown', function() {
+    var url = $(this).data('url') || '';
+    var name = $(this).data('name') || '';
+    var markdown = markdownImage(url, name);
+    copyToClipboard(markdown).then(function() {
+      notify('已复制 Markdown');
+    }).catch(function() {
+      notify('复制失败');
+    });
+  });
+
+  $(document).on('click', '.media-delete', function() {
+    var id = $(this).data('id');
+    if (!id) {
+      notify('无效 ID');
+      return;
+    }
+    if (!window.confirm('确认删除该媒体？会同时删除远端文件。')) {
+      return;
+    }
+
+    fetch('/admin/api/media/assets/' + id, {
+      method: 'DELETE'
+    })
+      .then(function(r) { return r.json().then(function(body) { return { status: r.status, body: body }; }); })
+      .then(function(ret) {
+        if (!ret.body || ret.body.ok !== true) {
+          var msg = (ret.body && ret.body.error) || ('删除失败，状态码 ' + ret.status);
+          throw new Error(msg);
+        }
+        $('tr[data-media-id="' + id + '"]').remove();
+      })
+      .catch(function(err) {
+        notify(err.message || '删除失败');
+      });
+  });
+});
+</script>

@@ -15,6 +15,7 @@
         <option value="url" {{ if eq .Setting.Type "url" }}selected{{ end }}>url</option>
         <option value="range" {{ if eq .Setting.Type "range" }}selected{{ end }}>range</option>
         <option value="password" {{ if eq .Setting.Type "password" }}selected{{ end }}>password</option>
+        <option value="secret" {{ if eq .Setting.Type "secret" }}selected{{ end }}>secret</option>
         <option value="radio" {{ if eq .Setting.Type "radio" }}selected{{ end }}>radio</option>
         <option value="checkbox" {{ if eq .Setting.Type "checkbox" }}selected{{ end }}>checkbox</option>
         <option value="select" {{ if eq .Setting.Type "select" }}selected{{ end }}>select</option>
@@ -54,6 +55,11 @@
     <label>
       {{ if eq .Setting.Type "password" }}
         <input type="password" name="value" placeholder="Leave empty to keep current"{{ renderAttrs .Setting.AttrsParsed }}>
+      {{ else if eq .Setting.Type "secret" }}
+        <span class="hstack">
+          <input type="password" id="setting_secret_value" name="value" value="{{ .Setting.Value }}" placeholder="当前值" autocomplete="off"{{ renderAttrs .Setting.AttrsParsed }} style="flex:1;">
+          <button class="outline" type="button" id="toggle_setting_secret_value">显示</button>
+        </span>
       {{ else if eq .Setting.Type "prefix-field" }}
         <fieldset class="group">
           <legend>{{ if .Setting.PrefixValue }}{{ .Setting.PrefixValue }}{{ else }}前缀{{ end }}</legend>
@@ -89,3 +95,23 @@
   {{ template "admin/includes/form_field_checkbox" dict "Label" "修改后需重启生效 (Reload)" "Name" "reload" "Value" "1" "Checked" (eq .Setting.Reload 1) }}
 
 </form>
+<script>
+$(function() {
+  $('#toggle_setting_secret_value').on('click', function() {
+    var $btn = $(this);
+    var $input = $('#setting_secret_value');
+    if (!$input.length) {
+      return;
+    }
+
+    var isPassword = ($input.attr('type') || '').toLowerCase() === 'password';
+    if (isPassword) {
+      $input.attr('type', 'text');
+      $btn.text('隐藏');
+    } else {
+      $input.attr('type', 'password');
+      $btn.text('显示');
+    }
+  });
+});
+</script>

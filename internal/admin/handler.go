@@ -1483,15 +1483,18 @@ func buildSettingView(s db.Setting) SettingView {
 }
 
 func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
-	// 获取所有配置项，然后更新每个的值
-	settings, err := ListAllSettings(h.Model)
+	activeKind := strings.TrimSpace(c.Query("kind", ""))
+	if activeKind == "" {
+		return c.Redirect("/admin/settings/all")
+	}
+
+	// 只更新当前 tab(kind) 下的配置，避免把其它 tab 未提交字段写空
+	settings, err := ListSettingsByKind(h.Model, activeKind)
 	if err != nil {
 		return err
 	}
 
-	validKinds := make(map[string]struct{}, len(settings))
 	for _, setting := range settings {
-		validKinds[setting.Kind] = struct{}{}
 		fieldName := "setting_" + setting.Code
 
 		// checkbox 类型需要特殊处理，可能有多个值
@@ -1518,11 +1521,6 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 				return err
 			}
 		}
-	}
-
-	activeKind := strings.TrimSpace(c.Query("kind", ""))
-	if _, ok := validKinds[activeKind]; !ok {
-		activeKind = ""
 	}
 
 	redirectPath := "/admin/settings/all"

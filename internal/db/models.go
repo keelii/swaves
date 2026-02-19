@@ -73,6 +73,9 @@ func InitDatabase(db *DB) error {
 	if err := ensureLikeTableName(db); err != nil {
 		return err
 	}
+	if err := ensureUniqueVisitorsTableName(db); err != nil {
+		return err
+	}
 	if err := ensureTaskRunsSchema(db); err != nil {
 		return err
 	}
@@ -87,6 +90,9 @@ func InitDatabase(db *DB) error {
 		log.Fatalf("ensure default settings failed: %v", err)
 	}
 	if err := ensureBuiltinPrefixFieldSettings(db); err != nil {
+		return err
+	}
+	if err := ensureSecretSettingTypes(db); err != nil {
 		return err
 	}
 
@@ -234,6 +240,75 @@ func ensureLikeTableSchema(db *DB) error {
 	return nil
 }
 
+func ensureUniqueVisitorsTableName(db *DB) error {
+	const legacyTableName = "t_uv_unique"
+	const legacyEntityLastSeenIndex = "idx_uv_unique_entity_last_seen"
+	const legacyVisitorIndex = "idx_uv_unique_visitor_id"
+
+	targetTableName := string(TableUniqueVisitors)
+	if targetTableName == "" || targetTableName == legacyTableName {
+		return ensureUniqueVisitorsIndexes(db)
+	}
+
+	legacyExists, err := tableExists(db, legacyTableName)
+	if err != nil {
+		return WrapInternalErr("ensureUniqueVisitorsTableName.LegacyExists", err)
+	}
+
+	if legacyExists {
+		targetExists, targetErr := tableExists(db, targetTableName)
+		if targetErr != nil {
+			return WrapInternalErr("ensureUniqueVisitorsTableName.TargetExists", targetErr)
+		}
+
+		if !targetExists {
+			if _, err = db.Exec(`ALTER TABLE ` + legacyTableName + ` RENAME TO ` + targetTableName); err != nil {
+				return WrapInternalErr("ensureUniqueVisitorsTableName.Rename", err)
+			}
+		} else {
+			_, err = db.Exec(
+				`INSERT INTO ` + targetTableName + ` (entity_type, entity_id, visitor_id, first_seen_at, last_seen_at)
+				SELECT entity_type, entity_id, visitor_id, first_seen_at, last_seen_at
+				FROM ` + legacyTableName + `
+				ON CONFLICT(entity_type, entity_id, visitor_id) DO UPDATE SET
+					first_seen_at = MIN(` + targetTableName + `.first_seen_at, excluded.first_seen_at),
+					last_seen_at = MAX(` + targetTableName + `.last_seen_at, excluded.last_seen_at)`,
+			)
+			if err != nil {
+				return WrapInternalErr("ensureUniqueVisitorsTableName.Merge", err)
+			}
+
+			if _, err = db.Exec(`DROP TABLE IF EXISTS ` + legacyTableName); err != nil {
+				return WrapInternalErr("ensureUniqueVisitorsTableName.DropLegacy", err)
+			}
+		}
+	}
+
+	if _, err = db.Exec(`DROP INDEX IF EXISTS ` + legacyEntityLastSeenIndex); err != nil {
+		return WrapInternalErr("ensureUniqueVisitorsTableName.DropLegacyEntityLastSeenIndex", err)
+	}
+	if _, err = db.Exec(`DROP INDEX IF EXISTS ` + legacyVisitorIndex); err != nil {
+		return WrapInternalErr("ensureUniqueVisitorsTableName.DropLegacyVisitorIndex", err)
+	}
+
+	return ensureUniqueVisitorsIndexes(db)
+}
+
+func ensureUniqueVisitorsIndexes(db *DB) error {
+	if _, err := db.Exec(
+		`CREATE INDEX IF NOT EXISTS idx_unique_visitors_entity_last_seen ON ` + string(TableUniqueVisitors) + ` (entity_type, entity_id, last_seen_at DESC)`,
+	); err != nil {
+		return WrapInternalErr("ensureUniqueVisitorsIndexes.CreateEntityLastSeenIndex", err)
+	}
+	if _, err := db.Exec(
+		`CREATE INDEX IF NOT EXISTS idx_unique_visitors_visitor_id ON ` + string(TableUniqueVisitors) + ` (visitor_id)`,
+	); err != nil {
+		return WrapInternalErr("ensureUniqueVisitorsIndexes.CreateVisitorIndex", err)
+	}
+
+	return nil
+}
+
 func ensureTaskRunsSchema(db *DB) error {
 	hasRunID, err := tableColumnExists(db, string(TableTaskRuns), "run_id")
 	if err != nil {
@@ -330,6 +405,29 @@ func ensureBuiltinPrefixFieldSettings(db *DB) error {
 			prefixSourceName, code,
 		); err != nil {
 			return WrapInternalErr("ensureBuiltinPrefixFieldSettings.Update", err)
+		}
+	}
+
+	return nil
+}
+
+func ensureSecretSettingTypes(db *DB) error {
+	codes := []string{
+		"media_see_api_token",
+		"media_imagekit_private_key",
+	}
+
+	for _, code := range codes {
+		if _, err := db.Exec(
+			`UPDATE `+string(TableSettings)+`
+			SET type = 'secret',
+				updated_at = strftime('%s','now')
+			WHERE code = ?
+			  AND deleted_at IS NULL
+			  AND type != 'password'`,
+			code,
+		); err != nil {
+			return WrapInternalErr("ensureSecretSettingTypes.Update", err)
 		}
 	}
 
@@ -3782,6 +3880,215 @@ func LoadSettingsToMap(db *DB) (map[string]string, error) {
 		}
 	}
 	return settingsMap, nil
+}
+
+const (
+	MediaKindImage  = "image"
+	MediaKindBackup = "backup"
+	MediaKindFile   = "file"
+)
+
+type Media struct {
+	ID                int64  `json:"id"`
+	Kind              string `json:"kind"`
+	Provider          string `json:"provider"`
+	ProviderAssetID   string `json:"provider_asset_id"`
+	ProviderDeleteKey string `json:"provider_delete_key"`
+	FileURL           string `json:"file_url"`
+	OriginalName      string `json:"original_name"`
+	SizeBytes         int64  `json:"size_bytes"`
+	CreatedAt         int64  `json:"created_at"`
+}
+
+type MediaQueryOptions struct {
+	Kind     string
+	Provider string
+	Limit    int
+	Offset   int
+}
+
+func CreateMedia(db *DB, m *Media) (int64, error) {
+	if m == nil {
+		return 0, WrapInternalErr("CreateMedia", fmt.Errorf("media is nil"))
+	}
+	if strings.TrimSpace(m.Kind) == "" {
+		m.Kind = MediaKindImage
+	}
+	if strings.TrimSpace(m.Provider) == "" {
+		return 0, WrapInternalErr("CreateMedia", fmt.Errorf("provider is required"))
+	}
+	if strings.TrimSpace(m.ProviderAssetID) == "" {
+		return 0, WrapInternalErr("CreateMedia", fmt.Errorf("provider_asset_id is required"))
+	}
+	if m.CreatedAt == 0 {
+		m.CreatedAt = now()
+	}
+
+	id, err := Create(db, TableSpec{
+		Name:         TableMedia,
+		HasDeletedAt: false,
+		HasCreatedAt: false,
+		HasUpdatedAt: false,
+	}, map[string]interface{}{
+		"kind":                strings.TrimSpace(m.Kind),
+		"provider":            strings.TrimSpace(m.Provider),
+		"provider_asset_id":   strings.TrimSpace(m.ProviderAssetID),
+		"provider_delete_key": strings.TrimSpace(m.ProviderDeleteKey),
+		"file_url":            strings.TrimSpace(m.FileURL),
+		"original_name":       strings.TrimSpace(m.OriginalName),
+		"size_bytes":          m.SizeBytes,
+		"created_at":          m.CreatedAt,
+	})
+	if err != nil {
+		return 0, WrapInternalErr("CreateMedia", err)
+	}
+
+	m.ID = id
+	return id, nil
+}
+
+func GetMediaByID(db *DB, id int64) (*Media, error) {
+	row := db.QueryRow(`
+		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, size_bytes, created_at
+		FROM `+string(TableMedia)+`
+		WHERE id = ?
+	`, id)
+
+	var m Media
+	if err := row.Scan(
+		&m.ID,
+		&m.Kind,
+		&m.Provider,
+		&m.ProviderAssetID,
+		&m.ProviderDeleteKey,
+		&m.FileURL,
+		&m.OriginalName,
+		&m.SizeBytes,
+		&m.CreatedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound("GetMediaByID")
+		}
+		return nil, WrapInternalErr("GetMediaByID", err)
+	}
+
+	return &m, nil
+}
+
+func GetMediaByProviderAssetID(db *DB, provider string, providerAssetID string) (*Media, error) {
+	row := db.QueryRow(`
+		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, size_bytes, created_at
+		FROM `+string(TableMedia)+`
+		WHERE provider = ? AND provider_asset_id = ?
+		LIMIT 1
+	`, strings.TrimSpace(provider), strings.TrimSpace(providerAssetID))
+
+	var m Media
+	if err := row.Scan(
+		&m.ID,
+		&m.Kind,
+		&m.Provider,
+		&m.ProviderAssetID,
+		&m.ProviderDeleteKey,
+		&m.FileURL,
+		&m.OriginalName,
+		&m.SizeBytes,
+		&m.CreatedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound("GetMediaByProviderAssetID")
+		}
+		return nil, WrapInternalErr("GetMediaByProviderAssetID", err)
+	}
+
+	return &m, nil
+}
+
+func DeleteMedia(db *DB, id int64) error {
+	if _, err := db.Exec(`DELETE FROM `+string(TableMedia)+` WHERE id = ?`, id); err != nil {
+		return WrapInternalErr("DeleteMedia", err)
+	}
+	return nil
+}
+
+func CountMedia(db *DB, kind, provider string) (int, error) {
+	whereClause, whereArgs := buildMediaWhereClause(kind, provider)
+	query := `SELECT COUNT(*) FROM ` + string(TableMedia)
+	if whereClause != "" {
+		query += ` WHERE ` + whereClause
+	}
+
+	var total int
+	if err := db.QueryRow(query, whereArgs...).Scan(&total); err != nil {
+		return 0, WrapInternalErr("CountMedia", err)
+	}
+	return total, nil
+}
+
+func ListMedia(db *DB, opts MediaQueryOptions) ([]Media, error) {
+	whereClause, whereArgs := buildMediaWhereClause(opts.Kind, opts.Provider)
+	query := `
+		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, size_bytes, created_at
+		FROM ` + string(TableMedia)
+	if whereClause != "" {
+		query += ` WHERE ` + whereClause
+	}
+	query += ` ORDER BY created_at DESC, id DESC`
+
+	if opts.Limit > 0 {
+		query += ` LIMIT ? OFFSET ?`
+		whereArgs = append(whereArgs, opts.Limit, opts.Offset)
+	}
+
+	rows, err := db.Query(query, whereArgs...)
+	if err != nil {
+		return nil, WrapInternalErr("ListMedia", err)
+	}
+	defer rows.Close()
+
+	items := make([]Media, 0)
+	for rows.Next() {
+		var m Media
+		if err = rows.Scan(
+			&m.ID,
+			&m.Kind,
+			&m.Provider,
+			&m.ProviderAssetID,
+			&m.ProviderDeleteKey,
+			&m.FileURL,
+			&m.OriginalName,
+			&m.SizeBytes,
+			&m.CreatedAt,
+		); err != nil {
+			return nil, WrapInternalErr("ListMedia.Scan", err)
+		}
+		items = append(items, m)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr("ListMedia.Rows", err)
+	}
+
+	return items, nil
+}
+
+func buildMediaWhereClause(kind, provider string) (string, []interface{}) {
+	conditions := make([]string, 0, 2)
+	args := make([]interface{}, 0, 2)
+
+	if kind = strings.TrimSpace(kind); kind != "" {
+		conditions = append(conditions, "kind = ?")
+		args = append(args, kind)
+	}
+	if provider = strings.TrimSpace(provider); provider != "" {
+		conditions = append(conditions, "provider = ?")
+		args = append(args, provider)
+	}
+
+	if len(conditions) == 0 {
+		return "", args
+	}
+	return strings.Join(conditions, " AND "), args
 }
 
 // TaskKind 任务类型，与 job.JobKind 枚举值复用；JobInternal(0) 执行时不生成 TaskRun

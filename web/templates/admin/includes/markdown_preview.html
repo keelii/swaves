@@ -16,6 +16,20 @@
   .markdown-editor-wrap .tab-pane.active {
     display: block;
   }
+  .markdown-editor-wrap .tab-nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    padding-right: 0.5em;
+  }
+  .markdown-editor-wrap .media-picker-open {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--foreground);
+    padding: 0.25em 0.75em;
+    cursor: pointer;
+  }
   .markdown-editor-wrap .tab-pane textarea {
     width: 100%;
     min-height: 240px;
@@ -117,12 +131,109 @@
   .toc-list::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.3);
   }
+
+  .media-picker-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1em;
+  }
+  .media-picker-modal.show {
+    display: flex;
+  }
+  .media-picker-panel {
+    width: min(980px, 96vw);
+    max-height: 85vh;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .media-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.75em 1em;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+  .media-picker-header h4 {
+    margin: 0;
+    font-size: 1rem;
+  }
+  .media-picker-body {
+    overflow: auto;
+    padding: 1em;
+  }
+  .media-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75em;
+  }
+  .media-picker-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    text-align: left;
+  }
+  .media-picker-thumb {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    background: var(--muted);
+  }
+  .media-picker-meta {
+    padding: 0.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+  }
+  .media-picker-name {
+    font-size: 0.875rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .media-picker-url {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .media-picker-footer {
+    border-top: 1px solid var(--border);
+    padding: 0.75em 1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card);
+  }
+  .media-picker-empty {
+    padding: 1em;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
 </style>
 <div class="markdown-editor-wrap">
   <div class="tab-card simple">
     <div class="tab-nav">
       <div class="tab-item active" data-tab="edit">编辑</div>
       <div class="tab-item" data-tab="preview">预览</div>
+      <div class="tab-nav-right">
+        <button class="media-picker-open" type="button" id="open-media-picker">图库</button>
+      </div>
     </div>
     <div class="tab-content">
       <div class="tab-pane active" id="pane-edit">
@@ -141,6 +252,31 @@
     </div>
   </div>
 </div>
+<div class="media-picker-modal" id="media-picker-modal">
+  <div class="media-picker-panel">
+    <div class="media-picker-header">
+      <h4>插入图片</h4>
+      <label>
+        服务
+        <select id="media-picker-provider">
+          <option value="">全部</option>
+          <option value="see">S.EE</option>
+          <option value="imagekit">ImageKit</option>
+        </select>
+      </label>
+      <button class="button outline" type="button" id="media-picker-refresh">刷新</button>
+      <button class="button outline" type="button" id="media-picker-close" style="margin-left:auto;">关闭</button>
+    </div>
+    <div class="media-picker-body">
+      <div id="media-picker-grid" class="media-picker-grid"></div>
+      <div id="media-picker-empty" class="media-picker-empty" style="display:none;">暂无图片，可先到媒体库上传。</div>
+    </div>
+    <div class="media-picker-footer">
+      <small id="media-picker-summary">-</small>
+      <button class="button outline" type="button" id="media-picker-load-more">加载更多</button>
+    </div>
+  </div>
+</div>
 <script src="/static/admin/split.min.js"></script>
 <script>
 $(function() {
@@ -148,7 +284,16 @@ $(function() {
   var $preview = $('#content-preview');
   var $navItems = $('.markdown-editor-wrap .tab-item');
   var $panes = $('.markdown-editor-wrap .tab-pane');
+  var $pickerModal = $('#media-picker-modal');
+  var $pickerGrid = $('#media-picker-grid');
+  var $pickerEmpty = $('#media-picker-empty');
+  var $pickerProvider = $('#media-picker-provider');
+  var $pickerSummary = $('#media-picker-summary');
+  var $pickerLoadMore = $('#media-picker-load-more');
   var splitInstance = null;
+  var pickerPage = 1;
+  var pickerPageSize = 24;
+  var pickerTotal = 0;
 
   function showPane(tab) {
     $navItems.removeClass('active').filter('[data-tab="' + tab + '"]').addClass('active');
@@ -197,6 +342,127 @@ $(function() {
       .catch(function() { $preview.text('预览请求失败'); });
   }
 
+  function escapeHtml(raw) {
+    return String(raw || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeMarkdownAlt(raw) {
+    return String(raw || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]');
+  }
+
+  function markdownForImage(item) {
+    var alt = escapeMarkdownAlt(item.original_name || '');
+    return '![' + alt + '](' + (item.file_url || '') + ')';
+  }
+
+  function insertAtCursor(text) {
+    var el = $ta.get(0);
+    if (!el) return;
+
+    var start = el.selectionStart || 0;
+    var end = el.selectionEnd || 0;
+    var value = el.value || '';
+    var prefix = value.slice(0, start);
+    var suffix = value.slice(end);
+
+    var needLeadingBreak = prefix.length > 0 && !prefix.endsWith('\n');
+    var needTrailingBreak = suffix.length > 0 && !suffix.startsWith('\n');
+    var insertText = (needLeadingBreak ? '\n' : '') + text + (needTrailingBreak ? '\n' : '');
+
+    el.value = prefix + insertText + suffix;
+
+    var cursor = prefix.length + insertText.length;
+    el.selectionStart = cursor;
+    el.selectionEnd = cursor;
+    el.focus();
+    $ta.trigger('input');
+  }
+
+  function renderPickerItems(items, appendMode) {
+    if (!appendMode) {
+      $pickerGrid.empty();
+    }
+
+    if (!items || !items.length) {
+      if ($pickerGrid.children().length === 0) {
+        $pickerEmpty.show();
+      }
+      return;
+    }
+
+    $pickerEmpty.hide();
+    items.forEach(function(item) {
+      var url = item.file_url || '';
+      if (!url) return;
+      var card = [
+        '<button type="button" class="media-picker-item" data-url="', escapeHtml(url), '" data-name="', escapeHtml(item.original_name || ''), '">',
+          '<img class="media-picker-thumb" src="', escapeHtml(url), '" loading="lazy" alt="', escapeHtml(item.original_name || ''), '">',
+          '<div class="media-picker-meta">',
+            '<div class="media-picker-name" title="', escapeHtml(item.original_name || ''), '">', escapeHtml(item.original_name || '(unnamed)'), '</div>',
+            '<div class="media-picker-url" title="', escapeHtml(url), '">', escapeHtml(url), '</div>',
+          '</div>',
+        '</button>'
+      ].join('');
+      $pickerGrid.append(card);
+    });
+  }
+
+  function updatePickerSummary() {
+    var count = $pickerGrid.children().length;
+    $pickerSummary.text('已加载 ' + count + ' / ' + pickerTotal);
+    $pickerLoadMore.prop('disabled', count >= pickerTotal || pickerTotal === 0);
+  }
+
+  function loadPickerData(appendMode) {
+    var page = appendMode ? pickerPage + 1 : 1;
+    var provider = $pickerProvider.val() || '';
+    var query = new URLSearchParams({
+      kind: 'image',
+      page: String(page),
+      pageSize: String(pickerPageSize)
+    });
+    if (provider) {
+      query.set('provider', provider);
+    }
+
+    return fetch('/admin/api/media/assets?' + query.toString(), {
+      method: 'GET'
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (!res || !res.ok) {
+          throw new Error((res && res.error) || '加载图库失败');
+        }
+        var data = res.data || {};
+        var pager = data.pager || {};
+        var items = data.items || [];
+        pickerPage = page;
+        pickerTotal = pager.Total || pager.total || items.length || 0;
+        renderPickerItems(items, appendMode);
+        updatePickerSummary();
+      })
+      .catch(function(err) {
+        window.alert(err.message || '加载图库失败');
+      });
+  }
+
+  function openPicker() {
+    $pickerModal.addClass('show');
+    loadPickerData(false);
+  }
+
+  function closePicker() {
+    $pickerModal.removeClass('show');
+  }
+
   if ($ta.length && $preview.length) {
     var timer;
     $ta.on('input paste', function() {
@@ -204,6 +470,44 @@ $(function() {
       timer = setTimeout(update, 280);
     });
   }
+
+  $('#open-media-picker').on('click', function() {
+    openPicker();
+  });
+
+  $('#media-picker-close').on('click', function() {
+    closePicker();
+  });
+
+  $('#media-picker-refresh').on('click', function() {
+    loadPickerData(false);
+  });
+
+  $pickerProvider.on('change', function() {
+    loadPickerData(false);
+  });
+
+  $pickerLoadMore.on('click', function() {
+    loadPickerData(true);
+  });
+
+  $pickerModal.on('click', function(e) {
+    if (e.target === this) {
+      closePicker();
+    }
+  });
+
+  $(document).on('click', '.media-picker-item', function() {
+    var item = {
+      file_url: $(this).attr('data-url') || '',
+      original_name: $(this).attr('data-name') || ''
+    };
+    if (!item.file_url) {
+      return;
+    }
+    insertAtCursor(markdownForImage(item));
+    closePicker();
+  });
 });
 </script>
 <script>

@@ -37,6 +37,18 @@
     margin-bottom: var(--space-1);
   }
 
+  .settings-secret-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .settings-secret-wrap input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   @media (max-width: 960px) {
     .settings-item {
       flex-direction: column;
@@ -99,6 +111,11 @@
               </span>
             {{ else if eq $setting.Type "password" }}
               <input type="password" name="setting_{{ $code }}" placeholder="Leave empty to keep current"{{ renderAttrs $attrs }}>
+            {{ else if eq $setting.Type "secret" }}
+              <span class="settings-secret-wrap">
+                <input type="password" id="setting_{{ $code }}_secret" name="setting_{{ $code }}" value="{{ $setting.Value }}" autocomplete="off"{{ renderAttrs $attrs }}>
+                <button class="button outline settings-secret-toggle" type="button" data-target-id="setting_{{ $code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
+              </span>
             {{ else if eq $setting.Type "textarea" }}
               <textarea name="setting_{{ $code }}"{{ renderAttrs $attrs }}>{{ $setting.Value }}</textarea>
             {{ else if eq $setting.Type "radio" }}
@@ -181,5 +198,27 @@ $(function() {
   }
 
   syncPrefixLegends();
+
+  $(document).on('click', '.settings-secret-toggle', function() {
+    var $btn = $(this);
+    var targetID = ($btn.attr('data-target-id') || '').trim();
+    if (!targetID) {
+      return;
+    }
+
+    var $input = $('#' + targetID);
+    if (!$input.length) {
+      return;
+    }
+
+    var isPassword = ($input.attr('type') || '').toLowerCase() === 'password';
+    if (isPassword) {
+      $input.attr('type', 'text');
+      $btn.text($btn.attr('data-hide-text') || '隐藏');
+    } else {
+      $input.attr('type', 'password');
+      $btn.text($btn.attr('data-show-text') || '显示');
+    }
+  });
 });
 </script>

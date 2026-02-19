@@ -36,6 +36,7 @@
         <option value="url" {{ if and .Setting (eq .Setting.Type "url") }}selected{{ end }}>url</option>
         <option value="range" {{ if and .Setting (eq .Setting.Type "range") }}selected{{ end }}>range</option>
         <option value="password" {{ if and .Setting (eq .Setting.Type "password") }}selected{{ end }}>password</option>
+        <option value="secret" {{ if and .Setting (eq .Setting.Type "secret") }}selected{{ end }}>secret</option>
         <option value="radio" {{ if and .Setting (eq .Setting.Type "radio") }}selected{{ end }}>radio</option>
         <option value="checkbox" {{ if and .Setting (eq .Setting.Type "checkbox") }}selected{{ end }}>checkbox</option>
         <option value="select" {{ if and .Setting (eq .Setting.Type "select") }}selected{{ end }}>select</option>
@@ -92,7 +93,10 @@
   <p>
     <label>
       Value<br>
-      <input type="text" name="value" value="{{ if .Setting }}{{ .Setting.Value }}{{ end }}" placeholder="初始值">
+      <span class="hstack">
+        <input id="setting_new_value" type="text" name="value" value="{{ if .Setting }}{{ .Setting.Value }}{{ end }}" placeholder="初始值" style="flex:1;">
+        <button class="outline" type="button" id="toggle_setting_new_value" style="display:none;">显示</button>
+      </span>
       <small>(Initial value - will be set when setting is created)</small>
     </label>
   </p>
@@ -124,9 +128,15 @@
 
 <script>
 $(function() {
+  var $type = $('select[name="type"]');
+  var $valueInput = $('#setting_new_value');
+  var $toggleValue = $('#toggle_setting_new_value');
   var $opt = $('textarea[name="options"]'), $cont = $('#default_option_value_container');
-  if (!$opt.length || !$cont.length) return;
-  function update() {
+  function updateDefaultOptionValue() {
+    if (!$opt.length || !$cont.length) {
+      return;
+    }
+
     var currentVal = $('#default_option_value').val() || '';
     var text = $opt.val().trim();
     try {
@@ -146,7 +156,35 @@ $(function() {
     } catch (e) {}
     $cont.html('<input type="text" name="default_option_value" id="default_option_value" value="' + (currentVal || '') + '"><small>(Default value. Fill valid Options JSON to see dropdown.)</small>');
   }
-  $opt.on('input', update);
-  if ($opt.val().trim()) update();
+  if ($opt.length && $cont.length) {
+    $opt.on('input', updateDefaultOptionValue);
+    if ($opt.val().trim()) {
+      updateDefaultOptionValue();
+    }
+  }
+
+  function syncValueMask() {
+    var currentType = ($type.val() || '').toLowerCase();
+    var shouldMask = currentType === 'password' || currentType === 'secret';
+    $valueInput.attr('type', shouldMask ? 'password' : 'text');
+    $toggleValue.toggle(shouldMask);
+    if (!shouldMask) {
+      $toggleValue.text('显示');
+    }
+  }
+
+  $type.on('change', syncValueMask);
+  $toggleValue.on('click', function() {
+    var isPassword = ($valueInput.attr('type') || '').toLowerCase() === 'password';
+    if (isPassword) {
+      $valueInput.attr('type', 'text');
+      $toggleValue.text('隐藏');
+    } else {
+      $valueInput.attr('type', 'password');
+      $toggleValue.text('显示');
+    }
+  });
+
+  syncValueMask();
 });
 </script>

@@ -3,7 +3,7 @@
     {{if le .Pager.Page 1}}
     <span class="page-link" tabindex="-1">上一页</span>
     {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page -1}}&pageSize={{.Pager.PageSize}}{{if .KindQuery}}&kind={{.KindQuery}}{{end}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}{{if .FilterTagIDStr}}&tag={{.FilterTagIDStr}}{{end}}{{if .FilterCategoryIDStr}}&category={{.FilterCategoryIDStr}}{{end}}{{if .StatusFilter}}&status={{.StatusFilter}}{{end}}" tabindex="-1">上一页</a>
+    <a class="page-link" href="?page={{add .Pager.Page -1}}&pageSize={{.Pager.PageSize}}{{if .KindQuery}}&kind={{.KindQuery}}{{end}}{{if .ProviderFilter}}&provider={{.ProviderFilter}}{{end}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}{{if .FilterTagIDStr}}&tag={{.FilterTagIDStr}}{{end}}{{if .FilterCategoryIDStr}}&category={{.FilterCategoryIDStr}}{{end}}{{if .StatusFilter}}&status={{.StatusFilter}}{{end}}" tabindex="-1">上一页</a>
     {{end}}
 
     {{range $i := until .Pager.Num}}
@@ -11,14 +11,14 @@
     {{if eq $.Pager.Page $pageNum}}
     <span class="page-link">{{$pageNum}}</span>
     {{else}}
-    <a class="page-link" href="?page={{$pageNum}}&pageSize={{$.Pager.PageSize}}{{if $.KindQuery}}&kind={{$.KindQuery}}{{end}}{{if $.SearchQueryEscaped}}&q={{$.SearchQueryEscaped}}{{end}}{{if $.FilterTagIDStr}}&tag={{$.FilterTagIDStr}}{{end}}{{if $.FilterCategoryIDStr}}&category={{$.FilterCategoryIDStr}}{{end}}{{if $.StatusFilter}}&status={{$.StatusFilter}}{{end}}">{{$pageNum}}</a>
+    <a class="page-link" href="?page={{$pageNum}}&pageSize={{$.Pager.PageSize}}{{if $.KindQuery}}&kind={{$.KindQuery}}{{end}}{{if $.ProviderFilter}}&provider={{$.ProviderFilter}}{{end}}{{if $.SearchQueryEscaped}}&q={{$.SearchQueryEscaped}}{{end}}{{if $.FilterTagIDStr}}&tag={{$.FilterTagIDStr}}{{end}}{{if $.FilterCategoryIDStr}}&category={{$.FilterCategoryIDStr}}{{end}}{{if $.StatusFilter}}&status={{$.StatusFilter}}{{end}}">{{$pageNum}}</a>
     {{end}}
     {{end}}
 
     {{if ge .Pager.Page .Pager.Num}}
     <span class="page-link">下一页</span>
     {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page 1}}&pageSize={{.Pager.PageSize}}{{if .KindQuery}}&kind={{.KindQuery}}{{end}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}{{if .FilterTagIDStr}}&tag={{.FilterTagIDStr}}{{end}}{{if .FilterCategoryIDStr}}&category={{.FilterCategoryIDStr}}{{end}}{{if .StatusFilter}}&status={{.StatusFilter}}{{end}}">下一页</a>
+    <a class="page-link" href="?page={{add .Pager.Page 1}}&pageSize={{.Pager.PageSize}}{{if .KindQuery}}&kind={{.KindQuery}}{{end}}{{if .ProviderFilter}}&provider={{.ProviderFilter}}{{end}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}{{if .FilterTagIDStr}}&tag={{.FilterTagIDStr}}{{end}}{{if .FilterCategoryIDStr}}&category={{.FilterCategoryIDStr}}{{end}}{{if .StatusFilter}}&status={{.StatusFilter}}{{end}}">下一页</a>
     {{end}}
   </div>
 
