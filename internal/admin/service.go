@@ -141,7 +141,7 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) (int64, error) {
 }
 
 func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithRelation, error) {
-	post, err := db.GetPostByID(dbx, id)
+	post, err := db.GetPostByIDAnyStatus(dbx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithRelation, error) {
 }
 
 func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
-	p, err := db.GetPostByID(dbx, id)
+	p, err := db.GetPostByIDAnyStatus(dbx, id)
 	if err != nil {
 		return err
 	}

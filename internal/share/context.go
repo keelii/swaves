@@ -45,10 +45,20 @@ func GetArticlePublishedDate(post db.Post) (string, string, string) {
 func PostNameIsID() bool {
 	return store.GetSetting("post_url_name") == "{id}"
 }
+func PostNameIsTitle() bool {
+	return store.GetSetting("post_url_name") == "{title}"
+}
+func GetPostExt() string {
+	postExt := store.GetSetting("post_url_ext")
+	if postExt == "" {
+		return ""
+	}
+	return postExt
+}
 func GetPostName(post db.Post) string {
 	postName := store.GetSetting("post_url_name")
 	if postName == "" {
-		return post.Slug
+		return post.Slug + GetPostExt()
 	}
 
 	postName = strings.ReplaceAll(postName, "{slug}", post.Slug)
@@ -61,7 +71,7 @@ func GetPostName(post db.Post) string {
 		return post.Slug
 	}
 
-	return postName
+	return postName + GetPostExt()
 }
 func GetArticleUrl(post db.Post) string {
 	y, m, d := GetArticlePublishedDate(post)

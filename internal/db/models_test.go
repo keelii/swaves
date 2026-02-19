@@ -107,7 +107,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 	if err := Update(db, specPosts, id, map[string]interface{}{"title": "Generic2"}); err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
-	p, err := GetPostByID(db, id)
+	p, err := GetPostByIDAnyStatus(db, id)
 	if err != nil {
 		t.Fatalf("GetPostByID failed: %v", err)
 	}
@@ -222,16 +222,19 @@ func TestPostVisibilityAndPublish(t *testing.T) {
 	published := mustCreatePost(t, db, "published", PostKindPost, 0)
 
 	if _, err := GetPostBySlug(db, published.Slug); err != nil {
-		t.Fatalf("GetPostBySlug published failed: %v", err)
+		t.Fatalf("GetPostByIST published failed: %v", err)
 	}
 	if _, err := GetPostBySlug(db, draft.Slug); !IsErrNotFound(err) {
 		t.Fatalf("draft should not be visible by slug, got: %v", err)
+	}
+	if _, err := GetPostByID(db, draft.ID); !IsErrNotFound(err) {
+		t.Fatalf("draft should not be visible by id, got: %v", err)
 	}
 
 	if err := PublishPost(db, draft.ID); err != nil {
 		t.Fatalf("PublishPost failed: %v", err)
 	}
-	postByID, err := GetPostByID(db, draft.ID)
+	postByID, err := GetPostByIDAnyStatus(db, draft.ID)
 	if err != nil {
 		t.Fatalf("GetPostByID failed: %v", err)
 	}
@@ -374,7 +377,7 @@ func TestPostCommentEnabledSwitch(t *testing.T) {
 
 	p := mustCreatePost(t, db, "draft", PostKindPost, 0)
 
-	created, err := GetPostByID(db, p.ID)
+	created, err := GetPostByIDAnyStatus(db, p.ID)
 	if err != nil {
 		t.Fatalf("GetPostByID failed: %v", err)
 	}
@@ -385,7 +388,7 @@ func TestPostCommentEnabledSwitch(t *testing.T) {
 	if err := SetPostCommentEnabled(db, p.ID, false); err != nil {
 		t.Fatalf("SetPostCommentEnabled(false) failed: %v", err)
 	}
-	disabled, err := GetPostByID(db, p.ID)
+	disabled, err := GetPostByIDAnyStatus(db, p.ID)
 	if err != nil {
 		t.Fatalf("GetPostByID after disable failed: %v", err)
 	}
@@ -399,7 +402,7 @@ func TestPostCommentEnabledSwitch(t *testing.T) {
 		t.Fatalf("UpdatePost failed: %v", err)
 	}
 
-	enabled, err := GetPostByID(db, p.ID)
+	enabled, err := GetPostByIDAnyStatus(db, p.ID)
 	if err != nil {
 		t.Fatalf("GetPostByID after update failed: %v", err)
 	}

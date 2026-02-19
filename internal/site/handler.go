@@ -1,9 +1,11 @@
 package site
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
@@ -213,7 +215,7 @@ func (h Handler) GetHome(c *fiber.Ctx) error {
 //		return c.Status(fiber.StatusNotFound).SendString("post not found")
 //	}
 //
-//	post := GetPostBySlug(h.Model, matched["slug"])
+//	post := GetPostByIST(h.Model, matched["slug"])
 //
 //	return RenderUIView(c, "site/post", fiber.Map{
 //		"Post": post,
@@ -230,17 +232,9 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid date format")
 	}
 
-	pSlug := c.Params("slug")
-	var post *DisplayPostWithRelation
-
-	if share.PostNameIsID() {
-		id, err := strconv.Atoi(pSlug)
-		if err != nil {
-			return c.Status(fiber.StatusNotFound).SendString("invalid post identifier in url")
-		}
-		post = GetPostByID(h.Model, id)
-	} else {
-		post = GetPostBySlug(h.Model, pSlug)
+	post, err := h.GetPostByIDSlugTitle(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
 	if post == nil {
@@ -254,18 +248,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
-	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
-	likeCount, liked := h.getPostLikeState(c, post.Post.ID)
-	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
-	commentCount := CountApprovedComments(h.Model, post.Post.ID)
-	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
-	commentForm := readCommentFormDefaults(c)
-	visitorID := middleware.GetOrCreateVisitorID(c, "")
-	captchaRequired := isCommentCaptchaRequired(visitorID)
-	commentCaptcha := commentCaptchaChallenge{}
-	if captchaRequired {
-		commentCaptcha = buildCommentCaptchaChallenge(visitorID)
-	}
+	readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
 	return RenderUIView(c, "site/post", fiber.Map{
 		"Post":                   post,
@@ -281,14 +264,37 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
-func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
-	pSlug := c.Params("slug")
-	post := GetPostBySlug(h.Model, pSlug)
-	if post == nil {
-		return c.Status(fiber.StatusNotFound).SendString("page not found")
+
+func (h Handler) GetPostByIDSlugTitle(c *fiber.Ctx) (*DisplayPostWithRelation, error) {
+	filename := c.Params("ist")
+	ext := filepath.Ext(filename)
+	pSlug := strings.TrimSuffix(filename, ext)
+
+	if ext != share.GetPostExt() {
+		return nil, errors.New(fmt.Sprintf("%s not found", share.GetPostExt()))
 	}
 
-	h.trackUV(c, db.UVEntityPost, post.Post.ID)
+	var post *DisplayPostWithRelation
+
+	if share.PostNameIsID() {
+		id, err := strconv.ParseInt(strings.TrimSpace(pSlug), 10, 64)
+		if err != nil {
+			return nil, errors.New("invalid post identifier in url")
+		}
+		post = GetPostByID(h.Model, id)
+	} else if share.PostNameIsTitle() {
+		title := pSlug
+		if unescapedTitle, err := url.PathUnescape(pSlug); err == nil {
+			title = unescapedTitle
+		}
+		post = GetPostByTitle(h.Model, title)
+	} else {
+		post = GetPostBySlug(h.Model, pSlug)
+	}
+	return post, nil
+}
+
+func (h Handler) funcName(c *fiber.Ctx, post *DisplayPostWithRelation) (int, int, bool, []*DisplayComment, int, string, commentFormDefaults, bool, commentCaptchaChallenge) {
 	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
 	likeCount, liked := h.getPostLikeState(c, post.Post.ID)
 	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
@@ -301,6 +307,15 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	if captchaRequired {
 		commentCaptcha = buildCommentCaptchaChallenge(visitorID)
 	}
+	return readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha
+}
+func (h Handler) GetPostByIST(c *fiber.Ctx) error {
+	post, err := h.GetPostByIDSlugTitle(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+
+	readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
 	return RenderUIView(c, "site/post", fiber.Map{
 		"Post":                   post,

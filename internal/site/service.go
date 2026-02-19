@@ -67,8 +67,8 @@ func postToPostInfo(p *db.Post) *DisplayPostInfo {
 	}
 }
 
-func GetPostByID(dbx *db.DB, slug string) *DisplayPostWithRelation {
-	p, err := db.GetPostByIDWithRelation(dbx, slug)
+func GetPostByID(dbx *db.DB, id int64) *DisplayPostWithRelation {
+	p, err := db.GetPostByIDWithRelation(dbx, id)
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -78,6 +78,15 @@ func GetPostByID(dbx *db.DB, slug string) *DisplayPostWithRelation {
 }
 func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
 	p, err := db.GetPostBySlugWithRelation(dbx, slug)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return toDisplayPostWithRelation(dbx, p)
+}
+func GetPostByTitle(dbx *db.DB, title string) *DisplayPostWithRelation {
+	p, err := db.GetPostByTitleWithRelation(dbx, title)
 	if err != nil {
 		log.Println(err)
 		return nil

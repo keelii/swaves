@@ -27,18 +27,19 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup.Get(store.GetSetting("category_url_prefix")+"/:categorySlug", handler.GetCategoryDetail)
 	uiGroup.Get(store.GetSetting("tag_url_prefix")+"/:tagSlug", handler.GetTagDetail)
 
+	// IST stands for ID, Slug, or Title, which are the three ways to identify a post in the URL
 	// Pages
-	uiGroup.Get("/:slug", handler.GetPostBySlug)
+	uiGroup.Get("/:ist", handler.GetPostByIST)
 	// Posts
 	postUrlPrefix := store.GetSetting("post_url_prefix")
 
 	switch postUrlPrefix {
 	case "/":
-		uiGroup.Get("/:slug", handler.GetPostBySlug)
+		uiGroup.Get("/:ist", handler.GetPostByIST)
 	case "/{datetime}":
-		uiGroup.Get("/:year/:month/:day/:slug", handler.GetPostByDateAndSlug)
+		uiGroup.Get("/:year/:month/:day/:ist", handler.GetPostByDateAndSlug)
 	default:
-		uiGroup.Get(postUrlPrefix+"/:slug", handler.GetPostBySlug)
+		uiGroup.Get(postUrlPrefix+"/:ist", handler.GetPostByIST)
 	}
 	//uiGroup.Get(store.GetSetting("post_url_prefix"), ha)
 	//uiGroup.Get("/posts/:date<regex(\\d{4}/\\d{2}/\\d{2})>", handler.GetDate)

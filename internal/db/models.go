@@ -1986,8 +1986,8 @@ func GetPostByID(db *DB, id int64) (Post, error) {
 	var p Post
 	result, err := Read(db, specPosts, ReadOptions{
 		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
-		WhereClause:  "id=?",
-		WhereArgs:    []interface{}{id},
+		WhereClause:  "id=? AND status=? AND published_at>0",
+		WhereArgs:    []interface{}{id, "published"},
 		Limit:        1,
 	}, func(rows *sql.Rows) (interface{}, error) {
 		p2, err := scanPost(rows, true)
@@ -2002,6 +2002,31 @@ func GetPostByID(db *DB, id int64) (Post, error) {
 	item, ok := firstResult(result)
 	if !ok {
 		return Post{}, ErrNotFound("GetPostByID")
+	}
+	p = item.(Post)
+	return p, nil
+}
+
+func GetPostByIDAnyStatus(db *DB, id int64) (Post, error) {
+	var p Post
+	result, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		p2, err := scanPost(rows, true)
+		if err != nil {
+			return nil, WrapInternalErr("GetPostByIDAnyStatus.Scan", err)
+		}
+		return p2, nil
+	})
+	if err != nil {
+		return Post{}, WrapInternalErr("GetPostByIDAnyStatus", err)
+	}
+	item, ok := firstResult(result)
+	if !ok {
+		return Post{}, ErrNotFound("GetPostByIDAnyStatus")
 	}
 	p = item.(Post)
 	return p, nil
@@ -2782,10 +2807,41 @@ func GetPostBySlug(db *DB, slug string) (Post, error) {
 	p = item.(Post)
 	return p, nil
 }
+func GetPostByTitle(db *DB, title string) (Post, error) {
+	var p Post
+	result, err := Read(db, specPosts, ReadOptions{
+		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
+		WhereClause:  "title=? AND status=? AND published_at>0",
+		WhereArgs:    []interface{}{title, "published"},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		p2, err := scanPost(rows, true)
+		if err != nil {
+			return nil, WrapInternalErr("GetPostByTitle.Scan", err)
+		}
+		return p2, nil
+	})
+	if err != nil {
+		return Post{}, WrapInternalErr("GetPostByTitle", err)
+	}
+	item, ok := firstResult(result)
+	if !ok {
+		return Post{}, ErrNotFound("GetPostByTitle")
+	}
+	p = item.(Post)
+	return p, nil
+}
 
 // GetPostBySlugWithRelation 按 slug 查询文章并带出关联的分类与标签，返回 PostWithRelation
 func GetPostBySlugWithRelation(db *DB, slug string) (PostWithRelation, error) {
 	p, err := GetPostBySlug(db, slug)
+	if err != nil {
+		return PostWithRelation{}, err
+	}
+	return toPostWithRelation(db, err, p)
+}
+func GetPostByTitleWithRelation(db *DB, title string) (PostWithRelation, error) {
+	p, err := GetPostByTitle(db, title)
 	if err != nil {
 		return PostWithRelation{}, err
 	}
