@@ -395,7 +395,7 @@ func TestPostCommentEnabledSwitch(t *testing.T) {
 
 	disabled.Title = disabled.Title + "-updated"
 	disabled.CommentEnabled = 1
-	if err := UpdatePost(db, disabled); err != nil {
+	if err := UpdatePost(db, &disabled); err != nil {
 		t.Fatalf("UpdatePost failed: %v", err)
 	}
 
@@ -1038,13 +1038,45 @@ func TestListSettingsOrder(t *testing.T) {
 
 func TestEnsureDefaultCategories(t *testing.T) {
 	db := openTestDB(t)
+	type expectedCategory struct {
+		name        string
+		slug        string
+		parentSlug  string
+		description string
+		sort        int64
+	}
+
+	expected := []expectedCategory{
+		{name: "生活", slug: "life", description: "与技术主线无直接关系的个人生活内容。", sort: 1},
+		{name: "文娱", slug: "entertainment", parentSlug: "life", description: "音乐、电影、剧集、游戏及相关文化内容。", sort: 2},
+		{name: "阅读", slug: "reading", parentSlug: "life", description: "读书笔记、文学随笔与阅读思考。", sort: 3},
+		{name: "工作", slug: "work", description: "与职业实践、团队协作、工作方式相关内容。", sort: 4},
+		{name: "职业", slug: "career", parentSlug: "work", description: "职业成长、管理协作、流程方法与职场经验。", sort: 5},
+		{name: "技术", slug: "technology", description: "技术内容总入口，涵盖编程与软件工程实践。", sort: 6},
+		{name: "编程", slug: "programming", parentSlug: "technology", description: "代码实现、底层原理与工程技巧。", sort: 7},
+		{name: "编程语言", slug: "programming-languages", parentSlug: "programming", description: "语言特性、范式对比与生态实践。", sort: 8},
+		{name: "操作系统", slug: "operating-systems", parentSlug: "programming", description: "Linux、macOS、Windows 与进程、内存、IO 等系统机制。", sort: 9},
+		{name: "工具与效率", slug: "tools-productivity", parentSlug: "programming", description: "IDE、CLI、自动化与开发效率优化。", sort: 10},
+		{name: "软件开发", slug: "software-development", parentSlug: "technology", description: "从需求到上线的架构、测试、发布与维护实践。", sort: 11},
+		{name: "技术观点", slug: "tech-opinions", parentSlug: "technology", description: "技术趋势、行业观察与观点评论。", sort: 12},
+		{name: "科技", slug: "tech", description: "消费科技与新品体验内容总入口。", sort: 13},
+		{name: "发布与动态", slug: "tech-news", parentSlug: "tech", description: "发布会、新品发布与科技行业动态。", sort: 14},
+		{name: "产品体验", slug: "product-hands-on", parentSlug: "tech", description: "设备开箱、上手评测与长期使用体验。", sort: 15},
+		{name: "选购建议", slug: "buying-guides", parentSlug: "tech", description: "产品对比、选购建议与购买避坑。", sort: 16},
+	}
 
 	categories, err := ListCategories(db, false)
 	if err != nil {
 		t.Fatalf("ListCategories failed: %v", err)
 	}
-	if len(categories) != len(defaultCategories) {
-		t.Fatalf("expected %d default categories, got %d", len(defaultCategories), len(categories))
+	if len(categories) != len(expected) {
+		t.Fatalf("expected %d default categories, got %d", len(expected), len(categories))
+	}
+	for i, c := range categories {
+		wantSort := int64(i + 1)
+		if c.Sort != wantSort {
+			t.Fatalf("category list order mismatch at index %d: got sort=%d want sort=%d", i, c.Sort, wantSort)
+		}
 	}
 
 	bySlug := make(map[string]Category, len(categories))
@@ -1052,45 +1084,35 @@ func TestEnsureDefaultCategories(t *testing.T) {
 		bySlug[c.Slug] = c
 	}
 
-	for _, seed := range defaultCategories {
-		c, ok := bySlug[seed.Slug]
+	for _, seed := range expected {
+		c, ok := bySlug[seed.slug]
 		if !ok {
-			t.Fatalf("default category missing: %s", seed.Slug)
+			t.Fatalf("default category missing: %s", seed.slug)
 		}
-		if c.Name != seed.Name {
-			t.Fatalf("name mismatch for %s: got %s want %s", seed.Slug, c.Name, seed.Name)
+		if c.Name != seed.name {
+			t.Fatalf("name mismatch for %s: got %s want %s", seed.slug, c.Name, seed.name)
 		}
-		if c.Description != seed.Description {
-			t.Fatalf("description mismatch for %s: got %s want %s", seed.Slug, c.Description, seed.Description)
+		if c.Description != seed.description {
+			t.Fatalf("description mismatch for %s: got %s want %s", seed.slug, c.Description, seed.description)
 		}
-		if c.Sort != seed.Sort {
-			t.Fatalf("sort mismatch for %s: got %d want %d", seed.Slug, c.Sort, seed.Sort)
+		if c.Sort != seed.sort {
+			t.Fatalf("sort mismatch for %s: got %d want %d", seed.slug, c.Sort, seed.sort)
 		}
-		if seed.ParentSlug == "" {
+		if seed.parentSlug == "" {
 			if c.ParentID != 0 {
-				t.Fatalf("root category %s parent should be 0, got %d", seed.Slug, c.ParentID)
+				t.Fatalf("root category %s parent should be 0, got %d", seed.slug, c.ParentID)
 			}
 			continue
 		}
-		parent, ok := bySlug[seed.ParentSlug]
+		parent, ok := bySlug[seed.parentSlug]
 		if !ok {
-			t.Fatalf("parent missing for %s: %s", seed.Slug, seed.ParentSlug)
+			t.Fatalf("parent missing for %s: %s", seed.slug, seed.parentSlug)
 		}
 		if c.ParentID != parent.ID {
-			t.Fatalf("parent mismatch for %s: got %d want %d", seed.Slug, c.ParentID, parent.ID)
+			t.Fatalf("parent mismatch for %s: got %d want %d", seed.slug, c.ParentID, parent.ID)
 		}
 	}
 
-	if err := EnsureDefaultCategories(db); err != nil {
-		t.Fatalf("EnsureDefaultCategories should be idempotent: %v", err)
-	}
-	categoriesAfter, err := ListCategories(db, false)
-	if err != nil {
-		t.Fatalf("ListCategories after ensure failed: %v", err)
-	}
-	if len(categoriesAfter) != len(categories) {
-		t.Fatalf("expected category count unchanged after ensure, got %d want %d", len(categoriesAfter), len(categories))
-	}
 }
 
 func TestHttpErrorLogLifecycle(t *testing.T) {

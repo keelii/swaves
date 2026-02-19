@@ -2,6 +2,7 @@ package share
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"swaves/internal/db"
 	"swaves/internal/store"
@@ -29,7 +30,8 @@ func GetSiteUrl() string {
 	return fmt.Sprintf("%s%s", store.GetSetting("site_url"), GetBasePath())
 }
 func GetPageUrl(post db.Post) string {
-	return GetPagePath() + "/" + post.Slug
+	postName := GetPostName(post)
+	return GetPagePath() + "/" + postName
 }
 
 func GetArticlePublishedDate(post db.Post) (string, string, string) {
@@ -39,16 +41,40 @@ func GetArticlePublishedDate(post db.Post) (string, string, string) {
 	d := published.Format("02")
 	return y, m, d
 }
+
+func PostNameIsID() bool {
+	return store.GetSetting("post_url_name") == "{id}"
+}
+func GetPostName(post db.Post) string {
+	postName := store.GetSetting("post_url_name")
+	if postName == "" {
+		return post.Slug
+	}
+
+	postName = strings.ReplaceAll(postName, "{slug}", post.Slug)
+	postName = strings.ReplaceAll(postName, "{id}", strconv.FormatInt(post.ID, 10))
+	if post.Title != "" {
+		postName = strings.ReplaceAll(postName, "{title}", post.Title)
+	}
+
+	if postName == "" {
+		return post.Slug
+	}
+
+	return postName
+}
 func GetArticleUrl(post db.Post) string {
 	y, m, d := GetArticlePublishedDate(post)
 	postPath := store.GetSetting("post_url_prefix")
 	postPath = strings.ReplaceAll(postPath, "{datetime}", fmt.Sprintf("%s/%s/%s", y, m, d))
 
+	postName := GetPostName(post)
+
 	if postPath == "/" {
-		return "/" + post.Slug
+		return "/" + postName
 	}
 
-	return postPath + "/" + post.Slug
+	return postPath + "/" + postName
 }
 
 func BuildPostURL(kind db.PostKind, slug string, publishedAt int64) string {

@@ -100,6 +100,25 @@ const InitialSQL = `
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER
 	);
+	-- 默认分类（初始化库时直接写入）
+	INSERT OR IGNORE INTO ` + TableCategories + ` (id, parent_id, slug, name, description, sort, enabled, created_at, updated_at) VALUES
+		(1, NULL, 'life', '生活', '与技术主线无直接关系的个人生活内容。', 1, 1, strftime('%s','now'), strftime('%s','now')),
+		(2, 1, 'entertainment', '文娱', '音乐、电影、剧集、游戏及相关文化内容。', 2, 1, strftime('%s','now'), strftime('%s','now')),
+		(3, 1, 'reading', '阅读', '读书笔记、文学随笔与阅读思考。', 3, 1, strftime('%s','now'), strftime('%s','now')),
+		(4, NULL, 'work', '工作', '与职业实践、团队协作、工作方式相关内容。', 4, 1, strftime('%s','now'), strftime('%s','now')),
+		(5, 4, 'career', '职业', '职业成长、管理协作、流程方法与职场经验。', 5, 1, strftime('%s','now'), strftime('%s','now')),
+		(6, NULL, 'technology', '技术', '技术内容总入口，涵盖编程与软件工程实践。', 6, 1, strftime('%s','now'), strftime('%s','now')),
+		(7, 6, 'programming', '编程', '代码实现、底层原理与工程技巧。', 7, 1, strftime('%s','now'), strftime('%s','now')),
+		(8, 7, 'programming-languages', '编程语言', '语言特性、范式对比与生态实践。', 8, 1, strftime('%s','now'), strftime('%s','now')),
+		(9, 7, 'operating-systems', '操作系统', 'Linux、macOS、Windows 与进程、内存、IO 等系统机制。', 9, 1, strftime('%s','now'), strftime('%s','now')),
+		(10, 7, 'tools-productivity', '工具与效率', 'IDE、CLI、自动化与开发效率优化。', 10, 1, strftime('%s','now'), strftime('%s','now')),
+		(11, 6, 'software-development', '软件开发', '从需求到上线的架构、测试、发布与维护实践。', 11, 1, strftime('%s','now'), strftime('%s','now')),
+		(12, 6, 'tech-opinions', '技术观点', '技术趋势、行业观察与观点评论。', 12, 1, strftime('%s','now'), strftime('%s','now')),
+		(13, NULL, 'tech', '科技', '消费科技与新品体验内容总入口。', 13, 1, strftime('%s','now'), strftime('%s','now')),
+		(14, 13, 'tech-news', '发布与动态', '发布会、新品发布与科技行业动态。', 14, 1, strftime('%s','now'), strftime('%s','now')),
+		(15, 13, 'product-hands-on', '产品体验', '设备开箱、上手评测与长期使用体验。', 15, 1, strftime('%s','now'), strftime('%s','now')),
+		(16, 13, 'buying-guides', '选购建议', '产品对比、选购建议与购买避坑。', 16, 1, strftime('%s','now'), strftime('%s','now'));
+
 	CREATE TABLE IF NOT EXISTS ` + TablePostCategories + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -379,9 +398,9 @@ var DefaultSettings = []Setting{
 	{Sort: 51, Kind: "Post", Name: "页面路径前缀", Code: "page_path", Reload: 1, Type: "text", Value: "/", Description: "页面根路径", Attrs: consts.UrlPrefixValidatorJSON},
 	{Sort: 52, Kind: "Post", Name: "RSS地址", Code: "rss_path", Reload: 1, Type: "text", Value: "/atom.xml", Description: "feed 地址", Attrs: consts.UrlFileNamePrefixValidatorJSON},
 	{Sort: 53, Kind: "Post", Name: "文章地址前缀", Code: "post_url_prefix", Reload: 1, Type: "text", Value: "/{datetime}", Attrs: consts.PostUrlPrefixValidatorJSON, Description: "文章 URL 前缀"},
-	{Sort: 54, Kind: "Post", Name: "文章地址前缀", Code: "post_url_prefix", Reload: 1, Type: "text", Value: "/{datetime}", Attrs: consts.PostUrlPrefixValidatorJSON, Description: "文章 URL 前缀"},
-	{Sort: 55, Kind: "Post", Name: "分类地址名称", Code: "post_url_name", Type: "radio", Value: "slug", DefaultOptionValue: "slug", Options: `[{"label": "Slug", "value": "slug"}, {"label": "ID", "value": "id"}, {"label": "标题", "value": "title"}]`, Description: "分类 URL 前缀"},
-	{Sort: 56, Kind: "Post", Name: "标签地址前缀", Code: "tag_url_prefix", Reload: 1, Type: "text", Value: "/tags", Attrs: consts.UrlPrefixValidatorJSON, Description: "标签 URL 前缀"},
+	{Sort: 55, Kind: "Post", Name: "文章地址名称", Code: "post_url_name", Type: "text", Value: "{slug}", Description: "分类 URL 前缀，可选：{slug}, {id}, {title}"},
+	{Sort: 56, Kind: "Post", Name: "分类地址前缀", Code: "category_url_prefix", Reload: 1, Type: "text", Value: "/categories", Attrs: consts.UrlPrefixValidatorJSON, Description: "分类 URL 前缀"},
+	{Sort: 57, Kind: "Post", Name: "标签地址前缀", Code: "tag_url_prefix", Reload: 1, Type: "text", Value: "/tags", Attrs: consts.UrlPrefixValidatorJSON, Description: "标签 URL 前缀"},
 	{Sort: 70, Kind: "Data", Name: "S3 远程备份开启", Code: "sync_push_enabled", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "是否启用通过 S3 API 的远程备份任务", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 71, Kind: "Data", Name: "本地备份目录", Code: "backup_local_dir", Type: "text", Value: "backups", Description: "本地备份目录（支持绝对路径或相对程序根目录路径）"},
 	{Sort: 72, Kind: "Data", Name: "本地备份间隔 (min)", Code: "backup_local_interval_min", Type: "number", Value: "1440", DefaultOptionValue: "1440", Description: "两次本地备份之间的最小间隔（分钟）", Attrs: `{"min": 1, "max": 10080}`},

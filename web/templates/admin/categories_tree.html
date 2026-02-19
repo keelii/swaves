@@ -75,9 +75,6 @@
       <div>{{ .Category.Sort }}</div>
       <div>
         <strong>{{ .Category.Name }}</strong>
-          {{ if .Category.Description }}
-            <span>- {{ .Category.Description }}</span>
-          {{ end }}
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">

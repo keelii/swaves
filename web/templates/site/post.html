@@ -23,6 +23,7 @@
     {{if .Post.Category}}
         {{template "site/category_item" dict "Item" .Post.Category "Label" true}}
     {{end}}
+      <br>
     {{if .Post.Tags}}
         {{template "site/tag_list" dict "Items" .Post.Tags "Label" true}}
     {{end}}
@@ -78,7 +79,7 @@
         </p>
         <p>
           <label for="comment-content">内容</label>
-          <textarea id="comment-content" style="vertical-align: top;" name="content" rows="4" minlength="5" maxlength="5000" required></textarea>
+          <textarea id="comment-content" style="vertical-align: top;" name="content" rows="8" cols="40" minlength="5" maxlength="5000" required></textarea>
         </p>
         <p>
           <label for="comment-remember-me">
@@ -108,16 +109,19 @@
   </footer>
   </section>
 {{ end }}
-<section>
-  <p class="salign">
-      {{if .Post.Prev}}
-        <span>上一篇：<a href="{{ .Post.Prev.PermLink }}" class="prev">{{ .Post.Prev.Title }}</a></span>
-      {{end}}
-      {{if .Post.Next}}
-        <span>下一篇：<a href="{{ .Post.Next.PermLink }}" class="next">{{ .Post.Next.Title }}</a></span>
-      {{end}}
-  </p>
-</section>
+
+{{ if eq .Post.Kind 0 }}
+  <section>
+    <p class="salign">
+        {{if .Post.Prev}}
+          <span>上一篇：<a href="{{ .Post.Prev.PermLink }}" class="prev">{{ .Post.Prev.Title }}</a></span>
+        {{end}}
+        {{if .Post.Next}}
+          <span>下一篇：<a href="{{ .Post.Next.PermLink }}" class="next">{{ .Post.Next.Title }}</a></span>
+        {{end}}
+    </p>
+  </section>
+{{ end }}
 
 <script>
   (function () {

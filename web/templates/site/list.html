@@ -9,7 +9,31 @@
   </nav>
 </header>
 
-<ul class="{{ .ID }}">
+{{ define "site/category_tree_nodes" }}
+  {{ range . }}
+  <li>
+    <a href="{{ .Item.PermLink }}">{{ .Item.Name }}</a>
+    <span class="post-count">({{ .Item.PostCount }})</span>
+    <span>{{ relativeTime .Item.CreatedAt }}</span>
+    {{ if gt (len .Children) 0 }}
+    <ul>
+      {{ template "site/category_tree_nodes" .Children }}
+    </ul>
+    {{ end }}
+  </li>
+  {{ end }}
+{{ end }}
+
+{{ if .IsCategory }}
+<ul class="category-index">
+  {{ if gt (len .List) 0 }}
+    {{ template "site/category_tree_nodes" .List }}
+  {{ else }}
+  <li>No categories</li>
+  {{ end }}
+</ul>
+{{ else }}
+<ul class="tag-index">
   {{ range .List }}
   <li>
     <a href="{{ .PermLink }}">{{ .Name }}</a>
@@ -20,3 +44,4 @@
   <li>No {{ .ID }}</li>
   {{ end }}
 </ul>
+{{ end }}

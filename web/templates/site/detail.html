@@ -1,5 +1,6 @@
   <header>
     <h1>{{ .Entity.Name }}</h1>
+
     <nav>
       <a href="{{ settings "base_path" }}">首页</a>
       {{if .IsCategory}}
@@ -10,6 +11,13 @@
       {{end}}
     </nav>
   </header>
+
+  {{ if .Entity.Description }}
+  <section>
+      <p class="subtitle">{{ .Entity.Description }}</p>
+  </section>
+  {{ end }}
+
   <ul>
     {{ range .List }}
     <li>
@@ -25,6 +33,6 @@
       <span class="published">{{ relativeTime .CreatedAt }}</span>
     </li>
     {{ else }}
-    <li>No {{ .ID }}</li>
+    <li>No post</li>
     {{ end }}
   </ul>

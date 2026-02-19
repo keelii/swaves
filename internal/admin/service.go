@@ -153,7 +153,7 @@ func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithRelation, error) {
 	}
 
 	return &db.PostWithRelation{
-		Post: post,
+		Post: &post,
 		Tags: tags,
 	}, nil
 }
@@ -196,7 +196,7 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 		}
 	}
 
-	if err := db.UpdatePost(dbx, p); err != nil {
+	if err := db.UpdatePost(dbx, &p); err != nil {
 		return err
 	}
 	if in.Action == UpdatePostActionPublish {

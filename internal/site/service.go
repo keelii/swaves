@@ -2,6 +2,7 @@ package site
 
 import (
 	"log"
+	"sort"
 	"swaves/internal/db"
 	"swaves/internal/md"
 	"swaves/internal/share"
@@ -66,6 +67,15 @@ func postToPostInfo(p *db.Post) *DisplayPostInfo {
 	}
 }
 
+func GetPostByID(dbx *db.DB, slug string) *DisplayPostWithRelation {
+	p, err := db.GetPostByIDWithRelation(dbx, slug)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return toDisplayPostWithRelation(dbx, p)
+}
 func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
 	p, err := db.GetPostBySlugWithRelation(dbx, slug)
 	if err != nil {
@@ -73,6 +83,10 @@ func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
 		return nil
 	}
 
+	return toDisplayPostWithRelation(dbx, p)
+}
+
+func toDisplayPostWithRelation(dbx *db.DB, p db.PostWithRelation) *DisplayPostWithRelation {
 	prev, next, err := db.GetPrevNextPost(dbx, p.Post.PublishedAt)
 	if err != nil {
 		log.Println(err)
@@ -135,23 +149,113 @@ func CountApprovedComments(dbx *db.DB, postID int64) int {
 	return count
 }
 
-func ListCategories(dbx *db.DB) []DisplayItem {
+func ListCategories(dbx *db.DB) []*DisplayCategoryNode {
 	res, err := db.ListCategories(dbx, true)
 	if err != nil {
-		return []DisplayItem{}
+		return []*DisplayCategoryNode{}
 	}
-	var items []DisplayItem
-	for _, c := range res {
-		items = append(items, DisplayItem{
-			ID:        c.ID,
-			Name:      c.Name,
-			Slug:      c.Slug,
-			PermLink:  share.GetCategoryUrl(c),
-			PostCount: c.PostCount,
-			CreatedAt: c.CreatedAt,
-			UpdatedAt: c.UpdatedAt,
+
+	if len(res) == 0 {
+		return []*DisplayCategoryNode{}
+	}
+
+	categoryByID := make(map[int64]db.Category, len(res))
+	for _, category := range res {
+		categoryByID[category.ID] = category
+	}
+
+	roots := make([]db.Category, 0, len(res))
+	childrenByParent := make(map[int64][]db.Category, len(res))
+	for _, category := range res {
+		parentID := category.ParentID
+		if parentID == 0 || parentID == category.ID {
+			roots = append(roots, category)
+			continue
+		}
+		if _, ok := categoryByID[parentID]; !ok {
+			roots = append(roots, category)
+			continue
+		}
+		childrenByParent[parentID] = append(childrenByParent[parentID], category)
+	}
+
+	sortCategories := func(items []db.Category) {
+		sort.Slice(items, func(i, j int) bool {
+			left := items[i]
+			right := items[j]
+			if left.Sort != right.Sort {
+				return left.Sort < right.Sort
+			}
+			if left.CreatedAt != right.CreatedAt {
+				return left.CreatedAt < right.CreatedAt
+			}
+			if left.ID != right.ID {
+				return left.ID < right.ID
+			}
+			return left.Name < right.Name
 		})
 	}
+
+	sortCategories(roots)
+	for parentID := range childrenByParent {
+		sortCategories(childrenByParent[parentID])
+	}
+
+	toDisplayItem := func(category db.Category) DisplayItem {
+		return DisplayItem{
+			ID:        category.ID,
+			Name:      category.Name,
+			Slug:      category.Slug,
+			PermLink:  share.GetCategoryUrl(category),
+			PostCount: category.PostCount,
+			CreatedAt: category.CreatedAt,
+			UpdatedAt: category.UpdatedAt,
+		}
+	}
+
+	items := make([]*DisplayCategoryNode, 0, len(res))
+	visited := make(map[int64]bool, len(res))
+	var buildNode func(category db.Category) *DisplayCategoryNode
+	buildNode = func(category db.Category) *DisplayCategoryNode {
+		if visited[category.ID] {
+			return nil
+		}
+		visited[category.ID] = true
+		node := &DisplayCategoryNode{
+			Item:     toDisplayItem(category),
+			Children: make([]*DisplayCategoryNode, 0),
+		}
+
+		for _, child := range childrenByParent[category.ID] {
+			if childNode := buildNode(child); childNode != nil {
+				node.Children = append(node.Children, childNode)
+			}
+		}
+
+		return node
+	}
+
+	for _, root := range roots {
+		if node := buildNode(root); node != nil {
+			items = append(items, node)
+		}
+	}
+
+	if len(visited) < len(res) {
+		remaining := make([]db.Category, 0, len(res)-len(visited))
+		for _, category := range res {
+			if !visited[category.ID] {
+				remaining = append(remaining, category)
+			}
+		}
+		sortCategories(remaining)
+		for _, category := range remaining {
+			if node := buildNode(category); node != nil {
+				items = append(items, node)
+			}
+		}
+	}
+
 	return items
 }
 func ListTags(dbx *db.DB) []DisplayItem {
@@ -182,13 +286,14 @@ func GetCategoryBySlug(dbx *db.DB, slug string) *DisplayItem {
 	}
 
 	return &DisplayItem{
-		ID:        category.ID,
-		Name:      category.Name,
-		Slug:      category.Slug,
-		PermLink:  share.GetCategoryUrl(*category),
-		PostCount: category.PostCount,
-		CreatedAt: category.CreatedAt,
-		UpdatedAt: category.UpdatedAt,
+		ID:          category.ID,
+		Name:        category.Name,
+		Slug:        category.Slug,
+		Description: category.Description,
+		PermLink:    share.GetCategoryUrl(*category),
+		PostCount:   category.PostCount,
+		CreatedAt:   category.CreatedAt,
+		UpdatedAt:   category.UpdatedAt,
 	}
 }
 func GetTagBySlug(dbx *db.DB, slug string) *DisplayItem {

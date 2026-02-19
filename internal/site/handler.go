@@ -231,7 +231,18 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	}
 
 	pSlug := c.Params("slug")
-	post := GetPostBySlug(h.Model, pSlug)
+	var post *DisplayPostWithRelation
+
+	if share.PostNameIsID() {
+		id, err := strconv.Atoi(pSlug)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).SendString("invalid post identifier in url")
+		}
+		post = GetPostByID(h.Model, id)
+	} else {
+		post = GetPostBySlug(h.Model, pSlug)
+	}
+
 	if post == nil {
 		return c.Status(fiber.StatusNotFound).SendString("page not found")
 	}
@@ -326,9 +337,10 @@ func (h Handler) GetCategoryIndex(c *fiber.Ctx) error {
 	pages := ListPages(h.Model)
 	h.trackSiteUV(c)
 	return RenderUIView(c, "site/list", fiber.Map{
-		"Title": "Categories",
-		"Pages": pages,
-		"List":  categories,
+		"Title":      "Categories",
+		"Pages":      pages,
+		"List":       categories,
+		"IsCategory": true,
 	}, "")
 }
 func (h Handler) GetTagIndex(c *fiber.Ctx) error {

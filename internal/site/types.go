@@ -56,14 +56,21 @@ type DisplayPostRelativeInfo struct {
 	CreatedAt   int64
 	UpdatedAt   int64
 }
+
+type DisplayCategoryNode struct {
+	Item     DisplayItem
+	Children []*DisplayCategoryNode
+}
+
 type DisplayItem struct {
-	ID        int64
-	Name      string
-	Slug      string
-	PermLink  string
-	PostCount int
-	CreatedAt int64
-	UpdatedAt int64
+	ID          int64
+	Name        string
+	Slug        string
+	Description string
+	PermLink    string
+	PostCount   int
+	CreatedAt   int64
+	UpdatedAt   int64
 }
 
 func (p DisplayPost) Raw() db.Post {
