@@ -1,7 +1,7 @@
 <form id="form" method="post" action="/admin/redirects/{{ .Redirect.ID }}/edit">
 
-  {{ template "partials/form_field_text" dict "Label" "From" "Name" "from" "Value" .Redirect.From "Required" true }}
-  {{ template "partials/form_field_text" dict "Label" "To" "Name" "to" "Value" .Redirect.To "Required" true }}
+  {{ template "admin/includes/form_field_text" dict "Label" "From" "Name" "from" "Value" .Redirect.From "Required" true }}
+  {{ template "admin/includes/form_field_text" dict "Label" "To" "Name" "to" "Value" .Redirect.To "Required" true }}
 
   <p>
     <label>
@@ -13,7 +13,7 @@
     </label>
   </p>
 
-  {{ template "partials/form_field_checkbox" dict "Label" "Enabled (启用)" "Name" "enabled" "Value" 1 "Checked" (eq .Redirect.Enabled 1) }}
+  {{ template "admin/includes/form_field_checkbox" dict "Label" "Enabled (启用)" "Name" "enabled" "Value" 1 "Checked" (eq .Redirect.Enabled 1) }}
 
 </form>
 

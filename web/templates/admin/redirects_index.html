@@ -30,17 +30,17 @@
     <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "partials/table_row_actions" dict "BaseURL" "/admin/redirects" "ID" .ID }}
+    {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/redirects" "ID" .ID }}
   </tr>
   {{ else }}
-  {{ template "partials/table_empty" dict "ColSpan" 8 "Message" "No redirects" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 8 "Message" "No redirects" }}
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="8">
-      {{template "partials/pagination" .}}
+      {{template "admin/includes/pagination" .}}
     </td>
   </tr>
   </tfoot>

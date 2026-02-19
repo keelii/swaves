@@ -20,17 +20,17 @@
     <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}Never{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "partials/table_row_actions" dict "BaseURL" "/admin/encrypted-posts" "ID" .ID }}
+    {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/encrypted-posts" "ID" .ID }}
   </tr>
   {{ else }}
-  {{ template "partials/table_empty" dict "ColSpan" 7 "Message" "No encrypted posts" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "No encrypted posts" }}
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="7">
-      {{template "partials/pagination" .}}
+      {{template "admin/includes/pagination" .}}
     </td>
   </tr>
   </tfoot>

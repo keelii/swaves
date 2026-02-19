@@ -13,9 +13,9 @@
     </label>
   </p>
 
-  {{ template "partials/form_field_text" dict "Label" "Name" "Name" "name" "Value" .Category.Name "Required" true "Placeholder" "分类名称" "Help" "(Display name)" }}
-  {{ template "partials/form_field_text" dict "Label" "Slug" "Name" "slug" "Value" .Category.Slug "Required" true "Placeholder" "url-friendly-identifier" "Help" "(URL-friendly identifier, must be unique under same parent)" }}
-  {{ template "partials/form_field_textarea" dict "Label" "Description" "Name" "description" "Value" .Category.Description "Rows" 3 "Cols" 80 "Placeholder" "可选描述信息" "Help" "(Optional description)" }}
-  {{ template "partials/form_field_number" dict "Label" "Sort" "Name" "sort" "Value" .Category.Sort "Help" "(Sort order within same parent level)" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "Name" "Name" "name" "Value" .Category.Name "Required" true "Placeholder" "分类名称" "Help" "(Display name)" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "Slug" "Name" "slug" "Value" .Category.Slug "Required" true "Placeholder" "url-friendly-identifier" "Help" "(URL-friendly identifier, must be unique under same parent)" }}
+  {{ template "admin/includes/form_field_textarea" dict "Label" "Description" "Name" "description" "Value" .Category.Description "Rows" 3 "Cols" 80 "Placeholder" "可选描述信息" "Help" "(Optional description)" }}
+  {{ template "admin/includes/form_field_number" dict "Label" "Sort" "Name" "sort" "Value" .Category.Sort "Help" "(Sort order within same parent level)" }}
 
 </form>

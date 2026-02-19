@@ -34,20 +34,20 @@
     <td>
       <div class="row-actions">
         <form id="form" method="post" action="/admin/http-error-logs/{{ .ID }}/delete">
-          {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+          {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
         </form>
       </div>
     </td>
   </tr>
   {{ else }}
-  {{ template "partials/table_empty" dict "ColSpan" 11 "Message" "No logs" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 11 "Message" "No logs" }}
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="11">
-      {{template "partials/pagination" .}}
+      {{template "admin/includes/pagination" .}}
     </td>
   </tr>
   </tfoot>

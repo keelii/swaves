@@ -3,6 +3,7 @@
   {{ $draftSlug := or .DraftSlug "" }}
   {{ $draftKind := or .DraftKind "0" }}
   {{ $draftCategoryID := .DraftCategoryID }}
+  {{ $draftCommentEnabled := .DraftCommentEnabled }}
   {{ $draftContent := or .DraftContent "" }}
   <div class="row">
     <div class="col-6">
@@ -27,21 +28,23 @@
 
       <fieldset class="hstack">
         <legend>Kind (类型)</legend>
-          {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" $draftKind }}
+          {{ template "admin/includes/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" $draftKind }}
       </fieldset>
+
+      {{ template "admin/includes/form_field_checkbox" dict "Label" "开启评论" "Name" "comment_enabled" "Value" 1 "Checked" $draftCommentEnabled }}
 
       <label data-field>
         标签
-          {{ template "partials/tag_select" . }}
+          {{ template "admin/includes/tag_select" . }}
       </label>
 
       <label data-field>
         分类
-          {{ template "partials/category_select" dict "Root" $ "SelectedID" $draftCategoryID }}
+          {{ template "admin/includes/category_select" dict "Root" $ "SelectedID" $draftCategoryID }}
       </label>
 
 
     </div>
   </div>
-  {{ template "partials/markdown_preview" dict "Value" $draftContent "Required" true }}
+  {{ template "admin/includes/markdown_preview" dict "Value" $draftContent "Required" true }}
 </form>

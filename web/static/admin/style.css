@@ -45,6 +45,11 @@ svg {
 .text-success {
   color: var(--success);
 }
+.valign {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+}
 .salign {
   display: flex;
   justify-content: space-between;

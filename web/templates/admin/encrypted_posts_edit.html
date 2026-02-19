@@ -17,10 +17,10 @@
         <input class="w-100" type="password" name="password" placeholder="留空以保持当前密码">
       </label>
 
-      {{ template "partials/expires_at_field" dict "Label" "过期时间" "ReadOnly" true "HasExpiry" .Post.ExpiresAt "DisplayDate" $displayDate }}
+      {{ template "admin/includes/expires_at_field" dict "Label" "过期时间" "ReadOnly" true "HasExpiry" .Post.ExpiresAt "DisplayDate" $displayDate }}
     </div>
   </div>
 
-  {{ template "partials/markdown_preview" dict "Placeholder" "加密文章内容（支持 Markdown）" "Value" .Post.Content }}
+  {{ template "admin/includes/markdown_preview" dict "Placeholder" "加密文章内容（支持 Markdown）" "Value" .Post.Content }}
 
 </form>

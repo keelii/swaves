@@ -369,6 +369,45 @@ func TestListPostsBySearch(t *testing.T) {
 	}
 }
 
+func TestPostCommentEnabledSwitch(t *testing.T) {
+	db := openTestDB(t)
+
+	p := mustCreatePost(t, db, "draft", PostKindPost, 0)
+
+	created, err := GetPostByID(db, p.ID)
+	if err != nil {
+		t.Fatalf("GetPostByID failed: %v", err)
+	}
+	if created.CommentEnabled != 1 {
+		t.Fatalf("new post should default comment_enabled=1, got %d", created.CommentEnabled)
+	}
+
+	if err := SetPostCommentEnabled(db, p.ID, false); err != nil {
+		t.Fatalf("SetPostCommentEnabled(false) failed: %v", err)
+	}
+	disabled, err := GetPostByID(db, p.ID)
+	if err != nil {
+		t.Fatalf("GetPostByID after disable failed: %v", err)
+	}
+	if disabled.CommentEnabled != 0 {
+		t.Fatalf("expected comment_enabled=0, got %d", disabled.CommentEnabled)
+	}
+
+	disabled.Title = disabled.Title + "-updated"
+	disabled.CommentEnabled = 1
+	if err := UpdatePost(db, disabled); err != nil {
+		t.Fatalf("UpdatePost failed: %v", err)
+	}
+
+	enabled, err := GetPostByID(db, p.ID)
+	if err != nil {
+		t.Fatalf("GetPostByID after update failed: %v", err)
+	}
+	if enabled.CommentEnabled != 1 {
+		t.Fatalf("expected comment_enabled=1 after update, got %d", enabled.CommentEnabled)
+	}
+}
+
 func TestGetPrevNextPost(t *testing.T) {
 	db := openTestDB(t)
 

@@ -9,28 +9,34 @@
       <label data-field>
         文章 URL 标识
         <span class="hstack">
-          <span>/</span>
           <input type="text" value="{{ .Post.Slug }}" disabled style="flex: 1;">
+          {{ if and (eq .Post.Status "published") (gt .Post.PublishedAt 0) }}
+            <a class="valign" href="{{ GetPostUrl .Post }}" target="_blank" rel="noopener" title="查看文章">
+              {{ template "lucide_icon" dict "name" "link-2" "size" "24" }}
+            </a>
+          {{ end }}
         </span>
       </label>
 
       <fieldset class="hstack">
         <legend>Kind (类型)</legend>
-        {{ template "partials/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
+        {{ template "admin/includes/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
       </fieldset>
+
+      {{ template "admin/includes/form_field_checkbox" dict "Label" "开启评论" "Name" "comment_enabled" "Value" 1 "Checked" (eq .Post.CommentEnabled 1) }}
 
       <label data-field>
         标签
-        {{ template "partials/tag_select" . }}
+        {{ template "admin/includes/tag_select" . }}
       </label>
 
       <label data-field>
         分类
-        {{ template "partials/category_select" dict "Root" $ "SelectedID" .Category.ID }}
+        {{ template "admin/includes/category_select" dict "Root" $ "SelectedID" .Category.ID }}
       </label>
     </div>
   </div>
 
-  {{ template "partials/markdown_preview" dict "Value" .Post.Content }}
+  {{ template "admin/includes/markdown_preview" dict "Value" .Post.Content }}
 
 </form>

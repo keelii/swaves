@@ -15,11 +15,11 @@
         <div class="inline-flex items-center gap-4" style="">
           {{ $tag := concat "标签 " .FilterTagName }}
           {{ $cat := concat "分类 " .FilterCategoryName }}
-          {{ if .FilterTagName }}{{ template "partials/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}
-          {{ if .FilterCategoryName }}{{ template "partials/tag_item" dict "Label" $cat "RemoveHref" .FilterCategoryRemoveURL }}{{ end }}
+          {{ if .FilterTagName }}{{ template "admin/includes/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}
+          {{ if .FilterCategoryName }}{{ template "admin/includes/tag_item" dict "Label" $cat "RemoveHref" .FilterCategoryRemoveURL }}{{ end }}
         </div>
         {{ end }}
-        {{ template "partials/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery "FilterTagIDStr" .FilterTagIDStr "FilterCategoryIDStr" .FilterCategoryIDStr }}
+        {{ template "admin/includes/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery "FilterTagIDStr" .FilterTagIDStr "FilterCategoryIDStr" .FilterCategoryIDStr }}
     </div>
   </div>
   <div class="tab-content">
@@ -73,17 +73,17 @@
     <td>{{ $uv := index $.PostUVMap .Post.ID }}{{ if $uv }}{{ $uv }}{{ else }}0{{ end }}</td>
     <td>{{ relativeTime .Post.CreatedAt }}</td>
     <td>{{ relativeTime .Post.UpdatedAt }}</td>
-    {{ template "partials/table_row_actions" dict "BaseURL" "/admin/posts" "ID" .Post.ID }}
+    {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/posts" "ID" .Post.ID }}
   </tr>
   {{ else }}
-  {{ template "partials/table_empty" dict "ColSpan" 10 "Message" "No posts" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "No posts" }}
   {{ end }}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="10">
-      {{template "partials/pagination" .}}
+      {{template "admin/includes/pagination" .}}
     </td>
   </tr>
   </tfoot>

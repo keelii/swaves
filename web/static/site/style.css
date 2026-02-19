@@ -1,0 +1,138 @@
+button[data-like-button] {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+button[data-liked="1"] {
+  color: rgb(249, 24, 128);
+}
+button[data-liked="1"] svg {
+  fill: rgb(249, 24, 128);
+}
+svg {
+  vertical-align: text-bottom;
+}
+
+button[data-like-button]:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.valign {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+}
+.read-uv {
+  /*display: inline-flex;*/
+  /*align-items: center;*/
+  /*gap: 0.2em;*/
+}
+
+.page-link-num {
+  margin: 0 0.2em;
+}
+.articles {
+}
+.relation {
+  margin-left: 10px;
+  color: #999;
+}
+.relation a {
+  margin: 0 5px;
+}
+.back_home {
+  margin-left: 10px;
+}
+.published {
+  color: #999;
+  margin-left: 10px;
+}
+.toc {
+  position: fixed;
+  right: -20em;
+  width: 20em;
+  top: 0;
+  height: 100%;
+  background: #f7f7f7;
+}
+.toc.open {
+  right: 0;
+}
+.toc a, .toc li {
+  font-size: 16px;
+}
+.toc ol {
+  padding-left: 1em;
+}
+.toc ol { list-style-type: decimal }
+.toc ol ol { list-style-type: lower-alpha }
+.toc ol ol ol { list-style-type: lower-roman }
+.toc ol ol ol ol { list-style-type: lower-greek }
+.toc ol ol ol ol ol { list-style-type: decimal }
+.toc ol ol ol ol ol ol { list-style-type: lower-alpha }
+.toc-toggle {
+  position: absolute;
+  width: 1em;
+  height: 2em;
+  line-height: 2em;
+  padding: 8px 0;
+  cursor: pointer;
+  background: #f7f7f7;
+  left: -1em;
+  top: 50%;
+  margin-top: -1em;
+  text-align: center;
+}
+.toc-title {
+  position: sticky;
+  padding: 0 1em;
+  margin: 0;
+  height: 40px;
+  line-height: 40px;
+  font-size: 18px;
+  font-style: normal;
+  font-weight: bold;
+  border-bottom: 1px solid #eee;
+}
+.toc .toc-list {
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.5em 0.5em 0.5em 1.5em;
+  height: calc(100% - 40px);
+  box-sizing: border-box;
+}
+.toc-list::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.toc-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toc-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.toc-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+article table {
+  border-collapse: collapse;
+}
+article table th, article table td {
+  border-bottom: 1px solid #111;
+  padding: 0.5em 0;
+}
+article table thead th {
+  border-bottom: 2px solid #111;
+}

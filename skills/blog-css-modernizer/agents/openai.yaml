@@ -1,4 +1,4 @@
 interface:
   display_name: "Blog CSS Expert"
-  short_description: "Modern, simple UI aligned with existing blog style"
-  default_prompt: "Use $blog-css-modernizer to implement a clean, modern, and usable UI update that stays consistent with my current blog style."
+  short_description: "Split site/admin styling with Tufte + Oat alignment"
+  default_prompt: "Use $blog-css-modernizer to implement minimal, modern CSS updates for either site (Tufte-based) or admin (Oat-based) while keeping existing style consistency."

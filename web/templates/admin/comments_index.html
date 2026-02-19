@@ -85,19 +85,19 @@
           {{ end }}
           <form method="post" action="/admin/comments/{{ .ID }}/delete">
             <input type="hidden" name="status_filter" value="{{ $status }}">
-            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
           </form>
         </div>
       </td>
     </tr>
   {{ else }}
-    {{ template "partials/table_empty" dict "ColSpan" 7 "Message" "No comments" }}
+    {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "No comments" }}
   {{ end }}
   </tbody>
   <tfoot>
   <tr>
     <td colspan="7">
-      {{template "partials/pagination" .}}
+      {{template "admin/includes/pagination" .}}
     </td>
   </tr>
   </tfoot>

@@ -2,15 +2,17 @@
 
 ## A) File map for this repository
 
-- Frontend shell and embedded page styles: `web/templates/ui/layout.html`
-- Frontend pages: `web/templates/ui/home.html`, `web/templates/ui/list.html`, `web/templates/ui/post.html`, `web/templates/ui/detail.html`
-- Global/admin style entry: `web/static/style.css`
-- Frontend typography baseline: `web/static/tufte-css/tufte.css`
-- Oat UI foundation (mainly admin/components): `web/static/oat/css/00-base.css`, `web/static/oat/css/01-theme.css`
+- Site shell and embedded page styles: `web/templates/site/layout.html`
+- Site pages: `web/templates/site/home.html`, `web/templates/site/list.html`, `web/templates/site/post.html`, `web/templates/site/detail.html`
+- Shared icon component: `web/templates/lucide_icon.html`
+- Site custom style entry: `web/static/site/style.css`
+- Site typography baseline: `web/static/site/tufte-css/tufte.css`
+- Admin custom style entry: `web/static/admin/style.css`
+- Oat UI foundation: `web/static/admin/oat/css/00-base.css`, `web/static/admin/oat/css/01-theme.css`
 
-## B) Baseline extraction checklist
+## B) Site baseline extraction checklist
 
-Before implementation, extract and summarize:
+Before site implementation, extract and summarize:
 
 1. Color tokens and semantic usage (`--primary`, neutral tones, borders, muted text)
 2. Typography stack and scale (body, heading, small text, metadata text)
@@ -19,7 +21,7 @@ Before implementation, extract and summarize:
 5. Content density (line length, list density, card density)
 6. Breakpoint behavior and overflow handling
 
-## C) Modernization recipe (incremental)
+## C) Site modernization recipe (incremental)
 
 Prefer this order:
 
@@ -29,17 +31,26 @@ Prefer this order:
 4. Improve responsive layout (navigation, table/list wrapping, comment form usability)
 5. Refine micro-visuals (subtle borders, restrained shadows, cleaner separators)
 
-## D) Guardrails
+## D) Site guardrails
 
 - Do not replace the whole design language unless explicitly requested
 - Do not introduce a heavy CSS framework for small styling tasks
+- Do not replace semantic HTML structure with div-only wrappers
 - Do not remove readable focus indicators
 - Do not break long-form reading comfort for article content
 
-## E) Acceptance checklist
+## E) Admin alignment checklist
+
+1. Reuse Oat classes/components before creating custom class names
+2. Keep spacing, radius, border, and color decisions aligned to Oat theme tokens
+3. Put custom admin overrides in `web/static/admin/style.css` only
+4. Avoid broad resets or selectors that can break Oat defaults
+5. Keep hover/focus/active feedback aligned with Oat behavior
+
+## F) Final acceptance checklist
 
 - User requirements are directly reflected in selectors/components
-- Existing style language is still recognizable
+- Existing style language is still recognizable for both site and admin
 - Main user path works on desktop and small screens
 - No obvious specificity conflicts or duplicated hard-coded tokens
 - New styles are grouped logically and easy to maintain

@@ -4,17 +4,11 @@
     <span class="author">{{ settings "author" }}</span>
     <span>{{ articleTime .Post.PublishedAt }}</span>
     <a href="{{ settings "base_path" }}">首页</a>
-    {{if .Post.Category}}
-      {{template "site/category_item" dict "Item" .Post.Category "Label" true}}
-    {{end}}
-    {{if .Post.Tags}}
-      {{template "site/tag_list" dict "Items" .Post.Tags "Label" true}}
+    {{if .IsLogin}}
+      <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
     {{end}}
     {{ template "site/read_uv" dict "Count" .ReadUV }}
     {{ template "site/like_action" dict "PostID" .Post.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
-    {{if .IsLogin}}
-       <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
-    {{end}}
   </nav>
 </header>
 <article>
@@ -22,9 +16,24 @@
     {{ .Post.HTML | safeHTML }}
   </section>
 </article>
+{{ if eq .Post.Kind 0 }}
 <section>
-<footer>
-  <div id="comments">
+  <hr>
+    <p>
+    {{if .Post.Category}}
+        {{template "site/category_item" dict "Item" .Post.Category "Label" true}}
+    {{end}}
+    {{if .Post.Tags}}
+        {{template "site/tag_list" dict "Items" .Post.Tags "Label" true}}
+    {{end}}
+    </p>
+  <hr>
+</section>
+{{ end }}
+{{ if eq .Post.CommentEnabled 1 }}
+  <section>
+  <footer>
+    <div id="comments">
     <h2>评论 ({{ .CommentCount }})</h2>
 
     {{ if .Comments }}
@@ -68,14 +77,15 @@
           <input id="comment-url" name="author_url" type="url" maxlength="300" placeholder="可选" value="{{ .CommentForm.AuthorURL }}">
         </p>
         <p>
+          <label for="comment-content">内容</label>
+          <textarea id="comment-content" style="vertical-align: top;" name="content" rows="4" minlength="5" maxlength="5000" required></textarea>
+        </p>
+        <p>
           <label for="comment-remember-me">
+            <label>　　</label>
             <input id="comment-remember-me" name="remember_me" type="checkbox" value="1"{{ if .CommentForm.RememberMe }} checked{{ end }}>
             记住我（下次自动填充昵称、邮箱和网址）
           </label>
-        </p>
-        <p>
-          <label for="comment-content">内容</label>
-          <textarea id="comment-content" style="vertical-align: top;" name="content" rows="4" minlength="5" maxlength="5000" required></textarea>
         </p>
         {{ if .CommentCaptchaRequired }}
           <p>
@@ -94,9 +104,10 @@
         </p>
       </form>
     </fieldset>
-  </div>
-</footer>
-</section>
+    </div>
+  </footer>
+  </section>
+{{ end }}
 <section>
   <p class="salign">
       {{if .Post.Prev}}

@@ -30,13 +30,14 @@ func (a *Service) CheckPassword(raw string) error {
 }
 
 type CreatePostInput struct {
-	Title      string
-	Slug       string
-	Content    string
-	Status     string
-	Kind       db.PostKind
-	TagIDs     []int64
-	CategoryID int64
+	Title          string
+	Slug           string
+	Content        string
+	Status         string
+	Kind           db.PostKind
+	TagIDs         []int64
+	CategoryID     int64
+	CommentEnabled *bool
 }
 
 // UpdatePostAction 编辑文章时的操作：save=保存草稿，publish=发布，update=更新已发布文章
@@ -49,13 +50,14 @@ const (
 )
 
 type UpdatePostInput struct {
-	Title      string
-	Content    string
-	Status     string
-	Kind       db.PostKind
-	TagIDs     []int64
-	CategoryID int64
-	Action     UpdatePostAction // save | publish | update
+	Title          string
+	Content        string
+	Status         string
+	Kind           db.PostKind
+	TagIDs         []int64
+	CategoryID     int64
+	CommentEnabled *bool
+	Action         UpdatePostAction // save | publish | update
 }
 
 func GetAllTags(dbx *db.DB) ([]db.Tag, error) {
@@ -92,16 +94,16 @@ func GetAllTags(dbx *db.DB) ([]db.Tag, error) {
 	return res, nil
 }
 
-func CreatePostService(dbx *db.DB, in CreatePostInput) error {
+func CreatePostService(dbx *db.DB, in CreatePostInput) (int64, error) {
 	if in.Title == "" || in.Slug == "" {
-		return errors.New("title and slug required")
+		return 0, errors.New("title and slug required")
 	}
 	if !helper.IsSlug(in.Slug) {
-		return errSlugInvalid("001", in.Slug)
+		return 0, errSlugInvalid("001", in.Slug)
 	}
 
 	if strings.TrimSpace(in.Content) == "" {
-		return errors.New("内容不能为空")
+		return 0, errors.New("内容不能为空")
 	}
 
 	p := &db.Post{
@@ -112,24 +114,30 @@ func CreatePostService(dbx *db.DB, in CreatePostInput) error {
 		Kind:    in.Kind,
 	}
 	if _, err := db.CreatePost(dbx, p); err != nil {
-		return err
+		return 0, err
+	}
+
+	if in.CommentEnabled != nil && !*in.CommentEnabled {
+		if err := db.SetPostCommentEnabled(dbx, p.ID, false); err != nil {
+			return 0, err
+		}
 	}
 
 	// 关联标签
 	if len(in.TagIDs) > 0 {
 		if err := db.SetPostTags(dbx, p.ID, in.TagIDs); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	// 关联分类（单选）
 	if in.CategoryID > 0 {
 		if err := db.SetPostCategory(dbx, p.ID, in.CategoryID); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return nil
+	return p.ID, nil
 }
 
 func GetPostForEdit(dbx *db.DB, id int64) (*db.PostWithRelation, error) {
@@ -159,6 +167,13 @@ func UpdatePostService(dbx *db.DB, id int64, in UpdatePostInput) error {
 	p.Title = in.Title
 	p.Content = in.Content
 	p.Kind = in.Kind
+	if in.CommentEnabled != nil {
+		if *in.CommentEnabled {
+			p.CommentEnabled = 1
+		} else {
+			p.CommentEnabled = 0
+		}
+	}
 
 	switch in.Action {
 	case UpdatePostActionPublish:

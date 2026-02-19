@@ -35,11 +35,14 @@ const InitialSQL = `
 		content TEXT NOT NULL,
 		status TEXT NOT NULL,
 		kind INTEGER NOT NULL DEFAULT 0,
+		comment_enabled INTEGER NOT NULL DEFAULT 1,
 		published_at INTEGER NOT NULL DEFAULT 0,
 		created_at INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER
 	);
+	INSERT OR IGNORE INTO ` + TablePosts + ` (id, title, slug, content, status, kind, comment_enabled, published_at, created_at, updated_at) VALUES
+		(1, '留言板', 'comments', '> 声音是一种机械波，而博客是一种思想波。', 'published', 1, 1, strftime('%s','now'), strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableComments + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

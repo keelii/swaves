@@ -575,6 +575,9 @@ func (h *Handler) renderPostNew(c *fiber.Ctx, data fiber.Map) error {
 	if _, ok := data["DraftCategoryID"]; !ok {
 		data["DraftCategoryID"] = int64(0)
 	}
+	if _, ok := data["DraftCommentEnabled"]; !ok {
+		data["DraftCommentEnabled"] = true
+	}
 	if _, ok := data["SelectedTagNames"]; !ok {
 		data["SelectedTagNames"] = ""
 	}
@@ -619,14 +622,16 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 	} else {
 		draftKind = "0"
 	}
+	commentEnabled := c.FormValue("comment_enabled") == "1" || c.FormValue("comment_enabled") == "on" || c.FormValue("comment_enabled") == "true"
 
 	draft := fiber.Map{
-		"DraftTitle":       title,
-		"DraftSlug":        slug,
-		"DraftContent":     content,
-		"DraftKind":        draftKind,
-		"DraftCategoryID":  categoryID,
-		"SelectedTagNames": tagNames,
+		"DraftTitle":          title,
+		"DraftSlug":           slug,
+		"DraftContent":        content,
+		"DraftKind":           draftKind,
+		"DraftCategoryID":     categoryID,
+		"DraftCommentEnabled": commentEnabled,
+		"SelectedTagNames":    tagNames,
 	}
 
 	if !helper.IsSlug(slug) {
@@ -643,20 +648,22 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 	}
 
 	in := CreatePostInput{
-		Title:      title,
-		Slug:       slug,
-		Content:    content,
-		Status:     status,
-		Kind:       kind,
-		TagIDs:     tagIDs,
-		CategoryID: categoryID,
+		Title:          title,
+		Slug:           slug,
+		Content:        content,
+		Status:         status,
+		Kind:           kind,
+		TagIDs:         tagIDs,
+		CategoryID:     categoryID,
+		CommentEnabled: &commentEnabled,
 	}
 
-	if err := CreatePostService(h.Model, in); err != nil {
+	postID, err := CreatePostService(h.Model, in)
+	if err != nil {
 		return h.renderPostNewWithDraft(c, err, draft)
 	}
 
-	return c.Redirect("/admin/posts")
+	return c.Redirect("/admin/posts/"+strconv.FormatInt(postID, 10)+"/edit", fiber.StatusSeeOther)
 }
 
 func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
@@ -731,6 +738,7 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 	if c.FormValue("kind") == "1" {
 		kind = db.PostKindPage
 	}
+	commentEnabled := c.FormValue("comment_enabled") == "1" || c.FormValue("comment_enabled") == "on" || c.FormValue("comment_enabled") == "true"
 
 	actionStr := c.FormValue("action")
 	action := UpdatePostActionSave
@@ -742,20 +750,21 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 	}
 
 	in := UpdatePostInput{
-		Title:      c.FormValue("title"),
-		Content:    c.FormValue("content"),
-		Status:     c.FormValue("status"),
-		Kind:       kind,
-		TagIDs:     tagIDs,
-		CategoryID: categoryID,
-		Action:     action,
+		Title:          c.FormValue("title"),
+		Content:        c.FormValue("content"),
+		Status:         c.FormValue("status"),
+		Kind:           kind,
+		TagIDs:         tagIDs,
+		CategoryID:     categoryID,
+		CommentEnabled: &commentEnabled,
+		Action:         action,
 	}
 
 	if err := UpdatePostService(h.Model, id, in); err != nil {
 		return err
 	}
 
-	return c.Redirect("/admin/posts")
+	return c.Redirect("/admin/posts/"+strconv.FormatInt(id, 10)+"/edit", fiber.StatusSeeOther)
 }
 
 func (h *Handler) PostDeletePostHandler(c *fiber.Ctx) error {

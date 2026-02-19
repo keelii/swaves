@@ -65,7 +65,7 @@
       {{ settings "site_name" }} Admin
     </div>
     <div class="nav-actions flex justify-between grow">
-      {{template "partials/actions" .}}
+      {{template "admin/includes/actions" .}}
       <div class="nav-user">
           {{ if .IsLogin }}
             <span>欢迎，{{ settings "author" }}</span> <a href="/admin/logout">退出</a>
@@ -83,18 +83,18 @@
   <div class="main-wrapper">
     <!-- 左侧菜单 -->
     <div class="sidebar-menu" id="sidebar">
-      {{template "partials/menu" .}}
+      {{template "admin/includes/menu" .}}
     </div>
 
     <!-- 主内容区域 -->
     <div class="content-area">
       <div class="content-header content-box" style="display:none;">
         <div class="content-title">
-          {{template "partials/actions" .}}
+          {{template "admin/includes/actions" .}}
         </div>
       </div>
       <div class="content-body content-box">
-        {{ template "partials/error_message" . }}
+        {{ template "admin/includes/error_message" . }}
         {{embed}}
       </div>
     </div>

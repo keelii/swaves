@@ -2,12 +2,12 @@
 
   <p>
     <label class="flex items-center gap-2">
-      是否启用 {{ template "partials/toggle" dict "ID" (printf "task_enabled_%d" .Task.ID) "Name" "enabled" "Checked" (eq .Task.Enabled 1) "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
+      是否启用 {{ template "admin/includes/toggle" dict "ID" (printf "task_enabled_%d" .Task.ID) "Name" "enabled" "Checked" (eq .Task.Enabled 1) "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
     </label>
   </p>
 
-  {{ template "partials/form_field_radio" dict "Label" "Kind (任务类型)" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "内部任务（不生成运行记录）") (dict "Value" "1" "Label" "用户任务")) "Selected" (printf "%d" .Task.Kind) "Help" "内部任务执行时不写入 TaskRun 表" }}
-  {{ template "partials/form_field_text" dict "Label" "任务名称" "Name" "name" "Value" .Task.Name "Required" true "Placeholder" "任务名称" }}
+  {{ template "admin/includes/form_field_radio" dict "Label" "Kind (任务类型)" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "内部任务（不生成运行记录）") (dict "Value" "1" "Label" "用户任务")) "Selected" (printf "%d" .Task.Kind) "Help" "内部任务执行时不写入 TaskRun 表" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "任务名称" "Name" "name" "Value" .Task.Name "Required" true "Placeholder" "任务名称" }}
 
   <p>
     <label>
@@ -34,7 +34,7 @@
   </p>
   <input type="hidden" name="schedule" id="schedule-value" value="{{ .Task.Schedule }}">
 
-  {{ template "partials/form_field_textarea" dict "Label" "" "Name" "description" "Value" .Task.Description "Rows" 3 "Cols" 60 "Placeholder" "任务描述" }}
+  {{ template "admin/includes/form_field_textarea" dict "Label" "" "Name" "description" "Value" .Task.Description "Rows" 3 "Cols" 60 "Placeholder" "任务描述" }}
 
 </form>
 

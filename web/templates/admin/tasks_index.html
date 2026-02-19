@@ -50,13 +50,13 @@
     <td style="display: none">{{ formatTime .CreatedAt }}</td>
     <td>
       <div class="row-actions">
-        {{ template "partials/action_icon_link" dict "href" (printf "/admin/tasks/%d/edit" .ID) "name" "square-pen" "label" "编辑" }}
+        {{ template "admin/includes/action_icon_link" dict "href" (printf "/admin/tasks/%d/edit" .ID) "name" "square-pen" "label" "编辑" }}
         <form id="form" method="POST" action="/admin/tasks/{{ .Code }}/trigger">
-          {{ template "partials/action_icon_button" dict "type" "submit" "name" "terminal" "label" "执行" "danger" true }}
+          {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "terminal" "label" "执行" "danger" true }}
         </form>
           {{ if ne .Kind 0 }}
             <form id="form" method="POST" action="/admin/tasks/{{ .ID }}/delete">
-                {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+                {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
             </form>
           {{ end }}
       </div>

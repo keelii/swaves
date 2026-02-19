@@ -1,8 +1,8 @@
 <form id="form" method="post" action="/admin/settings/{{ .Setting.ID }}/edit">
 
-  {{ template "partials/form_field_text" dict "Label" "Kind" "Name" "kind" "Value" .Setting.Kind "Required" true "Placeholder" "例如: system, url, integration, default" "Help" "(e.g., system, url, integration, default)" }}
-  {{ template "partials/form_field_text" dict "Label" "Name" "Name" "name" "Value" .Setting.Name "Required" true "Placeholder" "人类可读的名称" "Help" "(Human readable name)" }}
-  {{ template "partials/form_field_text" dict "Label" "Code" "Name" "code" "Value" .Setting.Code "Required" true "Placeholder" "例如: site_name, admin_password" "Help" "(Unique key, e.g., site_name, admin_password)" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "Kind" "Name" "kind" "Value" .Setting.Kind "Required" true "Placeholder" "例如: system, url, integration, default" "Help" "(e.g., system, url, integration, default)" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "Name" "Name" "name" "Value" .Setting.Name "Required" true "Placeholder" "人类可读的名称" "Help" "(Human readable name)" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "Code" "Name" "code" "Value" .Setting.Code "Required" true "Placeholder" "例如: site_name, admin_password" "Help" "(Unique key, e.g., site_name, admin_password)" }}
 
   <p>
     <label>
@@ -26,8 +26,8 @@
     </label>
   </p>
 
-  {{ template "partials/form_field_textarea" dict "Label" "Options (JSON)" "Name" "options" "Value" .Setting.Options "Rows" 3 "Cols" 80 "Placeholder" "[{\"label\": \"Option 1\", \"value\": \"value1\"}, {\"label\": \"Option 2\", \"value\": \"value2\"}]" "Help" "(Required for radio/checkbox/select type, JSON array of {label, value})" }}
-  {{ template "partials/form_field_textarea" dict "Label" "Attrs (JSON)" "Name" "attrs" "Value" .Setting.Attrs "Rows" 3 "Cols" 80 "Placeholder" "{\"min\": 0, \"max\": 100, \"step\": 1}" "Help" "(Optional HTML attributes, JSON object)" }}
+  {{ template "admin/includes/form_field_textarea" dict "Label" "Options (JSON)" "Name" "options" "Value" .Setting.Options "Rows" 3 "Cols" 80 "Placeholder" "[{\"label\": \"Option 1\", \"value\": \"value1\"}, {\"label\": \"Option 2\", \"value\": \"value2\"}]" "Help" "(Required for radio/checkbox/select type, JSON array of {label, value})" }}
+  {{ template "admin/includes/form_field_textarea" dict "Label" "Attrs (JSON)" "Name" "attrs" "Value" .Setting.Attrs "Rows" 3 "Cols" 80 "Placeholder" "{\"min\": 0, \"max\": 100, \"step\": 1}" "Help" "(Optional HTML attributes, JSON object)" }}
 
   <p>
     <label>
@@ -77,8 +77,8 @@
     </label>
   </p>
 
-  {{ template "partials/form_field_textarea" dict "Label" "Description" "Name" "description" "Value" .Setting.Description "Rows" 2 "Cols" 80 "Placeholder" "帮助文本，显示在管理界面中" "Help" "(Help text shown in admin)" }}
-  {{ template "partials/form_field_number" dict "Label" "Sort" "Name" "sort" "Value" .Setting.Sort "Help" "(Sort order within kind)" }}
-  {{ template "partials/form_field_checkbox" dict "Label" "修改后需重启生效 (Reload)" "Name" "reload" "Value" "1" "Checked" (eq .Setting.Reload 1) }}
+  {{ template "admin/includes/form_field_textarea" dict "Label" "Description" "Name" "description" "Value" .Setting.Description "Rows" 2 "Cols" 80 "Placeholder" "帮助文本，显示在管理界面中" "Help" "(Help text shown in admin)" }}
+  {{ template "admin/includes/form_field_number" dict "Label" "Sort" "Name" "sort" "Value" .Setting.Sort "Help" "(Sort order within kind)" }}
+  {{ template "admin/includes/form_field_checkbox" dict "Label" "修改后需重启生效 (Reload)" "Name" "reload" "Value" "1" "Checked" (eq .Setting.Reload 1) }}
 
 </form>

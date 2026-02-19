@@ -76,6 +76,9 @@ func InitDatabase(db *DB) error {
 	if err := ensureTaskRunsSchema(db); err != nil {
 		return err
 	}
+	if err := ensurePostCommentsSchema(db); err != nil {
+		return err
+	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
 		log.Fatalf("ensure default settings failed: %v", err)
@@ -266,6 +269,21 @@ func ensureTaskRunsSchema(db *DB) error {
 		return WrapInternalErr("ensureTaskRunsSchema.RenameRebuildTable", err)
 	}
 
+	return nil
+}
+
+func ensurePostCommentsSchema(db *DB) error {
+	hasCommentsEnabled, err := tableColumnExists(db, string(TablePosts), "comment_enabled")
+	if err != nil {
+		return WrapInternalErr("ensurePostCommentsSchema.HasCommentEnabled", err)
+	}
+	if hasCommentsEnabled {
+		return nil
+	}
+
+	if _, err = db.Exec(`ALTER TABLE ` + string(TablePosts) + ` ADD COLUMN comment_enabled INTEGER NOT NULL DEFAULT 1`); err != nil {
+		return WrapInternalErr("ensurePostCommentsSchema.AddCommentEnabled", err)
+	}
 	return nil
 }
 
@@ -729,14 +747,14 @@ func scanPost(scanner sqlScanner, withContent bool) (Post, error) {
 	var deletedAt sql.NullInt64
 	if withContent {
 		if err := scanner.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind, &p.CommentEnabled,
 			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
 			return Post{}, err
 		}
 	} else {
 		if err := scanner.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
+			&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind, &p.CommentEnabled,
 			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
 			return Post{}, err
@@ -1678,16 +1696,17 @@ const (
 )
 
 type Post struct {
-	ID          int64
-	Title       string
-	Slug        string
-	Content     string
-	Status      string
-	Kind        PostKind
-	PublishedAt int64 // 首次发布时间，0 表示未发布
-	CreatedAt   int64
-	UpdatedAt   int64
-	DeletedAt   *int64
+	ID             int64
+	Title          string
+	Slug           string
+	Content        string
+	Status         string
+	Kind           PostKind
+	CommentEnabled int
+	PublishedAt    int64 // 首次发布时间，0 表示未发布
+	CreatedAt      int64
+	UpdatedAt      int64
+	DeletedAt      *int64
 }
 
 type PostWithRelation struct {
@@ -1948,6 +1967,9 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 	if p.Status == "published" && p.PublishedAt == 0 {
 		p.PublishedAt = now()
 	}
+	if p.CommentEnabled == 0 {
+		p.CommentEnabled = 1
+	}
 	id, err := Create(db, specPosts, map[string]interface{}{
 		"title":        p.Title,
 		"slug":         p.Slug,
@@ -1967,7 +1989,7 @@ func CreatePost(db *DB, p *Post) (int64, error) {
 
 func GetPostByID(db *DB, id int64) (*Post, error) {
 	result, err := Read(db, specPosts, ReadOptions{
-		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		WhereClause:  "id=?",
 		WhereArgs:    []interface{}{id},
 		Limit:        1,
@@ -1991,12 +2013,26 @@ func GetPostByID(db *DB, id int64) (*Post, error) {
 
 func UpdatePost(db *DB, p *Post) error {
 	data := map[string]interface{}{
-		"title":   p.Title,
-		"content": p.Content,
-		"kind":    p.Kind,
+		"title":           p.Title,
+		"content":         p.Content,
+		"kind":            p.Kind,
+		"comment_enabled": p.CommentEnabled,
 	}
 	if err := Update(db, specPosts, p.ID, data); err != nil {
 		return err
+	}
+	return nil
+}
+
+func SetPostCommentEnabled(db *DB, id int64, enabled bool) error {
+	commentEnabled := 0
+	if enabled {
+		commentEnabled = 1
+	}
+	if err := Update(db, specPosts, id, map[string]interface{}{
+		"comment_enabled": commentEnabled,
+	}); err != nil {
+		return WrapInternalErr("SetPostCommentEnabled", err)
 	}
 	return nil
 }
@@ -2056,7 +2092,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 	}
 	offset := (pager.Page - 1) * pager.PageSize
 	opts := ReadOptions{
-		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		WhereClause:  "status = ? AND kind = ?",
 		OrderBy:      "published_at DESC",
 		WhereArgs:    []interface{}{"published", kind},
@@ -2086,7 +2122,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 }
 func ListPublishedPages(db *DB) []Post {
 	results, err := Read(db, specPosts, ReadOptions{
-		SelectFields: "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at",
+		SelectFields: "id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		WhereClause:  "status = ? AND kind = ?",
 		OrderBy:      "published_at DESC",
 		WhereArgs:    []interface{}{"published", PostKindPage},
@@ -2166,9 +2202,9 @@ func ListPosts(db *DB, opts *PostQueryOptions) ([]PostWithRelation, error) {
 
 	pager := opts.Pager
 	offset := (pager.Page - 1) * pager.PageSize
-	selectFields := "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at"
+	selectFields := "id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at"
 	if opts.WithContent {
-		selectFields = "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at"
+		selectFields = "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at"
 	}
 	results, err := Read(db, specPosts, ReadOptions{
 		SelectFields: selectFields,
@@ -2244,11 +2280,11 @@ func RestorePost(db *DB, id int64) error {
 }
 
 func ListDeletedPosts(db *DB) ([]Post, error) {
-	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
+	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var p Post
 		var deletedAt sql.NullInt64
 		if err := rows.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+			&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind, &p.CommentEnabled,
 			&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt,
 		); err != nil {
 			return nil, WrapInternalErr("ListDeletedPosts.Scan", err)
@@ -2729,7 +2765,7 @@ func CountPostsByTags(db *DB, tagIDs []int64) (map[int64]int, error) {
 func GetPostBySlug(db *DB, slug string) (Post, error) {
 	var p Post
 	result, err := Read(db, specPosts, ReadOptions{
-		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		WhereClause:  "slug=? AND status=? AND published_at>0",
 		WhereArgs:    []interface{}{slug, "published"},
 		Limit:        1,
@@ -2770,7 +2806,7 @@ func GetPostBySlugWithRelation(db *DB, slug string) (PostWithRelation, error) {
 func GetPrevNextPost(db *DB, publishedAt int64) (prev, next *Post, err error) {
 	loadOne := func(where string, args []interface{}, orderBy string) (*Post, error) {
 		results, err := Read(db, specPosts, ReadOptions{
-			SelectFields: "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at",
+			SelectFields: "id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 			WhereClause:  where,
 			OrderBy:      orderBy,
 			WhereArgs:    args,
@@ -2861,9 +2897,9 @@ func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRela
 		(CASE WHEN slug    LIKE '%' || ? || '%' ESCAPE '\' THEN 5  ELSE 0 END) +
 		(CASE WHEN content LIKE '%' || ? || '%' ESCAPE '\' THEN 1  ELSE 0 END)
 	) AS score`
-	selectFields := "id, title, slug, status, kind, created_at, updated_at, published_at, deleted_at"
+	selectFields := "id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at"
 	if opts.WithContent {
-		selectFields = "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at"
+		selectFields = "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at"
 	}
 	var mainQuery string
 	var mainArgs []interface{}
@@ -2896,7 +2932,7 @@ func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRela
 		if opts.WithContent {
 			var deletedAt sql.NullInt64
 			if err = rows.Scan(
-				&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind,
+				&p.ID, &p.Title, &p.Slug, &p.Content, &p.Status, &p.Kind, &p.CommentEnabled,
 				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
 			); err != nil {
 				return nil, WrapInternalErr("ListPostsBySearch.Scan", err)
@@ -2907,7 +2943,7 @@ func ListPostsBySearch(db *DB, opts *PostQueryOptions, q string) ([]PostWithRela
 		} else {
 			var deletedAt sql.NullInt64
 			if err = rows.Scan(
-				&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind,
+				&p.ID, &p.Title, &p.Slug, &p.Status, &p.Kind, &p.CommentEnabled,
 				&p.CreatedAt, &p.UpdatedAt, &p.PublishedAt, &deletedAt, &score,
 			); err != nil {
 				return nil, WrapInternalErr("ListPostsBySearch.Scan", err)

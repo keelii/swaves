@@ -1,66 +1,67 @@
 ---
 name: blog-css-modernizer
-description: 结合当前博客现有视觉风格进行 CSS 设计与实现，输出简洁、易用、现代化界面。Use when users ask to redesign, polish, or implement frontend styles/components for this blog, especially for `web/templates/ui`, `web/static/style.css`, `web/static/tufte-css`, responsive behavior, accessibility, and visual consistency work.
+description: 博客前台与管理后台 CSS 设计与实现专家。Use when users ask to redesign, polish, or implement styles/components in this repo: (1) site frontend based on `web/static/site/tufte-css/tufte.css`, with custom styles in `web/static/site/style.css`, template files under `web/templates/site`, and Lucide icons via `web/templates/lucide_icon.html`; (2) admin backend based on Oat CSS under `web/static/admin/oat`, aligned with Oat theme tokens, with custom styles in `web/static/admin/style.css`.
 ---
 
 # Blog CSS Modernizer
 
-按以下顺序执行，优先满足用户明确需求，再做风格延展。
+按以下顺序执行，先判断目标分区，再实现样式。
 
-## 1) 读取现有风格上下文
+## 1) 判断任务属于哪个分区
 
-先定位目标页面，再按需读取这些文件：
+先根据目标文件和页面路径选择分区：
 
-- `web/templates/ui/layout.html`
-- `web/templates/ui/*.html` 中与目标页面相关的模板
-- `web/static/style.css`（如涉及后台或全局变量）
-- `web/static/tufte-css/tufte.css`（如涉及前台阅读页面）
-- `web/static/oat/css/00-base.css` 和 `web/static/oat/css/01-theme.css`（如涉及 Oat 组件）
+- 前台博客：`web/templates/site/*`、`web/static/site/*`
+- 管理后台：`web/templates/admin/*`、`web/static/admin/*`
 
-仅加载当前任务需要的文件，避免无关上下文。
+若同时涉及两端，分开实现并分别说明影响范围。
 
-## 2) 建立风格基线
+## 2) 前台博客规则（Site）
 
-在动手改代码前，提炼并记录：
+在前台任务中执行以下规则：
 
-- 现有色彩变量、字号层级、间距节奏、圆角和阴影风格
-- 当前布局模式（阅读页、列表页、详情页、导航、评论区）
-- 交互状态（hover/focus/active/disabled）是否完整
-- 响应式断点与当前移动端行为
+- 以 `web/static/site/tufte-css/tufte.css` 作为基础风格，不覆盖其核心阅读排版
+- 优先使用原生 HTML 语义结构，不为样式目的增加多余包裹层
+- 将自定义样式写入 `web/static/site/style.css`
+- 保持极简风格，避免过多装饰性阴影、渐变、动画和边框
+- 使用 Lucide 图标体系，复用 `web/templates/lucide_icon.html`
+- 保持文章阅读体验稳定，重点关注正文、目录、评论区和分页可读性
+- 补齐 hover/focus/active/disabled 状态，保持键盘可达与可见焦点
 
-若用户只给了高层需求（例如“更现代”），默认做“渐进式焕新”，不做大改版。
+## 3) 管理后台规则（Admin）
 
-## 3) 设计与实现原则
+在后台任务中执行以下规则：
 
-- 保留现有品牌识别：沿用已有主色与排版气质，避免无关的大幅换肤
-- 优先使用 CSS 变量和现有类体系，避免硬编码重复值
-- 优先做低侵入增量改造，减少模板结构变更
-- 保持阅读体验稳定，不破坏正文排版与 Markdown 内容可读性
-- 保证可用性：键盘可达、可见焦点、合理对比度、触屏可点按区域
-- 保持简洁：控制视觉噪音，减少装饰性样式堆叠
+- 以 Oat CSS 作为基础框架（`web/static/admin/oat/oat.min.css` 及其组件样式）
+- 保持组件外观和交互与 Oat 对齐，不做明显背离的视觉风格
+- 将自定义样式写入 `web/static/admin/style.css`
+- 优先复用 Oat 变量与设计 token
+- 颜色、间距、边框半径、阴影等规范值优先读取 `web/static/admin/oat/css/01-theme.css`（若项目改为 `00-theme.css`，以项目实际路径为准）
+- 控制选择器优先级，优先局部增量覆盖，避免全局污染
 
-## 4) 默认实现策略
+## 4) 通用实现规则
 
-当用户未给出细节时，使用以下默认值：
-
-- 范围默认聚焦前台博客 UI（`web/templates/ui`），不主动改后台管理页
-- 动效保持轻量（120ms-220ms），用于层级反馈，不做炫技动画
-- 间距以现有尺度为基准，仅做一致性修正
-- 组件状态补齐优先级高于新增视觉特效
+- 先复用现有变量和组件，再新增自定义样式
+- 先保证信息层级和可用性，再做轻量视觉优化
+- 默认做渐进式改造，不做大规模重构
+- 动效保持轻量（120ms-220ms），只用于反馈，不用于装饰
+- 响应式优先覆盖移动端核心路径（列表、详情、表单、导航）
 
 ## 5) 交付格式
 
 每次交付都输出：
 
-1. 变更文件与原因
-2. 关键样式策略（如何兼容现有风格）
-3. 响应式与可访问性覆盖说明
-4. 可选后续优化项（仅列最有价值的 1-3 项）
+1. 分区归属（前台/后台/两者）
+2. 变更文件与原因
+3. 对齐基线说明（Tufte 或 Oat）
+4. 响应式与可访问性覆盖说明
+5. 可选后续优化项（仅列最有价值的 1-3 项）
 
 ## 6) 质量检查
 
 提交前自检：
 
+- 是否只在对应分区的样式文件中落地自定义规则
 - 是否复用了已有变量/规则，避免无意义重复
 - 是否避免了过高选择器优先级和样式污染
 - 是否覆盖桌面与移动端主要路径

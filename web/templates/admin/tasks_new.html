@@ -2,13 +2,13 @@
 
   <p>
     <label class="flex items-center gap-2">
-      是否启用 {{ template "partials/toggle" dict "ID" "task_enabled_new" "Name" "enabled" "Checked" true "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
+      是否启用 {{ template "admin/includes/toggle" dict "ID" "task_enabled_new" "Name" "enabled" "Checked" true "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
     </label>
   </p>
 
-  {{ template "partials/form_field_radio" dict "Label" "Kind (任务类型)" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "内部任务（不生成运行记录）") (dict "Value" "1" "Label" "用户任务（生成运行记录）")) "Selected" "0" "Help" "内部任务执行时不写入 TaskRun 表" }}
+  {{ template "admin/includes/form_field_radio" dict "Label" "Kind (任务类型)" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "内部任务（不生成运行记录）") (dict "Value" "1" "Label" "用户任务（生成运行记录）")) "Selected" "0" "Help" "内部任务执行时不写入 TaskRun 表" }}
 
-  {{ template "partials/form_field_text" dict "Label" "任务名称" "Name" "name" "Required" true "Placeholder" "任务名称" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "任务名称" "Name" "name" "Required" true "Placeholder" "任务名称" }}
 
   <p>
     <label>
@@ -34,7 +34,7 @@
   </p>
   <input type="hidden" name="schedule" id="schedule-value" value="@daily">
 
-  {{ template "partials/form_field_textarea" dict "Label" "" "Name" "description" "Value" "" "Rows" 3 "Cols" 60 "Placeholder" "任务描述" }}
+  {{ template "admin/includes/form_field_textarea" dict "Label" "" "Name" "description" "Value" "" "Rows" 3 "Cols" 60 "Placeholder" "任务描述" }}
 
 </form>
 
