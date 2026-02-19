@@ -54,13 +54,13 @@
   <div class="tab-nav">
     {{ range .SettingKinds }}
     <div class="tab-item{{ if eq $.ActiveKind . }} active{{ end }}">
-      <a href="{{ index $.KindLinks . }}">{{ . }}</a>
+      <a href="/admin/settings/all?kind={{ . }}">{{ . }}</a>
     </div>
     {{ end }}
   </div>
 </div>
 
-<form id="form" method="post" action="{{ .FormAction }}" class="settings-all-form">
+<form id="form" method="post" action="/admin/settings/all?kind={{ .ActiveKind }}" class="settings-all-form">
   <section class="settings-kind">
     <div class="settings-kind-fields">
       {{ range index .SettingsByKind .ActiveKind }}

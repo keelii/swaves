@@ -1437,23 +1437,11 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	kindLinks := make(map[string]string, len(settingKinds))
-	for _, settingKind := range settingKinds {
-		kindLinks[settingKind] = "/admin/settings/all?kind=" + url.QueryEscape(settingKind)
-	}
-
-	formAction := "/admin/settings/all"
-	if activeKind != "" {
-		formAction += "?kind=" + url.QueryEscape(activeKind)
-	}
-
 	return RenderAdminView(c, "settings_all", fiber.Map{
 		"Title":          "Settings - Edit All",
 		"SettingsByKind": settingsByKind,
 		"SettingKinds":   settingKinds,
 		"ActiveKind":     activeKind,
-		"KindLinks":      kindLinks,
-		"FormAction":     formAction,
 	}, "")
 }
 
