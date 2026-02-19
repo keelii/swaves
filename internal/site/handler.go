@@ -158,6 +158,52 @@ func appendQueryParam(path, key, value string) string {
 	return parsed.String()
 }
 
+func getSitePath(path string) string {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return share.GetBasePath() + path
+}
+
+func normalizeErrorReturnURL(raw string) string {
+	candidate := strings.TrimSpace(raw)
+	if isSafeReturnPath(candidate) {
+		return candidate
+	}
+	if parsed, err := url.Parse(candidate); err == nil {
+		path := parsed.EscapedPath()
+		if parsed.RawQuery != "" {
+			path += "?" + parsed.RawQuery
+		}
+		if isSafeReturnPath(path) {
+			return path
+		}
+	}
+	return getSiteFallbackPath()
+}
+
+func buildSiteErrorRedirectPath(c *fiber.Ctx, targetPath string) string {
+	returnURL := strings.TrimSpace(c.Query("returnUrl"))
+	if returnURL == "" {
+		returnURL = strings.TrimSpace(c.OriginalURL())
+	}
+	returnURL = normalizeErrorReturnURL(returnURL)
+	if returnURL == targetPath {
+		returnURL = getSiteFallbackPath()
+	}
+	return appendQueryParam(targetPath, "returnUrl", returnURL)
+}
+
+func (h Handler) redirectNotFound(c *fiber.Ctx) error {
+	targetPath := getSitePath("/404")
+	return c.Redirect(buildSiteErrorRedirectPath(c, targetPath), fiber.StatusFound)
+}
+
+func (h Handler) redirectError(c *fiber.Ctx) error {
+	targetPath := getSitePath("/error")
+	return c.Redirect(buildSiteErrorRedirectPath(c, targetPath), fiber.StatusFound)
+}
+
 func (h Handler) ensureLikePostExists(postID int64) error {
 	post, err := db.GetPostByID(h.Model, postID)
 	if err != nil {
@@ -197,6 +243,29 @@ func (h Handler) GetDate(c *fiber.Ctx) error {
 	fmt.Println("===")
 	return c.Send([]byte("ui home"))
 }
+
+func (h Handler) GetNotFound(c *fiber.Ctx) error {
+	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
+	c.Status(fiber.StatusNotFound)
+	return RenderUIView(c, "site/404", fiber.Map{
+		"Title":     "404 Not Found",
+		"Pages":     ListPages(h.Model),
+		"ReturnURL": returnURL,
+		"ReqID":     c.Locals("reqId"),
+	}, "")
+}
+
+func (h Handler) GetError(c *fiber.Ctx) error {
+	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
+	c.Status(fiber.StatusInternalServerError)
+	return RenderUIView(c, "site/error", fiber.Map{
+		"Title":     "Error",
+		"Pages":     ListPages(h.Model),
+		"ReturnURL": returnURL,
+		"ReqID":     c.Locals("reqId"),
+	}, "")
+}
+
 func (h Handler) GetHome(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
@@ -229,22 +298,22 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	day := c.Params("day")
 
 	if year == "" || month == "" || day == "" {
-		return c.Status(fiber.StatusBadRequest).SendString("invalid date format")
+		return h.redirectNotFound(c)
 	}
 
 	post, err := h.GetPostByIDSlugTitle(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return h.redirectNotFound(c)
 	}
 
 	if post == nil {
-		return c.Status(fiber.StatusNotFound).SendString("page not found")
+		return h.redirectNotFound(c)
 	}
 
 	y, m, d := share.GetArticlePublishedDate(post.Post)
 
 	if y != year || m != month || d != day {
-		return c.Status(fiber.StatusNotFound).SendString("page not found, maybe the date is wrong")
+		return h.redirectNotFound(c)
 	}
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
@@ -283,7 +352,11 @@ func (h Handler) GetPostByIDSlugTitle(c *fiber.Ctx) (*DisplayPostWithRelation, e
 		}
 		post = GetPostByID(h.Model, id)
 	} else if share.PostNameIsTitle() {
-		post = GetPostByTitle(h.Model, ist)
+		title := ist
+		if unescapedTitle, err := url.PathUnescape(ist); err == nil {
+			title = unescapedTitle
+		}
+		post = GetPostByTitle(h.Model, title)
 	} else {
 		post = GetPostBySlug(h.Model, ist)
 	}
@@ -308,7 +381,10 @@ func (h Handler) funcName(c *fiber.Ctx, post *DisplayPostWithRelation) (int, int
 func (h Handler) GetPostByIST(c *fiber.Ctx) error {
 	post, err := h.GetPostByIDSlugTitle(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return h.redirectNotFound(c)
+	}
+	if post == nil {
+		return h.redirectNotFound(c)
 	}
 
 	readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
@@ -342,7 +418,7 @@ func (h Handler) GetCategoryIndex(c *fiber.Ctx) error {
 	categories := ListCategories(h.Model)
 
 	if categories == nil {
-		return c.Status(fiber.StatusNotFound).SendString("categories not found")
+		return h.redirectError(c)
 	}
 
 	pages := ListPages(h.Model)
@@ -358,7 +434,7 @@ func (h Handler) GetTagIndex(c *fiber.Ctx) error {
 	tags := ListTags(h.Model)
 
 	if tags == nil {
-		return c.Status(fiber.StatusNotFound).SendString("tags not found")
+		return h.redirectError(c)
 	}
 
 	h.trackSiteUV(c)
@@ -373,7 +449,7 @@ func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
 	slug := c.Params("categorySlug")
 	category := GetCategoryBySlug(h.Model, slug)
 	if category == nil {
-		return c.Status(fiber.StatusNotFound).SendString("category not found")
+		return h.redirectNotFound(c)
 	}
 
 	h.trackUV(c, db.UVEntityCategory, category.ID)
@@ -393,7 +469,7 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 	slug := c.Params("tagSlug")
 	tag := GetTagBySlug(h.Model, slug)
 	if tag == nil {
-		return c.Status(fiber.StatusNotFound).SendString("tag not found")
+		return h.redirectNotFound(c)
 	}
 
 	h.trackUV(c, db.UVEntityTag, tag.ID)
@@ -412,24 +488,39 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 func (h Handler) PostEntityLike(c *fiber.Ctx) error {
 	postID, err := strconv.ParseInt(c.Params("postID"), 10, 64)
 	if err != nil || postID <= 0 {
-		return fiber.ErrBadRequest
+		if shouldReturnLikeJSON(c) {
+			return fiber.ErrBadRequest
+		}
+		return h.redirectError(c)
 	}
 
 	if err = h.ensureLikePostExists(postID); err != nil {
 		if db.IsErrNotFound(err) {
-			return fiber.ErrNotFound
+			if shouldReturnLikeJSON(c) {
+				return fiber.ErrNotFound
+			}
+			return h.redirectNotFound(c)
 		}
-		return err
+		if shouldReturnLikeJSON(c) {
+			return err
+		}
+		return h.redirectError(c)
 	}
 
 	visitorID := middleware.GetOrCreateVisitorID(c, "")
 	if visitorID == "" {
-		return fiber.ErrBadRequest
+		if shouldReturnLikeJSON(c) {
+			return fiber.ErrBadRequest
+		}
+		return h.redirectError(c)
 	}
 
 	liked, err := db.IsEntityLikedByVisitor(h.Model, postID, visitorID)
 	if err != nil {
-		return err
+		if shouldReturnLikeJSON(c) {
+			return err
+		}
+		return h.redirectError(c)
 	}
 
 	nextStatus := db.LikeStatusActive
@@ -438,12 +529,18 @@ func (h Handler) PostEntityLike(c *fiber.Ctx) error {
 	}
 
 	if err = db.UpsertEntityLike(h.Model, postID, visitorID, nextStatus); err != nil {
-		return err
+		if shouldReturnLikeJSON(c) {
+			return err
+		}
+		return h.redirectError(c)
 	}
 
 	likeCount, err := db.CountEntityLikes(h.Model, postID)
 	if err != nil {
-		return err
+		if shouldReturnLikeJSON(c) {
+			return err
+		}
+		return h.redirectError(c)
 	}
 
 	if shouldReturnLikeJSON(c) {
@@ -459,13 +556,13 @@ func (h Handler) PostEntityLike(c *fiber.Ctx) error {
 func (h Handler) PostComment(c *fiber.Ctx) error {
 	postID, err := strconv.ParseInt(c.Params("postID"), 10, 64)
 	if err != nil || postID <= 0 {
-		return fiber.ErrBadRequest
+		return h.redirectError(c)
 	}
 	if err = h.ensureLikePostExists(postID); err != nil {
 		if db.IsErrNotFound(err) {
-			return fiber.ErrNotFound
+			return h.redirectNotFound(c)
 		}
-		return err
+		return h.redirectError(c)
 	}
 	visitorID := middleware.GetOrCreateVisitorID(c, "")
 	if isCommentCaptchaRequired(visitorID) {
@@ -484,39 +581,39 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 	if rawParentID := strings.TrimSpace(c.FormValue("parent_id")); rawParentID != "" {
 		parentID, err = strconv.ParseInt(rawParentID, 10, 64)
 		if err != nil || parentID < 0 {
-			return fiber.ErrBadRequest
+			return h.redirectError(c)
 		}
 	}
 	if parentID > 0 {
 		parentComment, parentErr := db.GetCommentByID(h.Model, parentID)
 		if parentErr != nil {
 			if db.IsErrNotFound(parentErr) {
-				return fiber.ErrBadRequest
+				return h.redirectError(c)
 			}
-			return parentErr
+			return h.redirectError(c)
 		}
 		if parentComment.PostID != postID {
-			return fiber.ErrBadRequest
+			return h.redirectError(c)
 		}
 	}
 
 	author := strings.TrimSpace(c.FormValue("author"))
 	if author == "" || len(author) > 80 {
-		return fiber.ErrBadRequest
+		return h.redirectError(c)
 	}
 
 	content := strings.TrimSpace(c.FormValue("content"))
 	if content == "" || len(content) > 5000 {
-		return fiber.ErrBadRequest
+		return h.redirectError(c)
 	}
 
 	authorEmail := strings.TrimSpace(c.FormValue("author_email"))
 	if len(authorEmail) > 120 {
-		return fiber.ErrBadRequest
+		return h.redirectError(c)
 	}
 	authorURL := strings.TrimSpace(c.FormValue("author_url"))
 	if len(authorURL) > 300 {
-		return fiber.ErrBadRequest
+		return h.redirectError(c)
 	}
 	rememberMe := isCommentRememberMeEnabled(c.FormValue("remember_me"))
 
@@ -539,7 +636,7 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 		Status:      status,
 	}
 	if _, err = db.CreateComment(h.Model, comment); err != nil {
-		return err
+		return h.redirectError(c)
 	}
 
 	saveCommentFormDefaults(c, commentFormDefaults{

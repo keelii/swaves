@@ -19,6 +19,8 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup.Post("/_action/comment/:postID", commentRateLimitMiddleware(), handler.PostComment)
 
 	uiGroup.Get("/", handler.GetHome)
+	uiGroup.Get("/404", handler.GetNotFound)
+	uiGroup.Get("/error", handler.GetError)
 	// RSS
 	uiGroup.Get(store.GetSetting("rss_path"), handler.GetRSS)
 	// Categories and Tags
