@@ -123,11 +123,16 @@ func shouldReturnLikeJSON(c *fiber.Ctx) bool {
 }
 
 func normalizeCommentFeedbackStatus(raw string) string {
-	switch strings.TrimSpace(raw) {
+	status := strings.TrimSpace(raw)
+	switch status {
 	case string(db.CommentStatusApproved):
 		return string(db.CommentStatusApproved)
 	case string(db.CommentStatusPending):
 		return string(db.CommentStatusPending)
+	case commentFeedbackCaptchaFailed:
+		return commentFeedbackCaptchaFailed
+	case commentFeedbackRateLimited:
+		return commentFeedbackRateLimited
 	default:
 		return ""
 	}
@@ -241,6 +246,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
+	commentCaptcha := buildCommentCaptchaChallenge(middleware.GetOrCreateVisitorID(c, ""))
 
 	return RenderUIView(c, "site/post", fiber.Map{
 		"Post":            post,
@@ -250,6 +256,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 		"Comments":        comments,
 		"CommentCount":    commentCount,
 		"CommentFeedback": commentFeedback,
+		"CommentCaptcha":  commentCaptcha,
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -266,6 +273,7 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
+	commentCaptcha := buildCommentCaptchaChallenge(middleware.GetOrCreateVisitorID(c, ""))
 
 	return RenderUIView(c, "site/post", fiber.Map{
 		"Post":            post,
@@ -275,6 +283,7 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 		"Comments":        comments,
 		"CommentCount":    commentCount,
 		"CommentFeedback": commentFeedback,
+		"CommentCaptcha":  commentCaptcha,
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -417,6 +426,16 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 		}
 		return err
 	}
+	visitorID := middleware.GetOrCreateVisitorID(c, "")
+	captchaToken := strings.TrimSpace(c.FormValue(commentCaptchaTokenField))
+	captchaAnswer := strings.TrimSpace(c.FormValue(commentCaptchaAnswerField))
+	if !verifyCommentCaptchaChallenge(visitorID, captchaToken, captchaAnswer) {
+		redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackCaptchaFailed)
+		if !strings.Contains(redirectPath, "#") {
+			redirectPath += "#comments"
+		}
+		return c.Redirect(redirectPath, fiber.StatusSeeOther)
+	}
 
 	parentID := int64(0)
 	if rawParentID := strings.TrimSpace(c.FormValue("parent_id")); rawParentID != "" {
@@ -457,7 +476,6 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	visitorID := middleware.GetOrCreateVisitorID(c, "")
 	isLogin, _ := c.Locals("IsLogin").(bool)
 	status := db.CommentStatusPending
 	if isLogin {

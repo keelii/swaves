@@ -16,7 +16,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup := app.Group(store.GetSetting("base_path"))
 	uiGroup.Use(middleware.EnsureVisitorID(""))
 	uiGroup.Post("/_action/like/:postID", handler.PostEntityLike)
-	uiGroup.Post("/_action/comment/:postID", handler.PostComment)
+	uiGroup.Post("/_action/comment/:postID", commentRateLimitMiddleware(), handler.PostComment)
 
 	uiGroup.Get("/", handler.GetHome)
 	// RSS

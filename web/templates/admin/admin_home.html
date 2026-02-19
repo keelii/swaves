@@ -78,7 +78,7 @@
     <div class="card">
       <div class="dashboard-label salign">
         <span>文章总数</span>
-        <a href="/admin/posts/new">{{ template "partials/lucide_icon" dict "name" "plus" "label" "新建文章" }}</a>
+        <a href="/admin/posts/new">{{ template "lucide_icon" dict "name" "plus" "label" "新建文章" }}</a>
       </div>
       <div class="dashboard-number">{{ if .PostCount }}{{ .PostCount }}{{ else }}0{{ end }}</div>
     </div>
@@ -87,7 +87,7 @@
     <div class="card">
       <div class="dashboard-label salign">
         <span>分类总数</span>
-        <a href="/admin/categories/new">{{ template "partials/lucide_icon" dict "name" "plus" "label" "新建分类" }}</a>
+        <a href="/admin/categories/new">{{ template "lucide_icon" dict "name" "plus" "label" "新建分类" }}</a>
       </div>
       <div class="dashboard-number">{{ if .CategoryCount }}{{ .CategoryCount }}{{ else }}0{{ end }}</div>
     </div>
@@ -96,7 +96,7 @@
     <div class="card">
       <div class="dashboard-label salign">
         <span>标签总数</span>
-        <a href="/admin/tags/new">{{ template "partials/lucide_icon" dict "name" "plus" "label" "新建标签" }}</a>
+        <a href="/admin/tags/new">{{ template "lucide_icon" dict "name" "plus" "label" "新建标签" }}</a>
       </div>
       <div class="dashboard-number">{{ if .TagCount }}{{ .TagCount }}{{ else }}0{{ end }}</div>
     </div>

@@ -1,0 +1,204 @@
+package site
+
+import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
+	"math/big"
+	"strconv"
+	"strings"
+	"swaves/internal/middleware"
+	"swaves/internal/store"
+	"sync"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
+)
+
+const (
+	commentCaptchaTokenField  = "captcha_token"
+	commentCaptchaAnswerField = "captcha_answer"
+	commentCaptchaTTL         = 10 * time.Minute
+
+	commentRateLimitMax        = 5
+	commentRateLimitExpiration = time.Minute
+
+	commentFeedbackCaptchaFailed = "captcha_failed"
+	commentFeedbackRateLimited   = "rate_limited"
+)
+
+type commentCaptchaChallenge struct {
+	Prompt string
+	Token  string
+}
+
+var commentCaptchaNonceCache = struct {
+	sync.Mutex
+	items map[string]int64
+}{
+	items: map[string]int64{},
+}
+
+func buildCommentCaptchaChallenge(visitorID string) commentCaptchaChallenge {
+	left := randomIntInRange(1, 20)
+	right := randomIntInRange(1, 20)
+	operator := "+"
+	answer := left + right
+
+	if randomIntInRange(0, 1) == 1 {
+		if left < right {
+			left, right = right, left
+		}
+		operator = "-"
+		answer = left - right
+	}
+
+	nonce := randomToken(12)
+	expiresAt := strconv.FormatInt(time.Now().Add(commentCaptchaTTL).Unix(), 10)
+	signature := signCommentCaptcha(visitorID, nonce, expiresAt, strconv.Itoa(answer))
+	rawToken := strings.Join([]string{nonce, expiresAt, signature}, ".")
+
+	return commentCaptchaChallenge{
+		Prompt: fmt.Sprintf("%d %s %d = ?", left, operator, right),
+		Token:  base64.RawURLEncoding.EncodeToString([]byte(rawToken)),
+	}
+}
+
+func verifyCommentCaptchaChallenge(visitorID, token, answer string) bool {
+	token = strings.TrimSpace(token)
+	answer = strings.TrimSpace(answer)
+	if token == "" || answer == "" || len(answer) > 16 {
+		return false
+	}
+
+	normalizedAnswer, err := strconv.Atoi(answer)
+	if err != nil || normalizedAnswer < 0 {
+		return false
+	}
+	answer = strconv.Itoa(normalizedAnswer)
+
+	rawToken, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return false
+	}
+
+	parts := strings.Split(string(rawToken), ".")
+	if len(parts) != 3 {
+		return false
+	}
+	nonce := parts[0]
+	expiresAtRaw := parts[1]
+	signature := parts[2]
+	if nonce == "" || expiresAtRaw == "" || signature == "" {
+		return false
+	}
+
+	expiresAt, err := strconv.ParseInt(expiresAtRaw, 10, 64)
+	if err != nil || time.Now().Unix() > expiresAt {
+		return false
+	}
+	if !consumeCommentCaptchaNonce(nonce, expiresAt) {
+		return false
+	}
+
+	expectedSignature := signCommentCaptcha(visitorID, nonce, expiresAtRaw, answer)
+	return hmac.Equal([]byte(signature), []byte(expectedSignature))
+}
+
+func commentRateLimitMiddleware() fiber.Handler {
+	return limiter.New(limiter.Config{
+		Max:        commentRateLimitMax,
+		Expiration: commentRateLimitExpiration,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			visitorID := middleware.GetOrCreateVisitorID(c, "")
+			if visitorID == "" {
+				return "ip:" + strings.TrimSpace(c.IP())
+			}
+			return "visitor:" + visitorID
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackRateLimited)
+			if !strings.Contains(redirectPath, "#") {
+				redirectPath += "#comments"
+			}
+			return c.Redirect(redirectPath, fiber.StatusSeeOther)
+		},
+	})
+}
+
+func signCommentCaptcha(visitorID, nonce, expiresAt, answer string) string {
+	mac := hmac.New(sha256.New, []byte(commentCaptchaSecret()))
+	mac.Write([]byte("swaves-comment-captcha-v1"))
+	mac.Write([]byte{0})
+	mac.Write([]byte(visitorID))
+	mac.Write([]byte{0})
+	mac.Write([]byte(nonce))
+	mac.Write([]byte{0})
+	mac.Write([]byte(expiresAt))
+	mac.Write([]byte{0})
+	mac.Write([]byte(answer))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func commentCaptchaSecret() string {
+	settings := store.GetSettingMap()
+	if secret := strings.TrimSpace(settings["comment_captcha_secret"]); secret != "" {
+		return secret
+	}
+	if adminPasswordHash := strings.TrimSpace(settings["admin_password"]); adminPasswordHash != "" {
+		return adminPasswordHash
+	}
+	if siteURL := strings.TrimSpace(settings["site_url"]); siteURL != "" {
+		return siteURL
+	}
+	return "swaves-comment-captcha-default-secret"
+}
+
+func randomIntInRange(min, max int) int {
+	if max <= min {
+		return min
+	}
+
+	delta := max - min + 1
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(delta)))
+	if err != nil {
+		return min + int(time.Now().UnixNano()%int64(delta))
+	}
+	return min + int(n.Int64())
+}
+
+func randomToken(size int) string {
+	if size <= 0 {
+		size = 12
+	}
+
+	buf := make([]byte, size)
+	if _, err := rand.Read(buf); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 36)
+	}
+	return base64.RawURLEncoding.EncodeToString(buf)
+}
+
+func consumeCommentCaptchaNonce(nonce string, expiresAt int64) bool {
+	now := time.Now().Unix()
+
+	commentCaptchaNonceCache.Lock()
+	defer commentCaptchaNonceCache.Unlock()
+
+	for key, expireAt := range commentCaptchaNonceCache.items {
+		if expireAt <= now {
+			delete(commentCaptchaNonceCache.items, key)
+		}
+	}
+
+	if existingExpireAt, ok := commentCaptchaNonceCache.items[nonce]; ok && existingExpireAt > now {
+		return false
+	}
+
+	commentCaptchaNonceCache.items[nonce] = expiresAt
+	return true
+}

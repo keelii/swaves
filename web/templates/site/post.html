@@ -41,6 +41,10 @@
       <p><small>评论已发布。</small></p>
     {{ else if eq .CommentFeedback "pending" }}
       <p><small>评论已提交，等待审核。</small></p>
+    {{ else if eq .CommentFeedback "captcha_failed" }}
+      <p><small>验证码错误或已过期，请刷新页面后重试。</small></p>
+    {{ else if eq .CommentFeedback "rate_limited" }}
+      <p><small>提交过于频繁，请稍后再试。</small></p>
     {{ end }}
 
     <fieldset>
@@ -64,6 +68,12 @@
         <p>
           <label for="comment-content">内容</label>
           <textarea id="comment-content" style="vertical-align: top;" name="content" rows="4" minlength="5" maxlength="5000" required></textarea>
+        </p>
+        <p>
+          <label for="comment-captcha-answer">验证码</label>
+          <span>{{ .CommentCaptcha.Prompt }}</span>
+          <input type="hidden" name="captcha_token" value="{{ .CommentCaptcha.Token }}">
+          <input id="comment-captcha-answer" name="captcha_answer" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="16" required style="width: 6em;" autocomplete="off">
         </p>
         <p id="comment-reply-state" style="display:none;">
           <small>正在回复 <span id="comment-reply-author"></span></small>
