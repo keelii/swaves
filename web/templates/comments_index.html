@@ -1,0 +1,99 @@
+{{ $status := or .StatusFilter "" }}
+
+<div class="tab-card">
+  <div class="tab-nav">
+    <div class="tab-item{{ if eq $status "" }} active{{ end }}">
+      <a href="/admin/comments">全部</a>
+    </div>
+    <div class="tab-item{{ if eq $status "pending" }} active{{ end }}">
+      <a href="/admin/comments?status=pending">待审核</a>
+    </div>
+    <div class="tab-item{{ if eq $status "approved" }} active{{ end }}">
+      <a href="/admin/comments?status=approved">已通过</a>
+    </div>
+    <div class="tab-item{{ if eq $status "spam" }} active{{ end }}">
+      <a href="/admin/comments?status=spam">垃圾</a>
+    </div>
+  </div>
+</div>
+
+<table>
+  <thead>
+  <tr>
+    <th class="cell-id">ID</th>
+    <th>文章</th>
+    <th>作者</th>
+    <th>内容</th>
+    <th>状态</th>
+    <th>时间</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+  <tbody>
+  {{ range .Comments }}
+    <tr>
+      <td class="cell-id">{{ .ID }}</td>
+      <td>
+        <a href="/admin/posts/{{ .PostID }}/edit">{{ .PostTitle }}</a>
+        <div class="text-light">post_id={{ .PostID }}</div>
+      </td>
+      <td>
+        <div>{{ .Author }}</div>
+        {{ if .AuthorEmail }}<div class="text-light">{{ .AuthorEmail }}</div>{{ end }}
+        {{ if .AuthorURL }}<div class="text-light">{{ .AuthorURL }}</div>{{ end }}
+      </td>
+      <td>
+        {{ if gt .ParentID 0 }}
+          <div class="text-light">回复 #{{ .ParentID }}{{ if .ParentAuthor }} (@{{ .ParentAuthor }}){{ end }}</div>
+        {{ end }}
+        <div style="white-space: pre-wrap;">{{ .Content }}</div>
+      </td>
+      <td>
+        {{ if eq .Status "approved" }}
+          <span class="badge success">已通过</span>
+        {{ else if eq .Status "spam" }}
+          <span class="badge danger">垃圾</span>
+        {{ else }}
+          <span class="badge secondary">待审核</span>
+        {{ end }}
+      </td>
+      <td>{{ relativeTime .CreatedAt }}</td>
+      <td>
+        <div class="row-actions">
+          {{ if ne .Status "approved" }}
+            <form method="post" action="/admin/comments/{{ .ID }}/approve">
+              <input type="hidden" name="status_filter" value="{{ $status }}">
+              <button type="submit" class="button">通过</button>
+            </form>
+          {{ end }}
+          {{ if ne .Status "pending" }}
+            <form method="post" action="/admin/comments/{{ .ID }}/pending">
+              <input type="hidden" name="status_filter" value="{{ $status }}">
+              <button type="submit" class="button">待审</button>
+            </form>
+          {{ end }}
+          {{ if ne .Status "spam" }}
+            <form method="post" action="/admin/comments/{{ .ID }}/spam">
+              <input type="hidden" name="status_filter" value="{{ $status }}">
+              <button type="submit" class="button">垃圾</button>
+            </form>
+          {{ end }}
+          <form method="post" action="/admin/comments/{{ .ID }}/delete">
+            <input type="hidden" name="status_filter" value="{{ $status }}">
+            {{ template "partials/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+          </form>
+        </div>
+      </td>
+    </tr>
+  {{ else }}
+    {{ template "partials/table_empty" dict "ColSpan" 7 "Message" "No comments" }}
+  {{ end }}
+  </tbody>
+  <tfoot>
+  <tr>
+    <td colspan="7">
+      {{template "partials/pagination" .}}
+    </td>
+  </tr>
+  </tfoot>
+</table>

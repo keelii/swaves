@@ -91,6 +91,50 @@ func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
 	}
 }
 
+func ListApprovedCommentsTree(dbx *db.DB, postID int64) []*DisplayComment {
+	comments, err := db.ListApprovedPostComments(dbx, postID)
+	if err != nil {
+		log.Println(err)
+		return []*DisplayComment{}
+	}
+	if len(comments) == 0 {
+		return []*DisplayComment{}
+	}
+
+	nodeMap := make(map[int64]*DisplayComment, len(comments))
+	for i := range comments {
+		item := comments[i]
+		nodeMap[item.ID] = &DisplayComment{
+			Comment:  item,
+			Children: make([]*DisplayComment, 0),
+		}
+	}
+
+	roots := make([]*DisplayComment, 0)
+	for i := range comments {
+		node := nodeMap[comments[i].ID]
+		if node.ParentID > 0 {
+			if parent, ok := nodeMap[node.ParentID]; ok {
+				node.ParentAuthor = parent.Author
+				parent.Children = append(parent.Children, node)
+				continue
+			}
+		}
+		roots = append(roots, node)
+	}
+
+	return roots
+}
+
+func CountApprovedComments(dbx *db.DB, postID int64) int {
+	count, err := db.CountPostComments(dbx, postID, db.CommentStatusApproved)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return count
+}
+
 func ListCategories(dbx *db.DB) []DisplayItem {
 	res, err := db.ListCategories(dbx, true)
 	if err != nil {

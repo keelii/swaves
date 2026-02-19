@@ -25,6 +25,12 @@ type DisplayPostWithRelation struct {
 	Category *DisplayItem
 }
 
+type DisplayComment struct {
+	db.Comment
+	ParentAuthor string
+	Children     []*DisplayComment
+}
+
 func (receiver DisplayPostWithRelation) Raw() *db.Post {
 	return &receiver.Post
 }

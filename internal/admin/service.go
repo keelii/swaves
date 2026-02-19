@@ -991,6 +991,28 @@ func DeleteHttpErrorLogService(dbx *db.DB, id int64) error {
 	return db.DeleteHttpErrorLog(dbx, id)
 }
 
+// Comments
+func ListCommentsService(dbx *db.DB, status db.CommentStatus, pager *types.Pagination) ([]db.Comment, error) {
+	offset := (pager.Page - 1) * pager.PageSize
+	items, total, err := db.ListCommentsForAdmin(dbx, status, pager.PageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+
+	return items, nil
+}
+
+func UpdateCommentStatusService(dbx *db.DB, id int64, status db.CommentStatus) error {
+	return db.UpdateCommentStatus(dbx, id, status)
+}
+
+func DeleteCommentService(dbx *db.DB, id int64) error {
+	return db.SoftDeleteComment(dbx, id)
+}
+
 // Tasks
 type CreateTaskInput struct {
 	Code        string

@@ -23,6 +23,60 @@
   </section>
 </article>
 <section>
+<footer>
+  <div id="comments">
+    <h2>评论 ({{ .CommentCount }})</h2>
+
+    {{ if .Comments }}
+      <ol class="comment-list">
+          {{ range .Comments }}
+              {{ template "ui/comment_item" . }}
+          {{ end }}
+      </ol>
+    {{ else }}
+      <p><small>暂无评论，欢迎抢沙发。</small></p>
+    {{ end }}
+
+    {{ if eq .CommentFeedback "approved" }}
+      <p><small>评论已发布。</small></p>
+    {{ else if eq .CommentFeedback "pending" }}
+      <p><small>评论已提交，等待审核。</small></p>
+    {{ end }}
+
+    <fieldset>
+      <legend>发表评论</legend>
+      <form method="post" action="{{ GetBasePath }}/_action/comment/{{ .Post.ID }}" id="comment-form">
+        <input type="hidden" name="return_url" value="{{ .UrlPath }}">
+        <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
+        <p>
+          <label for="comment-author">昵称</label>
+          <input id="comment-author" name="author" type="text" required maxlength="80">
+        </p>
+        <p>
+          <label for="comment-email">邮箱</label>
+          <input id="comment-email" name="author_email" type="email" maxlength="120" placeholder="可选">
+        </p>
+        <p>
+          <label for="comment-url">网址</label>
+          <input id="comment-url" name="author_url" type="url" maxlength="300" placeholder="可选">
+        </p>
+        <p>
+          <label for="comment-content">内容</label>
+          <textarea id="comment-content" style="vertical-align: top;" name="content" rows="4" minlength="5" maxlength="5000" required></textarea>
+        </p>
+        <p id="comment-reply-state" style="display:none;">
+          <small>正在回复 <span id="comment-reply-author"></span></small>
+          <button type="button" id="comment-reply-cancel">取消回复</button>
+        </p>
+        <p>
+          <label>　　</label><button type="submit">提交评论</button>
+        </p>
+      </form>
+    </fieldset>
+  </div>
+</footer>
+</section>
+<section>
   <p class="salign">
       {{if .Post.Prev}}
         <span>上一篇：<a href="{{ .Post.Prev.PermLink }}" class="prev">{{ .Post.Prev.Title }}</a></span>
@@ -32,3 +86,42 @@
       {{end}}
   </p>
 </section>
+
+<script>
+  (function () {
+    var root = document.getElementById("comments");
+    if (!root) return;
+
+    var parentInput = document.getElementById("comment-parent-id");
+    var replyState = document.getElementById("comment-reply-state");
+    var replyAuthor = document.getElementById("comment-reply-author");
+    var cancelBtn = document.getElementById("comment-reply-cancel");
+
+    function resetReply() {
+      parentInput.value = "0";
+      replyAuthor.textContent = "";
+      replyState.style.display = "none";
+    }
+
+    root.addEventListener("click", function (event) {
+      var trigger = event.target.closest("[data-comment-reply]");
+      if (!trigger) return;
+      event.preventDefault();
+
+      var commentID = trigger.getAttribute("data-comment-id");
+      var author = trigger.getAttribute("data-comment-author") || "";
+      if (!commentID) return;
+
+      parentInput.value = commentID;
+      replyAuthor.textContent = author;
+      replyState.style.display = "block";
+      document.getElementById("comment-content").focus();
+    });
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        resetReply();
+      });
+    }
+  })();
+</script>

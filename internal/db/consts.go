@@ -12,6 +12,7 @@ const (
 const (
 	TableSessions       TableName = "t_admin_sessions"
 	TablePosts          TableName = "t_posts"
+	TableComments       TableName = "t_comments"
 	TableEncryptedPosts TableName = "t_encrypted_posts"
 	TableTags           TableName = "t_tags"
 	TableRedirects      TableName = "t_redirects"
@@ -39,6 +40,34 @@ const InitialSQL = `
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER
 	);
+
+	CREATE TABLE IF NOT EXISTS ` + TableComments + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		post_id INTEGER NOT NULL,
+		parent_id INTEGER NOT NULL DEFAULT 0,
+
+		author TEXT NOT NULL,
+		author_email TEXT NOT NULL DEFAULT '',
+		author_url TEXT NOT NULL DEFAULT '',
+
+		author_ip TEXT NOT NULL DEFAULT '',
+		visitor_id TEXT NOT NULL DEFAULT '',
+		user_agent TEXT NOT NULL DEFAULT '',
+
+		content TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		type TEXT NOT NULL DEFAULT 'comment',
+
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL,
+		deleted_at INTEGER
+	);
+	CREATE INDEX IF NOT EXISTS idx_comments_post_status_created
+	ON ` + TableComments + ` (post_id, status, created_at ASC, id ASC);
+	CREATE INDEX IF NOT EXISTS idx_comments_parent
+	ON ` + TableComments + ` (parent_id, created_at ASC, id ASC);
+	CREATE INDEX IF NOT EXISTS idx_comments_visitor_created
+	ON ` + TableComments + ` (visitor_id, created_at DESC);
 
 	CREATE TABLE IF NOT EXISTS ` + TableEncryptedPosts + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

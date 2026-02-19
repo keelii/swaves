@@ -1,0 +1,20 @@
+<li class="comment-item" id="comment-{{ .ID }}">
+  <div>
+    <strong>{{ .Author }}</strong>
+    <small> · {{ relativeTime .CreatedAt }}</small>
+    {{ if gt .ParentID 0 }}
+      <small> · 回复 @{{ .ParentAuthor }}</small>
+    {{ end }}
+  </div>
+  <div style="white-space: pre-wrap;">{{ .Content }}</div>
+  <p>
+    <button type="button" data-comment-reply data-comment-id="{{ .ID }}" data-comment-author="{{ .Author }}">回复</button>
+  </p>
+  {{ if .Children }}
+    <ol class="comment-children">
+      {{ range .Children }}
+        {{ template "ui/comment_item" . }}
+      {{ end }}
+    </ol>
+  {{ end }}
+</li>

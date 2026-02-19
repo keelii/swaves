@@ -122,6 +122,33 @@ func shouldReturnLikeJSON(c *fiber.Ctx) bool {
 	return requestedWith == "xmlhttprequest"
 }
 
+func normalizeCommentFeedbackStatus(raw string) string {
+	switch strings.TrimSpace(raw) {
+	case string(db.CommentStatusApproved):
+		return string(db.CommentStatusApproved)
+	case string(db.CommentStatusPending):
+		return string(db.CommentStatusPending)
+	default:
+		return ""
+	}
+}
+
+func appendQueryParam(path, key, value string) string {
+	parsed, err := url.Parse(path)
+	if err != nil {
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		return path + sep + key + "=" + url.QueryEscape(value)
+	}
+
+	query := parsed.Query()
+	query.Set(key, value)
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
+}
+
 func (h Handler) ensureLikePostExists(postID int64) error {
 	post, err := db.GetPostByID(h.Model, postID)
 	if err != nil {
@@ -211,12 +238,18 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
 	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
 	likeCount, liked := h.getPostLikeState(c, post.Post.ID)
+	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
+	commentCount := CountApprovedComments(h.Model, post.Post.ID)
+	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
 
 	return RenderUIView(c, "ui/post", fiber.Map{
-		"Post":      post,
-		"ReadUV":    readUV,
-		"LikeCount": likeCount,
-		"Liked":     liked,
+		"Post":            post,
+		"ReadUV":          readUV,
+		"LikeCount":       likeCount,
+		"Liked":           liked,
+		"Comments":        comments,
+		"CommentCount":    commentCount,
+		"CommentFeedback": commentFeedback,
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -230,12 +263,18 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
 	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
 	likeCount, liked := h.getPostLikeState(c, post.Post.ID)
+	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
+	commentCount := CountApprovedComments(h.Model, post.Post.ID)
+	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
 
 	return RenderUIView(c, "ui/post", fiber.Map{
-		"Post":      post,
-		"ReadUV":    readUV,
-		"LikeCount": likeCount,
-		"Liked":     liked,
+		"Post":            post,
+		"ReadUV":          readUV,
+		"LikeCount":       likeCount,
+		"Liked":           liked,
+		"Comments":        comments,
+		"CommentCount":    commentCount,
+		"CommentFeedback": commentFeedback,
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -365,6 +404,87 @@ func (h Handler) PostEntityLike(c *fiber.Ctx) error {
 	}
 
 	return c.Redirect(resolveReturnPath(c))
+}
+
+func (h Handler) PostComment(c *fiber.Ctx) error {
+	postID, err := strconv.ParseInt(c.Params("postID"), 10, 64)
+	if err != nil || postID <= 0 {
+		return fiber.ErrBadRequest
+	}
+	if err = h.ensureLikePostExists(postID); err != nil {
+		if db.IsErrNotFound(err) {
+			return fiber.ErrNotFound
+		}
+		return err
+	}
+
+	parentID := int64(0)
+	if rawParentID := strings.TrimSpace(c.FormValue("parent_id")); rawParentID != "" {
+		parentID, err = strconv.ParseInt(rawParentID, 10, 64)
+		if err != nil || parentID < 0 {
+			return fiber.ErrBadRequest
+		}
+	}
+	if parentID > 0 {
+		parentComment, parentErr := db.GetCommentByID(h.Model, parentID)
+		if parentErr != nil {
+			if db.IsErrNotFound(parentErr) {
+				return fiber.ErrBadRequest
+			}
+			return parentErr
+		}
+		if parentComment.PostID != postID {
+			return fiber.ErrBadRequest
+		}
+	}
+
+	author := strings.TrimSpace(c.FormValue("author"))
+	if author == "" || len(author) > 80 {
+		return fiber.ErrBadRequest
+	}
+
+	content := strings.TrimSpace(c.FormValue("content"))
+	if content == "" || len(content) > 5000 {
+		return fiber.ErrBadRequest
+	}
+
+	authorEmail := strings.TrimSpace(c.FormValue("author_email"))
+	if len(authorEmail) > 120 {
+		return fiber.ErrBadRequest
+	}
+	authorURL := strings.TrimSpace(c.FormValue("author_url"))
+	if len(authorURL) > 300 {
+		return fiber.ErrBadRequest
+	}
+
+	visitorID := middleware.GetOrCreateVisitorID(c, "")
+	isLogin, _ := c.Locals("IsLogin").(bool)
+	status := db.CommentStatusPending
+	if isLogin {
+		status = db.CommentStatusApproved
+	}
+
+	comment := &db.Comment{
+		PostID:      postID,
+		ParentID:    parentID,
+		Author:      author,
+		AuthorEmail: authorEmail,
+		AuthorURL:   authorURL,
+		AuthorIP:    strings.TrimSpace(c.IP()),
+		VisitorID:   visitorID,
+		UserAgent:   strings.TrimSpace(c.Get("User-Agent")),
+		Content:     content,
+		Status:      status,
+	}
+	if _, err = db.CreateComment(h.Model, comment); err != nil {
+		return err
+	}
+
+	redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", string(status))
+	if !strings.Contains(redirectPath, "#") {
+		redirectPath += "#comments"
+	}
+	return c.Redirect(redirectPath)
 }
 
 func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {

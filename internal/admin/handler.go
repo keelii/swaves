@@ -1888,6 +1888,97 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
 	return c.Redirect("/admin/http-error-logs")
 }
 
+func normalizeCommentStatus(raw string) db.CommentStatus {
+	switch strings.TrimSpace(raw) {
+	case string(db.CommentStatusPending):
+		return db.CommentStatusPending
+	case string(db.CommentStatusApproved):
+		return db.CommentStatusApproved
+	case string(db.CommentStatusSpam):
+		return db.CommentStatusSpam
+	default:
+		return ""
+	}
+}
+
+func buildCommentListURL(status db.CommentStatus) string {
+	baseURL := "/admin/comments"
+	if status == "" {
+		return baseURL
+	}
+	return baseURL + "?status=" + url.QueryEscape(string(status))
+}
+
+// Comments
+func (h *Handler) GetCommentListHandler(c *fiber.Ctx) error {
+	pager := middleware.GetPagination(c)
+	status := normalizeCommentStatus(c.Query("status"))
+
+	comments, err := ListCommentsService(h.Model, status, &pager)
+	if err != nil {
+		return err
+	}
+
+	return RenderAdminView(c, "comments_index", fiber.Map{
+		"Title":        "评论管理",
+		"Comments":     comments,
+		"Pager":        pager,
+		"StatusFilter": string(status),
+	}, "")
+}
+
+func (h *Handler) PostApproveCommentHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || id <= 0 {
+		return fiber.ErrBadRequest
+	}
+
+	if err = UpdateCommentStatusService(h.Model, id, db.CommentStatusApproved); err != nil {
+		return err
+	}
+
+	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+}
+
+func (h *Handler) PostPendingCommentHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || id <= 0 {
+		return fiber.ErrBadRequest
+	}
+
+	if err = UpdateCommentStatusService(h.Model, id, db.CommentStatusPending); err != nil {
+		return err
+	}
+
+	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+}
+
+func (h *Handler) PostSpamCommentHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || id <= 0 {
+		return fiber.ErrBadRequest
+	}
+
+	if err = UpdateCommentStatusService(h.Model, id, db.CommentStatusSpam); err != nil {
+		return err
+	}
+
+	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+}
+
+func (h *Handler) PostDeleteCommentHandler(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || id <= 0 {
+		return fiber.ErrBadRequest
+	}
+
+	if err = DeleteCommentService(h.Model, id); err != nil {
+		return err
+	}
+
+	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+}
+
 // Tasks
 func (h *Handler) GetTaskListHandler(c *fiber.Ctx) error {
 	tasks, err := ListTasksService(h.Model)

@@ -42,6 +42,11 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	adminGroup.Get("/posts/:id/edit", handler.GetPostEditHandler)
 	adminGroup.Post("/posts/:id/edit", handler.PostUpdatePostHandler)
 	adminGroup.Post("/posts/:id/delete", handler.PostDeletePostHandler)
+	adminGroup.Get("/comments", handler.GetCommentListHandler)
+	adminGroup.Post("/comments/:id/approve", handler.PostApproveCommentHandler)
+	adminGroup.Post("/comments/:id/pending", handler.PostPendingCommentHandler)
+	adminGroup.Post("/comments/:id/spam", handler.PostSpamCommentHandler)
+	adminGroup.Post("/comments/:id/delete", handler.PostDeleteCommentHandler)
 
 	adminGroup.Get("/tags", handler.GetTagListHandler)
 	adminGroup.Get("/tags/new", handler.GetTagNewHandler)

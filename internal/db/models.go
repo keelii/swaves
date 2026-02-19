@@ -375,6 +375,12 @@ var (
 		HasCreatedAt: true,
 		HasUpdatedAt: true,
 	}
+	specComments = TableSpec{
+		Name:         TableComments,
+		HasDeletedAt: true,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
 	specEncryptedPosts = TableSpec{
 		Name:         TableEncryptedPosts,
 		HasDeletedAt: true,
@@ -740,6 +746,34 @@ func scanPost(scanner sqlScanner, withContent bool) (Post, error) {
 		p.DeletedAt = &deletedAt.Int64
 	}
 	return p, nil
+}
+
+func scanComment(scanner sqlScanner) (Comment, error) {
+	var c Comment
+	var deletedAt sql.NullInt64
+	if err := scanner.Scan(
+		&c.ID,
+		&c.PostID,
+		&c.ParentID,
+		&c.Author,
+		&c.AuthorEmail,
+		&c.AuthorURL,
+		&c.AuthorIP,
+		&c.VisitorID,
+		&c.UserAgent,
+		&c.Content,
+		&c.Status,
+		&c.Type,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		return Comment{}, err
+	}
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Int64
+	}
+	return c, nil
 }
 
 func scanTag(scanner sqlScanner) (Tag, error) {
@@ -1660,6 +1694,254 @@ type PostWithRelation struct {
 	Post     *Post
 	Tags     []Tag
 	Category *Category
+}
+
+type CommentStatus string
+
+const (
+	CommentStatusPending  CommentStatus = "pending"
+	CommentStatusApproved CommentStatus = "approved"
+	CommentStatusSpam     CommentStatus = "spam"
+)
+
+func (s CommentStatus) IsValid() bool {
+	switch s {
+	case CommentStatusPending, CommentStatusApproved, CommentStatusSpam:
+		return true
+	default:
+		return false
+	}
+}
+
+type Comment struct {
+	ID          int64
+	PostID      int64
+	ParentID    int64
+	Author      string
+	AuthorEmail string
+	AuthorURL   string
+	AuthorIP    string
+	VisitorID   string
+	UserAgent   string
+	Content     string
+	Status      CommentStatus
+	Type        string
+	CreatedAt   int64
+	UpdatedAt   int64
+	DeletedAt   *int64
+
+	PostTitle    string
+	PostSlug     string
+	ParentAuthor string
+}
+
+func CreateComment(db *DB, c *Comment) (int64, error) {
+	if c.PostID <= 0 {
+		return 0, errors.New("post_id is required")
+	}
+	c.Author = strings.TrimSpace(c.Author)
+	if c.Author == "" {
+		return 0, errors.New("author is required")
+	}
+	c.Content = strings.TrimSpace(c.Content)
+	if c.Content == "" {
+		return 0, errors.New("content is required")
+	}
+	if c.ParentID < 0 {
+		c.ParentID = 0
+	}
+	if !c.Status.IsValid() {
+		c.Status = CommentStatusPending
+	}
+	if c.Type == "" {
+		c.Type = "comment"
+	}
+
+	id, err := Create(db, specComments, map[string]interface{}{
+		"post_id":      c.PostID,
+		"parent_id":    c.ParentID,
+		"author":       c.Author,
+		"author_email": c.AuthorEmail,
+		"author_url":   c.AuthorURL,
+		"author_ip":    c.AuthorIP,
+		"visitor_id":   c.VisitorID,
+		"user_agent":   c.UserAgent,
+		"content":      c.Content,
+		"status":       c.Status,
+		"type":         c.Type,
+		"created_at":   c.CreatedAt,
+		"updated_at":   c.UpdatedAt,
+	})
+	if err != nil {
+		return 0, WrapInternalErr("CreateComment", err)
+	}
+	c.ID = id
+	return id, nil
+}
+
+func GetCommentByID(db *DB, id int64) (*Comment, error) {
+	result, err := Read(db, specComments, ReadOptions{
+		SelectFields: "id, post_id, parent_id, author, author_email, author_url, author_ip, visitor_id, user_agent, content, status, type, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		item, scanErr := scanComment(rows)
+		if scanErr != nil {
+			return nil, WrapInternalErr("GetCommentByID.Scan", scanErr)
+		}
+		return item, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("GetCommentByID", err)
+	}
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetCommentByID")
+	}
+	comment := item.(Comment)
+	return &comment, nil
+}
+
+func ListPostComments(db *DB, postID int64, status CommentStatus) ([]Comment, error) {
+	whereClause := "post_id=?"
+	whereArgs := []interface{}{postID}
+	if status != "" {
+		whereClause = appendWhere(whereClause, "status=?")
+		whereArgs = append(whereArgs, status)
+	}
+
+	results, err := Read(db, specComments, ReadOptions{
+		SelectFields: "id, post_id, parent_id, author, author_email, author_url, author_ip, visitor_id, user_agent, content, status, type, created_at, updated_at, deleted_at",
+		WhereClause:  whereClause,
+		WhereArgs:    whereArgs,
+		OrderBy:      "created_at ASC, id ASC",
+		Limit:        0,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		item, scanErr := scanComment(rows)
+		if scanErr != nil {
+			return nil, WrapInternalErr("ListPostComments.Scan", scanErr)
+		}
+		return item, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("ListPostComments", err)
+	}
+
+	items := make([]Comment, len(results))
+	for i, v := range results {
+		items[i] = v.(Comment)
+	}
+	return items, nil
+}
+
+func ListApprovedPostComments(db *DB, postID int64) ([]Comment, error) {
+	return ListPostComments(db, postID, CommentStatusApproved)
+}
+
+func CountPostComments(db *DB, postID int64, status CommentStatus) (int, error) {
+	whereClause := "post_id=?"
+	whereArgs := []interface{}{postID}
+	if status != "" {
+		whereClause = appendWhere(whereClause, "status=?")
+		whereArgs = append(whereArgs, status)
+	}
+	return Count(db, specComments, whereClause, whereArgs)
+}
+
+func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Comment, int, error) {
+	whereClause := "c.deleted_at IS NULL"
+	whereArgs := make([]interface{}, 0, 2)
+	if status != "" {
+		whereClause += " AND c.status = ?"
+		whereArgs = append(whereArgs, status)
+	}
+
+	totalSQL := `SELECT COUNT(*) FROM ` + string(TableComments) + ` c WHERE ` + whereClause
+	var total int
+	if err := db.QueryRow(totalSQL, whereArgs...).Scan(&total); err != nil {
+		return nil, 0, WrapInternalErr("ListCommentsForAdmin.Count", err)
+	}
+
+	query := `
+		SELECT
+			c.id, c.post_id, c.parent_id, c.author, c.author_email, c.author_url, c.author_ip, c.visitor_id, c.user_agent, c.content, c.status, c.type, c.created_at, c.updated_at, c.deleted_at,
+			COALESCE(p.title, ''), COALESCE(p.slug, ''), COALESCE(pc.author, '')
+		FROM ` + string(TableComments) + ` c
+		LEFT JOIN ` + string(TablePosts) + ` p ON p.id = c.post_id
+		LEFT JOIN ` + string(TableComments) + ` pc ON pc.id = c.parent_id
+		WHERE ` + whereClause + `
+		ORDER BY c.created_at DESC, c.id DESC
+		LIMIT ? OFFSET ?
+	`
+
+	listArgs := append([]interface{}{}, whereArgs...)
+	listArgs = append(listArgs, limit, offset)
+
+	rows, err := db.Query(query, listArgs...)
+	if err != nil {
+		return nil, 0, WrapInternalErr("ListCommentsForAdmin.Query", err)
+	}
+	defer rows.Close()
+
+	items := make([]Comment, 0)
+	for rows.Next() {
+		var (
+			item      Comment
+			deletedAt sql.NullInt64
+		)
+		if scanErr := rows.Scan(
+			&item.ID,
+			&item.PostID,
+			&item.ParentID,
+			&item.Author,
+			&item.AuthorEmail,
+			&item.AuthorURL,
+			&item.AuthorIP,
+			&item.VisitorID,
+			&item.UserAgent,
+			&item.Content,
+			&item.Status,
+			&item.Type,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+			&deletedAt,
+			&item.PostTitle,
+			&item.PostSlug,
+			&item.ParentAuthor,
+		); scanErr != nil {
+			return nil, 0, WrapInternalErr("ListCommentsForAdmin.Scan", scanErr)
+		}
+		if deletedAt.Valid {
+			item.DeletedAt = &deletedAt.Int64
+		}
+		items = append(items, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, 0, WrapInternalErr("ListCommentsForAdmin.Rows", err)
+	}
+
+	return items, total, nil
+}
+
+func UpdateCommentStatus(db *DB, id int64, status CommentStatus) error {
+	if !status.IsValid() {
+		return errors.New("invalid comment status")
+	}
+
+	if err := Update(db, specComments, id, map[string]interface{}{
+		"status": status,
+	}); err != nil {
+		return WrapInternalErr("UpdateCommentStatus", err)
+	}
+	return nil
+}
+
+func SoftDeleteComment(db *DB, id int64) error {
+	if err := Delete(db, specComments, id); err != nil {
+		return WrapInternalErr("SoftDeleteComment", err)
+	}
+	return nil
 }
 
 func CreatePost(db *DB, p *Post) (int64, error) {
