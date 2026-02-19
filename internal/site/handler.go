@@ -129,6 +129,8 @@ func normalizeCommentFeedbackStatus(raw string) string {
 		return string(db.CommentStatusApproved)
 	case string(db.CommentStatusPending):
 		return string(db.CommentStatusPending)
+	case commentFeedbackCaptchaRequired:
+		return commentFeedbackCaptchaRequired
 	case commentFeedbackCaptchaFailed:
 		return commentFeedbackCaptchaFailed
 	case commentFeedbackRateLimited:
@@ -246,17 +248,25 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
-	commentCaptcha := buildCommentCaptchaChallenge(middleware.GetOrCreateVisitorID(c, ""))
+	commentForm := readCommentFormDefaults(c)
+	visitorID := middleware.GetOrCreateVisitorID(c, "")
+	captchaRequired := isCommentCaptchaRequired(visitorID)
+	commentCaptcha := commentCaptchaChallenge{}
+	if captchaRequired {
+		commentCaptcha = buildCommentCaptchaChallenge(visitorID)
+	}
 
 	return RenderUIView(c, "site/post", fiber.Map{
-		"Post":            post,
-		"ReadUV":          readUV,
-		"LikeCount":       likeCount,
-		"Liked":           liked,
-		"Comments":        comments,
-		"CommentCount":    commentCount,
-		"CommentFeedback": commentFeedback,
-		"CommentCaptcha":  commentCaptcha,
+		"Post":                   post,
+		"ReadUV":                 readUV,
+		"LikeCount":              likeCount,
+		"Liked":                  liked,
+		"Comments":               comments,
+		"CommentCount":           commentCount,
+		"CommentFeedback":        commentFeedback,
+		"CommentForm":            commentForm,
+		"CommentCaptchaRequired": captchaRequired,
+		"CommentCaptcha":         commentCaptcha,
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -273,17 +283,25 @@ func (h Handler) GetPostBySlug(c *fiber.Ctx) error {
 	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
-	commentCaptcha := buildCommentCaptchaChallenge(middleware.GetOrCreateVisitorID(c, ""))
+	commentForm := readCommentFormDefaults(c)
+	visitorID := middleware.GetOrCreateVisitorID(c, "")
+	captchaRequired := isCommentCaptchaRequired(visitorID)
+	commentCaptcha := commentCaptchaChallenge{}
+	if captchaRequired {
+		commentCaptcha = buildCommentCaptchaChallenge(visitorID)
+	}
 
 	return RenderUIView(c, "site/post", fiber.Map{
-		"Post":            post,
-		"ReadUV":          readUV,
-		"LikeCount":       likeCount,
-		"Liked":           liked,
-		"Comments":        comments,
-		"CommentCount":    commentCount,
-		"CommentFeedback": commentFeedback,
-		"CommentCaptcha":  commentCaptcha,
+		"Post":                   post,
+		"ReadUV":                 readUV,
+		"LikeCount":              likeCount,
+		"Liked":                  liked,
+		"Comments":               comments,
+		"CommentCount":           commentCount,
+		"CommentFeedback":        commentFeedback,
+		"CommentForm":            commentForm,
+		"CommentCaptchaRequired": captchaRequired,
+		"CommentCaptcha":         commentCaptcha,
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
@@ -427,14 +445,16 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 		return err
 	}
 	visitorID := middleware.GetOrCreateVisitorID(c, "")
-	captchaToken := strings.TrimSpace(c.FormValue(commentCaptchaTokenField))
-	captchaAnswer := strings.TrimSpace(c.FormValue(commentCaptchaAnswerField))
-	if !verifyCommentCaptchaChallenge(visitorID, captchaToken, captchaAnswer) {
-		redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackCaptchaFailed)
-		if !strings.Contains(redirectPath, "#") {
-			redirectPath += "#comments"
+	if isCommentCaptchaRequired(visitorID) {
+		captchaToken := strings.TrimSpace(c.FormValue(commentCaptchaTokenField))
+		captchaAnswer := strings.TrimSpace(c.FormValue(commentCaptchaAnswerField))
+		if !verifyCommentCaptchaChallenge(visitorID, captchaToken, captchaAnswer) {
+			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackCaptchaFailed)
+			if !strings.Contains(redirectPath, "#") {
+				redirectPath += "#comments"
+			}
+			return c.Redirect(redirectPath, fiber.StatusSeeOther)
 		}
-		return c.Redirect(redirectPath, fiber.StatusSeeOther)
 	}
 
 	parentID := int64(0)
@@ -475,6 +495,7 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 	if len(authorURL) > 300 {
 		return fiber.ErrBadRequest
 	}
+	rememberMe := isCommentRememberMeEnabled(c.FormValue("remember_me"))
 
 	isLogin, _ := c.Locals("IsLogin").(bool)
 	status := db.CommentStatusPending
@@ -497,6 +518,13 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 	if _, err = db.CreateComment(h.Model, comment); err != nil {
 		return err
 	}
+
+	saveCommentFormDefaults(c, commentFormDefaults{
+		Author:      author,
+		AuthorEmail: authorEmail,
+		AuthorURL:   authorURL,
+		RememberMe:  rememberMe,
+	})
 
 	redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", string(status))
 	if !strings.Contains(redirectPath, "#") {

@@ -23,12 +23,14 @@ const (
 	commentCaptchaTokenField  = "captcha_token"
 	commentCaptchaAnswerField = "captcha_answer"
 	commentCaptchaTTL         = 10 * time.Minute
+	commentCaptchaRequiredTTL = 30 * time.Minute
 
 	commentRateLimitMax        = 5
 	commentRateLimitExpiration = time.Minute
 
-	commentFeedbackCaptchaFailed = "captcha_failed"
-	commentFeedbackRateLimited   = "rate_limited"
+	commentFeedbackCaptchaRequired = "captcha_required"
+	commentFeedbackCaptchaFailed   = "captcha_failed"
+	commentFeedbackRateLimited     = "rate_limited"
 )
 
 type commentCaptchaChallenge struct {
@@ -37,6 +39,13 @@ type commentCaptchaChallenge struct {
 }
 
 var commentCaptchaNonceCache = struct {
+	sync.Mutex
+	items map[string]int64
+}{
+	items: map[string]int64{},
+}
+
+var commentCaptchaRequiredCache = struct {
 	sync.Mutex
 	items map[string]int64
 }{
@@ -113,6 +122,10 @@ func commentRateLimitMiddleware() fiber.Handler {
 	return limiter.New(limiter.Config{
 		Max:        commentRateLimitMax,
 		Expiration: commentRateLimitExpiration,
+		Next: func(c *fiber.Ctx) bool {
+			visitorID := middleware.GetOrCreateVisitorID(c, "")
+			return isCommentCaptchaRequired(visitorID)
+		},
 		KeyGenerator: func(c *fiber.Ctx) string {
 			visitorID := middleware.GetOrCreateVisitorID(c, "")
 			if visitorID == "" {
@@ -121,7 +134,10 @@ func commentRateLimitMiddleware() fiber.Handler {
 			return "visitor:" + visitorID
 		},
 		LimitReached: func(c *fiber.Ctx) error {
-			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackRateLimited)
+			visitorID := middleware.GetOrCreateVisitorID(c, "")
+			markCommentCaptchaRequired(visitorID)
+
+			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackCaptchaRequired)
 			if !strings.Contains(redirectPath, "#") {
 				redirectPath += "#comments"
 			}
@@ -189,11 +205,7 @@ func consumeCommentCaptchaNonce(nonce string, expiresAt int64) bool {
 	commentCaptchaNonceCache.Lock()
 	defer commentCaptchaNonceCache.Unlock()
 
-	for key, expireAt := range commentCaptchaNonceCache.items {
-		if expireAt <= now {
-			delete(commentCaptchaNonceCache.items, key)
-		}
-	}
+	pruneExpiredEntries(commentCaptchaNonceCache.items, now)
 
 	if existingExpireAt, ok := commentCaptchaNonceCache.items[nonce]; ok && existingExpireAt > now {
 		return false
@@ -201,4 +213,44 @@ func consumeCommentCaptchaNonce(nonce string, expiresAt int64) bool {
 
 	commentCaptchaNonceCache.items[nonce] = expiresAt
 	return true
+}
+
+func markCommentCaptchaRequired(visitorID string) {
+	visitorID = strings.TrimSpace(visitorID)
+	if visitorID == "" {
+		return
+	}
+
+	expiresAt := time.Now().Add(commentCaptchaRequiredTTL).Unix()
+
+	commentCaptchaRequiredCache.Lock()
+	defer commentCaptchaRequiredCache.Unlock()
+
+	pruneExpiredEntries(commentCaptchaRequiredCache.items, time.Now().Unix())
+	commentCaptchaRequiredCache.items[visitorID] = expiresAt
+}
+
+func isCommentCaptchaRequired(visitorID string) bool {
+	visitorID = strings.TrimSpace(visitorID)
+	if visitorID == "" {
+		return false
+	}
+
+	now := time.Now().Unix()
+
+	commentCaptchaRequiredCache.Lock()
+	defer commentCaptchaRequiredCache.Unlock()
+
+	pruneExpiredEntries(commentCaptchaRequiredCache.items, now)
+
+	expiresAt, ok := commentCaptchaRequiredCache.items[visitorID]
+	return ok && expiresAt > now
+}
+
+func pruneExpiredEntries(items map[string]int64, now int64) {
+	for key, expireAt := range items {
+		if expireAt <= now {
+			delete(items, key)
+		}
+	}
 }
