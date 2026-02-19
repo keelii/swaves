@@ -38,6 +38,20 @@ func NewApp(config types.AppConfig) SwavesApp {
 		AppName:               config.AppName,
 		DisableStartupMessage: true,
 		Views:                 NewViewEngine(),
+		BodyLimit:             10 * 1024 * 1024, // 10MB
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			msg := "Internal Server Error"
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+				msg = e.Message
+			} else if err != nil {
+				msg = err.Error()
+			}
+
+			log.Println("[error]HTTP:", code, msg)
+			return c.Status(code).SendString(msg)
+		},
 	})
 
 	// statics
@@ -61,7 +75,6 @@ func NewApp(config types.AppConfig) SwavesApp {
 			return uuid.NewString()
 		},
 	}))
-	app.Use(middleware.HttpErrorLogMiddleware(globalStore))
 	//app.Use(logger.New(logger.Config{
 	//	TimeFormat: TimeFormat,
 	//	Format:     "${time} ${status} - ${method} ${path} ${queryParams} ${body}\n",

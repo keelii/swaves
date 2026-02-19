@@ -1199,18 +1199,33 @@ type ImportMarkdownInput struct {
 
 // PreviewPostItem 预览页面的 post 数据
 type PreviewPostItem struct {
-	Index         int      // 索引（用于表单字段命名）
-	Filename      string   // 原始文件名
-	Title         string   // 标题
-	Slug          string   // slug
-	Content       string   // 内容（markdown）
-	Status        string   // 状态
-	Kind          string   // 类型： "0"=post, "1"=page
-	CreatedAt     string   // 创建时间（格式化的时间字符串，用于显示）
-	CreatedAtUnix int64    // 创建时间（Unix 时间戳）
-	Tags          string   // 标签（逗号分隔的字符串）
-	TagsList      []string // 标签列表
-	Category      string   // 分类名称
+	Index          int      // 索引（用于表单字段命名）
+	Filename       string   // 原始文件名
+	Title          string   // 标题
+	Slug           string   // slug
+	Content        string   // 内容（markdown）
+	ContentPreview string   // 内容预览（用于导入预览表格展示）
+	Status         string   // 状态
+	Kind           string   // 类型： "0"=post, "1"=page
+	CreatedAt      string   // 创建时间（格式化的时间字符串，用于显示）
+	CreatedAtUnix  int64    // 创建时间（Unix 时间戳）
+	Tags           string   // 标签（逗号分隔的字符串）
+	TagsList       []string // 标签列表
+	Category       string   // 分类名称
+}
+
+const importPreviewContentLimit = 160
+
+func buildImportContentPreview(content string) string {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\n", " ")
+	normalized = strings.Join(strings.Fields(normalized), " ")
+
+	runes := []rune(normalized)
+	if len(runes) <= importPreviewContentLimit {
+		return normalized
+	}
+	return string(runes[:importPreviewContentLimit]) + "..."
 }
 
 // extractTitleFromMarkdown 从 markdown 内容中提取指定级别的标题
@@ -1486,18 +1501,19 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 		}
 
 		items = append(items, PreviewPostItem{
-			Index:         i,
-			Filename:      file.Filename,
-			Title:         title,
-			Slug:          slug,
-			Content:       content,
-			Status:        status,
-			Kind:          "0", // 默认 post
-			CreatedAt:     createdAtStr,
-			CreatedAtUnix: createdAt,
-			Tags:          tagsStr,
-			TagsList:      tagsList,
-			Category:      category,
+			Index:          i,
+			Filename:       file.Filename,
+			Title:          title,
+			Slug:           slug,
+			Content:        content,
+			ContentPreview: buildImportContentPreview(content),
+			Status:         status,
+			Kind:           "0", // 默认 post
+			CreatedAt:      createdAtStr,
+			CreatedAtUnix:  createdAt,
+			Tags:           tagsStr,
+			TagsList:       tagsList,
+			Category:       category,
 		})
 	}
 
@@ -1687,86 +1703,91 @@ func ImportMarkdownService(dbx *db.DB, in ImportMarkdownInput) error {
 	return nil
 }
 
-// ImportPreviewService 从预览数据导入到数据库
-func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
-	for _, item := range items {
-		// 解析时间字符串为时间戳
-		createdAt := item.CreatedAtUnix
-		if item.CreatedAt != "" {
-			// 尝试解析时间字符串 "2006-01-02 15:04:05"
-			if t, err := time.Parse("2006-01-02 15:04:05", item.CreatedAt); err == nil {
-				createdAt = t.Unix()
-			}
+func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
+	createdAt := item.CreatedAtUnix
+	if item.CreatedAt != "" {
+		if t, err := time.Parse("2006-01-02 15:04:05", item.CreatedAt); err == nil {
+			createdAt = t.Unix()
 		}
-		if createdAt == 0 {
-			createdAt = time.Now().Unix()
-		}
+	}
+	if createdAt == 0 {
+		createdAt = time.Now().Unix()
+	}
 
-		kind := db.PostKindPost
-		if item.Kind == "1" {
-			kind = db.PostKindPage
-		}
+	kind := db.PostKindPost
+	if item.Kind == "1" {
+		kind = db.PostKindPage
+	}
 
-		slug := strings.Trim(item.Slug, "-")
-		if slug == "" {
-			slug = strings.Trim(slg.Make(item.Title), "-")
-		}
-		if slug == "" {
-			slug = "post"
-		}
-		if !helper.IsSlug(slug) {
-			return errSlugInvalid("009", item.Slug)
-		}
+	slug := strings.Trim(item.Slug, "-")
+	if slug == "" {
+		slug = strings.Trim(slg.Make(item.Title), "-")
+	}
+	if slug == "" {
+		slug = "post"
+	}
+	if !helper.IsSlug(slug) {
+		return errSlugInvalid("009", item.Slug)
+	}
 
-		// 创建 post；导入时已发布则 published_at 默认为 created_at
-		post := &db.Post{
-			Title:     item.Title,
-			Slug:      slug,
-			Content:   item.Content,
-			Status:    item.Status,
-			Kind:      kind,
-			CreatedAt: createdAt,
-			UpdatedAt: time.Now().Unix(),
-		}
-		if item.Status == "published" {
-			post.PublishedAt = createdAt
-		}
+	post := &db.Post{
+		Title:     item.Title,
+		Slug:      slug,
+		Content:   item.Content,
+		Status:    item.Status,
+		Kind:      kind,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now().Unix(),
+	}
+	if item.Status == "published" {
+		post.PublishedAt = createdAt
+	}
 
-		if _, err := db.CreatePost(dbx, post); err != nil {
-			return errors.New(item.Filename + ": " + err.Error())
+	if _, err := db.CreatePost(dbx, post); err != nil {
+		if strings.TrimSpace(item.Filename) == "" {
+			return err
 		}
+		return errors.New(item.Filename + ": " + err.Error())
+	}
 
-		// 处理 tags
-		if item.Tags != "" {
-			var tagIDs []int64
-			tagNames := strings.Split(item.Tags, ",")
-			for _, tagName := range tagNames {
-				tagName = strings.TrimSpace(tagName)
-				if tagName != "" {
-					tag, err := CreateTagByName(dbx, tagName, createdAt)
-					if err == nil {
-						tagIDs = append(tagIDs, tag.ID)
-					}
-				}
-			}
-
-			if len(tagIDs) > 0 {
-				if err := db.SetPostTags(dbx, post.ID, tagIDs); err != nil {
-					// tag 关联失败不影响主流程
+	if item.Tags != "" {
+		var tagIDs []int64
+		tagNames := strings.Split(item.Tags, ",")
+		for _, tagName := range tagNames {
+			tagName = strings.TrimSpace(tagName)
+			if tagName != "" {
+				tag, err := CreateTagByName(dbx, tagName, createdAt)
+				if err == nil {
+					tagIDs = append(tagIDs, tag.ID)
 				}
 			}
 		}
 
-		// 处理 category（单选）
-		if item.Category != "" {
-			category, err := CreateCategoryByName(dbx, item.Category, createdAt)
-			if err == nil {
-				if err := db.SetPostCategory(dbx, post.ID, category.ID); err != nil {
-					// category 关联失败不影响主流程
-				}
+		if len(tagIDs) > 0 {
+			if err := db.SetPostTags(dbx, post.ID, tagIDs); err != nil {
+				// tag 关联失败不影响主流程
 			}
 		}
 	}
 
+	if item.Category != "" {
+		category, err := CreateCategoryByName(dbx, item.Category, createdAt)
+		if err == nil {
+			if err := db.SetPostCategory(dbx, post.ID, category.ID); err != nil {
+				// category 关联失败不影响主流程
+			}
+		}
+	}
+
+	return nil
+}
+
+// ImportPreviewService 从预览数据导入到数据库
+func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
+	for _, item := range items {
+		if err := ImportPreviewItemService(dbx, item); err != nil {
+			return err
+		}
+	}
 	return nil
 }

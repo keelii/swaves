@@ -1,26 +1,64 @@
-<form id="form" method="post" action="/admin/import/preview">
+<style>
+  .import-preview-table th,
+  .import-preview-table td {
+    vertical-align: top;
+  }
+  .import-preview-table td {
+    min-width: 160px;
+  }
+  .import-content-preview {
+    max-width: 420px;
+    line-height: 1.4;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .import-status {
+    min-width: 120px;
+    max-width: 260px;
+    word-break: break-word;
+    font-size: 0.875rem;
+  }
+  .import-status[data-state="running"] {
+    font-weight: 600;
+  }
+  .import-status[data-state="success"] {
+    color: var(--success);
+  }
+  .import-status[data-state="error"] {
+    color: var(--danger);
+  }
+  .import-summary {
+    margin: 0 0 12px;
+    font-size: 0.875rem;
+  }
+</style>
 
+<form id="form" method="post" action="/admin/import/preview">
   <input type="hidden" name="items_count" value="{{ len .Items }}">
 
-  <table>
+  <p class="import-summary" id="import-summary">待导入 {{ len .Items }} 篇</p>
+
+  <table class="import-preview-table">
     <thead>
     <tr>
-       <th>标题/URL标识</th>
-       <th>
-         状态
-         <button type="button" id="toggle-status-btn" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">切换</button>
-       </th>
-       <th>类型</th>
-       <th>标签/分类</th>
-       <th>内容</th>
+      <th>标题/URL标识</th>
+      <th>
+        发布状态
+        <button type="button" id="toggle-status-btn" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">切换</button>
+      </th>
+      <th>类型</th>
+      <th>标签/分类</th>
+      <th>内容预览</th>
+      <th>导入状态</th>
     </tr>
     </thead>
     <tbody>
     {{ range .Items }}
-    <tr>
+    <tr data-import-row data-index="{{ .Index }}">
       <td>
         <input type="text" name="items[{{ .Index }}][title]" value="{{ .Title }}" required style="width: 100%;">
         <input type="text" name="items[{{ .Index }}][slug]" value="{{ .Slug }}" required style="width: 100%;">
+        <input type="hidden" name="items[{{ .Index }}][filename]" value="{{ .Filename }}">
         <input type="hidden" name="items[{{ .Index }}][created_at_unix]" value="{{ .CreatedAtUnix }}">
         <input type="text" name="items[{{ .Index }}][created_at]" value="{{ .CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">
       </td>
@@ -37,25 +75,142 @@
         <input type="text" name="items[{{ .Index }}][category]" value="{{ .Category }}" placeholder="category name" style="width: 100%;">
       </td>
       <td>
-        <textarea name="items[{{ .Index }}][content]" rows="5" cols="150" style="width: 100%;">{{ .Content }}</textarea>
+        <div class="import-content-preview">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
+        <textarea name="items[{{ .Index }}][content]" rows="1" style="display:none;">{{ .Content }}</textarea>
       </td>
+      <td class="import-status" data-import-status data-state="pending">待导入</td>
     </tr>
     {{ end }}
     </tbody>
   </table>
-
 </form>
 
 <script>
 $(function() {
+  var $form = $('#form');
+  var $summary = $('#import-summary');
+  var importing = false;
+
+  function setSummary(text, isError) {
+    $summary.text(text);
+    $summary.css('color', isError ? 'var(--danger)' : '');
+  }
+
+  function setRowStatus($row, state, text) {
+    var $cell = $row.find('[data-import-status]');
+    $cell.attr('data-state', state);
+    $cell.text(text);
+  }
+
+  function readField($row, suffix) {
+    return $row.find('[name$="' + suffix + '"]').val() || '';
+  }
+
+  function readCheckedValue($row, suffix) {
+    return $row.find('[name$="' + suffix + '"]:checked').val() || '';
+  }
+
+  function buildItemPayload($row) {
+    var params = new URLSearchParams();
+    params.set('title', readField($row, '[title]'));
+    params.set('slug', readField($row, '[slug]'));
+    params.set('content', readField($row, '[content]'));
+    params.set('status', readCheckedValue($row, '[status]'));
+    params.set('kind', readCheckedValue($row, '[kind]'));
+    params.set('created_at', readField($row, '[created_at]'));
+    params.set('created_at_unix', readField($row, '[created_at_unix]'));
+    params.set('tags', readField($row, '[tags]'));
+    params.set('category', readField($row, '[category]'));
+    params.set('filename', readField($row, '[filename]'));
+    return params;
+  }
+
   $('#toggle-status-btn').on('click', function() {
     var allDraft = true;
     $('tbody tr').each(function() {
-      if ($(this).find('input[type="radio"][name*="[status]"]:checked').val() !== 'draft') allDraft = false;
+      if ($(this).find('input[type="radio"][name*="[status]"]:checked').val() !== 'draft') {
+        allDraft = false;
+      }
     });
     var newVal = allDraft ? 'published' : 'draft';
     $('input[type="radio"][name*="[status]"][value="' + newVal + '"]').prop('checked', true);
   });
+
+  $form.on('submit', async function(e) {
+    e.preventDefault();
+    if (importing) {
+      return;
+    }
+    importing = true;
+
+    var $rows = $form.find('tbody tr[data-import-row]');
+    var total = $rows.length;
+    if (total === 0) {
+      setSummary('没有可导入的数据', true);
+      importing = false;
+      return;
+    }
+
+    var $inputs = $form.find('input, textarea, button, select');
+    $inputs.prop('disabled', true);
+
+    var successCount = 0;
+    var failCount = 0;
+    setSummary('开始逐条导入...', false);
+
+    for (var i = 0; i < total; i++) {
+      var $row = $($rows[i]);
+      var payload = buildItemPayload($row);
+
+      setRowStatus($row, 'running', '导入中...');
+
+      try {
+        var resp = await fetch('/admin/import/preview/item', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: payload.toString()
+        });
+
+        var data = null;
+        try {
+          data = await resp.json();
+        } catch (jsonErr) {
+          data = null;
+        }
+
+        if (!resp.ok || !data || !data.ok) {
+          var errText = (data && data.error) ? data.error : ('HTTP ' + resp.status);
+          setRowStatus($row, 'error', '失败: ' + errText);
+          failCount++;
+        } else {
+          setRowStatus($row, 'success', '导入成功');
+          successCount++;
+        }
+      } catch (err) {
+        setRowStatus($row, 'error', '失败: ' + (err && err.message ? err.message : 'request failed'));
+        failCount++;
+      }
+
+      setSummary(
+        '进度 ' + (i + 1) + '/' + total + '，成功 ' + successCount + '，失败 ' + failCount,
+        failCount > 0
+      );
+    }
+
+    $inputs.prop('disabled', false);
+    importing = false;
+
+    if (failCount === 0) {
+      setSummary('导入完成，全部成功。2 秒后跳转到文章列表...', false);
+      setTimeout(function() {
+        window.location.href = '/admin/posts';
+      }, 2000);
+    } else {
+      setSummary('导入完成：成功 ' + successCount + '，失败 ' + failCount + '。可修改后重新导入。', true);
+    }
+  });
 });
 </script>
-

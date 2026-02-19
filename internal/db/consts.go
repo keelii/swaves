@@ -171,7 +171,7 @@ const InitialSQL = `
 	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
 		('clear_encrypted_posts', '清理过期加密文章', '定时清理加密文章', '@every 1m', 1, 1, strftime('%s','now'), strftime('%s','now'));
 	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
-		('remote_backup_data', '远程备份数据', '备份数据库到远程', '@every 1d', 1, 1, strftime('%s','now'), strftime('%s','now'));
+		('remote_backup_data', '远程备份数据', '备份数据库到远程', '@daily', 1, 1, strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

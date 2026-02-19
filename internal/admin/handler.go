@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -2146,6 +2147,12 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	// 获取上传的文件
 	form, err := c.MultipartForm()
 	if err != nil {
+		statusCode := fiber.StatusBadRequest
+		if errors.Is(err, fiber.ErrRequestEntityTooLarge) || strings.Contains(strings.ToLower(err.Error()), "request entity too large") {
+			statusCode = fiber.StatusRequestEntityTooLarge
+		}
+		c.Status(statusCode)
+		log.Printf("import multipart parse failed: status=%d method=%s path=%s ip=%s err=%v", statusCode, c.Method(), c.Path(), c.IP(), err)
 		return RenderAdminView(c, "import", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "Failed to parse form: " + err.Error(),
@@ -2434,6 +2441,7 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 			Category:  c.FormValue(fmt.Sprintf("items[%d][category]", i)),
 			Filename:  c.FormValue(fmt.Sprintf("items[%d][filename]", i)),
 		}
+		item.ContentPreview = buildImportContentPreview(item.Content)
 
 		// 解析时间戳
 		if createdAtStr := c.FormValue(fmt.Sprintf("items[%d][created_at_unix]", i)); createdAtStr != "" {
@@ -2474,6 +2482,61 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Redirect("/admin/posts")
+}
+
+func (h *Handler) PostImportPreviewItemHandler(c *fiber.Ctx) error {
+	kindVal := c.FormValue("kind")
+	if kindVal != "0" && kindVal != "1" {
+		kindVal = "0"
+	}
+
+	item := PreviewPostItem{
+		Title:     c.FormValue("title"),
+		Slug:      c.FormValue("slug"),
+		Content:   c.FormValue("content"),
+		Status:    c.FormValue("status"),
+		Kind:      kindVal,
+		CreatedAt: c.FormValue("created_at"),
+		Tags:      c.FormValue("tags"),
+		Category:  c.FormValue("category"),
+		Filename:  c.FormValue("filename"),
+	}
+	item.ContentPreview = buildImportContentPreview(item.Content)
+
+	if createdAtStr := c.FormValue("created_at_unix"); createdAtStr != "" {
+		if ts, err := strconv.ParseInt(createdAtStr, 10, 64); err == nil {
+			item.CreatedAtUnix = ts
+		}
+	}
+
+	if item.Status != "draft" && item.Status != "published" {
+		item.Status = "draft"
+	}
+
+	if strings.TrimSpace(item.Title) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "title is required",
+		})
+	}
+
+	if strings.TrimSpace(item.Slug) != "" && !helper.IsSlug(strings.TrimSpace(item.Slug)) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": errSlugInvalid("016", strings.TrimSpace(item.Slug)).Error(),
+		})
+	}
+
+	if err := ImportPreviewItemService(h.Model, item); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"ok": true,
+	})
 }
 
 // Metrics
