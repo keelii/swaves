@@ -15,10 +15,10 @@
     <li>
       <a href="{{ .PermLink }}">{{ .Title }}</a>
       <span class="relation">
-        {{ template "ui/tag_list" dict "Items" .Tags "Label" true }}
+        {{ template "site/tag_list" dict "Items" .Tags "Label" true }}
         {{ if not $.IsCategory }}
             {{if .Category}}
-                {{template "ui/category_item" dict "Item" .Category "Label" true}}
+                {{template "site/category_item" dict "Item" .Category "Label" true}}
             {{end}}
         {{ end }}
       </span>

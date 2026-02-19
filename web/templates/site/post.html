@@ -5,13 +5,13 @@
     <span>{{ articleTime .Post.PublishedAt }}</span>
     <a href="{{ settings "base_path" }}">首页</a>
     {{if .Post.Category}}
-      {{template "ui/category_item" dict "Item" .Post.Category "Label" true}}
+      {{template "site/category_item" dict "Item" .Post.Category "Label" true}}
     {{end}}
     {{if .Post.Tags}}
-      {{template "ui/tag_list" dict "Items" .Post.Tags "Label" true}}
+      {{template "site/tag_list" dict "Items" .Post.Tags "Label" true}}
     {{end}}
-    {{ template "ui/read_uv" dict "Count" .ReadUV }}
-    {{ template "ui/like_action" dict "PostID" .Post.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
+    {{ template "site/read_uv" dict "Count" .ReadUV }}
+    {{ template "site/like_action" dict "PostID" .Post.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
     {{if .IsLogin}}
        <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
     {{end}}
@@ -30,7 +30,7 @@
     {{ if .Comments }}
       <ol class="comment-list">
           {{ range .Comments }}
-              {{ template "ui/comment_item" . }}
+              {{ template "site/comment_item" . }}
           {{ end }}
       </ol>
     {{ else }}
