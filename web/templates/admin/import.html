@@ -1,128 +1,230 @@
 <style>
-  select {
-    min-width: 30em;
+  #form select {
+    width: 25em;
+  }
+  #form input {
+    width: auto;
+  }
+  .import-parse-panel {
+    margin-top: var(--space-4);
+  }
+  #import-parse-summary {
+    margin-bottom: var(--space-2);
+  }
+  .import-parse-table th,
+  .import-parse-table td {
+    vertical-align: top;
+    font-size: var(--text-7);
+    word-break: break-word;
+  }
+  .import-parse-table td {
+    max-width: 320px;
+  }
+  .import-parse-state[data-state="success"] {
+    color: var(--success);
+  }
+  .import-parse-state[data-state="error"] {
+    color: var(--danger);
   }
 </style>
 
 <form id="form" method="post" action="/admin/import" enctype="multipart/form-data">
+  <div class="row">
+    <div class="col-6">
+      <p>
+        <label>
+          选择MD文件<br>
+          <input type="file" name="files" accept=".md,.markdown,text/markdown" multiple required>
+          <small>（可选择多个文件）</small>
+        </label>
+      </p>
+      <p>
+        <label data-field>
+          标题来源<br>
+          <select name="title_source" required>
+            <option value="frontmatter" selected>Frontmatter 字段（默认：title）</option>
+            <option value="filename">文件名</option>
+            <option value="markdown">Markdown 标题</option>
+          </select>
+          <input type="text" name="title_field" id="title_field_container" value="title" placeholder="title" style="display: none;">
+        </label>
+      </p>
 
-  <p>
-    <label>
-      Select Markdown Files<br>
-      <input type="file" name="files" accept=".md,.markdown,text/markdown" multiple required>
-      <small>(You can select multiple files)</small>
-    </label>
-  </p>
+      <p id="title_level_container" style="display: none;">
+        <label>
+          标题级别<br>
+          <select name="title_level">
+            <option value="1" selected>H1 (# Title)</option>
+            <option value="2">H2 (## Title)</option>
+            <option value="3">H3 (### Title)</option>
+          </select>
+          <small>（从 Markdown 中提取标题时使用的级别）</small>
+        </label>
+      </p>
 
-  <p>
-    <label>
-      Title Source<br>
-      <select name="title_source" required>
-        <option value="frontmatter" selected>From Frontmatter Field (default: title)</option>
-        <option value="filename">From Filename</option>
-        <option value="markdown">From Markdown Heading</option>
-      </select>
-      <input type="text" name="title_field" id="title_field_container" value="title" placeholder="title" style="display: none;">
-    </label>
-  </p>
+      <p>
+        <label>
+          URL 标识来源<br>
+          <select name="slug_source" required>
+            <option value="filename" selected>文件名</option>
+            <option value="frontmatter">Frontmatter 字段（默认：slug）</option>
+            <option value="title">由标题自动生成</option>
+          </select>
+          <input type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
+        </label>
+      </p>
 
-  <p id="title_level_container" style="display: none;">
-    <label>
-      Heading Level<br>
-      <select name="title_level">
-        <option value="1" selected>H1 (# Title)</option>
-        <option value="2">H2 (## Title)</option>
-        <option value="3">H3 (### Title)</option>
-      </select>
-      <small>(The heading level to extract from markdown)</small>
-    </label>
-  </p>
+      <p>
+        <label>
+          创建时间来源<br>
+          <select name="created_source" required>
+            <option value="frontmatter" selected>Frontmatter 字段（默认：date）</option>
+            <option value="filetime">文件时间（当前时间）</option>
+          </select>
+          <input type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
+        </label>
+      </p>
 
-  <p>
-    <label>
-      Slug Source<br>
-      <select name="slug_source" required>
-        <option value="filename" selected>From Filename</option>
-        <option value="frontmatter">From Frontmatter Field (default: slug)</option>
-        <option value="title">From Title (generated)</option>
-      </select>
-      <input type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
-    </label>
-  </p>
+      <p>
+        <label>
+          状态来源<br>
+          <select name="status_source" required>
+            <option value="frontmatter" selected>Frontmatter 字段（默认：draft）</option>
+            <option value="alldraft">全部草稿</option>
+            <option value="allpublished">全部发布</option>
+          </select>
+          <input type="text" name="status_field" id="status_field_container" value="draft" placeholder="draft">
+        </label>
+      </p>
 
-  <p>
-    <label>
-      Post Created Source<br>
-      <select name="created_source" required>
-        <option value="frontmatter" selected>From Frontmatter Field (default: date)</option>
-        <option value="filetime">From File Time (current time)</option>
-      </select>
-      <input type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
-    </label>
-  </p>
+      <p>
+        <label>
+          分类来源<br>
+          <select name="category_source" required>
+            <option value="none">不设置（留空）</option>
+            <option value="frontmatter" selected>Frontmatter 字段（默认：categories）</option>
+            <option value="autocreate">自动创建默认分类</option>
+          </select>
+          <input type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
+        </label>
+      </p>
 
-  <p>
-    <label>
-      Status Source<br>
-      <select name="status_source" required>
-        <option value="frontmatter" selected>From Frontmatter Field (default: draft)</option>
-        <option value="alldraft">All Draft</option>
-        <option value="allpublished">All Published</option>
-      </select>
-      <input type="text" name="status_field" id="status_field_container" value="draft" placeholder="draft">
-    </label>
-  </p>
+      <p>
+        <label>
+          标签来源<br>
+          <select name="tag_source" required>
+            <option value="none">不设置（留空）</option>
+            <option value="frontmatter" selected>Frontmatter 字段（默认：tags）</option>
+            <option value="autocreate">自动创建默认标签</option>
+          </select>
+          <input type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
+        </label>
+      </p>
 
-  <p>
-    <label>
-      Category Source<br>
-      <select name="category_source" required>
-        <option value="none">None (留空)</option>
-        <option value="frontmatter" selected>From Frontmatter Field (default: categories)</option>
-        <option value="autocreate">Auto Create Default Category</option>
-      </select>
-      <input type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
-    </label>
-  </p>
 
-  <p>
-    <label>
-      Tag Source<br>
-      <select name="tag_source" required>
-        <option value="none">None (留空)</option>
-        <option value="frontmatter" selected>From Frontmatter Field (default: tags)</option>
-        <option value="autocreate">Auto Create Default Tag</option>
-      </select>
-      <input type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
-    </label>
-  </p>
+    </div>
+    <div class="col-6">
+      <p>
+        <small>
+          Markdown 文件应包含 frontmatter，例如：<br>
+          <pre>---
+  title: 文章标题
+  slug: article-slug
+  date: 2011-05-12T02:20:04.000Z
+  status: draft
+  categories:
+    - category1 # 仅第一个标签会关联到文章
+    - category2 # 其余标签仅创建不关联，只创建
+  tags:
+    - tag1
+    - tag2
+  ---
 
-  <p>
-    <small>
-      Markdown 文件应包含 frontmatter，例如：<br>
-      <pre>---
-title: 文章标题
-slug: article-slug
-date: 2011-05-12T02:20:04.000Z
-status: draft
-# only first one category supported
-categories:
-  - category1
-tags:
-  - tag1
-  - tag2
----
+  文章内容...</pre>
+        </small>
+      </p>
+    </div>
 
-文章内容...</pre>
-    </small>
-  </p>
+  </div>
 
 </form>
 
+<div id="import-parse-panel" class="import-parse-panel" hidden>
+  <div id="import-parse-summary" role="alert">准备解析...</div>
+  <table class="import-parse-table">
+    <thead>
+    <tr>
+      <th>文件</th>
+      <th>状态</th>
+      <th>信息</th>
+    </tr>
+    </thead>
+    <tbody id="import-parse-rows"></tbody>
+  </table>
+</div>
+
 <script>
 $(function() {
+  var $form = $('#form');
+  var $parsePanel = $('#import-parse-panel');
+  var $parseSummary = $('#import-parse-summary');
+  var $parseRows = $('#import-parse-rows');
+  var isParsing = false;
+
   function show(sel, disp) { $(sel).css('display', disp || 'inline'); }
   function hide(sel) { $(sel).css('display', 'none'); }
+
+  function setSummary(text, isError) {
+    $parseSummary.text(text);
+    if (isError) {
+      $parseSummary.attr('data-variant', 'error');
+      return;
+    }
+    $parseSummary.attr('data-variant', 'warning');
+  }
+
+  function appendParseRow(filename, state, message) {
+    var $tr = $('<tr></tr>');
+    $('<td></td>').text(filename).appendTo($tr);
+    $('<td></td>')
+      .addClass('import-parse-state')
+      .attr('data-state', state)
+      .text(state === 'success' ? '成功' : '失败')
+      .appendTo($tr);
+    $('<td></td>').text(message).appendTo($tr);
+    $parseRows.append($tr);
+  }
+
+  function collectOptions() {
+    return {
+      title_source: $('select[name="title_source"]').val() || 'frontmatter',
+      title_field: $('input[name="title_field"]').val() || 'title',
+      title_level: $('select[name="title_level"]').val() || '1',
+      slug_source: $('select[name="slug_source"]').val() || 'filename',
+      slug_field: $('input[name="slug_field"]').val() || 'slug',
+      created_source: $('select[name="created_source"]').val() || 'frontmatter',
+      created_field: $('input[name="created_field"]').val() || 'date',
+      status_source: $('select[name="status_source"]').val() || 'frontmatter',
+      status_field: $('input[name="status_field"]').val() || 'draft',
+      category_source: $('select[name="category_source"]').val() || 'none',
+      category_field: $('input[name="category_field"]').val() || 'categories',
+      tag_source: $('select[name="tag_source"]').val() || 'none',
+      tag_field: $('input[name="tag_field"]').val() || 'tags'
+    };
+  }
+
+  function buildParseFormData(file, options, reset) {
+    var formData = new FormData();
+    formData.append('file', file, file.name);
+    Object.keys(options).forEach(function(key) {
+      formData.append(key, options[key]);
+    });
+    if (reset) {
+      formData.append('reset', '1');
+    }
+    return formData;
+  }
+
   $('select[name="title_source"]').on('change', function() {
     var v = $(this).val();
     if (v === 'frontmatter') { show('#title_field_container'); hide('#title_level_container'); }
@@ -144,5 +246,85 @@ $(function() {
   $('select[name="tag_source"]').on('change', function() {
     $(this).val() === 'frontmatter' ? show('#tag_field_container') : hide('#tag_field_container');
   }).trigger('change');
+
+  $form.on('submit', async function(e) {
+    e.preventDefault();
+    if (isParsing) {
+      return;
+    }
+
+    var fileInput = $form.find('input[name="files"]')[0];
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      setSummary('请至少选择一个文件', true);
+      return;
+    }
+
+    var files = Array.from(fileInput.files);
+    var options = collectOptions();
+
+    isParsing = true;
+    $parsePanel.prop('hidden', false);
+    $parseRows.empty();
+    setSummary('开始逐个解析文件...', false);
+
+    var successCount = 0;
+    var failCount = 0;
+    var $inputs = $form.find('input, select, button, textarea');
+    $inputs.prop('disabled', true);
+
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      var formData = buildParseFormData(file, options, i === 0);
+
+      try {
+        var response = await fetch('/admin/import/parse-item', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        var result = null;
+        try {
+          result = await response.json();
+        } catch (jsonErr) {
+          result = null;
+        }
+
+        if (response.ok && result && result.ok) {
+          successCount++;
+          var okMsg = result.title || result.slug || '解析成功';
+          if (result.warning) {
+            okMsg = okMsg + '（' + result.warning + '）';
+          }
+          appendParseRow(file.name, 'success', okMsg);
+        } else {
+          failCount++;
+          var errMsg = (result && result.error) ? result.error : ('HTTP ' + response.status);
+          appendParseRow(file.name, 'error', errMsg);
+        }
+      } catch (err) {
+        failCount++;
+        appendParseRow(file.name, 'error', err && err.message ? err.message : 'request failed');
+      }
+
+      setSummary(
+        '解析进度 ' + (i + 1) + '/' + files.length + '，成功 ' + successCount + '，失败 ' + failCount,
+        failCount > 0
+      );
+    }
+
+    $inputs.prop('disabled', false);
+    isParsing = false;
+
+    if (successCount > 0) {
+      setSummary('解析完成，正在进入预览页面...', false);
+      window.location.href = '/admin/import/preview';
+      return;
+    }
+
+    setSummary('未解析出可导入的内容，请检查文件或配置。', true);
+  });
 });
 </script>

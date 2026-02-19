@@ -27,16 +27,14 @@
   .import-status[data-state="error"] {
     color: var(--danger);
   }
-  .import-summary {
-    margin: 0 0 12px;
-    font-size: 0.875rem;
+  #import-summary {
+    margin-bottom: 12px;
   }
 </style>
 
 <form id="form" method="post" action="/admin/import/preview">
   <input type="hidden" name="items_count" value="{{ len .Items }}">
-
-  <p class="import-summary" id="import-summary">待导入 {{ len .Items }} 篇</p>
+  <div id="import-summary" role="alert" data-variant="warning">待导入 {{ len .Items }} 篇</div>
 
   <table class="import-preview-table">
     <thead>
@@ -48,8 +46,8 @@
       </th>
       <th>类型</th>
       <th>标签/分类</th>
-      <th>内容预览</th>
-      <th>导入状态</th>
+      <th class="cell-message">内容预览</th>
+      <th class="cell-status">导入状态</th>
     </tr>
     </thead>
     <tbody>
@@ -91,9 +89,13 @@ $(function() {
   var $summary = $('#import-summary');
   var importing = false;
 
-  function setSummary(text, isError) {
+  function setSummary(text, variant) {
     $summary.text(text);
-    $summary.css('color', isError ? 'var(--danger)' : '');
+    if (variant) {
+      $summary.attr('data-variant', variant);
+      return;
+    }
+    $summary.removeAttr('data-variant');
   }
 
   function setRowStatus($row, state, text) {
@@ -146,7 +148,7 @@ $(function() {
     var $rows = $form.find('tbody tr[data-import-row]');
     var total = $rows.length;
     if (total === 0) {
-      setSummary('没有可导入的数据', true);
+      setSummary('没有可导入的数据', 'error');
       importing = false;
       return;
     }
@@ -156,7 +158,7 @@ $(function() {
 
     var successCount = 0;
     var failCount = 0;
-    setSummary('开始逐条导入...', false);
+    setSummary('开始逐条导入...', 'warning');
 
     for (var i = 0; i < total; i++) {
       var $row = $($rows[i]);
@@ -196,7 +198,7 @@ $(function() {
 
       setSummary(
         '进度 ' + (i + 1) + '/' + total + '，成功 ' + successCount + '，失败 ' + failCount,
-        failCount > 0
+        'warning'
       );
     }
 
@@ -204,12 +206,12 @@ $(function() {
     importing = false;
 
     if (failCount === 0) {
-      setSummary('导入完成，全部成功。2 秒后跳转到文章列表...', false);
+      setSummary('导入完成，全部成功。2 秒后跳转到文章列表...', 'success');
       setTimeout(function() {
         window.location.href = '/admin/posts';
       }, 2000);
     } else {
-      setSummary('导入完成：成功 ' + successCount + '，失败 ' + failCount + '。可修改后重新导入。', true);
+      setSummary('导入完成：成功 ' + successCount + '，失败 ' + failCount + '。可修改后重新导入。', 'error');
     }
   });
 });

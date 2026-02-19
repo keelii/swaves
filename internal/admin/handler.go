@@ -56,6 +56,7 @@ type dashboardUVTabData struct {
 
 const dashboardActiveUsersWindowSeconds int64 = 30 * 60
 const dashboardActiveUsersWindowLabel = "30分钟"
+const importPreviewSessionKey = "admin_import_preview_items"
 
 var dashboardUVRanges = []dashboardUVRangeConfig{
 	{
@@ -2137,10 +2138,347 @@ func (h *Handler) GetTaskRunListHandler(c *fiber.Ctx) error {
 }
 
 // Import/Export
+type importParseOptions struct {
+	slugSource     SlugSource
+	slugField      string
+	titleSource    TitleSource
+	titleField     string
+	titleLevel     int
+	createdSource  CreatedSource
+	createdField   string
+	statusSource   StatusSource
+	statusField    string
+	categorySource CategorySource
+	categoryField  string
+	tagSource      TagSource
+	tagField       string
+}
+
+func readImportParseOptions(c *fiber.Ctx) importParseOptions {
+	// slug
+	slugSourceStr := c.FormValue("slug_source")
+	slugSource := SlugFromTitle
+	switch slugSourceStr {
+	case "filename":
+		slugSource = SlugFromFilename
+	case "frontmatter":
+		slugSource = SlugFromFrontmatter
+	case "title":
+		slugSource = SlugFromTitle
+	}
+	slugField := c.FormValue("slug_field")
+	if slugField == "" {
+		slugField = "slug"
+	}
+
+	// title
+	titleSourceStr := c.FormValue("title_source")
+	titleSource := TitleFromFrontmatter
+	switch titleSourceStr {
+	case "filename":
+		titleSource = TitleFromFilename
+	case "frontmatter":
+		titleSource = TitleFromFrontmatter
+	case "markdown":
+		titleSource = TitleFromMarkdown
+	}
+	titleField := c.FormValue("title_field")
+	if titleField == "" {
+		titleField = "title"
+	}
+	titleLevel := 1
+	if titleSourceStr == "markdown" {
+		if levelStr := c.FormValue("title_level"); levelStr != "" {
+			if level, err := strconv.Atoi(levelStr); err == nil && level >= 1 && level <= 3 {
+				titleLevel = level
+			}
+		}
+	}
+
+	// created_at
+	createdSourceStr := c.FormValue("created_source")
+	createdSource := CreatedFromFrontmatter
+	switch createdSourceStr {
+	case "frontmatter":
+		createdSource = CreatedFromFrontmatter
+	case "filetime":
+		createdSource = CreatedFromFileTime
+	}
+	createdField := c.FormValue("created_field")
+	if createdField == "" {
+		createdField = "date"
+	}
+
+	// status
+	statusSourceStr := c.FormValue("status_source")
+	statusSource := StatusFromFrontmatter
+	switch statusSourceStr {
+	case "frontmatter":
+		statusSource = StatusFromFrontmatter
+	case "alldraft":
+		statusSource = StatusAllDraft
+	case "allpublished":
+		statusSource = StatusAllPublished
+	}
+	statusField := c.FormValue("status_field")
+	if statusField == "" {
+		statusField = "draft"
+	}
+
+	// category
+	categorySourceStr := c.FormValue("category_source")
+	categorySource := CategoryNone
+	switch categorySourceStr {
+	case "frontmatter":
+		categorySource = CategoryFromFrontmatter
+	case "autocreate":
+		categorySource = CategoryAutoCreate
+	case "none":
+		categorySource = CategoryNone
+	}
+	categoryField := c.FormValue("category_field")
+	if categoryField == "" {
+		categoryField = "category"
+	}
+
+	// tag
+	tagSourceStr := c.FormValue("tag_source")
+	tagSource := TagNone
+	switch tagSourceStr {
+	case "frontmatter":
+		tagSource = TagFromFrontmatter
+	case "autocreate":
+		tagSource = TagAutoCreate
+	case "none":
+		tagSource = TagNone
+	}
+	tagField := c.FormValue("tag_field")
+	if tagField == "" {
+		tagField = "tags"
+	}
+
+	return importParseOptions{
+		slugSource:     slugSource,
+		slugField:      slugField,
+		titleSource:    titleSource,
+		titleField:     titleField,
+		titleLevel:     titleLevel,
+		createdSource:  createdSource,
+		createdField:   createdField,
+		statusSource:   statusSource,
+		statusField:    statusField,
+		categorySource: categorySource,
+		categoryField:  categoryField,
+		tagSource:      tagSource,
+		tagField:       tagField,
+	}
+}
+
+func (h *Handler) clearImportPreviewItems(c *fiber.Ctx) error {
+	sess, err := h.Session.Store.Get(c)
+	if err != nil {
+		return err
+	}
+	sess.Delete(importPreviewSessionKey)
+	return sess.Save()
+}
+
+func (h *Handler) loadImportPreviewItems(c *fiber.Ctx) ([]PreviewPostItem, error) {
+	sess, err := h.Session.Store.Get(c)
+	if err != nil {
+		return nil, err
+	}
+
+	raw := sess.Get(importPreviewSessionKey)
+	if raw == nil {
+		return []PreviewPostItem{}, nil
+	}
+
+	var payload []byte
+	switch v := raw.(type) {
+	case string:
+		payload = []byte(v)
+	case []byte:
+		payload = v
+	default:
+		return nil, fmt.Errorf("invalid import preview session type: %T", raw)
+	}
+	if len(payload) == 0 {
+		return []PreviewPostItem{}, nil
+	}
+
+	var items []PreviewPostItem
+	if err := json.Unmarshal(payload, &items); err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].Index = i
+		if items[i].ContentPreview == "" {
+			items[i].ContentPreview = buildImportContentPreview(items[i].Content)
+		}
+	}
+	return items, nil
+}
+
+func (h *Handler) saveImportPreviewItems(c *fiber.Ctx, items []PreviewPostItem) error {
+	for i := range items {
+		items[i].Index = i
+		if items[i].ContentPreview == "" {
+			items[i].ContentPreview = buildImportContentPreview(items[i].Content)
+		}
+	}
+
+	data, err := json.Marshal(items)
+	if err != nil {
+		return err
+	}
+
+	sess, err := h.Session.Store.Get(c)
+	if err != nil {
+		return err
+	}
+	sess.Set(importPreviewSessionKey, string(data))
+	return sess.Save()
+}
+
 func (h *Handler) GetImportHandler(c *fiber.Ctx) error {
+	if err := h.clearImportPreviewItems(c); err != nil {
+		log.Printf("clear import preview session failed: %v", err)
+	}
 	return RenderAdminView(c, "import", fiber.Map{
 		"Title": "Import Markdown",
 	}, "")
+}
+
+func (h *Handler) GetImportPreviewHandler(c *fiber.Ctx) error {
+	items, err := h.loadImportPreviewItems(c)
+	if err != nil {
+		log.Printf("load import preview items failed: %v", err)
+		return RenderAdminView(c, "import", fiber.Map{
+			"Title": "Import Markdown",
+			"Error": "Load import preview failed: " + err.Error(),
+		}, "")
+	}
+
+	if len(items) == 0 {
+		return RenderAdminView(c, "import_preview", fiber.Map{
+			"Title": "Import Preview",
+			"Items": []PreviewPostItem{},
+			"Error": "No items to import",
+		}, "")
+	}
+
+	return RenderAdminView(c, "import_preview", fiber.Map{
+		"Title": "Import Preview",
+		"Items": items,
+	}, "")
+}
+
+func (h *Handler) PostImportParseItemHandler(c *fiber.Ctx) error {
+	if c.FormValue("reset") == "1" {
+		if err := h.clearImportPreviewItems(c); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"ok":    false,
+				"error": "clear import preview failed: " + err.Error(),
+			})
+		}
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		statusCode := fiber.StatusBadRequest
+		if errors.Is(err, fiber.ErrRequestEntityTooLarge) || strings.Contains(strings.ToLower(err.Error()), "request entity too large") {
+			statusCode = fiber.StatusRequestEntityTooLarge
+		}
+		return c.Status(statusCode).JSON(fiber.Map{
+			"ok":    false,
+			"error": err.Error(),
+		})
+	}
+
+	src, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "open file failed: " + err.Error(),
+		})
+	}
+	defer src.Close()
+
+	content, err := io.ReadAll(src)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "read file failed: " + err.Error(),
+		})
+	}
+
+	filename := fileHeader.Filename
+	if idx := strings.LastIndex(filename, "."); idx > 0 {
+		filename = filename[:idx]
+	}
+
+	options := readImportParseOptions(c)
+	items, parseErr := ParseImportFiles(
+		[]ImportFile{{Filename: filename, Content: string(content)}},
+		options.slugSource,
+		options.slugField,
+		options.titleSource,
+		options.titleField,
+		options.titleLevel,
+		options.createdSource,
+		options.createdField,
+		options.statusSource,
+		options.statusField,
+		options.categorySource,
+		options.categoryField,
+		options.tagSource,
+		options.tagField,
+	)
+	if len(items) == 0 {
+		errMsg := "parse file failed"
+		if parseErr != nil {
+			errMsg = parseErr.Error()
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":       false,
+			"filename": fileHeader.Filename,
+			"error":    errMsg,
+		})
+	}
+
+	storedItems, err := h.loadImportPreviewItems(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":    false,
+			"error": "load preview session failed: " + err.Error(),
+		})
+	}
+
+	item := items[0]
+	item.Index = len(storedItems)
+	item.ContentPreview = buildImportContentPreview(item.Content)
+	storedItems = append(storedItems, item)
+
+	if err := h.saveImportPreviewItems(c, storedItems); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":    false,
+			"error": "save preview session failed: " + err.Error(),
+		})
+	}
+
+	resp := fiber.Map{
+		"ok":       true,
+		"index":    item.Index,
+		"title":    item.Title,
+		"slug":     item.Slug,
+		"filename": fileHeader.Filename,
+	}
+	if parseErr != nil {
+		resp["warning"] = parseErr.Error()
+	}
+
+	return c.JSON(resp)
 }
 
 func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
@@ -2332,6 +2670,9 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 			"Error": err.Error(),
 		}, "")
 	}
+	if saveErr := h.saveImportPreviewItems(c, items); saveErr != nil {
+		log.Printf("save import preview session failed: %v", saveErr)
+	}
 
 	// 构建 title 来源描述
 	titleSourceDesc := ""
@@ -2479,6 +2820,10 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 			"Items": items,
 			"Error": err.Error(),
 		}, "")
+	}
+
+	if err := h.clearImportPreviewItems(c); err != nil {
+		log.Printf("clear import preview session failed: %v", err)
 	}
 
 	return c.Redirect("/admin/posts")
