@@ -268,7 +268,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 func (h Handler) GetPostByIDSlugTitle(c *fiber.Ctx) (*DisplayPostWithRelation, error) {
 	filename := c.Params("ist")
 	ext := filepath.Ext(filename)
-	pSlug := strings.TrimSuffix(filename, ext)
+	ist := strings.TrimSuffix(filename, ext)
 
 	if ext != share.GetPostExt() {
 		return nil, errors.New(fmt.Sprintf("%s not found", share.GetPostExt()))
@@ -277,19 +277,15 @@ func (h Handler) GetPostByIDSlugTitle(c *fiber.Ctx) (*DisplayPostWithRelation, e
 	var post *DisplayPostWithRelation
 
 	if share.PostNameIsID() {
-		id, err := strconv.ParseInt(strings.TrimSpace(pSlug), 10, 64)
+		id, err := strconv.ParseInt(strings.TrimSpace(ist), 10, 64)
 		if err != nil {
 			return nil, errors.New("invalid post identifier in url")
 		}
 		post = GetPostByID(h.Model, id)
 	} else if share.PostNameIsTitle() {
-		title := pSlug
-		if unescapedTitle, err := url.PathUnescape(pSlug); err == nil {
-			title = unescapedTitle
-		}
-		post = GetPostByTitle(h.Model, title)
+		post = GetPostByTitle(h.Model, ist)
 	} else {
-		post = GetPostBySlug(h.Model, pSlug)
+		post = GetPostBySlug(h.Model, ist)
 	}
 	return post, nil
 }

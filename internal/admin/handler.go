@@ -1436,11 +1436,20 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		settingsByKind[s.Kind] = append(settingsByKind[s.Kind], view)
 	}
 
+	activeKind := strings.TrimSpace(kind)
+	if _, ok := settingsByKind[activeKind]; !ok {
+		activeKind = ""
+		if len(settingKinds) > 0 {
+			activeKind = settingKinds[0]
+		}
+	}
+
 	return RenderAdminView(c, "settings_all", fiber.Map{
 		"Title":          "Settings - Edit All",
 		"SettingsByKind": settingsByKind,
 		"SettingKinds":   settingKinds,
 		"Kind":           kind,
+		"ActiveKind":     activeKind,
 	}, "")
 }
 

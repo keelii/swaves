@@ -2,6 +2,7 @@ package site
 
 import (
 	"log"
+	"net/url"
 	"sort"
 	"swaves/internal/db"
 	"swaves/internal/md"
@@ -85,7 +86,13 @@ func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
 
 	return toDisplayPostWithRelation(dbx, p)
 }
-func GetPostByTitle(dbx *db.DB, title string) *DisplayPostWithRelation {
+func GetPostByTitle(dbx *db.DB, ist string) *DisplayPostWithRelation {
+	title, err := url.PathUnescape(ist)
+	if err != nil {
+		log.Println("Failed to unescape title:", err)
+		return nil
+	}
+
 	p, err := db.GetPostByTitleWithRelation(dbx, title)
 	if err != nil {
 		log.Println(err)
