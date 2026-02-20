@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"swaves/helper"
 	"swaves/internal/db"
 	"swaves/internal/middleware"
+	"swaves/internal/pathutil"
 	"swaves/internal/share"
 	"swaves/internal/store"
 	"swaves/internal/types"
@@ -87,11 +89,7 @@ func isSafeReturnPath(path string) bool {
 }
 
 func getSiteFallbackPath() string {
-	basePath := store.GetSetting("base_path")
-	if basePath == "" {
-		return "/"
-	}
-	return basePath
+	return share.GetBasePath()
 }
 
 func resolveReturnPath(c fiber.Ctx) string {
@@ -161,10 +159,7 @@ func appendQueryParam(path, key, value string) string {
 }
 
 func getSitePath(path string) string {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return share.GetBasePath() + path
+	return pathutil.JoinAbsolute(share.GetBasePath(), path)
 }
 
 func normalizeErrorReturnURL(raw string) string {
@@ -205,7 +200,7 @@ func (h Handler) redirectNotFound(c fiber.Ctx) error {
 
 	c.Status(fiber.StatusNotFound)
 	return RenderUIView(c, "site/404", fiber.Map{
-		"Title":     "404 Not Found",
+		"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
@@ -261,7 +256,7 @@ func (h Handler) GetNotFound(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusNotFound)
 	return RenderUIView(c, "site/404", fiber.Map{
-		"Title":     "404 Not Found",
+		"Title":     fmt.Sprintf("404 Not Found [%s]", "GetNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
@@ -297,7 +292,7 @@ func (h Handler) GetHome(c fiber.Ctx) error {
 //		return c.Status(fiber.StatusNotFound).SendString("post not found")
 //	}
 //
-//	post := GetPostByIST(h.Model, matched["slug"])
+//	post := getPostByIST(h.Model, matched["slug"])
 //
 //	return RenderUIView(c, "site/post", fiber.Map{
 //		"Post": post,
@@ -314,7 +309,7 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 		return h.redirectNotFound(c)
 	}
 
-	post, err := h.GetPostByIDSlugTitle(c)
+	post, err := h.getPostByIDSlugTitle(c, "post")
 	if err != nil {
 		return h.redirectNotFound(c)
 	}
@@ -347,32 +342,37 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 	}, "")
 }
 
-func (h Handler) GetPostByIDSlugTitle(c fiber.Ctx) (*DisplayPostWithRelation, error) {
-	filename := c.Params("ist")
-	ext := filepath.Ext(filename)
-	ist := strings.TrimSuffix(filename, ext)
+func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRelation, error) {
+	ist, ext := h.getIST(c)
 
-	if ext != share.GetPostExt() {
+	if ext != "" && ext != share.GetPostExt() {
 		return nil, errors.New(fmt.Sprintf("%s not found", share.GetPostExt()))
 	}
 
 	var post *DisplayPostWithRelation
 
-	if share.PostNameIsID() {
-		id, err := strconv.ParseInt(strings.TrimSpace(ist), 10, 64)
-		if err != nil {
-			return nil, errors.New("invalid post identifier in url")
-		}
-		post = GetPostByID(h.Model, id)
-	} else if share.PostNameIsTitle() {
-		title := ist
-		if unescapedTitle, err := url.PathUnescape(ist); err == nil {
-			title = unescapedTitle
-		}
-		post = GetPostByTitle(h.Model, title)
-	} else {
+	if t == "page" {
 		post = GetPostBySlug(h.Model, ist)
+	} else {
+		if share.PostNameIsID() {
+			id, err := strconv.ParseInt(strings.TrimSpace(ist), 10, 64)
+			if err != nil {
+				return nil, errors.New("invalid post identifier in url")
+			}
+			post = GetPostByID(h.Model, id)
+		} else if share.PostNameIsTitle() {
+			title := ist
+			if unescapedTitle, err := url.PathUnescape(ist); err == nil {
+				title = unescapedTitle
+			}
+			post = GetPostByTitle(h.Model, title)
+		}
 	}
+
+	//if post == nil {
+	//	post = GetPostBySlug(h.Model, ist)
+	//}
+	//
 	return post, nil
 }
 
@@ -391,8 +391,29 @@ func (h Handler) funcName(c fiber.Ctx, post *DisplayPostWithRelation) (int, int,
 	}
 	return readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha
 }
-func (h Handler) GetPostByIST(c fiber.Ctx) error {
-	post, err := h.GetPostByIDSlugTitle(c)
+func (h Handler) GetPostByPage(c fiber.Ctx) error {
+	ist, _ := h.getIST(c)
+	id, _ := strconv.ParseInt(strings.TrimSpace(ist), 10, 64)
+
+	if id > 0 {
+		return h.getPostByIST(c, "article")
+	}
+
+	// 在没有设置 base_path 的情况下，页面和文章的 URL 规则可能会冲突
+	if helper.IsSlug(ist) {
+		return h.getPostByIST(c, "page")
+	}
+
+	return h.getPostByIST(c, "article")
+}
+func (h Handler) GetPostByArticle(c fiber.Ctx) error {
+	return h.getPostByIST(c, "post")
+}
+func (h Handler) GetPostByDefault(c fiber.Ctx) error {
+	return h.getPostByIST(c, "default")
+}
+func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
+	post, err := h.getPostByIDSlugTitle(c, t)
 	if err != nil {
 		return h.redirectNotFound(c)
 	}
@@ -416,7 +437,12 @@ func (h Handler) GetPostByIST(c fiber.Ctx) error {
 		//"Pages": ListPages(h.Model),
 	}, "")
 }
-
+func (h Handler) getIST(c fiber.Ctx) (string, string) {
+	filename := c.Params("ist")
+	ext := filepath.Ext(filename)
+	ist := strings.TrimSuffix(filename, ext)
+	return ist, ext
+}
 func (h Handler) GetRSS(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	posts := ListDisplayPosts(h.Model, db.PostKindPost, &pager)

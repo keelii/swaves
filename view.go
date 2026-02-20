@@ -233,6 +233,7 @@ func NewViewEngine() *html.Engine {
 	engine.AddFunc("GetTagPrefix", share.GetTagPrefix)
 	engine.AddFunc("GetRSSUrl", share.GetRSSUrl)
 	engine.AddFunc("GetAdminUrl", share.GetAdminUrl)
+	engine.AddFunc("adminPath", share.BuildAdminPath)
 	engine.AddFunc("GetTagUrl", share.GetTagUrl)
 	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
 	engine.AddFunc("BuildPostURL", share.BuildPostURL)

@@ -2,33 +2,96 @@
   #form select {
     width: 25em;
   }
+
   #form input {
     width: auto;
   }
-  .import-parse-panel {
-    margin-top: var(--space-4);
+
+  .import-edit-panel {
+    margin-top: var(--space-5);
   }
-  #import-parse-summary {
+
+  .import-edit-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
     margin-bottom: var(--space-2);
+    flex-wrap: wrap;
   }
-  .import-parse-table th,
-  .import-parse-table td {
+
+  .import-edit-table th,
+  .import-edit-table td {
     vertical-align: top;
     font-size: var(--text-7);
+  }
+
+  .import-edit-table td {
+    min-width: 160px;
+  }
+
+  .import-edit-table .import-edit-content {
+    min-width: 360px;
+    max-width: 560px;
+  }
+
+  .import-content-preview {
+    line-height: 1.45;
+    word-break: break-word;
+    white-space: normal;
+    max-height: 13.2em;
+    overflow: hidden;
+  }
+
+  .import-edit-status {
+    min-width: 140px;
+    max-width: 280px;
     word-break: break-word;
   }
-  .import-parse-table td {
-    max-width: 320px;
+
+  .import-edit-status[data-state="running"] {
+    color: var(--warning, #d97706);
+    font-weight: 600;
   }
-  .import-parse-state[data-state="success"] {
+
+  .import-edit-status[data-state="success"] {
     color: var(--success);
   }
-  .import-parse-state[data-state="error"] {
+
+  .import-edit-status[data-state="error"] {
     color: var(--danger);
+  }
+
+  .import-edit-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 110px;
+  }
+
+  .import-edit-radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .import-field-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
   }
 </style>
 
-<form id="form" method="post" action="/admin/import" enctype="multipart/form-data">
+{{ if .Error }}
+<div role="alert" data-variant="warning">{{ .Error }}</div>
+{{ end }}
+{{ if .Success }}
+<div role="alert" data-variant="success">{{ .Success }}</div>
+{{ end }}
+
+<form id="form" method="post" action="{{ adminPath "/import" }}" enctype="multipart/form-data">
   <div class="row">
     <div class="col-6">
       <p>
@@ -120,9 +183,8 @@
           <input type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
         </label>
       </p>
-
-
     </div>
+
     <div class="col-6">
       <p>
         <small>
@@ -144,55 +206,337 @@
         </small>
       </p>
     </div>
-
   </div>
-
 </form>
 
-<div id="import-parse-panel" class="import-parse-panel" hidden>
-  <div id="import-parse-summary" role="alert">准备解析...</div>
-  <table class="import-parse-table">
+<div id="import-edit-panel" class="import-edit-panel"{{ if not (gt (len .ImportingItems) 0) }} hidden{{ end }}>
+  <div class="import-edit-actions">
+    <div id="import-edit-summary" role="alert" data-variant="{{ if gt (len .ImportingItems) 0 }}warning{{ else }}success{{ end }}">
+      {{ if gt (len .ImportingItems) 0 }}待确认 {{ len .ImportingItems }} 条导入记录{{ else }}暂无待确认导入记录{{ end }}
+    </div>
+  </div>
+  <div class="hstack">
+    <button type="button" class="button outline" id="toggle-import-status-btn">全量切换发布状态</button>
+    <button type="button" class="button" id="import-confirm-btn">确认导入</button>
+  </div>
+
+  <table class="import-edit-table">
     <thead>
     <tr>
-      <th>文件</th>
-      <th>状态</th>
-      <th>信息</th>
+      <th>标题/URL标识</th>
+      <th>发布状态</th>
+      <th>类型</th>
+      <th>标签/分类</th>
+      <th class="cell-35">内容（前 200 字）</th>
+      <th class="cell-10">确认状态</th>
     </tr>
     </thead>
-    <tbody id="import-parse-rows"></tbody>
+    <tbody id="import-edit-rows">
+    {{ range .ImportingItems }}
+      <tr data-import-item-row data-post-id="{{ .PostID }}">
+        <td>
+          <div class="import-field-stack">
+            <input type="hidden" data-field="post_id" value="{{ .PostID }}">
+            <input type="hidden" data-field="filename" value="{{ .Filename }}">
+            <input type="hidden" data-field="created_at_unix" value="{{ .CreatedAtUnix }}">
+            <input type="text" data-field="title" value="{{ .Title }}" required style="width: 100%;">
+            <input type="text" data-field="slug" value="{{ .Slug }}" required style="width: 100%;">
+            <input type="text" data-field="created_at" value="{{ .CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">
+          </div>
+        </td>
+        <td>
+          <div class="import-edit-radio-group">
+            <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="draft" {{ if eq .Status "draft" }}checked{{ end }}> draft</label>
+            <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="published" {{ if eq .Status "published" }}checked{{ end }}> published</label>
+          </div>
+        </td>
+        <td>
+          <div class="import-edit-radio-group">
+            <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="0" {{ if or (eq .Kind "0") (eq .Kind "") }}checked{{ end }}> post</label>
+            <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="1" {{ if eq .Kind "1" }}checked{{ end }}> page</label>
+          </div>
+        </td>
+        <td>
+          <div class="import-field-stack">
+            <input type="text" data-field="tags" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
+            <select data-field="category" data-selected="{{ .Category }}" data-categories="{{ .Categories }}" style="width: 100%;"></select>
+            <input type="hidden" data-field="categories" value="{{ .Categories }}">
+          </div>
+        </td>
+        <td class="import-edit-content">
+          <textarea data-field="content" hidden>{{ .Content }}</textarea>
+          <div class="import-content-preview">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
+        </td>
+        <td class="import-edit-status" data-import-edit-status data-state="pending">待确认</td>
+      </tr>
+    {{ else }}
+      <tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>
+    {{ end }}
+    </tbody>
   </table>
 </div>
 
 <script>
 $(function() {
+  var parseItemURL = '{{ adminPath "/import/parse-item" }}';
+  var confirmItemURL = '{{ adminPath "/import/confirm-item" }}';
+  var baseCategoryOptions = [
+    {{- range .AllCategories }}
+    {{ printf "%q" .Name }},
+    {{- end }}
+  ];
+
   var $form = $('#form');
-  var $parsePanel = $('#import-parse-panel');
-  var $parseSummary = $('#import-parse-summary');
-  var $parseRows = $('#import-parse-rows');
+  var $editPanel = $('#import-edit-panel');
+  var $editSummary = $('#import-edit-summary');
+  var $editRows = $('#import-edit-rows');
+  var $confirmBtn = $('#import-confirm-btn');
   var isParsing = false;
+  var isConfirming = false;
 
   function show(sel, disp) { $(sel).css('display', disp || 'inline'); }
   function hide(sel) { $(sel).css('display', 'none'); }
 
-  function setSummary(text, isError) {
-    $parseSummary.text(text);
-    if (isError) {
-      $parseSummary.attr('data-variant', 'error');
-      return;
-    }
-    $parseSummary.attr('data-variant', 'warning');
+  function escapeHTML(raw) {
+    return String(raw == null ? '' : raw)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
-  function appendParseRow(filename, state, message) {
-    var $tr = $('<tr></tr>');
-    $('<td></td>').text(filename).appendTo($tr);
-    $('<td></td>')
-      .addClass('import-parse-state')
-      .attr('data-state', state)
-      .text(state === 'success' ? '成功' : '失败')
-      .appendTo($tr);
-    $('<td></td>').text(message).appendTo($tr);
-    $parseRows.append($tr);
+  function splitCSV(raw) {
+    var value = String(raw || '');
+    if (!value.trim()) {
+      return [];
+    }
+    var seen = {};
+    var list = [];
+    value.split(',').forEach(function(part) {
+      var item = String(part || '').trim();
+      if (!item) {
+        return;
+      }
+      if (seen[item]) {
+        return;
+      }
+      seen[item] = true;
+      list.push(item);
+    });
+    return list;
+  }
+
+  function appendUnique(list, value) {
+    value = String(value || '').trim();
+    if (!value) {
+      return list;
+    }
+    if (list.indexOf(value) >= 0) {
+      return list;
+    }
+    list.push(value);
+    return list;
+  }
+
+  function normalizeItem(raw) {
+    raw = raw || {};
+    var postID = Number(raw.post_id || raw.PostID || 0);
+    var status = String(raw.status || raw.Status || 'draft').toLowerCase() === 'published' ? 'published' : 'draft';
+    var kind = String(raw.kind || raw.Kind || '0') === '1' ? '1' : '0';
+
+    return {
+      post_id: postID,
+      filename: String(raw.filename || raw.Filename || ''),
+      title: String(raw.title || raw.Title || ''),
+      slug: String(raw.slug || raw.Slug || ''),
+      content: String(raw.content || raw.Content || ''),
+      content_preview: String(raw.content_preview || raw.ContentPreview || ''),
+      status: status,
+      kind: kind,
+      created_at: String(raw.created_at || raw.CreatedAt || ''),
+      created_at_unix: Number(raw.created_at_unix || raw.CreatedAtUnix || 0),
+      tags: String(raw.tags || raw.Tags || ''),
+      category: String(raw.category || raw.Category || ''),
+      categories: String(raw.categories || raw.Categories || '')
+    };
+  }
+
+  function buildImportRowHTML(item) {
+    var statusDraftChecked = item.status !== 'published' ? ' checked' : '';
+    var statusPublishedChecked = item.status === 'published' ? ' checked' : '';
+    var kindPostChecked = item.kind !== '1' ? ' checked' : '';
+    var kindPageChecked = item.kind === '1' ? ' checked' : '';
+    var preview = item.content_preview ? item.content_preview : '-';
+
+    return '' +
+      '<tr data-import-item-row data-post-id="' + item.post_id + '">' +
+        '<td>' +
+          '<div class="import-field-stack">' +
+            '<input type="hidden" data-field="post_id" value="' + item.post_id + '">' +
+            '<input type="hidden" data-field="filename" value="' + escapeHTML(item.filename) + '">' +
+            '<input type="hidden" data-field="created_at_unix" value="' + item.created_at_unix + '">' +
+            '<input type="text" data-field="title" value="' + escapeHTML(item.title) + '" required style="width: 100%;">' +
+            '<input type="text" data-field="slug" value="' + escapeHTML(item.slug) + '" required style="width: 100%;">' +
+            '<input type="text" data-field="created_at" value="' + escapeHTML(item.created_at) + '" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">' +
+          '</div>' +
+        '</td>' +
+        '<td>' +
+          '<div class="import-edit-radio-group">' +
+            '<label><input type="radio" data-field="status" name="import_status_' + item.post_id + '" value="draft"' + statusDraftChecked + '> draft</label>' +
+            '<label><input type="radio" data-field="status" name="import_status_' + item.post_id + '" value="published"' + statusPublishedChecked + '> published</label>' +
+          '</div>' +
+        '</td>' +
+        '<td>' +
+          '<div class="import-edit-radio-group">' +
+            '<label><input type="radio" data-field="kind" name="import_kind_' + item.post_id + '" value="0"' + kindPostChecked + '> post</label>' +
+            '<label><input type="radio" data-field="kind" name="import_kind_' + item.post_id + '" value="1"' + kindPageChecked + '> page</label>' +
+          '</div>' +
+        '</td>' +
+        '<td>' +
+          '<div class="import-field-stack">' +
+            '<input type="text" data-field="tags" value="' + escapeHTML(item.tags) + '" placeholder="tag1, tag2" style="width: 100%;">' +
+            '<select data-field="category" data-selected="' + escapeHTML(item.category) + '" data-categories="' + escapeHTML(item.categories) + '" style="width: 100%;"></select>' +
+            '<input type="hidden" data-field="categories" value="' + escapeHTML(item.categories) + '">' +
+          '</div>' +
+        '</td>' +
+        '<td class="import-edit-content">' +
+          '<textarea data-field="content" hidden>' + escapeHTML(item.content) + '</textarea>' +
+          '<div class="import-content-preview">' + escapeHTML(preview) + '</div>' +
+        '</td>' +
+        '<td class="import-edit-status" data-import-edit-status data-state="pending">待确认</td>' +
+      '</tr>';
+  }
+
+  function initCategorySelect($row) {
+    var $select = $row.find('select[data-field="category"]');
+    if (!$select.length) {
+      return;
+    }
+
+    var selected = String($select.attr('data-selected') || '').trim();
+    var options = splitCSV($select.attr('data-categories'));
+
+    if (selected) {
+      options = appendUnique(options, selected);
+    }
+
+    baseCategoryOptions.forEach(function(name) {
+      options = appendUnique(options, name);
+    });
+
+    if (options.length === 0) {
+      options.push('');
+    }
+
+    if (!selected) {
+      selected = options[0];
+    }
+
+    $select.empty();
+    options.forEach(function(name) {
+      var label = name || '未设置';
+      $('<option></option>').val(name).text(label).appendTo($select);
+    });
+
+    $select.val(selected);
+    if (String($select.val() || '') !== selected) {
+      $select.prop('selectedIndex', 0);
+      selected = String($select.val() || '');
+    }
+
+    var categoryList = splitCSV($row.find('[data-field="categories"]').val());
+    categoryList = appendUnique(categoryList, selected);
+    $row.find('[data-field="categories"]').val(categoryList.join(', '));
+
+    $select.off('change.import').on('change.import', function() {
+      var val = String($(this).val() || '').trim();
+      var list = splitCSV($row.find('[data-field="categories"]').val());
+      list = appendUnique(list, val);
+      $row.find('[data-field="categories"]').val(list.join(', '));
+      $(this).attr('data-selected', val);
+    });
+  }
+
+  function setEditSummary(text, variant) {
+    $editSummary.text(text);
+    if (variant) {
+      $editSummary.attr('data-variant', variant);
+      return;
+    }
+    $editSummary.attr('data-variant', 'warning');
+  }
+
+  function formatFailedDetails(items, maxItems) {
+    var list = Array.isArray(items) ? items : [];
+    if (list.length === 0) {
+      return '';
+    }
+
+    var limit = Number(maxItems || 3);
+    if (!Number.isFinite(limit) || limit < 1) {
+      limit = 3;
+    }
+
+    var text = list.slice(0, limit).join('；');
+    if (list.length > limit) {
+      text += '；...';
+    }
+    return text;
+  }
+
+  function setRowStatus($row, state, text) {
+    var $cell = $row.find('[data-import-edit-status]');
+    $cell.attr('data-state', state);
+    $cell.text(text);
+  }
+
+  function ensureEditPanelVisible() {
+    if ($editPanel.prop('hidden')) {
+      $editPanel.prop('hidden', false);
+    }
+  }
+
+  function ensureEditEmptyRow() {
+    if ($editRows.find('tr[data-import-item-row]').length > 0) {
+      return;
+    }
+    if ($editRows.find('#import-edit-empty-row').length > 0) {
+      return;
+    }
+    $editRows.append('<tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>');
+  }
+
+  function syncEditSummaryByRows(defaultVariant) {
+    var count = $editRows.find('tr[data-import-item-row]').length;
+    if (count === 0) {
+      setEditSummary('暂无待确认导入记录', 'success');
+      ensureEditEmptyRow();
+      return;
+    }
+    setEditSummary('待确认 ' + count + ' 条导入记录', defaultVariant || 'warning');
+  }
+
+  function appendImportEditRow(rawItem) {
+    var item = normalizeItem(rawItem);
+    if (!item.post_id) {
+      return;
+    }
+
+    ensureEditPanelVisible();
+    $editRows.find('#import-edit-empty-row').remove();
+
+    var rowHTML = buildImportRowHTML(item);
+    var $newRow = $(rowHTML);
+    var $existing = $editRows.find('tr[data-import-item-row][data-post-id="' + item.post_id + '"]');
+    if ($existing.length > 0) {
+      $existing.replaceWith($newRow);
+    } else {
+      $editRows.append($newRow);
+    }
+
+    initCategorySelect($newRow);
+    syncEditSummaryByRows('warning');
   }
 
   function collectOptions() {
@@ -213,16 +557,54 @@ $(function() {
     };
   }
 
-  function buildParseFormData(file, options, reset) {
+  function buildParseFormData(file, options) {
     var formData = new FormData();
     formData.append('file', file, file.name);
     Object.keys(options).forEach(function(key) {
       formData.append(key, options[key]);
     });
-    if (reset) {
-      formData.append('reset', '1');
-    }
     return formData;
+  }
+
+  function readField($row, fieldName) {
+    return String($row.find('[data-field="' + fieldName + '"]').val() || '').trim();
+  }
+
+  function readFieldRaw($row, fieldName) {
+    return String($row.find('[data-field="' + fieldName + '"]').val() || '');
+  }
+
+  function readCheckedValue($row, fieldName, fallbackValue) {
+    var value = $row.find('[data-field="' + fieldName + '"]:checked').val();
+    if (value == null || value === '') {
+      return fallbackValue || '';
+    }
+    return String(value);
+  }
+
+  function buildConfirmPayload($row) {
+    var params = new URLSearchParams();
+
+    var category = readField($row, 'category');
+    var categories = readField($row, 'categories');
+    if (!categories && category) {
+      categories = category;
+    }
+
+    params.set('post_id', readField($row, 'post_id'));
+    params.set('filename', readField($row, 'filename'));
+    params.set('title', readField($row, 'title'));
+    params.set('slug', readField($row, 'slug'));
+    params.set('content', readFieldRaw($row, 'content'));
+    params.set('status', readCheckedValue($row, 'status', 'draft'));
+    params.set('kind', readCheckedValue($row, 'kind', '0'));
+    params.set('created_at', readField($row, 'created_at'));
+    params.set('created_at_unix', readField($row, 'created_at_unix'));
+    params.set('tags', readField($row, 'tags'));
+    params.set('category', category);
+    params.set('categories', categories);
+
+    return params;
   }
 
   $('select[name="title_source"]').on('change', function() {
@@ -247,6 +629,100 @@ $(function() {
     $(this).val() === 'frontmatter' ? show('#tag_field_container') : hide('#tag_field_container');
   }).trigger('change');
 
+  $('#toggle-import-status-btn').on('click', function() {
+    var $rows = $editRows.find('tr[data-import-item-row]');
+    if ($rows.length === 0) {
+      return;
+    }
+
+    var allDraft = true;
+    $rows.each(function() {
+      var current = readCheckedValue($(this), 'status', 'draft');
+      if (current !== 'draft') {
+        allDraft = false;
+      }
+    });
+
+    var targetStatus = allDraft ? 'published' : 'draft';
+    $rows.each(function() {
+      $(this).find('[data-field="status"][value="' + targetStatus + '"]').prop('checked', true);
+    });
+  });
+
+  $confirmBtn.on('click', async function() {
+    if (isConfirming) {
+      return;
+    }
+
+    var rowElements = $editRows.find('tr[data-import-item-row]').toArray();
+    if (rowElements.length === 0) {
+      setEditSummary('暂无待确认导入记录', 'success');
+      return;
+    }
+
+    isConfirming = true;
+    var $inputs = $editPanel.find('input, select, button, textarea');
+    $inputs.prop('disabled', true);
+
+    var successCount = 0;
+    var failCount = 0;
+
+    for (var i = 0; i < rowElements.length; i++) {
+      var $row = $(rowElements[i]);
+      var payload = buildConfirmPayload($row);
+      setRowStatus($row, 'running', '确认中...');
+
+      try {
+        var response = await fetch(confirmItemURL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: payload.toString()
+        });
+
+        var result = null;
+        try {
+          result = await response.json();
+        } catch (jsonErr) {
+          result = null;
+        }
+
+        if (response.ok && result && result.ok) {
+          successCount++;
+          $row.remove();
+        } else {
+          failCount++;
+          var errMsg = (result && result.error) ? result.error : ('HTTP ' + response.status);
+          setRowStatus($row, 'error', '失败: ' + errMsg);
+        }
+      } catch (err) {
+        failCount++;
+        setRowStatus($row, 'error', '失败: ' + (err && err.message ? err.message : 'request failed'));
+      }
+
+      setEditSummary(
+        '确认进度 ' + (i + 1) + '/' + rowElements.length + '，成功 ' + successCount + '，失败 ' + failCount,
+        failCount > 0 ? 'error' : 'warning'
+      );
+    }
+
+    $inputs.prop('disabled', false);
+    isConfirming = false;
+
+    if (failCount === 0) {
+      setEditSummary('确认完成，全部成功。', 'success');
+      syncEditSummaryByRows('success');
+      return;
+    }
+
+    setEditSummary('确认完成：成功 ' + successCount + '，失败 ' + failCount + '。失败项可继续修改后重试。', 'error');
+    if ($editRows.find('tr[data-import-item-row]').length === 0) {
+      syncEditSummaryByRows('error');
+    }
+  });
+
   $form.on('submit', async function(e) {
     e.preventDefault();
     if (isParsing) {
@@ -255,7 +731,7 @@ $(function() {
 
     var fileInput = $form.find('input[name="files"]')[0];
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-      setSummary('请至少选择一个文件', true);
+      setEditSummary('请至少选择一个文件', 'error');
       return;
     }
 
@@ -263,21 +739,21 @@ $(function() {
     var options = collectOptions();
 
     isParsing = true;
-    $parsePanel.prop('hidden', false);
-    $parseRows.empty();
-    setSummary('开始逐个解析文件...', false);
+    ensureEditPanelVisible();
+    setEditSummary('开始逐个导入文件（临时状态 importing）...', 'warning');
 
     var successCount = 0;
     var failCount = 0;
+    var failedNames = [];
     var $inputs = $form.find('input, select, button, textarea');
     $inputs.prop('disabled', true);
 
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
-      var formData = buildParseFormData(file, options, i === 0);
+      var formData = buildParseFormData(file, options);
 
       try {
-        var response = await fetch('/admin/import/parse-item', {
+        var response = await fetch(parseItemURL, {
           method: 'POST',
           body: formData,
           headers: {
@@ -294,37 +770,54 @@ $(function() {
 
         if (response.ok && result && result.ok) {
           successCount++;
-          var okMsg = result.title || result.slug || '解析成功';
-          if (result.warning) {
-            okMsg = okMsg + '（' + result.warning + '）';
+          if (result.item) {
+            appendImportEditRow(result.item);
           }
-          appendParseRow(file.name, 'success', okMsg);
         } else {
           failCount++;
           var errMsg = (result && result.error) ? result.error : ('HTTP ' + response.status);
-          appendParseRow(file.name, 'error', errMsg);
+          failedNames.push((file.name || 'unnamed') + '：' + errMsg);
         }
       } catch (err) {
         failCount++;
-        appendParseRow(file.name, 'error', err && err.message ? err.message : 'request failed');
+        failedNames.push((file.name || 'unnamed') + '：' + (err && err.message ? err.message : 'request failed'));
       }
 
-      setSummary(
-        '解析进度 ' + (i + 1) + '/' + files.length + '，成功 ' + successCount + '，失败 ' + failCount,
-        failCount > 0
+      setEditSummary(
+        '导入进度 ' + (i + 1) + '/' + files.length + '，成功 ' + successCount + '，失败 ' + failCount,
+        failCount > 0 ? 'error' : 'warning'
       );
     }
 
     $inputs.prop('disabled', false);
     isParsing = false;
 
+    if (successCount > 0 && failCount === 0) {
+      setEditSummary('导入完成，成功 ' + successCount + ' 条。请在表格中检查并点击「确认导入」。', 'warning');
+      syncEditSummaryByRows('warning');
+      return;
+    }
     if (successCount > 0) {
-      setSummary('解析完成，正在进入预览页面...', false);
-      window.location.href = '/admin/import/preview';
+      var detail = formatFailedDetails(failedNames, 2);
+      var msg = '导入完成：成功 ' + successCount + '，失败 ' + failCount + '。';
+      if (detail) {
+        msg += '失败详情：' + detail;
+      }
+      setEditSummary(msg, 'error');
       return;
     }
 
-    setSummary('未解析出可导入的内容，请检查文件或配置。', true);
+    var failDetail = formatFailedDetails(failedNames, 3);
+    if (failDetail) {
+      setEditSummary('导入失败：' + failDetail, 'error');
+      return;
+    }
+    setEditSummary('导入失败，请检查文件或配置。', 'error');
   });
+
+  $editRows.find('tr[data-import-item-row]').each(function() {
+    initCategorySelect($(this));
+  });
+  syncEditSummaryByRows('warning');
 });
 </script>

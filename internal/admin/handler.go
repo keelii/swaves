@@ -15,6 +15,7 @@ import (
 	"swaves/internal/db"
 	job "swaves/internal/jobs"
 	"swaves/internal/middleware"
+	"swaves/internal/share"
 	"swaves/internal/store"
 	"swaves/internal/types"
 	"swaves/internal/webutil"
@@ -57,7 +58,6 @@ type dashboardUVTabData struct {
 
 const dashboardActiveUsersWindowSeconds int64 = 30 * 60
 const dashboardActiveUsersWindowLabel = "30分钟"
-const importPreviewSessionKey = "admin_import_preview_items"
 
 var dashboardUVRanges = []dashboardUVRangeConfig{
 	{
@@ -147,7 +147,7 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 		data = fiber.Map{}
 	}
 
-	data["UrlPath"] = c.Path()
+	data["UrlPath"] = share.CanonicalAdminPath(c.Path())
 	data["Query"] = c.Queries()
 
 	// 注入 Locals
@@ -417,14 +417,14 @@ func redirectAfterLogin(c fiber.Ctx) error {
 	if returnUrl != "" && strings.HasPrefix(returnUrl, "/") && !strings.Contains(returnUrl, "//") {
 		return webutil.RedirectTo(c, returnUrl)
 	}
-	return webutil.RedirectTo(c, "/admin")
+	return webutil.RedirectTo(c, share.BuildAdminPath(""))
 }
 
 /* ---------- POST /admin/logout ---------- */
 
 func (h *Handler) GetLogoutHandler(c fiber.Ctx) error {
 	h.Session.ClearSession(c)
-	return webutil.RedirectTo(c, "/admin/login")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/login"))
 }
 
 // Posts
@@ -511,14 +511,14 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	}
 
 	// 清除单项筛选的 URL（供筛选区 tag 组件的 RemoveHref 使用）
-	filterTagRemoveURL := "/admin/posts?kind=" + kindQuery
+	filterTagRemoveURL := share.BuildAdminPath("/posts") + "?kind=" + kindQuery
 	if searchQueryEscaped != "" {
 		filterTagRemoveURL += "&q=" + searchQueryEscaped
 	}
 	if filterCategoryIDStr != "" {
 		filterTagRemoveURL += "&category=" + filterCategoryIDStr
 	}
-	filterCategoryRemoveURL := "/admin/posts?kind=" + kindQuery
+	filterCategoryRemoveURL := share.BuildAdminPath("/posts") + "?kind=" + kindQuery
 	if searchQueryEscaped != "" {
 		filterCategoryRemoveURL += "&q=" + searchQueryEscaped
 	}
@@ -666,7 +666,7 @@ func (h *Handler) PostCreatePostHandler(c fiber.Ctx) error {
 		return h.renderPostNewWithDraft(c, err, draft)
 	}
 
-	return webutil.RedirectTo(c, "/admin/posts/"+strconv.FormatInt(postID, 10)+"/edit", fiber.StatusSeeOther)
+	return webutil.RedirectTo(c, share.BuildAdminPath("/posts/"+strconv.FormatInt(postID, 10)+"/edit"), fiber.StatusSeeOther)
 }
 
 func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
@@ -767,7 +767,7 @@ func (h *Handler) PostUpdatePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/posts/"+strconv.FormatInt(id, 10)+"/edit", fiber.StatusSeeOther)
+	return webutil.RedirectTo(c, share.BuildAdminPath("/posts/"+strconv.FormatInt(id, 10)+"/edit"), fiber.StatusSeeOther)
 }
 
 func (h *Handler) PostDeletePostHandler(c fiber.Ctx) error {
@@ -780,7 +780,7 @@ func (h *Handler) PostDeletePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/posts")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/posts"))
 }
 
 // Tags
@@ -833,7 +833,7 @@ func (h *Handler) PostCreateTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/tags")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/tags"))
 }
 
 func (h *Handler) GetTagEditHandler(c fiber.Ctx) error {
@@ -876,7 +876,7 @@ func (h *Handler) PostUpdateTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/tags")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/tags"))
 }
 
 func (h *Handler) PostDeleteTagHandler(c fiber.Ctx) error {
@@ -889,7 +889,7 @@ func (h *Handler) PostDeleteTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/tags")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/tags"))
 }
 
 // Redirects
@@ -940,7 +940,7 @@ func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, "/admin/redirects")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/redirects"))
 }
 
 func (h *Handler) GetRedirectEditHandler(c fiber.Ctx) error {
@@ -988,7 +988,7 @@ func (h *Handler) PostUpdateRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/redirects")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/redirects"))
 }
 
 func (h *Handler) PostDeleteRedirectHandler(c fiber.Ctx) error {
@@ -1001,7 +1001,7 @@ func (h *Handler) PostDeleteRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/redirects")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/redirects"))
 }
 
 // Encrypted Posts
@@ -1040,7 +1040,7 @@ func (h *Handler) PostCreateEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/encrypted-posts")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/encrypted-posts"))
 }
 
 func (h *Handler) GetEncryptedPostEditHandler(c fiber.Ctx) error {
@@ -1086,7 +1086,7 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/encrypted-posts")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/encrypted-posts"))
 }
 
 func (h *Handler) PostDeleteEncryptedPostHandler(c fiber.Ctx) error {
@@ -1099,7 +1099,7 @@ func (h *Handler) PostDeleteEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/encrypted-posts")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/encrypted-posts"))
 }
 
 // SettingView 用于模板展示的设置视图
@@ -1241,7 +1241,7 @@ func (h *Handler) PostCreateCategoryHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, "/admin/categories")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/categories"))
 }
 
 func (h *Handler) GetCategoryEditHandler(c fiber.Ctx) error {
@@ -1357,7 +1357,7 @@ func (h *Handler) PostUpdateCategoryHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, "/admin/categories")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/categories"))
 }
 
 func (h *Handler) PostDeleteCategoryHandler(c fiber.Ctx) error {
@@ -1370,7 +1370,7 @@ func (h *Handler) PostDeleteCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/categories")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/categories"))
 }
 
 func (h *Handler) PostUpdateCategoryParentHandler(c fiber.Ctx) error {
@@ -1393,7 +1393,7 @@ func (h *Handler) PostUpdateCategoryParentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/categories/tree")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/categories/tree"))
 }
 
 // Settings
@@ -1501,7 +1501,7 @@ func isMediaSettingCode(code string) bool {
 }
 
 func buildSettingsAllRedirectPath(kind string, errMsg string) string {
-	redirectPath := "/admin/settings/all"
+	redirectPath := share.BuildAdminPath("/settings/all")
 
 	params := url.Values{}
 	if strings.TrimSpace(kind) != "" {
@@ -1574,7 +1574,7 @@ func (h *Handler) validateMediaSettingPayload(overrides map[string]string) error
 func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	activeKind := strings.TrimSpace(c.Query("kind", ""))
 	if activeKind == "" {
-		return webutil.RedirectTo(c, "/admin/settings/all")
+		return webutil.RedirectTo(c, share.BuildAdminPath("/settings/all"))
 	}
 
 	// 只更新当前 tab(kind) 下的配置，避免把其它 tab 未提交字段写空
@@ -1751,7 +1751,7 @@ func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 		return renderEditWithError(err.Error())
 	}
 
-	return webutil.RedirectTo(c, "/admin/settings")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/settings"))
 }
 
 func (h *Handler) PostDeleteSettingHandler(c fiber.Ctx) error {
@@ -1764,7 +1764,7 @@ func (h *Handler) PostDeleteSettingHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/settings")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/settings"))
 }
 
 func (h *Handler) GetSettingNewHandler(c fiber.Ctx) error {
@@ -1831,7 +1831,7 @@ func (h *Handler) PostCreateSettingHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, "/admin/settings")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/settings"))
 }
 
 // Trash
@@ -1879,7 +1879,7 @@ func (h *Handler) PostRestorePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostHardDeletePostHandler(c fiber.Ctx) error {
@@ -1892,7 +1892,7 @@ func (h *Handler) PostHardDeletePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostRestoreEncryptedPostHandler(c fiber.Ctx) error {
@@ -1905,7 +1905,7 @@ func (h *Handler) PostRestoreEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostHardDeleteEncryptedPostHandler(c fiber.Ctx) error {
@@ -1918,7 +1918,7 @@ func (h *Handler) PostHardDeleteEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostRestoreTagHandler(c fiber.Ctx) error {
@@ -1931,7 +1931,7 @@ func (h *Handler) PostRestoreTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostHardDeleteTagHandler(c fiber.Ctx) error {
@@ -1944,7 +1944,7 @@ func (h *Handler) PostHardDeleteTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostRestoreRedirectHandler(c fiber.Ctx) error {
@@ -1957,7 +1957,7 @@ func (h *Handler) PostRestoreRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostHardDeleteRedirectHandler(c fiber.Ctx) error {
@@ -1970,7 +1970,7 @@ func (h *Handler) PostHardDeleteRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostRestoreCategoryHandler(c fiber.Ctx) error {
@@ -1983,7 +1983,7 @@ func (h *Handler) PostRestoreCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
@@ -1996,7 +1996,7 @@ func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/trash")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
 }
 
 // HttpErrorLogs
@@ -2025,7 +2025,7 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/http-error-logs")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/http-error-logs"))
 }
 
 func normalizeCommentStatus(raw string) db.CommentStatus {
@@ -2042,7 +2042,7 @@ func normalizeCommentStatus(raw string) db.CommentStatus {
 }
 
 func buildCommentListURL(status db.CommentStatus) string {
-	baseURL := "/admin/comments"
+	baseURL := share.BuildAdminPath("/comments")
 	if status == "" {
 		return baseURL
 	}
@@ -2159,7 +2159,7 @@ func (h *Handler) PostCreateTaskHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/tasks")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
 }
 
 func (h *Handler) GetTaskEditHandler(c fiber.Ctx) error {
@@ -2204,7 +2204,7 @@ func (h *Handler) PostUpdateTaskHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/tasks")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
 }
 
 func (h *Handler) PostDeleteTaskHandler(c fiber.Ctx) error {
@@ -2217,7 +2217,7 @@ func (h *Handler) PostDeleteTaskHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, "/admin/tasks")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
 }
 
 func (h *Handler) PostTriggerTaskHandler(c fiber.Ctx) error {
@@ -2232,7 +2232,7 @@ func (h *Handler) PostTriggerTaskHandler(c fiber.Ctx) error {
 	}
 	go job.ExecuteTask(h.Model, *task)
 
-	return webutil.RedirectTo(c, "/admin/tasks")
+	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
 }
 
 func (h *Handler) GetTaskRunListHandler(c fiber.Ctx) error {
@@ -2397,119 +2397,36 @@ func readImportParseOptions(c fiber.Ctx) importParseOptions {
 	}
 }
 
-func (h *Handler) clearImportPreviewItems(c fiber.Ctx) error {
-	sess, err := h.Session.AcquireSession(c)
-	if err != nil {
-		return err
-	}
-	defer sess.Release()
-	sess.Delete(importPreviewSessionKey)
-	return sess.Save()
-}
-
-func (h *Handler) loadImportPreviewItems(c fiber.Ctx) ([]PreviewPostItem, error) {
-	sess, err := h.Session.AcquireSession(c)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-
-	raw := sess.Get(importPreviewSessionKey)
-	if raw == nil {
-		return []PreviewPostItem{}, nil
-	}
-
-	var payload []byte
-	switch v := raw.(type) {
-	case string:
-		payload = []byte(v)
-	case []byte:
-		payload = v
-	default:
-		return nil, fmt.Errorf("invalid import preview session type: %T", raw)
-	}
-	if len(payload) == 0 {
-		return []PreviewPostItem{}, nil
-	}
-
-	var items []PreviewPostItem
-	if err := json.Unmarshal(payload, &items); err != nil {
-		return nil, err
-	}
-	for i := range items {
-		items[i].Index = i
-		if items[i].ContentPreview == "" {
-			items[i].ContentPreview = buildImportContentPreview(items[i].Content)
-		}
-	}
-	return items, nil
-}
-
-func (h *Handler) saveImportPreviewItems(c fiber.Ctx, items []PreviewPostItem) error {
-	for i := range items {
-		items[i].Index = i
-		if items[i].ContentPreview == "" {
-			items[i].ContentPreview = buildImportContentPreview(items[i].Content)
-		}
-	}
-
-	data, err := json.Marshal(items)
-	if err != nil {
-		return err
-	}
-
-	sess, err := h.Session.AcquireSession(c)
-	if err != nil {
-		return err
-	}
-	defer sess.Release()
-	sess.Set(importPreviewSessionKey, string(data))
-	return sess.Save()
-}
-
 func (h *Handler) GetImportHandler(c fiber.Ctx) error {
-	if err := h.clearImportPreviewItems(c); err != nil {
-		log.Printf("clear import preview session failed: %v", err)
-	}
-	return RenderAdminView(c, "import", fiber.Map{
-		"Title": "Import Markdown",
-	}, "")
-}
-
-func (h *Handler) GetImportPreviewHandler(c fiber.Ctx) error {
-	items, err := h.loadImportPreviewItems(c)
+	importingItems, err := ListImportingPreviewItemsService(h.Model)
 	if err != nil {
-		log.Printf("load import preview items failed: %v", err)
+		log.Printf("list importing items failed: %v", err)
 		return RenderAdminView(c, "import", fiber.Map{
-			"Title": "Import Markdown",
-			"Error": "Load import preview failed: " + err.Error(),
+			"Title":          "Import Markdown",
+			"ImportingItems": []PreviewPostItem{},
+			"AllCategories":  []db.Category{},
+			"Error":          "Load importing items failed: " + err.Error(),
 		}, "")
 	}
 
-	if len(items) == 0 {
-		return RenderAdminView(c, "import_preview", fiber.Map{
-			"Title": "Import Preview",
-			"Items": []PreviewPostItem{},
-			"Error": "No items to import",
-		}, "")
+	allCategories, err := GetAllCategoriesFlat(h.Model)
+	if err != nil {
+		log.Printf("list categories for import failed: %v", err)
+		allCategories = []db.Category{}
+	} else {
+		for i := range allCategories {
+			allCategories[i].Name = strings.Trim(strings.TrimSpace(allCategories[i].Name), "\"'")
+		}
 	}
 
-	return RenderAdminView(c, "import_preview", fiber.Map{
-		"Title": "Import Preview",
-		"Items": items,
+	return RenderAdminView(c, "import", fiber.Map{
+		"Title":          "Import Markdown",
+		"ImportingItems": importingItems,
+		"AllCategories":  allCategories,
 	}, "")
 }
 
 func (h *Handler) PostImportParseItemHandler(c fiber.Ctx) error {
-	if c.FormValue("reset") == "1" {
-		if err := h.clearImportPreviewItems(c); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"ok":    false,
-				"error": "clear import preview failed: " + err.Error(),
-			})
-		}
-	}
-
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		statusCode := fiber.StatusBadRequest
@@ -2573,38 +2490,89 @@ func (h *Handler) PostImportParseItemHandler(c fiber.Ctx) error {
 		})
 	}
 
-	storedItems, err := h.loadImportPreviewItems(c)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"ok":    false,
-			"error": "load preview session failed: " + err.Error(),
-		})
-	}
-
 	item := items[0]
-	item.Index = len(storedItems)
+	item.Filename = fileHeader.Filename
 	item.ContentPreview = buildImportContentPreview(item.Content)
-	storedItems = append(storedItems, item)
-
-	if err := h.saveImportPreviewItems(c, storedItems); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"ok":    false,
-			"error": "save preview session failed: " + err.Error(),
+	stagedItem, err := ImportPreviewItemAsImportingService(h.Model, item)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":       false,
+			"filename": fileHeader.Filename,
+			"error":    err.Error(),
 		})
 	}
 
 	resp := fiber.Map{
 		"ok":       true,
-		"index":    item.Index,
-		"title":    item.Title,
-		"slug":     item.Slug,
+		"title":    stagedItem.Title,
+		"slug":     stagedItem.Slug,
 		"filename": fileHeader.Filename,
+		"item": fiber.Map{
+			"post_id":         stagedItem.PostID,
+			"title":           stagedItem.Title,
+			"slug":            stagedItem.Slug,
+			"content":         stagedItem.Content,
+			"content_preview": stagedItem.ContentPreview,
+			"status":          stagedItem.Status,
+			"kind":            stagedItem.Kind,
+			"created_at":      stagedItem.CreatedAt,
+			"created_at_unix": stagedItem.CreatedAtUnix,
+			"tags":            stagedItem.Tags,
+			"category":        stagedItem.Category,
+			"categories":      stagedItem.Categories,
+			"filename":        stagedItem.Filename,
+		},
 	}
 	if parseErr != nil {
 		resp["warning"] = parseErr.Error()
 	}
 
 	return c.JSON(resp)
+}
+
+func (h *Handler) PostImportConfirmItemHandler(c fiber.Ctx) error {
+	postID, err := strconv.ParseInt(strings.TrimSpace(c.FormValue("post_id")), 10, 64)
+	if err != nil || postID <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "post_id is required",
+		})
+	}
+
+	kindVal := c.FormValue("kind")
+	if kindVal != "0" && kindVal != "1" {
+		kindVal = "0"
+	}
+
+	item := PreviewPostItem{
+		PostID:     postID,
+		Title:      c.FormValue("title"),
+		Slug:       c.FormValue("slug"),
+		Content:    c.FormValue("content"),
+		Status:     c.FormValue("status"),
+		Kind:       kindVal,
+		CreatedAt:  c.FormValue("created_at"),
+		Tags:       c.FormValue("tags"),
+		Category:   c.FormValue("category"),
+		Categories: c.FormValue("categories"),
+		Filename:   c.FormValue("filename"),
+	}
+	if createdAtUnix := strings.TrimSpace(c.FormValue("created_at_unix")); createdAtUnix != "" {
+		if ts, parseErr := strconv.ParseInt(createdAtUnix, 10, 64); parseErr == nil {
+			item.CreatedAtUnix = ts
+		}
+	}
+
+	if err = ConfirmImportPreviewItemService(h.Model, item); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"ok": true,
+	})
 }
 
 func (h *Handler) PostImportHandler(c fiber.Ctx) error {
@@ -2787,229 +2755,36 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 		tagField = "tags"
 	}
 
-	// 解析文件但不入库，返回预览数据
-	items, err := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField, categorySource, categoryField, tagSource, tagField)
-	if err != nil && len(items) == 0 {
-		// 如果全部解析失败，返回错误
+	items, parseErr := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField, categorySource, categoryField, tagSource, tagField)
+	if parseErr != nil && len(items) == 0 {
+		return RenderAdminView(c, "import", fiber.Map{
+			"Title": "Import Markdown",
+			"Error": parseErr.Error(),
+		}, "")
+	}
+	if len(items) == 0 {
+		return RenderAdminView(c, "import", fiber.Map{
+			"Title": "Import Markdown",
+			"Error": "No items to import",
+		}, "")
+	}
+
+	if err := ImportPreviewService(h.Model, items); err != nil {
 		return RenderAdminView(c, "import", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": err.Error(),
 		}, "")
 	}
-	if saveErr := h.saveImportPreviewItems(c, items); saveErr != nil {
-		log.Printf("save import preview session failed: %v", saveErr)
+
+	success := fmt.Sprintf("Import finished: %d items imported", len(items))
+	if parseErr != nil {
+		success += " (with warning: " + parseErr.Error() + ")"
 	}
 
-	// 构建 title 来源描述
-	titleSourceDesc := ""
-	switch titleSourceStr {
-	case "filename":
-		titleSourceDesc = "filename"
-	case "frontmatter":
-		titleSourceDesc = fmt.Sprintf("frontmatter(%s)", titleField)
-	case "markdown":
-		levelMap := map[int]string{1: "H1", 2: "H2", 3: "H3"}
-		levelName := levelMap[titleLevel]
-		if levelName == "" {
-			levelName = fmt.Sprintf("H%d", titleLevel)
-		}
-		titleSourceDesc = fmt.Sprintf("markdown(%s)", levelName)
-	default:
-		titleSourceDesc = "frontmatter(title)"
-	}
-
-	// 构建 slug 来源描述
-	slugSourceDesc := ""
-	switch slugSourceStr {
-	case "filename":
-		slugSourceDesc = "filename"
-	case "frontmatter":
-		slugSourceDesc = fmt.Sprintf("frontmatter(%s)", slugField)
-	case "title":
-		slugSourceDesc = "title"
-	default:
-		slugSourceDesc = "title"
-	}
-
-	// 构建 created_at 来源描述
-	createdSourceDesc := ""
-	switch createdSourceStr {
-	case "frontmatter":
-		createdSourceDesc = fmt.Sprintf("frontmatter(%s)", createdField)
-	case "filetime":
-		createdSourceDesc = "filetime"
-	default:
-		createdSourceDesc = "frontmatter(date)"
-	}
-
-	// 构建 status 来源描述
-	statusSourceDesc := ""
-	switch statusSourceStr {
-	case "frontmatter":
-		statusSourceDesc = fmt.Sprintf("frontmatter(%s)", statusField)
-	case "alldraft":
-		statusSourceDesc = "alldraft"
-	case "allpublished":
-		statusSourceDesc = "allpublished"
-	default:
-		statusSourceDesc = "frontmatter(draft)"
-	}
-
-	// 即使有部分错误，也显示预览页面（有警告信息）
-	return RenderAdminView(c, "import_preview", fiber.Map{
-		"Title":             "Import Preview",
-		"Items":             items,
-		"Error":             err, // 如果有错误，显示警告信息
-		"TitleSourceDesc":   titleSourceDesc,
-		"SlugSourceDesc":    slugSourceDesc,
-		"CreatedSourceDesc": createdSourceDesc,
-		"StatusSourceDesc":  statusSourceDesc,
+	return RenderAdminView(c, "import", fiber.Map{
+		"Title":   "Import Markdown",
+		"Success": success,
 	}, "")
-}
-
-func (h *Handler) PostImportPreviewHandler(c fiber.Ctx) error {
-	// 从表单中读取所有 items 数据
-	// 表单字段格式：items[0][title], items[0][slug], items[0][content], etc.
-
-	// 从 items_count 字段获取数量
-	countStr := c.FormValue("items_count")
-	itemCount := 0
-	if countStr != "" {
-		if count, err := strconv.Atoi(countStr); err == nil {
-			itemCount = count
-		}
-	}
-
-	if itemCount == 0 {
-		return RenderAdminView(c, "import_preview", fiber.Map{
-			"Title": "Import Preview",
-			"Items": []PreviewPostItem{},
-			"Error": "No items to import",
-		}, "")
-	}
-
-	var items []PreviewPostItem
-
-	// 构建 items
-	for i := 0; i < itemCount; i++ {
-		kindVal := c.FormValue(fmt.Sprintf("items[%d][kind]", i))
-		if kindVal != "0" && kindVal != "1" {
-			kindVal = "0"
-		}
-		item := PreviewPostItem{
-			Index:      i,
-			Title:      c.FormValue(fmt.Sprintf("items[%d][title]", i)),
-			Slug:       c.FormValue(fmt.Sprintf("items[%d][slug]", i)),
-			Content:    c.FormValue(fmt.Sprintf("items[%d][content]", i)),
-			Status:     c.FormValue(fmt.Sprintf("items[%d][status]", i)),
-			Kind:       kindVal,
-			CreatedAt:  c.FormValue(fmt.Sprintf("items[%d][created_at]", i)),
-			Tags:       c.FormValue(fmt.Sprintf("items[%d][tags]", i)),
-			Category:   c.FormValue(fmt.Sprintf("items[%d][category]", i)),
-			Categories: c.FormValue(fmt.Sprintf("items[%d][categories]", i)),
-			Filename:   c.FormValue(fmt.Sprintf("items[%d][filename]", i)),
-		}
-		item.ContentPreview = buildImportContentPreview(item.Content)
-
-		// 解析时间戳
-		if createdAtStr := c.FormValue(fmt.Sprintf("items[%d][created_at_unix]", i)); createdAtStr != "" {
-			if ts, err := strconv.ParseInt(createdAtStr, 10, 64); err == nil {
-				item.CreatedAtUnix = ts
-			}
-		}
-
-		items = append(items, item)
-	}
-
-	if len(items) == 0 {
-		return RenderAdminView(c, "import_preview", fiber.Map{
-			"Title": "Import Preview",
-			"Items": items,
-			"Error": "No items to import",
-		}, "")
-	}
-
-	// 校验每条记录的 slug
-	for _, item := range items {
-		if !helper.IsSlug(strings.TrimSpace(item.Slug)) {
-			return RenderAdminView(c, "import_preview", fiber.Map{
-				"Title": "Import Preview",
-				"Items": items,
-				"Error": fmt.Sprintf("%s（第 %d 条记录）", errSlugInvalid("015", strings.TrimSpace(item.Slug)).Error(), item.Index+1),
-			}, "")
-		}
-	}
-
-	// 调用 service 进行导入
-	if err := ImportPreviewService(h.Model, items); err != nil {
-		return RenderAdminView(c, "import_preview", fiber.Map{
-			"Title": "Import Preview",
-			"Items": items,
-			"Error": err.Error(),
-		}, "")
-	}
-
-	if err := h.clearImportPreviewItems(c); err != nil {
-		log.Printf("clear import preview session failed: %v", err)
-	}
-
-	return webutil.RedirectTo(c, "/admin/posts")
-}
-
-func (h *Handler) PostImportPreviewItemHandler(c fiber.Ctx) error {
-	kindVal := c.FormValue("kind")
-	if kindVal != "0" && kindVal != "1" {
-		kindVal = "0"
-	}
-
-	item := PreviewPostItem{
-		Title:      c.FormValue("title"),
-		Slug:       c.FormValue("slug"),
-		Content:    c.FormValue("content"),
-		Status:     c.FormValue("status"),
-		Kind:       kindVal,
-		CreatedAt:  c.FormValue("created_at"),
-		Tags:       c.FormValue("tags"),
-		Category:   c.FormValue("category"),
-		Categories: c.FormValue("categories"),
-		Filename:   c.FormValue("filename"),
-	}
-	item.ContentPreview = buildImportContentPreview(item.Content)
-
-	if createdAtStr := c.FormValue("created_at_unix"); createdAtStr != "" {
-		if ts, err := strconv.ParseInt(createdAtStr, 10, 64); err == nil {
-			item.CreatedAtUnix = ts
-		}
-	}
-
-	if item.Status != "draft" && item.Status != "published" {
-		item.Status = "draft"
-	}
-
-	if strings.TrimSpace(item.Title) == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"ok":    false,
-			"error": "title is required",
-		})
-	}
-
-	if strings.TrimSpace(item.Slug) != "" && !helper.IsSlug(strings.TrimSpace(item.Slug)) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"ok":    false,
-			"error": errSlugInvalid("016", strings.TrimSpace(item.Slug)).Error(),
-		})
-	}
-
-	if err := ImportPreviewItemService(h.Model, item); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"ok":    false,
-			"error": err.Error(),
-		})
-	}
-
-	return c.JSON(fiber.Map{
-		"ok": true,
-	})
 }
 
 // Metrics

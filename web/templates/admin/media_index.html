@@ -118,7 +118,7 @@
       <th>服务</th>
       <th>文件名</th>
       <th>链接</th>
-      <th class="cell-3">大小</th>
+      <th class="cell-6">大小</th>
       <th class="cell-12">创建时间</th>
       <th class="cell-9">操作</th>
     </tr>
@@ -149,8 +149,8 @@
                 type="button"
                 class="row-action-btn media-copy-url"
                 data-url="{{ .FileURL }}"
-                aria-label="复制链接"
-                title="复制链接"
+                aria-label="复制图片链接"
+                title="复制图片链接"
               >
                 {{ template "lucide_icon" dict "name" "link-2" "size" "16" }}
               </button>
@@ -159,10 +159,10 @@
                 class="row-action-btn media-copy-markdown"
                 data-url="{{ .FileURL }}"
                 data-name="{{ .OriginalName }}"
-                aria-label="复制 Markdown"
-                title="复制 Markdown"
+                aria-label="复制 Markdown 代码"
+                title="复制 Markdown 代码"
               >
-                {{ template "lucide_icon" dict "name" "square-pen" "size" "16" }}
+                {{ template "lucide_icon" dict "name" "link-2" "size" "16" }}
               </button>
             {{ end }}
             <button
@@ -213,6 +213,7 @@
 
 <script>
 $(function() {
+  var mediaAssetsAPIBase = '{{ adminPath "/api/media/assets" }}';
   var $dropzone = $('#media-dropzone');
   var $fileInput = $('#media-drop-input');
   var $uploadStatus = $('#media-upload-status');
@@ -302,7 +303,7 @@ $(function() {
     var fd = new FormData();
     fd.append('file', file);
 
-    return fetch('/admin/api/media/assets', {
+    return fetch(mediaAssetsAPIBase, {
       method: 'POST',
       body: fd
     })
@@ -546,7 +547,7 @@ $(function() {
         return;
       }
 
-      fetch('/admin/api/media/assets/' + id, {
+      fetch(mediaAssetsAPIBase + '/' + id, {
         method: 'DELETE'
       })
         .then(function(r) { return r.json().then(function(body) { return { status: r.status, body: body }; }); })

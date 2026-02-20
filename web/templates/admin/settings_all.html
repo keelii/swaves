@@ -67,7 +67,7 @@
 {{ if gt (len .SettingKinds) 0 }}
 <div class="settings-kind-tabs" role="tablist" aria-label="设置分类">
   {{ range .SettingKinds }}
-  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="/admin/settings/all?kind={{ . }}">{{ . }}</a>
+  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="{{ adminPath "/settings/all" }}?kind={{ . }}">{{ . }}</a>
   {{ end }}
 </div>
 
@@ -75,7 +75,7 @@
 <div role="alert" data-variant="warning">{{ .Error }}</div>
 {{ end }}
 
-<form id="form" method="post" action="/admin/settings/all?kind={{ .ActiveKind }}" class="settings-all-form">
+<form id="form" method="post" action="{{ adminPath "/settings/all" }}?kind={{ .ActiveKind }}" class="settings-all-form">
   <section class="settings-kind">
     <div class="settings-kind-fields">
       {{ range index .SettingsByKind .ActiveKind }}

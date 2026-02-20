@@ -94,7 +94,7 @@
 
     {{ template "admin/includes/error_message" . }}
 
-    <form id="form" method="POST" action="/admin/login">
+    <form id="form" method="POST" action="{{ adminPath "/login" }}">
       {{ if .ReturnUrl }}<input type="hidden" name="returnUrl" value="{{ .ReturnUrl }}">{{ end }}
       <div class="form-group">
         <div class="password-wrapper">

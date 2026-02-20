@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"swaves/internal/consts"
 	"swaves/internal/middleware"
+	"swaves/internal/share"
 	"swaves/internal/store"
 
 	"github.com/gofiber/fiber/v3"
@@ -14,8 +14,8 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 		NewService(gStore.Model),
 	)
 
-	adminGroup := app.Group(store.GetSetting("admin_path"))
-	adminGroup.Use(middleware.RequireAdmin(gStore.Session, consts.LoginRoutePath))
+	adminGroup := app.Group(share.GetAdminUrl())
+	adminGroup.Use(middleware.RequireAdmin(gStore.Session, share.BuildAdminPath("/login")))
 
 	adminGroup.Get("/", handler.GetHome)
 	adminGroup.Get("/panic", func(c fiber.Ctx) error {
@@ -116,11 +116,9 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	adminGroup.Get("/tasks/:code/runs", handler.GetTaskRunListHandler)
 
 	adminGroup.Get("/import", handler.GetImportHandler)
-	adminGroup.Get("/import/preview", handler.GetImportPreviewHandler)
 	adminGroup.Post("/import", handler.PostImportHandler)
 	adminGroup.Post("/import/parse-item", handler.PostImportParseItemHandler)
-	adminGroup.Post("/import/preview", handler.PostImportPreviewHandler)
-	adminGroup.Post("/import/preview/item", handler.PostImportPreviewItemHandler)
+	adminGroup.Post("/import/confirm-item", handler.PostImportConfirmItemHandler)
 
 	adminGroup.Get("/export", handler.GetExportHandler)
 	adminGroup.Get("/export/download", handler.GetExportDownloadHandler)

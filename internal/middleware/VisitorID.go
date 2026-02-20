@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"strings"
+	"swaves/internal/share"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -82,8 +83,11 @@ func isSkipVisitorIDPath(path string) bool {
 		return true
 	}
 
-	prefixes := []string{"/admin", "/api", "/static"}
+	prefixes := []string{share.GetAdminUrl(), "/api", "/static"}
 	for _, prefix := range prefixes {
+		if prefix == "/" {
+			continue
+		}
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}

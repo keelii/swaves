@@ -1188,6 +1188,7 @@ type ImportMarkdownInput struct {
 // PreviewPostItem 预览页面的 post 数据
 type PreviewPostItem struct {
 	Index          int      // 索引（用于表单字段命名）
+	PostID         int64    // 临时导入记录对应的 post ID
 	Filename       string   // 原始文件名
 	Title          string   // 标题
 	Slug           string   // slug
@@ -1203,7 +1204,8 @@ type PreviewPostItem struct {
 	Categories     string   // 分类列表（逗号分隔，首个默认关联文章）
 }
 
-const importPreviewContentLimit = 160
+const importPreviewContentLimit = 200
+const importingPostStatus = "importing"
 
 func buildImportContentPreview(content string) string {
 	normalized := strings.ReplaceAll(content, "\r\n", "\n")
@@ -1218,7 +1220,7 @@ func buildImportContentPreview(content string) string {
 }
 
 func appendUniqueTrimmed(items []string, value string) []string {
-	v := strings.TrimSpace(value)
+	v := normalizeImportListValue(value)
 	if v == "" {
 		return items
 	}
@@ -1228,6 +1230,11 @@ func appendUniqueTrimmed(items []string, value string) []string {
 		}
 	}
 	return append(items, v)
+}
+
+func normalizeImportListValue(raw string) string {
+	raw = strings.Trim(strings.TrimSpace(raw), "\"'")
+	return strings.TrimSpace(raw)
 }
 
 func splitAndNormalizeCSV(value string) []string {
@@ -1240,6 +1247,82 @@ func splitAndNormalizeCSV(value string) []string {
 		items = appendUniqueTrimmed(items, part)
 	}
 	return items
+}
+
+func normalizeImportTargetStatus(raw string) string {
+	if strings.EqualFold(strings.TrimSpace(raw), "published") {
+		return "published"
+	}
+	return "draft"
+}
+
+func normalizeImportKind(raw string) (db.PostKind, string) {
+	if strings.TrimSpace(raw) == "1" {
+		return db.PostKindPage, "1"
+	}
+	return db.PostKindPost, "0"
+}
+
+func parseImportCreatedAt(createdAtText string, createdAtUnix int64) int64 {
+	if strings.TrimSpace(createdAtText) != "" {
+		if t, err := time.Parse("2006-01-02 15:04:05", strings.TrimSpace(createdAtText)); err == nil {
+			return t.Unix()
+		}
+	}
+	if createdAtUnix > 0 {
+		return createdAtUnix
+	}
+	return time.Now().Unix()
+}
+
+func formatImportCreatedAt(createdAtUnix int64) string {
+	if createdAtUnix <= 0 {
+		return ""
+	}
+	return time.Unix(createdAtUnix, 0).Format("2006-01-02 15:04:05")
+}
+
+func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem, createdAt int64) {
+	tagNames := splitAndNormalizeCSV(item.Tags)
+	tagIDs := make([]int64, 0, len(tagNames))
+	for _, tagName := range tagNames {
+		tag, err := CreateTagByName(dbx, tagName, createdAt)
+		if err == nil {
+			tagIDs = append(tagIDs, tag.ID)
+		}
+	}
+	if err := db.SetPostTags(dbx, postID, tagIDs); err != nil {
+		// tag 关联失败不影响主流程
+	}
+
+	primaryCategory := normalizeImportListValue(item.Category)
+	categoryNames := splitAndNormalizeCSV(item.Categories)
+	if primaryCategory == "" && len(categoryNames) > 0 {
+		primaryCategory = categoryNames[0]
+	}
+	categoryNames = appendUniqueTrimmed(categoryNames, primaryCategory)
+
+	categoryIDByName := make(map[string]int64, len(categoryNames))
+	for _, categoryName := range categoryNames {
+		category, err := CreateCategoryByName(dbx, categoryName, createdAt)
+		if err != nil {
+			continue
+		}
+		categoryIDByName[categoryName] = category.ID
+	}
+
+	if primaryCategory != "" {
+		if categoryID, ok := categoryIDByName[primaryCategory]; ok {
+			if err := db.SetPostCategory(dbx, postID, categoryID); err != nil {
+				// category 关联失败不影响主流程
+			}
+			return
+		}
+	}
+
+	if err := db.SetPostCategory(dbx, postID, 0); err != nil {
+		// category 关联失败不影响主流程
+	}
 }
 
 // extractTitleFromMarkdown 从 markdown 内容中提取指定级别的标题
@@ -1724,21 +1807,195 @@ func ImportMarkdownService(dbx *db.DB, in ImportMarkdownInput) error {
 	return nil
 }
 
-func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
-	createdAt := item.CreatedAtUnix
-	if item.CreatedAt != "" {
-		if t, err := time.Parse("2006-01-02 15:04:05", item.CreatedAt); err == nil {
-			createdAt = t.Unix()
-		}
+func ListImportingPreviewItemsService(dbx *db.DB) ([]PreviewPostItem, error) {
+	rows, err := dbx.Query(`
+		SELECT id, title, slug, content, kind, created_at, published_at
+		FROM `+string(db.TablePosts)+`
+		WHERE status = ? AND deleted_at IS NULL
+		ORDER BY created_at DESC, id DESC
+	`, importingPostStatus)
+	if err != nil {
+		return nil, err
 	}
-	if createdAt == 0 {
-		createdAt = time.Now().Unix()
+	defer rows.Close()
+
+	items := make([]PreviewPostItem, 0)
+	for rows.Next() {
+		var (
+			item        PreviewPostItem
+			kind        db.PostKind
+			publishedAt int64
+		)
+		if err := rows.Scan(
+			&item.PostID,
+			&item.Title,
+			&item.Slug,
+			&item.Content,
+			&kind,
+			&item.CreatedAtUnix,
+			&publishedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		item.CreatedAt = formatImportCreatedAt(item.CreatedAtUnix)
+		item.ContentPreview = buildImportContentPreview(item.Content)
+		if kind == db.PostKindPage {
+			item.Kind = "1"
+		} else {
+			item.Kind = "0"
+		}
+		if publishedAt > 0 {
+			item.Status = "published"
+		} else {
+			item.Status = "draft"
+		}
+
+		tags, err := db.GetPostTags(dbx, item.PostID)
+		if err == nil {
+			tagNames := make([]string, 0, len(tags))
+			for _, tag := range tags {
+				tagNames = appendUniqueTrimmed(tagNames, tag.Name)
+			}
+			item.Tags = strings.Join(tagNames, ", ")
+		}
+
+		if category, err := db.GetPostCategory(dbx, item.PostID); err == nil && category != nil {
+			item.Category = normalizeImportListValue(category.Name)
+			item.Categories = item.Category
+		}
+
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
-	kind := db.PostKindPost
-	if item.Kind == "1" {
-		kind = db.PostKindPage
+	for i := range items {
+		items[i].Index = i
 	}
+
+	return items, nil
+}
+
+func ImportPreviewItemAsImportingService(dbx *db.DB, item PreviewPostItem) (PreviewPostItem, error) {
+	item.Title = strings.TrimSpace(item.Title)
+	if item.Title == "" {
+		return item, errors.New("title is required")
+	}
+
+	createdAt := parseImportCreatedAt(item.CreatedAt, item.CreatedAtUnix)
+	item.CreatedAtUnix = createdAt
+	item.CreatedAt = formatImportCreatedAt(createdAt)
+
+	kind, normalizedKind := normalizeImportKind(item.Kind)
+	item.Kind = normalizedKind
+	item.Status = normalizeImportTargetStatus(item.Status)
+
+	slug := strings.Trim(item.Slug, "-")
+	if slug == "" {
+		slug = helper.MakeSlug(item.Title)
+	}
+	if slug == "" {
+		slug = "post"
+	}
+	if !helper.IsSlug(slug) {
+		return item, errSlugInvalid("017", item.Slug)
+	}
+	item.Slug = slug
+
+	post := &db.Post{
+		Title:     item.Title,
+		Slug:      slug,
+		Content:   item.Content,
+		Status:    importingPostStatus,
+		Kind:      kind,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now().Unix(),
+	}
+	if item.Status == "published" {
+		post.PublishedAt = createdAt
+	}
+
+	id, err := db.CreatePost(dbx, post)
+	if err != nil {
+		if strings.TrimSpace(item.Filename) == "" {
+			return item, err
+		}
+		return item, errors.New(item.Filename + ": " + err.Error())
+	}
+
+	item.PostID = id
+	item.ContentPreview = buildImportContentPreview(item.Content)
+	applyImportPreviewRelations(dbx, id, item, createdAt)
+	return item, nil
+}
+
+func ConfirmImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
+	if item.PostID <= 0 {
+		return errors.New("post_id is required")
+	}
+
+	post, err := db.GetPostByIDAnyStatus(dbx, item.PostID)
+	if err != nil {
+		return err
+	}
+	if post.Status != importingPostStatus {
+		return errors.New("record is not in importing status")
+	}
+
+	title := strings.TrimSpace(item.Title)
+	if title == "" {
+		return errors.New("title is required")
+	}
+
+	createdAt := parseImportCreatedAt(item.CreatedAt, item.CreatedAtUnix)
+	status := normalizeImportTargetStatus(item.Status)
+	kind, _ := normalizeImportKind(item.Kind)
+
+	slug := strings.Trim(item.Slug, "-")
+	if slug == "" {
+		slug = helper.MakeSlug(title)
+	}
+	if slug == "" {
+		slug = "post"
+	}
+	if !helper.IsSlug(slug) {
+		return errSlugInvalid("018", item.Slug)
+	}
+
+	publishedAt := int64(0)
+	if status == "published" {
+		publishedAt = createdAt
+		if publishedAt == 0 {
+			publishedAt = time.Now().Unix()
+		}
+	}
+
+	if _, err = dbx.Exec(`
+		UPDATE `+string(db.TablePosts)+`
+		SET title = ?, slug = ?, content = ?, status = ?, kind = ?, created_at = ?, updated_at = ?, published_at = ?
+		WHERE id = ? AND deleted_at IS NULL
+	`, title, slug, item.Content, status, kind, createdAt, time.Now().Unix(), publishedAt, item.PostID); err != nil {
+		if strings.TrimSpace(item.Filename) == "" {
+			return err
+		}
+		return errors.New(item.Filename + ": " + err.Error())
+	}
+
+	item.Title = title
+	item.Slug = slug
+	item.Status = status
+	item.CreatedAtUnix = createdAt
+	applyImportPreviewRelations(dbx, item.PostID, item, createdAt)
+	return nil
+}
+
+func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
+	createdAt := parseImportCreatedAt(item.CreatedAt, item.CreatedAtUnix)
+
+	item.Status = normalizeImportTargetStatus(item.Status)
+	kind, _ := normalizeImportKind(item.Kind)
 
 	slug := strings.Trim(item.Slug, "-")
 	if slug == "" {
@@ -1771,49 +2028,7 @@ func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
 		return errors.New(item.Filename + ": " + err.Error())
 	}
 
-	if item.Tags != "" {
-		var tagIDs []int64
-		tagNames := strings.Split(item.Tags, ",")
-		for _, tagName := range tagNames {
-			tagName = strings.TrimSpace(tagName)
-			if tagName != "" {
-				tag, err := CreateTagByName(dbx, tagName, createdAt)
-				if err == nil {
-					tagIDs = append(tagIDs, tag.ID)
-				}
-			}
-		}
-
-		if len(tagIDs) > 0 {
-			if err := db.SetPostTags(dbx, post.ID, tagIDs); err != nil {
-				// tag 关联失败不影响主流程
-			}
-		}
-	}
-
-	primaryCategory := strings.TrimSpace(item.Category)
-	categoryNames := splitAndNormalizeCSV(item.Categories)
-	if primaryCategory == "" && len(categoryNames) > 0 {
-		primaryCategory = categoryNames[0]
-	}
-	categoryNames = appendUniqueTrimmed(categoryNames, primaryCategory)
-
-	categoryIDByName := make(map[string]int64, len(categoryNames))
-	for _, categoryName := range categoryNames {
-		category, err := CreateCategoryByName(dbx, categoryName, createdAt)
-		if err != nil {
-			continue
-		}
-		categoryIDByName[categoryName] = category.ID
-	}
-
-	if primaryCategory != "" {
-		if categoryID, ok := categoryIDByName[primaryCategory]; ok {
-			if err := db.SetPostCategory(dbx, post.ID, categoryID); err != nil {
-				// category 关联失败不影响主流程
-			}
-		}
-	}
+	applyImportPreviewRelations(dbx, post.ID, item, createdAt)
 
 	return nil
 }

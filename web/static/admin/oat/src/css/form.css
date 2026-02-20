@@ -217,6 +217,7 @@
       
       &:last-child {
         border-radius: 0 var(--radius-medium) var(--radius-medium) 0;
+        border-inline-end: 1px solid var(--input);
       }
     }
 

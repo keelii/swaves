@@ -1,8 +1,6 @@
 package site
 
 import (
-	"fmt"
-	"strings"
 	"swaves/internal/middleware"
 	"swaves/internal/share"
 	"swaves/internal/store"
@@ -36,23 +34,16 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 
 	// IST stands for ID, Slug, or Title, which are the three ways to identify a post in the URL
 	// Pages
-	uiGroup.Get(share.GetPageRoute("/:ist"), handler.GetPostByIST)
+	uiGroup.Get(share.GetPageRoute("/:ist"), handler.GetPostByPage)
 	// Posts
 	postUrlRoute := share.GetPostRoute()
 
 	switch postUrlRoute {
 	case "/":
-		uiGroup.Get("/:ist", handler.GetPostByIST)
+		uiGroup.Get("/:ist", handler.GetPostByArticle)
 	case "/{datetime}":
 		uiGroup.Get("/:year/:month/:day/:ist", handler.GetPostByDateAndSlug)
 	default:
-		uiGroup.Get(postUrlRoute+"/:ist", handler.GetPostByIST)
-	}
-
-	routes := app.GetRoutes(true)
-	for _, route := range routes {
-		if !strings.HasPrefix(route.Path, "/admin") {
-			fmt.Println(route.Path)
-		}
+		uiGroup.Get(postUrlRoute+"/:ist", handler.GetPostByDefault)
 	}
 }

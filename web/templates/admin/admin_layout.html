@@ -68,9 +68,9 @@
       {{template "admin/includes/actions" .}}
       <div class="nav-user">
           {{ if .IsLogin }}
-            <span>欢迎，{{ settings "author" }}</span> <a href="/admin/logout">退出</a>
+            <span>欢迎，{{ settings "author" }}</span> <a href="{{ adminPath "/logout" }}">退出</a>
           {{ else }}
-            <span>请先</span> <a href="/admin/login">登录</a>
+            <span>请先</span> <a href="{{ adminPath "/login" }}">登录</a>
           {{ end }}
         <div class="user-avatar">
             <img width="32" height="32" src="{{ settings "author_avatar" }}" alt="{{ settings "author" }}">
@@ -102,6 +102,60 @@
 </div>
 
 <script>
+    function normalizeAdminBasePath(raw) {
+        raw = String(raw || '').trim();
+        if (!raw) {
+            return '/admin';
+        }
+        if (
+            (raw.startsWith('"') && raw.endsWith('"')) ||
+            (raw.startsWith("'") && raw.endsWith("'"))
+        ) {
+            raw = raw.slice(1, -1).trim();
+        }
+        if (!raw) {
+            return '/admin';
+        }
+        if (!raw.startsWith('/')) {
+            raw = '/' + raw;
+        }
+        raw = raw.replace(/\/{2,}/g, '/');
+        if (raw.length > 1) {
+            raw = raw.replace(/\/+$/, '');
+        }
+        return raw || '/';
+    }
+
+    var ADMIN_BASE_PATH = normalizeAdminBasePath({{ printf "%q" (GetAdminUrl) }});
+
+    function adminPath(path) {
+        path = String(path || '');
+        if (!path) {
+            return ADMIN_BASE_PATH;
+        }
+        if (!path.startsWith('/admin')) {
+            return path;
+        }
+        var suffix = path.slice('/admin'.length);
+        if (ADMIN_BASE_PATH === '/') {
+            return suffix || '/';
+        }
+        return ADMIN_BASE_PATH + suffix;
+    }
+
+    (function() {
+        var nativeFetch = window.fetch;
+        if (typeof nativeFetch !== 'function') {
+            return;
+        }
+        window.fetch = function(input, init) {
+            if (typeof input === 'string') {
+                input = adminPath(input);
+            }
+            return nativeFetch.call(this, input, init);
+        };
+    })();
+
     function toggleSidebar() {
         var $sidebar = $('#sidebar');
         if (window.innerWidth <= 768) {
@@ -131,6 +185,15 @@
     }
 
     $(function() {
+        $('a[href^="/admin"]').each(function() {
+            var href = $(this).attr('href');
+            $(this).attr('href', adminPath(href));
+        });
+        $('form[action^="/admin"]').each(function() {
+            var action = $(this).attr('action');
+            $(this).attr('action', adminPath(action));
+        });
+
         $(document).on('change', '.toggle-checkbox', function() {
             var $h = $('#' + this.id + '_hidden');
             if ($h.length) {
