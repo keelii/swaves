@@ -8,7 +8,7 @@ import (
 
 func AdminViewContext(session *types.SessionStore) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		c.Locals("IsLogin", session.IsLogin(c))
+		fiber.Locals(c, "IsLogin", session.IsLogin(c))
 
 		return c.Next()
 	}

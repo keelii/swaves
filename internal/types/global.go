@@ -55,6 +55,11 @@ func (s *SessionStore) SaveSession(c fiber.Ctx) bool {
 	}
 	defer sess.Release()
 
+	if err = sess.Regenerate(); err != nil {
+		log.Println("Session regenerate error:", err)
+		return false
+	}
+
 	sess.Set(consts.LoginAdminName, true)
 	sess.SetIdleTimeout(consts.LoginSessionExpire)
 

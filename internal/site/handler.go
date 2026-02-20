@@ -233,7 +233,7 @@ func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error
 
 	data["UrlPath"] = c.Path()
 	data["Query"] = c.Queries()
-	data["IsLogin"] = c.Locals("IsLogin")
+	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 
 	//// 注入 Locals
 	//c.Context().VisitUserValues(func(k []byte, v interface{}) {
@@ -654,7 +654,7 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 	}
 	rememberMe := isCommentRememberMeEnabled(c.FormValue("remember_me"))
 
-	isLogin, _ := c.Locals("IsLogin").(bool)
+	isLogin := fiber.Locals[bool](c, "IsLogin")
 	status := db.CommentStatusPending
 	if isLogin {
 		status = db.CommentStatusApproved

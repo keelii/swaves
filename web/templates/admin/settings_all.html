@@ -5,12 +5,14 @@
   [role="tablist"] a {
     text-decoration: none;
   }
-  .setting-post-shortcuts {
+  ul.setting-post-shortcuts {
     margin-bottom: 0;
+    padding-inline-start: var(--space-4);
   }
   .setting-post-shortcuts li {
     display: flex;
     justify-content: space-between;
+    align-items: center;
   }
   .settings-kind-tabs {
     margin-bottom: var(--space-4);
@@ -29,6 +31,9 @@
   .settings-item-label {
     display: block;
     width: 40%;
+  }
+  .settings-item-label details {
+    margin-bottom: var(--space-4);
   }
 
   .settings-item {
@@ -84,25 +89,28 @@
 <form id="form" method="post" action="{{ adminPath "/settings/all" }}?kind={{ .ActiveKind }}" class="settings-all-form">
   <section class="settings-kind">
       {{ if or (eq .ActiveKind "内容与路由") (eq .ActiveKind "Post") }}
-        <div class="settings-item-label" role="alert">
-          <ul class="setting-post-shortcuts unstyled">
-            <li>
-              <span>/2006/01/02/hello-world</span>
-              <button class="outline">快速设置</button>
-            </li>
-            <li>
-              <span>/archives/hello-world</span>
-              <button class="outline">快速设置</button>
-            </li>
-            <li>
-              <span>/archives/1</span>
-              <button class="outline">快速设置</button>
-            </li>
-            <li>
-              <span>/archives/hello-world.html</span>
-              <button class="outline">快速设置</button>
-            </li>
-          </ul>
+        <div class="settings-item-label">
+          <details>
+            <summary>快速设置?</summary>
+            <ul class="setting-post-shortcuts unstyled">
+              <li>
+                <span>/2006/01/02/hello-world</span>
+                <button class="outline">快速设置</button>
+              </li>
+              <li>
+                <span>/archives/hello-world</span>
+                <button class="outline">快速设置</button>
+              </li>
+              <li>
+                <span>/archives/1</span>
+                <button class="outline">快速设置</button>
+              </li>
+              <li>
+                <span>/archives/hello-world.html</span>
+                <button class="outline">快速设置</button>
+              </li>
+            </ul>
+          </details>
         </div>
       {{ end }}
     <div class="settings-kind-fields">

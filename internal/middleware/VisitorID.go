@@ -38,7 +38,7 @@ func GetOrCreateVisitorID(c fiber.Ctx, cookieName string) string {
 		cookieName = DefaultVisitorIDCookieName
 	}
 
-	visitorID, _ := c.Locals(VisitorIDLocalKey).(string)
+	visitorID := fiber.Locals[string](c, VisitorIDLocalKey)
 	if isValidVisitorID(visitorID) {
 		return visitorID
 	}
@@ -57,7 +57,7 @@ func GetOrCreateVisitorID(c fiber.Ctx, cookieName string) string {
 		})
 	}
 
-	c.Locals(VisitorIDLocalKey, visitorID)
+	fiber.Locals(c, VisitorIDLocalKey, visitorID)
 	return visitorID
 }
 

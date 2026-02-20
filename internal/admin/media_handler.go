@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"context"
 	"errors"
 	"io"
 	"log"
@@ -179,7 +178,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 		contentType = http.DetectContentType(content)
 	}
 
-	uploaded, err := provider.Upload(context.Background(), media.UploadInput{
+	uploaded, err := provider.Upload(c.RequestCtx(), media.UploadInput{
 		FileName:    fileHeader.Filename,
 		ContentType: contentType,
 		Bytes:       content,
@@ -290,7 +289,7 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	if err = provider.Delete(context.Background(), deleteKey); err != nil {
+	if err = provider.Delete(c.RequestCtx(), deleteKey); err != nil {
 		log.Printf("[media] provider delete failed: id=%d provider=%s delete_key=%s err=%v", id, provider.Name(), deleteKey, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"ok":    false,

@@ -14,6 +14,7 @@ import (
 
 	"github.com/gofiber/contrib/v3/monitor"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/google/uuid"
@@ -72,6 +73,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 			return uuid.NewString()
 		},
 	}))
+	app.Use(recover.New())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 	//app.Use(logger.New(logger.Config{
 	//	TimeFormat: TimeFormat,

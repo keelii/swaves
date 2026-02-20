@@ -3,6 +3,7 @@ package middleware
 
 import (
 	"strconv"
+	"strings"
 	"swaves/internal/consts"
 	"swaves/internal/types"
 
@@ -12,9 +13,10 @@ import (
 // PaginationMiddleware 将 page/pageSize 封装成 Pagination 放入 c.Locals
 func PaginationMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		var pageSize int = consts.DefaultPageSize
-		if c.Locals("settings.page_size") != nil {
-			size, err := strconv.Atoi(c.Locals("settings.page_size").(string))
+		pageSize := consts.DefaultPageSize
+		rawPageSize := strings.TrimSpace(fiber.Locals[string](c, "settings.page_size"))
+		if rawPageSize != "" {
+			size, err := strconv.Atoi(rawPageSize)
 			if err == nil {
 				pageSize = size
 			}
@@ -43,7 +45,7 @@ func PaginationMiddleware() fiber.Handler {
 			}
 		}
 
-		c.Locals("pagination", p)
+		fiber.Locals(c, "pagination", p)
 
 		return c.Next()
 	}
@@ -51,10 +53,9 @@ func PaginationMiddleware() fiber.Handler {
 
 // 从 c.Locals 获取 Pagination
 func GetPagination(c fiber.Ctx) types.Pagination {
-	if v := c.Locals("pagination"); v != nil {
-		if p, ok := v.(types.Pagination); ok {
-			return p
-		}
+	p := fiber.Locals[types.Pagination](c, "pagination")
+	if p.Page > 0 && p.PageSize > 0 {
+		return p
 	}
 	return types.Pagination{Page: consts.DefaultPage, PageSize: consts.DefaultPageSize}
 }
