@@ -8,9 +8,8 @@ type FactoryConfig struct {
 	SEEBaseURL string
 	SEEToken   string
 
-	ImageKitAPIBaseURL    string
-	ImageKitUploadBaseURL string
-	ImageKitPrivateKey    string
+	ImageKitEndpoint   string
+	ImageKitPrivateKey string
 }
 
 type Factory struct {
@@ -34,9 +33,8 @@ func (f *Factory) Resolve(name string) Provider {
 	switch name {
 	case "imagekit":
 		return NewImageKitProvider(ImageKitConfig{
-			APIBaseURL:    f.cfg.ImageKitAPIBaseURL,
-			UploadBaseURL: f.cfg.ImageKitUploadBaseURL,
-			PrivateKey:    f.cfg.ImageKitPrivateKey,
+			Endpoint:   f.cfg.ImageKitEndpoint,
+			PrivateKey: f.cfg.ImageKitPrivateKey,
 		})
 	case "see":
 		fallthrough

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
@@ -305,9 +306,8 @@ func (h *Handler) resolveMediaProvider(providerName string) (media.Provider, err
 		SEEBaseURL:      store.GetSetting("media_see_api_base"),
 		SEEToken:        store.GetSetting("media_see_api_token"),
 
-		ImageKitAPIBaseURL:    store.GetSetting("media_imagekit_api_base"),
-		ImageKitUploadBaseURL: store.GetSetting("media_imagekit_upload_base"),
-		ImageKitPrivateKey:    store.GetSetting("media_imagekit_private_key"),
+		ImageKitEndpoint:   store.GetSetting("media_imagekit_endpoint"),
+		ImageKitPrivateKey: store.GetSetting("media_imagekit_private_key"),
 	})
 
 	rawProvider := strings.TrimSpace(providerName)
@@ -370,6 +370,13 @@ func (h *Handler) validateMediaProviderConfig(providerName string) error {
 		if strings.TrimSpace(store.GetSetting("media_imagekit_private_key")) == "" {
 			return errors.New("ImageKit Private Key 未配置，请到设置 > ThirdPart 填写")
 		}
+		imageKitEndpoint := strings.TrimSpace(store.GetSetting("media_imagekit_endpoint"))
+		if imageKitEndpoint == "" {
+			return errors.New("ImageKit-endpoint 未配置，请到设置 > ThirdPart 填写")
+		}
+		if err := validateImageKitEndpoint(imageKitEndpoint); err != nil {
+			return err
+		}
 	case "see":
 		fallthrough
 	default:
@@ -377,6 +384,25 @@ func (h *Handler) validateMediaProviderConfig(providerName string) error {
 			return errors.New("S.EE API Token 未配置，请到设置 > ThirdPart 填写")
 		}
 	}
+	return nil
+}
+
+func validateImageKitEndpoint(endpoint string) error {
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return errors.New("ImageKit-endpoint 格式错误，请填写类似 https://upload.imagekit.io/api/v1")
+	}
+
+	host := strings.ToLower(parsed.Hostname())
+	if host == "ik.imagekit.io" || strings.HasSuffix(host, ".ik.imagekit.io") {
+		return errors.New("ImageKit-endpoint 看起来是文件访问域名，请改为上传 API 地址（例如 https://upload.imagekit.io/api/v1）")
+	}
+
+	path := strings.ToLower(strings.TrimSpace(parsed.Path))
+	if !strings.Contains(path, "/api/v1") && !strings.Contains(path, "/v1") {
+		return errors.New("ImageKit-endpoint 路径应包含 /api/v1（例如 https://upload.imagekit.io/api/v1）")
+	}
+
 	return nil
 }
 

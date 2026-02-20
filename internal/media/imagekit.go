@@ -17,29 +17,21 @@ import (
 )
 
 type ImageKitConfig struct {
-	APIBaseURL    string
-	UploadBaseURL string
-	PrivateKey    string
-	Client        *http.Client
+	Endpoint   string
+	PrivateKey string
+	Client     *http.Client
 }
 
 type ImageKitProvider struct {
-	apiBaseURL    string
-	uploadBaseURL string
-	privateKey    string
-	client        *http.Client
+	apiBaseURL string
+	uploadURL  string
+	privateKey string
+	client     *http.Client
 }
 
 func NewImageKitProvider(cfg ImageKitConfig) *ImageKitProvider {
-	apiBaseURL := strings.TrimSpace(cfg.APIBaseURL)
-	if apiBaseURL == "" {
-		apiBaseURL = "https://api.imagekit.io/v1"
-	}
-
-	uploadBaseURL := strings.TrimSpace(cfg.UploadBaseURL)
-	if uploadBaseURL == "" {
-		uploadBaseURL = "https://upload.imagekit.io/api/v1"
-	}
+	uploadURL := resolveImageKitUploadURL(cfg.Endpoint)
+	apiBaseURL := deriveImageKitAPIBaseURL(uploadURL)
 
 	client := cfg.Client
 	if client == nil {
@@ -47,10 +39,10 @@ func NewImageKitProvider(cfg ImageKitConfig) *ImageKitProvider {
 	}
 
 	return &ImageKitProvider{
-		apiBaseURL:    strings.TrimRight(apiBaseURL, "/"),
-		uploadBaseURL: strings.TrimRight(uploadBaseURL, "/"),
-		privateKey:    strings.TrimSpace(cfg.PrivateKey),
-		client:        client,
+		apiBaseURL: strings.TrimRight(apiBaseURL, "/"),
+		uploadURL:  uploadURL,
+		privateKey: strings.TrimSpace(cfg.PrivateKey),
+		client:     client,
 	}
 }
 
@@ -61,6 +53,9 @@ func (p *ImageKitProvider) Name() string {
 func (p *ImageKitProvider) Upload(ctx context.Context, in UploadInput) (*UploadResult, error) {
 	if strings.TrimSpace(p.privateKey) == "" {
 		return nil, errors.New("ImageKit private key is empty")
+	}
+	if err := validateImageKitUploadURL(p.uploadURL); err != nil {
+		return nil, err
 	}
 	if len(in.Bytes) == 0 {
 		return nil, errors.New("upload file is empty")
@@ -83,8 +78,7 @@ func (p *ImageKitProvider) Upload(ctx context.Context, in UploadInput) (*UploadR
 		return nil, err
 	}
 
-	uploadURL := p.uploadBaseURL + "/files/upload"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uploadURL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.uploadURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +96,15 @@ func (p *ImageKitProvider) Upload(ctx context.Context, in UploadInput) (*UploadR
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("ImageKit upload failed: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(raw)))
+		bodyText := strings.TrimSpace(string(raw))
+		if resp.StatusCode == http.StatusForbidden && strings.Contains(strings.ToLower(bodyText), "cloudfront") {
+			return nil, fmt.Errorf(
+				"ImageKit upload failed: status=%d endpoint=%s，看起来 endpoint 不是上传 API 地址，请改为 https://upload.imagekit.io/api/v1",
+				resp.StatusCode,
+				p.uploadURL,
+			)
+		}
+		return nil, fmt.Errorf("ImageKit upload failed: status=%d body=%s", resp.StatusCode, compactImageKitErrorBody(bodyText))
 	}
 
 	var payload struct {
@@ -247,4 +249,73 @@ func (p *ImageKitProvider) Delete(ctx context.Context, deleteKey string) error {
 func (p *ImageKitProvider) basicAuthHeader() string {
 	encoded := base64.StdEncoding.EncodeToString([]byte(p.privateKey + ":"))
 	return "Basic " + encoded
+}
+
+func resolveImageKitUploadURL(endpoint string) string {
+	const defaultUploadURL = "https://upload.imagekit.io/api/v1/files/upload"
+
+	endpoint = strings.TrimSpace(endpoint)
+	if endpoint == "" {
+		return defaultUploadURL
+	}
+
+	endpoint = strings.TrimRight(endpoint, "/")
+	lower := strings.ToLower(endpoint)
+	if strings.HasSuffix(lower, "/files/upload") {
+		return endpoint
+	}
+
+	if strings.HasSuffix(lower, "/api/v1") || strings.HasSuffix(lower, "/v1") {
+		return endpoint + "/files/upload"
+	}
+
+	return endpoint + "/api/v1/files/upload"
+}
+
+func deriveImageKitAPIBaseURL(uploadURL string) string {
+	const defaultAPIBaseURL = "https://api.imagekit.io/v1"
+
+	parsed, err := url.Parse(uploadURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return defaultAPIBaseURL
+	}
+
+	host := parsed.Host
+	lowerHost := strings.ToLower(host)
+	if strings.HasPrefix(lowerHost, "upload.") && len(host) > len("upload.") {
+		host = "api." + host[len("upload."):]
+	}
+
+	return parsed.Scheme + "://" + host + "/v1"
+}
+
+func validateImageKitUploadURL(uploadURL string) error {
+	parsed, err := url.Parse(uploadURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return errors.New("ImageKit endpoint invalid: expected URL like https://upload.imagekit.io/api/v1")
+	}
+
+	host := strings.ToLower(parsed.Hostname())
+	if host == "ik.imagekit.io" || strings.HasSuffix(host, ".ik.imagekit.io") {
+		return errors.New("ImageKit endpoint 配置错误：当前看起来是文件访问域名，请改为上传 API 地址（例如 https://upload.imagekit.io/api/v1）")
+	}
+
+	path := strings.ToLower(strings.TrimSpace(parsed.Path))
+	if !strings.Contains(path, "/api/v1/") && !strings.HasSuffix(path, "/api/v1") &&
+		!strings.Contains(path, "/v1/") && !strings.HasSuffix(path, "/v1") {
+		return errors.New("ImageKit endpoint 配置错误：路径应包含 /api/v1（例如 https://upload.imagekit.io/api/v1）")
+	}
+
+	return nil
+}
+
+func compactImageKitErrorBody(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return raw
+	}
+	if len(raw) > 400 {
+		return raw[:400] + "...(truncated)"
+	}
+	return raw
 }

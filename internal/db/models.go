@@ -95,6 +95,9 @@ func InitDatabase(db *DB) error {
 	if err := ensureSecretSettingTypes(db); err != nil {
 		return err
 	}
+	if err := ensureImageKitEndpointSetting(db); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -465,6 +468,79 @@ func ensureSecretSettingTypes(db *DB) error {
 		); err != nil {
 			return WrapInternalErr("ensureSecretSettingTypes.Update", err)
 		}
+	}
+
+	return nil
+}
+
+func ensureImageKitEndpointSetting(db *DB) error {
+	const (
+		endpointCode      = "media_imagekit_endpoint"
+		legacyUploadCode  = "media_imagekit_upload_base"
+		legacyAPIBaseCode = "media_imagekit_api_base"
+		defaultEndpoint   = "https://upload.imagekit.io/api/v1"
+	)
+
+	endpointSetting, err := GetSettingByCode(db, endpointCode)
+	if err != nil {
+		if !IsErrNotFound(err) {
+			return WrapInternalErr("ensureImageKitEndpointSetting.GetEndpoint", err)
+		}
+
+		endpointSetting = &Setting{
+			Kind:        "ThirdPart",
+			Name:        "ImageKit-endpoint",
+			Code:        endpointCode,
+			Type:        "url",
+			Value:       defaultEndpoint,
+			Description: "ImageKit 上传 API Endpoint",
+			Sort:        95,
+		}
+		if _, err = CreateSetting(db, endpointSetting); err != nil {
+			return WrapInternalErr("ensureImageKitEndpointSetting.CreateEndpoint", err)
+		}
+	}
+
+	legacyUploadValue := ""
+	legacyUploadSetting, err := GetSettingByCode(db, legacyUploadCode)
+	if err == nil {
+		legacyUploadValue = strings.TrimSpace(legacyUploadSetting.Value)
+	} else if !IsErrNotFound(err) {
+		return WrapInternalErr("ensureImageKitEndpointSetting.GetLegacyUpload", err)
+	}
+
+	legacyAPIValue := ""
+	legacyAPISetting, err := GetSettingByCode(db, legacyAPIBaseCode)
+	if err == nil {
+		legacyAPIValue = strings.TrimSpace(legacyAPISetting.Value)
+	} else if !IsErrNotFound(err) {
+		return WrapInternalErr("ensureImageKitEndpointSetting.GetLegacyAPI", err)
+	}
+
+	endpointValue := strings.TrimSpace(endpointSetting.Value)
+	if endpointValue == "" || (endpointValue == defaultEndpoint && legacyUploadValue != "" && legacyUploadValue != defaultEndpoint) {
+		if legacyUploadValue != "" {
+			endpointValue = legacyUploadValue
+		} else if legacyAPIValue != "" {
+			endpointValue = legacyAPIValue
+		} else {
+			endpointValue = defaultEndpoint
+		}
+
+		if err = UpdateSettingByCode(db, endpointCode, endpointValue); err != nil {
+			return WrapInternalErr("ensureImageKitEndpointSetting.UpdateEndpointValue", err)
+		}
+	}
+
+	if _, err = db.Exec(
+		`UPDATE `+string(TableSettings)+`
+		SET deleted_at = strftime('%s','now'),
+			updated_at = strftime('%s','now')
+		WHERE code IN (?, ?)
+		  AND deleted_at IS NULL`,
+		legacyUploadCode, legacyAPIBaseCode,
+	); err != nil {
+		return WrapInternalErr("ensureImageKitEndpointSetting.DeleteLegacy", err)
 	}
 
 	return nil

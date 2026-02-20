@@ -90,8 +90,9 @@ func GetArticleUrl(post db.Post) string {
 	return postPath + "/" + postName
 }
 
-func BuildPostURL(kind db.PostKind, slug string, publishedAt int64) string {
+func BuildPostURL(id int64, kind db.PostKind, slug string, publishedAt int64) string {
 	return GetPostUrl(db.Post{
+		ID:          id,
 		Kind:        kind,
 		Slug:        slug,
 		PublishedAt: publishedAt,
