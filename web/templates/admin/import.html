@@ -7,6 +7,53 @@
     width: auto;
   }
 
+  .import-upload {
+    margin-bottom: var(--space-2);
+  }
+
+  .import-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-medium);
+    background: var(--background);
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    text-align: center;
+    cursor: pointer;
+    padding: var(--space-4);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .import-dropzone.dragover {
+    border-color: var(--primary);
+    background: var(--muted);
+  }
+
+  .import-dropzone.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .import-drop-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .import-drop-subtitle {
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+
+  .import-drop-status {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+  }
+
   .import-edit-panel {
     margin-top: var(--space-5);
   }
@@ -16,7 +63,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-4);
     flex-wrap: wrap;
   }
 
@@ -92,15 +139,17 @@
 {{ end }}
 
 <form id="form" method="post" action="{{ adminPath "/import" }}" enctype="multipart/form-data">
+  <section class="import-upload">
+    <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
+    <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖拽 Markdown 文件">
+      <p class="import-drop-title">拖拽 Markdown 文件到这里导入</p>
+      <p class="import-drop-subtitle">或点击此区域选择文件（支持多选）</p>
+      <p id="import-drop-status" class="import-drop-status">当前未选择文件</p>
+    </div>
+  </section>
+  <hr>
   <div class="row">
     <div class="col-6">
-      <p>
-        <label>
-          选择 markdown 文件<br>
-          <input type="file" name="files" accept=".md,.markdown,text/markdown" multiple required>
-          <small>（可选择多个文件）</small>
-        </label>
-      </p>
       <p>
         <label data-field>
           标题来源<br>
@@ -184,14 +233,13 @@
         </label>
       </p>
     </div>
-
     <div class="col-6">
       <p>
         <small>
           Markdown 文件应包含 frontmatter，例如：<br>
           <pre>---
   title: 文章标题
-  slug: article-slug
+  slug: /article-slug
   date: 2011-05-12T02:20:04.000Z
   status: draft
   categories:
@@ -205,19 +253,21 @@
   文章内容...</pre>
         </small>
       </p>
+
     </div>
   </div>
 </form>
 
 <div id="import-edit-panel" class="import-edit-panel"{{ if not (gt (len .ImportingItems) 0) }} hidden{{ end }}>
   <div class="import-edit-actions">
-    <div id="import-edit-summary" role="alert" data-variant="{{ if gt (len .ImportingItems) 0 }}warning{{ else }}success{{ end }}">
+    <div id="import-edit-summary" class="w-100" role="alert" data-variant="{{ if gt (len .ImportingItems) 0 }}warning{{ else }}success{{ end }}">
       {{ if gt (len .ImportingItems) 0 }}待确认 {{ len .ImportingItems }} 条导入记录{{ else }}暂无待确认导入记录{{ end }}
     </div>
   </div>
   <div class="hstack">
-    <button type="button" class="button outline" id="toggle-import-status-btn">全量切换发布状态</button>
     <button type="button" class="button" id="import-confirm-btn">确认导入</button>
+    <button type="button" class="button secondary" id="import-cancel-btn">取消导入</button>
+    <button type="button" class="button outline" id="toggle-import-status-btn">全量切换发布状态</button>
   </div>
 
   <table class="import-edit-table">
@@ -287,10 +337,14 @@ $(function() {
   ];
 
   var $form = $('#form');
+  var $fileInput = $('#import-files-input');
+  var $dropzone = $('#import-dropzone');
+  var $dropStatus = $('#import-drop-status');
   var $editPanel = $('#import-edit-panel');
   var $editSummary = $('#import-edit-summary');
   var $editRows = $('#import-edit-rows');
   var $confirmBtn = $('#import-confirm-btn');
+  var selectedFiles = [];
   var isParsing = false;
   var isConfirming = false;
 
@@ -337,6 +391,55 @@ $(function() {
     }
     list.push(value);
     return list;
+  }
+
+  function selectedFilesFromInput() {
+    if (!$fileInput.length || !$fileInput[0] || !$fileInput[0].files) {
+      return [];
+    }
+    return Array.from($fileInput[0].files);
+  }
+
+  function setInputFiles(files) {
+    if (!$fileInput.length || !$fileInput[0]) {
+      return;
+    }
+    if (typeof DataTransfer !== 'function') {
+      return;
+    }
+
+    try {
+      var dt = new DataTransfer();
+      (files || []).forEach(function(file) {
+        dt.items.add(file);
+      });
+      $fileInput[0].files = dt.files;
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  function renderSelectedFiles() {
+    if (selectedFiles.length === 0) {
+      $dropStatus.text('当前未选择文件');
+      return;
+    }
+
+    $dropStatus.text('已选择 ' + selectedFiles.length + ' 个文件');
+    var html = '<div>文件列表：</div><ul>';
+    selectedFiles.slice(0, 5).forEach(function(file) {
+      html += '<li>' + escapeHTML(file.name || '(unnamed)') + '</li>';
+    });
+    if (selectedFiles.length > 5) {
+      html += '<li>...以及另外 ' + (selectedFiles.length - 5) + ' 个文件</li>';
+    }
+    html += '</ul>';
+  }
+
+  function setSelectedFiles(files) {
+    selectedFiles = Array.prototype.slice.call(files || []);
+    setInputFiles(selectedFiles);
+    renderSelectedFiles();
   }
 
   function normalizeItem(raw) {
@@ -629,6 +732,58 @@ $(function() {
     $(this).val() === 'frontmatter' ? show('#tag_field_container') : hide('#tag_field_container');
   }).trigger('change');
 
+  $dropzone.on('click', function() {
+    if (isParsing || isConfirming) {
+      return;
+    }
+    if ($fileInput.length && $fileInput[0]) {
+      $fileInput[0].click();
+    }
+  });
+
+  $dropzone.on('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') {
+      return;
+    }
+    e.preventDefault();
+    if (isParsing || isConfirming) {
+      return;
+    }
+    if ($fileInput.length && $fileInput[0]) {
+      $fileInput[0].click();
+    }
+  });
+
+  $fileInput.on('change', function() {
+    setSelectedFiles(this.files);
+  });
+
+  $dropzone.on('dragenter dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isParsing || isConfirming) {
+      return;
+    }
+    $dropzone.addClass('dragover');
+  });
+
+  $dropzone.on('dragleave dragend drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $dropzone.removeClass('dragover');
+  });
+
+  $dropzone.on('drop', function(e) {
+    if (isParsing || isConfirming) {
+      return;
+    }
+    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    if (!dt || !dt.files || dt.files.length === 0) {
+      return;
+    }
+    setSelectedFiles(dt.files);
+  });
+
   $('#toggle-import-status-btn').on('click', function() {
     var $rows = $editRows.find('tr[data-import-item-row]');
     if ($rows.length === 0) {
@@ -661,6 +816,7 @@ $(function() {
     }
 
     isConfirming = true;
+    $dropzone.addClass('is-disabled');
     var $inputs = $editPanel.find('input, select, button, textarea');
     $inputs.prop('disabled', true);
 
@@ -710,6 +866,9 @@ $(function() {
 
     $inputs.prop('disabled', false);
     isConfirming = false;
+    if (!isParsing) {
+      $dropzone.removeClass('is-disabled');
+    }
 
     if (failCount === 0) {
       setEditSummary('确认完成，全部成功。', 'success');
@@ -729,16 +888,20 @@ $(function() {
       return;
     }
 
-    var fileInput = $form.find('input[name="files"]')[0];
-    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    var files = selectedFiles.slice();
+    if (files.length === 0) {
+      files = selectedFilesFromInput();
+    }
+
+    if (files.length === 0) {
       setEditSummary('请至少选择一个文件', 'error');
       return;
     }
 
-    var files = Array.from(fileInput.files);
     var options = collectOptions();
 
     isParsing = true;
+    $dropzone.addClass('is-disabled');
     ensureEditPanelVisible();
     setEditSummary('开始逐个导入文件（临时状态 importing）...', 'warning');
 
@@ -791,6 +954,7 @@ $(function() {
 
     $inputs.prop('disabled', false);
     isParsing = false;
+    $dropzone.removeClass('is-disabled');
 
     if (successCount > 0 && failCount === 0) {
       setEditSummary('导入完成，成功 ' + successCount + ' 条。请在表格中检查并点击「确认导入」。', 'warning');
@@ -818,6 +982,8 @@ $(function() {
   $editRows.find('tr[data-import-item-row]').each(function() {
     initCategorySelect($(this));
   });
+  selectedFiles = selectedFilesFromInput();
+  renderSelectedFiles();
   syncEditSummaryByRows('warning');
 });
 </script>
