@@ -1,50 +1,51 @@
 package consts
 
 import (
+	"regexp"
 	"swaves/helper"
 )
 
-const PostUrlPrefixReg = `^/\{datetime\}|/[a-z]*$`
+var PostUrlPrefixRegexp = regexp.MustCompile(`^/\{datetime\}|/[a-z]*$`)
 
 var PostUrlPrefixValidator = map[string]interface{}{
 	"title":    "只能是{datetime}，/，/+小写英文字母",
 	"required": true,
-	"pattern":  PostUrlPrefixReg,
+	"pattern":  PostUrlPrefixRegexp.String(),
 }
 var PostUrlPrefixValidatorJSON = helper.JSONStringify(PostUrlPrefixValidator)
 
-const UrlPrefixReg = `^/[a-z]*$`
+var UrlPrefixRegexp = regexp.MustCompile(`^/[a-z]*$`)
 
 var UrlPrefixValidator = map[string]interface{}{
 	"title":    "只能是/，/+小写英文字母",
 	"required": true,
-	"pattern":  UrlPrefixReg,
+	"pattern":  UrlPrefixRegexp.String(),
 }
 var UrlPrefixValidatorJSON = helper.JSONStringify(UrlPrefixValidator)
 
-const UrlFileNamePrefixReg = `^/[a-z]+[0-9]*.?[a-z]+$`
+var UrlFileNamePrefixRegexp = regexp.MustCompile(`^/[a-z]+[0-9]*.?[a-z]+$`)
 
 var UrlFileNamePrefixValidator = map[string]interface{}{
 	"title":    "只能是/，/+小写英文字母",
 	"required": true,
-	"pattern":  UrlFileNamePrefixReg,
+	"pattern":  UrlFileNamePrefixRegexp.String(),
 }
 var UrlFileNamePrefixValidatorJSON = helper.JSONStringify(UrlFileNamePrefixValidator)
 
-const PostUrlExtReg = `^\.[a-z]+$`
+var PostUrlExtRegexp = regexp.MustCompile(`^\.[a-z]+$`)
 
 var PostUrlExtValidator = map[string]interface{}{
 	"title":    "只能是.，+小写英文字母",
 	"required": false,
-	"pattern":  PostUrlExtReg,
+	"pattern":  PostUrlExtRegexp.String(),
 }
 var PostUrlExtValidatorJSON = helper.JSONStringify(PostUrlExtValidator)
 
-const PostUrlNameReg = `^\{slug\}|\{id\}|\{title\}$`
+var PostUrlNameRegexp = regexp.MustCompile(`^\{slug\}|\{id\}|\{title\}$`)
 
 var PostUrlNameValidator = map[string]interface{}{
 	"title":    "只能是{slug}，{id}，{title}",
 	"required": true,
-	"pattern":  PostUrlNameReg,
+	"pattern":  PostUrlNameRegexp.String(),
 }
 var PostUrlNameValidatorJSON = helper.JSONStringify(PostUrlNameValidator)
