@@ -1,12 +1,7 @@
 <header>
   <h1>{{ .Title }}</h1>
-  <nav>
-    <a href="{{ settings "base_path" }}">首页</a>
-    /
-    <a href="{{ settings "category_url_prefix" }}">分类</a>
-    /
-    <a href="{{ settings "tag_url_prefix" }}">标签</a>
-  </nav>
+
+  {{ template "site/includes/list_nav" dict "IsCategory" true "IsTag" true }}
 </header>
 
 {{ define "site/category_tree_nodes" }}

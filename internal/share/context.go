@@ -11,14 +11,21 @@ import (
 
 func GetBasePath() string {
 	b := store.GetSetting("base_path")
-	if b == "/" {
-		return ""
+	if b == "" {
+		return "/"
 	}
 
-	return b
+	return "/" + b
+}
+func GetBasePathWithSlash() string {
+	basePath := GetBasePath()
+	if basePath == "/" {
+		return "/"
+	}
+	return GetBasePath() + "/"
 }
 func GetPagePath() string {
-	b := store.GetSetting("page_path")
+	b := store.GetSetting("page_url_prefix")
 	if b == "/" {
 		return ""
 	}
@@ -30,8 +37,13 @@ func GetSiteUrl() string {
 	return fmt.Sprintf("%s%s", store.GetSetting("site_url"), GetBasePath())
 }
 func GetPageUrl(post db.Post) string {
-	postName := GetPostName(post)
-	return GetPagePath() + "/" + postName
+	//postName := GetPostName(post)
+	postName := post.Slug
+	pagePrefix := GetPagePrefix()
+	if pagePrefix == "/" {
+		return pagePrefix + postName
+	}
+	return pagePrefix + "/" + postName
 }
 
 func GetArticlePublishedDate(post db.Post) (string, string, string) {
@@ -78,7 +90,7 @@ func GetPostName(post db.Post) string {
 }
 func GetArticleUrl(post db.Post) string {
 	y, m, d := GetArticlePublishedDate(post)
-	postPath := store.GetSetting("post_url_prefix")
+	postPath := GetPostPrefix()
 	postPath = strings.ReplaceAll(postPath, "{datetime}", fmt.Sprintf("%s/%s/%s", y, m, d))
 
 	postName := GetPostName(post)
@@ -100,11 +112,10 @@ func BuildPostURL(id int64, kind db.PostKind, slug string, publishedAt int64) st
 }
 
 func GetPostUrl(post db.Post) string {
-	base := GetBasePath()
 	if post.Kind == db.PostKindPage {
-		return base + GetPageUrl(post)
+		return GetPageUrl(post)
 	}
-	return base + GetArticleUrl(post)
+	return GetArticleUrl(post)
 }
 func GetPostAbsUrl(post db.Post) string {
 	return fmt.Sprintf("%s%s", GetSiteUrl(), GetPostUrl(post))
@@ -115,31 +126,49 @@ func GetSiteAuthor() string {
 func GetSiteCopyright() string {
 	return store.GetSetting("site_copyright")
 }
-func GetCategoryIndex() string {
-	return GetBasePath() + store.GetSetting("category_url_prefix")
+func GetCategoryPrefix() string {
+	return GetBasePathWithSlash() + store.GetSetting("category_url_prefix")
 }
-func GetTagIndex() string {
-	return GetBasePath() + store.GetSetting("tag_url_prefix")
+func GetTagPrefix() string {
+	return GetBasePathWithSlash() + store.GetSetting("tag_url_prefix")
+}
+func GetCategoryRoute() string {
+	return "/" + store.GetSetting("category_url_prefix")
+}
+func GetTagRoute() string {
+	return "/" + store.GetSetting("tag_url_prefix")
 }
 func GetCategoryUrl(category db.Category) string {
-	return GetCategoryIndex() + "/" + category.Slug
+	return GetCategoryPrefix() + "/" + category.Slug
 }
 func GetTagUrl(tag db.Tag) string {
-	return GetTagIndex() + "/" + tag.Slug
+	return GetTagPrefix() + "/" + tag.Slug
 }
 
 func GetRSSUrl() string {
-	return GetBasePath() + store.GetSetting("rss_path")
+	return GetBasePathWithSlash() + store.GetSetting("rss_path")
+}
+func GetRSSRoute() string {
+	return "/" + store.GetSetting("rss_path")
 }
 func GetAdminUrl() string {
 	return store.GetSetting("admin_path")
 }
 func GetPagePrefix() string {
-	return GetBasePath() + store.GetSetting("page_path")
+	return GetBasePathWithSlash() + store.GetSetting("page_url_prefix")
+}
+func GetPostPrefix() string {
+	return GetBasePathWithSlash() + store.GetSetting("post_url_prefix")
+}
+func GetPageRoute() string {
+	return "/" + store.GetSetting("page_url_prefix")
+}
+func GetPostRoute() string {
+	return "/" + store.GetSetting("post_url_prefix")
 }
 func GetAdminPostUrl(post db.Post) string {
 	return fmt.Sprintf("%s%s", GetAdminUrl(), GetPostUrl(post))
 }
 func GetAdminEditPostUrl(post db.Post) string {
-	return fmt.Sprintf("%s%s/posts/%d/edit", GetAdminUrl(), GetBasePath(), post.ID)
+	return fmt.Sprintf("%s%s/posts/%d/edit", GetAdminUrl(), GetBasePathWithSlash(), post.ID)
 }

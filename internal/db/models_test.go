@@ -1054,7 +1054,7 @@ func TestBuiltinPrefixFieldSettings(t *testing.T) {
 	}
 
 	prefixCodes := []string{
-		"page_path",
+		"page_url_prefix",
 		"rss_path",
 		"post_url_prefix",
 		"category_url_prefix",

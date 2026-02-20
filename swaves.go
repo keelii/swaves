@@ -35,10 +35,10 @@ func NewApp(config types.AppConfig) SwavesApp {
 
 	store.InitSettings(globalStore)
 	app := fiber.New(fiber.Config{
-		AppName:               config.AppName,
-		DisableStartupMessage: true,
-		Views:                 NewViewEngine(),
-		BodyLimit:             10 * 1024 * 1024, // 10MB
+		AppName: config.AppName,
+		//DisableStartupMessage: true,
+		Views:     NewViewEngine(),
+		BodyLimit: 10 * 1024 * 1024, // 10MB
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			msg := "Internal Server Error"

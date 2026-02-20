@@ -471,7 +471,7 @@ func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
 		"IsCategory": true,
 		"Entity":     category,
 		"List":       posts,
-		"ListPage":   share.GetCategoryIndex(),
+		"ListPage":   share.GetCategoryPrefix(),
 		"Pages":      ListPages(h.Model),
 	}, "")
 }
@@ -491,7 +491,7 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 		"IsTag":    true,
 		"Entity":   tag,
 		"List":     posts,
-		"ListPage": share.GetTagIndex(),
+		"ListPage": share.GetTagPrefix(),
 		"Pages":    ListPages(h.Model),
 	}, "")
 }

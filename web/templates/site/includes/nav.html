@@ -1,9 +1,9 @@
 <nav>
   <a href="{{ GetBasePath }}">首页</a>
   /
-  <a href="{{ GetCategoryIndex }}">分类</a>
+  <a href="{{ GetCategoryPrefix }}">分类</a>
   /
-  <a href="{{ GetTagIndex }}">标签</a>
+  <a href="{{ GetTagPrefix }}">标签</a>
   {{if gt (len .Pages) 0 }}
     {{ range .Pages}}
       / <a href="{{ .PermLink }}">{{ .Title }}</a>

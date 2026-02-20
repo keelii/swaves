@@ -1,15 +1,7 @@
   <header>
     <h1>{{ .Entity.Name }}</h1>
 
-    <nav>
-      <a href="{{ settings "base_path" }}">首页</a>
-      {{if .IsCategory}}
-      / <a href="{{ settings "category_url_prefix" }}">分类</a>
-      {{end}}
-      {{if .IsTag}}
-      / <a href="{{ settings "tag_url_prefix" }}">标签</a>
-      {{end}}
-    </nav>
+    {{ template "site/includes/list_nav" dict "IsCategory" .IsCategory "IsTag" .IsTag }}
   </header>
 
   {{ if .Entity.Description }}

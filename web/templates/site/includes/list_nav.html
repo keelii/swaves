@@ -1,0 +1,9 @@
+<nav>
+  <a href="{{ GetBasePath }}">首页</a>
+    {{if .IsCategory}}
+      / <a href="{{ GetCategoryPrefix }}">分类</a>
+    {{end}}
+    {{if .IsTag}}
+      / <a href="{{ GetTagPrefix }}">标签</a>
+    {{end}}
+</nav>

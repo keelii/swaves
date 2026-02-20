@@ -1,6 +1,8 @@
 package site
 
 import (
+	"fmt"
+	"strings"
 	"swaves/internal/middleware"
 	"swaves/internal/share"
 	"swaves/internal/store"
@@ -14,8 +16,9 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 		NewService(gStore.Model),
 	)
 
-	uiGroup := app.Group(store.GetSetting("base_path"))
+	uiGroup := app.Group(share.GetBasePath())
 	uiGroup.Use(middleware.EnsureVisitorID(""))
+
 	uiGroup.Post("/_action/like/:postID", handler.PostEntityLike)
 	uiGroup.Post("/_action/comment/:postID", commentRateLimitMiddleware(), handler.PostComment)
 
@@ -23,28 +26,33 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup.Get("/404", handler.GetNotFound)
 	uiGroup.Get("/error", handler.GetError)
 	// RSS
-	uiGroup.Get(share.GetRSSUrl(), handler.GetRSS)
+	uiGroup.Get(share.GetRSSRoute(), handler.GetRSS)
 	// Categories
-	uiGroup.Get(share.GetCategoryIndex(), handler.GetCategoryIndex)
-	uiGroup.Get(share.GetCategoryIndex()+"/:categorySlug", handler.GetCategoryDetail)
+	uiGroup.Get(share.GetCategoryRoute(), handler.GetCategoryIndex)
+	uiGroup.Get(share.GetCategoryRoute()+"/:categorySlug", handler.GetCategoryDetail)
 	// Tags
-	uiGroup.Get(share.GetTagIndex(), handler.GetTagIndex)
-	uiGroup.Get(share.GetTagIndex()+"/:tagSlug", handler.GetTagDetail)
+	uiGroup.Get(share.GetTagRoute(), handler.GetTagIndex)
+	uiGroup.Get(share.GetTagRoute()+"/:tagSlug", handler.GetTagDetail)
 
 	// IST stands for ID, Slug, or Title, which are the three ways to identify a post in the URL
 	// Pages
-	uiGroup.Get(share.GetPagePrefix()+"/:ist", handler.GetPostByIST)
+	uiGroup.Get(share.GetPageRoute()+"/:ist", handler.GetPostByIST)
 	// Posts
-	postUrlPrefix := store.GetSetting("post_url_prefix")
+	postUrlRoute := share.GetPostRoute()
 
-	switch postUrlPrefix {
+	switch postUrlRoute {
 	case "/":
 		uiGroup.Get("/:ist", handler.GetPostByIST)
 	case "/{datetime}":
 		uiGroup.Get("/:year/:month/:day/:ist", handler.GetPostByDateAndSlug)
 	default:
-		uiGroup.Get(postUrlPrefix+"/:ist", handler.GetPostByIST)
+		uiGroup.Get(postUrlRoute+"/:ist", handler.GetPostByIST)
 	}
-	//uiGroup.Get(store.GetSetting("post_url_prefix"), ha)
-	//uiGroup.Get("/posts/:date<regex(\\d{4}/\\d{2}/\\d{2})>", handler.GetDate)
+
+	routes := app.GetRoutes(true)
+	for _, route := range routes {
+		if !strings.HasPrefix(route.Path, "/admin") {
+			fmt.Println(route.Path)
+		}
+	}
 }

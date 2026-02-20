@@ -420,7 +420,7 @@ var DefaultSettings = []Setting{
 	{Sort: 32, Kind: "Appearance", Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
 	{Sort: 33, Kind: "Appearance", Name: "分页器每页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
 	{Sort: 50, Kind: "Post", Name: "全局路径前缀", Code: "base_path", Reload: 1, Type: "prefix-field", Value: "", PrefixValue: "/", Description: "访问根路径", Attrs: consts.UrlPrefixValidatorJSON},
-	{Sort: 51, Kind: "Post", Name: "页面路径前缀", Code: "page_path", Reload: 1, Type: "prefix-field", Value: "", PrefixValue: "/", Description: "页面根路径", Attrs: consts.UrlPrefixValidatorJSON},
+	{Sort: 51, Kind: "Post", Name: "页面路径前缀", Code: "page_url_prefix", Reload: 1, Type: "prefix-field", Value: "", PrefixValue: "/", Description: "页面根路径", Attrs: consts.UrlPrefixValidatorJSON},
 	{Sort: 52, Kind: "Post", Name: "RSS地址", Code: "rss_path", Reload: 1, Type: "prefix-field", Value: "atom.xml", PrefixValue: "/", Description: "feed 地址", Attrs: consts.UrlFileNamePrefixValidatorJSON},
 	{Sort: 53, Kind: "Post", Name: "文章地址前缀", Code: "post_url_prefix", Reload: 1, Type: "prefix-field", Value: "{datetime}", PrefixValue: "/", Attrs: consts.PostUrlPrefixValidatorJSON, Description: "文章 URL 前缀"},
 	{Sort: 55, Kind: "Post", Name: "文章地址名称", Code: "post_url_name", Type: "select", Value: "{slug}", Description: "文章 URL 名称格式，注意设置成标题后其唯一性无法保证", Options: `[{"label":"URL 标识（slug）","value":"{slug}"},{"label":"文章 ID","value":"{id}"},{"label":"文章标题","value":"{title}"}]`},

@@ -95,7 +95,7 @@
               <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
             {{ else if eq $setting.Type "prefix-field" }}
               {{ $prefixSourceCode := "" }}
-              {{ if or (eq $code "page_path") (eq $code "rss_path") (eq $code "post_url_prefix") (eq $code "category_url_prefix") (eq $code "tag_url_prefix") }}
+              {{ if or (eq $code "page_url_prefix") (eq $code "rss_path") (eq $code "post_url_prefix") (eq $code "category_url_prefix") (eq $code "tag_url_prefix") }}
                 {{ $prefixSourceCode = "base_path" }}
               {{ end }}
               <fieldset class="group settings-prefix-field" data-prefix-source-code="{{ $prefixSourceCode }}" data-prefix-default="{{ $setting.PrefixValue }}">
