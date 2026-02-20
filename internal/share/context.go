@@ -134,6 +134,9 @@ func GetRSSUrl() string {
 func GetAdminUrl() string {
 	return store.GetSetting("admin_path")
 }
+func GetPagePrefix() string {
+	return GetBasePath() + store.GetSetting("page_path")
+}
 func GetAdminPostUrl(post db.Post) string {
 	return fmt.Sprintf("%s%s", GetAdminUrl(), GetPostUrl(post))
 }

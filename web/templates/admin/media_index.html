@@ -118,7 +118,7 @@
       <th>服务</th>
       <th>文件名</th>
       <th>链接</th>
-      <th class="cell-3">大小(B)</th>
+      <th class="cell-3">大小</th>
       <th class="cell-12">创建时间</th>
       <th class="cell-9">操作</th>
     </tr>
@@ -140,7 +140,7 @@
             -
           {{ end }}
         </td>
-        <td>{{ .SizeBytes }}</td>
+        <td>{{ humanSize .SizeBytes }}</td>
         <td>{{ formatTime .CreatedAt }}</td>
         <td class="cell-6">
           <div class="row-actions media-row-actions">
@@ -307,17 +307,40 @@ $(function() {
       body: fd
     })
       .then(function(r) {
-        return r.json().then(function(body) {
-          return { status: r.status, body: body };
+        return r.text().then(function(raw) {
+          var body = null;
+          if (raw) {
+            try {
+              body = JSON.parse(raw);
+            } catch (e) {
+              body = null;
+            }
+          }
+          return {
+            status: r.status,
+            body: body,
+            raw: String(raw || '').trim()
+          };
         });
       })
       .then(function(ret) {
         if (!ret.body || ret.body.ok !== true) {
-          var msg = (ret.body && ret.body.error) || ('上传失败，状态码 ' + ret.status);
+          var msg = (ret.body && ret.body.error) || ret.raw || ('上传失败，状态码 ' + ret.status);
           throw new Error(msg);
         }
         return ret.body;
       });
+  }
+
+  function compactErrorMessage(message) {
+    var text = String(message || '').replace(/\s+/g, ' ').trim();
+    if (!text) {
+      return '上传失败';
+    }
+    if (text.length > 320) {
+      return text.slice(0, 320) + '...';
+    }
+    return text;
   }
 
   function handleFiles(fileList) {
@@ -348,6 +371,7 @@ $(function() {
       var successCount = 0;
       var failedCount = 0;
       var failedNames = [];
+      var failedDetails = [];
       var chain = Promise.resolve();
 
       files.forEach(function(file, idx) {
@@ -355,16 +379,26 @@ $(function() {
           setUploading(true, '上传中 ' + (idx + 1) + '/' + files.length + '...');
           return uploadSingleFile(file).then(function() {
             successCount += 1;
-          }).catch(function() {
+          }).catch(function(err) {
             failedCount += 1;
-            failedNames.push(file.name || '(unnamed)');
+            var name = file.name || '(unnamed)';
+            failedNames.push(name);
+            failedDetails.push(name + '：' + compactErrorMessage(err && err.message));
           });
         });
       });
 
       chain.finally(function() {
         if (failedCount > 0) {
-          notify('上传完成：成功 ' + successCount + '，失败 ' + failedCount + '。失败文件：' + failedNames.join('、'));
+          var message = '上传完成：成功 ' + successCount + '，失败 ' + failedCount + '。失败文件：' + failedNames.join('、');
+          if (failedDetails.length > 0) {
+            var detailText = failedDetails.slice(0, 3).join('；');
+            if (failedDetails.length > 3) {
+              detailText += '；...';
+            }
+            message += '。失败原因：' + detailText;
+          }
+          notify(message);
         } else {
           notify('上传完成：共 ' + successCount + ' 个文件');
         }

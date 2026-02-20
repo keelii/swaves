@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"swaves/internal/consts"
 	"swaves/internal/db"
@@ -85,6 +86,7 @@ func NewViewEngine() *html.Engine {
 		}
 		return time.Unix(tsInt64, 0).Format(consts.TimeFormat)
 	})
+	engine.AddFunc("humanSize", formatHumanSize)
 	// relativeTime 将 Unix timestamp 转为相对时间：刚刚、1分钟前、1小时前、1天前、1月前、1年前
 	engine.AddFunc("relativeTime", func(ts interface{}) string {
 		var tsInt64 int64
@@ -335,5 +337,69 @@ func relativeTimeString(ts int64) string {
 		return fmt.Sprintf("%d月前", diff/(30*86400))
 	default:
 		return fmt.Sprintf("%d年前", diff/(365*86400))
+	}
+}
+
+func formatHumanSize(raw interface{}) string {
+	bytes, ok := normalizeBytes(raw)
+	if !ok {
+		return "-"
+	}
+	if bytes < 1024 {
+		return strconv.FormatInt(int64(bytes), 10) + " B"
+	}
+
+	units := []string{"B", "KB", "MB", "GB", "TB"}
+	unitIdx := 0
+	for bytes >= 1024 && unitIdx < len(units)-1 {
+		bytes /= 1024
+		unitIdx++
+	}
+
+	sizeText := strconv.FormatFloat(bytes, 'f', 2, 64)
+	sizeText = strings.TrimRight(strings.TrimRight(sizeText, "0"), ".")
+	return sizeText + " " + units[unitIdx]
+}
+
+func normalizeBytes(raw interface{}) (float64, bool) {
+	switch v := raw.(type) {
+	case int:
+		if v < 0 {
+			return 0, false
+		}
+		return float64(v), true
+	case int32:
+		if v < 0 {
+			return 0, false
+		}
+		return float64(v), true
+	case int64:
+		if v < 0 {
+			return 0, false
+		}
+		return float64(v), true
+	case uint:
+		return float64(v), true
+	case uint32:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	case float32:
+		if v < 0 {
+			return 0, false
+		}
+		return float64(v), true
+	case float64:
+		if v < 0 {
+			return 0, false
+		}
+		return v, true
+	case *int64:
+		if v == nil || *v < 0 {
+			return 0, false
+		}
+		return float64(*v), true
+	default:
+		return 0, false
 	}
 }

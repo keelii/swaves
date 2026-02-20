@@ -2,6 +2,7 @@ package site
 
 import (
 	"swaves/internal/middleware"
+	"swaves/internal/share"
 	"swaves/internal/store"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,16 +23,17 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup.Get("/404", handler.GetNotFound)
 	uiGroup.Get("/error", handler.GetError)
 	// RSS
-	uiGroup.Get(store.GetSetting("rss_path"), handler.GetRSS)
-	// Categories and Tags
-	uiGroup.Get(store.GetSetting("category_url_prefix"), handler.GetCategoryIndex)
-	uiGroup.Get(store.GetSetting("tag_url_prefix"), handler.GetTagIndex)
-	uiGroup.Get(store.GetSetting("category_url_prefix")+"/:categorySlug", handler.GetCategoryDetail)
-	uiGroup.Get(store.GetSetting("tag_url_prefix")+"/:tagSlug", handler.GetTagDetail)
+	uiGroup.Get(share.GetRSSUrl(), handler.GetRSS)
+	// Categories
+	uiGroup.Get(share.GetCategoryIndex(), handler.GetCategoryIndex)
+	uiGroup.Get(share.GetCategoryIndex()+"/:categorySlug", handler.GetCategoryDetail)
+	// Tags
+	uiGroup.Get(share.GetTagIndex(), handler.GetTagIndex)
+	uiGroup.Get(share.GetTagIndex()+"/:tagSlug", handler.GetTagDetail)
 
 	// IST stands for ID, Slug, or Title, which are the three ways to identify a post in the URL
 	// Pages
-	uiGroup.Get("/:ist", handler.GetPostByIST)
+	uiGroup.Get(share.GetPagePrefix()+"/:ist", handler.GetPostByIST)
 	// Posts
 	postUrlPrefix := store.GetSetting("post_url_prefix")
 

@@ -1411,6 +1411,7 @@ func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 
 func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 	kind := strings.TrimSpace(c.Query("kind", ""))
+	errMsg := strings.TrimSpace(c.Query("error", ""))
 
 	settings, err := ListAllSettings(h.Model)
 	if err != nil {
@@ -1442,6 +1443,7 @@ func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
 		"SettingsByKind": settingsByKind,
 		"SettingKinds":   settingKinds,
 		"ActiveKind":     activeKind,
+		"Error":          errMsg,
 	}, "")
 }
 
@@ -1482,6 +1484,92 @@ func buildSettingView(s db.Setting) SettingView {
 	return view
 }
 
+type settingsValueUpdate struct {
+	Code       string
+	Value      string
+	SkipUpdate bool
+}
+
+func isMediaSettingCode(code string) bool {
+	switch strings.TrimSpace(code) {
+	case "media_default_provider", "media_see_api_token", "media_imagekit_endpoint", "media_imagekit_private_key":
+		return true
+	default:
+		return false
+	}
+}
+
+func buildSettingsAllRedirectPath(kind string, errMsg string) string {
+	redirectPath := "/admin/settings/all"
+
+	params := url.Values{}
+	if strings.TrimSpace(kind) != "" {
+		params.Set("kind", strings.TrimSpace(kind))
+	}
+	if strings.TrimSpace(errMsg) != "" {
+		params.Set("error", strings.TrimSpace(errMsg))
+	}
+
+	if query := params.Encode(); query != "" {
+		redirectPath += "?" + query
+	}
+	return redirectPath
+}
+
+func (h *Handler) validateMediaSettingPayload(overrides map[string]string) error {
+	if len(overrides) == 0 {
+		return nil
+	}
+
+	values := map[string]string{
+		"media_default_provider":     strings.TrimSpace(store.GetSetting("media_default_provider")),
+		"media_see_api_token":        strings.TrimSpace(store.GetSetting("media_see_api_token")),
+		"media_imagekit_endpoint":    strings.TrimSpace(store.GetSetting("media_imagekit_endpoint")),
+		"media_imagekit_private_key": strings.TrimSpace(store.GetSetting("media_imagekit_private_key")),
+	}
+	hasMediaOverride := false
+	for code, value := range overrides {
+		if !isMediaSettingCode(code) {
+			continue
+		}
+		values[code] = strings.TrimSpace(value)
+		hasMediaOverride = true
+	}
+	if !hasMediaOverride {
+		return nil
+	}
+
+	rawProvider := strings.TrimSpace(strings.ToLower(values["media_default_provider"]))
+	provider := normalizeMediaProvider(rawProvider)
+	if rawProvider != "" && provider == "" {
+		return errors.New("保存失败：媒体默认服务无效，仅支持 S.EE 或 ImageKit")
+	}
+	if provider == "" {
+		provider = "see"
+	}
+
+	switch provider {
+	case "imagekit":
+		if values["media_imagekit_private_key"] == "" {
+			return errors.New("保存失败：当前媒体默认服务为 ImageKit，请填写 ImageKit Private Key")
+		}
+		if values["media_imagekit_endpoint"] == "" {
+			return errors.New("保存失败：当前媒体默认服务为 ImageKit，请填写 ImageKit-endpoint")
+		}
+		if err := validateImageKitEndpoint(values["media_imagekit_endpoint"]); err != nil {
+			return errors.New("保存失败：" + err.Error())
+		}
+	case "see":
+		fallthrough
+	default:
+		if values["media_see_api_token"] == "" {
+			return errors.New("保存失败：当前媒体默认服务为 S.EE，请填写 S.EE API Token")
+		}
+	}
+
+	return nil
+}
+
 func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 	activeKind := strings.TrimSpace(c.Query("kind", ""))
 	if activeKind == "" {
@@ -1493,6 +1581,9 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
+	updates := make([]settingsValueUpdate, 0, len(settings))
+	mediaOverrides := make(map[string]string)
 
 	for _, setting := range settings {
 		fieldName := "setting_" + setting.Code
@@ -1507,28 +1598,48 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 			}
 
 			value := strings.Join(values, ",")
-			if err := UpdateSettingValueService(h.Model, setting.Code, value); err != nil {
-				return err
+			updates = append(updates, settingsValueUpdate{
+				Code:  setting.Code,
+				Value: value,
+			})
+			if isMediaSettingCode(setting.Code) {
+				mediaOverrides[setting.Code] = value
 			}
 		} else {
 			// 其他类型直接获取单个值
 			value := c.FormValue(fieldName)
 			// 对于 password 类型，如果为空则不更新（保持原值）
 			if setting.Type == "password" && value == "" {
+				updates = append(updates, settingsValueUpdate{
+					Code:       setting.Code,
+					SkipUpdate: true,
+				})
 				continue
 			}
-			if err := UpdateSettingValueService(h.Model, setting.Code, value); err != nil {
-				return err
+			updates = append(updates, settingsValueUpdate{
+				Code:  setting.Code,
+				Value: value,
+			})
+			if isMediaSettingCode(setting.Code) {
+				mediaOverrides[setting.Code] = value
 			}
 		}
 	}
 
-	redirectPath := "/admin/settings/all"
-	if activeKind != "" {
-		redirectPath += "?kind=" + url.QueryEscape(activeKind)
+	if err = h.validateMediaSettingPayload(mediaOverrides); err != nil {
+		return c.Redirect(buildSettingsAllRedirectPath(activeKind, err.Error()))
 	}
 
-	return c.Redirect(redirectPath)
+	for _, item := range updates {
+		if item.SkipUpdate {
+			continue
+		}
+		if err = UpdateSettingValueService(h.Model, item.Code, item.Value); err != nil {
+			return err
+		}
+	}
+
+	return c.Redirect(buildSettingsAllRedirectPath(activeKind, ""))
 }
 
 func (h *Handler) GetSettingEditHandler(c *fiber.Ctx) error {
@@ -1585,6 +1696,16 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	originalCode := strings.TrimSpace(setting.Code)
+
+	renderEditWithError := func(message string) error {
+		view := buildSettingView(*setting)
+		return RenderAdminView(c, "settings_edit", fiber.Map{
+			"Title":   "Edit Setting",
+			"Error":   message,
+			"Setting": view,
+		}, "")
+	}
 
 	// 更新字段
 	setting.Kind = c.FormValue("kind")
@@ -1617,28 +1738,16 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 		setting.Value = value
 	}
 
-	if err := UpdateSettingService(h.Model, setting); err != nil {
-		// 转换为视图结构，解析 options 和 attrs
-		view := SettingView{Setting: *setting}
-		if (setting.Type == "select" || setting.Type == "radio" || setting.Type == "checkbox") && setting.Options != "" {
-			var options []map[string]string
-			if err2 := json.Unmarshal([]byte(setting.Options), &options); err2 == nil {
-				view.OptionsParsed = options
-			}
-		}
-		view.AttrsParsed = make(map[string]interface{}) // 初始化为空 map，避免 nil
-		if setting.Attrs != "" {
-			var attrs map[string]interface{}
-			if err2 := json.Unmarshal([]byte(setting.Attrs), &attrs); err2 == nil {
-				view.AttrsParsed = attrs
-			}
-		}
+	mediaOverrides := make(map[string]string)
+	if isMediaSettingCode(originalCode) {
+		mediaOverrides[originalCode] = setting.Value
+	}
+	if err = h.validateMediaSettingPayload(mediaOverrides); err != nil {
+		return renderEditWithError(err.Error())
+	}
 
-		return RenderAdminView(c, "settings_edit", fiber.Map{
-			"Title":   "Edit Setting",
-			"Error":   err.Error(),
-			"Setting": view,
-		}, "")
+	if err := UpdateSettingService(h.Model, setting); err != nil {
+		return renderEditWithError(err.Error())
 	}
 
 	return c.Redirect("/admin/settings")

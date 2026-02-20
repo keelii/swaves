@@ -3988,31 +3988,10 @@ func LoadSettingsToMap(db *DB) (map[string]string, error) {
 	for _, v := range results {
 		m := v.(map[string]string)
 		for code, value := range m {
-			value = normalizeRuntimeSettingValue(code, value)
 			settingsMap[code] = value
 		}
 	}
 	return settingsMap, nil
-}
-
-func normalizeRuntimeSettingValue(code, value string) string {
-	switch strings.TrimSpace(code) {
-	case "base_path", "page_path", "rss_path", "post_url_prefix", "category_url_prefix", "tag_url_prefix":
-		return normalizeRuntimePathPrefix(value)
-	default:
-		return value
-	}
-}
-
-func normalizeRuntimePathPrefix(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" || value == "/" {
-		return "/"
-	}
-	if strings.HasPrefix(value, "/") {
-		return value
-	}
-	return "/" + value
 }
 
 const (
