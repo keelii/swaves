@@ -240,6 +240,8 @@ func RegisterViewFunc(engine *html.Engine, app *fiber.App) {
 	engine.AddFunc("GetTagPrefix", share.GetTagPrefix)
 	engine.AddFunc("GetRSSUrl", share.GetRSSUrl)
 	engine.AddFunc("GetAdminUrl", share.GetAdminUrl)
+	engine.AddFunc("GetAuthorGravatarUrl", share.GetAuthorGravatarUrl)
+
 	engine.AddFunc("url_is", func(currentRouteName string, routeNames ...string) bool {
 		current := strings.TrimSpace(currentRouteName)
 		if current == "" || len(routeNames) == 0 {
