@@ -987,20 +987,12 @@ func TestListSettingsOrder(t *testing.T) {
 	}
 
 	kindRank := func(kind string) int {
-		switch kind {
-		case "General":
-			return 1
-		case "Appearance":
-			return 2
-		case "Post":
-			return 3
-		case "Data":
-			return 4
-		case "ThirdPart":
-			return 5
-		default:
-			return 999
+		for idx, item := range settingKindOrder {
+			if item == kind {
+				return idx + 1
+			}
 		}
+		return 999
 	}
 
 	all, err := ListAllSettings(db)
@@ -1036,6 +1028,33 @@ func TestListSettingsOrder(t *testing.T) {
 		prevRank = rank
 		prevKind = s.Kind
 		prevSort = s.Sort
+	}
+}
+
+func TestEnsureDefaultSettingsSyncKind(t *testing.T) {
+	db := openTestDB(t)
+
+	siteURL, err := GetSettingByCode(db, "site_url")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(site_url) failed: %v", err)
+	}
+
+	if err := Update(db, specSettings, siteURL.ID, map[string]interface{}{
+		"kind": "LegacyKind",
+	}); err != nil {
+		t.Fatalf("Update setting metadata failed: %v", err)
+	}
+
+	if err := EnsureDefaultSettings(db); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+
+	updated, err := GetSettingByCode(db, "site_url")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(site_url) after ensure failed: %v", err)
+	}
+	if updated.Kind != SettingKindSiteBasics {
+		t.Fatalf("expected site_url kind %s, got %s", SettingKindSiteBasics, updated.Kind)
 	}
 }
 

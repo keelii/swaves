@@ -3221,14 +3221,7 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 		whereClause = "kind=?"
 		whereArgs = append(whereArgs, kind)
 	} else {
-		orderBy = `CASE kind
-			WHEN 'General' THEN 1
-			WHEN 'Appearance' THEN 2
-			WHEN 'Post' THEN 3
-			WHEN 'Data' THEN 4
-			WHEN 'ThirdPart' THEN 5
-			ELSE 999
-		END, kind ASC, sort ASC, id ASC`
+		orderBy = buildSettingKindOrderSQL() + ", kind ASC, sort ASC, id ASC"
 	}
 
 	results, err := Read(db, specSettings, ReadOptions{
@@ -3253,6 +3246,17 @@ func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 		settings[i] = v.(Setting)
 	}
 	return settings, nil
+}
+
+func buildSettingKindOrderSQL() string {
+	parts := make([]string, 0, len(settingKindOrder)+2)
+	parts = append(parts, "CASE kind")
+	for idx, kind := range settingKindOrder {
+		safeKind := strings.ReplaceAll(kind, "'", "''")
+		parts = append(parts, fmt.Sprintf("WHEN '%s' THEN %d", safeKind, idx+1))
+	}
+	parts = append(parts, "ELSE 999 END")
+	return strings.Join(parts, " ")
 }
 
 func ListAllSettings(db *DB) ([]Setting, error) {
@@ -3356,23 +3360,42 @@ func CheckPassword(db *DB, raw string) error {
 // EnsureDefaultSettings 确保存在默认配置项
 func EnsureDefaultSettings(db *DB) error {
 	for _, s := range DefaultSettings {
-		// 检查是否已存在
-		_, err := GetSettingByCode(db, s.Code)
+		existing, err := GetSettingByCode(db, s.Code)
 		if err == nil {
-			// 已存在，跳过
+			if err := syncDefaultSettingMeta(db, existing, s); err != nil {
+				return err
+			}
 			continue
 		}
 		if !IsErrNotFound(err) {
-			// 其他错误，返回
 			return err
 		}
 
-		// 不存在，创建
 		if _, err := CreateSetting(db, &s); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+func syncDefaultSettingMeta(db *DB, existing *Setting, defaults Setting) error {
+	if existing == nil {
+		return nil
+	}
+
+	updateData := map[string]interface{}{}
+	if existing.Kind != defaults.Kind {
+		updateData["kind"] = defaults.Kind
+	}
+
+	if len(updateData) == 0 {
+		return nil
+	}
+
+	if err := Update(db, specSettings, existing.ID, updateData); err != nil {
+		return WrapInternalErr("syncDefaultSettingMeta", err)
+	}
 	return nil
 }
 

@@ -83,7 +83,7 @@
 
 <form id="form" method="post" action="{{ adminPath "/settings/all" }}?kind={{ .ActiveKind }}" class="settings-all-form">
   <section class="settings-kind">
-      {{ if eq .ActiveKind "Post" }}
+      {{ if or (eq .ActiveKind "内容与路由") (eq .ActiveKind "Post") }}
         <div class="settings-item-label" role="alert">
           <ul class="setting-post-shortcuts unstyled">
             <li>
