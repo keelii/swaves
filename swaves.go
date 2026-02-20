@@ -11,7 +11,6 @@ import (
 	"swaves/internal/db"
 	"swaves/internal/jobs"
 	"swaves/internal/middleware"
-	"swaves/internal/share"
 	"swaves/internal/site"
 	"swaves/internal/store"
 	"swaves/internal/types"
@@ -40,10 +39,11 @@ func NewApp(config types.AppConfig) SwavesApp {
 	go job.InitRegistry(globalStore, config) // 初始化定时任务
 
 	store.InitSettings(globalStore)
+	view := NewViewEngine()
 	app := fiber.New(fiber.Config{
 		AppName: config.AppName,
 		//DisableStartupMessage: true,
-		Views:     NewViewEngine(),
+		Views:     view,
 		BodyLimit: 10 * 1024 * 1024, // 10MB
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
@@ -59,6 +59,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 			return c.Status(code).SendString(msg)
 		},
 	})
+	RegisterViewFunc(view, app)
 
 	// statics
 	app.Use("/static", static.New("./web/static"))
@@ -89,7 +90,6 @@ func NewApp(config types.AppConfig) SwavesApp {
 	admin.RegisterRoutes(app, globalStore)
 	site.RegisterRoutes(app, globalStore)
 	api.RegisterRoutes(app)
-	share.SetURLForResolver(newURLForResolver(app))
 
 	return SwavesApp{
 		App:    app,
@@ -107,7 +107,7 @@ func (swv *SwavesApp) Shutdown() {
 	swv.Store.Close()
 }
 
-func newURLForResolver(app *fiber.App) share.URLForResolver {
+func newURLForResolver(app *fiber.App) func(name string, params map[string]string, query map[string]string) (string, error) {
 	return func(name string, params map[string]string, query map[string]string) (string, error) {
 		route := app.GetRoute(strings.TrimSpace(name))
 		if strings.TrimSpace(route.Name) == "" {

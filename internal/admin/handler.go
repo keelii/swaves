@@ -147,7 +147,11 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 		data = fiber.Map{}
 	}
 
-	data["UrlPath"] = share.CanonicalAdminPath(c.Path())
+	routeName := ""
+	if route := c.Route(); route != nil {
+		routeName = strings.TrimSpace(route.Name)
+	}
+	data["RouteName"] = routeName
 	data["Query"] = c.Queries()
 
 	// 注入 Locals

@@ -213,7 +213,7 @@
 
 <script>
 $(function() {
-  var mediaAssetsAPIBase = '{{ adminPath "/api/media/assets" }}';
+  var mediaAssetsAPIBase = '{{ url_for "admin.media.assets.list" }}';
   var $dropzone = $('#media-dropzone');
   var $fileInput = $('#media-drop-input');
   var $uploadStatus = $('#media-upload-status');

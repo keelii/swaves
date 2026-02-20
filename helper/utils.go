@@ -1,12 +1,16 @@
 package helper
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
+	"swaves/internal/consts"
 
 	"github.com/gosimple/slug"
 	"golang.org/x/net/html"
@@ -154,4 +158,33 @@ func JSONEncode(str string) string {
 func JSONStringify(v interface{}) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func BuildGAvatarURL(email, author string, size int) string {
+	if size <= 0 {
+		size = 40
+	}
+	if size > 512 {
+		size = 512
+	}
+
+	seed := strings.ToLower(strings.TrimSpace(email))
+	if seed == "" {
+		authorSeed := strings.ToLower(strings.TrimSpace(author))
+		if authorSeed == "" {
+			authorSeed = "anonymous"
+		}
+		seed = "swaves:" + authorSeed
+	}
+
+	sum := md5.Sum([]byte(seed))
+	hash := hex.EncodeToString(sum[:])
+
+	query := url.Values{}
+	query.Set("s", fmt.Sprintf("%d", size))
+	query.Set("d", "identicon")
+	query.Set("r", "g")
+
+	//return "https://cravatar.cn/avatar/" + hash + "?" + query.Encode()
+	return fmt.Sprintf("%s/u/%s?%s", consts.GravatarDomain, hash, query.Encode())
 }

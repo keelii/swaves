@@ -77,14 +77,14 @@
         <strong>{{ .Category.Name }}</strong>
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
-        <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/parent" class="category-parent-form">
+        <form id="form" method="post" style="display:inline" action="{{ url_for "admin.categories.parent.update" (dict "id" .Category.ID) }}" class="category-parent-form">
             {{ template "admin/includes/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
         </form>
         <div>
-          {{ template "admin/includes/action_icon_link" dict "href" (printf "/admin/categories/%d/edit" .Category.ID) "name" "square-pen" "label" "编辑" }}
-          {{ template "admin/includes/action_icon_link" dict "href" (printf "/admin/categories/new?parent_id=%d" .Category.ID) "name" "plus" "label" "添加" }}
+          {{ template "admin/includes/action_icon_link" dict "href" (url_for "admin.categories.edit" (dict "id" .Category.ID)) "name" "square-pen" "label" "编辑" }}
+          {{ template "admin/includes/action_icon_link" dict "href" (url_for "admin.categories.new" (dict "parent_id" .Category.ID)) "name" "plus" "label" "添加" }}
         </div>
-        <form id="form" method="post" style="display:inline" action="/admin/categories/{{ .Category.ID }}/delete">
+        <form id="form" method="post" style="display:inline" action="{{ url_for "admin.categories.delete" (dict "id" .Category.ID) }}">
           <button type="submit">
               {{ template "admin/includes/action_btn_content" dict "name" "trash-2" "size" "14" "label" "删除" }}
           </button>

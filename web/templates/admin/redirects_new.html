@@ -1,4 +1,4 @@
-<form id="form" method="post" action="/admin/redirects/new">
+<form id="form" method="post" action="{{ url_for "admin.redirects.create" }}">
 
   {{ template "admin/includes/form_field_text" dict "Label" "From" "Name" "from" "Required" true }}
   {{ template "admin/includes/form_field_text" dict "Label" "To" "Name" "to" "Required" true }}

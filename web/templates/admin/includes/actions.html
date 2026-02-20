@@ -32,94 +32,64 @@
 </style>
 <div class="actions flex justify-between">
   <div class="left">
-      {{ if eq .UrlPath "/admin/posts/new" }}
+      {{ if url_is .RouteName "admin.posts.new" }}
         <button type="submit" form="form" name="action" value="save" class="button">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
         <button type="submit" form="form" name="action" value="publish" class="button">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "发布" }}</button>
-      {{ else if eq .UrlPath "/admin/tags/new" }}
+      {{ else if url_is .RouteName "admin.tags.new" "admin.categories.new" "admin.encrypted_posts.new" "admin.redirects.new" "admin.tasks.new" "admin.settings.new" }}
         <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
-      {{ else if eq .UrlPath "/admin/categories/new" }}
-        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
-      {{ else if eq .UrlPath "/admin/encrypted-posts/new" }}
-        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
-      {{ else if eq .UrlPath "/admin/redirects/new" }}
-        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
-      {{ else if eq .UrlPath "/admin/tasks/new" }}
-        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
-      {{ else if eq .UrlPath "/admin/settings/new" }}
-        <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</a>
-      {{ else if eq .UrlPath "/admin/import" }}
+      {{ else if url_is .RouteName "admin.import.show" }}
         <a class="button" href="#" onclick="document.querySelector('form').requestSubmit(); return false;">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "导入" }}</a>
-      {{ else if eq .UrlPath "/admin/settings/all" }}
+      {{ else if url_is .RouteName "admin.settings.all" }}
         <button type="submit" form="form" class="button">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
-      {{ else if match .UrlPath "^/admin/posts/\\d+/edit$" }}
+      {{ else if url_is .RouteName "admin.posts.edit" }}
         {{ if and .Post (gt .Post.PublishedAt 0) }}
         <button type="submit" form="form" name="action" value="update" class="button">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "更新" }}</button>
         {{ else }}
         <button type="submit" form="form" name="action" value="save" class="button">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
         <button type="submit" form="form" name="action" value="publish" class="button">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "发布" }}</button>
         {{ end }}
-      {{ else if match .UrlPath "^/admin/(tags|categories|encrypted-posts|redirects|tasks|settings)/\\d+/edit$" }}
+      {{ else if url_is .RouteName "admin.tags.edit" "admin.categories.edit" "admin.encrypted_posts.edit" "admin.redirects.edit" "admin.tasks.edit" "admin.settings.edit" }}
         <button type="submit" form="form" class="button">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "保存" }}</button>
       {{ end }}
-      {{ if eq .UrlPath "/admin/posts" }}
-        <a class="button" href="/admin/posts/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建文章" }}</a>
-      {{ else if eq .UrlPath "/admin/tags" }}
-        <a class="button" href="/admin/tags/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建标签" }}</a>
-      {{ else if eq .UrlPath "/admin/categories" }}
-        <a class="button" href="/admin/categories/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
-        <a class="button" href="/admin/categories/tree">{{ template "admin/includes/action_btn_content" dict "name" "list-tree" "label" "分类树" }}</a>
-      {{ else if eq .UrlPath "/admin/encrypted-posts" }}
-        <a class="button" href="/admin/encrypted-posts/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建加密文章" }}</a>
-      {{ else if eq .UrlPath "/admin/redirects" }}
-        <a class="button" href="/admin/redirects/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建重定向" }}</a>
-      {{ else if eq .UrlPath "/admin/tasks" }}
-        <a class="button" href="/admin/tasks/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建任务" }}</a>
-      {{ else if eq .UrlPath "/admin/settings" }}
-        <a class="button" href="/admin/settings/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建设置" }}</a>
-        <a class="button" href="/admin/settings/all">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "编辑全部" }}</a>
-      {{ else if eq .UrlPath "/admin/settings/all" }}
-        <a class="button" href="/admin/settings">{{ template "admin/includes/action_btn_content" dict "name" "list" "label" "返回列表" }}</a>
-      {{ else if eq .UrlPath "/admin/categories/tree" }}
-        <a class="button" href="/admin/categories/new">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
-        <a class="button" href="/admin/categories">{{ template "admin/includes/action_btn_content" dict "name" "list" "label" "分类列表" }}</a>
-      {{ else if hasPrefix .UrlPath "/admin/tasks/" }}
-          {{ if hasSuffix .UrlPath "/runs" }}
-            <a class="button" href="/admin/tasks">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回任务" }}</a>
-          {{ end }}
-      {{ else if eq .UrlPath "/admin/posts/new" }}
-        <a class="button" href="/admin/posts">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/tags/new" }}
-        <a class="button" href="/admin/tags">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/categories/new" }}
-        <a class="button" href="/admin/categories">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/encrypted-posts/new" }}
-        <a class="button" href="/admin/encrypted-posts">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/redirects/new" }}
-        <a class="button" href="/admin/redirects">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/tasks/new" }}
-        <a class="button" href="/admin/tasks">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/settings/new" }}
-        <a class="button" href="/admin/settings">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/import" }}
-        <a class="button" href="/admin/posts">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if eq .UrlPath "/admin/export" }}
-        <a class="button" href="/admin/posts">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if match .UrlPath "^/admin/posts/\\d+/edit$" }}
-        <a class="button" href="/admin/posts">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if match .UrlPath "^/admin/tags/\\d+/edit$" }}
-        <a class="button" href="/admin/tags">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if match .UrlPath "^/admin/categories/\\d+/edit$" }}
-        <a class="button" href="/admin/categories">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if match .UrlPath "^/admin/encrypted-posts/\\d+/edit$" }}
-        <a class="button" href="/admin/encrypted-posts">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if match .UrlPath "^/admin/redirects/\\d+/edit$" }}
-        <a class="button" href="/admin/redirects">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if match .UrlPath "^/admin/tasks/\\d+/edit$" }}
-        <a class="button" href="/admin/tasks">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
-      {{ else if match .UrlPath "^/admin/settings/\\d+/edit$" }}
-        <a class="button" href="/admin/settings">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+      {{ if url_is .RouteName "admin.posts.list" }}
+        <a class="button" href="{{ url_for "admin.posts.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建文章" }}</a>
+      {{ else if url_is .RouteName "admin.tags.list" }}
+        <a class="button" href="{{ url_for "admin.tags.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建标签" }}</a>
+      {{ else if url_is .RouteName "admin.categories.list" }}
+        <a class="button" href="{{ url_for "admin.categories.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
+        <a class="button" href="{{ url_for "admin.categories.tree" }}">{{ template "admin/includes/action_btn_content" dict "name" "list-tree" "label" "分类树" }}</a>
+      {{ else if url_is .RouteName "admin.encrypted_posts.list" }}
+        <a class="button" href="{{ url_for "admin.encrypted_posts.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建加密文章" }}</a>
+      {{ else if url_is .RouteName "admin.redirects.list" }}
+        <a class="button" href="{{ url_for "admin.redirects.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建重定向" }}</a>
+      {{ else if url_is .RouteName "admin.tasks.list" }}
+        <a class="button" href="{{ url_for "admin.tasks.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建任务" }}</a>
+      {{ else if url_is .RouteName "admin.settings.list" }}
+        <a class="button" href="{{ url_for "admin.settings.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建设置" }}</a>
+        <a class="button" href="{{ url_for "admin.settings.all" }}">{{ template "admin/includes/action_btn_content" dict "name" "square-pen" "label" "编辑全部" }}</a>
+      {{ else if url_is .RouteName "admin.settings.all" }}
+        <a class="button" href="{{ url_for "admin.settings.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "list" "label" "返回列表" }}</a>
+      {{ else if url_is .RouteName "admin.categories.tree" }}
+        <a class="button" href="{{ url_for "admin.categories.new" }}">{{ template "admin/includes/action_btn_content" dict "name" "plus" "label" "新建分类" }}</a>
+        <a class="button" href="{{ url_for "admin.categories.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "list" "label" "分类列表" }}</a>
+      {{ else if url_is .RouteName "admin.tasks.runs" }}
+        <a class="button" href="{{ url_for "admin.tasks.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回任务" }}</a>
+      {{ else if url_is .RouteName "admin.posts.new" "admin.posts.edit" "admin.import.show" "admin.export.show" }}
+        <a class="button" href="{{ url_for "admin.posts.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+      {{ else if url_is .RouteName "admin.tags.new" "admin.tags.edit" }}
+        <a class="button" href="{{ url_for "admin.tags.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+      {{ else if url_is .RouteName "admin.categories.new" "admin.categories.edit" }}
+        <a class="button" href="{{ url_for "admin.categories.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+      {{ else if url_is .RouteName "admin.encrypted_posts.new" "admin.encrypted_posts.edit" }}
+        <a class="button" href="{{ url_for "admin.encrypted_posts.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+      {{ else if url_is .RouteName "admin.redirects.new" "admin.redirects.edit" }}
+        <a class="button" href="{{ url_for "admin.redirects.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+      {{ else if url_is .RouteName "admin.tasks.new" "admin.tasks.edit" }}
+        <a class="button" href="{{ url_for "admin.tasks.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+      {{ else if url_is .RouteName "admin.settings.new" "admin.settings.edit" }}
+        <a class="button" href="{{ url_for "admin.settings.list" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ else }}
-        <a class="button" href="/admin">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
+        <a class="button" href="{{ url_for "admin.home" }}">{{ template "admin/includes/action_btn_content" dict "name" "arrow-left" "label" "返回" }}</a>
       {{ end }}
   </div>
   <div class="right">

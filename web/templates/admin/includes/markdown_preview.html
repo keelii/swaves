@@ -323,7 +323,7 @@ $(function() {
       $('#split-toc').empty();
       return;
     }
-    fetch('/api/markdown', {
+    fetch('{{ url_for "api.markdown" }}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: text })
@@ -433,7 +433,7 @@ $(function() {
       query.set('provider', provider);
     }
 
-    return fetch('/admin/api/media/assets?' + query.toString(), {
+    return fetch('{{ url_for "admin.media.assets.list" }}?' + query.toString(), {
       method: 'GET'
     })
       .then(function(r) { return r.json(); })

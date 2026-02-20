@@ -54,7 +54,7 @@
       导出当前数据库为 SQLite 文件，可用于备份、迁移或离线归档。
     </p>
     <div class="export-actions">
-      <a href="{{ adminPath "/export/download" }}" class="button">导出数据库</a>
+      <a href="{{ url_for "admin.export.download" }}" class="button">导出数据库</a>
       <span class="export-tip">文件将保存到浏览器默认下载目录，文件名包含时间戳。</span>
     </div>
   </div>

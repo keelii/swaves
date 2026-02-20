@@ -1,4 +1,4 @@
-<form id="form" method="post" action="/admin/tags/new">
+<form id="form" method="post" action="{{ url_for "admin.tags.create" }}">
 
   {{ template "admin/includes/form_field_text" dict "Label" "Name" "Name" "name" "Required" true "Placeholder" "标签名称" }}
   {{ template "admin/includes/form_field_text" dict "Label" "Slug" "Name" "slug" "Required" true "Placeholder" "url-friendly-identifier" }}

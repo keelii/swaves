@@ -1,4 +1,4 @@
-<form id="form" method="post" action="/admin/posts/{{ .Post.ID }}/edit">
+<form id="form" method="post" action="{{ url_for "admin.posts.update" (dict "id" .Post.ID) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>

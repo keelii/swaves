@@ -97,7 +97,7 @@
 <div role="alert" data-variant="success">{{ .Success }}</div>
 {{ end }}
 
-<form id="form" method="post" action="{{ adminPath "/import" }}" enctype="multipart/form-data">
+<form id="form" method="post" action="{{ url_for "admin.import.submit" }}" enctype="multipart/form-data">
   <section class="import-upload">
     <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
     <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖拽 Markdown 文件">
@@ -281,10 +281,10 @@
 
 <script>
 $(function() {
-  var parseItemURL = '{{ adminPath "/import/parse-item" }}';
-  var confirmItemURL = '{{ adminPath "/import/confirm-item" }}';
-  var cancelItemURL = '{{ adminPath "/import/cancel" }}';
-  var postListURL = '{{ adminPath "/posts" }}';
+  var parseItemURL = '{{ url_for "admin.import.parse_item" }}';
+  var confirmItemURL = '{{ url_for "admin.import.confirm_item" }}';
+  var cancelItemURL = '{{ url_for "admin.import.cancel" }}';
+  var postListURL = '{{ url_for "admin.posts.list" }}';
   var baseCategoryOptions = [
     {{- range .AllCategories }}
     {{ printf "%q" .Name }},

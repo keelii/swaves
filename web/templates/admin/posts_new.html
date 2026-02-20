@@ -1,4 +1,4 @@
-<form id="form" method="post" action="/admin/posts/new">
+<form id="form" method="post" action="{{ url_for "admin.posts.create" }}">
   {{ $draftTitle := or .DraftTitle "" }}
   {{ $draftSlug := or .DraftSlug "" }}
   {{ $draftKind := or .DraftKind "0" }}
@@ -19,7 +19,7 @@
         </span>
         <script>
           function autoSetSlug() {
-            fetch('/api/slug?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
+            fetch('{{ url_for "api.slug" }}?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
               if (json && json.data) $('#slug').val(json.data);
             });
           }

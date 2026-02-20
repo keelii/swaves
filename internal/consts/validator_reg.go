@@ -1,9 +1,14 @@
 package consts
 
 import (
+	"encoding/json"
 	"regexp"
-	"swaves/helper"
 )
+
+func jsonStringify(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
 
 var PostUrlPrefixRegexp = regexp.MustCompile(`^(\{datetime\}|[a-z]*)$`)
 
@@ -11,7 +16,7 @@ var PostUrlPrefixValidator = map[string]interface{}{
 	"title":   "只能是{datetime}或小写英文字母",
 	"pattern": PostUrlPrefixRegexp.String(),
 }
-var PostUrlPrefixValidatorJSON = helper.JSONStringify(PostUrlPrefixValidator)
+var PostUrlPrefixValidatorJSON = jsonStringify(PostUrlPrefixValidator)
 
 var UrlPrefixRegexp = regexp.MustCompile(`^[a-z]*$`)
 
@@ -19,7 +24,7 @@ var UrlPrefixValidator = map[string]interface{}{
 	"title":   "只能是小写英文字母",
 	"pattern": UrlPrefixRegexp.String(),
 }
-var UrlPrefixValidatorJSON = helper.JSONStringify(UrlPrefixValidator)
+var UrlPrefixValidatorJSON = jsonStringify(UrlPrefixValidator)
 
 var UrlFileNamePrefixRegexp = regexp.MustCompile(`^[a-z]+[0-9]*\.?[a-z]+$`)
 
@@ -28,7 +33,7 @@ var UrlFileNamePrefixValidator = map[string]interface{}{
 	"required": true,
 	"pattern":  UrlFileNamePrefixRegexp.String(),
 }
-var UrlFileNamePrefixValidatorJSON = helper.JSONStringify(UrlFileNamePrefixValidator)
+var UrlFileNamePrefixValidatorJSON = jsonStringify(UrlFileNamePrefixValidator)
 
 var PostUrlExtRegexp = regexp.MustCompile(`^\.[a-z]+$`)
 
@@ -37,7 +42,7 @@ var PostUrlExtValidator = map[string]interface{}{
 	"required": false,
 	"pattern":  PostUrlExtRegexp.String(),
 }
-var PostUrlExtValidatorJSON = helper.JSONStringify(PostUrlExtValidator)
+var PostUrlExtValidatorJSON = jsonStringify(PostUrlExtValidator)
 
 //var PostUrlNameRegexp = regexp.MustCompile(`^\{slug\}|\{id\}|\{title\}$`)
 //

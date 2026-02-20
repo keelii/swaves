@@ -1,10 +1,10 @@
 {{/* 通用表格操作列
-使用方式: {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/tags" "ID" .ID }}
+使用方式: {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.tags.edit" "DeleteRoute" "admin.tags.delete" "ID" .ID }}
 */}}
 <td>
   <div class="row-actions">
-    {{ template "admin/includes/action_icon_link" dict "href" (printf "%s/%d/edit" .BaseURL .ID) "name" "square-pen" "label" "编辑" }}
-    <form id="form" method="post" action="{{ .BaseURL }}/{{ .ID }}/delete">
+    {{ template "admin/includes/action_icon_link" dict "href" (url_for .EditRoute (dict "id" .ID)) "name" "square-pen" "label" "编辑" }}
+    <form id="form" method="post" action="{{ url_for .DeleteRoute (dict "id" .ID) }}">
       {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
     </form>
   </div>

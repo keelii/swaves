@@ -1,6 +1,6 @@
 <ul class="menu-list unstyled">
-  <li class="menu-item{{ if eq .UrlPath "/admin" }} active{{ end }}">
-    <a href="/admin" class="menu-text">工作台</a>
+  <li class="menu-item{{ if url_is .RouteName "admin.home" }} active{{ end }}">
+    <a href="{{ url_for "admin.home" }}" class="menu-text">工作台</a>
   </li>
   <li>
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
@@ -10,26 +10,26 @@
       </span>
     </div>
     <ul class="submenu-list show">
-      <li class="submenu-item{{ if eq .UrlPath "/admin/posts" }} active{{ end }}">
-        <a href="/admin/posts">文章列表</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.posts.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.posts.list" }}">文章列表</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/media" }} active{{ end }}">
-        <a href="/admin/media">媒体库</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.media.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.media.list" }}">媒体库</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/comments" }} active{{ end }}">
-        <a href="/admin/comments">评论管理</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.comments.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.comments.list" }}">评论管理</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/encrypted-posts" }} active{{ end }}">
-        <a href="/admin/encrypted-posts">加密文章列表</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.encrypted_posts.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.encrypted_posts.list" }}">加密文章列表</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/categories" }} active{{ end }}">
-        <a href="/admin/categories">分类列表</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.categories.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.categories.list" }}">分类列表</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/categories/tree" }} active{{ end }}">
-        <a href="/admin/categories/tree">树形分类</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.categories.tree" }} active{{ end }}">
+        <a href="{{ url_for "admin.categories.tree" }}">树形分类</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/tags" }} active{{ end }}">
-        <a href="/admin/tags">标签列表</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.tags.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.tags.list" }}">标签列表</a>
       </li>
     </ul>
   </li>
@@ -41,8 +41,8 @@
       </span>
     </div>
     <ul class="submenu-list show">
-      <li class="submenu-item{{ if eq .UrlPath "/admin/tasks" }} active{{ end }}">
-        <a href="/admin/tasks">任务列表</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.tasks.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.tasks.list" }}">任务列表</a>
       </li>
     </ul>
   </li>
@@ -54,11 +54,11 @@
       </span>
     </div>
     <ul class="submenu-list show">
-      <li class="submenu-item{{ if eq .UrlPath "/admin/import" }} active{{ end }}">
-        <a href="/admin/import">导入</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.import.show" }} active{{ end }}">
+        <a href="{{ url_for "admin.import.show" }}">导入</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/export" }} active{{ end }}">
-        <a href="/admin/export">导出</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.export.show" }} active{{ end }}">
+        <a href="{{ url_for "admin.export.show" }}">导出</a>
       </li>
     </ul>
   </li>
@@ -70,11 +70,11 @@
       </span>
     </div>
     <ul class="submenu-list show">
-      <li class="submenu-item{{ if eq .UrlPath "/admin/settings" }} active{{ end }}">
-        <a href="/admin/settings">设置列表</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.settings.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.settings.list" }}">设置列表</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/settings/all" }} active{{ end }}">
-        <a href="/admin/settings/all">站点设置</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.settings.all" }} active{{ end }}">
+        <a href="{{ url_for "admin.settings.all" }}">站点设置</a>
       </li>
     </ul>
   </li>
@@ -86,17 +86,17 @@
       </span>
     </div>
     <ul class="submenu-list show">
-      <li class="submenu-item{{ if eq .UrlPath "/admin/redirects" }} active{{ end }}">
-        <a href="/admin/redirects">重定向管理</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.redirects.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.redirects.list" }}">重定向管理</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/http-error-logs" }} active{{ end }}">
-        <a href="/admin/http-error-logs">请求日志</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.http_error_logs.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.http_error_logs.list" }}">请求日志</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/trash" }} active{{ end }}">
-        <a href="/admin/trash">回收站</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.trash.list" }} active{{ end }}">
+        <a href="{{ url_for "admin.trash.list" }}">回收站</a>
       </li>
-      <li class="submenu-item{{ if eq .UrlPath "/admin/metrics" }} active{{ end }}">
-        <a href="/admin/metrics">性能监控</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.metrics" }} active{{ end }}">
+        <a href="{{ url_for "admin.metrics" }}">性能监控</a>
       </li>
     </ul>
   </li>
@@ -108,8 +108,8 @@
       </span>
     </div>
     <ul class="submenu-list show">
-      <li class="submenu-item{{ if eq .UrlPath "/admin/dev/ui-components" }} active{{ end }}">
-        <a href="/admin/dev/ui-components">UI组件</a>
+      <li class="submenu-item{{ if url_is .RouteName "admin.dev.ui_components" }} active{{ end }}">
+        <a href="{{ url_for "admin.dev.ui_components" }}">UI组件</a>
       </li>
     </ul>
   </li>

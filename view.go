@@ -1,27 +1,34 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	HTML "html"
 	"html/template"
-	"net/url"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
+	"swaves/helper"
 	"swaves/internal/consts"
 	"swaves/internal/db"
 	"swaves/internal/share"
 	"swaves/internal/store"
 	"time"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/template/html/v3"
 )
 
 func NewViewEngine() *html.Engine {
 	engine := html.New("./web/templates", ".html")
+	engine.Reload(true)
+	return engine
+}
+
+func RegisterViewFunc(engine *html.Engine, app *fiber.App) {
+	resolver := newURLForResolver(app)
+
 	engine.AddFunc(consts.GlobalSettingKey, func(key string) string {
 		return store.GetSetting(key)
 	})
@@ -221,7 +228,7 @@ func NewViewEngine() *html.Engine {
 		return s
 	})
 	engine.AddFunc("commentAvatar", func(email, author string, size int) string {
-		return buildCommentAvatarURL(email, author, size)
+		return helper.BuildGAvatarURL(email, author, size)
 	})
 	// share/context.go 中的公共函数注册到模板（接收 *db.Post 的已做 nil 安全包装）
 	engine.AddFunc("GetBasePath", share.GetBasePath)
@@ -233,7 +240,18 @@ func NewViewEngine() *html.Engine {
 	engine.AddFunc("GetTagPrefix", share.GetTagPrefix)
 	engine.AddFunc("GetRSSUrl", share.GetRSSUrl)
 	engine.AddFunc("GetAdminUrl", share.GetAdminUrl)
-	engine.AddFunc("adminPath", share.BuildAdminPath)
+	engine.AddFunc("url_is", func(currentRouteName string, routeNames ...string) bool {
+		current := strings.TrimSpace(currentRouteName)
+		if current == "" || len(routeNames) == 0 {
+			return false
+		}
+		for _, routeName := range routeNames {
+			if current == strings.TrimSpace(routeName) {
+				return true
+			}
+		}
+		return false
+	})
 	engine.AddFunc("url_for", func(name string, args ...interface{}) string {
 		var params map[string]string
 		var query map[string]string
@@ -243,7 +261,12 @@ func NewViewEngine() *html.Engine {
 		if len(args) > 1 {
 			query = toStringMap(args[1])
 		}
-		return share.URLFor(name, params, query)
+		resolved, err := resolver(name, params, query)
+		if err != nil {
+			log.Printf("[url_for] resolve failed: name=%s err=%v", name, err)
+			return ""
+		}
+		return resolved
 	})
 	engine.AddFunc("GetTagUrl", share.GetTagUrl)
 	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
@@ -292,9 +315,6 @@ func NewViewEngine() *html.Engine {
 		y, m, d := share.GetArticlePublishedDate(*p)
 		return map[string]string{"Year": y, "Month": m, "Day": d}
 	})
-	engine.Reload(true)
-
-	return engine
 }
 
 func toStringMap(raw interface{}) map[string]string {
@@ -328,34 +348,6 @@ func toStringMap(raw interface{}) map[string]string {
 		return nil
 	}
 	return result
-}
-
-func buildCommentAvatarURL(email, author string, size int) string {
-	if size <= 0 {
-		size = 40
-	}
-	if size > 512 {
-		size = 512
-	}
-
-	seed := strings.ToLower(strings.TrimSpace(email))
-	if seed == "" {
-		authorSeed := strings.ToLower(strings.TrimSpace(author))
-		if authorSeed == "" {
-			authorSeed = "anonymous"
-		}
-		seed = "swaves:" + authorSeed
-	}
-
-	sum := md5.Sum([]byte(seed))
-	hash := hex.EncodeToString(sum[:])
-
-	query := url.Values{}
-	query.Set("s", fmt.Sprintf("%d", size))
-	query.Set("d", "identicon")
-	query.Set("r", "g")
-
-	return "https://cravatar.cn/avatar/" + hash + "?" + query.Encode()
 }
 
 // relativeTimeString 将 Unix 时间戳转为相对时间中文描述

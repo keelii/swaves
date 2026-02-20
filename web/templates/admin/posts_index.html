@@ -5,10 +5,10 @@
 <div class="tab-card">
   <div class="tab-nav">
     <div class="tab-item{{ if eq $kind 0 }} active{{ end }}">
-      <a href="/admin/posts?kind=0{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">文章 ({{ .CountPost }})</a>
+      <a href="{{ url_for "admin.posts.list" }}?kind=0{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">文章 ({{ .CountPost }})</a>
     </div>
     <div class="tab-item{{ if eq $kind 1 }} active{{ end }}">
-      <a href="/admin/posts?kind=1{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">页面 ({{ .CountPage }})</a>
+      <a href="{{ url_for "admin.posts.list" }}?kind=1{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">页面 ({{ .CountPage }})</a>
     </div>
     <div class="tab-nav-right">
         {{ if or .FilterTagName .FilterCategoryName }}
@@ -57,14 +57,14 @@
     </td>
     <td>
       {{ if .Tags }}
-        {{ range $index, $t := .Tags }}{{ if $index }}, {{ end }}<a href="/admin/posts?kind={{ $.KindQuery }}{{ if $.SearchQueryEscaped }}&q={{ $.SearchQueryEscaped }}{{ end }}{{ if $.FilterCategoryIDStr }}&category={{ $.FilterCategoryIDStr }}{{ end }}&tag={{ $t.ID }}">{{ $t.Name }}</a>{{ end }}
+        {{ range $index, $t := .Tags }}{{ if $index }}, {{ end }}<a href="{{ url_for "admin.posts.list" }}?kind={{ $.KindQuery }}{{ if $.SearchQueryEscaped }}&q={{ $.SearchQueryEscaped }}{{ end }}{{ if $.FilterCategoryIDStr }}&category={{ $.FilterCategoryIDStr }}{{ end }}&tag={{ $t.ID }}">{{ $t.Name }}</a>{{ end }}
       {{ else }}
         <span>-</span>
       {{ end }}
     </td>
     <td>
       {{ if .Category }}
-        <a href="/admin/posts?kind={{ $.KindQuery }}{{ if $.SearchQueryEscaped }}&q={{ $.SearchQueryEscaped }}{{ end }}{{ if $.FilterTagIDStr }}&tag={{ $.FilterTagIDStr }}{{ end }}&category={{ .Category.ID }}">{{ .Category.Name }}</a>
+        <a href="{{ url_for "admin.posts.list" }}?kind={{ $.KindQuery }}{{ if $.SearchQueryEscaped }}&q={{ $.SearchQueryEscaped }}{{ end }}{{ if $.FilterTagIDStr }}&tag={{ $.FilterTagIDStr }}{{ end }}&category={{ .Category.ID }}">{{ .Category.Name }}</a>
       {{ else }}
         <span>-</span>
       {{ end }}
@@ -79,7 +79,7 @@
     <td>{{ $uv := index $.PostUVMap .Post.ID }}{{ if $uv }}{{ $uv }}{{ else }}0{{ end }}</td>
     <td>{{ relativeTime .Post.CreatedAt }}</td>
     <td>{{ relativeTime .Post.UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/posts" "ID" .Post.ID }}
+    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.posts.edit" "DeleteRoute" "admin.posts.delete" "ID" .Post.ID }}
   </tr>
   {{ else }}
   {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "No posts" }}

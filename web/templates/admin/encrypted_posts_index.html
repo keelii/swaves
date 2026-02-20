@@ -20,7 +20,7 @@
     <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}Never{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/encrypted-posts" "ID" .ID }}
+    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.encrypted_posts.edit" "DeleteRoute" "admin.encrypted_posts.delete" "ID" .ID }}
   </tr>
   {{ else }}
   {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "No encrypted posts" }}

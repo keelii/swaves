@@ -32,7 +32,7 @@
     <td>{{ if eq .Reload 1 }}是{{ else }}—{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/settings" "ID" .ID }}
+    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.settings.edit" "DeleteRoute" "admin.settings.delete" "ID" .ID }}
   </tr>
   {{ else }}
   {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "No settings" }}

@@ -4,6 +4,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"swaves/helper"
 	"swaves/internal/db"
 	"swaves/internal/pathutil"
 	"swaves/internal/store"
@@ -289,4 +290,9 @@ func GetAdminPostUrl(post db.Post) string {
 
 func GetAdminEditPostUrl(post db.Post) string {
 	return prefixedPath(GetAdminUrl(), "posts", strconv.FormatInt(post.ID, 10), "edit")
+}
+
+// GetAuthGravatarUrl 32
+func GetAuthGravatarUrl(size int) string {
+	return helper.BuildGAvatarURL(store.GetSetting("author_email"), GetSiteAuthor(), size)
 }

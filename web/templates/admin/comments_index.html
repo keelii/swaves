@@ -3,16 +3,16 @@
 <div class="tab-card">
   <div class="tab-nav">
     <div class="tab-item{{ if eq $status "" }} active{{ end }}">
-      <a href="/admin/comments">全部</a>
+      <a href="{{ url_for "admin.comments.list" }}">全部</a>
     </div>
     <div class="tab-item{{ if eq $status "pending" }} active{{ end }}">
-      <a href="/admin/comments?status=pending">待审核</a>
+      <a href="{{ url_for "admin.comments.list" (dict "status" "pending") }}">待审核</a>
     </div>
     <div class="tab-item{{ if eq $status "approved" }} active{{ end }}">
-      <a href="/admin/comments?status=approved">已通过</a>
+      <a href="{{ url_for "admin.comments.list" (dict "status" "approved") }}">已通过</a>
     </div>
     <div class="tab-item{{ if eq $status "spam" }} active{{ end }}">
-      <a href="/admin/comments?status=spam">垃圾</a>
+      <a href="{{ url_for "admin.comments.list" (dict "status" "spam") }}">垃圾</a>
     </div>
   </div>
 </div>
@@ -34,7 +34,7 @@
     <tr>
       <td class="cell-4">{{ .ID }}</td>
       <td>
-        <a href="/admin/posts/{{ .PostID }}/edit">{{ .PostTitle }}</a>
+        <a href="{{ url_for "admin.posts.edit" (dict "id" .PostID) }}">{{ .PostTitle }}</a>
         <div class="text-light">post_id={{ .PostID }}</div>
       </td>
       <td>
@@ -66,24 +66,24 @@
       <td>
         <div class="row-actions">
           {{ if ne .Status "approved" }}
-            <form method="post" action="/admin/comments/{{ .ID }}/approve">
+            <form method="post" action="{{ url_for "admin.comments.approve" (dict "id" .ID) }}">
               <input type="hidden" name="status_filter" value="{{ $status }}">
               <button type="submit" class="button">通过</button>
             </form>
           {{ end }}
           {{ if ne .Status "pending" }}
-            <form method="post" action="/admin/comments/{{ .ID }}/pending">
+            <form method="post" action="{{ url_for "admin.comments.pending" (dict "id" .ID) }}">
               <input type="hidden" name="status_filter" value="{{ $status }}">
               <button type="submit" class="button">待审</button>
             </form>
           {{ end }}
           {{ if ne .Status "spam" }}
-            <form method="post" action="/admin/comments/{{ .ID }}/spam">
+            <form method="post" action="{{ url_for "admin.comments.spam" (dict "id" .ID) }}">
               <input type="hidden" name="status_filter" value="{{ $status }}">
               <button type="submit" class="button">垃圾</button>
             </form>
           {{ end }}
-          <form method="post" action="/admin/comments/{{ .ID }}/delete">
+          <form method="post" action="{{ url_for "admin.comments.delete" (dict "id" .ID) }}">
             <input type="hidden" name="status_filter" value="{{ $status }}">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
           </form>

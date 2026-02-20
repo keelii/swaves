@@ -30,7 +30,7 @@
     <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "BaseURL" "/admin/redirects" "ID" .ID }}
+    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.redirects.edit" "DeleteRoute" "admin.redirects.delete" "ID" .ID }}
   </tr>
   {{ else }}
   {{ template "admin/includes/table_empty" dict "ColSpan" 8 "Message" "No redirects" }}

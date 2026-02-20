@@ -1,4 +1,4 @@
-<form id="form" method="post" action="/admin/categories/{{ .Category.ID }}/edit">
+<form id="form" method="post" action="{{ url_for "admin.categories.update" (dict "id" .Category.ID) }}">
 
   <p>
     <label>

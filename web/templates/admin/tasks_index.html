@@ -30,7 +30,7 @@
           <div class="badge secondary">停用</div>
         {{ end }}
     </td>
-    <td><a href="/admin/tasks/{{ .Code }}/runs">执行记录</a></td>
+    <td><a href="{{ url_for "admin.tasks.runs" (dict "code" .Code) }}">执行记录</a></td>
     <td>
       {{ if .LastStatus }}
         {{ if eq .LastStatus "success" }}
@@ -50,12 +50,12 @@
     <td style="display: none">{{ formatTime .CreatedAt }}</td>
     <td>
       <div class="row-actions">
-        {{ template "admin/includes/action_icon_link" dict "href" (printf "/admin/tasks/%d/edit" .ID) "name" "square-pen" "label" "编辑" }}
-        <form id="form" method="POST" action="/admin/tasks/{{ .Code }}/trigger">
+        {{ template "admin/includes/action_icon_link" dict "href" (url_for "admin.tasks.edit" (dict "id" .ID)) "name" "square-pen" "label" "编辑" }}
+        <form id="form" method="POST" action="{{ url_for "admin.tasks.trigger" (dict "code" .Code) }}">
           {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "terminal" "label" "执行" "danger" true }}
         </form>
           {{ if ne .Kind 0 }}
-            <form id="form" method="POST" action="/admin/tasks/{{ .ID }}/delete">
+            <form id="form" method="POST" action="{{ url_for "admin.tasks.delete" (dict "id" .ID) }}">
                 {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
             </form>
           {{ end }}

@@ -1,6 +1,6 @@
 <span class="badge secondary">
   {{ if and .Tag .KindQuery }}
-  <a href="/admin/posts?kind={{ .KindQuery }}{{ if .SearchQueryEscaped }}&q={{ .SearchQueryEscaped }}{{ end }}{{ if .FilterCategoryIDStr }}&category={{ .FilterCategoryIDStr }}{{ end }}&tag={{ .Tag.ID }}">{{ .Tag.Name }}</a>
+  <a href="{{ url_for "admin.posts.list" }}?kind={{ .KindQuery }}{{ if .SearchQueryEscaped }}&q={{ .SearchQueryEscaped }}{{ end }}{{ if .FilterCategoryIDStr }}&category={{ .FilterCategoryIDStr }}{{ end }}&tag={{ .Tag.ID }}">{{ .Tag.Name }}</a>
   {{ else }}
   {{ .Label }}
   {{ end }}

@@ -33,7 +33,7 @@
     <td>{{ formatTime .CreatedAt }}</td>
     <td>
       <div class="row-actions">
-        <form id="form" method="post" action="/admin/http-error-logs/{{ .ID }}/delete">
+        <form id="form" method="post" action="{{ url_for "admin.http_error_logs.delete" (dict "id" .ID) }}">
           {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
         </form>
       </div>

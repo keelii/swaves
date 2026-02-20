@@ -2,19 +2,19 @@
 <div class="tab-card">
   <div class="tab-nav">
     <div class="tab-item{{ if eq $type "posts" }} active{{ end }}">
-      <a href="/admin/trash?type=posts">Posts</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "posts") }}">Posts</a>
     </div>
     <div class="tab-item{{ if eq $type "encrypted-posts" }} active{{ end }}">
-      <a href="/admin/trash?type=encrypted-posts">Encrypted Posts</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "encrypted-posts") }}">Encrypted Posts</a>
     </div>
     <div class="tab-item{{ if eq $type "tags" }} active{{ end }}">
-      <a href="/admin/trash?type=tags">Tags</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "tags") }}">Tags</a>
     </div>
     <div class="tab-item{{ if eq $type "categories" }} active{{ end }}">
-      <a href="/admin/trash?type=categories">Categories</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "categories") }}">Categories</a>
     </div>
     <div class="tab-item{{ if eq $type "redirects" }} active{{ end }}">
-      <a href="/admin/trash?type=redirects">Redirects</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "redirects") }}">Redirects</a>
     </div>
   </div>
   <div class="tab-content">
@@ -25,15 +25,15 @@
 
 <!--
 <nav>
-  <a href="/admin/trash?type=posts">Posts</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "posts") }}">Posts</a>
   |
-  <a href="/admin/trash?type=encrypted-posts">Encrypted Posts</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "encrypted-posts") }}">Encrypted Posts</a>
   |
-  <a href="/admin/trash?type=tags">Tags</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "tags") }}">Tags</a>
   |
-  <a href="/admin/trash?type=categories">Categories</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "categories") }}">Categories</a>
   |
-  <a href="/admin/trash?type=redirects">Redirects</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "redirects") }}">Redirects</a>
 </nav>
 -->
 
@@ -60,10 +60,10 @@
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="/admin/trash/posts/{{ .ID }}/restore">
+          <form id="form" method="post" action="{{ url_for "admin.trash.posts.restore" (dict "id" .ID) }}">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
           </form>
-          <form id="form" method="post" action="/admin/trash/posts/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+          <form id="form" method="post" action="{{ url_for "admin.trash.posts.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
@@ -98,10 +98,10 @@
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="/admin/trash/encrypted-posts/{{ .ID }}/restore">
+          <form id="form" method="post" action="{{ url_for "admin.trash.encrypted_posts.restore" (dict "id" .ID) }}">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
           </form>
-          <form id="form" method="post" action="/admin/trash/encrypted-posts/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+          <form id="form" method="post" action="{{ url_for "admin.trash.encrypted_posts.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
@@ -136,10 +136,10 @@
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="/admin/trash/tags/{{ .ID }}/restore">
+          <form id="form" method="post" action="{{ url_for "admin.trash.tags.restore" (dict "id" .ID) }}">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
           </form>
-          <form id="form" method="post" action="/admin/trash/tags/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+          <form id="form" method="post" action="{{ url_for "admin.trash.tags.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
@@ -178,10 +178,10 @@
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="/admin/trash/categories/{{ .ID }}/restore">
+          <form id="form" method="post" action="{{ url_for "admin.trash.categories.restore" (dict "id" .ID) }}">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
           </form>
-          <form id="form" method="post" action="/admin/trash/categories/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+          <form id="form" method="post" action="{{ url_for "admin.trash.categories.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
@@ -216,10 +216,10 @@
       <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="/admin/trash/redirects/{{ .ID }}/restore">
+          <form id="form" method="post" action="{{ url_for "admin.trash.redirects.restore" (dict "id" .ID) }}">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
           </form>
-          <form id="form" method="post" action="/admin/trash/redirects/{{ .ID }}/delete" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+          <form id="form" method="post" action="{{ url_for "admin.trash.redirects.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
             {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
           </form>
         </div>
