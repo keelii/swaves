@@ -1046,8 +1046,11 @@ func TestBuiltinPrefixFieldSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSettingByCode(base_path) failed: %v", err)
 	}
-	if basePath.Type != "text" {
-		t.Fatalf("expected base_path type=text, got %s", basePath.Type)
+	if basePath.Type != "prefix-field" {
+		t.Fatalf("expected base_path type=prefix-field, got %s", basePath.Type)
+	}
+	if basePath.PrefixValue != "/" {
+		t.Fatalf("expected base_path prefix_value=/, got %s", basePath.PrefixValue)
 	}
 
 	prefixCodes := []string{
@@ -1065,8 +1068,8 @@ func TestBuiltinPrefixFieldSettings(t *testing.T) {
 		if setting.Type != "prefix-field" {
 			t.Fatalf("expected %s type=prefix-field, got %s", code, setting.Type)
 		}
-		if setting.PrefixValue != "全局路径前缀" {
-			t.Fatalf("expected %s prefix_value=全局路径前缀, got %s", code, setting.PrefixValue)
+		if setting.PrefixValue != "blog" {
+			t.Fatalf("expected %s prefix_value=blog, got %s", code, setting.PrefixValue)
 		}
 	}
 }

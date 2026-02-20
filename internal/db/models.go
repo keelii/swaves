@@ -385,30 +385,66 @@ func ensureSettingsPrefixValueSchema(db *DB) error {
 }
 
 func ensureBuiltinPrefixFieldSettings(db *DB) error {
-	const prefixSourceName = "全局路径前缀"
-	codes := []string{
-		"page_path",
-		"rss_path",
-		"post_url_prefix",
-		"category_url_prefix",
-		"tag_url_prefix",
+	basePrefix := "/"
+	if baseSetting, err := GetSettingByCode(db, "base_path"); err == nil {
+		basePrefix = normalizePrefixLiteral(baseSetting.Value)
+	} else if !IsErrNotFound(err) {
+		return WrapInternalErr("ensureBuiltinPrefixFieldSettings.GetBasePath", err)
 	}
 
-	for _, code := range codes {
-		if _, err := db.Exec(
+	targets := []struct {
+		code          string
+		defaultPrefix string
+	}{
+		{code: "base_path", defaultPrefix: "/"},
+		{code: "page_path", defaultPrefix: basePrefix},
+		{code: "rss_path", defaultPrefix: basePrefix},
+		{code: "post_url_prefix", defaultPrefix: basePrefix},
+		{code: "category_url_prefix", defaultPrefix: basePrefix},
+		{code: "tag_url_prefix", defaultPrefix: basePrefix},
+	}
+
+	for _, item := range targets {
+		setting, err := GetSettingByCode(db, item.code)
+		if err != nil {
+			if IsErrNotFound(err) {
+				continue
+			}
+			return WrapInternalErr("ensureBuiltinPrefixFieldSettings.GetSetting", err)
+		}
+
+		prefixValue := strings.TrimSpace(setting.PrefixValue)
+		if prefixValue == "" || prefixValue == "全局路径前缀" {
+			prefixValue = item.defaultPrefix
+		}
+
+		if setting.Type == "prefix-field" && setting.PrefixValue == prefixValue {
+			continue
+		}
+
+		if _, err = db.Exec(
 			`UPDATE `+string(TableSettings)+`
 			SET type = 'prefix-field',
 				prefix_value = ?,
 				updated_at = strftime('%s','now')
 			WHERE code = ?
 			  AND deleted_at IS NULL`,
-			prefixSourceName, code,
+			prefixValue, item.code,
 		); err != nil {
 			return WrapInternalErr("ensureBuiltinPrefixFieldSettings.Update", err)
 		}
 	}
 
 	return nil
+}
+
+func normalizePrefixLiteral(raw string) string {
+	raw = strings.TrimSpace(raw)
+	raw = strings.Trim(raw, "/")
+	if raw == "" {
+		return "/"
+	}
+	return raw
 }
 
 func ensureSecretSettingTypes(db *DB) error {
@@ -3498,7 +3534,7 @@ type Setting struct {
 	Attrs              string // JSON string
 	Value              string
 	DefaultOptionValue string // Default value for select/radio/checkbox when options are provided
-	PrefixValue        string // Prefix field base value or source setting name
+	PrefixValue        string // Prefix text shown for prefix-field
 	Description        string
 	Sort               int64
 	Charset            string
@@ -3876,10 +3912,31 @@ func LoadSettingsToMap(db *DB) (map[string]string, error) {
 	for _, v := range results {
 		m := v.(map[string]string)
 		for code, value := range m {
+			value = normalizeRuntimeSettingValue(code, value)
 			settingsMap[code] = value
 		}
 	}
 	return settingsMap, nil
+}
+
+func normalizeRuntimeSettingValue(code, value string) string {
+	switch strings.TrimSpace(code) {
+	case "base_path", "page_path", "rss_path", "post_url_prefix", "category_url_prefix", "tag_url_prefix":
+		return normalizeRuntimePathPrefix(value)
+	default:
+		return value
+	}
+}
+
+func normalizeRuntimePathPrefix(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" || value == "/" {
+		return "/"
+	}
+	if strings.HasPrefix(value, "/") {
+		return value
+	}
+	return "/" + value
 }
 
 const (

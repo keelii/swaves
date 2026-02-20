@@ -90,7 +90,7 @@
             {{ if eq $setting.Type "text" }}
               <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
             {{ else if eq $setting.Type "prefix-field" }}
-              <fieldset class="group settings-prefix-field" data-prefix-source="{{ $setting.PrefixValue }}">
+              <fieldset class="group settings-prefix-field">
                 <legend data-prefix-legend>{{ $setting.PrefixValue }}</legend>
                 <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
               </fieldset>
@@ -164,40 +164,6 @@ $(function() {
     $in.on('input change', update);
     update();
   });
-
-  function findSettingInputByRef(ref) {
-    var $codeInput = $('[data-setting-code]').filter(function() {
-      return $(this).attr('data-setting-code') === ref;
-    }).find('input,textarea,select').first();
-    if ($codeInput.length) return $codeInput;
-
-    return $('[data-setting-name]').filter(function() {
-      return $(this).attr('data-setting-name') === ref;
-    }).find('input,textarea,select').first();
-  }
-
-  function syncPrefixLegends() {
-    $('.settings-prefix-field').each(function() {
-      var $group = $(this);
-      var sourceRef = ($group.attr('data-prefix-source') || '').trim();
-      var legendText = sourceRef || '/';
-
-      if (sourceRef) {
-        var $source = findSettingInputByRef(sourceRef);
-        if ($source.length) {
-          legendText = ($source.val() || '').trim();
-          if (!legendText) {
-            legendText = '/';
-          }
-          $source.off('.settingsPrefix').on('input.settingsPrefix change.settingsPrefix', syncPrefixLegends);
-        }
-      }
-
-      $group.find('[data-prefix-legend]').text(legendText);
-    });
-  }
-
-  syncPrefixLegends();
 
   $(document).on('click', '.settings-secret-toggle', function() {
     var $btn = $(this);

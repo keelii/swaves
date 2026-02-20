@@ -30,7 +30,7 @@
 
   {{ template "admin/includes/form_field_textarea" dict "Label" "Options (JSON)" "Name" "options" "Value" .Setting.Options "Rows" 3 "Cols" 80 "Placeholder" "[{\"label\": \"Option 1\", \"value\": \"value1\"}, {\"label\": \"Option 2\", \"value\": \"value2\"}]" "Help" "(Required for radio/checkbox/select type, JSON array of {label, value})" }}
   {{ template "admin/includes/form_field_textarea" dict "Label" "Attrs (JSON)" "Name" "attrs" "Value" .Setting.Attrs "Rows" 3 "Cols" 80 "Placeholder" "{\"min\": 0, \"max\": 100, \"step\": 1}" "Help" "(Optional HTML attributes, JSON object)" }}
-  {{ template "admin/includes/form_field_text" dict "Label" "Prefix Value" "Name" "prefix_value" "Value" .Setting.PrefixValue "Placeholder" "如：全局路径前缀（prefix-field 使用）" "Help" "(Optional: prefix label/source for prefix-field)" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "Prefix Value" "Name" "prefix_value" "Value" .Setting.PrefixValue "Placeholder" "如：/、blog（prefix-field 使用）" "Help" "(Optional: prefix text for prefix-field)" }}
 
   <p>
     <label>

@@ -5,28 +5,28 @@ import (
 	"swaves/helper"
 )
 
-var PostUrlPrefixRegexp = regexp.MustCompile(`^/\{datetime\}|/[a-z]*$`)
+var PostUrlPrefixRegexp = regexp.MustCompile(`^/?(\{datetime\}|[a-z]*)$`)
 
 var PostUrlPrefixValidator = map[string]interface{}{
-	"title":    "只能是{datetime}，/，/+小写英文字母",
+	"title":    "只能是{datetime}或小写英文字母（可选 / 前缀）",
 	"required": true,
 	"pattern":  PostUrlPrefixRegexp.String(),
 }
 var PostUrlPrefixValidatorJSON = helper.JSONStringify(PostUrlPrefixValidator)
 
-var UrlPrefixRegexp = regexp.MustCompile(`^/[a-z]*$`)
+var UrlPrefixRegexp = regexp.MustCompile(`^/?[a-z]*$`)
 
 var UrlPrefixValidator = map[string]interface{}{
-	"title":    "只能是/，/+小写英文字母",
+	"title":    "只能是小写英文字母（可选 / 前缀）",
 	"required": true,
 	"pattern":  UrlPrefixRegexp.String(),
 }
 var UrlPrefixValidatorJSON = helper.JSONStringify(UrlPrefixValidator)
 
-var UrlFileNamePrefixRegexp = regexp.MustCompile(`^/[a-z]+[0-9]*.?[a-z]+$`)
+var UrlFileNamePrefixRegexp = regexp.MustCompile(`^/?[a-z]+[0-9]*\.?[a-z]+$`)
 
 var UrlFileNamePrefixValidator = map[string]interface{}{
-	"title":    "只能是/，/+小写英文字母",
+	"title":    "只能是文件名（可选 / 前缀）",
 	"required": true,
 	"pattern":  UrlFileNamePrefixRegexp.String(),
 }
