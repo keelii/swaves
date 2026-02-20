@@ -8,7 +8,9 @@ import (
 	"github.com/simukti/sqldb-logger"
 )
 
-type SqlLogger struct{}
+type SqlLogger struct {
+	Enabled bool
+}
 
 func (l *SqlLogger) Log(
 	ctx context.Context,
@@ -16,6 +18,9 @@ func (l *SqlLogger) Log(
 	msg string,
 	data map[string]interface{},
 ) {
+	if !l.Enabled {
+		return
+	}
 	sql, _ := data["query"].(string)
 	args := data["args"]
 	duration := data["duration"]

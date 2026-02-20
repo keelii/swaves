@@ -31,7 +31,8 @@ type SwavesApp struct {
 
 func NewApp(config types.AppConfig) SwavesApp {
 	globalStore := store.NewGlobalStore(db.Open(db.Options{
-		DSN: config.SqliteFile,
+		DSN:          config.SqliteFile,
+		EnableSQLLog: config.EnableSQLLog,
 	}), admin.NewSessionStore())
 
 	//defer globalStore.Close()
@@ -41,7 +42,8 @@ func NewApp(config types.AppConfig) SwavesApp {
 	store.InitSettings(globalStore)
 	view := NewViewEngine()
 	app := fiber.New(fiber.Config{
-		AppName: config.AppName,
+		AppName:       config.AppName,
+		CaseSensitive: true,
 		//DisableStartupMessage: true,
 		Views:     view,
 		BodyLimit: 10 * 1024 * 1024, // 10MB
@@ -98,9 +100,9 @@ func NewApp(config types.AppConfig) SwavesApp {
 	}
 }
 
-func (swv *SwavesApp) Listen() {
+func (swv *SwavesApp) Listen(opts fiber.ListenConfig) {
 	log.Println(swv.Config.AppName + " listening on " + swv.Config.ListenAddr)
-	log.Fatal(swv.App.Listen(swv.Config.ListenAddr))
+	log.Fatal(swv.App.Listen(swv.Config.ListenAddr, opts))
 }
 
 func (swv *SwavesApp) Shutdown() {

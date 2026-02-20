@@ -101,8 +101,9 @@ func (s *SessionStore) IsLogin(c fiber.Ctx) bool {
 }
 
 type AppConfig struct {
-	SqliteFile string
-	BackupDir  string
-	ListenAddr string
-	AppName    string
+	SqliteFile   string
+	BackupDir    string
+	ListenAddr   string
+	AppName      string
+	EnableSQLLog bool
 }

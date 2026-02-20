@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"swaves/internal/types"
 	"time"
+
+	"github.com/gofiber/fiber/v3"
 )
 
 func watchParent() {
@@ -26,11 +28,14 @@ func worker() {
 	watchParent()
 
 	swv := NewApp(types.AppConfig{
-		SqliteFile: "data.sqlite",
-		ListenAddr: ":3000",
-		AppName:    "swaves",
+		SqliteFile:   "data.sqlite",
+		ListenAddr:   ":3000",
+		AppName:      "swaves",
+		EnableSQLLog: true,
 	})
-	swv.Listen()
+	swv.Listen(fiber.ListenConfig{
+		DisableStartupMessage: true,
+	})
 
 	defer swv.Shutdown()
 }
@@ -60,12 +65,15 @@ func launcher() {
 
 func main() {
 	swv := NewApp(types.AppConfig{
-		SqliteFile: "data.sqlite",
-		BackupDir:  "backups",
-		ListenAddr: ":3000",
-		AppName:    "swaves",
+		SqliteFile:   "data.sqlite",
+		BackupDir:    "backups",
+		ListenAddr:   ":3000",
+		AppName:      "swaves",
+		EnableSQLLog: false,
 	})
-	swv.Listen()
+	swv.Listen(fiber.ListenConfig{
+		DisableStartupMessage: true,
+	})
 
 	defer swv.Shutdown()
 	//

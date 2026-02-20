@@ -29,7 +29,8 @@ type DB struct {
 }
 
 type Options struct {
-	DSN string
+	DSN          string
+	EnableSQLLog bool
 }
 
 type TableName string
@@ -40,7 +41,9 @@ func Open(opts Options) *DB {
 	var sqlDB *sql.DB
 	var err error
 
-	sqlDB = sqldblogger.OpenDriver(opts.DSN, &sqlite3.SQLiteDriver{}, &SqlLogger{})
+	sqlDB = sqldblogger.OpenDriver(opts.DSN, &sqlite3.SQLiteDriver{}, &SqlLogger{
+		Enabled: opts.EnableSQLLog,
+	})
 
 	//sqlDB, err = sql.Open("sqlite3", opts.DSN)
 	//if err != nil {
