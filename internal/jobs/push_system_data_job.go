@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"swaves/internal/consts"
 	"swaves/internal/db"
 	"time"
 
@@ -25,20 +26,6 @@ const (
 	settingSyncPushEnabled    = "sync_push_enabled"
 	settingSyncPushEndpoint   = "sync_push_endpoint"
 	settingSyncPushTimeoutSec = "sync_push_timeout_sec"
-
-	envS3Bucket      = "SWAVES_S3_BUCKET"
-	envS3Region      = "SWAVES_S3_REGION"
-	envS3Endpoint    = "SWAVES_S3_ENDPOINT"
-	envS3AccessKeyID = "SWAVES_S3_ACCESS_KEY_ID"
-	envS3SecretKey   = "SWAVES_S3_SECRET_ACCESS_KEY"
-	envS3ForcePath   = "SWAVES_S3_FORCE_PATH_STYLE"
-
-	legacyEnvS3Bucket      = "SWAVES_SYNC_PUSH_S3_BUCKET"
-	legacyEnvS3Region      = "SWAVES_SYNC_PUSH_S3_REGION"
-	legacyEnvS3Endpoint    = "SWAVES_SYNC_PUSH_S3_ENDPOINT"
-	legacyEnvS3AccessKeyID = "SWAVES_SYNC_PUSH_S3_ACCESS_KEY_ID"
-	legacyEnvS3SecretKey   = "SWAVES_SYNC_PUSH_S3_SECRET_ACCESS_KEY"
-	legacyEnvS3ForcePath   = "SWAVES_SYNC_PUSH_S3_FORCE_PATH_STYLE"
 )
 
 type pushJobConfig struct {
@@ -70,10 +57,10 @@ func PushSystemDataJob(reg *Registry) (string, error) {
 		return "", errors.New("s3 region is empty")
 	}
 	if cfg.S3AccessKey == "" {
-		log.Printf("[task] remote_backup_data missing env: %s", envS3AccessKeyID)
+		log.Printf("[task] remote_backup_data missing env: SWV_S3_ACCESS_KEY_ID")
 	}
 	if cfg.S3SecretKey == "" {
-		log.Printf("[task] remote_backup_data missing env: %s", envS3SecretKey)
+		log.Printf("[task] remote_backup_data missing env: SWV_S3_SECRET_ACCESS_KEY")
 	}
 
 	tmpDir, err := os.MkdirTemp("", "swaves-sync-push-*")
@@ -260,44 +247,27 @@ func loadPushJobConfig(dbx *db.DB) pushJobConfig {
 	}
 
 	s3Endpoint := strings.TrimSpace(readSettingString(dbx, settingSyncPushEndpoint, ""))
-	if envEndpoint := readEnvAny(envS3Endpoint, legacyEnvS3Endpoint); envEndpoint != "" {
-		s3Endpoint = envEndpoint
-	}
 	s3Endpoint, endpointBucket, endpointForcePath, parseErr := splitS3EndpointBucket(s3Endpoint)
 	if parseErr != nil {
 		log.Printf("[task] push_system_data invalid endpoint: %v", parseErr)
 	}
 
-	s3Bucket := readEnvAny(envS3Bucket, legacyEnvS3Bucket)
-	if s3Bucket == "" {
-		s3Bucket = endpointBucket
-	}
+	s3Bucket := endpointBucket
 
 	s3Region := "us-east-1"
 	if s3Endpoint != "" {
 		s3Region = "auto"
 	}
-	if envRegion := readEnvAny(envS3Region, legacyEnvS3Region); envRegion != "" {
-		s3Region = envRegion
-	}
 
 	s3ForcePath := endpointForcePath
-	if envForcePath := strings.TrimSpace(strings.ToLower(readEnvAny(envS3ForcePath, legacyEnvS3ForcePath))); envForcePath != "" {
-		switch envForcePath {
-		case "1", "true", "yes", "on":
-			s3ForcePath = true
-		case "0", "false", "no", "off":
-			s3ForcePath = false
-		}
-	}
 
 	return pushJobConfig{
 		Enabled:     readSettingBool(dbx, settingSyncPushEnabled, false),
 		S3Bucket:    s3Bucket,
 		S3Region:    s3Region,
 		S3Endpoint:  s3Endpoint,
-		S3AccessKey: readEnvAny(envS3AccessKeyID, legacyEnvS3AccessKeyID),
-		S3SecretKey: readEnvAny(envS3SecretKey, legacyEnvS3SecretKey),
+		S3AccessKey: strings.TrimSpace(consts.S3AccessKeyID),
+		S3SecretKey: strings.TrimSpace(consts.S3SecretAccessKey),
 		S3ForcePath: s3ForcePath,
 		Timeout:     time.Duration(timeoutSec) * time.Second,
 	}
@@ -332,15 +302,6 @@ func splitS3EndpointBucket(raw string) (endpoint string, bucket string, forcePat
 
 	endpoint = strings.TrimRight(u.String(), "/")
 	return endpoint, bucket, forcePath, nil
-}
-
-func readEnvAny(keys ...string) string {
-	for _, key := range keys {
-		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 func readSettingString(dbx *db.DB, code string, defaultValue string) string {

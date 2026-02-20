@@ -1,4 +1,7 @@
 <style>
+  #import-edit-rows td input {
+    margin-bottom: 0;
+  }
   #form select {
     width: 25em;
   }
@@ -9,6 +12,9 @@
 
   .import-upload {
     margin-bottom: var(--space-2);
+  }
+  .import-item-content {
+    max-width: 30em;
   }
 
   .import-dropzone {
@@ -75,53 +81,6 @@
 
   .import-edit-table td {
     min-width: 160px;
-  }
-
-  .import-edit-table .import-edit-content {
-    min-width: 360px;
-    max-width: 560px;
-  }
-
-  .import-content-preview {
-    line-height: 1.45;
-    word-break: break-word;
-    white-space: normal;
-    max-height: 13.2em;
-    overflow: hidden;
-  }
-
-  .import-edit-status {
-    min-width: 140px;
-    max-width: 280px;
-    word-break: break-word;
-  }
-
-  .import-edit-status[data-state="running"] {
-    color: var(--warning, #d97706);
-    font-weight: 600;
-  }
-
-  .import-edit-status[data-state="success"] {
-    color: var(--success);
-  }
-
-  .import-edit-status[data-state="error"] {
-    color: var(--danger);
-  }
-
-  .import-edit-radio-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    min-width: 110px;
-  }
-
-  .import-edit-radio-group label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    white-space: nowrap;
   }
 
   .import-field-stack {
@@ -277,8 +236,8 @@
       <th>发布状态</th>
       <th>类型</th>
       <th>标签/分类</th>
-      <th class="cell-35">内容（前 200 字）</th>
-      <th class="cell-10">确认状态</th>
+      <th class="cell-20">内容（前 200 字）</th>
+      <th class="cell-6">确认状态</th>
     </tr>
     </thead>
     <tbody id="import-edit-rows">
@@ -295,13 +254,13 @@
           </div>
         </td>
         <td>
-          <div class="import-edit-radio-group">
+          <div class="valign">
             <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="draft" {{ if eq .Status "draft" }}checked{{ end }}> draft</label>
             <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="published" {{ if eq .Status "published" }}checked{{ end }}> published</label>
           </div>
         </td>
         <td>
-          <div class="import-edit-radio-group">
+          <div class="valign">
             <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="0" {{ if or (eq .Kind "0") (eq .Kind "") }}checked{{ end }}> post</label>
             <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="1" {{ if eq .Kind "1" }}checked{{ end }}> page</label>
           </div>
@@ -313,11 +272,11 @@
             <input type="hidden" data-field="categories" value="{{ .Categories }}">
           </div>
         </td>
-        <td class="import-edit-content">
+        <td>
           <textarea data-field="content" hidden>{{ .Content }}</textarea>
-          <div class="import-content-preview">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
+          <div class="import-item-content">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
         </td>
-        <td class="import-edit-status" data-import-edit-status data-state="pending">待确认</td>
+        <td data-import-edit-status data-state="pending">待确认</td>
       </tr>
     {{ else }}
       <tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>
@@ -326,10 +285,22 @@
   </table>
 </div>
 
+<dialog id="import-cancel-dialog">
+  <header>
+    <h4>确认取消导入</h4>
+  </header>
+  <p>将删除所有 importing 状态的临时文章，且无法恢复。确定继续吗？</p>
+  <footer class="hstack justify-content-end">
+    <button type="button" class="button outline" commandfor="import-cancel-dialog" command="close">继续编辑</button>
+    <button type="button" class="button" id="import-cancel-confirm-btn">确认取消导入</button>
+  </footer>
+</dialog>
+
 <script>
 $(function() {
   var parseItemURL = '{{ adminPath "/import/parse-item" }}';
   var confirmItemURL = '{{ adminPath "/import/confirm-item" }}';
+  var cancelItemURL = '{{ adminPath "/import/cancel" }}';
   var baseCategoryOptions = [
     {{- range .AllCategories }}
     {{ printf "%q" .Name }},
@@ -344,9 +315,13 @@ $(function() {
   var $editSummary = $('#import-edit-summary');
   var $editRows = $('#import-edit-rows');
   var $confirmBtn = $('#import-confirm-btn');
+  var $cancelBtn = $('#import-cancel-btn');
+  var $cancelDialog = $('#import-cancel-dialog');
+  var $cancelConfirmBtn = $('#import-cancel-confirm-btn');
   var selectedFiles = [];
   var isParsing = false;
   var isConfirming = false;
+  var isCancelling = false;
 
   function show(sel, disp) { $(sel).css('display', disp || 'inline'); }
   function hide(sel) { $(sel).css('display', 'none'); }
@@ -358,6 +333,37 @@ $(function() {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function notify(message, variant) {
+    if (window.ot && typeof window.ot.toast === 'function') {
+      window.ot.toast(message, '', { variant: variant || 'info' });
+    }
+  }
+
+  function openDialog($dialog) {
+    if (!$dialog.length) {
+      return false;
+    }
+    var dialogEl = $dialog.get(0);
+    if (!dialogEl || typeof dialogEl.showModal !== 'function') {
+      return false;
+    }
+    if (dialogEl.open) {
+      dialogEl.close();
+    }
+    dialogEl.showModal();
+    return true;
+  }
+
+  function closeDialog($dialog) {
+    if (!$dialog.length) {
+      return;
+    }
+    var dialogEl = $dialog.get(0);
+    if (dialogEl && dialogEl.open) {
+      dialogEl.close();
+    }
   }
 
   function splitCSV(raw) {
@@ -485,13 +491,13 @@ $(function() {
           '</div>' +
         '</td>' +
         '<td>' +
-          '<div class="import-edit-radio-group">' +
+          '<div class="valign">' +
             '<label><input type="radio" data-field="status" name="import_status_' + item.post_id + '" value="draft"' + statusDraftChecked + '> draft</label>' +
             '<label><input type="radio" data-field="status" name="import_status_' + item.post_id + '" value="published"' + statusPublishedChecked + '> published</label>' +
           '</div>' +
         '</td>' +
         '<td>' +
-          '<div class="import-edit-radio-group">' +
+          '<div class="valign">' +
             '<label><input type="radio" data-field="kind" name="import_kind_' + item.post_id + '" value="0"' + kindPostChecked + '> post</label>' +
             '<label><input type="radio" data-field="kind" name="import_kind_' + item.post_id + '" value="1"' + kindPageChecked + '> page</label>' +
           '</div>' +
@@ -505,9 +511,9 @@ $(function() {
         '</td>' +
         '<td class="import-edit-content">' +
           '<textarea data-field="content" hidden>' + escapeHTML(item.content) + '</textarea>' +
-          '<div class="import-content-preview">' + escapeHTML(preview) + '</div>' +
+          '<div class="import-item-content">' + escapeHTML(preview) + '</div>' +
         '</td>' +
-        '<td class="import-edit-status" data-import-edit-status data-state="pending">待确认</td>' +
+        '<td data-import-edit-status data-state="pending">待确认</td>' +
       '</tr>';
   }
 
@@ -618,6 +624,11 @@ $(function() {
       return;
     }
     setEditSummary('待确认 ' + count + ' 条导入记录', defaultVariant || 'warning');
+  }
+
+  function clearImportingRows() {
+    $editRows.find('tr[data-import-item-row]').remove();
+    ensureEditEmptyRow();
   }
 
   function appendImportEditRow(rawItem) {
@@ -733,7 +744,7 @@ $(function() {
   }).trigger('change');
 
   $dropzone.on('click', function() {
-    if (isParsing || isConfirming) {
+    if (isParsing || isConfirming || isCancelling) {
       return;
     }
     if ($fileInput.length && $fileInput[0]) {
@@ -746,7 +757,7 @@ $(function() {
       return;
     }
     e.preventDefault();
-    if (isParsing || isConfirming) {
+    if (isParsing || isConfirming || isCancelling) {
       return;
     }
     if ($fileInput.length && $fileInput[0]) {
@@ -761,7 +772,7 @@ $(function() {
   $dropzone.on('dragenter dragover', function(e) {
     e.preventDefault();
     e.stopPropagation();
-    if (isParsing || isConfirming) {
+    if (isParsing || isConfirming || isCancelling) {
       return;
     }
     $dropzone.addClass('dragover');
@@ -774,7 +785,7 @@ $(function() {
   });
 
   $dropzone.on('drop', function(e) {
-    if (isParsing || isConfirming) {
+    if (isParsing || isConfirming || isCancelling) {
       return;
     }
     var dt = e.originalEvent && e.originalEvent.dataTransfer;
@@ -804,8 +815,81 @@ $(function() {
     });
   });
 
+  async function executeCancelImporting() {
+    if (isParsing || isConfirming || isCancelling) {
+      return;
+    }
+
+    isCancelling = true;
+    $dropzone.addClass('is-disabled');
+    var $inputs = $editPanel.find('input, select, button, textarea');
+    $inputs.prop('disabled', true);
+    $cancelConfirmBtn.prop('disabled', true);
+
+    try {
+      var response = await fetch(cancelItemURL, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      var result = null;
+      try {
+        result = await response.json();
+      } catch (jsonErr) {
+        result = null;
+      }
+
+      if (!response.ok || !result || !result.ok) {
+        var errorMessage = (result && result.error) ? result.error : ('HTTP ' + response.status);
+        setEditSummary('取消导入失败：' + errorMessage, 'error');
+        notify('取消导入失败：' + errorMessage, 'danger');
+        return;
+      }
+
+      var deletedCount = Number(result.deleted_count || 0);
+      if (!Number.isFinite(deletedCount) || deletedCount < 0) {
+        deletedCount = 0;
+      }
+
+      clearImportingRows();
+      setEditSummary('已取消导入，删除 ' + deletedCount + ' 条临时记录。', 'success');
+      notify('已取消导入，删除 ' + deletedCount + ' 条临时记录。', 'success');
+    } catch (err) {
+      var requestErrMsg = (err && err.message) ? err.message : 'request failed';
+      setEditSummary('取消导入失败：' + requestErrMsg, 'error');
+      notify('取消导入失败：' + requestErrMsg, 'danger');
+    } finally {
+      isCancelling = false;
+      $inputs.prop('disabled', false);
+      $cancelConfirmBtn.prop('disabled', false);
+      if (!isParsing && !isConfirming) {
+        $dropzone.removeClass('is-disabled');
+      }
+      closeDialog($cancelDialog);
+    }
+  }
+
+  $cancelBtn.on('click', function() {
+    if (isParsing || isConfirming || isCancelling) {
+      return;
+    }
+
+    if (!openDialog($cancelDialog)) {
+      if (!window.confirm('将删除所有 importing 状态的临时文章，且无法恢复。确定继续吗？')) {
+        return;
+      }
+      void executeCancelImporting();
+    }
+  });
+
+  $cancelConfirmBtn.on('click', function() {
+    void executeCancelImporting();
+  });
+
   $confirmBtn.on('click', async function() {
-    if (isConfirming) {
+    if (isConfirming || isCancelling) {
       return;
     }
 
@@ -866,7 +950,7 @@ $(function() {
 
     $inputs.prop('disabled', false);
     isConfirming = false;
-    if (!isParsing) {
+    if (!isParsing && !isCancelling) {
       $dropzone.removeClass('is-disabled');
     }
 
@@ -884,7 +968,7 @@ $(function() {
 
   $form.on('submit', async function(e) {
     e.preventDefault();
-    if (isParsing) {
+    if (isParsing || isCancelling || isConfirming) {
       return;
     }
 
@@ -954,7 +1038,9 @@ $(function() {
 
     $inputs.prop('disabled', false);
     isParsing = false;
-    $dropzone.removeClass('is-disabled');
+    if (!isConfirming && !isCancelling) {
+      $dropzone.removeClass('is-disabled');
+    }
 
     if (successCount > 0 && failCount === 0) {
       setEditSummary('导入完成，成功 ' + successCount + ' 条。请在表格中检查并点击「确认导入」。', 'warning');

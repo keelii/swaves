@@ -1,6 +1,8 @@
 package db
 
-import "swaves/internal/consts"
+import (
+	"swaves/internal/consts"
+)
 
 type TableOp string
 
@@ -437,7 +439,7 @@ var DefaultSettings = []Setting{
 	{Sort: 91, Kind: "ThirdPart", Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
 	{Sort: 92, Kind: "ThirdPart", Name: "媒体默认服务", Code: "media_default_provider", Type: "select", Value: "see", Description: "媒体上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
 	{Sort: 93, Kind: "ThirdPart", Name: "S.EE API 地址", Code: "media_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload", Description: "S.EE API 地址（可填写上传接口完整地址）"},
-	{Sort: 94, Kind: "ThirdPart", Name: "S.EE API Token", Code: "media_see_api_token", Type: "secret", Value: "", Description: "S.EE Bearer Token"},
+	{Sort: 94, Kind: "ThirdPart", Name: "S.EE API Token", Code: "media_see_api_token", Type: "secret", Value: consts.SeeApiToken, Description: "S.EE Bearer Token"},
 	{Sort: 95, Kind: "ThirdPart", Name: "ImageKit-endpoint", Code: "media_imagekit_endpoint", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API Endpoint"},
-	{Sort: 96, Kind: "ThirdPart", Name: "ImageKit Private Key", Code: "media_imagekit_private_key", Type: "secret", Value: "", Description: "ImageKit 服务端 Private Key"},
+	{Sort: 96, Kind: "ThirdPart", Name: "ImageKit Private Key", Code: "media_imagekit_private_key", Type: "secret", Value: consts.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
 }

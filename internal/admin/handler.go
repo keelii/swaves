@@ -2575,6 +2575,22 @@ func (h *Handler) PostImportConfirmItemHandler(c fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) PostImportCancelHandler(c fiber.Ctx) error {
+	deletedCount, err := CancelImportingPreviewItemsService(h.Model)
+	if err != nil {
+		log.Printf("cancel importing items failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":    false,
+			"error": "取消导入失败: " + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"ok":            true,
+		"deleted_count": deletedCount,
+	})
+}
+
 func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 	// 获取上传的文件
 	form, err := c.MultipartForm()
