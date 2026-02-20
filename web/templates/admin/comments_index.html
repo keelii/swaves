@@ -20,7 +20,7 @@
 <table>
   <thead>
   <tr>
-    <th class="cell-id">ID</th>
+    <th class="cell-4">ID</th>
     <th>文章</th>
     <th>作者</th>
     <th>内容</th>
@@ -32,7 +32,7 @@
   <tbody>
   {{ range .Comments }}
     <tr>
-      <td class="cell-id">{{ .ID }}</td>
+      <td class="cell-4">{{ .ID }}</td>
       <td>
         <a href="/admin/posts/{{ .PostID }}/edit">{{ .PostTitle }}</a>
         <div class="text-light">post_id={{ .PostID }}</div>

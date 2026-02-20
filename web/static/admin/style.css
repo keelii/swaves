@@ -596,34 +596,39 @@ input[type="range"] {
   width: 4em;
 }
 
-.cell-id {
-  width: 4em;
-  white-space: nowrap;
-}
-.cell-title {
-  width: 20em;
-}
-.cell-num {
+.cell-3 {
   width: 3em;
 }
-.cell-op {
+.cell-4 {
+  width: 4em;
+}
+.cell-5 {
+  width: 5em;
+}
+.cell-6 {
   width: 6em;
 }
-.cell-op-3 {
+.cell-8 {
+  width: 8em;
+}
+.cell-9 {
   width: 9em;
 }
-.cell-f-time {
+.cell-10 {
+  width: 10em;
+}
+.cell-12 {
   width: 12em;
 }
-.cell-r-time {
-  width: 6em;
+.cell-16 {
+  width: 16em;
 }
-.cell-wsn {
-  white-space: nowrap;
+.cell-20 {
+  width: 20em;
 }
-.cell-status {
-  width: 6em;
+.cell-24 {
+  width: 24em;
 }
-.cell-message {
+.cell-30 {
   width: 30em;
 }

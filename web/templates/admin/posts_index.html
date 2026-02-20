@@ -30,23 +30,23 @@
 <table>
   <thead>
   <tr>
-    <th class="cell-id">ID</th>
-    <th class="cell-title">标题</th>
+    <th class="cell-4">ID</th>
+    <th class="cell-20">标题</th>
     <th>URL标识</th>
     <th>标签</th>
     <th>分类</th>
     <th>状态</th>
-    <th class="cell-num">UV</th>
-    <th class="cell-r-time">创建时间</th>
-    <th class="cell-r-time">更新时间</th>
-    <th class="cell-op">操作</th>
+    <th class="cell-3">UV</th>
+    <th class="cell-6">创建时间</th>
+    <th class="cell-6">更新时间</th>
+    <th class="cell-6">操作</th>
   </tr>
   </thead>
 
   <tbody>
   {{ range .Posts }}
   <tr>
-    <td class="cell-id">{{ .Post.ID }}</td>
+    <td class="cell-4">{{ .Post.ID }}</td>
     <td>{{ if $.SearchQuery }}{{ highlight .Post.Title $.SearchQuery }}{{ else }}{{ .Post.Title }}{{ end }}</td>
     <td>
         {{ if eq .Post.Status "published" }}

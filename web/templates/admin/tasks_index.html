@@ -1,14 +1,14 @@
 <table>
   <thead>
   <tr>
-    <th class="cell-id">ID</th>
-    <th class="cell-wsn">编码</th>
+    <th class="cell-4">ID</th>
+    <th class="cell-12">编码</th>
     <th>名称</th>
     <th>描述</th>
     <th>调度</th>
-    <th class="cell-status">状态</th>
+    <th class="cell-6">状态</th>
     <th>执行记录</th>
-    <th class="cell-status">最后状态</th>
+    <th class="cell-6">最后状态</th>
     <th>最后执行时间</th>
     <th style="display: none">创建时间</th>
     <th>操作</th>
@@ -18,7 +18,7 @@
   <tbody>
   {{ range .Tasks }}
   <tr>
-    <td class="cell-id">{{ .ID }}</td>
+    <td class="cell-4">{{ .ID }}</td>
     <td>{{ .Code }}</td>
     <td>{{ .Name }}</td>
     <td>{{ .Description }}</td>

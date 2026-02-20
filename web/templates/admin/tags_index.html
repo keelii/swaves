@@ -1,9 +1,9 @@
 <table>
   <thead>
   <tr>
-    <th class="cell-id">ID</th>
+    <th class="cell-4">ID</th>
     <th>名称</th>
-    <th class="cell-wsn">URL标识</th>
+    <th class="cell-12">URL标识</th>
     <th>文章数量</th>
     <th>创建时间</th>
     <th>更新时间</th>
@@ -14,7 +14,7 @@
   <tbody>
   {{ range .Tags }}
   <tr>
-    <td class="cell-id">{{ .ID }}</td>
+    <td class="cell-4">{{ .ID }}</td>
     <td>{{ .Name }}</td>
     <td><a href="{{ GetTagUrl . }}" target="_blank" rel="noopener">{{ .Slug }}</a></td>
     <td><a href="/admin/posts?kind=0&tag={{ .ID }}">{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</a></td>

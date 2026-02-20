@@ -113,20 +113,20 @@
 <table>
   <thead>
     <tr>
-      <th class="cell-id">ID</th>
+      <th class="cell-4">ID</th>
       <th>类型</th>
       <th>服务</th>
       <th>文件名</th>
       <th>链接</th>
-      <th class="cell-num">大小(B)</th>
-      <th class="cell-f-time">创建时间</th>
-      <th class="cell-op-3">操作</th>
+      <th class="cell-3">大小(B)</th>
+      <th class="cell-12">创建时间</th>
+      <th class="cell-9">操作</th>
     </tr>
   </thead>
   <tbody>
     {{ range .Items }}
       <tr data-media-id="{{ .ID }}">
-        <td class="cell-id">{{ .ID }}</td>
+        <td class="cell-4">{{ .ID }}</td>
         <td>{{ .Kind }}</td>
         <td>
           {{ $label := index $.MediaProviderLabelMap .Provider }}
@@ -142,7 +142,7 @@
         </td>
         <td>{{ .SizeBytes }}</td>
         <td>{{ formatTime .CreatedAt }}</td>
-        <td class="cell-op">
+        <td class="cell-6">
           <div class="row-actions media-row-actions">
             {{ if .FileURL }}
               <button
