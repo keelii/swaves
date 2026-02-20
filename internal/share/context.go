@@ -160,8 +160,12 @@ func GetPagePrefix() string {
 func GetPostPrefix() string {
 	return GetBasePathWithSlash() + store.GetSetting("post_url_prefix")
 }
-func GetPageRoute() string {
-	return "/" + store.GetSetting("page_url_prefix")
+func GetPageRoute(route string) string {
+	pagUrlPrefix := "/" + store.GetSetting("page_url_prefix")
+	if pagUrlPrefix == "/" {
+		return route
+	}
+	return pagUrlPrefix
 }
 func GetPostRoute() string {
 	return "/" + store.GetSetting("post_url_prefix")
@@ -170,5 +174,5 @@ func GetAdminPostUrl(post db.Post) string {
 	return fmt.Sprintf("%s%s", GetAdminUrl(), GetPostUrl(post))
 }
 func GetAdminEditPostUrl(post db.Post) string {
-	return fmt.Sprintf("%s%s/posts/%d/edit", GetAdminUrl(), GetBasePathWithSlash(), post.ID)
+	return fmt.Sprintf("%s/posts/%d/edit", GetAdminUrl(), post.ID)
 }

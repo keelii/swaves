@@ -36,7 +36,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 
 	// IST stands for ID, Slug, or Title, which are the three ways to identify a post in the URL
 	// Pages
-	uiGroup.Get(share.GetPageRoute()+"/:ist", handler.GetPostByIST)
+	uiGroup.Get(share.GetPageRoute("/:ist"), handler.GetPostByIST)
 	// Posts
 	postUrlRoute := share.GetPostRoute()
 
