@@ -150,7 +150,7 @@
                 class="row-action-btn media-copy-url"
                 data-url="{{ .FileURL }}"
                 aria-label="复制图片链接"
-                title="复制图片链接"
+                data-title="复制图片链接"
               >
                 {{ template "lucide_icon" dict "name" "link-2" "size" "16" }}
               </button>
@@ -160,7 +160,7 @@
                 data-url="{{ .FileURL }}"
                 data-name="{{ .OriginalName }}"
                 aria-label="复制 Markdown 代码"
-                title="复制 Markdown 代码"
+                data-title="复制 Markdown 代码"
               >
                 {{ template "lucide_icon" dict "name" "link-2" "size" "16" }}
               </button>

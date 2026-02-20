@@ -366,13 +366,11 @@ func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRe
 				title = unescapedTitle
 			}
 			post = GetPostByTitle(h.Model, title)
+		} else {
+			post = GetPostBySlug(h.Model, ist)
 		}
 	}
 
-	//if post == nil {
-	//	post = GetPostBySlug(h.Model, ist)
-	//}
-	//
 	return post, nil
 }
 

@@ -81,10 +81,6 @@
   {{ end }}
 </div>
 
-{{ if .Error }}
-<div role="alert" data-variant="error">{{ .Error }}</div>
-{{ end }}
-
 <form id="form" method="post" action="{{ adminPath "/settings/all" }}?kind={{ .ActiveKind }}" class="settings-all-form">
   <section class="settings-kind">
       {{ if eq .ActiveKind "Post" }}
