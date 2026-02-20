@@ -13,8 +13,10 @@ import (
 	"swaves/internal/share"
 	"swaves/internal/store"
 	"swaves/internal/types"
+	"swaves/internal/webutil"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 type Handler struct {
@@ -23,11 +25,11 @@ type Handler struct {
 	Service *Service
 }
 
-func (h Handler) trackSiteUV(c *fiber.Ctx) {
+func (h Handler) trackSiteUV(c fiber.Ctx) {
 	h.trackEntityUV(c, db.UVEntitySite, 0)
 }
 
-func (h Handler) trackUV(c *fiber.Ctx, entityType db.UVEntityType, entityID int64) {
+func (h Handler) trackUV(c fiber.Ctx, entityType db.UVEntityType, entityID int64) {
 	if !entityType.IsValid() || entityID <= 0 {
 		h.trackSiteUV(c)
 		return
@@ -36,7 +38,7 @@ func (h Handler) trackUV(c *fiber.Ctx, entityType db.UVEntityType, entityID int6
 	h.trackEntityUV(c, entityType, entityID)
 }
 
-func (h Handler) trackEntityUV(c *fiber.Ctx, entityType db.UVEntityType, entityID int64) {
+func (h Handler) trackEntityUV(c fiber.Ctx, entityType db.UVEntityType, entityID int64) {
 	visitorID := middleware.GetOrCreateVisitorID(c, "")
 	if visitorID == "" {
 		return
@@ -56,7 +58,7 @@ func (h Handler) getEntityUVCount(entityType db.UVEntityType, entityID int64) in
 	return count
 }
 
-func (h Handler) getPostLikeState(c *fiber.Ctx, postID int64) (int, bool) {
+func (h Handler) getPostLikeState(c fiber.Ctx, postID int64) (int, bool) {
 	likeCount, err := db.CountEntityLikes(h.Model, postID)
 	if err != nil {
 		log.Printf("count entity like failed: %v", err)
@@ -92,7 +94,7 @@ func getSiteFallbackPath() string {
 	return basePath
 }
 
-func resolveReturnPath(c *fiber.Ctx) string {
+func resolveReturnPath(c fiber.Ctx) string {
 	if path := strings.TrimSpace(c.FormValue("return_url")); isSafeReturnPath(path) {
 		return path
 	}
@@ -114,7 +116,7 @@ func resolveReturnPath(c *fiber.Ctx) string {
 	return getSiteFallbackPath()
 }
 
-func shouldReturnLikeJSON(c *fiber.Ctx) bool {
+func shouldReturnLikeJSON(c fiber.Ctx) bool {
 	accept := strings.ToLower(strings.TrimSpace(c.Get(fiber.HeaderAccept)))
 	if strings.Contains(accept, fiber.MIMEApplicationJSON) {
 		return true
@@ -182,7 +184,7 @@ func normalizeErrorReturnURL(raw string) string {
 	return getSiteFallbackPath()
 }
 
-func buildSiteErrorRedirectPath(c *fiber.Ctx, targetPath string) string {
+func buildSiteErrorRedirectPath(c fiber.Ctx, targetPath string) string {
 	returnURL := strings.TrimSpace(c.Query("returnUrl"))
 	if returnURL == "" {
 		returnURL = strings.TrimSpace(c.OriginalURL())
@@ -194,7 +196,7 @@ func buildSiteErrorRedirectPath(c *fiber.Ctx, targetPath string) string {
 	return appendQueryParam(targetPath, "returnUrl", returnURL)
 }
 
-func (h Handler) redirectNotFound(c *fiber.Ctx) error {
+func (h Handler) redirectNotFound(c fiber.Ctx) error {
 	returnURL := strings.TrimSpace(c.Query("returnUrl"))
 	if returnURL == "" {
 		returnURL = strings.TrimSpace(c.OriginalURL())
@@ -206,13 +208,13 @@ func (h Handler) redirectNotFound(c *fiber.Ctx) error {
 		"Title":     "404 Not Found",
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
-		"ReqID":     c.Locals("reqId"),
+		"ReqID":     requestid.FromContext(c),
 	}, "")
 }
 
-func (h Handler) redirectError(c *fiber.Ctx) error {
+func (h Handler) redirectError(c fiber.Ctx) error {
 	targetPath := getSitePath("/error")
-	return c.Redirect(buildSiteErrorRedirectPath(c, targetPath), fiber.StatusFound)
+	return webutil.RedirectTo(c, buildSiteErrorRedirectPath(c, targetPath), fiber.StatusFound)
 }
 
 func (h Handler) ensureLikePostExists(postID int64) error {
@@ -226,7 +228,7 @@ func (h Handler) ensureLikePostExists(postID int64) error {
 	return nil
 }
 
-func RenderUIView(c *fiber.Ctx, view string, data fiber.Map, layout string) error {
+func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
 	if layout == "" {
 		layout = "site/layout"
 	}
@@ -247,7 +249,7 @@ func RenderUIView(c *fiber.Ctx, view string, data fiber.Map, layout string) erro
 	return c.Render(view, data, layout)
 }
 
-func (h Handler) GetDate(c *fiber.Ctx) error {
+func (h Handler) GetDate(c fiber.Ctx) error {
 	dt := c.Params("dob")
 	fmt.Println("===")
 	fmt.Println(dt)
@@ -255,29 +257,29 @@ func (h Handler) GetDate(c *fiber.Ctx) error {
 	return c.Send([]byte("ui home"))
 }
 
-func (h Handler) GetNotFound(c *fiber.Ctx) error {
+func (h Handler) GetNotFound(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusNotFound)
 	return RenderUIView(c, "site/404", fiber.Map{
 		"Title":     "404 Not Found",
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
-		"ReqID":     c.Locals("reqId"),
+		"ReqID":     requestid.FromContext(c),
 	}, "")
 }
 
-func (h Handler) GetError(c *fiber.Ctx) error {
+func (h Handler) GetError(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusInternalServerError)
 	return RenderUIView(c, "site/error", fiber.Map{
 		"Title":     "Error",
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
-		"ReqID":     c.Locals("reqId"),
+		"ReqID":     requestid.FromContext(c),
 	}, "")
 }
 
-func (h Handler) GetHome(c *fiber.Ctx) error {
+func (h Handler) GetHome(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
 	h.trackSiteUV(c)
@@ -289,7 +291,7 @@ func (h Handler) GetHome(c *fiber.Ctx) error {
 	}, "")
 }
 
-//func (h Handler) GetPost(c *fiber.Ctx) error {
+//func (h Handler) GetPost(c fiber.Ctx) error {
 //	matched := MatchRouter(c.Path())
 //	if len(matched) == 0 {
 //		return c.Status(fiber.StatusNotFound).SendString("post not found")
@@ -303,7 +305,7 @@ func (h Handler) GetHome(c *fiber.Ctx) error {
 //	}, "")
 //}
 
-func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
+func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 	year := c.Params("year")
 	month := c.Params("month")
 	day := c.Params("day")
@@ -345,7 +347,7 @@ func (h Handler) GetPostByDateAndSlug(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h Handler) GetPostByIDSlugTitle(c *fiber.Ctx) (*DisplayPostWithRelation, error) {
+func (h Handler) GetPostByIDSlugTitle(c fiber.Ctx) (*DisplayPostWithRelation, error) {
 	filename := c.Params("ist")
 	ext := filepath.Ext(filename)
 	ist := strings.TrimSuffix(filename, ext)
@@ -374,7 +376,7 @@ func (h Handler) GetPostByIDSlugTitle(c *fiber.Ctx) (*DisplayPostWithRelation, e
 	return post, nil
 }
 
-func (h Handler) funcName(c *fiber.Ctx, post *DisplayPostWithRelation) (int, int, bool, []*DisplayComment, int, string, commentFormDefaults, bool, commentCaptchaChallenge) {
+func (h Handler) funcName(c fiber.Ctx, post *DisplayPostWithRelation) (int, int, bool, []*DisplayComment, int, string, commentFormDefaults, bool, commentCaptchaChallenge) {
 	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
 	likeCount, liked := h.getPostLikeState(c, post.Post.ID)
 	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
@@ -389,7 +391,7 @@ func (h Handler) funcName(c *fiber.Ctx, post *DisplayPostWithRelation) (int, int
 	}
 	return readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha
 }
-func (h Handler) GetPostByIST(c *fiber.Ctx) error {
+func (h Handler) GetPostByIST(c fiber.Ctx) error {
 	post, err := h.GetPostByIDSlugTitle(c)
 	if err != nil {
 		return h.redirectNotFound(c)
@@ -415,7 +417,7 @@ func (h Handler) GetPostByIST(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h Handler) GetRSS(c *fiber.Ctx) error {
+func (h Handler) GetRSS(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	posts := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
 	rss, err := GenerateRSS(posts, c, pager.Page, pager.Total)
@@ -425,7 +427,7 @@ func (h Handler) GetRSS(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/xml; charset=utf-8")
 	return c.SendString(rss)
 }
-func (h Handler) GetCategoryIndex(c *fiber.Ctx) error {
+func (h Handler) GetCategoryIndex(c fiber.Ctx) error {
 	categories := ListCategories(h.Model)
 
 	if categories == nil {
@@ -441,7 +443,7 @@ func (h Handler) GetCategoryIndex(c *fiber.Ctx) error {
 		"IsCategory": true,
 	}, "")
 }
-func (h Handler) GetTagIndex(c *fiber.Ctx) error {
+func (h Handler) GetTagIndex(c fiber.Ctx) error {
 	tags := ListTags(h.Model)
 
 	if tags == nil {
@@ -455,7 +457,7 @@ func (h Handler) GetTagIndex(c *fiber.Ctx) error {
 		"List":  tags,
 	}, "")
 }
-func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
+func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	slug := c.Params("categorySlug")
 	category := GetCategoryBySlug(h.Model, slug)
@@ -475,7 +477,7 @@ func (h Handler) GetCategoryDetail(c *fiber.Ctx) error {
 		"Pages":      ListPages(h.Model),
 	}, "")
 }
-func (h Handler) GetTagDetail(c *fiber.Ctx) error {
+func (h Handler) GetTagDetail(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	slug := c.Params("tagSlug")
 	tag := GetTagBySlug(h.Model, slug)
@@ -496,7 +498,7 @@ func (h Handler) GetTagDetail(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h Handler) PostEntityLike(c *fiber.Ctx) error {
+func (h Handler) PostEntityLike(c fiber.Ctx) error {
 	postID, err := strconv.ParseInt(c.Params("postID"), 10, 64)
 	if err != nil || postID <= 0 {
 		if shouldReturnLikeJSON(c) {
@@ -561,10 +563,10 @@ func (h Handler) PostEntityLike(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Redirect(resolveReturnPath(c))
+	return webutil.RedirectTo(c, resolveReturnPath(c))
 }
 
-func (h Handler) PostComment(c *fiber.Ctx) error {
+func (h Handler) PostComment(c fiber.Ctx) error {
 	postID, err := strconv.ParseInt(c.Params("postID"), 10, 64)
 	if err != nil || postID <= 0 {
 		return h.redirectError(c)
@@ -584,7 +586,7 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 			if !strings.Contains(redirectPath, "#") {
 				redirectPath += "#comments"
 			}
-			return c.Redirect(redirectPath, fiber.StatusSeeOther)
+			return webutil.RedirectTo(c, redirectPath, fiber.StatusSeeOther)
 		}
 	}
 
@@ -661,7 +663,7 @@ func (h Handler) PostComment(c *fiber.Ctx) error {
 	if !strings.Contains(redirectPath, "#") {
 		redirectPath += "#comments"
 	}
-	return c.Redirect(redirectPath)
+	return webutil.RedirectTo(c, redirectPath)
 }
 
 func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {

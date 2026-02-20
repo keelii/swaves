@@ -6,12 +6,12 @@ import (
 	"swaves/internal/consts"
 	"swaves/internal/types"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // PaginationMiddleware 将 page/pageSize 封装成 Pagination 放入 c.Locals
 func PaginationMiddleware() fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		var pageSize int = consts.DefaultPageSize
 		if c.Locals("settings.page_size") != nil {
 			size, err := strconv.Atoi(c.Locals("settings.page_size").(string))
@@ -50,7 +50,7 @@ func PaginationMiddleware() fiber.Handler {
 }
 
 // 从 c.Locals 获取 Pagination
-func GetPagination(c *fiber.Ctx) types.Pagination {
+func GetPagination(c fiber.Ctx) types.Pagination {
 	if v := c.Locals("pagination"); v != nil {
 		if p, ok := v.(types.Pagination); ok {
 			return p

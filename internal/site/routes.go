@@ -7,7 +7,7 @@ import (
 	"swaves/internal/share"
 	"swaves/internal/store"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {

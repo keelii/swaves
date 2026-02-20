@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 const (
@@ -20,7 +20,7 @@ type commentFormDefaults struct {
 	RememberMe  bool
 }
 
-func readCommentFormDefaults(c *fiber.Ctx) commentFormDefaults {
+func readCommentFormDefaults(c fiber.Ctx) commentFormDefaults {
 	return parseCommentFormDefaults(c.Cookies(commentRememberCookieName))
 }
 
@@ -63,7 +63,7 @@ func isCommentRememberMeEnabled(raw string) bool {
 	}
 }
 
-func saveCommentFormDefaults(c *fiber.Ctx, defaults commentFormDefaults) {
+func saveCommentFormDefaults(c fiber.Ctx, defaults commentFormDefaults) {
 	if !defaults.RememberMe {
 		c.Cookie(&fiber.Cookie{
 			Name:     commentRememberCookieName,

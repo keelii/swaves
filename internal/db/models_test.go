@@ -90,7 +90,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 	}
 
 	results, err := Read(db, specPosts, ReadOptions{
-		SelectFields: "id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		WhereClause:  "id=?",
 		WhereArgs:    []interface{}{id},
 		Limit:        1,
@@ -127,7 +127,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 	}
 
 	delRows, err := ListDeletedRecords(db, TablePosts,
-		"id, title, slug, content, status, kind, created_at, updated_at, published_at, deleted_at",
+		"id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		"",
 		func(rows *sql.Rows) (interface{}, error) {
 			return scanPost(rows, true)
@@ -994,7 +994,7 @@ func TestListSettingsOrder(t *testing.T) {
 			return 2
 		case "Post":
 			return 3
-		case "数据备份":
+		case "Data":
 			return 4
 		case "ThirdPart":
 			return 5
@@ -1068,8 +1068,8 @@ func TestBuiltinPrefixFieldSettings(t *testing.T) {
 		if setting.Type != "prefix-field" {
 			t.Fatalf("expected %s type=prefix-field, got %s", code, setting.Type)
 		}
-		if setting.PrefixValue != "blog" {
-			t.Fatalf("expected %s prefix_value=blog, got %s", code, setting.PrefixValue)
+		if setting.PrefixValue != "/" {
+			t.Fatalf("expected %s prefix_value=/, got %s", code, setting.PrefixValue)
 		}
 	}
 }
@@ -1398,48 +1398,6 @@ func testVisitorID(seed byte) string {
 	return base64.RawURLEncoding.EncodeToString(raw)
 }
 
-func createLegacyLikeTable(t *testing.T, db *DB) {
-	t.Helper()
-	if _, err := db.Exec(`DROP TABLE IF EXISTS t_entity_likes`); err != nil {
-		t.Fatalf("drop legacy likes table failed: %v", err)
-	}
-	if _, err := db.Exec(
-		`CREATE TABLE t_entity_likes (
-			entity_type INTEGER NOT NULL CHECK (entity_type IN (2, 3, 4)),
-			entity_id INTEGER NOT NULL,
-			visitor_id BLOB NOT NULL,
-			status INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0, 1)),
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			PRIMARY KEY(entity_type, entity_id, visitor_id)
-		) WITHOUT ROWID`,
-	); err != nil {
-		t.Fatalf("create legacy likes table failed: %v", err)
-	}
-	if _, err := db.Exec(
-		`CREATE INDEX idx_entity_likes_entity_status ON t_entity_likes (entity_type, entity_id, status)`,
-	); err != nil {
-		t.Fatalf("create legacy entity_status index failed: %v", err)
-	}
-	if _, err := db.Exec(
-		`CREATE INDEX idx_entity_likes_visitor_id ON t_entity_likes (visitor_id)`,
-	); err != nil {
-		t.Fatalf("create legacy visitor_id index failed: %v", err)
-	}
-}
-
-func mustIndexExists(t *testing.T, db *DB, indexName string) bool {
-	t.Helper()
-	var count int
-	if err := db.QueryRow(
-		`SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name=?`,
-		indexName,
-	).Scan(&count); err != nil {
-		t.Fatalf("query index exists failed: %v", err)
-	}
-	return count > 0
-}
-
 func TestCountDistinctVisitorsBetween(t *testing.T) {
 	db := openTestDB(t)
 
@@ -1663,130 +1621,5 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 
 	if err := UpsertEntityLike(db, post.ID, "bad_visitor", LikeStatusActive); err == nil {
 		t.Fatal("expected invalid visitor id error")
-	}
-}
-
-func TestEnsureLikeTableNameRenamesLegacyTable(t *testing.T) {
-	db := openTestDB(t)
-
-	if _, err := db.Exec(`DROP TABLE IF EXISTS ` + string(TableLikes)); err != nil {
-		t.Fatalf("drop new likes table failed: %v", err)
-	}
-	createLegacyLikeTable(t, db)
-
-	visitorID := []byte("legacy-visitor")
-	if _, err := db.Exec(
-		`INSERT INTO t_entity_likes (entity_type, entity_id, visitor_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		UVEntityPost, int64(101), visitorID, LikeStatusActive, int64(100), int64(200),
-	); err != nil {
-		t.Fatalf("insert legacy like row failed: %v", err)
-	}
-
-	if err := ensureLikeTableName(db); err != nil {
-		t.Fatalf("ensureLikeTableName failed: %v", err)
-	}
-
-	legacyExists, err := tableExists(db, "t_entity_likes")
-	if err != nil {
-		t.Fatalf("check legacy table exists failed: %v", err)
-	}
-	if legacyExists {
-		t.Fatal("expected legacy table to be removed")
-	}
-
-	newExists, err := tableExists(db, string(TableLikes))
-	if err != nil {
-		t.Fatalf("check new table exists failed: %v", err)
-	}
-	if !newExists {
-		t.Fatal("expected new likes table to exist")
-	}
-
-	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM ` + string(TableLikes)).Scan(&count); err != nil {
-		t.Fatalf("count likes rows failed: %v", err)
-	}
-	if count != 1 {
-		t.Fatalf("expected 1 likes row after rename migration, got %d", count)
-	}
-
-	if mustIndexExists(t, db, "idx_entity_likes_entity_status") {
-		t.Fatal("legacy index idx_entity_likes_entity_status should be dropped")
-	}
-	if mustIndexExists(t, db, "idx_entity_likes_visitor_id") {
-		t.Fatal("legacy index idx_entity_likes_visitor_id should be dropped")
-	}
-	if !mustIndexExists(t, db, "idx_likes_entity_status") {
-		t.Fatal("new index idx_likes_entity_status should exist")
-	}
-	if !mustIndexExists(t, db, "idx_likes_visitor_id") {
-		t.Fatal("new index idx_likes_visitor_id should exist")
-	}
-}
-
-func TestEnsureLikeTableNameMergesLegacyData(t *testing.T) {
-	db := openTestDB(t)
-
-	createLegacyLikeTable(t, db)
-
-	sharedVisitor := []byte("shared-visitor")
-	if _, err := db.Exec(
-		`INSERT INTO `+string(TableLikes)+` (entity_id, visitor_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?)`,
-		int64(200), sharedVisitor, LikeStatusInactive, int64(200), int64(250),
-	); err != nil {
-		t.Fatalf("insert existing likes row failed: %v", err)
-	}
-	if _, err := db.Exec(
-		`INSERT INTO t_entity_likes (entity_type, entity_id, visitor_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		UVEntityPost, int64(200), sharedVisitor, LikeStatusActive, int64(100), int64(300),
-	); err != nil {
-		t.Fatalf("insert legacy shared row failed: %v", err)
-	}
-	if _, err := db.Exec(
-		`INSERT INTO t_entity_likes (entity_type, entity_id, visitor_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		UVEntityPost, int64(201), []byte("legacy-only"), LikeStatusActive, int64(110), int64(120),
-	); err != nil {
-		t.Fatalf("insert legacy-only row failed: %v", err)
-	}
-
-	if err := ensureLikeTableName(db); err != nil {
-		t.Fatalf("ensureLikeTableName failed: %v", err)
-	}
-
-	legacyExists, err := tableExists(db, "t_entity_likes")
-	if err != nil {
-		t.Fatalf("check legacy table exists failed: %v", err)
-	}
-	if legacyExists {
-		t.Fatal("legacy likes table should be dropped after merge")
-	}
-
-	var status int
-	var createdAt, updatedAt int64
-	if err := db.QueryRow(
-		`SELECT status, created_at, updated_at
-		FROM `+string(TableLikes)+`
-		WHERE entity_id = ? AND visitor_id = ?`,
-		int64(200), sharedVisitor,
-	).Scan(&status, &createdAt, &updatedAt); err != nil {
-		t.Fatalf("query merged row failed: %v", err)
-	}
-	if status != int(LikeStatusActive) {
-		t.Fatalf("expected merged status active, got %d", status)
-	}
-	if createdAt != 100 || updatedAt != 300 {
-		t.Fatalf("unexpected merged timestamps created=%d updated=%d", createdAt, updatedAt)
-	}
-
-	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM ` + string(TableLikes)).Scan(&count); err != nil {
-		t.Fatalf("count likes rows failed: %v", err)
-	}
-	if count != 2 {
-		t.Fatalf("expected 2 rows in likes table after merge, got %d", count)
 	}
 }

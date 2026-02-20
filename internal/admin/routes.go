@@ -5,7 +5,7 @@ import (
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
@@ -18,7 +18,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	adminGroup.Use(middleware.RequireAdmin(gStore.Session, consts.LoginRoutePath))
 
 	adminGroup.Get("/", handler.GetHome)
-	adminGroup.Get("/panic", func(c *fiber.Ctx) error {
+	adminGroup.Get("/panic", func(c fiber.Ctx) error {
 		panic("test panic")
 	})
 	adminGroup.Get("/login", handler.GetLoginHandler)

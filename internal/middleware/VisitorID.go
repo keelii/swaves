@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -21,7 +21,7 @@ func EnsureVisitorID(cookieName string) fiber.Handler {
 		cookieName = DefaultVisitorIDCookieName
 	}
 
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		path := c.Path()
 		if isSkipVisitorIDPath(path) {
 			return c.Next()
@@ -32,7 +32,7 @@ func EnsureVisitorID(cookieName string) fiber.Handler {
 	}
 }
 
-func GetOrCreateVisitorID(c *fiber.Ctx, cookieName string) string {
+func GetOrCreateVisitorID(c fiber.Ctx, cookieName string) string {
 	if cookieName == "" {
 		cookieName = DefaultVisitorIDCookieName
 	}

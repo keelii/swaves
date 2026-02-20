@@ -6,7 +6,7 @@ import (
 	"swaves/internal/store"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/gorilla/feeds"
 )
 
@@ -18,7 +18,7 @@ type Article struct {
 	CreatedAt   time.Time
 }
 
-func GenerateRSS(posts []DisplayPost, ctx *fiber.Ctx, page int, total int) (string, error) {
+func GenerateRSS(posts []DisplayPost, ctx fiber.Ctx, page int, total int) (string, error) {
 	title := store.GetSetting("site_name")
 
 	// 创建 Feed

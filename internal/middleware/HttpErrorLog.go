@@ -5,13 +5,14 @@ import (
 	"strings"
 	"swaves/internal/db"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 const httpErrorLogFieldMaxLen = 2000
 
 func HttpErrorLog(dbx *db.DB) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		err := c.Next()
 
 		status := c.Response().StatusCode()
@@ -29,15 +30,13 @@ func HttpErrorLog(dbx *db.DB) fiber.Handler {
 
 		reqID := strings.TrimSpace(c.GetRespHeader("X-Req-Id"))
 		if reqID == "" {
-			if localReqID, ok := c.Locals("reqId").(string); ok {
-				reqID = strings.TrimSpace(localReqID)
-			}
+			reqID = strings.TrimSpace(requestid.FromContext(c))
 		}
 		if reqID == "" {
 			reqID = "-"
 		}
 
-		queryParams := string(c.Context().URI().QueryString())
+		queryParams := string(c.RequestCtx().URI().QueryString())
 		bodyParams := ""
 		method := strings.ToUpper(c.Method())
 		if method != fiber.MethodGet && method != fiber.MethodHead {

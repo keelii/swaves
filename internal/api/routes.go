@@ -4,31 +4,31 @@ import (
 	"swaves/helper"
 	"swaves/internal/md"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func RegisterRoutes(app *fiber.App) {
 	apiGroup := app.Group("/api")
 
-	apiGroup.Get("/slug", func(c *fiber.Ctx) error {
+	apiGroup.Get("/slug", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"data": helper.MakeSlug(c.Query("name")),
 		})
 	})
 
 	// POST: JSON body { "content": "...", "toc": true/false }，用于即时预览（支持长文）
-	apiGroup.Post("/markdown", func(c *fiber.Ctx) error {
+	apiGroup.Post("/markdown", func(c fiber.Ctx) error {
 		var body struct {
 			Content string `json:"content"`
 			TOC     bool   `json:"toc"`
 		}
-		if err := c.BodyParser(&body); err != nil {
+		if err := c.Bind().Body(&body); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "invalid json"})
 		}
 		result := md.ParseMarkdown(body.Content, true)
 		return c.JSON(fiber.Map{"data": result.HTML})
 	})
-	//apiGroup.Get("/translate", func(c *fiber.Ctx) error {
+	//apiGroup.Get("/translate", func(c fiber.Ctx) error {
 	//	ret, err := translateText("en", c.Query("name"))
 	//	if err != nil {
 	//		return err

@@ -12,11 +12,12 @@ import (
 	"strings"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
+	"swaves/internal/webutil"
 	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 )
 
 const (
@@ -122,18 +123,18 @@ func commentRateLimitMiddleware() fiber.Handler {
 	return limiter.New(limiter.Config{
 		Max:        commentRateLimitMax,
 		Expiration: commentRateLimitExpiration,
-		Next: func(c *fiber.Ctx) bool {
+		Next: func(c fiber.Ctx) bool {
 			visitorID := middleware.GetOrCreateVisitorID(c, "")
 			return isCommentCaptchaRequired(visitorID)
 		},
-		KeyGenerator: func(c *fiber.Ctx) string {
+		KeyGenerator: func(c fiber.Ctx) string {
 			visitorID := middleware.GetOrCreateVisitorID(c, "")
 			if visitorID == "" {
 				return "ip:" + strings.TrimSpace(c.IP())
 			}
 			return "visitor:" + visitorID
 		},
-		LimitReached: func(c *fiber.Ctx) error {
+		LimitReached: func(c fiber.Ctx) error {
 			visitorID := middleware.GetOrCreateVisitorID(c, "")
 			markCommentCaptchaRequired(visitorID)
 
@@ -141,7 +142,7 @@ func commentRateLimitMiddleware() fiber.Handler {
 			if !strings.Contains(redirectPath, "#") {
 				redirectPath += "#comments"
 			}
-			return c.Redirect(redirectPath, fiber.StatusSeeOther)
+			return webutil.RedirectTo(c, redirectPath, fiber.StatusSeeOther)
 		},
 	})
 }

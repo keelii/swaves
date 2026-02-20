@@ -12,9 +12,10 @@ import (
 	"swaves/internal/store"
 	"swaves/internal/types"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/monitor"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/contrib/v3/monitor"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/google/uuid"
 )
 
@@ -39,7 +40,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 		//DisableStartupMessage: true,
 		Views:     NewViewEngine(),
 		BodyLimit: 10 * 1024 * 1024, // 10MB
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
+		ErrorHandler: func(c fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			msg := "Internal Server Error"
 			if e, ok := err.(*fiber.Error); ok {
@@ -55,22 +56,18 @@ func NewApp(config types.AppConfig) SwavesApp {
 	})
 
 	// statics
-	app.Static("/static", "./web/static")
+	app.Use("/static", static.New("./web/static"))
 	// metrics
 	app.Get("/metrics", monitor.New(monitor.Config{
-		Title:      config.AppName + " metrics",
-		FontURL:    "/static/admin/metrics/google-font.css",
-		ChartJsURL: "/static/admin/metrics/Chart.bundle.min.js",
+		Title: config.AppName + " metrics",
 	}))
 
 	//app.Use(limiter.New())
 	app.Use(middleware.AdminViewContext(globalStore.Session))
 	app.Use(middleware.GlobalSettings(consts.GlobalSettingKey))
-	app.Use(requestid.New())
 	app.Use(middleware.PaginationMiddleware())
 	app.Use(requestid.New(requestid.Config{
-		Header:     "X-Req-Id",
-		ContextKey: "reqId",
+		Header: "X-Req-Id",
 		Generator: func() string {
 			return uuid.NewString()
 		},

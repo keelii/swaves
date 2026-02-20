@@ -17,9 +17,10 @@ import (
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 	"swaves/internal/types"
+	"swaves/internal/webutil"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type Handler struct {
@@ -132,7 +133,7 @@ func parseExpiresAtFromOption(option, customValue string) string {
 	}
 }
 
-func RenderAdminView(c *fiber.Ctx, view string, data fiber.Map, layout string) error {
+func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
 	if layout == "" {
 		layout = "admin/admin_layout"
 	} else if !strings.Contains(layout, "/") {
@@ -150,7 +151,7 @@ func RenderAdminView(c *fiber.Ctx, view string, data fiber.Map, layout string) e
 	data["Query"] = c.Queries()
 
 	// 注入 Locals
-	c.Context().VisitUserValues(func(k []byte, v interface{}) {
+	c.RequestCtx().VisitUserValues(func(k []byte, v interface{}) {
 		//log.Println("Injecting local:", string(k))
 		data[string(k)] = v
 	})
@@ -257,7 +258,7 @@ func buildDashboardUVChart(model *db.DB, config dashboardUVRangeConfig, now time
 	}, nil
 }
 
-func (h *Handler) GetHome(c *fiber.Ctx) error {
+func (h *Handler) GetHome(c fiber.Ctx) error {
 	totalUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
 	if err != nil {
 		return RenderAdminView(c, "admin_home", fiber.Map{
@@ -369,7 +370,7 @@ func (h *Handler) GetHome(c *fiber.Ctx) error {
 
 /* ---------- GET /admin/login ---------- */
 
-func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
+func (h *Handler) GetLoginHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "admin_login", fiber.Map{
 		"Title":     "Admin Login",
 		"ReturnUrl": c.Query("returnUrl"),
@@ -378,7 +379,7 @@ func (h *Handler) GetLoginHandler(c *fiber.Ctx) error {
 
 /* ---------- POST /admin/login ---------- */
 
-func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
+func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 	returnUrl := c.FormValue("returnUrl")
 	password := c.FormValue("password")
 	if password == "" {
@@ -411,23 +412,23 @@ func (h *Handler) PostLoginHandler(c *fiber.Ctx) error {
 }
 
 // redirectAfterLogin 从表单读取 returnUrl，校验后重定向，避免开放重定向
-func redirectAfterLogin(c *fiber.Ctx) error {
+func redirectAfterLogin(c fiber.Ctx) error {
 	returnUrl := strings.TrimSpace(c.FormValue("returnUrl"))
 	if returnUrl != "" && strings.HasPrefix(returnUrl, "/") && !strings.Contains(returnUrl, "//") {
-		return c.Redirect(returnUrl)
+		return webutil.RedirectTo(c, returnUrl)
 	}
-	return c.Redirect("/admin")
+	return webutil.RedirectTo(c, "/admin")
 }
 
 /* ---------- POST /admin/logout ---------- */
 
-func (h *Handler) GetLogoutHandler(c *fiber.Ctx) error {
+func (h *Handler) GetLogoutHandler(c fiber.Ctx) error {
 	h.Session.ClearSession(c)
-	return c.Redirect("/admin/login")
+	return webutil.RedirectTo(c, "/admin/login")
 }
 
 // Posts
-func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	// kind: 0=文章(post), 1=页面(page)，默认 0
 	kindVal := c.Query("kind", "0")
@@ -544,11 +545,11 @@ func (h *Handler) GetPostListHandler(c *fiber.Ctx) error {
 		"PostUVMap":               postUVMap,
 	}, "")
 }
-func (h *Handler) GetPostNewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetPostNewHandler(c fiber.Ctx) error {
 	return h.renderPostNew(c, nil)
 }
 
-func (h *Handler) renderPostNew(c *fiber.Ctx, data fiber.Map) error {
+func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 	tags, err := GetAllTags(h.Model)
 	if err != nil {
 		return err
@@ -591,7 +592,7 @@ func (h *Handler) renderPostNew(c *fiber.Ctx, data fiber.Map) error {
 	return RenderAdminView(c, "posts_new", data, "")
 }
 
-func (h *Handler) renderPostNewWithDraft(c *fiber.Ctx, err error, data fiber.Map) error {
+func (h *Handler) renderPostNewWithDraft(c fiber.Ctx, err error, data fiber.Map) error {
 	if data == nil {
 		data = fiber.Map{}
 	}
@@ -601,7 +602,7 @@ func (h *Handler) renderPostNewWithDraft(c *fiber.Ctx, err error, data fiber.Map
 	return h.renderPostNew(c, data)
 }
 
-func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreatePostHandler(c fiber.Ctx) error {
 	// 草稿字段：创建失败后回填
 	title := c.FormValue("title")
 	slug := strings.TrimSpace(c.FormValue("slug"))
@@ -665,10 +666,10 @@ func (h *Handler) PostCreatePostHandler(c *fiber.Ctx) error {
 		return h.renderPostNewWithDraft(c, err, draft)
 	}
 
-	return c.Redirect("/admin/posts/"+strconv.FormatInt(postID, 10)+"/edit", fiber.StatusSeeOther)
+	return webutil.RedirectTo(c, "/admin/posts/"+strconv.FormatInt(postID, 10)+"/edit", fiber.StatusSeeOther)
 }
 
-func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -719,7 +720,7 @@ func (h *Handler) GetPostEditHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdatePostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -766,10 +767,10 @@ func (h *Handler) PostUpdatePostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/posts/"+strconv.FormatInt(id, 10)+"/edit", fiber.StatusSeeOther)
+	return webutil.RedirectTo(c, "/admin/posts/"+strconv.FormatInt(id, 10)+"/edit", fiber.StatusSeeOther)
 }
 
-func (h *Handler) PostDeletePostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeletePostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -779,11 +780,11 @@ func (h *Handler) PostDeletePostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/posts")
+	return webutil.RedirectTo(c, "/admin/posts")
 }
 
 // Tags
-func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTagListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
 	tags, err := ListTags(h.Model, &pager)
@@ -809,13 +810,13 @@ func (h *Handler) GetTagListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetTagNewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTagNewHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "tags_new", fiber.Map{
 		"Title": "New Tag",
 	}, "")
 }
 
-func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreateTagHandler(c fiber.Ctx) error {
 	slug := strings.TrimSpace(c.FormValue("slug"))
 	if !helper.IsSlug(slug) {
 		return RenderAdminView(c, "tags_new", fiber.Map{
@@ -832,10 +833,10 @@ func (h *Handler) PostCreateTagHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/tags")
+	return webutil.RedirectTo(c, "/admin/tags")
 }
 
-func (h *Handler) GetTagEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTagEditHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -852,7 +853,7 @@ func (h *Handler) GetTagEditHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateTagHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -875,10 +876,10 @@ func (h *Handler) PostUpdateTagHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/tags")
+	return webutil.RedirectTo(c, "/admin/tags")
 }
 
-func (h *Handler) PostDeleteTagHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteTagHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -888,11 +889,11 @@ func (h *Handler) PostDeleteTagHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/tags")
+	return webutil.RedirectTo(c, "/admin/tags")
 }
 
 // Redirects
-func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
 	redirects, err := ListRedirects(h.Model, &pager)
@@ -907,13 +908,13 @@ func (h *Handler) GetRedirectListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetRedirectNewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetRedirectNewHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "redirects_new", fiber.Map{
 		"Title": "New Redirect",
 	}, "")
 }
 
-func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
 	status, err := strconv.Atoi(c.FormValue("status"))
 	if err != nil || (status != 301 && status != 302) {
 		status = 301 // default to 301 if invalid
@@ -939,10 +940,10 @@ func (h *Handler) PostCreateRedirectHandler(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	return c.Redirect("/admin/redirects")
+	return webutil.RedirectTo(c, "/admin/redirects")
 }
 
-func (h *Handler) GetRedirectEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetRedirectEditHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -959,7 +960,7 @@ func (h *Handler) GetRedirectEditHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostUpdateRedirectHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateRedirectHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -987,10 +988,10 @@ func (h *Handler) PostUpdateRedirectHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/redirects")
+	return webutil.RedirectTo(c, "/admin/redirects")
 }
 
-func (h *Handler) PostDeleteRedirectHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteRedirectHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1000,11 +1001,11 @@ func (h *Handler) PostDeleteRedirectHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/redirects")
+	return webutil.RedirectTo(c, "/admin/redirects")
 }
 
 // Encrypted Posts
-func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetEncryptedPostListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
 	posts, err := ListEncryptedPosts(h.Model, &pager)
@@ -1019,13 +1020,13 @@ func (h *Handler) GetEncryptedPostListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetEncryptedPostNewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetEncryptedPostNewHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "encrypted_posts_new", fiber.Map{
 		"Title": "New Encrypted Post",
 	}, "")
 }
 
-func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreateEncryptedPostHandler(c fiber.Ctx) error {
 	expiresAtStr := parseExpiresAtFromOption(c.FormValue("expires_at_option"), c.FormValue("expires_at_custom"))
 
 	in := CreateEncryptedPostInput{
@@ -1039,10 +1040,10 @@ func (h *Handler) PostCreateEncryptedPostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/encrypted-posts")
+	return webutil.RedirectTo(c, "/admin/encrypted-posts")
 }
 
-func (h *Handler) GetEncryptedPostEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetEncryptedPostEditHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1059,7 +1060,7 @@ func (h *Handler) GetEncryptedPostEditHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostUpdateEncryptedPostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateEncryptedPostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1085,10 +1086,10 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/encrypted-posts")
+	return webutil.RedirectTo(c, "/admin/encrypted-posts")
 }
 
-func (h *Handler) PostDeleteEncryptedPostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteEncryptedPostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1098,7 +1099,7 @@ func (h *Handler) PostDeleteEncryptedPostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/encrypted-posts")
+	return webutil.RedirectTo(c, "/admin/encrypted-posts")
 }
 
 // SettingView 用于模板展示的设置视图
@@ -1110,7 +1111,7 @@ type SettingView struct {
 }
 
 // Categories
-func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
 	categories, err := ListCategoriesService(h.Model)
 	if err != nil {
 		return err
@@ -1150,7 +1151,7 @@ func (h *Handler) GetCategoryListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
+func (h *Handler) GetCategoryTreeHandler(c fiber.Ctx) error {
 	allCategories, tree, err := GetCategoryTree(h.Model)
 	if err != nil {
 		return err
@@ -1168,7 +1169,7 @@ func (h *Handler) GetCategoryTreeHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetCategoryNewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetCategoryNewHandler(c fiber.Ctx) error {
 	// 获取所有分类用于选择父级
 	all, err := GetAllCategoriesFlat(h.Model)
 	if err != nil {
@@ -1193,7 +1194,7 @@ func (h *Handler) GetCategoryNewHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreateCategoryHandler(c fiber.Ctx) error {
 	parentIDStr := c.FormValue("parent_id")
 	var parentID int64
 	if parentIDStr != "" {
@@ -1240,10 +1241,10 @@ func (h *Handler) PostCreateCategoryHandler(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	return c.Redirect("/admin/categories")
+	return webutil.RedirectTo(c, "/admin/categories")
 }
 
-func (h *Handler) GetCategoryEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetCategoryEditHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1299,7 +1300,7 @@ func (h *Handler) GetCategoryEditHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateCategoryHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1356,10 +1357,10 @@ func (h *Handler) PostUpdateCategoryHandler(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	return c.Redirect("/admin/categories")
+	return webutil.RedirectTo(c, "/admin/categories")
 }
 
-func (h *Handler) PostDeleteCategoryHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteCategoryHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1369,10 +1370,10 @@ func (h *Handler) PostDeleteCategoryHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/categories")
+	return webutil.RedirectTo(c, "/admin/categories")
 }
 
-func (h *Handler) PostUpdateCategoryParentHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateCategoryParentHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1392,11 +1393,11 @@ func (h *Handler) PostUpdateCategoryParentHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/categories/tree")
+	return webutil.RedirectTo(c, "/admin/categories/tree")
 }
 
 // Settings
-func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
+func (h *Handler) GetSettingsHandler(c fiber.Ctx) error {
 	// 获取所有 settings，以表格形式展示
 	settings, err := ListAllSettings(h.Model)
 	if err != nil {
@@ -1409,7 +1410,7 @@ func (h *Handler) GetSettingsHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetSettingsAllHandler(c *fiber.Ctx) error {
+func (h *Handler) GetSettingsAllHandler(c fiber.Ctx) error {
 	kind := strings.TrimSpace(c.Query("kind", ""))
 	errMsg := strings.TrimSpace(c.Query("error", ""))
 
@@ -1570,10 +1571,10 @@ func (h *Handler) validateMediaSettingPayload(overrides map[string]string) error
 	return nil
 }
 
-func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	activeKind := strings.TrimSpace(c.Query("kind", ""))
 	if activeKind == "" {
-		return c.Redirect("/admin/settings/all")
+		return webutil.RedirectTo(c, "/admin/settings/all")
 	}
 
 	// 只更新当前 tab(kind) 下的配置，避免把其它 tab 未提交字段写空
@@ -1627,7 +1628,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 	}
 
 	if err = h.validateMediaSettingPayload(mediaOverrides); err != nil {
-		return c.Redirect(buildSettingsAllRedirectPath(activeKind, err.Error()))
+		return webutil.RedirectTo(c, buildSettingsAllRedirectPath(activeKind, err.Error()))
 	}
 
 	for _, item := range updates {
@@ -1639,10 +1640,10 @@ func (h *Handler) PostUpdateSettingsAllHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.Redirect(buildSettingsAllRedirectPath(activeKind, ""))
+	return webutil.RedirectTo(c, buildSettingsAllRedirectPath(activeKind, ""))
 }
 
-func (h *Handler) GetSettingEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1685,7 +1686,7 @@ func (h *Handler) GetSettingEditHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1750,10 +1751,10 @@ func (h *Handler) PostUpdateSettingHandler(c *fiber.Ctx) error {
 		return renderEditWithError(err.Error())
 	}
 
-	return c.Redirect("/admin/settings")
+	return webutil.RedirectTo(c, "/admin/settings")
 }
 
-func (h *Handler) PostDeleteSettingHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteSettingHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1763,10 +1764,10 @@ func (h *Handler) PostDeleteSettingHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/settings")
+	return webutil.RedirectTo(c, "/admin/settings")
 }
 
-func (h *Handler) GetSettingNewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetSettingNewHandler(c fiber.Ctx) error {
 	// 如果需要处理预填充的 options（例如从错误返回），可以在这里解析
 	var optionsParsed []map[string]string
 	var defaultOptionValue string
@@ -1785,7 +1786,7 @@ func (h *Handler) GetSettingNewHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreateSettingHandler(c fiber.Ctx) error {
 	s := &db.Setting{
 		Kind:               c.FormValue("kind"),
 		Name:               c.FormValue("name"),
@@ -1830,11 +1831,11 @@ func (h *Handler) PostCreateSettingHandler(c *fiber.Ctx) error {
 		}, "")
 	}
 
-	return c.Redirect("/admin/settings")
+	return webutil.RedirectTo(c, "/admin/settings")
 }
 
 // Trash
-func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTrashHandler(c fiber.Ctx) error {
 	// 获取当前选中的类型，默认为 posts
 	modelType := c.Query("type", "posts")
 
@@ -1868,7 +1869,7 @@ func (h *Handler) GetTrashHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostRestorePostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostRestorePostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1878,10 +1879,10 @@ func (h *Handler) PostRestorePostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostHardDeletePostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostHardDeletePostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1891,10 +1892,10 @@ func (h *Handler) PostHardDeletePostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostRestoreEncryptedPostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostRestoreEncryptedPostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1904,10 +1905,10 @@ func (h *Handler) PostRestoreEncryptedPostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostHardDeleteEncryptedPostHandler(c *fiber.Ctx) error {
+func (h *Handler) PostHardDeleteEncryptedPostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1917,10 +1918,10 @@ func (h *Handler) PostHardDeleteEncryptedPostHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostRestoreTagHandler(c *fiber.Ctx) error {
+func (h *Handler) PostRestoreTagHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1930,10 +1931,10 @@ func (h *Handler) PostRestoreTagHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostHardDeleteTagHandler(c *fiber.Ctx) error {
+func (h *Handler) PostHardDeleteTagHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1943,10 +1944,10 @@ func (h *Handler) PostHardDeleteTagHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
+func (h *Handler) PostRestoreRedirectHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1956,10 +1957,10 @@ func (h *Handler) PostRestoreRedirectHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostHardDeleteRedirectHandler(c *fiber.Ctx) error {
+func (h *Handler) PostHardDeleteRedirectHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1969,10 +1970,10 @@ func (h *Handler) PostHardDeleteRedirectHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostRestoreCategoryHandler(c *fiber.Ctx) error {
+func (h *Handler) PostRestoreCategoryHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1982,10 +1983,10 @@ func (h *Handler) PostRestoreCategoryHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
-func (h *Handler) PostHardDeleteCategoryHandler(c *fiber.Ctx) error {
+func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -1995,11 +1996,11 @@ func (h *Handler) PostHardDeleteCategoryHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/trash")
+	return webutil.RedirectTo(c, "/admin/trash")
 }
 
 // HttpErrorLogs
-func (h *Handler) GetHttpErrorLogListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetHttpErrorLogListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 
 	logs, err := ListHttpErrorLogs(h.Model, &pager)
@@ -2014,7 +2015,7 @@ func (h *Handler) GetHttpErrorLogListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteHttpErrorLogHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -2024,7 +2025,7 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/http-error-logs")
+	return webutil.RedirectTo(c, "/admin/http-error-logs")
 }
 
 func normalizeCommentStatus(raw string) db.CommentStatus {
@@ -2049,7 +2050,7 @@ func buildCommentListURL(status db.CommentStatus) string {
 }
 
 // Comments
-func (h *Handler) GetCommentListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetCommentListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	status := normalizeCommentStatus(c.Query("status"))
 
@@ -2066,7 +2067,7 @@ func (h *Handler) GetCommentListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostApproveCommentHandler(c *fiber.Ctx) error {
+func (h *Handler) PostApproveCommentHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || id <= 0 {
 		return fiber.ErrBadRequest
@@ -2076,10 +2077,10 @@ func (h *Handler) PostApproveCommentHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
-func (h *Handler) PostPendingCommentHandler(c *fiber.Ctx) error {
+func (h *Handler) PostPendingCommentHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || id <= 0 {
 		return fiber.ErrBadRequest
@@ -2089,10 +2090,10 @@ func (h *Handler) PostPendingCommentHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
-func (h *Handler) PostSpamCommentHandler(c *fiber.Ctx) error {
+func (h *Handler) PostSpamCommentHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || id <= 0 {
 		return fiber.ErrBadRequest
@@ -2102,10 +2103,10 @@ func (h *Handler) PostSpamCommentHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
-func (h *Handler) PostDeleteCommentHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteCommentHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || id <= 0 {
 		return fiber.ErrBadRequest
@@ -2115,11 +2116,11 @@ func (h *Handler) PostDeleteCommentHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect(buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 // Tasks
-func (h *Handler) GetTaskListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTaskListHandler(c fiber.Ctx) error {
 	tasks, err := ListTasksService(h.Model)
 	if err != nil {
 		return err
@@ -2131,13 +2132,13 @@ func (h *Handler) GetTaskListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetTaskNewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTaskNewHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "tasks_new", fiber.Map{
 		"Title": "New Task",
 	}, "")
 }
 
-func (h *Handler) PostCreateTaskHandler(c *fiber.Ctx) error {
+func (h *Handler) PostCreateTaskHandler(c fiber.Ctx) error {
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
 
 	kind := db.TaskInternal
@@ -2158,10 +2159,10 @@ func (h *Handler) PostCreateTaskHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/tasks")
+	return webutil.RedirectTo(c, "/admin/tasks")
 }
 
-func (h *Handler) GetTaskEditHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTaskEditHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -2178,7 +2179,7 @@ func (h *Handler) GetTaskEditHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostUpdateTaskHandler(c *fiber.Ctx) error {
+func (h *Handler) PostUpdateTaskHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -2203,10 +2204,10 @@ func (h *Handler) PostUpdateTaskHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/tasks")
+	return webutil.RedirectTo(c, "/admin/tasks")
 }
 
-func (h *Handler) PostDeleteTaskHandler(c *fiber.Ctx) error {
+func (h *Handler) PostDeleteTaskHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -2216,10 +2217,10 @@ func (h *Handler) PostDeleteTaskHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect("/admin/tasks")
+	return webutil.RedirectTo(c, "/admin/tasks")
 }
 
-func (h *Handler) PostTriggerTaskHandler(c *fiber.Ctx) error {
+func (h *Handler) PostTriggerTaskHandler(c fiber.Ctx) error {
 	taskCode := c.Params("code")
 	if taskCode == "" {
 		return fiber.ErrBadRequest
@@ -2231,10 +2232,10 @@ func (h *Handler) PostTriggerTaskHandler(c *fiber.Ctx) error {
 	}
 	go job.ExecuteTask(h.Model, *task)
 
-	return c.Redirect("/admin/tasks")
+	return webutil.RedirectTo(c, "/admin/tasks")
 }
 
-func (h *Handler) GetTaskRunListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetTaskRunListHandler(c fiber.Ctx) error {
 	taskCode := c.Params("code")
 	if taskCode == "" {
 		return fiber.ErrBadRequest
@@ -2276,7 +2277,7 @@ type importParseOptions struct {
 	tagField       string
 }
 
-func readImportParseOptions(c *fiber.Ctx) importParseOptions {
+func readImportParseOptions(c fiber.Ctx) importParseOptions {
 	// slug
 	slugSourceStr := c.FormValue("slug_source")
 	slugSource := SlugFromTitle
@@ -2396,20 +2397,22 @@ func readImportParseOptions(c *fiber.Ctx) importParseOptions {
 	}
 }
 
-func (h *Handler) clearImportPreviewItems(c *fiber.Ctx) error {
-	sess, err := h.Session.Store.Get(c)
+func (h *Handler) clearImportPreviewItems(c fiber.Ctx) error {
+	sess, err := h.Session.AcquireSession(c)
 	if err != nil {
 		return err
 	}
+	defer sess.Release()
 	sess.Delete(importPreviewSessionKey)
 	return sess.Save()
 }
 
-func (h *Handler) loadImportPreviewItems(c *fiber.Ctx) ([]PreviewPostItem, error) {
-	sess, err := h.Session.Store.Get(c)
+func (h *Handler) loadImportPreviewItems(c fiber.Ctx) ([]PreviewPostItem, error) {
+	sess, err := h.Session.AcquireSession(c)
 	if err != nil {
 		return nil, err
 	}
+	defer sess.Release()
 
 	raw := sess.Get(importPreviewSessionKey)
 	if raw == nil {
@@ -2442,7 +2445,7 @@ func (h *Handler) loadImportPreviewItems(c *fiber.Ctx) ([]PreviewPostItem, error
 	return items, nil
 }
 
-func (h *Handler) saveImportPreviewItems(c *fiber.Ctx, items []PreviewPostItem) error {
+func (h *Handler) saveImportPreviewItems(c fiber.Ctx, items []PreviewPostItem) error {
 	for i := range items {
 		items[i].Index = i
 		if items[i].ContentPreview == "" {
@@ -2455,15 +2458,16 @@ func (h *Handler) saveImportPreviewItems(c *fiber.Ctx, items []PreviewPostItem) 
 		return err
 	}
 
-	sess, err := h.Session.Store.Get(c)
+	sess, err := h.Session.AcquireSession(c)
 	if err != nil {
 		return err
 	}
+	defer sess.Release()
 	sess.Set(importPreviewSessionKey, string(data))
 	return sess.Save()
 }
 
-func (h *Handler) GetImportHandler(c *fiber.Ctx) error {
+func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 	if err := h.clearImportPreviewItems(c); err != nil {
 		log.Printf("clear import preview session failed: %v", err)
 	}
@@ -2472,7 +2476,7 @@ func (h *Handler) GetImportHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetImportPreviewHandler(c *fiber.Ctx) error {
+func (h *Handler) GetImportPreviewHandler(c fiber.Ctx) error {
 	items, err := h.loadImportPreviewItems(c)
 	if err != nil {
 		log.Printf("load import preview items failed: %v", err)
@@ -2496,7 +2500,7 @@ func (h *Handler) GetImportPreviewHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostImportParseItemHandler(c *fiber.Ctx) error {
+func (h *Handler) PostImportParseItemHandler(c fiber.Ctx) error {
 	if c.FormValue("reset") == "1" {
 		if err := h.clearImportPreviewItems(c); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -2603,7 +2607,7 @@ func (h *Handler) PostImportParseItemHandler(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
+func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 	// 获取上传的文件
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -2863,7 +2867,7 @@ func (h *Handler) PostImportHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
+func (h *Handler) PostImportPreviewHandler(c fiber.Ctx) error {
 	// 从表单中读取所有 items 数据
 	// 表单字段格式：items[0][title], items[0][slug], items[0][content], etc.
 
@@ -2949,10 +2953,10 @@ func (h *Handler) PostImportPreviewHandler(c *fiber.Ctx) error {
 		log.Printf("clear import preview session failed: %v", err)
 	}
 
-	return c.Redirect("/admin/posts")
+	return webutil.RedirectTo(c, "/admin/posts")
 }
 
-func (h *Handler) PostImportPreviewItemHandler(c *fiber.Ctx) error {
+func (h *Handler) PostImportPreviewItemHandler(c fiber.Ctx) error {
 	kindVal := c.FormValue("kind")
 	if kindVal != "0" && kindVal != "1" {
 		kindVal = "0"
@@ -3009,26 +3013,26 @@ func (h *Handler) PostImportPreviewItemHandler(c *fiber.Ctx) error {
 }
 
 // Metrics
-func (h *Handler) GetMetricsHandler(c *fiber.Ctx) error {
+func (h *Handler) GetMetricsHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "metrics", fiber.Map{
 		"Title": "性能监控",
 	}, "")
 }
 
-func (h *Handler) GetDevUIComponentsHandler(c *fiber.Ctx) error {
+func (h *Handler) GetDevUIComponentsHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "dev_ui_components", fiber.Map{
 		"Title": "UI组件",
 	}, "")
 }
 
 // Export
-func (h *Handler) GetExportHandler(c *fiber.Ctx) error {
+func (h *Handler) GetExportHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "export", fiber.Map{
 		"Title": "导出数据库",
 	}, "")
 }
 
-func (h *Handler) GetExportDownloadHandler(c *fiber.Ctx) error {
+func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 生成导出文件名（包含时间戳）
 	name := strings.ToLower(c.App().Config().AppName) + "_export"
 

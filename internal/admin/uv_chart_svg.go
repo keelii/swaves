@@ -281,6 +281,7 @@ func setUVChartDefaults(data *UVChartUIData) {
 }
 
 func svgFloat(v float64) string {
+	v = math.Round(v*1e6) / 1e6
 	if math.Abs(v) < 1e-9 {
 		v = 0
 	}

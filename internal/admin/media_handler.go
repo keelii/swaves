@@ -14,7 +14,7 @@ import (
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type mediaProviderOption struct {
@@ -29,7 +29,7 @@ var mediaProviderOptions = []mediaProviderOption{
 
 var mediaKindOptions = []string{db.MediaKindImage, db.MediaKindBackup, db.MediaKindFile}
 
-func (h *Handler) GetMediaListHandler(c *fiber.Ctx) error {
+func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	kind := ""
 	provider := ""
@@ -73,7 +73,7 @@ func (h *Handler) GetMediaListHandler(c *fiber.Ctx) error {
 	}, "")
 }
 
-func (h *Handler) GetMediaAssetsAPIHandler(c *fiber.Ctx) error {
+func (h *Handler) GetMediaAssetsAPIHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	kind := normalizeMediaKind(c.Query("kind"))
 	provider := normalizeMediaProvider(c.Query("provider"))
@@ -114,7 +114,7 @@ func (h *Handler) GetMediaAssetsAPIHandler(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) PostMediaUploadAPIHandler(c *fiber.Ctx) error {
+func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 	providerName := h.defaultMediaProvider()
 
 	provider, err := h.resolveMediaProvider(providerName)
@@ -233,7 +233,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) DeleteMediaAssetAPIHandler(c *fiber.Ctx) error {
+func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || id <= 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
