@@ -17,33 +17,30 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup := app.Group(share.GetBasePath())
 	uiGroup.Use(middleware.EnsureVisitorID(""))
 
-	uiGroup.Post("/_action/like/:postID", handler.PostEntityLike)
-	uiGroup.Post("/_action/comment/:postID", commentRateLimitMiddleware(), handler.PostComment)
+	uiGroup.Post("/_action/like/:postID", handler.PostEntityLike).Name("site.action.like")
+	uiGroup.Post("/_action/comment/:postID", commentRateLimitMiddleware(), handler.PostComment).Name("site.action.comment")
 
-	uiGroup.Get("/", handler.GetHome)
-	uiGroup.Get("/404", handler.GetNotFound)
-	uiGroup.Get("/error", handler.GetError)
-	// RSS
-	uiGroup.Get(share.GetRSSRoute(), handler.GetRSS)
-	// Categories
-	uiGroup.Get(share.GetCategoryRoute(), handler.GetCategoryIndex)
-	uiGroup.Get(share.GetCategoryRoute()+"/:categorySlug", handler.GetCategoryDetail)
-	// Tags
-	uiGroup.Get(share.GetTagRoute(), handler.GetTagIndex)
-	uiGroup.Get(share.GetTagRoute()+"/:tagSlug", handler.GetTagDetail)
+	uiGroup.Get("/", handler.GetHome).Name("site.home")
+	uiGroup.Get("/404", handler.GetNotFound).Name("site.not_found")
+	uiGroup.Get("/error", handler.GetError).Name("site.error")
 
-	// IST stands for ID, Slug, or Title, which are the three ways to identify a post in the URL
-	// Pages
-	uiGroup.Get(share.GetPageRoute("/:ist"), handler.GetPostByPage)
-	// Posts
-	postUrlRoute := share.GetPostRoute()
+	uiGroup.Get(share.GetRSSRoute(), handler.GetRSS).Name("site.rss")
 
-	switch postUrlRoute {
+	uiGroup.Get(share.GetCategoryRoute(), handler.GetCategoryIndex).Name("site.categories")
+	uiGroup.Get(share.GetCategoryRoute()+"/:categorySlug", handler.GetCategoryDetail).Name("site.category.detail")
+
+	uiGroup.Get(share.GetTagRoute(), handler.GetTagIndex).Name("site.tags")
+	uiGroup.Get(share.GetTagRoute()+"/:tagSlug", handler.GetTagDetail).Name("site.tag.detail")
+
+	uiGroup.Get(share.GetPageRoute("/:ist"), handler.GetPostByPage).Name("site.page.detail")
+
+	postURLRoute := share.GetPostRoute()
+	switch postURLRoute {
 	case "/":
-		uiGroup.Get("/:ist", handler.GetPostByArticle)
+		uiGroup.Get("/:ist", handler.GetPostByArticle).Name("site.post.detail")
 	case "/{datetime}":
-		uiGroup.Get("/:year/:month/:day/:ist", handler.GetPostByDateAndSlug)
+		uiGroup.Get("/:year/:month/:day/:ist", handler.GetPostByDateAndSlug).Name("site.post.detail")
 	default:
-		uiGroup.Get(postUrlRoute+"/:ist", handler.GetPostByDefault)
+		uiGroup.Get(postURLRoute+"/:ist", handler.GetPostByDefault).Name("site.post.detail")
 	}
 }

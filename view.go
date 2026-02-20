@@ -234,6 +234,17 @@ func NewViewEngine() *html.Engine {
 	engine.AddFunc("GetRSSUrl", share.GetRSSUrl)
 	engine.AddFunc("GetAdminUrl", share.GetAdminUrl)
 	engine.AddFunc("adminPath", share.BuildAdminPath)
+	engine.AddFunc("url_for", func(name string, args ...interface{}) string {
+		var params map[string]string
+		var query map[string]string
+		if len(args) > 0 {
+			params = toStringMap(args[0])
+		}
+		if len(args) > 1 {
+			query = toStringMap(args[1])
+		}
+		return share.URLFor(name, params, query)
+	})
 	engine.AddFunc("GetTagUrl", share.GetTagUrl)
 	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
 	engine.AddFunc("BuildPostURL", share.BuildPostURL)
@@ -284,6 +295,39 @@ func NewViewEngine() *html.Engine {
 	engine.Reload(true)
 
 	return engine
+}
+
+func toStringMap(raw interface{}) map[string]string {
+	if raw == nil {
+		return nil
+	}
+
+	result := map[string]string{}
+	switch values := raw.(type) {
+	case map[string]string:
+		for k, v := range values {
+			key := strings.TrimSpace(k)
+			if key == "" {
+				continue
+			}
+			result[key] = strings.TrimSpace(v)
+		}
+	case map[string]interface{}:
+		for k, v := range values {
+			key := strings.TrimSpace(k)
+			if key == "" || v == nil {
+				continue
+			}
+			result[key] = strings.TrimSpace(fmt.Sprint(v))
+		}
+	default:
+		return nil
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 func buildCommentAvatarURL(email, author string, size int) string {

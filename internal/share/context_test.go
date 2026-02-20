@@ -1,6 +1,7 @@
 package share
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -314,5 +315,42 @@ func TestCanonicalAdminPath(t *testing.T) {
 				t.Fatalf("CanonicalAdminPath(%q) = %q, want %q", tt.path, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestURLFor(t *testing.T) {
+	SetURLForResolver(func(name string, params map[string]string, query map[string]string) (string, error) {
+		if name != "admin.posts.edit" {
+			return "", fmt.Errorf("unexpected route name: %s", name)
+		}
+		if params["id"] == "" {
+			return "", fmt.Errorf("missing id param")
+		}
+		path := "/admin/posts/" + params["id"] + "/edit"
+		if query["tab"] != "" {
+			path += "?tab=" + query["tab"]
+		}
+		return path, nil
+	})
+	t.Cleanup(func() {
+		SetURLForResolver(nil)
+	})
+
+	got := URLFor(
+		"admin.posts.edit",
+		map[string]string{"id": "123"},
+		map[string]string{"tab": "comments"},
+	)
+	want := "/admin/posts/123/edit?tab=comments"
+	if got != want {
+		t.Fatalf("URLFor() = %q, want %q", got, want)
+	}
+}
+
+func TestURLForWithoutResolver(t *testing.T) {
+	SetURLForResolver(nil)
+	got := URLFor("admin.posts.edit", map[string]string{"id": "1"}, nil)
+	if got != "" {
+		t.Fatalf("URLFor() = %q, want empty string when resolver not set", got)
 	}
 }

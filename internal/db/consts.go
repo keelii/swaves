@@ -435,7 +435,7 @@ var DefaultSettings = []Setting{
 	{Sort: 17, Kind: SettingKindSiteBasics, Name: "页面字符集", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
 	{Sort: 18, Kind: SettingKindSiteBasics, Name: "时区", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
 	{Sort: 10, Kind: SettingKindAuthorInfo, Name: "作者", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
-	{Sort: 11, Kind: SettingKindAuthorInfo, Name: "邮箱", Code: "author_email", Type: "text", Value: "", Description: "作者邮箱"},
+	{Sort: 11, Kind: SettingKindAuthorInfo, Name: "邮箱", Code: "author_email", Type: "text", Value: "keeliizhou@gmail.com", Description: "作者邮箱"},
 	{Sort: 12, Kind: SettingKindAuthorInfo, Name: "头像", Code: "author_avatar", Type: "text", Value: "https://cdn.v2ex.com/avatar/1592/1040/7682_large.png", Description: "头像"},
 	{Sort: 10, Kind: SettingKindContentRouting, Name: "全局路径前缀", Code: "base_path", Reload: 1, Type: "prefix-field", Value: "", PrefixValue: "/", Description: "访问根路径", Attrs: consts.UrlPrefixValidatorJSON},
 	{Sort: 11, Kind: SettingKindContentRouting, Name: "页面路径前缀", Code: "page_url_prefix", Reload: 1, Type: "prefix-field", Value: "", PrefixValue: "/", Description: "页面根路径", Attrs: consts.UrlPrefixValidatorJSON},

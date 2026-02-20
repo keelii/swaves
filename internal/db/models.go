@@ -2049,6 +2049,167 @@ func RestorePost(db *DB, id int64) error {
 	return Restore(db, specPosts, id)
 }
 
+func queryInt64ListTx(tx *sql.Tx, op string, query string, args ...interface{}) ([]int64, error) {
+	rows, err := tx.Query(query, args...)
+	if err != nil {
+		return nil, WrapInternalErr(op+".Query", err)
+	}
+	defer rows.Close()
+
+	ids := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		if err = rows.Scan(&id); err != nil {
+			return nil, WrapInternalErr(op+".Scan", err)
+		}
+		ids = append(ids, id)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, WrapInternalErr(op+".RowsErr", err)
+	}
+	return ids, nil
+}
+
+func buildIDPlaceholders(ids []int64) (string, []interface{}) {
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	return strings.Join(placeholders, ","), args
+}
+
+// CancelPostsByStatus 删除指定 status 的文章及其关联，并清理仅由这些文章引入且已无任何关联的标签/分类。
+func CancelPostsByStatus(db *DB, status string) (int64, error) {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return 0, errors.New("status is required")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, WrapInternalErr("CancelPostsByStatus.Begin", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	postIDs, err := queryInt64ListTx(tx, "CancelPostsByStatus.ListPostIDs", `
+		SELECT id
+		FROM `+string(TablePosts)+`
+		WHERE status = ? AND deleted_at IS NULL
+	`, status)
+	if err != nil {
+		return 0, err
+	}
+	if len(postIDs) == 0 {
+		if err = tx.Commit(); err != nil {
+			return 0, WrapInternalErr("CancelPostsByStatus.CommitEmpty", err)
+		}
+		committed = true
+		return 0, nil
+	}
+
+	postPlaceholders, postArgs := buildIDPlaceholders(postIDs)
+
+	tagIDs, err := queryInt64ListTx(tx, "CancelPostsByStatus.ListTagIDs", `
+		SELECT DISTINCT tag_id
+		FROM `+string(TablePostTags)+`
+		WHERE deleted_at IS NULL
+		  AND post_id IN (`+postPlaceholders+`)
+	`, postArgs...)
+	if err != nil {
+		return 0, err
+	}
+
+	categoryIDs, err := queryInt64ListTx(tx, "CancelPostsByStatus.ListCategoryIDs", `
+		SELECT DISTINCT category_id
+		FROM `+string(TablePostCategories)+`
+		WHERE deleted_at IS NULL
+		  AND post_id IN (`+postPlaceholders+`)
+	`, postArgs...)
+	if err != nil {
+		return 0, err
+	}
+
+	if _, err = tx.Exec(`
+		DELETE FROM `+string(TablePostTags)+`
+		WHERE post_id IN (`+postPlaceholders+`)
+	`, postArgs...); err != nil {
+		return 0, WrapInternalErr("CancelPostsByStatus.DeletePostTags", err)
+	}
+
+	if _, err = tx.Exec(`
+		DELETE FROM `+string(TablePostCategories)+`
+		WHERE post_id IN (`+postPlaceholders+`)
+	`, postArgs...); err != nil {
+		return 0, WrapInternalErr("CancelPostsByStatus.DeletePostCategories", err)
+	}
+
+	res, err := tx.Exec(`
+		DELETE FROM `+string(TablePosts)+`
+		WHERE id IN (`+postPlaceholders+`)
+	`, postArgs...)
+	if err != nil {
+		return 0, WrapInternalErr("CancelPostsByStatus.DeletePosts", err)
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, WrapInternalErr("CancelPostsByStatus.RowsAffected", err)
+	}
+
+	if len(tagIDs) > 0 {
+		tagPlaceholders, tagArgs := buildIDPlaceholders(tagIDs)
+		if _, err = tx.Exec(`
+			DELETE FROM `+string(TableTags)+`
+			WHERE id IN (`+tagPlaceholders+`)
+			  AND deleted_at IS NULL
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM `+string(TablePostTags)+` pt
+				WHERE pt.tag_id = `+string(TableTags)+`.id
+				  AND pt.deleted_at IS NULL
+			  )
+		`, tagArgs...); err != nil {
+			return 0, WrapInternalErr("CancelPostsByStatus.DeleteUnusedTags", err)
+		}
+	}
+
+	if len(categoryIDs) > 0 {
+		categoryPlaceholders, categoryArgs := buildIDPlaceholders(categoryIDs)
+		if _, err = tx.Exec(`
+			DELETE FROM `+string(TableCategories)+`
+			WHERE id IN (`+categoryPlaceholders+`)
+			  AND deleted_at IS NULL
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM `+string(TablePostCategories)+` pc
+				WHERE pc.category_id = `+string(TableCategories)+`.id
+				  AND pc.deleted_at IS NULL
+			  )
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM `+string(TableCategories)+` child
+				WHERE child.parent_id = `+string(TableCategories)+`.id
+				  AND child.deleted_at IS NULL
+			  )
+		`, categoryArgs...); err != nil {
+			return 0, WrapInternalErr("CancelPostsByStatus.DeleteUnusedCategories", err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, WrapInternalErr("CancelPostsByStatus.Commit", err)
+	}
+	committed = true
+	return affected, nil
+}
+
 func ListDeletedPosts(db *DB) ([]Post, error) {
 	results, err := ListDeletedRecords(db, TablePosts, "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
 		var p Post

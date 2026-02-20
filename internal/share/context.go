@@ -1,13 +1,49 @@
 package share
 
 import (
+	"log"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
 	"swaves/internal/pathutil"
 	"swaves/internal/store"
+	"sync"
 	"time"
 )
+
+type URLForResolver func(name string, params map[string]string, query map[string]string) (string, error)
+
+var (
+	urlForResolverMu sync.RWMutex
+	urlForResolver   URLForResolver
+)
+
+func SetURLForResolver(resolver URLForResolver) {
+	urlForResolverMu.Lock()
+	urlForResolver = resolver
+	urlForResolverMu.Unlock()
+}
+
+func URLFor(name string, params map[string]string, query map[string]string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+
+	urlForResolverMu.RLock()
+	resolver := urlForResolver
+	urlForResolverMu.RUnlock()
+	if resolver == nil {
+		return ""
+	}
+
+	resolved, err := resolver(name, params, query)
+	if err != nil {
+		log.Printf("[url_for] resolve failed: name=%s err=%v", name, err)
+		return ""
+	}
+	return resolved
+}
 
 func settingValue(code string) string {
 	return strings.TrimSpace(store.GetSetting(code))

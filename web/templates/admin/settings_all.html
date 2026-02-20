@@ -82,11 +82,11 @@
 {{ if gt (len .SettingKinds) 0 }}
 <div class="settings-kind-tabs" role="tablist" aria-label="设置分类">
   {{ range .SettingKinds }}
-  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="{{ adminPath "/settings/all" }}?kind={{ . }}">{{ . }}</a>
+  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="{{ url_for "admin.settings.all" (dict "kind" .) }}">{{ . }}</a>
   {{ end }}
 </div>
 
-<form id="form" method="post" action="{{ adminPath "/settings/all" }}?kind={{ .ActiveKind }}" class="settings-all-form">
+<form id="form" method="post" action="{{ url_for "admin.settings.all.update" (dict "kind" .ActiveKind) }}" class="settings-all-form">
   <section class="settings-kind">
       {{ if or (eq .ActiveKind "内容与路由") (eq .ActiveKind "Post") }}
         <div class="settings-item-label">

@@ -2036,51 +2036,7 @@ func ConfirmImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
 }
 
 func CancelImportingPreviewItemsService(dbx *db.DB) (int64, error) {
-	tx, err := dbx.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
-	if _, err = tx.Exec(`
-		DELETE FROM `+string(db.TablePostTags)+`
-		WHERE post_id IN (
-			SELECT id FROM `+string(db.TablePosts)+`
-			WHERE status = ? AND deleted_at IS NULL
-		)
-	`, importingPostStatus); err != nil {
-		return 0, err
-	}
-
-	if _, err = tx.Exec(`
-		DELETE FROM `+string(db.TablePostCategories)+`
-		WHERE post_id IN (
-			SELECT id FROM `+string(db.TablePosts)+`
-			WHERE status = ? AND deleted_at IS NULL
-		)
-	`, importingPostStatus); err != nil {
-		return 0, err
-	}
-
-	result, err := tx.Exec(`
-		DELETE FROM `+string(db.TablePosts)+`
-		WHERE status = ? AND deleted_at IS NULL
-	`, importingPostStatus)
-	if err != nil {
-		return 0, err
-	}
-
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-
-	if err = tx.Commit(); err != nil {
-		return 0, err
-	}
-	return affected, nil
+	return db.CancelPostsByStatus(dbx, importingPostStatus)
 }
 
 func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {

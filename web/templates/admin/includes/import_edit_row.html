@@ -32,5 +32,5 @@
     <textarea data-field="content" hidden>{{ .Content }}</textarea>
     <div class="import-item-content">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
   </td>
-  <td data-import-edit-status data-state="{{ if .StatusState }}{{ .StatusState }}{{ else }}pending{{ end }}">{{ if .StatusText }}{{ .StatusText }}{{ else }}待确认{{ end }}</td>
+  <td data-import-edit-status data-state="pending">待确认</td>
 </tr>

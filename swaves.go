@@ -1,13 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/url"
+	"strings"
 	"swaves/internal/admin"
 	"swaves/internal/api"
 	"swaves/internal/consts"
 	"swaves/internal/db"
 	"swaves/internal/jobs"
 	"swaves/internal/middleware"
+	"swaves/internal/share"
 	"swaves/internal/site"
 	"swaves/internal/store"
 	"swaves/internal/types"
@@ -61,7 +65,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 	// metrics
 	app.Get("/metrics", monitor.New(monitor.Config{
 		Title: config.AppName + " metrics",
-	}))
+	})).Name("system.metrics")
 
 	//app.Use(limiter.New())
 	app.Use(middleware.AdminViewContext(globalStore.Session))
@@ -85,6 +89,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 	admin.RegisterRoutes(app, globalStore)
 	site.RegisterRoutes(app, globalStore)
 	api.RegisterRoutes(app)
+	share.SetURLForResolver(newURLForResolver(app))
 
 	return SwavesApp{
 		App:    app,
@@ -100,4 +105,48 @@ func (swv *SwavesApp) Listen() {
 
 func (swv *SwavesApp) Shutdown() {
 	swv.Store.Close()
+}
+
+func newURLForResolver(app *fiber.App) share.URLForResolver {
+	return func(name string, params map[string]string, query map[string]string) (string, error) {
+		route := app.GetRoute(strings.TrimSpace(name))
+		if strings.TrimSpace(route.Name) == "" {
+			return "", fmt.Errorf("route %q not found", name)
+		}
+
+		path := route.Path
+		consumedKeys := map[string]struct{}{}
+		for _, paramName := range route.Params {
+			value := strings.TrimSpace(params[paramName])
+			if value == "" {
+				return "", fmt.Errorf("route %q missing param %q", name, paramName)
+			}
+			consumedKeys[paramName] = struct{}{}
+			path = strings.ReplaceAll(path, ":"+paramName, url.PathEscape(value))
+		}
+
+		queryValues := url.Values{}
+		for key, value := range params {
+			k := strings.TrimSpace(key)
+			if k == "" {
+				continue
+			}
+			if _, ok := consumedKeys[k]; ok {
+				continue
+			}
+			queryValues.Set(k, value)
+		}
+		for key, value := range query {
+			k := strings.TrimSpace(key)
+			if k == "" {
+				continue
+			}
+			queryValues.Set(k, value)
+		}
+		encodedQuery := queryValues.Encode()
+		if encodedQuery != "" {
+			path += "?" + encodedQuery
+		}
+		return path, nil
+	}
 }

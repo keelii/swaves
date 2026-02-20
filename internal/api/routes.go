@@ -14,7 +14,7 @@ func RegisterRoutes(app *fiber.App) {
 		return c.JSON(fiber.Map{
 			"data": helper.MakeSlug(c.Query("name")),
 		})
-	})
+	}).Name("api.slug")
 
 	// POST: JSON body { "content": "...", "toc": true/false }，用于即时预览（支持长文）
 	apiGroup.Post("/markdown", func(c fiber.Ctx) error {
@@ -27,7 +27,7 @@ func RegisterRoutes(app *fiber.App) {
 		}
 		result := md.ParseMarkdown(body.Content, true)
 		return c.JSON(fiber.Map{"data": result.HTML})
-	})
+	}).Name("api.markdown")
 	//apiGroup.Get("/translate", func(c fiber.Ctx) error {
 	//	ret, err := translateText("en", c.Query("name"))
 	//	if err != nil {
