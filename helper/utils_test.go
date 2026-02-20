@@ -14,6 +14,21 @@ func TestMakeSlug(t *testing.T) {
 			want:  "web-ban-de-vnc",
 		},
 		{
+			name:  "distinguishes c and c plus plus",
+			input: "如何学好C语言",
+			want:  "ru-he-xue-hao-c-yu-yan",
+		},
+		{
+			name:  "maps c plus plus before slugging",
+			input: "如何学好C++语言",
+			want:  "ru-he-xue-hao-cpp-yu-yan",
+		},
+		{
+			name:  "maps c sharp before slugging",
+			input: "C# 入门",
+			want:  "csharp-ru-men",
+		},
+		{
 			name:  "keeps regular English behavior",
 			input: "Hello, World",
 			want:  "hello-world",

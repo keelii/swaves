@@ -276,6 +276,81 @@ func generateSlug(name string) string {
 	return helper.MakeSlug(name)
 }
 
+func isUniqueConstraintErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "unique constraint failed")
+}
+
+func findActiveTagBySlug(dbx *db.DB, slug string) (*db.Tag, error) {
+	row := dbx.QueryRow(`
+		SELECT id, name, slug, created_at, updated_at, deleted_at
+		FROM `+string(db.TableTags)+`
+		WHERE slug = ? AND deleted_at IS NULL
+		LIMIT 1
+	`, slug)
+
+	var t db.Tag
+	var deletedAt sql.NullInt64
+	if err := row.Scan(
+		&t.ID,
+		&t.Name,
+		&t.Slug,
+		&t.CreatedAt,
+		&t.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if deletedAt.Valid {
+		t.DeletedAt = &deletedAt.Int64
+	}
+	return &t, nil
+}
+
+func findActiveCategoryByNameOrSlug(dbx *db.DB, name string, slug string) (*db.Category, error) {
+	row := dbx.QueryRow(`
+		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
+		FROM `+string(db.TableCategories)+`
+		WHERE (name = ? OR slug = ?) AND deleted_at IS NULL
+		LIMIT 1
+	`, name, slug)
+
+	var c db.Category
+	var parentID sql.NullInt64
+	var deletedAt sql.NullInt64
+	if err := row.Scan(
+		&c.ID,
+		&parentID,
+		&c.Name,
+		&c.Slug,
+		&c.Description,
+		&c.Sort,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if parentID.Valid {
+		c.ParentID = parentID.Int64
+	}
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Int64
+	}
+
+	return &c, nil
+}
+
 func CreateTagService(dbx *db.DB, in CreateTagInput) error {
 	if in.Name == "" {
 		return errors.New("name required")
@@ -316,38 +391,16 @@ func CreateTagByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Tag, err
 	}
 
 	// 检查标签是否已存在
-	rows, err := dbx.Query(`
-		SELECT id, name, slug, created_at, updated_at, deleted_at
-		FROM `+string(db.TableTags)+`
-		WHERE slug = ? AND deleted_at IS NULL
-		LIMIT 1
-	`, slug)
+	existingTag, err := findActiveTagBySlug(dbx, slug)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	if rows.Next() {
-		var t db.Tag
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&t.ID,
-			&t.Name,
-			&t.Slug,
-			&t.CreatedAt,
-			&t.UpdatedAt,
-			&t.DeletedAt,
-		); err != nil {
-			return nil, err
+	if existingTag != nil {
+		if postCreatedAt > 0 && postCreatedAt < existingTag.CreatedAt {
+			_ = db.UpdateTagCreatedAtIfEarlier(dbx, existingTag.ID, postCreatedAt)
+			existingTag.CreatedAt = postCreatedAt
 		}
-		if deletedAt.Valid {
-			t.DeletedAt = &deletedAt.Int64
-		}
-		if postCreatedAt > 0 && postCreatedAt < t.CreatedAt {
-			_ = db.UpdateTagCreatedAtIfEarlier(dbx, t.ID, postCreatedAt)
-			t.CreatedAt = postCreatedAt
-		}
-		return &t, nil
+		return existingTag, nil
 	}
 
 	createdAt := postCreatedAt
@@ -361,6 +414,16 @@ func CreateTagByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Tag, err
 		UpdatedAt: createdAt,
 	}
 	if _, err := db.CreateTag(dbx, t); err != nil {
+		if isUniqueConstraintErr(err) {
+			existingTag, findErr := findActiveTagBySlug(dbx, slug)
+			if findErr == nil && existingTag != nil {
+				if postCreatedAt > 0 && postCreatedAt < existingTag.CreatedAt {
+					_ = db.UpdateTagCreatedAtIfEarlier(dbx, existingTag.ID, postCreatedAt)
+					existingTag.CreatedAt = postCreatedAt
+				}
+				return existingTag, nil
+			}
+		}
 		return nil, err
 	}
 	return t, nil
@@ -792,45 +855,16 @@ func CreateCategoryByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Cat
 	}
 
 	// 检查分类是否已存在（根据名称和 slug，由于是单选，只需要检查顶级分类中是否存在相同的 slug）
-	rows, err := dbx.Query(`
-		SELECT id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at
-		FROM `+string(db.TableCategories)+`
-		WHERE (name = ? OR slug = ?) AND deleted_at IS NULL
-		LIMIT 1
-	`, name, slug)
+	existingCategory, err := findActiveCategoryByNameOrSlug(dbx, name, slug)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	if rows.Next() {
-		var c db.Category
-		var parentID sql.NullInt64
-		var deletedAt sql.NullInt64
-		if err := rows.Scan(
-			&c.ID,
-			&parentID,
-			&c.Name,
-			&c.Slug,
-			&c.Description,
-			&c.Sort,
-			&c.CreatedAt,
-			&c.UpdatedAt,
-			&deletedAt,
-		); err != nil {
-			return nil, err
+	if existingCategory != nil {
+		if postCreatedAt > 0 && postCreatedAt < existingCategory.CreatedAt {
+			_ = db.UpdateCategoryCreatedAtIfEarlier(dbx, existingCategory.ID, postCreatedAt)
+			existingCategory.CreatedAt = postCreatedAt
 		}
-		if parentID.Valid {
-			c.ParentID = parentID.Int64
-		}
-		if deletedAt.Valid {
-			c.DeletedAt = &deletedAt.Int64
-		}
-		if postCreatedAt > 0 && postCreatedAt < c.CreatedAt {
-			_ = db.UpdateCategoryCreatedAtIfEarlier(dbx, c.ID, postCreatedAt)
-			c.CreatedAt = postCreatedAt
-		}
-		return &c, nil
+		return existingCategory, nil
 	}
 
 	createdAt := postCreatedAt
@@ -844,6 +878,16 @@ func CreateCategoryByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Cat
 		UpdatedAt: createdAt,
 	}
 	if _, err := db.CreateCategory(dbx, c); err != nil {
+		if isUniqueConstraintErr(err) {
+			existingCategory, findErr := findActiveCategoryByNameOrSlug(dbx, name, slug)
+			if findErr == nil && existingCategory != nil {
+				if postCreatedAt > 0 && postCreatedAt < existingCategory.CreatedAt {
+					_ = db.UpdateCategoryCreatedAtIfEarlier(dbx, existingCategory.ID, postCreatedAt)
+					existingCategory.CreatedAt = postCreatedAt
+				}
+				return existingCategory, nil
+			}
+		}
 		return nil, err
 	}
 	return c, nil

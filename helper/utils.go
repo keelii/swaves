@@ -15,6 +15,17 @@ import (
 var (
 	slugASCIIToNonASCIIBoundary = regexp.MustCompile(`([A-Za-z0-9])([^\x00-\x7F])`)
 	slugNonASCIIToASCIIBoundary = regexp.MustCompile(`([^\x00-\x7F])([A-Za-z0-9])`)
+	slugPreReplacePairs         = []string{
+		"C++", "CPP",
+		"c++", "cpp",
+		"C#", "CSharp",
+		"c#", "csharp",
+		"F#", "FSharp",
+		"f#", "fsharp",
+		".NET", "DotNet",
+		".net", "dotnet",
+	}
+	slugPreReplacer = strings.NewReplacer(slugPreReplacePairs...)
 )
 
 // FlattenTOC 扁平化目录结构
@@ -130,6 +141,7 @@ func normalizeSlugInput(str string) string {
 	if str == "" {
 		return ""
 	}
+	str = slugPreReplacer.Replace(str)
 	str = slugASCIIToNonASCIIBoundary.ReplaceAllString(str, `$1 $2`)
 	str = slugNonASCIIToASCIIBoundary.ReplaceAllString(str, `$1 $2`)
 	return str

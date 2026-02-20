@@ -1,0 +1,36 @@
+<tr data-import-item-row data-post-id="{{ .PostID }}">
+  <td>
+    <div class="import-field-stack">
+      <input type="hidden" data-field="post_id" value="{{ .PostID }}">
+      <input type="hidden" data-field="filename" value="{{ .Filename }}">
+      <input type="hidden" data-field="created_at_unix" value="{{ .CreatedAtUnix }}">
+      <input type="text" data-field="title" value="{{ .Title }}" required style="width: 100%;">
+      <input type="text" data-field="slug" value="{{ .Slug }}" required style="width: 100%;">
+      <input type="text" data-field="created_at" value="{{ .CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">
+    </div>
+  </td>
+  <td>
+    <div class="valign">
+      <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="draft" {{ if eq .Status "draft" }}checked{{ end }}> draft</label>
+      <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="published" {{ if eq .Status "published" }}checked{{ end }}> published</label>
+    </div>
+  </td>
+  <td>
+    <div class="valign">
+      <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="0" {{ if or (eq .Kind "0") (eq .Kind "") }}checked{{ end }}> post</label>
+      <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="1" {{ if eq .Kind "1" }}checked{{ end }}> page</label>
+    </div>
+  </td>
+  <td>
+    <div class="import-field-stack">
+      <input type="text" data-field="tags" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
+      <select data-field="category" data-selected="{{ .Category }}" data-categories="{{ .Categories }}" style="width: 100%;"></select>
+      <input type="hidden" data-field="categories" value="{{ .Categories }}">
+    </div>
+  </td>
+  <td>
+    <textarea data-field="content" hidden>{{ .Content }}</textarea>
+    <div class="import-item-content">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
+  </td>
+  <td data-import-edit-status data-state="{{ if .StatusState }}{{ .StatusState }}{{ else }}pending{{ end }}">{{ if .StatusText }}{{ .StatusText }}{{ else }}待确认{{ end }}</td>
+</tr>

@@ -17,59 +17,51 @@ const (
 	settingBackupLocalDir         = "backup_local_dir"
 	settingBackupLocalIntervalMin = "backup_local_interval_min"
 	settingBackupLocalMaxCount    = "backup_local_max_count"
-	clearEncryptedPostsNoopMsg    = "没有发现需要清理的文章"
 )
 
-func HelloJob() error {
-	log.Println("Hello Job executed!")
-	time.Sleep(2 * time.Second)
-	return nil
-}
-func HelloJob1() error {
-	log.Println("Hello Job1 executed!")
-	time.Sleep(23 * time.Second)
-	return errors.New("fdsa error")
+func jobMessage(message string) *string {
+	return &message
 }
 
 // DatabaseBackupJob 数据库备份任务
-func DatabaseBackupJob(reg *Registry) (string, error) {
+func DatabaseBackupJob(reg *Registry) (*string, error) {
 	if reg == nil || reg.DB == nil {
-		return "", errors.New("reg.DB is nil")
+		return nil, errors.New("reg.DB is nil")
 	}
 
 	cfg := loadLocalBackupConfig(reg)
 	backupDir := resolveBackupDir(cfg.Dir)
 
 	if err := helper.EnsureDir(backupDir, 0755); err != nil {
-		return "", fmt.Errorf("无法创建备份目录 %s: %w", backupDir, err)
+		return nil, fmt.Errorf("无法创建备份目录 %s: %w", backupDir, err)
 	}
 
 	latestAt, err := latestLocalBackupAt(backupDir)
 	if err != nil {
-		return "", fmt.Errorf("读取本地备份目录失败: %w", err)
+		return nil, fmt.Errorf("读取本地备份目录失败: %w", err)
 	}
 	if !latestAt.IsZero() && cfg.Interval > 0 {
 		elapsed := time.Since(latestAt)
 		if elapsed < cfg.Interval {
 			remain := (cfg.Interval - elapsed).Round(time.Second)
-			return fmt.Sprintf("skip local backup: interval=%s remaining=%s", cfg.Interval, remain), nil
+			return jobMessage(fmt.Sprintf("skip local backup: interval=%s remaining=%s", cfg.Interval, remain)), nil
 		}
 	}
 
 	result, err := db.ExportSQLiteWithHash(reg.DB, backupDir)
 	if err != nil {
 		if strings.Contains(err.Error(), "无需重复导出") {
-			return err.Error(), nil
+			return jobMessage(err.Error()), nil
 		}
-		return "", err
+		return nil, err
 	}
 
 	removedCount, err := pruneLocalBackupFiles(backupDir, cfg.MaxCount)
 	if err != nil {
-		return "", fmt.Errorf("本地备份完成但清理旧备份失败: %w", err)
+		return nil, fmt.Errorf("本地备份完成但清理旧备份失败: %w", err)
 	}
 
-	return fmt.Sprintf("%v, dir=%s, pruned=%d", result, backupDir, removedCount), nil
+	return jobMessage(fmt.Sprintf("%v, dir=%s, pruned=%d", result, backupDir, removedCount)), nil
 }
 
 type localBackupConfig struct {
@@ -191,18 +183,18 @@ func pruneLocalBackupFiles(backupDir string, maxCount int) (int, error) {
 }
 
 // DeleteExpiredEncryptedPostsJob 软删除已过期的加密文章（expires_at < 当前时间）
-func DeleteExpiredEncryptedPostsJob(reg *Registry) (string, error) {
+func DeleteExpiredEncryptedPostsJob(reg *Registry) (*string, error) {
 	if reg == nil || reg.DB == nil {
-		return "", errors.New("reg.DB is nil")
+		return nil, errors.New("reg.DB is nil")
 	}
 	nowUnix := time.Now().Unix()
 	n, err := db.SoftDeleteExpiredEncryptedPosts(reg.DB, nowUnix)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if n > 0 {
-		return fmt.Sprintf("已软删除 %d 条过期加密文章\n", n), nil
+		return jobMessage(fmt.Sprintf("已软删除 %d 条过期加密文章", n)), nil
 	}
 
-	return clearEncryptedPostsNoopMsg + "\n", nil
+	return nil, nil
 }

@@ -196,3 +196,123 @@ func TestBuildPostURL(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildAdminPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		settings map[string]string
+		path     string
+		want     string
+	}{
+		{
+			name: "default admin path root",
+			settings: map[string]string{
+				"admin_path": "/admin",
+			},
+			path: "",
+			want: "/admin",
+		},
+		{
+			name: "custom admin path with canonical input",
+			settings: map[string]string{
+				"admin_path": "/admin/dashboard",
+			},
+			path: "/admin/posts",
+			want: "/admin/dashboard/posts",
+		},
+		{
+			name: "custom admin path with direct suffix",
+			settings: map[string]string{
+				"admin_path": "/admin/dashboard",
+			},
+			path: "/posts",
+			want: "/admin/dashboard/posts",
+		},
+		{
+			name: "quoted admin path should be normalized",
+			settings: map[string]string{
+				"admin_path": "\"/console\"",
+			},
+			path: "/admin/settings/all",
+			want: "/console/settings/all",
+		},
+	}
+
+	previous, hasPrevious := store.Settings.Load().(map[string]string)
+	t.Cleanup(func() {
+		if !hasPrevious {
+			store.Settings.Store(map[string]string{})
+			return
+		}
+		store.Settings.Store(previous)
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store.Settings.Store(tt.settings)
+			if got := BuildAdminPath(tt.path); got != tt.want {
+				t.Fatalf("BuildAdminPath(%q) = %q, want %q", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCanonicalAdminPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		settings map[string]string
+		path     string
+		want     string
+	}{
+		{
+			name: "canonicalize custom admin root",
+			settings: map[string]string{
+				"admin_path": "/admin/dashboard",
+			},
+			path: "/admin/dashboard",
+			want: "/admin",
+		},
+		{
+			name: "canonicalize custom admin child route",
+			settings: map[string]string{
+				"admin_path": "/admin/dashboard",
+			},
+			path: "/admin/dashboard/posts",
+			want: "/admin/posts",
+		},
+		{
+			name: "already canonical route keeps original",
+			settings: map[string]string{
+				"admin_path": "/admin/dashboard",
+			},
+			path: "/admin/settings/all",
+			want: "/admin/settings/all",
+		},
+		{
+			name: "root admin path keeps original route",
+			settings: map[string]string{
+				"admin_path": "/",
+			},
+			path: "/admin/posts",
+			want: "/admin/posts",
+		},
+	}
+
+	previous, hasPrevious := store.Settings.Load().(map[string]string)
+	t.Cleanup(func() {
+		if !hasPrevious {
+			store.Settings.Store(map[string]string{})
+			return
+		}
+		store.Settings.Store(previous)
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store.Settings.Store(tt.settings)
+			if got := CanonicalAdminPath(tt.path); got != tt.want {
+				t.Fatalf("CanonicalAdminPath(%q) = %q, want %q", tt.path, got, tt.want)
+			}
+		})
+	}
+}

@@ -226,7 +226,7 @@
   <div class="hstack">
     <button type="button" class="button" id="import-confirm-btn">确认导入</button>
     <button type="button" class="button secondary" id="import-cancel-btn">取消导入</button>
-    <button type="button" class="button outline" id="toggle-import-status-btn">全量切换发布状态</button>
+    <button type="button" class="button outline" id="toggle-import-status-btn">切换发布状态</button>
   </div>
 
   <table class="import-edit-table">
@@ -242,48 +242,31 @@
     </thead>
     <tbody id="import-edit-rows">
     {{ range .ImportingItems }}
-      <tr data-import-item-row data-post-id="{{ .PostID }}">
-        <td>
-          <div class="import-field-stack">
-            <input type="hidden" data-field="post_id" value="{{ .PostID }}">
-            <input type="hidden" data-field="filename" value="{{ .Filename }}">
-            <input type="hidden" data-field="created_at_unix" value="{{ .CreatedAtUnix }}">
-            <input type="text" data-field="title" value="{{ .Title }}" required style="width: 100%;">
-            <input type="text" data-field="slug" value="{{ .Slug }}" required style="width: 100%;">
-            <input type="text" data-field="created_at" value="{{ .CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">
-          </div>
-        </td>
-        <td>
-          <div class="valign">
-            <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="draft" {{ if eq .Status "draft" }}checked{{ end }}> draft</label>
-            <label><input type="radio" data-field="status" name="import_status_{{ .PostID }}" value="published" {{ if eq .Status "published" }}checked{{ end }}> published</label>
-          </div>
-        </td>
-        <td>
-          <div class="valign">
-            <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="0" {{ if or (eq .Kind "0") (eq .Kind "") }}checked{{ end }}> post</label>
-            <label><input type="radio" data-field="kind" name="import_kind_{{ .PostID }}" value="1" {{ if eq .Kind "1" }}checked{{ end }}> page</label>
-          </div>
-        </td>
-        <td>
-          <div class="import-field-stack">
-            <input type="text" data-field="tags" value="{{ .Tags }}" placeholder="tag1, tag2" style="width: 100%;">
-            <select data-field="category" data-selected="{{ .Category }}" data-categories="{{ .Categories }}" style="width: 100%;"></select>
-            <input type="hidden" data-field="categories" value="{{ .Categories }}">
-          </div>
-        </td>
-        <td>
-          <textarea data-field="content" hidden>{{ .Content }}</textarea>
-          <div class="import-item-content">{{ if .ContentPreview }}{{ .ContentPreview }}{{ else }}-{{ end }}</div>
-        </td>
-        <td data-import-edit-status data-state="pending">待确认</td>
-      </tr>
+      {{ template "admin/includes/import_edit_row" . }}
     {{ else }}
       <tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>
     {{ end }}
     </tbody>
   </table>
 </div>
+
+<template id="import-edit-row-template">
+  {{ template "admin/includes/import_edit_row" (dict
+    "PostID" 0
+    "Filename" ""
+    "Title" ""
+    "Slug" ""
+    "Content" ""
+    "ContentPreview" "-"
+    "Status" "draft"
+    "Kind" "0"
+    "CreatedAt" ""
+    "CreatedAtUnix" 0
+    "Tags" ""
+    "Category" ""
+    "Categories" ""
+  ) }}
+</template>
 
 <dialog id="import-cancel-dialog">
   <header>
@@ -301,6 +284,7 @@ $(function() {
   var parseItemURL = '{{ adminPath "/import/parse-item" }}';
   var confirmItemURL = '{{ adminPath "/import/confirm-item" }}';
   var cancelItemURL = '{{ adminPath "/import/cancel" }}';
+  var postListURL = '{{ adminPath "/posts" }}';
   var baseCategoryOptions = [
     {{- range .AllCategories }}
     {{ printf "%q" .Name }},
@@ -318,6 +302,9 @@ $(function() {
   var $cancelBtn = $('#import-cancel-btn');
   var $cancelDialog = $('#import-cancel-dialog');
   var $cancelConfirmBtn = $('#import-cancel-confirm-btn');
+  var $rowTemplate = $('#import-edit-row-template');
+  var parseConcurrency = 50;
+  var confirmConcurrency = 50;
   var selectedFiles = [];
   var isParsing = false;
   var isConfirming = false;
@@ -326,44 +313,42 @@ $(function() {
   function show(sel, disp) { $(sel).css('display', disp || 'inline'); }
   function hide(sel) { $(sel).css('display', 'none'); }
 
-  function escapeHTML(raw) {
-    return String(raw == null ? '' : raw)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+  function normalizeConcurrency(value, fallback) {
+    var num = Number(value);
+    if (!Number.isFinite(num) || num < 1) {
+      return fallback;
+    }
+    return Math.max(1, Math.floor(num));
   }
 
-  function notify(message, variant) {
-    if (window.ot && typeof window.ot.toast === 'function') {
-      window.ot.toast(message, '', { variant: variant || 'info' });
-    }
-  }
-
-  function openDialog($dialog) {
-    if (!$dialog.length) {
-      return false;
-    }
-    var dialogEl = $dialog.get(0);
-    if (!dialogEl || typeof dialogEl.showModal !== 'function') {
-      return false;
-    }
-    if (dialogEl.open) {
-      dialogEl.close();
-    }
-    dialogEl.showModal();
-    return true;
-  }
-
-  function closeDialog($dialog) {
-    if (!$dialog.length) {
+  async function runWithConcurrency(items, concurrency, worker) {
+    var list = Array.isArray(items) ? items : [];
+    if (list.length === 0) {
       return;
     }
-    var dialogEl = $dialog.get(0);
-    if (dialogEl && dialogEl.open) {
-      dialogEl.close();
+
+    var limit = normalizeConcurrency(concurrency, 1);
+    if (limit > list.length) {
+      limit = list.length;
     }
+
+    var nextIndex = 0;
+    async function runWorker() {
+      while (true) {
+        var index = nextIndex;
+        nextIndex += 1;
+        if (index >= list.length) {
+          return;
+        }
+        await worker(list[index], index, list.length);
+      }
+    }
+
+    var workers = [];
+    for (var i = 0; i < limit; i++) {
+      workers.push(runWorker());
+    }
+    await Promise.all(workers);
   }
 
   function splitCSV(raw) {
@@ -432,14 +417,6 @@ $(function() {
     }
 
     $dropStatus.text('已选择 ' + selectedFiles.length + ' 个文件');
-    var html = '<div>文件列表：</div><ul>';
-    selectedFiles.slice(0, 5).forEach(function(file) {
-      html += '<li>' + escapeHTML(file.name || '(unnamed)') + '</li>';
-    });
-    if (selectedFiles.length > 5) {
-      html += '<li>...以及另外 ' + (selectedFiles.length - 5) + ' 个文件</li>';
-    }
-    html += '</ul>';
   }
 
   function setSelectedFiles(files) {
@@ -471,50 +448,46 @@ $(function() {
     };
   }
 
-  function buildImportRowHTML(item) {
-    var statusDraftChecked = item.status !== 'published' ? ' checked' : '';
-    var statusPublishedChecked = item.status === 'published' ? ' checked' : '';
-    var kindPostChecked = item.kind !== '1' ? ' checked' : '';
-    var kindPageChecked = item.kind === '1' ? ' checked' : '';
-    var preview = item.content_preview ? item.content_preview : '-';
+  function createImportRow(item) {
+    var tpl = $rowTemplate.get(0);
+    if (!tpl || !tpl.content) {
+      return null;
+    }
 
-    return '' +
-      '<tr data-import-item-row data-post-id="' + item.post_id + '">' +
-        '<td>' +
-          '<div class="import-field-stack">' +
-            '<input type="hidden" data-field="post_id" value="' + item.post_id + '">' +
-            '<input type="hidden" data-field="filename" value="' + escapeHTML(item.filename) + '">' +
-            '<input type="hidden" data-field="created_at_unix" value="' + item.created_at_unix + '">' +
-            '<input type="text" data-field="title" value="' + escapeHTML(item.title) + '" required style="width: 100%;">' +
-            '<input type="text" data-field="slug" value="' + escapeHTML(item.slug) + '" required style="width: 100%;">' +
-            '<input type="text" data-field="created_at" value="' + escapeHTML(item.created_at) + '" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 100%;">' +
-          '</div>' +
-        '</td>' +
-        '<td>' +
-          '<div class="valign">' +
-            '<label><input type="radio" data-field="status" name="import_status_' + item.post_id + '" value="draft"' + statusDraftChecked + '> draft</label>' +
-            '<label><input type="radio" data-field="status" name="import_status_' + item.post_id + '" value="published"' + statusPublishedChecked + '> published</label>' +
-          '</div>' +
-        '</td>' +
-        '<td>' +
-          '<div class="valign">' +
-            '<label><input type="radio" data-field="kind" name="import_kind_' + item.post_id + '" value="0"' + kindPostChecked + '> post</label>' +
-            '<label><input type="radio" data-field="kind" name="import_kind_' + item.post_id + '" value="1"' + kindPageChecked + '> page</label>' +
-          '</div>' +
-        '</td>' +
-        '<td>' +
-          '<div class="import-field-stack">' +
-            '<input type="text" data-field="tags" value="' + escapeHTML(item.tags) + '" placeholder="tag1, tag2" style="width: 100%;">' +
-            '<select data-field="category" data-selected="' + escapeHTML(item.category) + '" data-categories="' + escapeHTML(item.categories) + '" style="width: 100%;"></select>' +
-            '<input type="hidden" data-field="categories" value="' + escapeHTML(item.categories) + '">' +
-          '</div>' +
-        '</td>' +
-        '<td>' +
-          '<textarea data-field="content" hidden>' + escapeHTML(item.content) + '</textarea>' +
-          '<div class="import-item-content">' + escapeHTML(preview) + '</div>' +
-        '</td>' +
-        '<td data-import-edit-status data-state="pending">待确认</td>' +
-      '</tr>';
+    var rowEl = tpl.content.firstElementChild ? tpl.content.firstElementChild.cloneNode(true) : null;
+    if (!rowEl) {
+      return null;
+    }
+
+    var $row = $(rowEl);
+    $row.attr('data-post-id', item.post_id);
+    $row.find('[data-field="post_id"]').val(item.post_id);
+    $row.find('[data-field="filename"]').val(item.filename);
+    $row.find('[data-field="created_at_unix"]').val(item.created_at_unix);
+    $row.find('[data-field="title"]').val(item.title);
+    $row.find('[data-field="slug"]').val(item.slug);
+    $row.find('[data-field="created_at"]').val(item.created_at);
+    $row.find('[data-field="tags"]').val(item.tags);
+    $row.find('[data-field="categories"]').val(item.categories);
+    $row.find('[data-field="content"]').val(item.content);
+    $row.find('.import-item-content').text(item.content_preview ? item.content_preview : '-');
+
+    var statusName = 'import_status_' + item.post_id;
+    var statusValue = item.status === 'published' ? 'published' : 'draft';
+    $row.find('[data-field="status"]').attr('name', statusName).prop('checked', false);
+    $row.find('[data-field="status"][value="' + statusValue + '"]').prop('checked', true);
+
+    var kindName = 'import_kind_' + item.post_id;
+    var kindValue = item.kind === '1' ? '1' : '0';
+    $row.find('[data-field="kind"]').attr('name', kindName).prop('checked', false);
+    $row.find('[data-field="kind"][value="' + kindValue + '"]').prop('checked', true);
+
+    var $categorySelect = $row.find('select[data-field="category"]');
+    $categorySelect.attr('data-selected', item.category);
+    $categorySelect.attr('data-categories', item.categories);
+
+    setRowStatus($row, 'pending', '待确认');
+    return $row;
   }
 
   function initCategorySelect($row) {
@@ -640,8 +613,11 @@ $(function() {
     ensureEditPanelVisible();
     $editRows.find('#import-edit-empty-row').remove();
 
-    var rowHTML = buildImportRowHTML(item);
-    var $newRow = $(rowHTML);
+    var $newRow = createImportRow(item);
+    if (!$newRow || !$newRow.length) {
+      setEditSummary('导入预览行渲染失败，请刷新后重试', 'error');
+      return;
+    }
     var $existing = $editRows.find('tr[data-import-item-row][data-post-id="' + item.post_id + '"]');
     if ($existing.length > 0) {
       $existing.replaceWith($newRow);
@@ -844,7 +820,7 @@ $(function() {
       if (!response.ok || !result || !result.ok) {
         var errorMessage = (result && result.error) ? result.error : ('HTTP ' + response.status);
         setEditSummary('取消导入失败：' + errorMessage, 'error');
-        notify('取消导入失败：' + errorMessage, 'danger');
+        notify('取消导入失败：' + errorMessage, '', { variant: 'danger' });
         return;
       }
 
@@ -855,11 +831,11 @@ $(function() {
 
       clearImportingRows();
       setEditSummary('已取消导入，删除 ' + deletedCount + ' 条临时记录。', 'success');
-      notify('已取消导入，删除 ' + deletedCount + ' 条临时记录。', 'success');
+      notify('已取消导入，删除 ' + deletedCount + ' 条临时记录。', '', { variant: 'success' });
     } catch (err) {
       var requestErrMsg = (err && err.message) ? err.message : 'request failed';
       setEditSummary('取消导入失败：' + requestErrMsg, 'error');
-      notify('取消导入失败：' + requestErrMsg, 'danger');
+      notify('取消导入失败：' + requestErrMsg, '', { variant: 'danger' });
     } finally {
       isCancelling = false;
       $inputs.prop('disabled', false);
@@ -906,9 +882,10 @@ $(function() {
 
     var successCount = 0;
     var failCount = 0;
+    var completedCount = 0;
 
-    for (var i = 0; i < rowElements.length; i++) {
-      var $row = $(rowElements[i]);
+    await runWithConcurrency(rowElements, confirmConcurrency, async function(rowElement) {
+      var $row = $(rowElement);
       var payload = buildConfirmPayload($row);
       setRowStatus($row, 'running', '确认中...');
 
@@ -942,11 +919,12 @@ $(function() {
         setRowStatus($row, 'error', '失败: ' + (err && err.message ? err.message : 'request failed'));
       }
 
+      completedCount++;
       setEditSummary(
-        '确认进度 ' + (i + 1) + '/' + rowElements.length + '，成功 ' + successCount + '，失败 ' + failCount,
+        '确认进度 ' + completedCount + '/' + rowElements.length + '，成功 ' + successCount + '，失败 ' + failCount,
         failCount > 0 ? 'error' : 'warning'
       );
-    }
+    });
 
     $inputs.prop('disabled', false);
     isConfirming = false;
@@ -955,8 +933,7 @@ $(function() {
     }
 
     if (failCount === 0) {
-      setEditSummary('确认完成，全部成功。', 'success');
-      syncEditSummaryByRows('success');
+      window.location.href = postListURL;
       return;
     }
 
@@ -991,12 +968,12 @@ $(function() {
 
     var successCount = 0;
     var failCount = 0;
+    var completedCount = 0;
     var failedNames = [];
     var $inputs = $form.find('input, select, button, textarea');
     $inputs.prop('disabled', true);
 
-    for (var i = 0; i < files.length; i++) {
-      var file = files[i];
+    await runWithConcurrency(files, parseConcurrency, async function(file) {
       var formData = buildParseFormData(file, options);
 
       try {
@@ -1030,11 +1007,12 @@ $(function() {
         failedNames.push((file.name || 'unnamed') + '：' + (err && err.message ? err.message : 'request failed'));
       }
 
+      completedCount++;
       setEditSummary(
-        '导入进度 ' + (i + 1) + '/' + files.length + '，成功 ' + successCount + '，失败 ' + failCount,
+        '导入进度 ' + completedCount + '/' + files.length + '，成功 ' + successCount + '，失败 ' + failCount,
         failCount > 0 ? 'error' : 'warning'
       );
-    }
+    });
 
     $inputs.prop('disabled', false);
     isParsing = false;

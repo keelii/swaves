@@ -1,51 +1,123 @@
 package job
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
 
-func TestShouldSkipTaskRun(t *testing.T) {
-	testCases := []struct {
-		name     string
-		taskCode string
-		status   string
-		message  string
-		wantSkip bool
-	}{
-		{
-			name:     "skip clear_encrypted_posts no-op message",
-			taskCode: "clear_encrypted_posts",
-			status:   "success",
-			message:  "没有发现需要清理的文章\n",
-			wantSkip: true,
+	"swaves/internal/db"
+)
+
+func openJobTestDB(t *testing.T) *db.DB {
+	t.Helper()
+	dsn := filepath.Join(t.TempDir(), "data.sqlite")
+	dbx := db.Open(db.Options{DSN: dsn})
+	t.Cleanup(func() {
+		_ = dbx.Close()
+	})
+	return dbx
+}
+
+func withTestRegistry(t *testing.T, reg *Registry) {
+	t.Helper()
+	prev := registry
+	registry = reg
+	t.Cleanup(func() {
+		registry = prev
+	})
+}
+
+func mustCreateTask(t *testing.T, dbx *db.DB, code string, kind db.TaskKind) db.Task {
+	t.Helper()
+	task := db.Task{
+		Code:        code,
+		Name:        code,
+		Description: "test task",
+		Schedule:    "@daily",
+		Enabled:     1,
+		Kind:        kind,
+	}
+	if _, err := db.CreateTask(dbx, &task); err != nil {
+		t.Fatalf("CreateTask failed: %v", err)
+	}
+	return task
+}
+
+func TestExecuteTaskNoOpDoesNotUpdateTaskStatus(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task := mustCreateTask(t, dbx, "task_noop", db.TaskUser)
+
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: func(_ *Registry) (*string, error) {
+					return nil, nil
+				},
+			},
 		},
-		{
-			name:     "do not skip when status error",
-			taskCode: "clear_encrypted_posts",
-			status:   "error",
-			message:  "没有发现需要清理的文章",
-			wantSkip: false,
-		},
-		{
-			name:     "do not skip when task code different",
-			taskCode: "remote_backup_data",
-			status:   "success",
-			message:  "没有发现需要清理的文章",
-			wantSkip: false,
-		},
-		{
-			name:     "do not skip when message different",
-			taskCode: "clear_encrypted_posts",
-			status:   "success",
-			message:  "已软删除 2 条过期加密文章",
-			wantSkip: false,
-		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, task)
+
+	gotTask, err := db.GetTaskByCode(dbx, task.Code)
+	if err != nil {
+		t.Fatalf("GetTaskByCode failed: %v", err)
+	}
+	if gotTask.LastRunAt != nil {
+		t.Fatalf("LastRunAt should stay nil for no-op, got %v", *gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "" {
+		t.Fatalf("LastStatus should stay empty for no-op, got %q", gotTask.LastStatus)
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := shouldSkipTaskRun(tc.taskCode, tc.status, tc.message)
-			if got != tc.wantSkip {
-				t.Fatalf("shouldSkipTaskRun(%q, %q, %q)=%v, want %v", tc.taskCode, tc.status, tc.message, got, tc.wantSkip)
-			}
-		})
+	runs, err := db.ListTaskRuns(dbx, task.Code, "", 100)
+	if err != nil {
+		t.Fatalf("ListTaskRuns failed: %v", err)
+	}
+	if len(runs) != 0 {
+		t.Fatalf("expected no task runs for no-op, got %d", len(runs))
+	}
+}
+
+func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task := mustCreateTask(t, dbx, "task_success", db.TaskUser)
+
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: func(_ *Registry) (*string, error) {
+					msg := "ok"
+					return &msg, nil
+				},
+			},
+		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, task)
+
+	gotTask, err := db.GetTaskByCode(dbx, task.Code)
+	if err != nil {
+		t.Fatalf("GetTaskByCode failed: %v", err)
+	}
+	if gotTask.LastRunAt == nil || *gotTask.LastRunAt <= 0 {
+		t.Fatalf("LastRunAt should be updated, got %v", gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "success" {
+		t.Fatalf("LastStatus should be success, got %q", gotTask.LastStatus)
+	}
+
+	runs, err := db.ListTaskRuns(dbx, task.Code, "", 100)
+	if err != nil {
+		t.Fatalf("ListTaskRuns failed: %v", err)
+	}
+	if len(runs) != 1 {
+		t.Fatalf("expected 1 task run, got %d", len(runs))
+	}
+	if runs[0].Status != "success" {
+		t.Fatalf("task run status should be success, got %q", runs[0].Status)
 	}
 }

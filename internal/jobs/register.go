@@ -3,7 +3,6 @@ package job
 import (
 	"fmt"
 	"log"
-	"strings"
 	"swaves/internal/db"
 	"swaves/internal/store"
 	"swaves/internal/types"
@@ -13,7 +12,11 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-type JobFunc func(reg *Registry) (string, error)
+// JobFunc 返回值约定：
+// - (message, nil): 任务成功，更新任务状态并按需记录 TaskRun
+// - (nil, err): 任务失败
+// - (nil, nil): 任务无动作（no-op），不更新任务最后状态和最后执行时间
+type JobFunc func(reg *Registry) (*string, error)
 
 var (
 	registry *Registry
@@ -109,21 +112,35 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	if !ok {
 		err := fmt.Errorf("job not registered: %s", t.Code)
 		log.Printf("[task] %v", err)
-		_ = db.UpdateTaskStatus(dbx, t.Code, "error", startAt.Unix())
+		if updateErr := db.UpdateTaskStatus(dbx, t.Code, "error", startAt.Unix()); updateErr != nil {
+			log.Printf("[task] update task status failed code=%s status=error: %v", t.Code, updateErr)
+		}
 		if t.Kind == db.TaskUser {
-			_, _ = db.CreateTaskRun(dbx, &db.TaskRun{
+			if _, createErr := db.CreateTaskRun(dbx, &db.TaskRun{
 				TaskCode:   t.Code,
 				Status:     "error",
 				Message:    err.Error(),
 				StartedAt:  startAt.Unix(),
 				FinishedAt: time.Now().Unix(),
 				Duration:   int64(time.Since(startAt).Milliseconds()),
-			})
+			}); createErr != nil {
+				log.Printf("[task] create task run failed code=%s status=error: %v", t.Code, createErr)
+			}
 		}
 		return
 	}
 
-	ret, err := jobItem.Func(registry)
+	retPtr, err := jobItem.Func(registry)
+	if err == nil && retPtr == nil {
+		log.Printf("[task] execute job %s no-op", t.Code)
+		return
+	}
+
+	ret := ""
+	if retPtr != nil {
+		ret = *retPtr
+	}
+
 	status := "success"
 	if err != nil {
 		status = "error"
@@ -131,14 +148,11 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	} else {
 		log.Printf("[task] execute job %s success: %s", t.Code, ret)
 	}
-	_ = db.UpdateTaskStatus(dbx, t.Code, status, startAt.Unix())
-
-	if t.Kind == db.TaskInternal {
-		return
+	if updateErr := db.UpdateTaskStatus(dbx, t.Code, status, startAt.Unix()); updateErr != nil {
+		log.Printf("[task] update task status failed code=%s status=%s: %v", t.Code, status, updateErr)
 	}
 
-	if shouldSkipTaskRun(t.Code, status, ret) {
-		log.Printf("[task] skip task run for %s: %s", t.Code, strings.TrimSpace(ret))
+	if t.Kind == db.TaskInternal {
 		return
 	}
 
@@ -155,22 +169,10 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		taskRun.Message = err.Error()
 	}
 
-	_, err = db.CreateTaskRun(dbx, taskRun)
-	if err != nil {
-		log.Printf("[task] create task run failed: %v", err)
+	if _, createErr := db.CreateTaskRun(dbx, taskRun); createErr != nil {
+		log.Printf("[task] create task run failed code=%s status=%s: %v", t.Code, status, createErr)
 		return
 	}
-}
-
-func shouldSkipTaskRun(taskCode string, status string, message string) bool {
-	if status != "success" {
-		return false
-	}
-	if taskCode != "clear_encrypted_posts" {
-		return false
-	}
-
-	return strings.TrimSpace(message) == clearEncryptedPostsNoopMsg
 }
 
 // 注册 Job

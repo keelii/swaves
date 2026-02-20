@@ -231,37 +231,13 @@ $(function() {
   var uploadStatusBaseIsError = $uploadStatus.hasClass('error');
   var confirmResolver = null;
 
-  function openDialog($dialog) {
-    if (!$dialog.length) {
-      return false;
-    }
-    var dialogEl = $dialog.get(0);
-    if (!dialogEl || typeof dialogEl.showModal !== 'function') {
-      return false;
-    }
-    if (dialogEl.open) {
-      dialogEl.close();
-    }
-    dialogEl.showModal();
-    return true;
-  }
-
-  function notify(message, title) {
-    message = String(message || '');
-    title = String(title || '提示');
-
-    $alertTitle.text(title);
-    $alertMessage.text(message);
-    if (openDialog($alertDialog)) {
-      return;
-    }
-
-    if (window.ot && typeof window.ot.toast === 'function') {
-      window.ot.toast(message, title, { variant: 'warning' });
-      return;
-    }
-
-    console.warn(title + ': ' + message);
+  function showMediaNotice(message, title) {
+    notify(message, title || '提示', {
+      variant: 'warning',
+      dialog: $alertDialog,
+      titleTarget: $alertTitle,
+      messageTarget: $alertMessage
+    });
   }
 
   function askConfirm(message, title) {
@@ -346,7 +322,7 @@ $(function() {
 
   function handleFiles(fileList) {
     if (!uploadReady) {
-      notify(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      showMediaNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
     }
 
@@ -399,9 +375,9 @@ $(function() {
             }
             message += '。失败原因：' + detailText;
           }
-          notify(message);
+          showMediaNotice(message);
         } else {
-          notify('上传完成：共 ' + successCount + ' 个文件');
+          showMediaNotice('上传完成：共 ' + successCount + ' 个文件');
         }
 
         if (successCount > 0) {
@@ -446,15 +422,12 @@ $(function() {
   }
 
   $confirmOK.on('click', function() {
-    var dialogEl = $confirmDialog.get(0);
     if (confirmResolver) {
       var resolve = confirmResolver;
       confirmResolver = null;
       resolve(true);
     }
-    if (dialogEl && dialogEl.open) {
-      dialogEl.close();
-    }
+    closeDialog($confirmDialog);
   });
 
   $confirmDialog.on('close', function() {
@@ -467,7 +440,7 @@ $(function() {
 
   $dropzone.on('click', function() {
     if (!uploadReady) {
-      notify(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      showMediaNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
     }
 
@@ -500,7 +473,7 @@ $(function() {
 
   $dropzone.on('drop', function(e) {
     if (!uploadReady) {
-      notify(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      showMediaNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
     }
 
@@ -519,9 +492,9 @@ $(function() {
   $(document).on('click', '.media-copy-url', function() {
     var url = $(this).data('url') || '';
     copyToClipboard(url).then(function() {
-      notify('已复制链接');
+      showMediaNotice('已复制链接');
     }).catch(function() {
-      notify('复制失败');
+      showMediaNotice('复制失败');
     });
   });
 
@@ -530,16 +503,16 @@ $(function() {
     var name = $(this).data('name') || '';
     var markdown = markdownImage(url, name);
     copyToClipboard(markdown).then(function() {
-      notify('已复制 Markdown');
+      showMediaNotice('已复制 Markdown');
     }).catch(function() {
-      notify('复制失败');
+      showMediaNotice('复制失败');
     });
   });
 
   $(document).on('click', '.media-delete', function() {
     var id = $(this).data('id');
     if (!id) {
-      notify('无效 ID');
+      showMediaNotice('无效 ID');
       return;
     }
     askConfirm('确认删除该媒体？会同时删除远端文件。', '确认删除').then(function(confirmed) {
@@ -559,7 +532,7 @@ $(function() {
           $('tr[data-media-id="' + id + '"]').remove();
         })
         .catch(function(err) {
-          notify(err.message || '删除失败');
+          showMediaNotice(err.message || '删除失败');
         });
     });
   });

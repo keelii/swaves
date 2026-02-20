@@ -1,7 +1,12 @@
 package job
 
 import (
+	"path/filepath"
 	"testing"
+	"time"
+
+	"swaves/internal/consts"
+	"swaves/internal/db"
 )
 
 func TestBuildS3ObjectKey(t *testing.T) {
@@ -138,5 +143,64 @@ func TestBuildRemoteBackupFileURL(t *testing.T) {
 	}
 	if got := buildRemoteBackupFileURL("", ""); got != "" {
 		t.Fatalf("buildRemoteBackupFileURL should return empty for empty asset, got %q", got)
+	}
+}
+
+func openPushJobTestDB(t *testing.T) *db.DB {
+	t.Helper()
+	dsn := filepath.Join(t.TempDir(), "data.sqlite")
+	dbx := db.Open(db.Options{DSN: dsn})
+	t.Cleanup(func() {
+		_ = dbx.Close()
+	})
+	return dbx
+}
+
+func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
+	dbx := openPushJobTestDB(t)
+
+	if err := db.UpdateSettingByCode(dbx, settingSyncPushEnabled, "1"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", settingSyncPushEnabled, err)
+	}
+	if err := db.UpdateSettingByCode(dbx, settingSyncPushEndpoint, "https://s3.example.com/my-bucket"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", settingSyncPushEndpoint, err)
+	}
+	if err := db.UpdateSettingByCode(dbx, settingSyncPushTimeoutSec, "120"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", settingSyncPushTimeoutSec, err)
+	}
+
+	prevAK := consts.S3AccessKeyID
+	prevSK := consts.S3SecretAccessKey
+	consts.S3AccessKeyID = "ak_test"
+	consts.S3SecretAccessKey = "sk_test"
+	t.Cleanup(func() {
+		consts.S3AccessKeyID = prevAK
+		consts.S3SecretAccessKey = prevSK
+	})
+
+	cfg := loadPushJobConfig(dbx)
+	if !cfg.Enabled {
+		t.Fatal("Enabled should be true")
+	}
+	if cfg.S3Bucket != "my-bucket" {
+		t.Fatalf("S3Bucket=%q, want %q", cfg.S3Bucket, "my-bucket")
+	}
+	if cfg.S3Endpoint != "https://s3.example.com" {
+		t.Fatalf("S3Endpoint=%q, want %q", cfg.S3Endpoint, "https://s3.example.com")
+	}
+	if cfg.S3Region != "auto" {
+		t.Fatalf("S3Region=%q, want %q", cfg.S3Region, "auto")
+	}
+	if !cfg.S3ForcePath {
+		t.Fatal("S3ForcePath should be true")
+	}
+	if cfg.S3AccessKey != "ak_test" {
+		t.Fatalf("S3AccessKey=%q, want %q", cfg.S3AccessKey, "ak_test")
+	}
+	if cfg.S3SecretKey != "sk_test" {
+		t.Fatalf("S3SecretKey=%q, want %q", cfg.S3SecretKey, "sk_test")
+	}
+	if cfg.Timeout != 120*time.Second {
+		t.Fatalf("Timeout=%v, want %v", cfg.Timeout, 120*time.Second)
 	}
 }

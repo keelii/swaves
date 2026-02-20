@@ -2830,17 +2830,23 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	log.Println("export to:", os.TempDir(), name)
 
 	// 创建临时目录
-	tmpDir := filepath.Join(os.TempDir(), name)
-	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+	tmpDir, err := os.MkdirTemp(os.TempDir(), name+"-")
+	if err != nil {
 		return RenderAdminView(c, "export", fiber.Map{
 			"Title": "导出数据库",
 			"Error": "Failed to create export directory: " + err.Error(),
 		}, "")
 	}
+	cleanupTmpDir := func() {
+		if removeErr := os.RemoveAll(tmpDir); removeErr != nil {
+			log.Printf("export cleanup temp dir failed: dir=%s err=%v", tmpDir, removeErr)
+		}
+	}
 
 	// 调用 ExportSQLiteWithHash 函数（传目录，函数内自动生成文件名）
 	result, err := db.ExportSQLiteWithHash(h.Model, tmpDir)
 	if err != nil {
+		cleanupTmpDir()
 		return RenderAdminView(c, "export", fiber.Map{
 			"Title": "导出数据库",
 			"Error": "Failed to export database: " + err.Error(),
@@ -2854,6 +2860,7 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 
 	// 发送文件
 	if err := c.SendFile(result.File); err != nil {
+		cleanupTmpDir()
 		return RenderAdminView(c, "export", fiber.Map{
 			"Title": "导出数据库",
 			"Error": "Failed to send file: " + err.Error(),
@@ -2861,10 +2868,12 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	}
 
 	// 下载完成后删除临时文件
-	go func() {
+	go func(dir string) {
 		time.Sleep(5 * time.Second) // 等待下载完成
-		os.Remove(result.File)
-	}()
+		if removeErr := os.RemoveAll(dir); removeErr != nil {
+			log.Printf("export cleanup temp dir failed: dir=%s err=%v", dir, removeErr)
+		}
+	}(tmpDir)
 
 	return nil
 }

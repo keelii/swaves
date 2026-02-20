@@ -41,31 +41,31 @@ type pushJobConfig struct {
 
 const remoteBackupMediaProvider = "s3"
 
-func PushSystemDataJob(reg *Registry) (string, error) {
+func PushSystemDataJob(reg *Registry) (*string, error) {
 	if reg == nil || reg.DB == nil {
-		return "", errors.New("reg.DB is nil")
+		return nil, errors.New("reg.DB is nil")
 	}
 
 	cfg := loadPushJobConfig(reg.DB)
 	if !cfg.Enabled {
-		return "remote data backup disabled", nil
+		return jobMessage("remote data backup disabled"), nil
 	}
 	if cfg.S3Bucket == "" {
-		return "", errors.New("s3 bucket is empty")
+		return nil, errors.New("s3 bucket is empty")
 	}
 	if cfg.S3Region == "" {
-		return "", errors.New("s3 region is empty")
+		return nil, errors.New("s3 region is empty")
 	}
 	if cfg.S3AccessKey == "" {
-		log.Printf("[task] remote_backup_data missing env: SWV_S3_ACCESS_KEY_ID")
+		log.Printf("[task] remote_backup_data missing env: SWAVES_S3_ACCESS_KEY_ID")
 	}
 	if cfg.S3SecretKey == "" {
-		log.Printf("[task] remote_backup_data missing env: SWV_S3_SECRET_ACCESS_KEY")
+		log.Printf("[task] remote_backup_data missing env: SWAVES_S3_SECRET_ACCESS_KEY")
 	}
 
 	tmpDir, err := os.MkdirTemp("", "swaves-sync-push-*")
 	if err != nil {
-		return "", fmt.Errorf("create temp dir failed: %w", err)
+		return nil, fmt.Errorf("create temp dir failed: %w", err)
 	}
 	defer func() {
 		if removeErr := os.RemoveAll(tmpDir); removeErr != nil {
@@ -75,28 +75,28 @@ func PushSystemDataJob(reg *Registry) (string, error) {
 
 	snapshot, err := db.ExportSQLiteWithHash(reg.DB, tmpDir)
 	if err != nil {
-		return "", fmt.Errorf("export sqlite snapshot failed: %w", err)
+		return nil, fmt.Errorf("export sqlite snapshot failed: %w", err)
 	}
 
 	objectKey := buildS3ObjectKey(snapshot.File)
 	response, statusCode, err := uploadSnapshotToS3(cfg, reg.Config.AppName, snapshot, objectKey)
 	if err != nil {
-		return "", fmt.Errorf("push failed status=%d response=%s: %w", statusCode, response, err)
+		return nil, fmt.Errorf("push failed status=%d response=%s: %w", statusCode, response, err)
 	}
 
 	mediaID, err := createRemoteBackupMediaRecord(reg.DB, cfg, snapshot, objectKey)
 	if err != nil {
-		return "", fmt.Errorf("remote backup saved but media record failed: %w", err)
+		return nil, fmt.Errorf("remote backup saved but media record failed: %w", err)
 	}
 
-	return fmt.Sprintf(
+	return jobMessage(fmt.Sprintf(
 		"status=%d hash=%s size=%dB media_id=%d response=%s",
 		statusCode,
 		shortHash(snapshot.Hash),
 		snapshot.Size,
 		mediaID,
 		response,
-	), nil
+	)), nil
 }
 
 func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportResult, objectKey string) (response string, statusCode int, err error) {

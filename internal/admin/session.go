@@ -14,7 +14,7 @@ func NewSessionStore() *types.SessionStore {
 		Database:   "./data.sqlite",
 		Table:      string(db.TableSessions),
 		Reset:      false,
-		GCInterval: 1 * time.Minute, // 每10分钟清理一次过期 session
+		GCInterval: 1 * time.Minute, // 每1分钟清理一次过期 session
 	})
 	store := session.NewStore(session.Config{
 		Storage:        storage,
@@ -22,5 +22,5 @@ func NewSessionStore() *types.SessionStore {
 		CookieHTTPOnly: true,
 	})
 
-	return &types.SessionStore{store}
+	return &types.SessionStore{Store: store}
 }
