@@ -1,10 +1,10 @@
 package api
 
 import (
+	"swaves/helper"
 	"swaves/internal/md"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gosimple/slug"
 )
 
 func RegisterRoutes(app *fiber.App) {
@@ -12,7 +12,7 @@ func RegisterRoutes(app *fiber.App) {
 
 	apiGroup.Get("/slug", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"data": slug.Make(c.Query("name")),
+			"data": helper.MakeSlug(c.Query("name")),
 		})
 	})
 

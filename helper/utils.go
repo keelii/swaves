@@ -5,10 +5,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/gosimple/slug"
 	"golang.org/x/net/html"
+)
+
+var (
+	slugASCIIToNonASCIIBoundary = regexp.MustCompile(`([A-Za-z0-9])([^\x00-\x7F])`)
+	slugNonASCIIToASCIIBoundary = regexp.MustCompile(`([^\x00-\x7F])([A-Za-z0-9])`)
 )
 
 // FlattenTOC 扁平化目录结构
@@ -109,6 +115,24 @@ func EnsureDir(dirPath string, perm os.FileMode) error {
 
 func IsSlug(str string) bool {
 	return slug.IsSlug(str)
+}
+
+func MakeSlug(str string) string {
+	normalized := normalizeSlugInput(str)
+	if normalized == "" {
+		return ""
+	}
+	return strings.Trim(slug.Make(normalized), "-")
+}
+
+func normalizeSlugInput(str string) string {
+	str = strings.TrimSpace(str)
+	if str == "" {
+		return ""
+	}
+	str = slugASCIIToNonASCIIBoundary.ReplaceAllString(str, `$1 $2`)
+	str = slugNonASCIIToASCIIBoundary.ReplaceAllString(str, `$1 $2`)
+	return str
 }
 
 func JSONEncode(str string) string {

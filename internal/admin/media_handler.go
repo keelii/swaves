@@ -65,12 +65,6 @@ func (h *Handler) GetMediaListHandler(c *fiber.Ctx) error {
 		"Title":                 "Media",
 		"Items":                 items,
 		"Pager":                 pager,
-		"ProviderOptions":       mediaProviderOptions,
-		"KindOptions":           mediaKindOptions,
-		"ActiveProvider":        provider,
-		"ActiveKind":            kind,
-		"KindQuery":             kind,
-		"ProviderFilter":        provider,
 		"DefaultProvider":       defaultProvider,
 		"DefaultProviderReady":  defaultProviderErr == nil,
 		"DefaultProviderError":  errorString(defaultProviderErr),
@@ -80,8 +74,8 @@ func (h *Handler) GetMediaListHandler(c *fiber.Ctx) error {
 
 func (h *Handler) GetMediaAssetsAPIHandler(c *fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
-	kind := strings.TrimSpace(c.Query("kind"))
-	provider := strings.TrimSpace(c.Query("provider"))
+	kind := normalizeMediaKind(c.Query("kind"))
+	provider := normalizeMediaProvider(c.Query("provider"))
 
 	total, err := db.CountMedia(h.Model, kind, provider)
 	if err != nil {
@@ -120,10 +114,7 @@ func (h *Handler) GetMediaAssetsAPIHandler(c *fiber.Ctx) error {
 }
 
 func (h *Handler) PostMediaUploadAPIHandler(c *fiber.Ctx) error {
-	providerName := strings.TrimSpace(c.FormValue("provider"))
-	if providerName == "" {
-		providerName = h.defaultMediaProvider()
-	}
+	providerName := h.defaultMediaProvider()
 
 	provider, err := h.resolveMediaProvider(providerName)
 	if err != nil {
@@ -140,10 +131,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	kind := strings.TrimSpace(c.FormValue("kind"))
-	if kind == "" {
-		kind = db.MediaKindImage
-	}
+	kind := db.MediaKindImage
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -322,8 +310,9 @@ func (h *Handler) resolveMediaProvider(providerName string) (media.Provider, err
 		ImageKitPrivateKey:    store.GetSetting("media_imagekit_private_key"),
 	})
 
-	resolved := strings.TrimSpace(strings.ToLower(providerName))
-	if resolved != "" && resolved != "see" && resolved != "imagekit" {
+	rawProvider := strings.TrimSpace(providerName)
+	resolved := normalizeMediaProvider(providerName)
+	if rawProvider != "" && resolved == "" {
 		return nil, errors.New("unsupported provider: " + providerName)
 	}
 
@@ -348,6 +337,31 @@ func mediaProviderLabelMap() map[string]string {
 		result[item.Value] = item.Label
 	}
 	return result
+}
+
+func normalizeMediaProvider(raw string) string {
+	raw = strings.TrimSpace(strings.ToLower(raw))
+	switch raw {
+	case "s.ee", "smms", "sm.ms":
+		raw = "see"
+	}
+
+	for _, item := range mediaProviderOptions {
+		if raw == item.Value {
+			return raw
+		}
+	}
+	return ""
+}
+
+func normalizeMediaKind(raw string) string {
+	raw = strings.TrimSpace(strings.ToLower(raw))
+	for _, item := range mediaKindOptions {
+		if raw == item {
+			return raw
+		}
+	}
+	return ""
 }
 
 func (h *Handler) validateMediaProviderConfig(providerName string) error {

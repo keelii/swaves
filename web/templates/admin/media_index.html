@@ -1,10 +1,11 @@
 <style>
   .media-upload {
-    margin-bottom: var(--space-4);
-    padding: var(--space-4);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-medium);
-    background: var(--card);
+    margin-bottom: 2em;
+    /*margin-bottom: var(--space-4);*/
+    /*padding: var(--space-4);*/
+    /*border: 1px solid var(--border);*/
+    /*border-radius: var(--radius-medium);*/
+    /*background: var(--card);*/
   }
 
   .media-upload-dropzone {
@@ -107,7 +108,6 @@
       {{ if not .DefaultProviderReady }}（{{ .DefaultProviderError }}）{{ end }}
     </p>
   </div>
-  <p class="media-upload-tip">上传成功后会写入本地媒体表，后续可复制链接/Markdown，或执行远端删除。</p>
 </section>
 
 <table>
@@ -226,6 +226,8 @@ $(function() {
   var isUploading = false;
   var uploadReady = ($dropzone.attr('data-upload-ready') || '') === '1';
   var uploadError = ($dropzone.attr('data-upload-error') || '').trim();
+  var uploadStatusBaseText = String($uploadStatus.text() || '').replace(/\s+/g, ' ').trim();
+  var uploadStatusBaseIsError = $uploadStatus.hasClass('error');
   var confirmResolver = null;
 
   function openDialog($dialog) {
@@ -287,6 +289,12 @@ $(function() {
     $dropzone.toggleClass('is-uploading', working);
     if (text) {
       $uploadStatus.text(text);
+      $uploadStatus.removeClass('error');
+      return;
+    }
+    if (!working) {
+      $uploadStatus.text(uploadStatusBaseText);
+      $uploadStatus.toggleClass('error', uploadStatusBaseIsError);
     }
   }
 

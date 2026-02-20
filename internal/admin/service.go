@@ -11,8 +11,6 @@ import (
 	"swaves/internal/md"
 	"swaves/internal/types"
 	"time"
-
-	slg "github.com/gosimple/slug"
 )
 
 var ErrInvalidPassword = errors.New("invalid password")
@@ -275,17 +273,7 @@ func ListTags(dbx *db.DB, pager *types.Pagination) ([]db.Tag, error) {
 }
 
 func generateSlug(name string) string {
-	// 简单的 slug 生成：转换为小写，替换空格为连字符
-	slug := strings.ToLower(name)
-	slug = strings.ReplaceAll(slug, " ", "-")
-	// 移除其他特殊字符，只保留字母、数字和连字符
-	var result strings.Builder
-	for _, r := range slug {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-			result.WriteRune(r)
-		}
-	}
-	return result.String()
+	return helper.MakeSlug(name)
 }
 
 func CreateTagService(dbx *db.DB, in CreateTagInput) error {
@@ -795,7 +783,7 @@ func CreateCategoryByName(dbx *db.DB, name string, postCreatedAt int64) (*db.Cat
 		return nil, errors.New("name required")
 	}
 
-	slug := strings.Trim(slg.Make(name), "-")
+	slug := helper.MakeSlug(name)
 	if slug == "" {
 		slug = "category"
 	}
@@ -1344,9 +1332,9 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 		switch slugSource {
 		case SlugFromFilename:
 			if file.Filename != "" {
-				slug = slg.Make(file.Filename)
+				slug = helper.MakeSlug(file.Filename)
 			} else {
-				slug = slg.Make(title)
+				slug = helper.MakeSlug(title)
 			}
 		case SlugFromFrontmatter:
 			fieldName := slugField
@@ -1359,12 +1347,12 @@ func ParseImportFiles(files []ImportFile, slugSource SlugSource, slugField strin
 				}
 			}
 			if slug == "" {
-				slug = slg.Make(title)
+				slug = helper.MakeSlug(title)
 			}
 		case SlugFromTitle:
-			slug = slg.Make(title)
+			slug = helper.MakeSlug(title)
 		default:
-			slug = slg.Make(title)
+			slug = helper.MakeSlug(title)
 		}
 
 		// 根据 status 来源确定 status
@@ -1591,10 +1579,10 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 	case SlugFromFilename:
 		// 从文件名生成 slug
 		if file.Filename != "" {
-			slug = slg.Make(file.Filename)
+			slug = helper.MakeSlug(file.Filename)
 		} else {
 			// 如果文件名不存在，回退到从 title 生成
-			slug = slg.Make(title)
+			slug = helper.MakeSlug(title)
 		}
 	case SlugFromFrontmatter:
 		// 从 frontmatter 指定字段获取
@@ -1609,14 +1597,14 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 		}
 		// 如果 frontmatter 中没有找到，回退到从 title 生成
 		if slug == "" {
-			slug = slg.Make(title)
+			slug = helper.MakeSlug(title)
 		}
 	case SlugFromTitle:
 		// 从 title 生成
-		slug = slg.Make(title)
+		slug = helper.MakeSlug(title)
 	default:
 		// 默认从 title 生成
-		slug = slg.Make(title)
+		slug = helper.MakeSlug(title)
 	}
 
 	status := "draft"
@@ -1651,7 +1639,7 @@ func importSingleMarkdown(dbx *db.DB, file ImportFile, slugSource SlugSource, sl
 
 	slug = strings.Trim(slug, "-")
 	if slug == "" || !helper.IsSlug(slug) {
-		slug = strings.Trim(slg.Make(title), "-")
+		slug = helper.MakeSlug(title)
 		if slug == "" {
 			slug = "post"
 		}
@@ -1754,7 +1742,7 @@ func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
 
 	slug := strings.Trim(item.Slug, "-")
 	if slug == "" {
-		slug = strings.Trim(slg.Make(item.Title), "-")
+		slug = helper.MakeSlug(item.Title)
 	}
 	if slug == "" {
 		slug = "post"
