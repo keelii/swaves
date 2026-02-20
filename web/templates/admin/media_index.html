@@ -76,6 +76,15 @@
     flex-wrap: wrap;
   }
 
+  .media-row-actions .media-delete {
+    color: #b42318;
+  }
+
+  .media-row-actions .media-delete:hover {
+    border-color: #b42318;
+    color: #b42318;
+  }
+
   @media (max-width: 960px) {
     .media-upload-dropzone {
       min-height: 150px;
@@ -110,8 +119,8 @@
       <th>文件名</th>
       <th>链接</th>
       <th class="cell-num">大小(B)</th>
-      <th class="cell-r-time">创建时间</th>
-      <th class="cell-op">操作</th>
+      <th class="cell-f-time">创建时间</th>
+      <th class="cell-op-3">操作</th>
     </tr>
   </thead>
   <tbody>
@@ -134,12 +143,37 @@
         <td>{{ .SizeBytes }}</td>
         <td>{{ formatTime .CreatedAt }}</td>
         <td class="cell-op">
-          <div class="media-row-actions">
+          <div class="row-actions media-row-actions">
             {{ if .FileURL }}
-              <button type="button" class="button outline media-copy-url" data-url="{{ .FileURL }}">复制链接</button>
-              <button type="button" class="button outline media-copy-markdown" data-url="{{ .FileURL }}" data-name="{{ .OriginalName }}">复制 Markdown</button>
+              <button
+                type="button"
+                class="row-action-btn media-copy-url"
+                data-url="{{ .FileURL }}"
+                aria-label="复制链接"
+                title="复制链接"
+              >
+                {{ template "lucide_icon" dict "name" "link-2" "size" "16" }}
+              </button>
+              <button
+                type="button"
+                class="row-action-btn media-copy-markdown"
+                data-url="{{ .FileURL }}"
+                data-name="{{ .OriginalName }}"
+                aria-label="复制 Markdown"
+                title="复制 Markdown"
+              >
+                {{ template "lucide_icon" dict "name" "square-pen" "size" "16" }}
+              </button>
             {{ end }}
-            <button type="button" class="button outline media-delete" data-id="{{ .ID }}">删除</button>
+            <button
+              type="button"
+              class="row-action-btn media-delete"
+              data-id="{{ .ID }}"
+              aria-label="删除"
+              title="删除"
+            >
+              {{ template "lucide_icon" dict "name" "trash-2" "size" "16" }}
+            </button>
           </div>
         </td>
       </tr>
@@ -156,18 +190,97 @@
   </tfoot>
 </table>
 
+<dialog id="media-alert-dialog">
+  <header>
+    <h4 id="media-alert-title">提示</h4>
+  </header>
+  <p id="media-alert-message"></p>
+  <footer>
+    <button class="button" type="button" commandfor="media-alert-dialog" command="close">知道了</button>
+  </footer>
+</dialog>
+
+<dialog id="media-confirm-dialog">
+  <header>
+    <h4 id="media-confirm-title">确认操作</h4>
+  </header>
+  <p id="media-confirm-message"></p>
+  <footer>
+    <button class="button outline" type="button" commandfor="media-confirm-dialog" command="close">取消</button>
+    <button class="button" type="button" id="media-confirm-ok">确认</button>
+  </footer>
+</dialog>
+
 <script>
 $(function() {
-  function notify(message) {
-    window.alert(message);
-  }
-
   var $dropzone = $('#media-dropzone');
   var $fileInput = $('#media-drop-input');
   var $uploadStatus = $('#media-upload-status');
+  var $alertDialog = $('#media-alert-dialog');
+  var $alertTitle = $('#media-alert-title');
+  var $alertMessage = $('#media-alert-message');
+  var $confirmDialog = $('#media-confirm-dialog');
+  var $confirmTitle = $('#media-confirm-title');
+  var $confirmMessage = $('#media-confirm-message');
+  var $confirmOK = $('#media-confirm-ok');
   var isUploading = false;
   var uploadReady = ($dropzone.attr('data-upload-ready') || '') === '1';
   var uploadError = ($dropzone.attr('data-upload-error') || '').trim();
+  var confirmResolver = null;
+
+  function openDialog($dialog) {
+    if (!$dialog.length) {
+      return false;
+    }
+    var dialogEl = $dialog.get(0);
+    if (!dialogEl || typeof dialogEl.showModal !== 'function') {
+      return false;
+    }
+    if (dialogEl.open) {
+      dialogEl.close();
+    }
+    dialogEl.showModal();
+    return true;
+  }
+
+  function notify(message, title) {
+    message = String(message || '');
+    title = String(title || '提示');
+
+    $alertTitle.text(title);
+    $alertMessage.text(message);
+    if (openDialog($alertDialog)) {
+      return;
+    }
+
+    if (window.ot && typeof window.ot.toast === 'function') {
+      window.ot.toast(message, title, { variant: 'warning' });
+      return;
+    }
+
+    console.warn(title + ': ' + message);
+  }
+
+  function askConfirm(message, title) {
+    message = String(message || '');
+    title = String(title || '确认操作');
+
+    return new Promise(function(resolve) {
+      if (confirmResolver) {
+        confirmResolver(false);
+        confirmResolver = null;
+      }
+
+      $confirmTitle.text(title);
+      $confirmMessage.text(message);
+      if (!openDialog($confirmDialog)) {
+        resolve(false);
+        return;
+      }
+
+      confirmResolver = resolve;
+    });
+  }
 
   function setUploading(working, text) {
     isUploading = working;
@@ -217,42 +330,44 @@ $(function() {
     var confirmText = files.length === 1
       ? ('确认上传文件 "' + files[0].name + '" ?')
       : ('确认上传这 ' + files.length + ' 个文件？');
-    if (!window.confirm(confirmText)) {
-      return;
-    }
-
-    setUploading(true, '上传中 0/' + files.length + '...');
-
-    var successCount = 0;
-    var failedCount = 0;
-    var failedNames = [];
-    var chain = Promise.resolve();
-
-    files.forEach(function(file, idx) {
-      chain = chain.then(function() {
-        setUploading(true, '上传中 ' + (idx + 1) + '/' + files.length + '...');
-        return uploadSingleFile(file).then(function() {
-          successCount += 1;
-        }).catch(function() {
-          failedCount += 1;
-          failedNames.push(file.name || '(unnamed)');
-        });
-      });
-    });
-
-    chain.finally(function() {
-      if (failedCount > 0) {
-        notify('上传完成：成功 ' + successCount + '，失败 ' + failedCount + '。失败文件：' + failedNames.join('、'));
-      } else {
-        notify('上传完成：共 ' + successCount + ' 个文件');
-      }
-
-      if (successCount > 0) {
-        window.location.reload();
+    askConfirm(confirmText, '确认上传').then(function(confirmed) {
+      if (!confirmed) {
         return;
       }
 
-      setUploading(false, '上传失败，请重试');
+      setUploading(true, '上传中 0/' + files.length + '...');
+
+      var successCount = 0;
+      var failedCount = 0;
+      var failedNames = [];
+      var chain = Promise.resolve();
+
+      files.forEach(function(file, idx) {
+        chain = chain.then(function() {
+          setUploading(true, '上传中 ' + (idx + 1) + '/' + files.length + '...');
+          return uploadSingleFile(file).then(function() {
+            successCount += 1;
+          }).catch(function() {
+            failedCount += 1;
+            failedNames.push(file.name || '(unnamed)');
+          });
+        });
+      });
+
+      chain.finally(function() {
+        if (failedCount > 0) {
+          notify('上传完成：成功 ' + successCount + '，失败 ' + failedCount + '。失败文件：' + failedNames.join('、'));
+        } else {
+          notify('上传完成：共 ' + successCount + ' 个文件');
+        }
+
+        if (successCount > 0) {
+          window.location.reload();
+          return;
+        }
+
+        setUploading(false, '上传失败，请重试');
+      });
     });
   }
 
@@ -286,6 +401,26 @@ $(function() {
     alt = alt.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
     return '![' + alt + '](' + url + ')';
   }
+
+  $confirmOK.on('click', function() {
+    var dialogEl = $confirmDialog.get(0);
+    if (confirmResolver) {
+      var resolve = confirmResolver;
+      confirmResolver = null;
+      resolve(true);
+    }
+    if (dialogEl && dialogEl.open) {
+      dialogEl.close();
+    }
+  });
+
+  $confirmDialog.on('close', function() {
+    if (confirmResolver) {
+      var resolve = confirmResolver;
+      confirmResolver = null;
+      resolve(false);
+    }
+  });
 
   $dropzone.on('click', function() {
     if (!uploadReady) {
@@ -364,24 +499,26 @@ $(function() {
       notify('无效 ID');
       return;
     }
-    if (!window.confirm('确认删除该媒体？会同时删除远端文件。')) {
-      return;
-    }
+    askConfirm('确认删除该媒体？会同时删除远端文件。', '确认删除').then(function(confirmed) {
+      if (!confirmed) {
+        return;
+      }
 
-    fetch('/admin/api/media/assets/' + id, {
-      method: 'DELETE'
-    })
-      .then(function(r) { return r.json().then(function(body) { return { status: r.status, body: body }; }); })
-      .then(function(ret) {
-        if (!ret.body || ret.body.ok !== true) {
-          var msg = (ret.body && ret.body.error) || ('删除失败，状态码 ' + ret.status);
-          throw new Error(msg);
-        }
-        $('tr[data-media-id="' + id + '"]').remove();
+      fetch('/admin/api/media/assets/' + id, {
+        method: 'DELETE'
       })
-      .catch(function(err) {
-        notify(err.message || '删除失败');
-      });
+        .then(function(r) { return r.json().then(function(body) { return { status: r.status, body: body }; }); })
+        .then(function(ret) {
+          if (!ret.body || ret.body.ok !== true) {
+            var msg = (ret.body && ret.body.error) || ('删除失败，状态码 ' + ret.status);
+            throw new Error(msg);
+          }
+          $('tr[data-media-id="' + id + '"]').remove();
+        })
+        .catch(function(err) {
+          notify(err.message || '删除失败');
+        });
+    });
   });
 });
 </script>

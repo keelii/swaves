@@ -108,3 +108,35 @@ func TestShortHash(t *testing.T) {
 		t.Fatalf("shortHash should keep original for short strings, got %q", got)
 	}
 }
+
+func TestBuildRemoteBackupAssetID(t *testing.T) {
+	testCases := []struct {
+		name     string
+		bucket   string
+		object   string
+		expected string
+	}{
+		{name: "bucket and key", bucket: "my-bucket", object: "2026-01-01_x.sqlite", expected: "my-bucket/2026-01-01_x.sqlite"},
+		{name: "trim key leading slash", bucket: "my-bucket", object: "/path/to/a.sqlite", expected: "my-bucket/path/to/a.sqlite"},
+		{name: "empty bucket", bucket: "", object: "a.sqlite", expected: "a.sqlite"},
+		{name: "empty key", bucket: "my-bucket", object: "", expected: "my-bucket"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := buildRemoteBackupAssetID(tc.bucket, tc.object)
+			if got != tc.expected {
+				t.Fatalf("buildRemoteBackupAssetID(%q,%q)=%q, want %q", tc.bucket, tc.object, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestBuildRemoteBackupFileURL(t *testing.T) {
+	if got := buildRemoteBackupFileURL("my-bucket", "a.sqlite"); got != "s3://my-bucket/a.sqlite" {
+		t.Fatalf("buildRemoteBackupFileURL unexpected: %q", got)
+	}
+	if got := buildRemoteBackupFileURL("", ""); got != "" {
+		t.Fatalf("buildRemoteBackupFileURL should return empty for empty asset, got %q", got)
+	}
+}

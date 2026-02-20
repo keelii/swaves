@@ -609,6 +609,12 @@ input[type="range"] {
 .cell-op {
   width: 6em;
 }
+.cell-op-3 {
+  width: 9em;
+}
+.cell-f-time {
+  width: 12em;
+}
 .cell-r-time {
   width: 6em;
 }

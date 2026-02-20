@@ -52,6 +52,8 @@ type pushJobConfig struct {
 	Timeout     time.Duration
 }
 
+const remoteBackupMediaProvider = "s3"
+
 func PushSystemDataJob(reg *Registry) (string, error) {
 	if reg == nil || reg.DB == nil {
 		return "", errors.New("reg.DB is nil")
@@ -89,21 +91,28 @@ func PushSystemDataJob(reg *Registry) (string, error) {
 		return "", fmt.Errorf("export sqlite snapshot failed: %w", err)
 	}
 
-	response, statusCode, err := uploadSnapshotToS3(cfg, reg.Config.AppName, snapshot)
+	objectKey := buildS3ObjectKey(snapshot.File)
+	response, statusCode, err := uploadSnapshotToS3(cfg, reg.Config.AppName, snapshot, objectKey)
 	if err != nil {
 		return "", fmt.Errorf("push failed status=%d response=%s: %w", statusCode, response, err)
 	}
 
+	mediaID, err := createRemoteBackupMediaRecord(reg.DB, cfg, snapshot, objectKey)
+	if err != nil {
+		return "", fmt.Errorf("remote backup saved but media record failed: %w", err)
+	}
+
 	return fmt.Sprintf(
-		"status=%d hash=%s size=%dB response=%s",
+		"status=%d hash=%s size=%dB media_id=%d response=%s",
 		statusCode,
 		shortHash(snapshot.Hash),
 		snapshot.Size,
+		mediaID,
 		response,
 	), nil
 }
 
-func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportResult) (response string, statusCode int, err error) {
+func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportResult, objectKey string) (response string, statusCode int, err error) {
 	file, err := os.Open(snapshot.File)
 	if err != nil {
 		return "", 0, fmt.Errorf("open snapshot failed: %w", err)
@@ -119,7 +128,6 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 		o.UsePathStyle = cfg.S3ForcePath
 	})
 
-	objectKey := buildS3ObjectKey(snapshot.File)
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 
@@ -144,6 +152,61 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 	etag := strings.TrimSpace(aws.ToString(putOut.ETag))
 	response = fmt.Sprintf("bucket=%s key=%s etag=%s", cfg.S3Bucket, objectKey, etag)
 	return response, statusCode, nil
+}
+
+func createRemoteBackupMediaRecord(dbx *db.DB, cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (int64, error) {
+	assetID := buildRemoteBackupAssetID(cfg.S3Bucket, objectKey)
+	deleteKey := assetID
+	fileURL := buildRemoteBackupFileURL(cfg.S3Bucket, objectKey)
+	originalName := filepath.Base(snapshot.File)
+	if originalName == "." || originalName == "" || originalName == "/" {
+		originalName = buildS3ObjectKey(snapshot.File)
+	}
+
+	item := &db.Media{
+		Kind:              db.MediaKindBackup,
+		Provider:          remoteBackupMediaProvider,
+		ProviderAssetID:   assetID,
+		ProviderDeleteKey: deleteKey,
+		FileURL:           fileURL,
+		OriginalName:      originalName,
+		SizeBytes:         snapshot.Size,
+		CreatedAt:         time.Now().Unix(),
+	}
+
+	id, err := db.CreateMedia(dbx, item)
+	if err == nil {
+		return id, nil
+	}
+
+	if strings.Contains(strings.ToLower(err.Error()), "unique constraint failed") {
+		existing, getErr := db.GetMediaByProviderAssetID(dbx, item.Provider, item.ProviderAssetID)
+		if getErr == nil {
+			return existing.ID, nil
+		}
+	}
+
+	return 0, err
+}
+
+func buildRemoteBackupAssetID(bucket string, objectKey string) string {
+	bucket = strings.TrimSpace(bucket)
+	objectKey = strings.TrimSpace(strings.TrimPrefix(objectKey, "/"))
+	if bucket == "" {
+		return objectKey
+	}
+	if objectKey == "" {
+		return bucket
+	}
+	return bucket + "/" + objectKey
+}
+
+func buildRemoteBackupFileURL(bucket string, objectKey string) string {
+	assetID := buildRemoteBackupAssetID(bucket, objectKey)
+	if assetID == "" {
+		return ""
+	}
+	return "s3://" + assetID
 }
 
 func buildS3AWSConfig(cfg pushJobConfig) (aws.Config, error) {
