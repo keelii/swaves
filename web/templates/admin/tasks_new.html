@@ -1,70 +1,92 @@
 <form id="form" method="post" action="{{ url_for "admin.tasks.create" }}">
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        是否启用
+        {{ template "admin/includes/toggle" dict "ID" "task_enabled_new" "Name" "enabled" "Checked" true "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
+      </label>
 
-  <p>
-    <label class="flex items-center gap-2">
-      是否启用 {{ template "admin/includes/toggle" dict "ID" "task_enabled_new" "Name" "enabled" "Checked" true "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
-    </label>
-  </p>
+      <fieldset>
+        <legend>Kind (任务类型)</legend>
+          <label>
+            <input type="radio" name="kind" value="0" checked>
+            内部任务（不生成运行记录）
+          </label>
+          <label>
+            <input type="radio" name="kind" value="1">
+            用户任务（生成运行记录）
+          </label>
+        <p>
+          <small>内部任务执行时不写入 TaskRun 表</small>
+        </p>
+      </fieldset>
 
-  {{ template "admin/includes/form_field_radio" dict "Label" "Kind (任务类型)" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "内部任务（不生成运行记录）") (dict "Value" "1" "Label" "用户任务（生成运行记录）")) "Selected" "0" "Help" "内部任务执行时不写入 TaskRun 表" }}
+      <label data-field>
+        任务名称
+        <input type="text" name="name" required placeholder="任务名称">
+      </label>
 
-  {{ template "admin/includes/form_field_text" dict "Label" "任务名称" "Name" "name" "Required" true "Placeholder" "任务名称" }}
+      <label data-field>
+        任务编码
+        <input type="text" name="code" required placeholder="task_code">
+        <small>用于在代码中识别此任务，必须唯一</small>
+      </label>
 
-  <p>
-    <label>
-      <input type="text" name="code" required placeholder="task_code">
-      用于在代码中识别此任务，必须唯一
-    </label>
-  </p>
+      <label data-field>
+        执行频率
+        <select id="schedule-preset">
+          <option value="@hourly">每小时</option>
+          <option value="@daily" selected>每天</option>
+          <option value="@weekly">每周</option>
+          <option value="@monthly">每月</option>
+          <option value="@yearly">每年</option>
+          <option value="__custom__">自定义</option>
+        </select>
+        <small>选择任务执行频率，或切换为自定义 Cron 表达式。</small>
+      </label>
 
-  <p>
-    <label for="schedule-preset">选择任务执行频率或自定义 Cron 表达式</label>
-    <select id="schedule-preset">
-      <option value="@hourly">每小时</option>
-      <option value="@daily">每天</option>
-      <option value="@weekly">每周</option>
-      <option value="@monthly">每月</option>
-      <option value="@yearly">每年</option>
-      <option value="__custom__">自定义</option>
-    </select>
-  </p>
-  <p id="schedule-custom-wrap" style="display: none;">
-    <label for="schedule-custom">自定义 Cron 表达式</label>
-    <input type="text" id="schedule-custom" placeholder="例如: 0 */5 * * *">
-  </p>
-  <input type="hidden" name="schedule" id="schedule-value" value="@daily">
+      <label data-field id="schedule-custom-wrap" hidden>
+        自定义 Cron 表达式
+        <input type="text" id="schedule-custom" placeholder="例如: 0 */5 * * *">
+      </label>
+      <input type="hidden" name="schedule" id="schedule-value" value="@daily">
 
-  {{ template "admin/includes/form_field_textarea" dict "Label" "" "Name" "description" "Value" "" "Rows" 3 "Cols" 60 "Placeholder" "任务描述" }}
-
+      <label data-field>
+        任务描述
+        <textarea name="description" rows="3" cols="60" placeholder="任务描述"></textarea>
+      </label>
+    </div>
+  </div>
 </form>
 
 <script>
 $(function() {
-  var $preset = $('#schedule-preset'), $wrap = $('#schedule-custom-wrap'), $custom = $('#schedule-custom'), $val = $('#schedule-value');
+  var $preset = $('#schedule-preset');
+  var $wrap = $('#schedule-custom-wrap');
+  var $custom = $('#schedule-custom');
+  var $val = $('#schedule-value');
+
   function sync() {
     $val.val($preset.val() === '__custom__' ? $custom.val() : $preset.val());
   }
+
   function toggle() {
-    if ($preset.val() === '__custom__') {
-      $wrap.css('display', 'block');
-      $val.val($custom.val());
-    } else {
-      $wrap.css('display', 'none');
-      $val.val($preset.val());
-    }
+    var isCustom = $preset.val() === '__custom__';
+    $wrap.prop('hidden', !isCustom);
+    sync();
   }
+
   toggle();
+
   $preset.on('change', function() {
+    toggle();
     if ($preset.val() === '__custom__') {
-      $wrap.css('display', 'block');
-      $val.val($custom.val());
       $custom.focus();
-    } else {
-      $wrap.css('display', 'none');
-      $val.val($preset.val());
     }
   });
+
   $custom.on('input change', sync);
+
   $('#form').on('submit', function(e) {
     if ($preset.val() === '__custom__' && !$custom.val().trim()) {
       e.preventDefault();

@@ -1,21 +1,40 @@
 <form id="form" method="post" action="{{ url_for "admin.categories.create" }}">
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        Parent Category
+        <select name="parent_id">
+          <option value="0"{{ if eq .ParentID 0 }} selected{{ end }}>顶级分类</option>
+          {{ range .Categories }}
+            <option value="{{ .ID }}"{{ if eq $.ParentID .ID }} selected{{ end }}>{{ .Name }}</option>
+          {{ end }}
+        </select>
+        <small>(Select parent category, or "None" for top level)</small>
+      </label>
 
-  <p>
-    <label>
-      Parent Category<br>
-      <select name="parent_id">
-        <option value="0" {{ if eq .ParentID 0 }}selected{{ end }}>顶级分类</option>
-        {{ range .Categories }}
-          <option value="{{ .ID }}" {{ if eq $.ParentID .ID }}selected{{ end }}>{{ .Name }}</option>
-        {{ end }}
-      </select>
-      <small>(Select parent category, or "None" for top level)</small>
-    </label>
-  </p>
+      <label data-field>
+        Name
+        <input type="text" name="name" required placeholder="分类名称">
+        <small>(Display name)</small>
+      </label>
 
-  {{ template "admin/includes/form_field_text" dict "Label" "Name" "Name" "name" "Required" true "Placeholder" "分类名称" "Help" "(Display name)" }}
-  {{ template "admin/includes/form_field_text" dict "Label" "Slug" "Name" "slug" "Required" true "Placeholder" "url-friendly-identifier" "Help" "(URL-friendly identifier, must be unique under same parent)" }}
-  {{ template "admin/includes/form_field_textarea" dict "Label" "Description" "Name" "description" "Value" "" "Rows" 3 "Cols" 80 "Placeholder" "可选描述信息" "Help" "(Optional description)" }}
-  {{ template "admin/includes/form_field_number" dict "Label" "Sort" "Name" "sort" "Value" "0" "Help" "(Sort order within same parent level)" }}
+      <label data-field>
+        Slug
+        <input type="text" name="slug" required placeholder="url-friendly-identifier">
+        <small>(URL-friendly identifier, must be unique under same parent)</small>
+      </label>
 
+      <label data-field>
+        Description
+        <textarea name="description" rows="3" cols="80" placeholder="可选描述信息"></textarea>
+        <small>(Optional description)</small>
+      </label>
+
+      <label data-field>
+        Sort
+        <input type="number" name="sort" value="0">
+        <small>(Sort order within same parent level)</small>
+      </label>
+    </div>
+  </div>
 </form>

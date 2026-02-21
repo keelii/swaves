@@ -1,19 +1,28 @@
 <form id="form" method="post" action="{{ url_for "admin.redirects.update" (dict "id" .Redirect.ID) }}">
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        From
+        <input type="text" name="from" required value="{{ .Redirect.From }}" placeholder="/old-path">
+      </label>
 
-  {{ template "admin/includes/form_field_text" dict "Label" "From" "Name" "from" "Value" .Redirect.From "Required" true }}
-  {{ template "admin/includes/form_field_text" dict "Label" "To" "Name" "to" "Value" .Redirect.To "Required" true }}
+      <label data-field>
+        To
+        <input type="text" name="to" required value="{{ .Redirect.To }}" placeholder="/new-path">
+      </label>
 
-  <p>
-    <label>
-      <select name="status">
-        <option value="301" {{ if eq .Redirect.Status 301 }}selected{{ end }}>301 - Permanent Redirect</option>
-        <option value="302" {{ if eq .Redirect.Status 302 }}selected{{ end }}>302 - Temporary Redirect</option>
-      </select>
-      <span>Status (状态码)</span>
-    </label>
-  </p>
+      <label data-field>
+        Status (状态码)
+        <select name="status">
+          <option value="301"{{ if eq .Redirect.Status 301 }} selected{{ end }}>301 - Permanent Redirect</option>
+          <option value="302"{{ if eq .Redirect.Status 302 }} selected{{ end }}>302 - Temporary Redirect</option>
+        </select>
+      </label>
 
-  {{ template "admin/includes/form_field_checkbox" dict "Label" "Enabled (启用)" "Name" "enabled" "Value" 1 "Checked" (eq .Redirect.Enabled 1) }}
-
+      <label data-field>
+        Enabled (启用)
+        {{ template "admin/includes/toggle" dict "ID" (printf "redirect_enabled_%d" .Redirect.ID) "Name" "enabled" "Checked" (eq .Redirect.Enabled 1) "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
+      </label>
+    </div>
+  </div>
 </form>
-
