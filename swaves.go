@@ -34,8 +34,6 @@ func NewApp(config types.AppConfig) SwavesApp {
 
 	//defer globalStore.Close()
 
-	go job.InitRegistry(globalStore, config) // 初始化定时任务
-
 	store.InitSettings(globalStore)
 	view, initURLResolver := NewViewEngine()
 
@@ -54,11 +52,15 @@ func NewApp(config types.AppConfig) SwavesApp {
 				msg = err.Error()
 			}
 
-			log.Println("[error]HTTP:", code, msg)
+			log.Println("[ERROR]HTTP:", code, msg, c.Path())
 			return c.Status(code).SendString(msg)
 		},
 	})
 	initURLResolver(app)
+	app.Hooks().OnListen(func(_ fiber.ListenData) error {
+		go job.InitRegistry(globalStore, config) // 初始化定时任务
+		return nil
+	})
 
 	// statics
 	app.Use("/static", static.New("./web/static"))
@@ -103,5 +105,6 @@ func (swv *SwavesApp) Listen(opts fiber.ListenConfig) {
 }
 
 func (swv *SwavesApp) Shutdown() {
+	job.DestroyRegistry()
 	swv.Store.Close()
 }

@@ -19,10 +19,14 @@ func openJobTestDB(t *testing.T) *db.DB {
 
 func withTestRegistry(t *testing.T, reg *Registry) {
 	t.Helper()
+	registryMu.Lock()
 	prev := registry
 	registry = reg
+	registryMu.Unlock()
 	t.Cleanup(func() {
+		registryMu.Lock()
 		registry = prev
+		registryMu.Unlock()
 	})
 }
 

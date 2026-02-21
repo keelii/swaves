@@ -9,7 +9,7 @@
         {{ template "lucide_icon" dict "name" "chevron-right" "size" "16" }}
       </span>
     </div>
-    <ul class="submenu-list show">
+    <ul class="submenu-list unstyled show">
       <li class="submenu-item{{ if url_is .RouteName "admin.posts.list" }} active{{ end }}">
         <a href="{{ url_for "admin.posts.list" }}">文章列表</a>
       </li>
@@ -40,7 +40,7 @@
           {{ template "lucide_icon" dict "name" "chevron-right" "size" "16" }}
       </span>
     </div>
-    <ul class="submenu-list show">
+    <ul class="submenu-list unstyled show">
       <li class="submenu-item{{ if url_is .RouteName "admin.tasks.list" }} active{{ end }}">
         <a href="{{ url_for "admin.tasks.list" }}">任务列表</a>
       </li>
@@ -53,7 +53,7 @@
           {{ template "lucide_icon" dict "name" "chevron-right" "size" "16" }}
       </span>
     </div>
-    <ul class="submenu-list show">
+    <ul class="submenu-list unstyled show">
       <li class="submenu-item{{ if url_is .RouteName "admin.import.show" }} active{{ end }}">
         <a href="{{ url_for "admin.import.show" }}">导入</a>
       </li>
@@ -69,7 +69,7 @@
           {{ template "lucide_icon" dict "name" "chevron-right" "size" "16" }}
       </span>
     </div>
-    <ul class="submenu-list show">
+    <ul class="submenu-list unstyled show">
       <li class="submenu-item{{ if url_is .RouteName "admin.settings.list" }} active{{ end }}">
         <a href="{{ url_for "admin.settings.list" }}">设置列表</a>
       </li>
@@ -85,7 +85,7 @@
           {{ template "lucide_icon" dict "name" "chevron-right" "size" "16" }}
       </span>
     </div>
-    <ul class="submenu-list show">
+    <ul class="submenu-list unstyled show">
       <li class="submenu-item{{ if url_is .RouteName "admin.redirects.list" }} active{{ end }}">
         <a href="{{ url_for "admin.redirects.list" }}">重定向管理</a>
       </li>
@@ -107,7 +107,7 @@
           {{ template "lucide_icon" dict "name" "chevron-right" "size" "16" }}
       </span>
     </div>
-    <ul class="submenu-list show">
+    <ul class="submenu-list unstyled show">
       <li class="submenu-item{{ if url_is .RouteName "admin.dev.ui_components" }} active{{ end }}">
         <a href="{{ url_for "admin.dev.ui_components" }}">UI组件</a>
       </li>

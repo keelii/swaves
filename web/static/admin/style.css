@@ -315,6 +315,7 @@ svg {
     overflow: hidden;
     transition: max-height 0.3s ease;
     /*background: var(--muted);*/
+    margin-block-end: 0;
 }
 
 .submenu-list.show {

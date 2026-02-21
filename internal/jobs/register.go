@@ -7,6 +7,7 @@ import (
 	"swaves/internal/store"
 	"swaves/internal/types"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -19,8 +20,10 @@ import (
 type JobFunc func(reg *Registry) (*string, error)
 
 var (
-	registry *Registry
-	mu       sync.Mutex
+	registry            *Registry
+	registryMu          sync.RWMutex
+	mu                  sync.Mutex
+	registryInitStarted atomic.Bool
 )
 
 type Registry struct {
@@ -28,6 +31,7 @@ type Registry struct {
 	running map[string]bool
 	DB      *db.DB
 	Config  types.AppConfig
+	cron    *cron.Cron
 }
 
 type JobItem struct {
@@ -37,12 +41,24 @@ type JobItem struct {
 
 // 初始化 Registry
 func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
-	registry = &Registry{
+	if gStore == nil || gStore.Model == nil {
+		log.Printf("[task] init registry skipped: global store/model is nil")
+		return
+	}
+	if !registryInitStarted.CompareAndSwap(false, true) {
+		log.Printf("[task] init registry skipped: already initialized")
+		return
+	}
+
+	reg := &Registry{
 		jobs:    make(map[string]JobItem),
 		running: make(map[string]bool),
 		DB:      gStore.Model,
 		Config:  config,
 	}
+	registryMu.Lock()
+	registry = reg
+	registryMu.Unlock()
 
 	// Internal jobs
 	RegisterJob("database_backup", JobItem{
@@ -75,13 +91,14 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 		log.Printf("[task] fetch tasks failed: %v", err)
 	}
 	c := cron.New()
+	reg.cron = c
 	for task := range tasks {
 		t := tasks[task]
 
 		if t.Enabled != 1 {
 			continue
 		}
-		if _, ok := registry.jobs[t.Code]; !ok {
+		if _, ok := reg.jobs[t.Code]; !ok {
 			log.Printf("[task] skip unregistered task code: %s", t.Code)
 			continue
 		}
@@ -95,20 +112,20 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 		}
 	}
 	c.Start()
-	defer c.Stop()
-
-	select {}
-	//go registry.executor(registry, interval)
+	log.Printf("[task] registry initialized")
 }
 
 func ExecuteTask(dbx *db.DB, t db.Task) {
-	if registry == nil {
+	registryMu.RLock()
+	reg := registry
+	registryMu.RUnlock()
+	if reg == nil {
 		log.Printf("[task] registry not initialized for task: %s", t.Code)
 		return
 	}
 
 	startAt := time.Now()
-	jobItem, ok := registry.jobs[t.Code]
+	jobItem, ok := reg.jobs[t.Code]
 	if !ok {
 		err := fmt.Errorf("job not registered: %s", t.Code)
 		log.Printf("[task] %v", err)
@@ -130,7 +147,7 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		return
 	}
 
-	retPtr, err := jobItem.Func(registry)
+	retPtr, err := jobItem.Func(reg)
 	if err == nil && retPtr == nil {
 		log.Printf("[task] execute job %s no-op", t.Code)
 		return
@@ -177,12 +194,34 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 
 // 注册 Job
 func RegisterJob(code string, job JobItem) {
-	if registry == nil {
+	registryMu.RLock()
+	reg := registry
+	registryMu.RUnlock()
+	if reg == nil {
 		panic("registry not initialized, call InitRegistry first")
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	registry.jobs[code] = job
+	reg.jobs[code] = job
+}
+
+func DestroyRegistry() {
+	registryMu.Lock()
+	reg := registry
+	registry = nil
+	registryMu.Unlock()
+	if reg == nil {
+		log.Printf("[task] destroy registry skipped: registry is nil")
+		registryInitStarted.Store(false)
+		return
+	}
+
+	if reg.cron != nil {
+		stopCtx := reg.cron.Stop()
+		<-stopCtx.Done()
+	}
+	registryInitStarted.Store(false)
+	log.Printf("[task] registry destroyed")
 }
 
 func ensureBuiltinTask(dbx *db.DB, task db.Task) {
