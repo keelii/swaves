@@ -9,10 +9,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"swaves/internal/consts"
 	"swaves/internal/db"
+	"swaves/internal/store"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -46,7 +45,7 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 		return nil, errors.New("reg.DB is nil")
 	}
 
-	cfg := loadPushJobConfig(reg.DB)
+	cfg := loadPushJobConfig()
 	if !cfg.Enabled {
 		return jobMessage("remote data backup disabled"), nil
 	}
@@ -240,13 +239,13 @@ func extractS3StatusCode(err error) int {
 	return 0
 }
 
-func loadPushJobConfig(dbx *db.DB) pushJobConfig {
-	timeoutSec := readSettingInt(dbx, settingSyncPushTimeoutSec, 60)
+func loadPushJobConfig() pushJobConfig {
+	timeoutSec := store.GetSettingInt(settingSyncPushTimeoutSec, 60)
 	if timeoutSec <= 0 {
 		timeoutSec = 60
 	}
 
-	s3Endpoint := strings.TrimSpace(readSettingString(dbx, settingSyncPushEndpoint, ""))
+	s3Endpoint := strings.TrimSpace(store.GetSetting(settingSyncPushEndpoint))
 	s3Endpoint, endpointBucket, endpointForcePath, parseErr := splitS3EndpointBucket(s3Endpoint)
 	if parseErr != nil {
 		log.Printf("[task] push_system_data invalid endpoint: %v", parseErr)
@@ -262,12 +261,12 @@ func loadPushJobConfig(dbx *db.DB) pushJobConfig {
 	s3ForcePath := endpointForcePath
 
 	return pushJobConfig{
-		Enabled:     readSettingBool(dbx, settingSyncPushEnabled, false),
+		Enabled:     store.GetSettingBool(settingSyncPushEnabled, false),
 		S3Bucket:    s3Bucket,
 		S3Region:    s3Region,
 		S3Endpoint:  s3Endpoint,
-		S3AccessKey: strings.TrimSpace(consts.S3AccessKeyID),
-		S3SecretKey: strings.TrimSpace(consts.S3SecretAccessKey),
+		S3AccessKey: strings.TrimSpace(store.GetSetting("s3_access_key_id")),
+		S3SecretKey: strings.TrimSpace(store.GetSetting("s3_secret_access_key")),
 		S3ForcePath: s3ForcePath,
 		Timeout:     time.Duration(timeoutSec) * time.Second,
 	}
@@ -302,49 +301,6 @@ func splitS3EndpointBucket(raw string) (endpoint string, bucket string, forcePat
 
 	endpoint = strings.TrimRight(u.String(), "/")
 	return endpoint, bucket, forcePath, nil
-}
-
-func readSettingString(dbx *db.DB, code string, defaultValue string) string {
-	s, err := db.GetSettingByCode(dbx, code)
-	if err != nil {
-		if db.IsErrNotFound(err) {
-			return defaultValue
-		}
-		log.Printf("[task] load setting %s failed: %v", code, err)
-		return defaultValue
-	}
-	if strings.TrimSpace(s.Value) == "" {
-		return defaultValue
-	}
-	return s.Value
-}
-
-func readSettingBool(dbx *db.DB, code string, defaultValue bool) bool {
-	value := strings.TrimSpace(strings.ToLower(readSettingString(dbx, code, "")))
-	if value == "" {
-		return defaultValue
-	}
-	switch value {
-	case "1", "true", "yes", "on":
-		return true
-	case "0", "false", "no", "off":
-		return false
-	default:
-		return defaultValue
-	}
-}
-
-func readSettingInt(dbx *db.DB, code string, defaultValue int) int {
-	value := strings.TrimSpace(readSettingString(dbx, code, ""))
-	if value == "" {
-		return defaultValue
-	}
-	parsed, err := strconv.Atoi(value)
-	if err != nil {
-		log.Printf("[task] parse int setting %s=%q failed: %v", code, value, err)
-		return defaultValue
-	}
-	return parsed
 }
 
 func shortHash(hash string) string {

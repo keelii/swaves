@@ -5,23 +5,23 @@ import (
 	"swaves/internal/share"
 	"swaves/internal/store"
 
-	"github.com/gofiber/contrib/v3/monitor"
 	"github.com/gofiber/fiber/v3"
 )
 
 func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
+	monitorStore := NewMonitorStore()
 	handler := NewHandler(
 		gStore,
 		NewService(gStore.Model),
+		monitorStore,
 	)
 
 	adminGroup := app.Group(share.GetAdminUrl())
 	adminGroup.Use(middleware.RequireAdmin(gStore.Session, share.BuildAdminPath("/login")))
 
-	// metrics
-	adminGroup.Get("/metrics", monitor.New(monitor.Config{
-		APIOnly: true,
-	})).Name("admin.metrics")
+	adminGroup.Get("/monitor", handler.GetMonitorHandler).Name("admin.monitor")
+	adminGroup.Get("/metrics", handler.GetMetricsAPIHandler).Name("admin.metrics.api")
+	adminGroup.Get("/api/monitor", handler.GetMonitorDataAPIHandler).Name("admin.monitor.data")
 
 	adminGroup.Get("/", handler.GetHome).Name("admin.home")
 	adminGroup.Get("/panic", func(c fiber.Ctx) error {
@@ -120,8 +120,6 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 
 	adminGroup.Get("/export", handler.GetExportHandler).Name("admin.export.show")
 	adminGroup.Get("/export/download", handler.GetExportDownloadHandler).Name("admin.export.download")
-
-	adminGroup.Get("/metrics", handler.GetMetricsHandler).Name("admin.metrics")
 
 	adminGroup.Get("/dev/ui-components", handler.GetDevUIComponentsHandler).Name("admin.dev.ui_components")
 }

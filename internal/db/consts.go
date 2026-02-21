@@ -458,6 +458,8 @@ var DefaultSettings = []Setting{
 	{Sort: 15, Kind: SettingKindBackupSync, Name: "S3 远程备份超时 (sec)", Code: "sync_push_timeout_sec", Type: "number", Value: "60", DefaultOptionValue: "60", Description: "S3 远程备份超时时间（秒）", Attrs: `{"min": 1, "max": 600}`},
 	{Sort: 10, Kind: SettingKindInteractionAnalytic, Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
 	{Sort: 11, Kind: SettingKindInteractionAnalytic, Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
+	{Sort: 14, Kind: SettingKindInteractionAnalytic, Name: "S3 Access Key ID", Code: "s3_access_key_id", Type: "text", Value: consts.S3AccessKeyID, Description: "S3 access key id"},
+	{Sort: 14, Kind: SettingKindInteractionAnalytic, Name: "S3 Secret Access Key", Code: "s3_secret_access_key", Type: "password", Value: consts.S3SecretAccessKey, Description: "S3 secret access key"},
 	{Sort: 10, Kind: SettingKindAdminSecurity, Name: "管理后台路径", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: consts.UrlPrefixValidatorJSON},
 	{Sort: 11, Kind: SettingKindAdminSecurity, Name: "管理后台密码", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
 	{Sort: 10, Kind: SettingKindUIExperience, Name: "文字大小", Code: "font_size", Type: "range", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},

@@ -76,3 +76,17 @@ func TestBuildUVChartSVGValidation(t *testing.T) {
 		t.Fatal("expected error when uv is negative")
 	}
 }
+
+func TestBuildUVChartSVGCustomTooltip(t *testing.T) {
+	svg, err := BuildUVChartSVG(UVChartUIData{
+		Points: []UVChartPoint{
+			{Label: "A", UV: 1, Tooltip: "自定义提示"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("BuildUVChartSVG returned error: %v", err)
+	}
+	if !strings.Contains(svg, `<title>自定义提示</title>`) {
+		t.Fatalf("expected custom tooltip in svg, svg=%s", svg)
+	}
+}

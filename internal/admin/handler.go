@@ -28,6 +28,7 @@ type Handler struct {
 	Model   *db.DB
 	Session *types.SessionStore
 	Service *Service
+	Monitor *MonitorStore
 }
 
 type dashboardUVRangeConfig struct {
@@ -86,11 +87,12 @@ var dashboardUVRanges = []dashboardUVRangeConfig{
 	},
 }
 
-func NewHandler(gStore *store.GlobalStore, adminService *Service) *Handler {
+func NewHandler(gStore *store.GlobalStore, adminService *Service, monitorStore *MonitorStore) *Handler {
 	return &Handler{
 		Model:   gStore.Model,
 		Session: gStore.Session,
 		Service: adminService,
+		Monitor: monitorStore,
 	}
 }
 
@@ -2804,13 +2806,6 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "import", fiber.Map{
 		"Title":   "Import Markdown",
 		"Success": success,
-	}, "")
-}
-
-// Metrics
-func (h *Handler) GetMetricsHandler(c fiber.Ctx) error {
-	return RenderAdminView(c, "metrics", fiber.Map{
-		"Title": "性能监控",
 	}, "")
 }
 

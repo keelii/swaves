@@ -10,6 +10,7 @@ import (
 	"strings"
 	"swaves/helper"
 	"swaves/internal/db"
+	"swaves/internal/store"
 	"time"
 )
 
@@ -76,17 +77,17 @@ func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 		defaultDir = "backups"
 	}
 
-	dir := strings.TrimSpace(readSettingString(reg.DB, settingBackupLocalDir, defaultDir))
+	dir := strings.TrimSpace(store.GetSetting(settingBackupLocalDir))
 	if dir == "" {
 		dir = defaultDir
 	}
 
-	intervalMin := readSettingInt(reg.DB, settingBackupLocalIntervalMin, 1440)
+	intervalMin := store.GetSettingInt(settingBackupLocalIntervalMin, 1440)
 	if intervalMin < 1 {
 		intervalMin = 1
 	}
 
-	maxCount := readSettingInt(reg.DB, settingBackupLocalMaxCount, 30)
+	maxCount := store.GetSettingInt(settingBackupLocalMaxCount, 30)
 	if maxCount < 1 {
 		maxCount = 1
 	}

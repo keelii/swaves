@@ -2,6 +2,8 @@ package store
 
 import (
 	"log"
+	"strconv"
+	"strings"
 	"swaves/internal/db"
 	"sync/atomic"
 )
@@ -53,6 +55,37 @@ func GetSetting(code string) string {
 	}
 	return val
 }
+
+func GetSettingBool(code string, defaultValue bool) bool {
+	value := strings.TrimSpace(strings.ToLower(GetSetting(code)))
+	if value == "" {
+		return defaultValue
+	}
+
+	switch value {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return defaultValue
+	}
+}
+
+func GetSettingInt(code string, defaultValue int) int {
+	value := strings.TrimSpace(GetSetting(code))
+	if value == "" {
+		return defaultValue
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		log.Printf("parse int setting %s=%q failed: %v", code, value, err)
+		return defaultValue
+	}
+	return parsed
+}
+
 func GetSettingMap() map[string]string {
 	s, ok := Settings.Load().(map[string]string)
 	if !ok {

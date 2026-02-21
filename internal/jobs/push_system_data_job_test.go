@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"swaves/internal/consts"
 	"swaves/internal/db"
+	"swaves/internal/store"
 )
 
 func TestBuildS3ObjectKey(t *testing.T) {
@@ -156,6 +156,14 @@ func openPushJobTestDB(t *testing.T) *db.DB {
 	return dbx
 }
 
+func reloadPushJobSettings(t *testing.T, dbx *db.DB) {
+	t.Helper()
+	gStore := store.NewGlobalStore(dbx, nil)
+	if err := store.ReloadSettings(gStore); err != nil {
+		t.Fatalf("ReloadSettings failed: %v", err)
+	}
+}
+
 func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
 	dbx := openPushJobTestDB(t)
 
@@ -168,17 +176,16 @@ func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
 	if err := db.UpdateSettingByCode(dbx, settingSyncPushTimeoutSec, "120"); err != nil {
 		t.Fatalf("UpdateSettingByCode(%s) failed: %v", settingSyncPushTimeoutSec, err)
 	}
+	if err := db.UpdateSettingByCode(dbx, "s3_access_key_id", "ak_test"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "s3_access_key_id", err)
+	}
+	if _, err := dbx.Exec(`UPDATE `+string(db.TableSettings)+` SET value = ? WHERE code = ?`, "sk_test", "s3_secret_access_key"); err != nil {
+		t.Fatalf("direct update setting %s failed: %v", "s3_secret_access_key", err)
+	}
 
-	prevAK := consts.S3AccessKeyID
-	prevSK := consts.S3SecretAccessKey
-	consts.S3AccessKeyID = "ak_test"
-	consts.S3SecretAccessKey = "sk_test"
-	t.Cleanup(func() {
-		consts.S3AccessKeyID = prevAK
-		consts.S3SecretAccessKey = prevSK
-	})
+	reloadPushJobSettings(t, dbx)
 
-	cfg := loadPushJobConfig(dbx)
+	cfg := loadPushJobConfig()
 	if !cfg.Enabled {
 		t.Fatal("Enabled should be true")
 	}

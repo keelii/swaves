@@ -13,6 +13,7 @@ type UVChartPoint struct {
 	Label     string `json:"label"`
 	UV        int    `json:"uv"`
 	Timestamp int64  `json:"timestamp,omitempty"`
+	Tooltip   string `json:"tooltip,omitempty"`
 }
 
 type UVChartUIData struct {
@@ -193,10 +194,14 @@ func BuildUVChartSVG(data UVChartUIData) (string, error) {
 		}
 		label := strings.TrimSpace(data.Points[i].Label)
 		hasLabel := label != ""
-		tooltip := strconv.Itoa(data.Points[i].UV)
-		if hasLabel {
-			tooltip = label + " - " + tooltip
+		tooltip := strings.TrimSpace(data.Points[i].Tooltip)
+		if tooltip == "" {
+			tooltip = strconv.Itoa(data.Points[i].UV)
+			if hasLabel {
+				tooltip = label + " - " + tooltip
+			}
 		}
+		hasTooltip := tooltip != ""
 		hoverRects = append(hoverRects, uvChartHoverRect{
 			X:            svgFloat(rectLeft),
 			Width:        svgFloat(rectRight - rectLeft),
@@ -207,7 +212,7 @@ func BuildUVChartSVG(data UVChartUIData) (string, error) {
 			Tooltip:      tooltip,
 			HasTimestamp: data.Points[i].Timestamp > 0,
 			HasLabel:     hasLabel,
-			HasTooltip:   true,
+			HasTooltip:   hasTooltip,
 		})
 	}
 
