@@ -1123,22 +1123,18 @@ type SettingSubKindGroupView struct {
 }
 
 func normalizeSettingSubKind(raw string) string {
-	value := strings.TrimSpace(raw)
-	if value == "" {
-		return db.SettingSubKindGeneral
-	}
-	return value
+	return strings.TrimSpace(raw)
 }
 
 func resolveSettingSubKindLabel(kind string, subKind string) string {
 	subKind = normalizeSettingSubKind(subKind)
+	if subKind == "" {
+		return ""
+	}
 	if labels, ok := db.SettingSubKindLabels[kind]; ok {
 		if label, exists := labels[subKind]; exists && strings.TrimSpace(label) != "" {
 			return label
 		}
-	}
-	if subKind == db.SettingSubKindGeneral {
-		return "通用"
 	}
 	return subKind
 }

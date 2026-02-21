@@ -29,6 +29,7 @@
   }
 
   .settings-sub-kind-group {
+    width: 630px;
     margin: 0;
     padding: var(--space-4);
   }
@@ -38,8 +39,8 @@
   }
 
   .settings-item-label {
-    display: block;
-    width: 40%;
+    /*display: block;*/
+    /*width: 40%;*/
   }
   .settings-item-label details {
     margin-bottom: var(--space-4);
@@ -48,13 +49,19 @@
   .settings-item {
     display: flex;
     gap: var(--space-4);
-    align-items: start;
+  }
+  .settings-item .settings-item-label {
+    /*width: 300px;*/
+  }
+  .settings-item-label input,
+  .settings-item-label textarea {
+    width: 300px;
   }
 
   .settings-item-desc {
     color: var(--muted-foreground);
     align-self: end;
-    padding-bottom: var(--space-1);
+    margin-bottom: var(--space-1);
   }
 
   .settings-item-header {
@@ -126,9 +133,11 @@
     <div class="settings-kind-fields">
       {{ range .ActiveKindGroups }}
         {{ $subGroup := . }}
+        {{ if $subGroup.Code }}
         <fieldset class="settings-sub-kind-group" data-sub-kind="{{ $subGroup.Code }}">
           <legend>{{ $subGroup.Label }}</legend>
-          {{ range $subGroup.Settings }}
+        {{ end }}
+        {{ range $subGroup.Settings }}
             {{ $setting := . }}
             {{ $code := $setting.Code }}
             {{ $attrs := $setting.AttrsParsed }}
@@ -205,8 +214,10 @@
               </label>
               <div class="settings-item-desc">{{ if $setting.Description }}{{ $setting.Description }}{{ else }}-{{ end }}</div>
             </div>
-          {{ end }}
+        {{ end }}
+        {{ if $subGroup.Code }}
         </fieldset>
+        {{ end }}
       {{ end }}
     </div>
   </section>

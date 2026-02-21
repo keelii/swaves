@@ -51,12 +51,8 @@
 
   .monitor-chart-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-  }
-
-  .monitor-chart-grid.app-scope {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
   }
 
   .monitor-chart-card {
@@ -115,7 +111,7 @@
   }
 
   @media (max-width: 1024px) {
-    .monitor-chart-grid.app-scope {
+    .monitor-chart-grid {
       grid-template-columns: 1fr;
     }
   }
@@ -330,11 +326,6 @@
     function renderCharts() {
       if (!chartsEl) {
         return;
-      }
-      if (activeScope === 'app') {
-        chartsEl.classList.add('app-scope');
-      } else {
-        chartsEl.classList.remove('app-scope');
       }
       if (!Array.isArray(allCharts) || allCharts.length === 0) {
         chartsEl.innerHTML = '<p class="text-lighter">暂无图表数据</p>';
