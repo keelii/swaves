@@ -2,28 +2,21 @@
 {{ $q := or .SearchQueryEscaped "" }}
 {{ $tag := or .FilterTagIDStr "" }}
 {{ $cat := or .FilterCategoryIDStr "" }}
-<div class="tab-card">
-  <div class="tab-nav">
-    <div class="tab-item{{ if eq $kind 0 }} active{{ end }}">
-      <a href="{{ url_for "admin.posts.list" }}?kind=0{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">文章 ({{ .CountPost }})</a>
-    </div>
-    <div class="tab-item{{ if eq $kind 1 }} active{{ end }}">
-      <a href="{{ url_for "admin.posts.list" }}?kind=1{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">页面 ({{ .CountPage }})</a>
-    </div>
-    <div class="tab-nav-right">
-        {{ if or .FilterTagName .FilterCategoryName }}
-        <div class="inline-flex items-center gap-4" style="">
-          {{ $tag := concat "标签 " .FilterTagName }}
-          {{ $cat := concat "分类 " .FilterCategoryName }}
-          {{ if .FilterTagName }}{{ template "admin/includes/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}
-          {{ if .FilterCategoryName }}{{ template "admin/includes/tag_item" dict "Label" $cat "RemoveHref" .FilterCategoryRemoveURL }}{{ end }}
-        </div>
-        {{ end }}
-        {{ template "admin/includes/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery "FilterTagIDStr" .FilterTagIDStr "FilterCategoryIDStr" .FilterCategoryIDStr }}
-    </div>
-  </div>
-  <div class="tab-content">
-    <div class="tab-pane active"></div>
+<div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
+  <nav role="tablist" aria-label="内容类型">
+    <a role="tab" aria-selected="{{ if eq $kind 0 }}true{{ else }}false{{ end }}" href="{{ url_for "admin.posts.list" }}?kind=0{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">文章 ({{ .CountPost }})</a>
+    <a role="tab" aria-selected="{{ if eq $kind 1 }}true{{ else }}false{{ end }}" href="{{ url_for "admin.posts.list" }}?kind=1{{ if $q }}&q={{ $q }}{{ end }}{{ if $tag }}&tag={{ $tag }}{{ end }}{{ if $cat }}&category={{ $cat }}{{ end }}">页面 ({{ .CountPage }})</a>
+  </nav>
+  <div class="tab-nav-right">
+    {{ if or .FilterTagName .FilterCategoryName }}
+      <div class="inline-flex items-center gap-4">
+        {{ $tag := concat "标签 " .FilterTagName }}
+        {{ $cat := concat "分类 " .FilterCategoryName }}
+        {{ if .FilterTagName }}{{ template "admin/includes/tag_item" dict "Label" $tag "RemoveHref" .FilterTagRemoveURL }}{{ end }}
+        {{ if .FilterCategoryName }}{{ template "admin/includes/tag_item" dict "Label" $cat "RemoveHref" .FilterCategoryRemoveURL }}{{ end }}
+      </div>
+    {{ end }}
+    {{ template "admin/includes/post_search" dict "KindQuery" .KindQuery "SearchQuery" .SearchQuery "FilterTagIDStr" .FilterTagIDStr "FilterCategoryIDStr" .FilterCategoryIDStr }}
   </div>
 </div>
 
@@ -94,4 +87,3 @@
   </tr>
   </tfoot>
 </table>
-

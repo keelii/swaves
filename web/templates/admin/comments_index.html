@@ -1,21 +1,11 @@
 {{ $status := or .StatusFilter "" }}
 
-<div class="tab-card">
-  <div class="tab-nav">
-    <div class="tab-item{{ if eq $status "" }} active{{ end }}">
-      <a href="{{ url_for "admin.comments.list" }}">全部</a>
-    </div>
-    <div class="tab-item{{ if eq $status "pending" }} active{{ end }}">
-      <a href="{{ url_for "admin.comments.list" (dict "status" "pending") }}">待审核</a>
-    </div>
-    <div class="tab-item{{ if eq $status "approved" }} active{{ end }}">
-      <a href="{{ url_for "admin.comments.list" (dict "status" "approved") }}">已通过</a>
-    </div>
-    <div class="tab-item{{ if eq $status "spam" }} active{{ end }}">
-      <a href="{{ url_for "admin.comments.list" (dict "status" "spam") }}">垃圾</a>
-    </div>
-  </div>
-</div>
+<nav role="tablist" aria-label="评论状态" class="mb-4">
+  <a role="tab" aria-selected="{{ if eq $status "" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" }}">全部</a>
+  <a role="tab" aria-selected="{{ if eq $status "pending" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" (dict "status" "pending") }}">待审核</a>
+  <a role="tab" aria-selected="{{ if eq $status "approved" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" (dict "status" "approved") }}">已通过</a>
+  <a role="tab" aria-selected="{{ if eq $status "spam" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" (dict "status" "spam") }}">垃圾</a>
+</nav>
 
 <table>
   <thead>
