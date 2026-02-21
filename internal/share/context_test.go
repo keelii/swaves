@@ -354,3 +354,31 @@ func TestURLForWithoutResolver(t *testing.T) {
 		t.Fatalf("URLFor() = %q, want empty string when resolver not set", got)
 	}
 }
+
+func TestURLForStoreIsolation(t *testing.T) {
+	storeA := NewURLForStore()
+	storeB := NewURLForStore()
+
+	storeA.SetResolver(func(name string, params map[string]string, query map[string]string) (string, error) {
+		return "/a/" + name, nil
+	})
+	storeB.SetResolver(func(name string, params map[string]string, query map[string]string) (string, error) {
+		return "/b/" + name, nil
+	})
+
+	if got := storeA.URLFor("admin.home", nil, nil); got != "/a/admin.home" {
+		t.Fatalf("storeA.URLFor() = %q, want %q", got, "/a/admin.home")
+	}
+	if got := storeB.URLFor("admin.home", nil, nil); got != "/b/admin.home" {
+		t.Fatalf("storeB.URLFor() = %q, want %q", got, "/b/admin.home")
+	}
+
+	storeA.SetResolver(nil)
+
+	if got := storeA.URLFor("admin.home", nil, nil); got != "" {
+		t.Fatalf("storeA.URLFor() after nil resolver = %q, want empty string", got)
+	}
+	if got := storeB.URLFor("admin.home", nil, nil); got != "/b/admin.home" {
+		t.Fatalf("storeB.URLFor() affected by storeA change = %q, want %q", got, "/b/admin.home")
+	}
+}

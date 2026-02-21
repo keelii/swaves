@@ -1,10 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/url"
-	"strings"
 	"swaves/internal/admin"
 	"swaves/internal/api"
 	"swaves/internal/consts"
@@ -40,13 +37,13 @@ func NewApp(config types.AppConfig) SwavesApp {
 	go job.InitRegistry(globalStore, config) // 初始化定时任务
 
 	store.InitSettings(globalStore)
-	view := NewViewEngine()
+	view, initURLResolver := NewViewEngine()
+
 	app := fiber.New(fiber.Config{
 		AppName:       config.AppName,
 		CaseSensitive: true,
-		//DisableStartupMessage: true,
-		Views:     view,
-		BodyLimit: 10 * 1024 * 1024, // 10MB
+		Views:         view,
+		BodyLimit:     10 * 1024 * 1024, // 10MB
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			msg := "Internal Server Error"
@@ -61,7 +58,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 			return c.Status(code).SendString(msg)
 		},
 	})
-	RegisterViewFunc(view, app)
+	initURLResolver(app)
 
 	// statics
 	app.Use("/static", static.New("./web/static"))
@@ -107,48 +104,4 @@ func (swv *SwavesApp) Listen(opts fiber.ListenConfig) {
 
 func (swv *SwavesApp) Shutdown() {
 	swv.Store.Close()
-}
-
-func newURLForResolver(app *fiber.App) func(name string, params map[string]string, query map[string]string) (string, error) {
-	return func(name string, params map[string]string, query map[string]string) (string, error) {
-		route := app.GetRoute(strings.TrimSpace(name))
-		if strings.TrimSpace(route.Name) == "" {
-			return "", fmt.Errorf("route %q not found", name)
-		}
-
-		path := route.Path
-		consumedKeys := map[string]struct{}{}
-		for _, paramName := range route.Params {
-			value := strings.TrimSpace(params[paramName])
-			if value == "" {
-				return "", fmt.Errorf("route %q missing param %q", name, paramName)
-			}
-			consumedKeys[paramName] = struct{}{}
-			path = strings.ReplaceAll(path, ":"+paramName, url.PathEscape(value))
-		}
-
-		queryValues := url.Values{}
-		for key, value := range params {
-			k := strings.TrimSpace(key)
-			if k == "" {
-				continue
-			}
-			if _, ok := consumedKeys[k]; ok {
-				continue
-			}
-			queryValues.Set(k, value)
-		}
-		for key, value := range query {
-			k := strings.TrimSpace(key)
-			if k == "" {
-				continue
-			}
-			queryValues.Set(k, value)
-		}
-		encodedQuery := queryValues.Encode()
-		if encodedQuery != "" {
-			path += "?" + encodedQuery
-		}
-		return path, nil
-	}
 }

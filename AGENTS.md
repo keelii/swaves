@@ -16,6 +16,8 @@ It is intended as a practical guide for future changes.
 - Allow small, intentional duplication when it improves readability.
 - Avoid over-abstraction for basic wiring tasks (for example, route registration).
 - Keep user-visible behavior consistent with actual system capability.
+- If type information or static analysis can already prove safety, do not add extra defensive checks only for style.
+- Keep nil/empty guards when they protect concurrency or lifecycle boundaries (for example shared mutable resolver pointers, optional dependencies, startup order).
 
 ## 2) URL and Path Semantics
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	HTML "html"
 	"html/template"
-	"log"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,15 +20,18 @@ import (
 	"github.com/gofiber/template/html/v3"
 )
 
-func NewViewEngine() *html.Engine {
+func NewViewEngine() (*html.Engine, func(app *fiber.App)) {
+	urlForStore := share.NewURLForStore()
 	engine := html.New("./web/templates", ".html")
 	engine.Reload(true)
-	return engine
+	RegisterViewFunc(engine, urlForStore.URLFor)
+	initURLResolver := func(app *fiber.App) {
+		urlForStore.SetResolver(newURLForResolver(app))
+	}
+	return engine, initURLResolver
 }
 
-func RegisterViewFunc(engine *html.Engine, app *fiber.App) {
-	resolver := newURLForResolver(app)
-
+func RegisterViewFunc(engine *html.Engine, urlFor func(name string, params map[string]string, query map[string]string) string) {
 	engine.AddFunc(consts.GlobalSettingKey, func(key string) string {
 		return store.GetSetting(key)
 	})
@@ -263,12 +266,7 @@ func RegisterViewFunc(engine *html.Engine, app *fiber.App) {
 		if len(args) > 1 {
 			query = toStringMap(args[1])
 		}
-		resolved, err := resolver(name, params, query)
-		if err != nil {
-			log.Printf("[url_for] resolve failed: name=%s err=%v", name, err)
-			return ""
-		}
-		return resolved
+		return urlFor(name, params, query)
 	})
 	engine.AddFunc("GetTagUrl", share.GetTagUrl)
 	engine.AddFunc("GetCategoryUrl", share.GetCategoryUrl)
@@ -440,5 +438,49 @@ func normalizeBytes(raw interface{}) (float64, bool) {
 		return float64(*v), true
 	default:
 		return 0, false
+	}
+}
+
+func newURLForResolver(app *fiber.App) func(name string, params map[string]string, query map[string]string) (string, error) {
+	return func(name string, params map[string]string, query map[string]string) (string, error) {
+		route := app.GetRoute(strings.TrimSpace(name))
+		if strings.TrimSpace(route.Name) == "" {
+			return "", fmt.Errorf("route %q not found", name)
+		}
+
+		path := route.Path
+		consumedKeys := map[string]struct{}{}
+		for _, paramName := range route.Params {
+			value := strings.TrimSpace(params[paramName])
+			if value == "" {
+				return "", fmt.Errorf("route %q missing param %q", name, paramName)
+			}
+			consumedKeys[paramName] = struct{}{}
+			path = strings.ReplaceAll(path, ":"+paramName, url.PathEscape(value))
+		}
+
+		queryValues := url.Values{}
+		for key, value := range params {
+			k := strings.TrimSpace(key)
+			if k == "" {
+				continue
+			}
+			if _, ok := consumedKeys[k]; ok {
+				continue
+			}
+			queryValues.Set(k, value)
+		}
+		for key, value := range query {
+			k := strings.TrimSpace(key)
+			if k == "" {
+				continue
+			}
+			queryValues.Set(k, value)
+		}
+		encodedQuery := queryValues.Encode()
+		if encodedQuery != "" {
+			path += "?" + encodedQuery
+		}
+		return path, nil
 	}
 }

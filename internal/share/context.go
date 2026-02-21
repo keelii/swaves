@@ -14,27 +14,42 @@ import (
 
 type URLForResolver func(name string, params map[string]string, query map[string]string) (string, error)
 
-var (
-	urlForResolverMu sync.RWMutex
-	urlForResolver   URLForResolver
-)
-
-func SetURLForResolver(resolver URLForResolver) {
-	urlForResolverMu.Lock()
-	urlForResolver = resolver
-	urlForResolverMu.Unlock()
+type URLForStore struct {
+	mu       sync.RWMutex
+	resolver URLForResolver
 }
 
-func URLFor(name string, params map[string]string, query map[string]string) string {
+func NewURLForStore() *URLForStore {
+	return &URLForStore{}
+}
+
+func (s *URLForStore) SetResolver(resolver URLForResolver) {
+	if s == nil {
+		log.Printf("[url_for] skip set resolver: store is nil")
+		return
+	}
+	s.mu.Lock()
+	s.resolver = resolver
+	s.mu.Unlock()
+}
+
+func (s *URLForStore) URLFor(name string, params map[string]string, query map[string]string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
+		log.Printf("[url_for] skip resolve: empty route name")
 		return ""
 	}
 
-	urlForResolverMu.RLock()
-	resolver := urlForResolver
-	urlForResolverMu.RUnlock()
+	if s == nil {
+		log.Printf("[url_for] skip resolve: store is nil (name=%s)", name)
+		return ""
+	}
+
+	s.mu.RLock()
+	resolver := s.resolver
+	s.mu.RUnlock()
 	if resolver == nil {
+		log.Printf("[url_for] skip resolve: resolver is nil (name=%s)", name)
 		return ""
 	}
 
@@ -44,6 +59,16 @@ func URLFor(name string, params map[string]string, query map[string]string) stri
 		return ""
 	}
 	return resolved
+}
+
+var defaultURLForStore = NewURLForStore()
+
+func SetURLForResolver(resolver URLForResolver) {
+	defaultURLForStore.SetResolver(resolver)
+}
+
+func URLFor(name string, params map[string]string, query map[string]string) string {
+	return defaultURLForStore.URLFor(name, params, query)
 }
 
 func settingValue(code string) string {
