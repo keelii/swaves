@@ -994,6 +994,29 @@ func TestListSettingsOrder(t *testing.T) {
 		}
 		return 999
 	}
+	subKindRank := func(kind string, subKind string) int {
+		normalizedSubKind := strings.TrimSpace(subKind)
+		if normalizedSubKind == "" {
+			normalizedSubKind = SettingSubKindGeneral
+		}
+		items, ok := settingSubKindOrder[kind]
+		if !ok {
+			return 999
+		}
+		for idx, item := range items {
+			if normalizedSubKind == item {
+				return idx + 1
+			}
+		}
+		return 999
+	}
+	normalizedSubKind := func(raw string) string {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			return SettingSubKindGeneral
+		}
+		return value
+	}
 
 	all, err := ListAllSettings(db)
 	if err != nil {
@@ -1004,13 +1027,19 @@ func TestListSettingsOrder(t *testing.T) {
 	}
 
 	prevRank := -1
+	prevSubKindRank := -1
 	prevKind := ""
+	prevSubKind := ""
 	prevSort := int64(0)
 	for i, s := range all {
 		rank := kindRank(s.Kind)
+		subKind := normalizedSubKind(s.SubKind)
+		subRank := subKindRank(s.Kind, s.SubKind)
 		if i == 0 {
 			prevRank = rank
+			prevSubKindRank = subRank
 			prevKind = s.Kind
+			prevSubKind = subKind
 			prevSort = s.Sort
 			continue
 		}
@@ -1021,13 +1050,70 @@ func TestListSettingsOrder(t *testing.T) {
 		if rank == prevRank && s.Kind < prevKind {
 			t.Fatalf("kind order not stable at index %d: kind %s < prev %s", i, s.Kind, prevKind)
 		}
-		if rank == prevRank && s.Kind == prevKind && s.Sort < prevSort {
-			t.Fatalf("sort order not stable at index %d: sort %d < prev %d (kind=%s)", i, s.Sort, prevSort, s.Kind)
+		if rank == prevRank && s.Kind == prevKind && subRank < prevSubKindRank {
+			t.Fatalf("sub kind rank not stable at index %d: rank %d < prev %d (kind=%s)", i, subRank, prevSubKindRank, s.Kind)
+		}
+		if rank == prevRank && s.Kind == prevKind && subRank == prevSubKindRank && subKind < prevSubKind {
+			t.Fatalf("sub kind order not stable at index %d: sub_kind %s < prev %s (kind=%s)", i, subKind, prevSubKind, s.Kind)
+		}
+		if rank == prevRank && s.Kind == prevKind && subRank == prevSubKindRank && subKind == prevSubKind && s.Sort < prevSort {
+			t.Fatalf("sort order not stable at index %d: sort %d < prev %d (kind=%s sub_kind=%s)", i, s.Sort, prevSort, s.Kind, subKind)
 		}
 
 		prevRank = rank
+		prevSubKindRank = subRank
 		prevKind = s.Kind
+		prevSubKind = subKind
 		prevSort = s.Sort
+	}
+}
+
+func TestListSettingsByKindSubKindOrder(t *testing.T) {
+	db := openTestDB(t)
+
+	seeCode := uniqueValue("setting_subkind_see")
+	imagekitCode := uniqueValue("setting_subkind_imagekit")
+	s3Code := uniqueValue("setting_subkind_s3")
+	generalCode := uniqueValue("setting_subkind_general")
+
+	items := []*Setting{
+		{Code: seeCode, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "see", Type: "text", Value: "1", Sort: 5},
+		{Code: imagekitCode, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "imagekit", Type: "text", Value: "1", Sort: 5},
+		{Code: s3Code, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "s3", Type: "text", Value: "1", Sort: 5},
+		{Code: generalCode, Kind: SettingKindThirdPartyServices, SubKind: "", Name: "general", Type: "text", Value: "1", Sort: 5},
+	}
+	for _, item := range items {
+		if _, err := CreateSetting(db, item); err != nil {
+			t.Fatalf("CreateSetting(%s) failed: %v", item.Code, err)
+		}
+	}
+
+	list, err := ListSettingsByKind(db, SettingKindThirdPartyServices)
+	if err != nil {
+		t.Fatalf("ListSettingsByKind failed: %v", err)
+	}
+
+	got := make([]string, 0, 4)
+	targetCodes := map[string]bool{
+		seeCode:      true,
+		imagekitCode: true,
+		s3Code:       true,
+		generalCode:  true,
+	}
+	for _, item := range list {
+		if targetCodes[item.Code] {
+			got = append(got, item.Code)
+		}
+	}
+
+	want := []string{seeCode, imagekitCode, s3Code, generalCode}
+	if len(got) != len(want) {
+		t.Fatalf("unexpected matched settings length: got=%d want=%d codes=%v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("unexpected sub kind order at index=%d got=%s want=%s full=%v", i, got[i], want[i], got)
+		}
 	}
 }
 
@@ -1055,6 +1141,33 @@ func TestEnsureDefaultSettingsSyncKind(t *testing.T) {
 	}
 	if updated.Kind != SettingKindSiteBasics {
 		t.Fatalf("expected site_url kind %s, got %s", SettingKindSiteBasics, updated.Kind)
+	}
+}
+
+func TestEnsureDefaultSettingsSyncSubKind(t *testing.T) {
+	db := openTestDB(t)
+
+	s3Endpoint, err := GetSettingByCode(db, "sync_push_endpoint")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(sync_push_endpoint) failed: %v", err)
+	}
+
+	if err := Update(db, specSettings, s3Endpoint.ID, map[string]interface{}{
+		"sub_kind": "legacy_sub_kind",
+	}); err != nil {
+		t.Fatalf("Update setting metadata failed: %v", err)
+	}
+
+	if err := EnsureDefaultSettings(db); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+
+	updated, err := GetSettingByCode(db, "sync_push_endpoint")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(sync_push_endpoint) after ensure failed: %v", err)
+	}
+	if updated.SubKind != SettingSubKindS3 {
+		t.Fatalf("expected sync_push_endpoint sub_kind %s, got %s", SettingSubKindS3, updated.SubKind)
 	}
 }
 

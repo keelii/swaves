@@ -4,6 +4,7 @@
     <th class="cell-4">ID</th>
     <th>名称</th>
     <th>分类</th>
+    <th>子分类</th>
     <th>编码</th>
     <th>类型</th>
     <th>值</th>
@@ -20,6 +21,7 @@
     <td class="cell-4">{{ .ID }}</td>
     <td>{{ .Name }}</td>
     <td>{{ .Kind }}</td>
+    <td>{{ if .SubKind }}{{ .SubKind }}{{ else }}-{{ end }}</td>
     <td>{{ .Code }}</td>
     <td>{{ .Type }}</td>
     <td>
@@ -35,7 +37,7 @@
     {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.settings.edit" "DeleteRoute" "admin.settings.delete" "ID" .ID }}
   </tr>
   {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "暂无设置项" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 11 "Message" "暂无设置项" }}
   {{ end }}
   </tbody>
 

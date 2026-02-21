@@ -51,8 +51,8 @@
   }
 
   .monitor-chart-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: var(--space-3);
   }
 
@@ -93,32 +93,21 @@
     font-size: var(--text-8);
     margin-top: var(--space-2);
   }
-
-  @media (max-width: 1024px) {
-    .monitor-chart-grid {
-      grid-template-columns: 1fr;
-    }
-  }
 </style>
 
-<div class="card mb-4">
-  <div class="monitor-toolbar">
-    <div>
-      <div class="monitor-card-label">时间粒度</div>
-      <nav class="monitor-tabs" role="tablist" aria-label="时间粒度" data-monitor-granularity-tabs>
-        {{ range .Granularities }}
-          <a
-            role="tab"
-            aria-selected="{{ if eq $.ActiveGranularity .Key }}true{{ else }}false{{ end }}"
-            href="{{ url_for "admin.monitor" (dict "granularity" .Key) }}"
-            data-monitor-granularity="{{ .Key }}"
-          >{{ .Label }}</a>
-        {{ end }}
-      </nav>
-    </div>
-    <div class="monitor-toolbar-meta">
-      最近采样：<span data-latest-ts>-</span>
-    </div>
+<div class="monitor-toolbar mb-2">
+  <nav class="monitor-tabs" role="tablist" aria-label="时间粒度" data-monitor-granularity-tabs>
+    {{ range .Granularities }}
+      <a
+        role="tab"
+        aria-selected="{{ if eq $.ActiveGranularity .Key }}true{{ else }}false{{ end }}"
+        href="{{ url_for "admin.monitor" (dict "granularity" .Key "scope" $.ActiveScope) }}"
+        data-monitor-granularity="{{ .Key }}"
+      >{{ .Label }}</a>
+    {{ end }}
+  </nav>
+  <div class="monitor-toolbar-meta">
+    最近采样：<span data-latest-ts>-</span>
   </div>
 </div>
 
@@ -147,28 +136,21 @@
 </div>
 
 <div class="row">
-  <div class="col-3 mb-2">
+  <div class="col-4 mb-2">
     <div class="card">
       <div class="monitor-card-label">系统 CPU</div>
       <div class="monitor-card-value" data-latest="os_cpu">-</div>
       <div class="monitor-card-sub">全局负载</div>
     </div>
   </div>
-  <div class="col-3 mb-2">
+  <div class="col-4 mb-2">
     <div class="card">
       <div class="monitor-card-label">系统内存</div>
       <div class="monitor-card-value" data-latest="os_ram">-</div>
       <div class="monitor-card-sub">已用 / 总量</div>
     </div>
   </div>
-  <div class="col-3 mb-2">
-    <div class="card">
-      <div class="monitor-card-label">系统负载</div>
-      <div class="monitor-card-value" data-latest="os_load">-</div>
-      <div class="monitor-card-sub">1分钟</div>
-    </div>
-  </div>
-  <div class="col-3 mb-2">
+  <div class="col-4 mb-2">
     <div class="card">
       <div class="monitor-card-label">系统连接数</div>
       <div class="monitor-card-value" data-latest="os_conns">-</div>
@@ -178,10 +160,20 @@
 </div>
 
 <div class="mt-4">
-  <div class="monitor-chart-group-head">
-    <span>趋势图</span>
-    <span data-monitor-range>-</span>
-  </div>
+  <nav class="monitor-tabs mb-2" role="tablist" aria-label="监控指标" data-monitor-scope-tabs>
+    <a
+      role="tab"
+      aria-selected="{{ if eq .ActiveScope "app" }}true{{ else }}false{{ end }}"
+      href="{{ url_for "admin.monitor" (dict "granularity" .ActiveGranularity "scope" "app") }}"
+      data-monitor-scope="app"
+    >应用</a>
+    <a
+      role="tab"
+      aria-selected="{{ if eq .ActiveScope "system" }}true{{ else }}false{{ end }}"
+      href="{{ url_for "admin.monitor" (dict "granularity" .ActiveGranularity "scope" "system") }}"
+      data-monitor-scope="system"
+    >系统</a>
+  </nav>
   <div class="monitor-chart-grid" data-monitor-charts>
     <p class="text-lighter">正在加载图表...</p>
   </div>
@@ -194,6 +186,7 @@
     var metricsAPIURL = '{{ url_for "admin.metrics.api" }}';
 
     var activeGranularity = '{{ .ActiveGranularity }}' || '1m';
+    var activeScope = '{{ .ActiveScope }}' || 'app';
 
     var chartsEl = document.querySelector('[data-monitor-charts]');
     var rangeEl = document.querySelector('[data-monitor-range]');
@@ -201,6 +194,7 @@
 
     var latestTimer = null;
     var loadingHistory = false;
+    var allCharts = [];
 
     function formatPercent(value) {
       var num = Number(value || 0);
@@ -276,7 +270,6 @@
 
       setText('[data-latest="os_cpu"]', formatPercent(os.cpu));
       setText('[data-latest="os_ram"]', formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram));
-      setText('[data-latest="os_load"]', Number(os.load_avg || 0).toFixed(3));
       setText('[data-latest="os_conns"]', formatNumber(os.conns));
       setText('[data-latest-ts]', formatDateTime(latest.ts));
     }
@@ -296,20 +289,39 @@
     function updateLocation() {
       var nextURL = buildURL('{{ url_for "admin.monitor" }}', {
         granularity: activeGranularity,
+        scope: activeScope,
       });
       history.replaceState(null, '', nextURL.pathname + nextURL.search);
     }
 
-    function renderCharts(charts) {
+    function chartMatchesScope(metricKey) {
+      if (activeScope === 'system') {
+        return typeof metricKey === 'string' && metricKey.indexOf('os_') === 0;
+      }
+      return typeof metricKey === 'string' && metricKey.indexOf('pid_') === 0;
+    }
+
+    function renderCharts() {
       if (!chartsEl) {
         return;
       }
-      if (!Array.isArray(charts) || charts.length === 0) {
+      if (!Array.isArray(allCharts) || allCharts.length === 0) {
         chartsEl.innerHTML = '<p class="text-lighter">暂无图表数据</p>';
         return;
       }
 
-      var html = charts.map(function(item) {
+      var scopedCharts = allCharts.filter(function(item) {
+        if (!item || !item.metric) {
+          return false;
+        }
+        return chartMatchesScope(item.metric.key);
+      });
+      if (scopedCharts.length === 0) {
+        chartsEl.innerHTML = '<p class="text-lighter">暂无图表数据</p>';
+        return;
+      }
+
+      var html = scopedCharts.map(function(item) {
         var metric = item && item.metric ? item.metric : {};
         var label = escapeHTML(metric.label || '未命名指标');
         var unit = escapeHTML(metric.unit || '');
@@ -354,7 +366,8 @@
           rangeEl.textContent = formatDateTime(json.start_at) + ' - ' + formatDateTime(json.end_at);
         }
 
-        renderCharts(json.charts || []);
+        allCharts = Array.isArray(json.charts) ? json.charts : [];
+        renderCharts();
         renderLatest(json.latest || null);
       } catch (err) {
         var msg = err && err.message ? err.message : '读取监控数据失败';
@@ -400,6 +413,20 @@
           loadMonitorHistory();
         });
       });
+
+      document.querySelectorAll('[data-monitor-scope]').forEach(function(tab) {
+        tab.addEventListener('click', function(event) {
+          event.preventDefault();
+          var next = tab.getAttribute('data-monitor-scope') || '';
+          if (!next || next === activeScope) {
+            return;
+          }
+          activeScope = next;
+          setTabState('data-monitor-scope', activeScope);
+          updateLocation();
+          renderCharts();
+        });
+      });
     }
 
     function startLatestTicker() {
@@ -411,6 +438,7 @@
 
     bindTabEvents();
     setTabState('data-monitor-granularity', activeGranularity);
+    setTabState('data-monitor-scope', activeScope);
     loadMonitorHistory();
     startLatestTicker();
   })();

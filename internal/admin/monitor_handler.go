@@ -2,9 +2,15 @@ package admin
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+)
+
+const (
+	monitorScopeApp    = "app"
+	monitorScopeSystem = "system"
 )
 
 func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
@@ -13,11 +19,13 @@ func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
 		log.Printf("[monitor] invalid granularity on page: raw=%s err=%v", c.Query("granularity", ""), err)
 		granularity = monitorGranularityConfigs[0]
 	}
+	scope := resolveMonitorScope(c.Query("scope", ""))
 
 	return RenderAdminView(c, "monitor", fiber.Map{
 		"Title":             "系统监控",
 		"Granularities":     monitorGranularityOptions(),
 		"ActiveGranularity": granularity.Key,
+		"ActiveScope":       scope,
 	}, "")
 }
 
@@ -102,4 +110,17 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 		"metrics":       monitorMetricOptions(),
 		"granularities": monitorGranularityOptions(),
 	})
+}
+
+func resolveMonitorScope(raw string) string {
+	raw = strings.TrimSpace(raw)
+	switch raw {
+	case "", monitorScopeApp:
+		return monitorScopeApp
+	case monitorScopeSystem:
+		return monitorScopeSystem
+	default:
+		log.Printf("[monitor] invalid scope on page: raw=%s", raw)
+		return monitorScopeApp
+	}
 }

@@ -1116,6 +1116,58 @@ type SettingView struct {
 	AttrsParsed    map[string]interface{} // 解析后的 attrs（用于 HTML 属性）
 }
 
+type SettingSubKindGroupView struct {
+	Code     string
+	Label    string
+	Settings []SettingView
+}
+
+func normalizeSettingSubKind(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return db.SettingSubKindGeneral
+	}
+	return value
+}
+
+func resolveSettingSubKindLabel(kind string, subKind string) string {
+	subKind = normalizeSettingSubKind(subKind)
+	if labels, ok := db.SettingSubKindLabels[kind]; ok {
+		if label, exists := labels[subKind]; exists && strings.TrimSpace(label) != "" {
+			return label
+		}
+	}
+	if subKind == db.SettingSubKindGeneral {
+		return "通用"
+	}
+	return subKind
+}
+
+func buildSettingSubKindGroups(kind string, settings []SettingView) []SettingSubKindGroupView {
+	groups := make([]SettingSubKindGroupView, 0)
+	groupIndex := make(map[string]int)
+
+	for _, item := range settings {
+		subKind := normalizeSettingSubKind(item.SubKind)
+		item.SubKind = subKind
+
+		idx, ok := groupIndex[subKind]
+		if !ok {
+			groupIndex[subKind] = len(groups)
+			groups = append(groups, SettingSubKindGroupView{
+				Code:     subKind,
+				Label:    resolveSettingSubKindLabel(kind, subKind),
+				Settings: []SettingView{},
+			})
+			idx = len(groups) - 1
+		}
+
+		groups[idx].Settings = append(groups[idx].Settings, item)
+	}
+
+	return groups
+}
+
 // Categories
 func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
 	categories, err := ListCategoriesService(h.Model)
@@ -1454,11 +1506,17 @@ func (h *Handler) GetSettingsAllHandler(c fiber.Ctx) error {
 		settingKindLabels[item] = label
 	}
 
+	activeKindGroups := make([]SettingSubKindGroupView, 0)
+	if activeKind != "" {
+		activeKindGroups = buildSettingSubKindGroups(activeKind, settingsByKind[activeKind])
+	}
+
 	return RenderAdminView(c, "settings_all", fiber.Map{
 		"Title":              "Settings - Edit All",
 		"SettingsByKind":     settingsByKind,
 		"SettingKinds":       settingKinds,
 		"SettingKindLabels":  settingKindLabels,
+		"ActiveKindGroups":   activeKindGroups,
 		"ActiveKind":         activeKind,
 		"ContentRoutingKind": db.SettingKindContentRouting,
 		"Error":              errMsg,
@@ -1728,6 +1786,7 @@ func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 
 	// 更新字段
 	setting.Kind = c.FormValue("kind")
+	setting.SubKind = c.FormValue("sub_kind")
 	setting.Name = c.FormValue("name")
 	setting.Code = c.FormValue("code")
 	setting.Type = c.FormValue("type")
@@ -1807,6 +1866,7 @@ func (h *Handler) GetSettingNewHandler(c fiber.Ctx) error {
 func (h *Handler) PostCreateSettingHandler(c fiber.Ctx) error {
 	s := &db.Setting{
 		Kind:               c.FormValue("kind"),
+		SubKind:            c.FormValue("sub_kind"),
 		Name:               c.FormValue("name"),
 		Code:               c.FormValue("code"),
 		Type:               c.FormValue("type"),

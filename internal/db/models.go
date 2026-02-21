@@ -612,6 +612,7 @@ func scanSetting(scanner sqlScanner) (Setting, error) {
 	if err := scanner.Scan(
 		&s.ID,
 		&s.Kind,
+		&s.SubKind,
 		&s.Name,
 		&s.Code,
 		&s.Type,
@@ -3256,6 +3257,7 @@ func CreateRedirect(db *DB, r *Redirect) (int64, error) {
 type Setting struct {
 	ID                 int64
 	Kind               string
+	SubKind            string
 	Name               string
 	Code               string
 	Type               string
@@ -3304,6 +3306,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 
 	id, err := Create(db, specSettings, map[string]interface{}{
 		"kind":                 s.Kind,
+		"sub_kind":             strings.TrimSpace(s.SubKind),
 		"name":                 s.Name,
 		"code":                 s.Code,
 		"type":                 s.Type,
@@ -3331,7 +3334,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
 	result, err := Read(db, specSettings, ReadOptions{
-		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		SelectFields: "id, kind, sub_kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
 		WhereClause:  "code=?",
 		WhereArgs:    []interface{}{code},
 		Limit:        1,
@@ -3355,7 +3358,7 @@ func GetSettingByCode(db *DB, code string) (*Setting, error) {
 
 func GetSettingByID(db *DB, id int64) (*Setting, error) {
 	result, err := Read(db, specSettings, ReadOptions{
-		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		SelectFields: "id, kind, sub_kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
 		WhereClause:  "id=?",
 		WhereArgs:    []interface{}{id},
 		Limit:        1,
@@ -3380,16 +3383,17 @@ func GetSettingByID(db *DB, id int64) (*Setting, error) {
 func ListSettingsByKind(db *DB, kind string) ([]Setting, error) {
 	whereClause := ""
 	whereArgs := []interface{}{}
-	orderBy := "sort ASC, id ASC"
+	subKindSortKey := buildSettingSubKindSortKeySQL()
+	orderBy := buildSettingSubKindOrderSQL() + ", " + subKindSortKey + " ASC, sort ASC, id ASC"
 	if kind != "" {
 		whereClause = "kind=?"
 		whereArgs = append(whereArgs, kind)
 	} else {
-		orderBy = buildSettingKindOrderSQL() + ", kind ASC, sort ASC, id ASC"
+		orderBy = buildSettingKindOrderSQL() + ", kind ASC, " + buildSettingSubKindOrderSQL() + ", " + subKindSortKey + " ASC, sort ASC, id ASC"
 	}
 
 	results, err := Read(db, specSettings, ReadOptions{
-		SelectFields: "id, kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
+		SelectFields: "id, kind, sub_kind, name, code, type, options, attrs, value, default_option_value, prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at, deleted_at",
 		WhereClause:  whereClause,
 		OrderBy:      orderBy,
 		WhereArgs:    whereArgs,
@@ -3423,6 +3427,54 @@ func buildSettingKindOrderSQL() string {
 	return strings.Join(parts, " ")
 }
 
+func buildSettingSubKindSortKeySQL() string {
+	safeGeneral := strings.ReplaceAll(SettingSubKindGeneral, "'", "''")
+	return fmt.Sprintf("COALESCE(NULLIF(sub_kind, ''), '%s')", safeGeneral)
+}
+
+func buildSettingSubKindOrderSQL() string {
+	parts := []string{"CASE kind || ':' || " + buildSettingSubKindSortKeySQL()}
+	rank := 1
+
+	handledKinds := make(map[string]bool, len(settingSubKindOrder))
+	for _, kind := range settingKindOrder {
+		subKinds, ok := settingSubKindOrder[kind]
+		if !ok {
+			continue
+		}
+		handledKinds[kind] = true
+		safeKind := strings.ReplaceAll(kind, "'", "''")
+		for _, subKind := range subKinds {
+			normalizedSubKind := strings.TrimSpace(subKind)
+			if normalizedSubKind == "" {
+				normalizedSubKind = SettingSubKindGeneral
+			}
+			safeSubKind := strings.ReplaceAll(normalizedSubKind, "'", "''")
+			parts = append(parts, fmt.Sprintf("WHEN '%s:%s' THEN %d", safeKind, safeSubKind, rank))
+			rank++
+		}
+	}
+
+	for kind, subKinds := range settingSubKindOrder {
+		if handledKinds[kind] {
+			continue
+		}
+		safeKind := strings.ReplaceAll(kind, "'", "''")
+		for _, subKind := range subKinds {
+			normalizedSubKind := strings.TrimSpace(subKind)
+			if normalizedSubKind == "" {
+				normalizedSubKind = SettingSubKindGeneral
+			}
+			safeSubKind := strings.ReplaceAll(normalizedSubKind, "'", "''")
+			parts = append(parts, fmt.Sprintf("WHEN '%s:%s' THEN %d", safeKind, safeSubKind, rank))
+			rank++
+		}
+	}
+
+	parts = append(parts, "ELSE 999 END")
+	return strings.Join(parts, " ")
+}
+
 func ListAllSettings(db *DB) ([]Setting, error) {
 	return ListSettingsByKind(db, "")
 }
@@ -3442,6 +3494,7 @@ func UpdateSetting(db *DB, s *Setting) error {
 
 	err := Update(db, specSettings, s.ID, map[string]interface{}{
 		"kind":                 s.Kind,
+		"sub_kind":             strings.TrimSpace(s.SubKind),
 		"name":                 s.Name,
 		"type":                 s.Type,
 		"options":              s.Options,
@@ -3551,6 +3604,9 @@ func syncDefaultSettingMeta(db *DB, existing *Setting, defaults Setting) error {
 	updateData := map[string]interface{}{}
 	if existing.Kind != defaults.Kind {
 		updateData["kind"] = defaults.Kind
+	}
+	if existing.SubKind != defaults.SubKind {
+		updateData["sub_kind"] = defaults.SubKind
 	}
 	if existing.Type != defaults.Type {
 		updateData["type"] = defaults.Type

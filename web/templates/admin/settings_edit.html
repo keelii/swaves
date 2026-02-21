@@ -1,6 +1,7 @@
 <form id="form" method="post" action="{{ url_for "admin.settings.update" (dict "id" .Setting.ID) }}">
 
   {{ template "admin/includes/form_field_text" dict "Label" "分类" "Name" "kind" "Value" .Setting.Kind "Required" true "Placeholder" "例如: system, url, integration, default" "Help" "（例如：system、url、integration、default）" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "子分类" "Name" "sub_kind" "Value" .Setting.SubKind "Placeholder" "例如: general, see, imagekit, s3" "Help" "（可选，分类下的子分类 code）" }}
   {{ template "admin/includes/form_field_text" dict "Label" "名称" "Name" "name" "Value" .Setting.Name "Required" true "Placeholder" "人类可读的名称" "Help" "（用于界面展示的人类可读名称）" }}
   {{ template "admin/includes/form_field_text" dict "Label" "编码" "Name" "code" "Value" .Setting.Code "Required" true "Placeholder" "例如: site_name, admin_password" "Help" "（唯一键，例如：site_name、admin_password）" }}
 

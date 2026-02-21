@@ -211,6 +211,7 @@ const InitialSQL = `
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 
 		kind TEXT NOT NULL DEFAULT 'default',
+		sub_kind TEXT NOT NULL DEFAULT '',
 		name TEXT NOT NULL,
 		code TEXT NOT NULL UNIQUE,
 		type TEXT NOT NULL,
@@ -412,6 +413,14 @@ const (
 	SettingKindUIExperience       = "ui_experience"
 )
 
+const (
+	SettingSubKindGeneral  = "general"
+	SettingSubKindSEE      = "see"
+	SettingSubKindImageKit = "imagekit"
+	SettingSubKindS3       = "s3"
+	SettingSubKindMedia    = "media"
+)
+
 var settingKindOrder = []string{
 	SettingKindSiteBasics,
 	SettingKindAuthorInfo,
@@ -422,6 +431,19 @@ var settingKindOrder = []string{
 	SettingKindUIExperience,
 }
 
+var settingSubKindOrder = map[string][]string{
+	SettingKindThirdPartyServices: {
+		SettingSubKindSEE,
+		SettingSubKindImageKit,
+		SettingSubKindS3,
+		SettingSubKindGeneral,
+	},
+	SettingKindAdminSecurity: {
+		SettingSubKindGeneral,
+		SettingSubKindMedia,
+	},
+}
+
 var SettingKindLabels = map[string]string{
 	SettingKindSiteBasics:         "站点基础",
 	SettingKindAuthorInfo:         "作者信息",
@@ -430,6 +452,19 @@ var SettingKindLabels = map[string]string{
 	SettingKindThirdPartyServices: "第三方服务",
 	SettingKindAdminSecurity:      "后台安全",
 	SettingKindUIExperience:       "界面体验",
+}
+
+var SettingSubKindLabels = map[string]map[string]string{
+	SettingKindThirdPartyServices: {
+		SettingSubKindSEE:      "S.EE",
+		SettingSubKindImageKit: "ImageKit",
+		SettingSubKindS3:       "S3",
+		SettingSubKindGeneral:  "通用",
+	},
+	SettingKindAdminSecurity: {
+		SettingSubKindGeneral: "通用",
+		SettingSubKindMedia:   "媒体",
+	},
 }
 
 var DefaultSettings = []Setting{
@@ -460,18 +495,18 @@ var DefaultSettings = []Setting{
 	{Sort: 14, Kind: SettingKindBackupSync, Name: "本地备份间隔 (min)", Code: "backup_local_interval_min", Type: "number", Value: "1440", DefaultOptionValue: "1440", Description: "两次本地备份之间的最小间隔（分钟）", Attrs: `{"min": 1, "max": 10080}`},
 	{Sort: 15, Kind: SettingKindBackupSync, Name: "本地备份最大数量", Code: "backup_local_max_count", Type: "number", Value: "30", DefaultOptionValue: "30", Description: "本地仅保留最新 N 个备份文件", Attrs: `{"min": 1, "max": 500}`},
 	{Sort: 16, Kind: SettingKindBackupSync, Name: "远程备份超时 (sec)", Code: "sync_push_timeout_sec", Type: "number", Value: "60", DefaultOptionValue: "60", Description: "远程备份超时时间（秒）", Attrs: `{"min": 1, "max": 600}`},
-	{Sort: 10, Kind: SettingKindThirdPartyServices, Name: "S3 API Endpoint", Code: "sync_push_endpoint", Type: "url", Value: "", Description: "S3 API Endpoint（远程备份使用，不包含 bucket，例如：https://s3.example.com）"},
-	{Sort: 11, Kind: SettingKindThirdPartyServices, Name: "S3 Access Key ID", Code: "s3_access_key_id", Type: "text", Value: consts.S3AccessKeyID, Description: "S3 access key id"},
-	{Sort: 12, Kind: SettingKindThirdPartyServices, Name: "S3 Secret Access Key", Code: "s3_secret_access_key", Type: "secret", Value: consts.S3SecretAccessKey, Description: "S3 secret access key"},
-	{Sort: 13, Kind: SettingKindThirdPartyServices, Name: "S.EE API 地址", Code: "media_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload", Description: "S.EE API 地址（可填写上传接口完整地址）"},
-	{Sort: 14, Kind: SettingKindThirdPartyServices, Name: "S.EE API Token", Code: "media_see_api_token", Type: "secret", Value: consts.SeeApiToken, Description: "S.EE Bearer Token"},
-	{Sort: 15, Kind: SettingKindThirdPartyServices, Name: "ImageKit-endpoint", Code: "media_imagekit_endpoint", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API Endpoint"},
-	{Sort: 16, Kind: SettingKindThirdPartyServices, Name: "ImageKit Private Key", Code: "media_imagekit_private_key", Type: "secret", Value: consts.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
-	{Sort: 17, Kind: SettingKindThirdPartyServices, Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
-	{Sort: 18, Kind: SettingKindThirdPartyServices, Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
-	{Sort: 10, Kind: SettingKindAdminSecurity, Name: "管理后台路径", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: consts.UrlPrefixValidatorJSON},
-	{Sort: 11, Kind: SettingKindAdminSecurity, Name: "管理后台密码", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
-	{Sort: 12, Kind: SettingKindAdminSecurity, Name: "媒体默认服务", Code: "media_default_provider", Type: "select", Value: "see", Description: "媒体上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
+	{Sort: 10, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 API Endpoint", Code: "sync_push_endpoint", Type: "url", Value: "", Description: "S3 API Endpoint（远程备份使用，不包含 bucket，例如：https://s3.example.com）"},
+	{Sort: 11, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Access Key ID", Code: "s3_access_key_id", Type: "text", Value: consts.S3AccessKeyID, Description: "S3 access key id"},
+	{Sort: 12, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Secret Access Key", Code: "s3_secret_access_key", Type: "secret", Value: consts.S3SecretAccessKey, Description: "S3 secret access key"},
+	{Sort: 13, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API 地址", Code: "media_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload", Description: "S.EE API 地址（可填写上传接口完整地址）"},
+	{Sort: 14, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API Token", Code: "media_see_api_token", Type: "secret", Value: consts.SeeApiToken, Description: "S.EE Bearer Token"},
+	{Sort: 15, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit-endpoint", Code: "media_imagekit_endpoint", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API Endpoint"},
+	{Sort: 16, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit Private Key", Code: "media_imagekit_private_key", Type: "secret", Value: consts.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
+	{Sort: 17, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindGeneral, Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
+	{Sort: 18, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindGeneral, Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
+	{Sort: 10, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindGeneral, Name: "管理后台路径", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: consts.UrlPrefixValidatorJSON},
+	{Sort: 11, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindGeneral, Name: "管理后台密码", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+	{Sort: 12, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindMedia, Name: "媒体默认服务", Code: "media_default_provider", Type: "select", Value: "see", Description: "媒体上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
 	{Sort: 10, Kind: SettingKindUIExperience, Name: "文字大小", Code: "font_size", Type: "range", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 	{Sort: 11, Kind: SettingKindUIExperience, Name: "界面模式", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},

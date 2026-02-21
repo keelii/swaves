@@ -10,6 +10,14 @@
 
   <p>
     <label>
+      子分类<br>
+      <input type="text" name="sub_kind" value="{{ if .Setting }}{{ .Setting.SubKind }}{{ end }}" placeholder="例如: general, see, imagekit, s3">
+      <small>（可选，分类下的子分类 code）</small>
+    </label>
+  </p>
+
+  <p>
+    <label>
       名称<br>
       <input type="text" name="name" value="{{ if .Setting }}{{ .Setting.Name }}{{ end }}" required placeholder="人类可读的名称">
       <small>（用于界面展示的人类可读名称）</small>
