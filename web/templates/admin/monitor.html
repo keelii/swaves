@@ -158,25 +158,18 @@
 </div>
 
 <div class="row">
-  <div class="col-4 mb-6">
+  <div class="col-6 mb-6">
     <div class="card">
       <div class="monitor-card-label">系统 CPU</div>
       <div class="monitor-card-value" data-latest="os_cpu">-</div>
       <div class="monitor-card-sub">全局负载</div>
     </div>
   </div>
-  <div class="col-4 mb-6">
+  <div class="col-6 mb-6">
     <div class="card">
       <div class="monitor-card-label">系统内存</div>
       <div class="monitor-card-value" data-latest="os_ram">-</div>
       <div class="monitor-card-sub">已用 / 总量</div>
-    </div>
-  </div>
-  <div class="col-4 mb-6">
-    <div class="card">
-      <div class="monitor-card-label">系统连接数</div>
-      <div class="monitor-card-value" data-latest="os_conns">-</div>
-      <div class="monitor-card-sub">TCP</div>
     </div>
   </div>
 </div>
@@ -292,7 +285,6 @@
 
       setText('[data-latest="os_cpu"]', formatPercent(os.cpu));
       setText('[data-latest="os_ram"]', formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram));
-      setText('[data-latest="os_conns"]', formatNumber(os.conns));
       setText('[data-latest-ts]', formatDateTime(latest.ts));
     }
 
@@ -316,13 +308,6 @@
       history.replaceState(null, '', nextURL.pathname + nextURL.search);
     }
 
-    function chartMatchesScope(metricKey) {
-      if (activeScope === 'system') {
-        return typeof metricKey === 'string' && metricKey.indexOf('os_') === 0;
-      }
-      return metricKey === 'pid_cpu' || metricKey === 'pid_ram';
-    }
-
     function renderCharts() {
       if (!chartsEl) {
         return;
@@ -332,18 +317,7 @@
         return;
       }
 
-      var scopedCharts = allCharts.filter(function(item) {
-        if (!item || !item.metric) {
-          return false;
-        }
-        return chartMatchesScope(item.metric.key);
-      });
-      if (scopedCharts.length === 0) {
-        chartsEl.innerHTML = '<p class="text-lighter">暂无图表数据</p>';
-        return;
-      }
-
-      var html = scopedCharts.map(function(item) {
+      var html = allCharts.map(function(item) {
         var metric = item && item.metric ? item.metric : {};
         var label = escapeHTML(metric.label || '未命名指标');
         var unit = escapeHTML(metric.unit || '');
@@ -499,6 +473,7 @@
       try {
         var url = buildURL(monitorAPIURL, {
           granularity: activeGranularity,
+          scope: activeScope,
         });
         var response = await fetch(url.toString(), {
           headers: {
@@ -575,7 +550,7 @@
           activeScope = next;
           setTabState('data-monitor-scope', activeScope);
           updateLocation();
-          renderCharts();
+          loadMonitorHistory();
         });
       });
     }

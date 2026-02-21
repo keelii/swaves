@@ -115,28 +115,6 @@ var monitorMetricConfigs = []monitorMetricConfig{
 			return formatMonitorBytes(point.OS.RAM)
 		},
 	},
-	{
-		Key:   "os_load",
-		Label: "系统负载",
-		Unit:  "",
-		chartValue: func(point monitorHistoryPoint) int {
-			return int(math.Round(point.OS.LoadAvg * 1000))
-		},
-		formatValue: func(point monitorHistoryPoint) string {
-			return fmt.Sprintf("%.3f", point.OS.LoadAvg)
-		},
-	},
-	{
-		Key:   "os_conns",
-		Label: "系统连接数",
-		Unit:  "",
-		chartValue: func(point monitorHistoryPoint) int {
-			return point.OS.Conns
-		},
-		formatValue: func(point monitorHistoryPoint) string {
-			return fmt.Sprintf("%d", point.OS.Conns)
-		},
-	},
 }
 
 type MonitorStore struct {

@@ -150,7 +150,11 @@
             {{ $code := $setting.Code }}
             {{ $attrs := $setting.AttrsParsed }}
             <div class="settings-item">
+              {{ if eq $setting.Type "radio" }}
+              <div class="settings-item-label" data-setting-code="{{ $code }}" data-setting-name="{{ $setting.Name }}">
+              {{ else }}
               <label class="settings-item-label" data-setting-code="{{ $code }}" data-setting-name="{{ $setting.Name }}">
+              {{ end }}
 
                 {{ if ne $setting.Type "radio" }}
                   <div class="settings-item-header">
@@ -198,8 +202,10 @@
                   <fieldset class="settings-options hstack">
                     <legend>{{ $setting.Name }}</legend>
                     {{ range $setting.OptionsParsed }}
-                    <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $attrs }}>
-                    <span>{{ .label }}</span>
+                    <label class="settings-option hstack">
+                      <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $attrs }}>
+                      <span>{{ .label }}</span>
+                    </label>
                     {{ end }}
                   </fieldset>
                 {{ else if eq $setting.Type "checkbox" }}
@@ -219,7 +225,11 @@
                     {{ end }}
                   </select>
                 {{ end }}
+              {{ if eq $setting.Type "radio" }}
+              </div>
+              {{ else }}
               </label>
+              {{ end }}
               <div class="settings-item-desc">{{ if $setting.Description }}{{ $setting.Description }}{{ else }}-{{ end }}</div>
             </div>
         {{ end }}

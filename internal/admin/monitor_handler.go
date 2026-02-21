@@ -63,6 +63,7 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 			"ok":    false,
 		})
 	}
+	scope := resolveMonitorScope(c.Query("scope", ""))
 
 	aggregated, latest, err := h.Monitor.Aggregated(time.Now(), granularity)
 	if err != nil {
@@ -75,6 +76,9 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 
 	charts := make([]fiber.Map, 0, len(monitorMetricConfigs))
 	for _, metric := range monitorMetricConfigs {
+		if !monitorMetricInScope(metric.Key, scope) {
+			continue
+		}
 		chartSVG, buildErr := buildMonitorMetricChartSVG(aggregated, metric, granularity)
 		if buildErr != nil {
 			log.Printf("[monitor] build chart failed: granularity=%s metric=%s err=%v", granularity.Key, metric.Key, buildErr)
@@ -101,6 +105,7 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"ok":            true,
+		"scope":         scope,
 		"granularity":   granularity,
 		"start_at":      startAt,
 		"end_at":        endAt,
@@ -123,4 +128,11 @@ func resolveMonitorScope(raw string) string {
 		log.Printf("[monitor] invalid scope on page: raw=%s", raw)
 		return monitorScopeApp
 	}
+}
+
+func monitorMetricInScope(metricKey, scope string) bool {
+	if scope == monitorScopeSystem {
+		return metricKey == "os_cpu" || metricKey == "os_ram"
+	}
+	return metricKey == "pid_cpu" || metricKey == "pid_ram"
 }

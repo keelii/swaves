@@ -48,7 +48,7 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 
 	cfg := loadPushJobConfig()
 	if !cfg.Enabled {
-		return jobMessage("remote data backup disabled"), nil
+		return nil, errors.New("remote data backup disabled")
 	}
 
 	tmpDir, err := os.MkdirTemp("", "swaves-sync-push-*")
