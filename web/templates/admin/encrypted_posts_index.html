@@ -17,13 +17,13 @@
     <td class="cell-4">{{ .ID }}</td>
     <td>{{ .Title }}</td>
     <td>{{ .Slug }}</td>
-    <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}Never{{ end }}</td>
+    <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}永不过期{{ end }}</td>
     <td>{{ relativeTime .CreatedAt }}</td>
     <td>{{ relativeTime .UpdatedAt }}</td>
     {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.encrypted_posts.edit" "DeleteRoute" "admin.encrypted_posts.delete" "ID" .ID }}
   </tr>
   {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "No encrypted posts" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "暂无加密文章" }}
   {{ end }}
   </tbody>
 
@@ -35,4 +35,3 @@
   </tr>
   </tfoot>
 </table>
-

@@ -113,7 +113,7 @@
         <label data-field>
           标题来源<br>
           <select name="title_source" required>
-            <option value="frontmatter" selected>Frontmatter 字段（默认：title）</option>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：title）</option>
             <option value="filename">文件名</option>
             <option value="markdown">Markdown 标题</option>
           </select>
@@ -125,9 +125,9 @@
         <label>
           标题级别<br>
           <select name="title_level">
-            <option value="1" selected>H1 (# Title)</option>
-            <option value="2">H2 (## Title)</option>
-            <option value="3">H3 (### Title)</option>
+            <option value="1" selected>H1（# 一级标题）</option>
+            <option value="2">H2（## 二级标题）</option>
+            <option value="3">H3（### 三级标题）</option>
           </select>
           <small>（从 Markdown 中提取标题时使用的级别）</small>
         </label>
@@ -138,7 +138,7 @@
           URL 标识来源<br>
           <select name="slug_source" required>
             <option value="filename" selected>文件名</option>
-            <option value="frontmatter">Frontmatter 字段（默认：slug）</option>
+            <option value="frontmatter">前置信息字段（Frontmatter，默认：slug）</option>
             <option value="title">由标题自动生成</option>
           </select>
           <input type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
@@ -149,7 +149,7 @@
         <label>
           创建时间来源<br>
           <select name="created_source" required>
-            <option value="frontmatter" selected>Frontmatter 字段（默认：date）</option>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：date）</option>
             <option value="filetime">文件时间（当前时间）</option>
           </select>
           <input type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
@@ -160,7 +160,7 @@
         <label>
           状态来源<br>
           <select name="status_source" required>
-            <option value="frontmatter" selected>Frontmatter 字段（默认：draft）</option>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：draft）</option>
             <option value="alldraft">全部草稿</option>
             <option value="allpublished">全部发布</option>
           </select>
@@ -173,7 +173,7 @@
           分类来源<br>
           <select name="category_source" required>
             <option value="none">不设置（留空）</option>
-            <option value="frontmatter" selected>Frontmatter 字段（默认：categories）</option>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：categories）</option>
             <option value="autocreate">自动创建默认分类</option>
           </select>
           <input type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
@@ -185,7 +185,7 @@
           标签来源<br>
           <select name="tag_source" required>
             <option value="none">不设置（留空）</option>
-            <option value="frontmatter" selected>Frontmatter 字段（默认：tags）</option>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：tags）</option>
             <option value="autocreate">自动创建默认标签</option>
           </select>
           <input type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
@@ -195,7 +195,7 @@
     <div class="col-6">
       <p>
         <small>
-          Markdown 文件应包含 frontmatter，例如：<br>
+          Markdown 文件应包含前置信息（frontmatter），例如：<br>
           <pre>---
   title: 文章标题
   slug: /article-slug
@@ -272,7 +272,7 @@
   <header>
     <h4>确认取消导入</h4>
   </header>
-  <p>将删除所有 importing 状态的临时文章，且无法恢复。确定继续吗？</p>
+  <p>将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？</p>
   <footer class="hstack justify-content-end">
     <button type="button" class="button outline" commandfor="import-cancel-dialog" command="close">继续编辑</button>
     <button type="button" class="button" id="import-cancel-confirm-btn">确认取消导入</button>
@@ -842,7 +842,7 @@ $(function() {
       setEditSummary('已取消导入，删除 ' + deletedCount + ' 条临时记录。', 'success');
       notify('已取消导入，删除 ' + deletedCount + ' 条临时记录。', '', { variant: 'success' });
     } catch (err) {
-      var requestErrMsg = (err && err.message) ? err.message : 'request failed';
+      var requestErrMsg = (err && err.message) ? err.message : '请求失败';
       setEditSummary('取消导入失败：' + requestErrMsg, 'error');
       notify('取消导入失败：' + requestErrMsg, '', { variant: 'danger' });
     } finally {
@@ -861,8 +861,8 @@ $(function() {
       return;
     }
 
-    if (!openDialog($cancelDialog)) {
-      if (!window.confirm('将删除所有 importing 状态的临时文章，且无法恢复。确定继续吗？')) {
+      if (!openDialog($cancelDialog)) {
+      if (!window.confirm('将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？')) {
         return;
       }
       void executeCancelImporting();
@@ -925,7 +925,7 @@ $(function() {
         }
       } catch (err) {
         failCount++;
-        setRowStatus($row, 'error', '失败: ' + (err && err.message ? err.message : 'request failed'));
+        setRowStatus($row, 'error', '失败: ' + (err && err.message ? err.message : '请求失败'));
       }
 
       completedCount++;
@@ -973,7 +973,7 @@ $(function() {
     isParsing = true;
     $dropzone.addClass('is-disabled');
     ensureEditPanelVisible();
-    setEditSummary('开始逐个导入文件（临时状态 importing）...', 'warning');
+    setEditSummary('开始逐个导入文件（临时状态：导入中）...', 'warning');
 
     var successCount = 0;
     var failCount = 0;
@@ -1009,11 +1009,11 @@ $(function() {
         } else {
           failCount++;
           var errMsg = (result && result.error) ? result.error : ('HTTP ' + response.status);
-          failedNames.push((file.name || 'unnamed') + '：' + errMsg);
+          failedNames.push((file.name || '未命名文件') + '：' + errMsg);
         }
       } catch (err) {
         failCount++;
-        failedNames.push((file.name || 'unnamed') + '：' + (err && err.message ? err.message : 'request failed'));
+        failedNames.push((file.name || '未命名文件') + '：' + (err && err.message ? err.message : '请求失败'));
       }
 
       completedCount++;

@@ -178,7 +178,7 @@
         </td>
       </tr>
     {{ else }}
-      {{ template "admin/includes/table_empty" dict "ColSpan" 8 "Message" "No media assets" }}
+      {{ template "admin/includes/table_empty" dict "ColSpan" 8 "Message" "暂无媒体资源" }}
     {{ end }}
   </tbody>
   <tfoot>
@@ -358,7 +358,7 @@ $(function() {
             successCount += 1;
           }).catch(function(err) {
             failedCount += 1;
-            var name = file.name || '(unnamed)';
+            var name = file.name || '（未命名）';
             failedNames.push(name);
             failedDetails.push(name + '：' + compactErrorMessage(err && err.message));
           });

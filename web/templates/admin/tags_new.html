@@ -1,7 +1,6 @@
 <form id="form" method="post" action="{{ url_for "admin.tags.create" }}">
 
-  {{ template "admin/includes/form_field_text" dict "Label" "Name" "Name" "name" "Required" true "Placeholder" "标签名称" }}
-  {{ template "admin/includes/form_field_text" dict "Label" "Slug" "Name" "slug" "Required" true "Placeholder" "url-friendly-identifier" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "名称" "Name" "name" "Required" true "Placeholder" "标签名称" }}
+  {{ template "admin/includes/form_field_text" dict "Label" "URL 标识" "Name" "slug" "Required" true "Placeholder" "url标识" }}
 
 </form>
-

@@ -35,7 +35,7 @@
       <td class="cell-4">{{ .ID }}</td>
       <td>
         <a href="{{ url_for "admin.posts.edit" (dict "id" .PostID) }}">{{ .PostTitle }}</a>
-        <div class="text-light">post_id={{ .PostID }}</div>
+        <div class="text-light">文章ID={{ .PostID }}</div>
       </td>
       <td>
         <div style="display:flex;align-items:flex-start;gap:0.5rem;">
@@ -91,7 +91,7 @@
       </td>
     </tr>
   {{ else }}
-    {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "No comments" }}
+    {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "暂无评论" }}
   {{ end }}
   </tbody>
   <tfoot>

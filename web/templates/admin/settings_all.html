@@ -154,7 +154,7 @@
                 <output class="range-value" for="setting_{{ $code }}_range">{{ $setting.Value }}{{ if eq $code "font_size" }} px{{ end }}</output>
               </span>
             {{ else if eq $setting.Type "password" }}
-              <input type="password" name="setting_{{ $code }}" placeholder="Leave empty to keep current"{{ renderAttrs $attrs }}>
+              <input type="password" name="setting_{{ $code }}" placeholder="留空则保持当前值"{{ renderAttrs $attrs }}>
             {{ else if eq $setting.Type "secret" }}
               <span class="settings-secret-wrap">
                 <input type="password" id="setting_{{ $code }}_secret" name="setting_{{ $code }}" value="{{ $setting.Value }}" autocomplete="off"{{ renderAttrs $attrs }}>

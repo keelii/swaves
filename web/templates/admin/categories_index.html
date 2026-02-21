@@ -35,7 +35,7 @@
     {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.categories.edit" "DeleteRoute" "admin.categories.delete" "ID" .ID }}
   </tr>
   {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "No categories" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "暂无分类" }}
   {{ end }}
   </tbody>
 </table>

@@ -19,8 +19,8 @@
       </label>
 
       <fieldset class="hstack">
-        <legend>Kind (类型)</legend>
-        {{ template "admin/includes/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "post (文章)") (dict "Value" "1" "Label" "page (页面)")) "Selected" (printf "%d" .Post.Kind) }}
+        <legend>类型</legend>
+        {{ template "admin/includes/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "文章") (dict "Value" "1" "Label" "页面")) "Selected" (printf "%d" .Post.Kind) }}
       </fieldset>
 
       {{ template "admin/includes/form_field_checkbox" dict "Label" "开启评论" "Name" "comment_enabled" "Value" 1 "Checked" (eq .Post.CommentEnabled 1) }}

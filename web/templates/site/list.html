@@ -24,7 +24,7 @@
   {{ if gt (len .List) 0 }}
     {{ template "site/category_tree_nodes" .List }}
   {{ else }}
-  <li>No categories</li>
+  <li>暂无分类</li>
   {{ end }}
 </ul>
 {{ else }}
@@ -36,7 +36,7 @@
     <span>{{ relativeTime .CreatedAt }}</span>
   </li>
   {{ else }}
-  <li>No {{ .ID }}</li>
+  <li>暂无数据</li>
   {{ end }}
 </ul>
 {{ end }}

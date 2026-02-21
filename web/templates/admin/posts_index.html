@@ -82,7 +82,7 @@
     {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.posts.edit" "DeleteRoute" "admin.posts.delete" "ID" .Post.ID }}
   </tr>
   {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "No posts" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "暂无文章" }}
   {{ end }}
   </tbody>
 
@@ -94,5 +94,4 @@
   </tr>
   </tfoot>
 </table>
-
 

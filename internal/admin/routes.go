@@ -5,6 +5,7 @@ import (
 	"swaves/internal/share"
 	"swaves/internal/store"
 
+	"github.com/gofiber/contrib/v3/monitor"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -16,6 +17,11 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 
 	adminGroup := app.Group(share.GetAdminUrl())
 	adminGroup.Use(middleware.RequireAdmin(gStore.Session, share.BuildAdminPath("/login")))
+
+	// metrics
+	adminGroup.Get("/metrics", monitor.New(monitor.Config{
+		APIOnly: true,
+	})).Name("admin.metrics")
 
 	adminGroup.Get("/", handler.GetHome).Name("admin.home")
 	adminGroup.Get("/panic", func(c fiber.Ctx) error {

@@ -35,7 +35,7 @@
     {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.settings.edit" "DeleteRoute" "admin.settings.delete" "ID" .ID }}
   </tr>
   {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "No settings" }}
+  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "暂无设置项" }}
   {{ end }}
   </tbody>
 

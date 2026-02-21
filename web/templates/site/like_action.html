@@ -53,7 +53,7 @@
         });
 
         if (!response.ok) {
-          throw new Error("like request failed");
+          throw new Error("点赞请求失败");
         }
 
         var result = await response.json();

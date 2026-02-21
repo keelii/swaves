@@ -2,25 +2,25 @@
   <div class="row">
     <div class="col-6">
       <label data-field>
-        From
+        来源路径
         <input type="text" name="from" required placeholder="/old-path">
       </label>
 
       <label data-field>
-        To
+        目标路径
         <input type="text" name="to" required placeholder="/new-path">
       </label>
 
       <label data-field>
-        Status (状态码)
+        状态码
         <select name="status">
-          <option value="301" selected>301 - Permanent Redirect</option>
-          <option value="302">302 - Temporary Redirect</option>
+          <option value="301" selected>301 - 永久重定向</option>
+          <option value="302">302 - 临时重定向</option>
         </select>
       </label>
 
       <label data-field>
-        Enabled (启用)
+        启用
         {{ template "admin/includes/toggle" dict "ID" "redirect_enabled_new" "Name" "enabled" "Checked" true "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
       </label>
     </div>

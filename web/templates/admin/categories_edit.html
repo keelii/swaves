@@ -2,38 +2,38 @@
   <div class="row">
     <div class="col-6">
       <label data-field>
-        Parent Category
+        父分类
         <select name="parent_id">
           <option value="0"{{ if eq .Category.ParentID 0 }} selected{{ end }}>顶级分类</option>
           {{ range .Categories }}
             <option value="{{ .ID }}"{{ if eq $.Category.ParentID .ID }} selected{{ end }}>{{ .Name }}</option>
           {{ end }}
         </select>
-        <small>(Select parent category, or "None" for top level)</small>
+        <small>（选择父分类，选择“顶级分类”表示无父级）</small>
       </label>
 
       <label data-field>
-        Name
+        名称
         <input type="text" name="name" required value="{{ .Category.Name }}" placeholder="分类名称">
-        <small>(Display name)</small>
+        <small>（显示名称）</small>
       </label>
 
       <label data-field>
-        Slug
-        <input type="text" name="slug" required value="{{ .Category.Slug }}" placeholder="url-friendly-identifier">
-        <small>(URL-friendly identifier, must be unique under same parent)</small>
+        URL 标识
+        <input type="text" name="slug" required value="{{ .Category.Slug }}" placeholder="url标识">
+        <small>（URL 标识，同级下需唯一）</small>
       </label>
 
       <label data-field>
         Description
         <textarea name="description" rows="3" cols="80" placeholder="可选描述信息">{{ .Category.Description }}</textarea>
-        <small>(Optional description)</small>
+        <small>（可选描述）</small>
       </label>
 
       <label data-field>
         Sort
         <input type="number" name="sort" value="{{ .Category.Sort }}">
-        <small>(Sort order within same parent level)</small>
+        <small>（同级排序，越小越靠前）</small>
       </label>
     </div>
   </div>

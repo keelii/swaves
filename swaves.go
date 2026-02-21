@@ -12,7 +12,6 @@ import (
 	"swaves/internal/store"
 	"swaves/internal/types"
 
-	"github.com/gofiber/contrib/v3/monitor"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -64,10 +63,6 @@ func NewApp(config types.AppConfig) SwavesApp {
 
 	// statics
 	app.Use("/static", static.New("./web/static"))
-	// metrics
-	app.Get("/metrics", monitor.New(monitor.Config{
-		Title: config.AppName + " metrics",
-	})).Name("system.metrics")
 
 	//app.Use(limiter.New())
 	app.Use(middleware.AdminViewContext(globalStore.Session))

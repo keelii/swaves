@@ -2,25 +2,25 @@
   <div class="row">
     <div class="col-6">
       <label data-field>
-        From
+        来源路径
         <input type="text" name="from" required value="{{ .Redirect.From }}" placeholder="/old-path">
       </label>
 
       <label data-field>
-        To
+        目标路径
         <input type="text" name="to" required value="{{ .Redirect.To }}" placeholder="/new-path">
       </label>
 
       <label data-field>
-        Status (状态码)
+        状态码
         <select name="status">
-          <option value="301"{{ if eq .Redirect.Status 301 }} selected{{ end }}>301 - Permanent Redirect</option>
-          <option value="302"{{ if eq .Redirect.Status 302 }} selected{{ end }}>302 - Temporary Redirect</option>
+          <option value="301"{{ if eq .Redirect.Status 301 }} selected{{ end }}>301 - 永久重定向</option>
+          <option value="302"{{ if eq .Redirect.Status 302 }} selected{{ end }}>302 - 临时重定向</option>
         </select>
       </label>
 
       <label data-field>
-        Enabled (启用)
+        启用
         {{ template "admin/includes/toggle" dict "ID" (printf "redirect_enabled_%d" .Redirect.ID) "Name" "enabled" "Checked" (eq .Redirect.Enabled 1) "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
       </label>
     </div>

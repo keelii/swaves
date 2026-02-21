@@ -78,7 +78,7 @@
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form id="form" method="post" style="display:inline" action="{{ url_for "admin.categories.parent.update" (dict "id" .Category.ID) }}" class="category-parent-form">
-            {{ template "admin/includes/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "top" }}
+            {{ template "admin/includes/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "顶级分类" }}
         </form>
         <div>
           {{ template "admin/includes/action_icon_link" dict "href" (url_for "admin.categories.edit" (dict "id" .Category.ID)) "name" "square-pen" "label" "编辑" }}
@@ -112,7 +112,7 @@
     {{ end }}
   </ul>
 {{ else }}
-  <p>No categories</p>
+  <p>暂无分类</p>
 {{ end }}
 
 <script>

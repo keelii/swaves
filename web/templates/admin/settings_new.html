@@ -2,69 +2,69 @@
 
   <p>
     <label>
-      Kind<br>
+      分类<br>
       <input type="text" name="kind" value="{{ if .Setting }}{{ .Setting.Kind }}{{ else }}default{{ end }}" required placeholder="例如: system, url, integration, default">
-      <small>(e.g., system, url, integration, default)</small>
+      <small>（例如：system、url、integration、default）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Name<br>
+      名称<br>
       <input type="text" name="name" value="{{ if .Setting }}{{ .Setting.Name }}{{ end }}" required placeholder="人类可读的名称">
-      <small>(Human readable name)</small>
+      <small>（用于界面展示的人类可读名称）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Code<br>
+      编码<br>
       <input type="text" name="code" value="{{ if .Setting }}{{ .Setting.Code }}{{ end }}" required placeholder="例如: site_name, admin_password">
-      <small>(Unique key, e.g., site_name, admin_password)</small>
+      <small>（唯一键，例如：site_name、admin_password）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Type<br>
+      类型<br>
       <select name="type" required>
-        <option value="text" {{ if and .Setting (eq .Setting.Type "text") }}selected{{ end }}>text</option>
-        <option value="number" {{ if and .Setting (eq .Setting.Type "number") }}selected{{ end }}>number</option>
-        <option value="date" {{ if and .Setting (eq .Setting.Type "date") }}selected{{ end }}>date</option>
-        <option value="time" {{ if and .Setting (eq .Setting.Type "time") }}selected{{ end }}>time</option>
-        <option value="datetime" {{ if and .Setting (eq .Setting.Type "datetime") }}selected{{ end }}>datetime</option>
-        <option value="url" {{ if and .Setting (eq .Setting.Type "url") }}selected{{ end }}>url</option>
-        <option value="range" {{ if and .Setting (eq .Setting.Type "range") }}selected{{ end }}>range</option>
-        <option value="password" {{ if and .Setting (eq .Setting.Type "password") }}selected{{ end }}>password</option>
-        <option value="secret" {{ if and .Setting (eq .Setting.Type "secret") }}selected{{ end }}>secret</option>
-        <option value="radio" {{ if and .Setting (eq .Setting.Type "radio") }}selected{{ end }}>radio</option>
-        <option value="checkbox" {{ if and .Setting (eq .Setting.Type "checkbox") }}selected{{ end }}>checkbox</option>
-        <option value="select" {{ if and .Setting (eq .Setting.Type "select") }}selected{{ end }}>select</option>
-        <option value="prefix-field" {{ if and .Setting (eq .Setting.Type "prefix-field") }}selected{{ end }}>prefix-field</option>
-        <option value="textarea" {{ if and .Setting (eq .Setting.Type "textarea") }}selected{{ end }}>textarea</option>
+        <option value="text" {{ if and .Setting (eq .Setting.Type "text") }}selected{{ end }}>文本</option>
+        <option value="number" {{ if and .Setting (eq .Setting.Type "number") }}selected{{ end }}>数字</option>
+        <option value="date" {{ if and .Setting (eq .Setting.Type "date") }}selected{{ end }}>日期</option>
+        <option value="time" {{ if and .Setting (eq .Setting.Type "time") }}selected{{ end }}>时间</option>
+        <option value="datetime" {{ if and .Setting (eq .Setting.Type "datetime") }}selected{{ end }}>日期时间</option>
+        <option value="url" {{ if and .Setting (eq .Setting.Type "url") }}selected{{ end }}>URL</option>
+        <option value="range" {{ if and .Setting (eq .Setting.Type "range") }}selected{{ end }}>范围滑块</option>
+        <option value="password" {{ if and .Setting (eq .Setting.Type "password") }}selected{{ end }}>密码</option>
+        <option value="secret" {{ if and .Setting (eq .Setting.Type "secret") }}selected{{ end }}>密钥</option>
+        <option value="radio" {{ if and .Setting (eq .Setting.Type "radio") }}selected{{ end }}>单选</option>
+        <option value="checkbox" {{ if and .Setting (eq .Setting.Type "checkbox") }}selected{{ end }}>复选</option>
+        <option value="select" {{ if and .Setting (eq .Setting.Type "select") }}selected{{ end }}>下拉</option>
+        <option value="prefix-field" {{ if and .Setting (eq .Setting.Type "prefix-field") }}selected{{ end }}>前缀字段</option>
+        <option value="textarea" {{ if and .Setting (eq .Setting.Type "textarea") }}selected{{ end }}>多行文本</option>
       </select>
     </label>
   </p>
 
   <p>
     <label>
-      Options (JSON)<br>
-      <textarea name="options" rows="3" cols="80" placeholder='[{"label": "Option 1", "value": "value1"}, {"label": "Option 2", "value": "value2"}]'>{{ if .Setting }}{{ .Setting.Options }}{{ end }}</textarea>
-      <small>(Required for radio/checkbox/select type, JSON array of {label, value})</small>
+      选项（JSON）<br>
+      <textarea name="options" rows="3" cols="80" placeholder='[{"label": "选项1", "value": "value1"}, {"label": "选项2", "value": "value2"}]'>{{ if .Setting }}{{ .Setting.Options }}{{ end }}</textarea>
+      <small>（单选/复选/下拉类型必填，格式为 {label, value} 的 JSON 数组）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Attrs (JSON)<br>
+      属性（JSON）<br>
       <textarea name="attrs" rows="3" cols="80" placeholder='{"min": 0, "max": 100, "step": 1}'>{{ if .Setting }}{{ .Setting.Attrs }}{{ end }}</textarea>
-      <small>(Optional HTML attributes, JSON object)</small>
+      <small>（可选 HTML 属性，JSON 对象）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Default Option Value<br>
+      默认选项值<br>
       <div id="default_option_value_container">
         {{ if .OptionsParsed }}
           <select name="default_option_value" id="default_option_value">
@@ -73,10 +73,10 @@
               <option value="{{ .value }}" {{ if eq $.DefaultOptionValue .value }}selected{{ end }}>{{ .label }}</option>
             {{ end }}
           </select>
-          <small>(Select default value from options above. Updates automatically when Options is changed.)</small>
+          <small>（从上方选项中选择默认值；选项变更后会自动更新）</small>
         {{ else }}
           <input type="text" name="default_option_value" id="default_option_value" value="{{ if .Setting }}{{ .Setting.DefaultOptionValue }}{{ else }}{{ .DefaultOptionValue }}{{ end }}" placeholder="默认值">
-          <small>(Default value for select/radio/checkbox when options are provided. Leave empty if not using options. Fill in Options field above to see dropdown.)</small>
+          <small>（当配置下拉/单选/复选时使用；不需要可留空，填写上方选项后会显示下拉）</small>
         {{ end }}
       </div>
     </label>
@@ -84,43 +84,43 @@
 
   <p>
     <label>
-      Prefix Value<br>
-      <input type="text" name="prefix_value" value="{{ if .Setting }}{{ .Setting.PrefixValue }}{{ end }}" placeholder="如：/、blog（prefix-field 使用）">
-      <small>(Optional: prefix text for prefix-field)</small>
+      前缀值<br>
+      <input type="text" name="prefix_value" value="{{ if .Setting }}{{ .Setting.PrefixValue }}{{ end }}" placeholder="如：/、blog（前缀字段类型使用）">
+      <small>（可选，前缀字段类型使用）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Value<br>
+      值<br>
       <span class="hstack">
         <input id="setting_new_value" type="text" name="value" value="{{ if .Setting }}{{ .Setting.Value }}{{ end }}" placeholder="初始值" style="flex:1;">
         <button class="outline" type="button" id="toggle_setting_new_value" style="display:none;">显示</button>
       </span>
-      <small>(Initial value - will be set when setting is created)</small>
+      <small>（初始值，设置创建时写入）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Description<br>
+      描述<br>
       <textarea name="description" rows="2" cols="80" placeholder="帮助文本，显示在管理界面中">{{ if .Setting }}{{ .Setting.Description }}{{ end }}</textarea>
-      <small>(Help text shown in admin)</small>
+      <small>（显示在管理界面的帮助说明）</small>
     </label>
   </p>
 
   <p>
     <label>
-      Sort<br>
+      排序<br>
       <input type="number" name="sort" value="{{ if .Setting }}{{ .Setting.Sort }}{{ else }}0{{ end }}">
-      <small>(Sort order within kind)</small>
+      <small>（分类内排序，越小越靠前）</small>
     </label>
   </p>
 
   <p>
     <label>
       <input type="checkbox" name="reload" value="1"{{ if .Setting }}{{ if eq .Setting.Reload 1 }} checked{{ end }}{{ end }}>
-      修改后需重启生效 (Reload)
+      修改后需重启生效
     </label>
   </p>
 
@@ -148,13 +148,13 @@ $(function() {
             var v = o.value || '', l = o.label || v;
             html += '<option value="' + v + '"' + (v === currentVal ? ' selected' : '') + '>' + l + '</option>';
           });
-          html += '</select><small>(Select default value from options above.)</small>';
+          html += '</select><small>（从上方选项中选择默认值）</small>';
           $cont.html(html);
           return;
         }
       }
     } catch (e) {}
-    $cont.html('<input type="text" name="default_option_value" id="default_option_value" value="' + (currentVal || '') + '"><small>(Default value. Fill valid Options JSON to see dropdown.)</small>');
+    $cont.html('<input type="text" name="default_option_value" id="default_option_value" value="' + (currentVal || '') + '"><small>（默认值；填写合法的选项 JSON 后可显示下拉）</small>');
   }
   if ($opt.length && $cont.length) {
     $opt.on('input', updateDefaultOptionValue);

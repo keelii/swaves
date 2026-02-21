@@ -2,19 +2,19 @@
 <div class="tab-card">
   <div class="tab-nav">
     <div class="tab-item{{ if eq $type "posts" }} active{{ end }}">
-      <a href="{{ url_for "admin.trash.list" (dict "type" "posts") }}">Posts</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "posts") }}">文章</a>
     </div>
     <div class="tab-item{{ if eq $type "encrypted-posts" }} active{{ end }}">
-      <a href="{{ url_for "admin.trash.list" (dict "type" "encrypted-posts") }}">Encrypted Posts</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "encrypted-posts") }}">加密文章</a>
     </div>
     <div class="tab-item{{ if eq $type "tags" }} active{{ end }}">
-      <a href="{{ url_for "admin.trash.list" (dict "type" "tags") }}">Tags</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "tags") }}">标签</a>
     </div>
     <div class="tab-item{{ if eq $type "categories" }} active{{ end }}">
-      <a href="{{ url_for "admin.trash.list" (dict "type" "categories") }}">Categories</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "categories") }}">分类</a>
     </div>
     <div class="tab-item{{ if eq $type "redirects" }} active{{ end }}">
-      <a href="{{ url_for "admin.trash.list" (dict "type" "redirects") }}">Redirects</a>
+      <a href="{{ url_for "admin.trash.list" (dict "type" "redirects") }}">重定向</a>
     </div>
   </div>
   <div class="tab-content">
@@ -25,15 +25,15 @@
 
 <!--
 <nav>
-  <a href="{{ url_for "admin.trash.list" (dict "type" "posts") }}">Posts</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "posts") }}">文章</a>
   |
-  <a href="{{ url_for "admin.trash.list" (dict "type" "encrypted-posts") }}">Encrypted Posts</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "encrypted-posts") }}">加密文章</a>
   |
-  <a href="{{ url_for "admin.trash.list" (dict "type" "tags") }}">Tags</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "tags") }}">标签</a>
   |
-  <a href="{{ url_for "admin.trash.list" (dict "type" "categories") }}">Categories</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "categories") }}">分类</a>
   |
-  <a href="{{ url_for "admin.trash.list" (dict "type" "redirects") }}">Redirects</a>
+  <a href="{{ url_for "admin.trash.list" (dict "type" "redirects") }}">重定向</a>
 </nav>
 -->
 
@@ -73,7 +73,7 @@
     </tbody>
   </table>
   {{ else }}
-  <p>No deleted posts.</p>
+  <p>暂无已删除文章。</p>
   {{ end }}
 {{ end }}
 
@@ -111,7 +111,7 @@
     </tbody>
   </table>
   {{ else }}
-  <p>No deleted encrypted posts.</p>
+  <p>暂无已删除加密文章。</p>
   {{ end }}
 {{ end }}
 
@@ -149,7 +149,7 @@
     </tbody>
   </table>
   {{ else }}
-  <p>No deleted tags.</p>
+  <p>暂无已删除标签。</p>
   {{ end }}
 {{ end }}
 
@@ -191,7 +191,7 @@
     </tbody>
   </table>
   {{ else }}
-  <p>No deleted categories.</p>
+  <p>暂无已删除分类。</p>
   {{ end }}
 {{ end }}
 
@@ -229,6 +229,6 @@
     </tbody>
   </table>
   {{ else }}
-  <p>No deleted redirects.</p>
+  <p>暂无已删除重定向。</p>
   {{ end }}
 {{ end }}
