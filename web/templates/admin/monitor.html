@@ -205,7 +205,6 @@
 <script>
   (function() {
     var monitorAPIURL = '{{ url_for "admin.monitor.data" }}';
-    var metricsAPIURL = '{{ url_for "admin.metrics.api" }}';
 
     var activeGranularity = '{{ .ActiveGranularity }}' || '1m';
     var activeScope = '{{ .ActiveScope }}' || 'app';
@@ -214,7 +213,7 @@
     var rangeEl = document.querySelector('[data-monitor-range]');
     var errorEl = document.querySelector('[data-monitor-error]');
 
-    var latestTimer = null;
+    var refreshTimer = null;
     var loadingHistory = false;
     var allCharts = [];
 
@@ -484,6 +483,7 @@
           scope: activeScope,
         });
         var response = await fetch(url.toString(), {
+          cache: 'no-store',
           headers: {
             'Accept': 'application/json'
           }
@@ -512,24 +512,6 @@
         notify(msg, '监控数据', { variant: 'danger' });
       } finally {
         loadingHistory = false;
-      }
-    }
-
-    async function refreshLatestOnly() {
-      try {
-        var response = await fetch(metricsAPIURL, {
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        var json = await response.json().catch(function() {
-          return {};
-        });
-        if (!response.ok || !json.pid || !json.os) {
-          return;
-        }
-        renderLatest(json);
-      } catch (_) {
       }
     }
 
@@ -563,17 +545,17 @@
       });
     }
 
-    function startLatestTicker() {
-      if (latestTimer) {
-        clearInterval(latestTimer);
+    function startAutoRefresh() {
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
       }
-      latestTimer = setInterval(refreshLatestOnly, 3000);
+      refreshTimer = setInterval(loadMonitorHistory, 3000);
     }
 
     bindTabEvents();
     setTabState('data-monitor-granularity', activeGranularity);
     setTabState('data-monitor-scope', activeScope);
     loadMonitorHistory();
-    startLatestTicker();
+    startAutoRefresh();
   })();
 </script>
