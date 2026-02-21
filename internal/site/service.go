@@ -102,6 +102,15 @@ func GetPostByTitle(dbx *db.DB, ist string) *DisplayPostWithRelation {
 	return toDisplayPostWithRelation(dbx, p)
 }
 
+func GetPostBySlugRaw(dbx *db.DB, slug string) *db.Post {
+	p, err := db.GetPostBySlug(dbx, slug)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	return &p
+}
+
 func toDisplayPostWithRelation(dbx *db.DB, p db.PostWithRelation) *DisplayPostWithRelation {
 	prev, next, err := db.GetPrevNextPost(dbx, p.Post.PublishedAt)
 	if err != nil {

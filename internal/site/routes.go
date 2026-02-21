@@ -23,6 +23,7 @@ func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
 	uiGroup.Get("/", handler.GetHome).Name("site.home")
 	uiGroup.Get("/404", handler.GetNotFound).Name("site.not_found")
 	uiGroup.Get("/error", handler.GetError).Name("site.error")
+	uiGroup.Get("/raw/*.md", handler.GetRaw).Name("site.raw")
 
 	uiGroup.Get(share.GetRSSRoute(), handler.GetRSS).Name("site.rss")
 

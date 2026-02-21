@@ -285,6 +285,18 @@ func (h Handler) GetHome(c fiber.Ctx) error {
 		"Pager":    pager,
 	}, "")
 }
+func (h Handler) GetRaw(c fiber.Ctx) error {
+	filename := c.Params("*")
+	post := GetPostBySlugRaw(h.Model, filename)
+	if post == nil {
+		return c.Status(fiber.StatusNotFound).SendString("not found")
+	}
+	if !helper.IsSlug(filename) {
+		return c.Status(fiber.StatusBadRequest).SendString("invalid filename")
+	}
+
+	return c.SendString(post.Content)
+}
 
 //func (h Handler) GetPost(c fiber.Ctx) error {
 //	matched := MatchRouter(c.Path())
