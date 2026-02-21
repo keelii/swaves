@@ -8,12 +8,17 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterRoutes(app *fiber.App, gStore *store.GlobalStore) {
+func RegisterRoutes(
+	app *fiber.App,
+	gStore *store.GlobalStore,
+	urlFor func(name string, params map[string]string, query map[string]string) string,
+) {
 	monitorStore := NewMonitorStore()
 	handler := NewHandler(
 		gStore,
 		NewService(gStore.Model),
 		monitorStore,
+		urlFor,
 	)
 
 	adminGroup := app.Group(share.GetAdminUrl())

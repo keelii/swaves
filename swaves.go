@@ -34,7 +34,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 	//defer globalStore.Close()
 
 	store.InitSettings(globalStore)
-	view, initURLResolver := NewViewEngine()
+	view, initURLResolver, urlFor := NewViewEngine()
 
 	app := fiber.New(fiber.Config{
 		AppName:       config.AppName,
@@ -83,7 +83,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 
 	//fmt.Println(md.ParseMarkdown(``))
 
-	admin.RegisterRoutes(app, globalStore)
+	admin.RegisterRoutes(app, globalStore, urlFor)
 	site.RegisterRoutes(app, globalStore)
 	api.RegisterRoutes(app)
 

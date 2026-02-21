@@ -29,6 +29,7 @@ type Handler struct {
 	Session *types.SessionStore
 	Service *Service
 	Monitor *MonitorStore
+	URLFor  func(name string, params map[string]string, query map[string]string) string
 }
 
 type dashboardUVRangeConfig struct {
@@ -87,12 +88,18 @@ var dashboardUVRanges = []dashboardUVRangeConfig{
 	},
 }
 
-func NewHandler(gStore *store.GlobalStore, adminService *Service, monitorStore *MonitorStore) *Handler {
+func NewHandler(
+	gStore *store.GlobalStore,
+	adminService *Service,
+	monitorStore *MonitorStore,
+	urlFor func(name string, params map[string]string, query map[string]string) string,
+) *Handler {
 	return &Handler{
 		Model:   gStore.Model,
 		Session: gStore.Session,
 		Service: adminService,
 		Monitor: monitorStore,
+		URLFor:  urlFor,
 	}
 }
 
@@ -155,12 +162,7 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 	}
 	data["RouteName"] = routeName
 	data["Query"] = c.Queries()
-
-	// 注入 Locals
-	c.RequestCtx().VisitUserValues(func(k []byte, v interface{}) {
-		//log.Println("Injecting local:", string(k))
-		data[string(k)] = v
-	})
+	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 
 	return c.Render(view, data, layout)
 }
@@ -407,7 +409,7 @@ func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 	succ := h.Session.SaveSession(c)
 
 	if succ {
-		return redirectAfterLogin(c)
+		return h.redirectAfterLogin(c)
 	}
 
 	return RenderAdminView(c, "admin_login", fiber.Map{
@@ -417,20 +419,41 @@ func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 	}, "base")
 }
 
+func (h *Handler) adminRouteURL(name string, params map[string]string, query map[string]string) string {
+	if h.URLFor == nil {
+		log.Printf("[admin] route resolve failed: resolver is nil name=%s params=%v query=%v", name, params, query)
+		return ""
+	}
+	path := h.URLFor(name, params, query)
+	if path != "" {
+		return path
+	}
+	log.Printf("[admin] route resolve failed: name=%s params=%v query=%v", name, params, query)
+	return ""
+}
+
+func (h *Handler) redirectToAdminRoute(c fiber.Ctx, name string, params map[string]string, query map[string]string, status ...int) error {
+	path := h.adminRouteURL(name, params, query)
+	if path == "" {
+		path = share.BuildAdminPath("")
+	}
+	return webutil.RedirectTo(c, path, status...)
+}
+
 // redirectAfterLogin 从表单读取 returnUrl，校验后重定向，避免开放重定向
-func redirectAfterLogin(c fiber.Ctx) error {
+func (h *Handler) redirectAfterLogin(c fiber.Ctx) error {
 	returnUrl := strings.TrimSpace(c.FormValue("returnUrl"))
 	if returnUrl != "" && strings.HasPrefix(returnUrl, "/") && !strings.Contains(returnUrl, "//") {
 		return webutil.RedirectTo(c, returnUrl)
 	}
-	return webutil.RedirectTo(c, share.BuildAdminPath(""))
+	return h.redirectToAdminRoute(c, "admin.home", nil, nil)
 }
 
 /* ---------- POST /admin/logout ---------- */
 
 func (h *Handler) GetLogoutHandler(c fiber.Ctx) error {
 	h.Session.ClearSession(c)
-	return webutil.RedirectTo(c, share.BuildAdminPath("/login"))
+	return h.redirectToAdminRoute(c, "admin.login.show", nil, nil)
 }
 
 // Posts
@@ -517,19 +540,28 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	}
 
 	// 清除单项筛选的 URL（供筛选区 tag 组件的 RemoveHref 使用）
-	filterTagRemoveURL := share.BuildAdminPath("/posts") + "?kind=" + kindQuery
-	if searchQueryEscaped != "" {
-		filterTagRemoveURL += "&q=" + searchQueryEscaped
+	filterTagRemoveQuery := map[string]string{"kind": kindQuery}
+	if searchQuery != "" {
+		filterTagRemoveQuery["q"] = searchQuery
 	}
 	if filterCategoryIDStr != "" {
-		filterTagRemoveURL += "&category=" + filterCategoryIDStr
+		filterTagRemoveQuery["category"] = filterCategoryIDStr
 	}
-	filterCategoryRemoveURL := share.BuildAdminPath("/posts") + "?kind=" + kindQuery
-	if searchQueryEscaped != "" {
-		filterCategoryRemoveURL += "&q=" + searchQueryEscaped
+	filterTagRemoveURL := h.adminRouteURL("admin.posts.list", nil, filterTagRemoveQuery)
+	if filterTagRemoveURL == "" {
+		filterTagRemoveURL = share.BuildAdminPath("/posts")
+	}
+
+	filterCategoryRemoveQuery := map[string]string{"kind": kindQuery}
+	if searchQuery != "" {
+		filterCategoryRemoveQuery["q"] = searchQuery
 	}
 	if filterTagIDStr != "" {
-		filterCategoryRemoveURL += "&tag=" + filterTagIDStr
+		filterCategoryRemoveQuery["tag"] = filterTagIDStr
+	}
+	filterCategoryRemoveURL := h.adminRouteURL("admin.posts.list", nil, filterCategoryRemoveQuery)
+	if filterCategoryRemoveURL == "" {
+		filterCategoryRemoveURL = share.BuildAdminPath("/posts")
 	}
 
 	return RenderAdminView(c, "posts_index", fiber.Map{
@@ -672,7 +704,9 @@ func (h *Handler) PostCreatePostHandler(c fiber.Ctx) error {
 		return h.renderPostNewWithDraft(c, err, draft)
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/posts/"+strconv.FormatInt(postID, 10)+"/edit"), fiber.StatusSeeOther)
+	return h.redirectToAdminRoute(c, "admin.posts.edit", map[string]string{
+		"id": strconv.FormatInt(postID, 10),
+	}, nil, fiber.StatusSeeOther)
 }
 
 func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
@@ -773,7 +807,9 @@ func (h *Handler) PostUpdatePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/posts/"+strconv.FormatInt(id, 10)+"/edit"), fiber.StatusSeeOther)
+	return h.redirectToAdminRoute(c, "admin.posts.edit", map[string]string{
+		"id": strconv.FormatInt(id, 10),
+	}, nil, fiber.StatusSeeOther)
 }
 
 func (h *Handler) PostDeletePostHandler(c fiber.Ctx) error {
@@ -786,7 +822,7 @@ func (h *Handler) PostDeletePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/posts"))
+	return h.redirectToAdminRoute(c, "admin.posts.list", nil, nil)
 }
 
 // Tags
@@ -839,7 +875,7 @@ func (h *Handler) PostCreateTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/tags"))
+	return h.redirectToAdminRoute(c, "admin.tags.list", nil, nil)
 }
 
 func (h *Handler) GetTagEditHandler(c fiber.Ctx) error {
@@ -882,7 +918,7 @@ func (h *Handler) PostUpdateTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/tags"))
+	return h.redirectToAdminRoute(c, "admin.tags.list", nil, nil)
 }
 
 func (h *Handler) PostDeleteTagHandler(c fiber.Ctx) error {
@@ -895,7 +931,7 @@ func (h *Handler) PostDeleteTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/tags"))
+	return h.redirectToAdminRoute(c, "admin.tags.list", nil, nil)
 }
 
 // Redirects
@@ -946,7 +982,7 @@ func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/redirects"))
+	return h.redirectToAdminRoute(c, "admin.redirects.list", nil, nil)
 }
 
 func (h *Handler) GetRedirectEditHandler(c fiber.Ctx) error {
@@ -994,7 +1030,7 @@ func (h *Handler) PostUpdateRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/redirects"))
+	return h.redirectToAdminRoute(c, "admin.redirects.list", nil, nil)
 }
 
 func (h *Handler) PostDeleteRedirectHandler(c fiber.Ctx) error {
@@ -1007,7 +1043,7 @@ func (h *Handler) PostDeleteRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/redirects"))
+	return h.redirectToAdminRoute(c, "admin.redirects.list", nil, nil)
 }
 
 // Encrypted Posts
@@ -1046,7 +1082,7 @@ func (h *Handler) PostCreateEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/encrypted-posts"))
+	return h.redirectToAdminRoute(c, "admin.encrypted_posts.list", nil, nil)
 }
 
 func (h *Handler) GetEncryptedPostEditHandler(c fiber.Ctx) error {
@@ -1092,7 +1128,7 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/encrypted-posts"))
+	return h.redirectToAdminRoute(c, "admin.encrypted_posts.list", nil, nil)
 }
 
 func (h *Handler) PostDeleteEncryptedPostHandler(c fiber.Ctx) error {
@@ -1105,7 +1141,7 @@ func (h *Handler) PostDeleteEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/encrypted-posts"))
+	return h.redirectToAdminRoute(c, "admin.encrypted_posts.list", nil, nil)
 }
 
 // SettingView 用于模板展示的设置视图
@@ -1295,7 +1331,7 @@ func (h *Handler) PostCreateCategoryHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/categories"))
+	return h.redirectToAdminRoute(c, "admin.categories.list", nil, nil)
 }
 
 func (h *Handler) GetCategoryEditHandler(c fiber.Ctx) error {
@@ -1411,7 +1447,7 @@ func (h *Handler) PostUpdateCategoryHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/categories"))
+	return h.redirectToAdminRoute(c, "admin.categories.list", nil, nil)
 }
 
 func (h *Handler) PostDeleteCategoryHandler(c fiber.Ctx) error {
@@ -1424,7 +1460,7 @@ func (h *Handler) PostDeleteCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/categories"))
+	return h.redirectToAdminRoute(c, "admin.categories.list", nil, nil)
 }
 
 func (h *Handler) PostUpdateCategoryParentHandler(c fiber.Ctx) error {
@@ -1447,7 +1483,7 @@ func (h *Handler) PostUpdateCategoryParentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/categories/tree"))
+	return h.redirectToAdminRoute(c, "admin.categories.tree", nil, nil)
 }
 
 // Settings
@@ -1571,19 +1607,18 @@ func isMediaSettingCode(code string) bool {
 	}
 }
 
-func buildSettingsAllRedirectPath(kind string, errMsg string) string {
-	redirectPath := share.BuildAdminPath("/settings/all")
-
-	params := url.Values{}
+func (h *Handler) buildSettingsAllRedirectPath(kind string, errMsg string) string {
+	params := map[string]string{}
 	if strings.TrimSpace(kind) != "" {
-		params.Set("kind", strings.TrimSpace(kind))
+		params["kind"] = strings.TrimSpace(kind)
 	}
 	if strings.TrimSpace(errMsg) != "" {
-		params.Set("error", strings.TrimSpace(errMsg))
+		params["error"] = strings.TrimSpace(errMsg)
 	}
 
-	if query := params.Encode(); query != "" {
-		redirectPath += "?" + query
+	redirectPath := h.adminRouteURL("admin.settings.all", nil, params)
+	if redirectPath == "" {
+		return share.BuildAdminPath("/settings/all")
 	}
 	return redirectPath
 }
@@ -1645,7 +1680,7 @@ func (h *Handler) validateMediaSettingPayload(overrides map[string]string) error
 func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	activeKind := strings.TrimSpace(c.Query("kind", ""))
 	if activeKind == "" {
-		return webutil.RedirectTo(c, share.BuildAdminPath("/settings/all"))
+		return h.redirectToAdminRoute(c, "admin.settings.all", nil, nil)
 	}
 
 	// 只更新当前 tab(kind) 下的配置，避免把其它 tab 未提交字段写空
@@ -1699,7 +1734,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	}
 
 	if err = h.validateMediaSettingPayload(mediaOverrides); err != nil {
-		return webutil.RedirectTo(c, buildSettingsAllRedirectPath(activeKind, err.Error()))
+		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(activeKind, err.Error()))
 	}
 
 	for _, item := range updates {
@@ -1711,7 +1746,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return webutil.RedirectTo(c, buildSettingsAllRedirectPath(activeKind, ""))
+	return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(activeKind, ""))
 }
 
 func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {
@@ -1824,7 +1859,7 @@ func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 		return renderEditWithError(err.Error())
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/settings"))
+	return h.redirectToAdminRoute(c, "admin.settings.list", nil, nil)
 }
 
 func (h *Handler) PostDeleteSettingHandler(c fiber.Ctx) error {
@@ -1837,7 +1872,7 @@ func (h *Handler) PostDeleteSettingHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/settings"))
+	return h.redirectToAdminRoute(c, "admin.settings.list", nil, nil)
 }
 
 func (h *Handler) GetSettingNewHandler(c fiber.Ctx) error {
@@ -1905,7 +1940,7 @@ func (h *Handler) PostCreateSettingHandler(c fiber.Ctx) error {
 		}, "")
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/settings"))
+	return h.redirectToAdminRoute(c, "admin.settings.list", nil, nil)
 }
 
 // Trash
@@ -1953,7 +1988,7 @@ func (h *Handler) PostRestorePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeletePostHandler(c fiber.Ctx) error {
@@ -1966,7 +2001,7 @@ func (h *Handler) PostHardDeletePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreEncryptedPostHandler(c fiber.Ctx) error {
@@ -1979,7 +2014,7 @@ func (h *Handler) PostRestoreEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteEncryptedPostHandler(c fiber.Ctx) error {
@@ -1992,7 +2027,7 @@ func (h *Handler) PostHardDeleteEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreTagHandler(c fiber.Ctx) error {
@@ -2005,7 +2040,7 @@ func (h *Handler) PostRestoreTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteTagHandler(c fiber.Ctx) error {
@@ -2018,7 +2053,7 @@ func (h *Handler) PostHardDeleteTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreRedirectHandler(c fiber.Ctx) error {
@@ -2031,7 +2066,7 @@ func (h *Handler) PostRestoreRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteRedirectHandler(c fiber.Ctx) error {
@@ -2044,7 +2079,7 @@ func (h *Handler) PostHardDeleteRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreCategoryHandler(c fiber.Ctx) error {
@@ -2057,7 +2092,7 @@ func (h *Handler) PostRestoreCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
@@ -2070,7 +2105,7 @@ func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/trash"))
+	return h.redirectToAdminRoute(c, "admin.trash.list", nil, nil)
 }
 
 // HttpErrorLogs
@@ -2099,7 +2134,7 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/http-error-logs"))
+	return h.redirectToAdminRoute(c, "admin.http_error_logs.list", nil, nil)
 }
 
 func normalizeCommentStatus(raw string) db.CommentStatus {
@@ -2115,12 +2150,17 @@ func normalizeCommentStatus(raw string) db.CommentStatus {
 	}
 }
 
-func buildCommentListURL(status db.CommentStatus) string {
-	baseURL := share.BuildAdminPath("/comments")
-	if status == "" {
-		return baseURL
+func (h *Handler) buildCommentListURL(status db.CommentStatus) string {
+	query := map[string]string{}
+	if status != "" {
+		query["status"] = string(status)
 	}
-	return baseURL + "?status=" + url.QueryEscape(string(status))
+
+	commentURL := h.adminRouteURL("admin.comments.list", nil, query)
+	if commentURL == "" {
+		return share.BuildAdminPath("/comments")
+	}
+	return commentURL
 }
 
 // Comments
@@ -2151,7 +2191,7 @@ func (h *Handler) PostApproveCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 func (h *Handler) PostPendingCommentHandler(c fiber.Ctx) error {
@@ -2164,7 +2204,7 @@ func (h *Handler) PostPendingCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 func (h *Handler) PostSpamCommentHandler(c fiber.Ctx) error {
@@ -2177,7 +2217,7 @@ func (h *Handler) PostSpamCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 func (h *Handler) PostDeleteCommentHandler(c fiber.Ctx) error {
@@ -2190,7 +2230,7 @@ func (h *Handler) PostDeleteCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 // Tasks
@@ -2233,7 +2273,7 @@ func (h *Handler) PostCreateTaskHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
+	return h.redirectToAdminRoute(c, "admin.tasks.list", nil, nil)
 }
 
 func (h *Handler) GetTaskEditHandler(c fiber.Ctx) error {
@@ -2278,7 +2318,7 @@ func (h *Handler) PostUpdateTaskHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
+	return h.redirectToAdminRoute(c, "admin.tasks.list", nil, nil)
 }
 
 func (h *Handler) PostDeleteTaskHandler(c fiber.Ctx) error {
@@ -2291,7 +2331,7 @@ func (h *Handler) PostDeleteTaskHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
+	return h.redirectToAdminRoute(c, "admin.tasks.list", nil, nil)
 }
 
 func (h *Handler) PostTriggerTaskHandler(c fiber.Ctx) error {
@@ -2306,7 +2346,7 @@ func (h *Handler) PostTriggerTaskHandler(c fiber.Ctx) error {
 	}
 	go job.ExecuteTask(h.Model, *task)
 
-	return webutil.RedirectTo(c, share.BuildAdminPath("/tasks"))
+	return h.redirectToAdminRoute(c, "admin.tasks.list", nil, nil)
 }
 
 func (h *Handler) GetTaskRunListHandler(c fiber.Ctx) error {

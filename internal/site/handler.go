@@ -234,6 +234,11 @@ func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error
 	data["UrlPath"] = c.Path()
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
+	routeName := ""
+	if route := c.Route(); route != nil {
+		routeName = strings.TrimSpace(route.Name)
+	}
+	data["RouteName"] = routeName
 
 	//// 注入 Locals
 	//c.Context().VisitUserValues(func(k []byte, v interface{}) {

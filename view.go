@@ -5,6 +5,7 @@ import (
 	"fmt"
 	HTML "html"
 	"html/template"
+	"io"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -18,9 +19,33 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/template/html/v3"
+	templatecore "github.com/gofiber/template/v2"
 )
 
-func NewViewEngine() (*html.Engine, func(app *fiber.App)) {
+type FiberView struct {
+	engine *html.Engine
+}
+
+type templateContextMeta struct {
+	RouteName string
+	Path      string
+	Query     map[string]string
+	ReqID     string
+}
+
+type templateAuthMeta struct {
+	IsLogin bool
+}
+
+type templateSiteMeta struct {
+	Settings map[string]string
+}
+
+func NewViewEngine() (
+	fiber.Views,
+	func(app *fiber.App),
+	func(name string, params map[string]string, query map[string]string) string,
+) {
 	urlForStore := share.NewURLForStore()
 	engine := html.New("./web/templates", ".html")
 	engine.Reload(true)
@@ -28,7 +53,21 @@ func NewViewEngine() (*html.Engine, func(app *fiber.App)) {
 	initURLResolver := func(app *fiber.App) {
 		urlForStore.SetResolver(newURLForResolver(app))
 	}
-	return engine, initURLResolver
+	return &FiberView{engine: engine}, initURLResolver, urlForStore.URLFor
+}
+
+func (v *FiberView) Load() error {
+	if v == nil || v.engine == nil {
+		return errors.New("fiber view engine is nil")
+	}
+	return v.engine.Load()
+}
+
+func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...string) error {
+	if v == nil || v.engine == nil {
+		return errors.New("fiber view engine is nil")
+	}
+	return v.engine.Render(out, name, prepareTemplateBinding(binding), layout...)
 }
 
 func RegisterViewFunc(engine *html.Engine, urlFor func(name string, params map[string]string, query map[string]string) string) {
@@ -317,6 +356,42 @@ func RegisterViewFunc(engine *html.Engine, urlFor func(name string, params map[s
 	})
 }
 
+func prepareTemplateBinding(binding any) map[string]interface{} {
+	acquired := templatecore.AcquireViewContext(binding)
+	prepared := make(map[string]interface{}, len(acquired)+3)
+	for key, value := range acquired {
+		prepared[key] = value
+	}
+
+	prepared["_ctx"] = buildTemplateContextMeta(prepared)
+	prepared["_auth"] = templateAuthMeta{
+		IsLogin: toBoolValue(prepared["IsLogin"]),
+	}
+	prepared["_site"] = templateSiteMeta{
+		Settings: cloneStringMap(store.GetSettingMap()),
+	}
+	return prepared
+}
+
+func buildTemplateContextMeta(data map[string]interface{}) templateContextMeta {
+	path := strings.TrimSpace(toStringValue(data["UrlPath"]))
+	if path == "" {
+		path = strings.TrimSpace(toStringValue(data["Path"]))
+	}
+
+	query := toStringMap(data["Query"])
+	if query == nil {
+		query = map[string]string{}
+	}
+
+	return templateContextMeta{
+		RouteName: strings.TrimSpace(toStringValue(data["RouteName"])),
+		Path:      path,
+		Query:     query,
+		ReqID:     strings.TrimSpace(toStringValue(data["ReqID"])),
+	}
+}
+
 func toStringMap(raw interface{}) map[string]string {
 	if raw == nil {
 		return nil
@@ -348,6 +423,62 @@ func toStringMap(raw interface{}) map[string]string {
 		return nil
 	}
 	return result
+}
+
+func cloneStringMap(source map[string]string) map[string]string {
+	if len(source) == 0 {
+		return map[string]string{}
+	}
+	cloned := make(map[string]string, len(source))
+	for key, value := range source {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func toStringValue(raw interface{}) string {
+	if raw == nil {
+		return ""
+	}
+	if value, ok := raw.(string); ok {
+		return value
+	}
+	if value, ok := raw.(fmt.Stringer); ok {
+		return value.String()
+	}
+	return fmt.Sprint(raw)
+}
+
+func toBoolValue(raw interface{}) bool {
+	switch value := raw.(type) {
+	case bool:
+		return value
+	case string:
+		switch strings.TrimSpace(strings.ToLower(value)) {
+		case "1", "true", "yes", "on":
+			return true
+		default:
+			return false
+		}
+	case int:
+		return value != 0
+	case int32:
+		return value != 0
+	case int64:
+		return value != 0
+	case uint:
+		return value != 0
+	case uint32:
+		return value != 0
+	case uint64:
+		return value != 0
+	case float32:
+		return value != 0
+	case float64:
+		return value != 0
+	default:
+		return false
+	}
 }
 
 // relativeTimeString 将 Unix 时间戳转为相对时间中文描述
