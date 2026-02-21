@@ -56,8 +56,25 @@ func TestMonitorRingBufferFullDayWraparound(t *testing.T) {
 
 func TestAggregateMonitorHistoryBucketCount(t *testing.T) {
 	now := time.Unix(1700004060, 0)
+	expected := map[string]struct {
+		bucketSeconds int64
+		bucketCount   int
+	}{
+		"1m":  {bucketSeconds: 1, bucketCount: 60},
+		"30m": {bucketSeconds: 60, bucketCount: 30},
+		"1h":  {bucketSeconds: 60 * 60, bucketCount: 24},
+	}
 
 	for _, item := range monitorGranularityConfigs {
+		want, ok := expected[item.Key]
+		if !ok {
+			t.Fatalf("unexpected granularity key: %s", item.Key)
+		}
+		if item.BucketSeconds != want.bucketSeconds || item.BucketCount != want.bucketCount {
+			t.Fatalf("granularity=%s expected bucket_seconds=%d bucket_count=%d, got bucket_seconds=%d bucket_count=%d",
+				item.Key, want.bucketSeconds, want.bucketCount, item.BucketSeconds, item.BucketCount)
+		}
+
 		points := aggregateMonitorHistory(nil, item, now)
 		if len(points) != item.BucketCount {
 			t.Fatalf("granularity=%s expected %d points, got %d", item.Key, item.BucketCount, len(points))
@@ -80,17 +97,28 @@ func TestAggregateMonitorHistoryBucketCount(t *testing.T) {
 			}
 		}
 	}
+
+	if _, err := resolveMonitorGranularity("10m"); err == nil {
+		t.Fatalf("expected granularity 10m to be removed")
+	}
 }
 
 func TestAggregateMonitorHistoryPartialFill(t *testing.T) {
 	now := time.Unix(1700004060, 0)
-	granularity := monitorGranularityConfigs[0] // 1m
+	granularity := monitorGranularityConfig{
+		Key:           "1m",
+		Label:         "1分钟",
+		BucketSeconds: 1,
+		BucketCount:   60,
+	}
 
-	_, endAt := monitorWindowRange(granularity, now)
+	startAt, endAt := monitorWindowRange(granularity, now)
+	ts30 := endAt - 30
+	ts10 := endAt - 10
 	points := []monitorHistoryPoint{
-		{TS: endAt - 90, PID: monitorPIDStats{CPU: 10}},
-		{TS: endAt - 30, PID: monitorPIDStats{CPU: 20}},
-		{TS: endAt - 10, PID: monitorPIDStats{CPU: 40}},
+		{TS: ts30, PID: monitorPIDStats{CPU: 20}},
+		{TS: ts10, PID: monitorPIDStats{CPU: 40}},
+		{TS: ts10, PID: monitorPIDStats{CPU: 20}},
 	}
 
 	aggregated := aggregateMonitorHistory(points, granularity, now)
@@ -98,13 +126,18 @@ func TestAggregateMonitorHistoryPartialFill(t *testing.T) {
 		t.Fatalf("expected %d points, got %d", granularity.BucketCount, len(aggregated))
 	}
 
-	last := aggregated[len(aggregated)-1]
-	if last.PID.CPU != 30 {
-		t.Fatalf("expected last bucket cpu avg=30, got %v", last.PID.CPU)
+	lastIndex := len(aggregated) - 1
+	if aggregated[lastIndex].PID.CPU != 0 {
+		t.Fatalf("expected last bucket without sample cpu=0, got %v", aggregated[lastIndex].PID.CPU)
 	}
 
-	prev := aggregated[len(aggregated)-2]
-	if prev.PID.CPU != 10 {
-		t.Fatalf("expected previous bucket cpu avg=10, got %v", prev.PID.CPU)
+	index10 := int((ts10 - startAt) / granularity.BucketSeconds)
+	if aggregated[index10].PID.CPU != 30 {
+		t.Fatalf("expected ts10 bucket cpu avg=30, got %v", aggregated[index10].PID.CPU)
+	}
+
+	index30 := int((ts30 - startAt) / granularity.BucketSeconds)
+	if aggregated[index30].PID.CPU != 20 {
+		t.Fatalf("expected ts30 bucket cpu avg=20, got %v", aggregated[index30].PID.CPU)
 	}
 }

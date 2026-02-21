@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"swaves/internal/db"
+	"swaves/internal/media"
 	"swaves/internal/store"
 	"time"
 
@@ -22,23 +23,23 @@ import (
 )
 
 const (
-	settingSyncPushEnabled    = "sync_push_enabled"
-	settingSyncPushEndpoint   = "sync_push_endpoint"
-	settingSyncPushTimeoutSec = "sync_push_timeout_sec"
+	pushProviderS3       = "s3"
+	pushProviderImageKit = "imagekit"
 )
 
 type pushJobConfig struct {
-	Enabled     bool
-	S3Bucket    string
-	S3Region    string
-	S3Endpoint  string
-	S3AccessKey string
-	S3SecretKey string
-	S3ForcePath bool
-	Timeout     time.Duration
+	Provider           string
+	Enabled            bool
+	S3Bucket           string
+	S3Region           string
+	S3Endpoint         string
+	S3AccessKey        string
+	S3SecretKey        string
+	S3ForcePath        bool
+	ImageKitEndpoint   string
+	ImageKitPrivateKey string
+	Timeout            time.Duration
 }
-
-const remoteBackupMediaProvider = "s3"
 
 func PushSystemDataJob(reg *Registry) (*string, error) {
 	if reg == nil || reg.DB == nil {
@@ -48,18 +49,6 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 	cfg := loadPushJobConfig()
 	if !cfg.Enabled {
 		return jobMessage("remote data backup disabled"), nil
-	}
-	if cfg.S3Bucket == "" {
-		return nil, errors.New("s3 bucket is empty")
-	}
-	if cfg.S3Region == "" {
-		return nil, errors.New("s3 region is empty")
-	}
-	if cfg.S3AccessKey == "" {
-		log.Printf("[task] remote_backup_data missing env: SWAVES_S3_ACCESS_KEY_ID")
-	}
-	if cfg.S3SecretKey == "" {
-		log.Printf("[task] remote_backup_data missing env: SWAVES_S3_SECRET_ACCESS_KEY")
 	}
 
 	tmpDir, err := os.MkdirTemp("", "swaves-sync-push-*")
@@ -78,24 +67,96 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 	}
 
 	objectKey := buildS3ObjectKey(snapshot.File)
-	response, statusCode, err := uploadSnapshotToS3(cfg, reg.Config.AppName, snapshot, objectKey)
-	if err != nil {
-		return nil, fmt.Errorf("push failed status=%d response=%s: %w", statusCode, response, err)
-	}
+	provider := normalizePushProvider(cfg.Provider)
 
-	mediaID, err := createRemoteBackupMediaRecord(reg.DB, cfg, snapshot, objectKey)
-	if err != nil {
-		return nil, fmt.Errorf("remote backup saved but media record failed: %w", err)
+	statusCode := 0
+	response := ""
+	mediaID := int64(0)
+
+	switch provider {
+	case pushProviderImageKit:
+		uploadRes, uploadResponse, uploadStatus, uploadErr := uploadSnapshotToImageKit(cfg, snapshot, objectKey)
+		if uploadErr != nil {
+			return nil, fmt.Errorf("push failed provider=%s status=%d response=%s: %w", provider, uploadStatus, uploadResponse, uploadErr)
+		}
+
+		statusCode = uploadStatus
+		response = uploadResponse
+		mediaID, err = createRemoteBackupMediaRecordByUpload(reg.DB, provider, snapshot, uploadRes)
+		if err != nil {
+			return nil, fmt.Errorf("remote backup saved but media record failed: %w", err)
+		}
+	default:
+		if cfg.S3Bucket == "" {
+			return nil, errors.New("s3 bucket is empty (setting: sync_push_bucket)")
+		}
+		if cfg.S3Region == "" {
+			return nil, errors.New("s3 region is empty")
+		}
+		if cfg.S3AccessKey == "" {
+			log.Printf("[task] remote_backup_data missing setting: s3_access_key_id")
+		}
+		if cfg.S3SecretKey == "" {
+			log.Printf("[task] remote_backup_data missing setting: s3_secret_access_key")
+		}
+
+		uploadResponse, uploadStatus, uploadErr := uploadSnapshotToS3(cfg, reg.Config.AppName, snapshot, objectKey)
+		if uploadErr != nil {
+			return nil, fmt.Errorf("push failed provider=%s status=%d response=%s: %w", provider, uploadStatus, uploadResponse, uploadErr)
+		}
+
+		statusCode = uploadStatus
+		response = uploadResponse
+		mediaID, err = createRemoteBackupMediaRecordForS3(reg.DB, cfg, snapshot, objectKey)
+		if err != nil {
+			return nil, fmt.Errorf("remote backup saved but media record failed: %w", err)
+		}
 	}
 
 	return jobMessage(fmt.Sprintf(
-		"status=%d hash=%s size=%dB media_id=%d response=%s",
+		"provider=%s status=%d hash=%s size=%dB media_id=%d response=%s",
+		provider,
 		statusCode,
 		shortHash(snapshot.Hash),
 		snapshot.Size,
 		mediaID,
 		response,
 	)), nil
+}
+
+func uploadSnapshotToImageKit(cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (*media.UploadResult, string, int, error) {
+	if strings.TrimSpace(cfg.ImageKitEndpoint) == "" {
+		return nil, "", 0, errors.New("imagekit endpoint is empty")
+	}
+	if strings.TrimSpace(cfg.ImageKitPrivateKey) == "" {
+		return nil, "", 0, errors.New("imagekit private key is empty")
+	}
+
+	fileBytes, err := os.ReadFile(snapshot.File)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("open snapshot failed: %w", err)
+	}
+
+	provider := media.NewImageKitProvider(media.ImageKitConfig{
+		Endpoint:   cfg.ImageKitEndpoint,
+		PrivateKey: cfg.ImageKitPrivateKey,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
+	defer cancel()
+
+	result, err := provider.Upload(ctx, media.UploadInput{
+		FileName:    objectKey,
+		ContentType: "application/x-sqlite3",
+		Bytes:       fileBytes,
+	})
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("imagekit upload failed: %w", err)
+	}
+
+	statusCode := http.StatusOK
+	response := fmt.Sprintf("provider=imagekit file_id=%s url=%s", strings.TrimSpace(result.ProviderAssetID), strings.TrimSpace(result.FileURL))
+	return result, response, statusCode, nil
 }
 
 func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportResult, objectKey string) (response string, statusCode int, err error) {
@@ -140,7 +201,7 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 	return response, statusCode, nil
 }
 
-func createRemoteBackupMediaRecord(dbx *db.DB, cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (int64, error) {
+func createRemoteBackupMediaRecordForS3(dbx *db.DB, cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (int64, error) {
 	assetID := buildRemoteBackupAssetID(cfg.S3Bucket, objectKey)
 	deleteKey := assetID
 	fileURL := buildRemoteBackupFileURL(cfg.S3Bucket, objectKey)
@@ -149,14 +210,38 @@ func createRemoteBackupMediaRecord(dbx *db.DB, cfg pushJobConfig, snapshot *db.E
 		originalName = buildS3ObjectKey(snapshot.File)
 	}
 
-	item := &db.Media{
-		Kind:              db.MediaKindBackup,
-		Provider:          remoteBackupMediaProvider,
+	return createRemoteBackupMediaRecordByUpload(dbx, pushProviderS3, snapshot, &media.UploadResult{
 		ProviderAssetID:   assetID,
 		ProviderDeleteKey: deleteKey,
 		FileURL:           fileURL,
 		OriginalName:      originalName,
 		SizeBytes:         snapshot.Size,
+	})
+}
+
+func createRemoteBackupMediaRecordByUpload(dbx *db.DB, providerName string, snapshot *db.ExportResult, upload *media.UploadResult) (int64, error) {
+	if upload == nil {
+		return 0, errors.New("upload result is nil")
+	}
+
+	originalName := strings.TrimSpace(upload.OriginalName)
+	if originalName == "." || originalName == "" || originalName == "/" {
+		originalName = buildS3ObjectKey(snapshot.File)
+	}
+
+	sizeBytes := upload.SizeBytes
+	if sizeBytes <= 0 {
+		sizeBytes = snapshot.Size
+	}
+
+	item := &db.Media{
+		Kind:              db.MediaKindBackup,
+		Provider:          strings.TrimSpace(providerName),
+		ProviderAssetID:   strings.TrimSpace(upload.ProviderAssetID),
+		ProviderDeleteKey: strings.TrimSpace(upload.ProviderDeleteKey),
+		FileURL:           strings.TrimSpace(upload.FileURL),
+		OriginalName:      originalName,
+		SizeBytes:         sizeBytes,
 		CreatedAt:         time.Now().Unix(),
 	}
 
@@ -240,18 +325,30 @@ func extractS3StatusCode(err error) int {
 }
 
 func loadPushJobConfig() pushJobConfig {
-	timeoutSec := store.GetSettingInt(settingSyncPushTimeoutSec, 60)
+	timeoutSec := store.GetSettingInt("sync_push_timeout_sec", 60)
 	if timeoutSec <= 0 {
 		timeoutSec = 60
 	}
 
-	s3Endpoint := strings.TrimSpace(store.GetSetting(settingSyncPushEndpoint))
-	s3Endpoint, endpointBucket, endpointForcePath, parseErr := splitS3EndpointBucket(s3Endpoint)
+	rawS3Endpoint := strings.TrimSpace(store.GetSetting("sync_push_endpoint"))
+	s3Bucket := strings.TrimSpace(store.GetSetting("sync_push_bucket"))
+
+	s3Endpoint := ""
+	endpointBucket := ""
+	endpointForcePath := false
+	parseErr := error(nil)
+	if s3Bucket != "" {
+		s3Endpoint, endpointForcePath, parseErr = normalizeS3Endpoint(rawS3Endpoint)
+	} else {
+		s3Endpoint, endpointBucket, endpointForcePath, parseErr = splitS3EndpointBucket(rawS3Endpoint)
+	}
 	if parseErr != nil {
 		log.Printf("[task] push_system_data invalid endpoint: %v", parseErr)
 	}
 
-	s3Bucket := endpointBucket
+	if s3Bucket == "" {
+		s3Bucket = strings.TrimSpace(endpointBucket)
+	}
 
 	s3Region := "us-east-1"
 	if s3Endpoint != "" {
@@ -261,14 +358,47 @@ func loadPushJobConfig() pushJobConfig {
 	s3ForcePath := endpointForcePath
 
 	return pushJobConfig{
-		Enabled:     store.GetSettingBool(settingSyncPushEnabled, false),
-		S3Bucket:    s3Bucket,
-		S3Region:    s3Region,
-		S3Endpoint:  s3Endpoint,
-		S3AccessKey: strings.TrimSpace(store.GetSetting("s3_access_key_id")),
-		S3SecretKey: strings.TrimSpace(store.GetSetting("s3_secret_access_key")),
-		S3ForcePath: s3ForcePath,
-		Timeout:     time.Duration(timeoutSec) * time.Second,
+		Provider:           normalizePushProvider(store.GetSetting("sync_push_provider")),
+		Enabled:            store.GetSettingBool("sync_push_enabled", false),
+		S3Bucket:           s3Bucket,
+		S3Region:           s3Region,
+		S3Endpoint:         s3Endpoint,
+		S3AccessKey:        strings.TrimSpace(store.GetSetting("s3_access_key_id")),
+		S3SecretKey:        strings.TrimSpace(store.GetSetting("s3_secret_access_key")),
+		S3ForcePath:        s3ForcePath,
+		ImageKitEndpoint:   strings.TrimSpace(store.GetSetting("media_imagekit_endpoint")),
+		ImageKitPrivateKey: strings.TrimSpace(store.GetSetting("media_imagekit_private_key")),
+		Timeout:            time.Duration(timeoutSec) * time.Second,
+	}
+}
+
+func normalizeS3Endpoint(raw string) (endpoint string, forcePath bool, err error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", false, nil
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw, false, err
+	}
+	if u.Scheme == "" || u.Host == "" {
+		return raw, false, fmt.Errorf("endpoint must include scheme and host: %s", raw)
+	}
+
+	path := strings.Trim(u.Path, "/")
+	forcePath = path != ""
+	endpoint = strings.TrimRight(u.String(), "/")
+	return endpoint, forcePath, nil
+}
+
+func normalizePushProvider(raw string) string {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	switch value {
+	case pushProviderImageKit:
+		return pushProviderImageKit
+	default:
+		return pushProviderS3
 	}
 }
 

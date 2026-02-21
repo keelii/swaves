@@ -1445,12 +1445,23 @@ func (h *Handler) GetSettingsAllHandler(c fiber.Ctx) error {
 		}
 	}
 
+	settingKindLabels := make(map[string]string, len(settingKinds))
+	for _, item := range settingKinds {
+		label, ok := db.SettingKindLabels[item]
+		if !ok || strings.TrimSpace(label) == "" {
+			label = item
+		}
+		settingKindLabels[item] = label
+	}
+
 	return RenderAdminView(c, "settings_all", fiber.Map{
-		"Title":          "Settings - Edit All",
-		"SettingsByKind": settingsByKind,
-		"SettingKinds":   settingKinds,
-		"ActiveKind":     activeKind,
-		"Error":          errMsg,
+		"Title":              "Settings - Edit All",
+		"SettingsByKind":     settingsByKind,
+		"SettingKinds":       settingKinds,
+		"SettingKindLabels":  settingKindLabels,
+		"ActiveKind":         activeKind,
+		"ContentRoutingKind": db.SettingKindContentRouting,
+		"Error":              errMsg,
 	}, "")
 }
 
@@ -1609,7 +1620,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 				Code:  setting.Code,
 				Value: value,
 			})
-			if isMediaSettingCode(setting.Code) {
+			if isMediaSettingCode(setting.Code) && value != setting.Value {
 				mediaOverrides[setting.Code] = value
 			}
 		} else {
@@ -1627,7 +1638,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 				Code:  setting.Code,
 				Value: value,
 			})
-			if isMediaSettingCode(setting.Code) {
+			if isMediaSettingCode(setting.Code) && value != setting.Value {
 				mediaOverrides[setting.Code] = value
 			}
 		}
@@ -1704,6 +1715,7 @@ func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 		return err
 	}
 	originalCode := strings.TrimSpace(setting.Code)
+	originalValue := setting.Value
 
 	renderEditWithError := func(message string) error {
 		view := buildSettingView(*setting)
@@ -1746,7 +1758,7 @@ func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 	}
 
 	mediaOverrides := make(map[string]string)
-	if isMediaSettingCode(originalCode) {
+	if isMediaSettingCode(originalCode) && setting.Value != originalValue {
 		mediaOverrides[originalCode] = setting.Value
 	}
 	if err = h.validateMediaSettingPayload(mediaOverrides); err != nil {

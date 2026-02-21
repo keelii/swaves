@@ -24,9 +24,8 @@ const (
 )
 
 var monitorGranularityConfigs = []monitorGranularityConfig{
-	{Key: "1m", Label: "1分钟", BucketSeconds: 60, BucketCount: 24 * 60},
-	{Key: "10m", Label: "10分钟", BucketSeconds: 10 * 60, BucketCount: 24 * 6},
-	{Key: "30m", Label: "30分钟", BucketSeconds: 30 * 60, BucketCount: 24 * 2},
+	{Key: "1m", Label: "1分钟", BucketSeconds: 1, BucketCount: 60},
+	{Key: "30m", Label: "30分钟", BucketSeconds: 60, BucketCount: 30},
 	{Key: "1h", Label: "1小时", BucketSeconds: 60 * 60, BucketCount: 24},
 }
 
@@ -434,6 +433,9 @@ func buildMonitorMetricChartSVG(points []monitorHistoryPoint, metric monitorMetr
 }
 
 func monitorChartLabelLayout(granularity monitorGranularityConfig) string {
+	if granularity.BucketSeconds < 60 {
+		return "15:04:05"
+	}
 	if granularity.BucketSeconds >= 60*60 {
 		return "01-02 15:04"
 	}

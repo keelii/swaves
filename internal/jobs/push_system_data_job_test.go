@@ -167,14 +167,20 @@ func reloadPushJobSettings(t *testing.T, dbx *db.DB) {
 func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
 	dbx := openPushJobTestDB(t)
 
-	if err := db.UpdateSettingByCode(dbx, settingSyncPushEnabled, "1"); err != nil {
-		t.Fatalf("UpdateSettingByCode(%s) failed: %v", settingSyncPushEnabled, err)
+	if err := db.UpdateSettingByCode(dbx, "sync_push_enabled", "1"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_enabled", err)
 	}
-	if err := db.UpdateSettingByCode(dbx, settingSyncPushEndpoint, "https://s3.example.com/my-bucket"); err != nil {
-		t.Fatalf("UpdateSettingByCode(%s) failed: %v", settingSyncPushEndpoint, err)
+	if err := db.UpdateSettingByCode(dbx, "sync_push_provider", "s3"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_provider", err)
 	}
-	if err := db.UpdateSettingByCode(dbx, settingSyncPushTimeoutSec, "120"); err != nil {
-		t.Fatalf("UpdateSettingByCode(%s) failed: %v", settingSyncPushTimeoutSec, err)
+	if err := db.UpdateSettingByCode(dbx, "sync_push_bucket", "my-bucket"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_bucket", err)
+	}
+	if err := db.UpdateSettingByCode(dbx, "sync_push_endpoint", "https://s3.example.com"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_endpoint", err)
+	}
+	if err := db.UpdateSettingByCode(dbx, "sync_push_timeout_sec", "120"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_timeout_sec", err)
 	}
 	if err := db.UpdateSettingByCode(dbx, "s3_access_key_id", "ak_test"); err != nil {
 		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "s3_access_key_id", err)
@@ -189,6 +195,9 @@ func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
 	if !cfg.Enabled {
 		t.Fatal("Enabled should be true")
 	}
+	if cfg.Provider != pushProviderS3 {
+		t.Fatalf("Provider=%q, want %q", cfg.Provider, pushProviderS3)
+	}
 	if cfg.S3Bucket != "my-bucket" {
 		t.Fatalf("S3Bucket=%q, want %q", cfg.S3Bucket, "my-bucket")
 	}
@@ -198,8 +207,8 @@ func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
 	if cfg.S3Region != "auto" {
 		t.Fatalf("S3Region=%q, want %q", cfg.S3Region, "auto")
 	}
-	if !cfg.S3ForcePath {
-		t.Fatal("S3ForcePath should be true")
+	if cfg.S3ForcePath {
+		t.Fatal("S3ForcePath should be false")
 	}
 	if cfg.S3AccessKey != "ak_test" {
 		t.Fatalf("S3AccessKey=%q, want %q", cfg.S3AccessKey, "ak_test")
@@ -209,5 +218,35 @@ func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
 	}
 	if cfg.Timeout != 120*time.Second {
 		t.Fatalf("Timeout=%v, want %v", cfg.Timeout, 120*time.Second)
+	}
+}
+
+func TestLoadPushJobConfigUsesExplicitBucketSetting(t *testing.T) {
+	dbx := openPushJobTestDB(t)
+
+	if err := db.UpdateSettingByCode(dbx, "sync_push_enabled", "1"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_enabled", err)
+	}
+	if err := db.UpdateSettingByCode(dbx, "sync_push_provider", "s3"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_provider", err)
+	}
+	if err := db.UpdateSettingByCode(dbx, "sync_push_bucket", "bucket-from-setting"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_bucket", err)
+	}
+	if err := db.UpdateSettingByCode(dbx, "sync_push_endpoint", "https://proxy.example.com/root"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_endpoint", err)
+	}
+
+	reloadPushJobSettings(t, dbx)
+
+	cfg := loadPushJobConfig()
+	if cfg.S3Bucket != "bucket-from-setting" {
+		t.Fatalf("S3Bucket=%q, want %q", cfg.S3Bucket, "bucket-from-setting")
+	}
+	if cfg.S3Endpoint != "https://proxy.example.com/root" {
+		t.Fatalf("S3Endpoint=%q, want %q", cfg.S3Endpoint, "https://proxy.example.com/root")
+	}
+	if !cfg.S3ForcePath {
+		t.Fatal("S3ForcePath should be true when endpoint has path")
 	}
 }

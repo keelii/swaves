@@ -80,15 +80,16 @@
 </style>
 
 {{ if gt (len .SettingKinds) 0 }}
-<div class="settings-kind-tabs" role="tablist" aria-label="设置分类">
+<div class="settings-kind-tabs" role="tablist" aria-label="Settings Categories">
   {{ range .SettingKinds }}
-  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="{{ url_for "admin.settings.all" (dict "kind" .) }}">{{ . }}</a>
+  {{ $label := index $.SettingKindLabels . }}
+  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="{{ url_for "admin.settings.all" (dict "kind" .) }}">{{ if $label }}{{ $label }}{{ else }}{{ . }}{{ end }}</a>
   {{ end }}
 </div>
 
 <form id="form" method="post" action="{{ url_for "admin.settings.all.update" (dict "kind" .ActiveKind) }}" class="settings-all-form">
   <section class="settings-kind">
-      {{ if or (eq .ActiveKind "内容与路由") (eq .ActiveKind "Post") }}
+      {{ if eq .ActiveKind .ContentRoutingKind }}
         <div class="settings-item-label">
           <details>
             <summary>快速设置?</summary>

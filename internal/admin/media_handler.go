@@ -378,11 +378,11 @@ func (h *Handler) validateMediaProviderConfig(providerName string) error {
 	switch strings.TrimSpace(strings.ToLower(providerName)) {
 	case "imagekit":
 		if strings.TrimSpace(store.GetSetting("media_imagekit_private_key")) == "" {
-			return errors.New("ImageKit Private Key 未配置，请到设置 > 媒体服务 填写")
+			return errors.New("ImageKit Private Key 未配置，请到设置 > 第三方服务 填写")
 		}
 		imageKitEndpoint := strings.TrimSpace(store.GetSetting("media_imagekit_endpoint"))
 		if imageKitEndpoint == "" {
-			return errors.New("ImageKit-endpoint 未配置，请到设置 > 媒体服务 填写")
+			return errors.New("ImageKit-endpoint 未配置，请到设置 > 第三方服务 填写")
 		}
 		if err := validateImageKitEndpoint(imageKitEndpoint); err != nil {
 			return err
@@ -391,7 +391,7 @@ func (h *Handler) validateMediaProviderConfig(providerName string) error {
 		fallthrough
 	default:
 		if strings.TrimSpace(store.GetSetting("media_see_api_token")) == "" {
-			return errors.New("S.EE API Token 未配置，请到设置 > 媒体服务 填写")
+			return errors.New("S.EE API Token 未配置，请到设置 > 第三方服务 填写")
 		}
 	}
 	return nil

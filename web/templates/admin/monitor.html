@@ -4,7 +4,7 @@
     flex-wrap: wrap;
     gap: var(--space-3);
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-end;
   }
 
   .monitor-tabs {
@@ -15,6 +15,11 @@
 
   .monitor-tabs a[role="tab"] {
     text-decoration: none;
+  }
+
+  .monitor-toolbar-meta {
+    color: var(--muted-foreground);
+    font-size: var(--text-8);
   }
 
   .monitor-card-label {
@@ -35,22 +40,42 @@
     margin-top: var(--space-1);
   }
 
+  .monitor-chart-group-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+    gap: var(--space-2);
+    color: var(--muted-foreground);
+    font-size: var(--text-8);
+  }
+
+  .monitor-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .monitor-chart-card {
+    height: 100%;
+  }
+
   .monitor-chart-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
     gap: var(--space-2);
   }
 
   .monitor-chart-title {
-    font-size: var(--text-6);
+    font-size: var(--text-7);
     font-weight: var(--font-semibold);
   }
 
-  .monitor-chart-meta {
+  .monitor-chart-unit {
     color: var(--muted-foreground);
-    font-size: var(--text-8);
+    font-size: var(--text-9);
   }
 
   .monitor-chart-wrap {
@@ -66,6 +91,13 @@
   .monitor-error {
     color: var(--danger);
     font-size: var(--text-8);
+    margin-top: var(--space-2);
+  }
+
+  @media (max-width: 1024px) {
+    .monitor-chart-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
 
@@ -78,24 +110,38 @@
           <a
             role="tab"
             aria-selected="{{ if eq $.ActiveGranularity .Key }}true{{ else }}false{{ end }}"
-            href="{{ url_for "admin.monitor" (dict "granularity" .Key "metric" $.ActiveMetric) }}"
+            href="{{ url_for "admin.monitor" (dict "granularity" .Key) }}"
             data-monitor-granularity="{{ .Key }}"
           >{{ .Label }}</a>
         {{ end }}
       </nav>
     </div>
-    <div>
-      <div class="monitor-card-label">监控指标</div>
-      <nav class="monitor-tabs" role="tablist" aria-label="监控指标" data-monitor-metric-tabs>
-        {{ range .Metrics }}
-          <a
-            role="tab"
-            aria-selected="{{ if eq $.ActiveMetric .Key }}true{{ else }}false{{ end }}"
-            href="{{ url_for "admin.monitor" (dict "granularity" $.ActiveGranularity "metric" .Key) }}"
-            data-monitor-metric="{{ .Key }}"
-          >{{ .Label }}</a>
-        {{ end }}
-      </nav>
+    <div class="monitor-toolbar-meta">
+      最近采样：<span data-latest-ts>-</span>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-4 mb-2">
+    <div class="card">
+      <div class="monitor-card-label">应用 CPU</div>
+      <div class="monitor-card-value" data-latest="pid_cpu">-</div>
+      <div class="monitor-card-sub">进程占用</div>
+    </div>
+  </div>
+  <div class="col-4 mb-2">
+    <div class="card">
+      <div class="monitor-card-label">应用内存</div>
+      <div class="monitor-card-value" data-latest="pid_ram">-</div>
+      <div class="monitor-card-sub">RSS</div>
+    </div>
+  </div>
+  <div class="col-4 mb-2">
+    <div class="card">
+      <div class="monitor-card-label">应用连接数</div>
+      <div class="monitor-card-value" data-latest="pid_conns">-</div>
+      <div class="monitor-card-sub">TCP</div>
     </div>
   </div>
 </div>
@@ -103,34 +149,11 @@
 <div class="row">
   <div class="col-3 mb-2">
     <div class="card">
-      <div class="monitor-card-label">应用 CPU</div>
-      <div class="monitor-card-value" data-latest="pid_cpu">-</div>
-      <div class="monitor-card-sub">进程占用</div>
-    </div>
-  </div>
-  <div class="col-3 mb-2">
-    <div class="card">
-      <div class="monitor-card-label">应用内存</div>
-      <div class="monitor-card-value" data-latest="pid_ram">-</div>
-      <div class="monitor-card-sub">RSS</div>
-    </div>
-  </div>
-  <div class="col-3 mb-2">
-    <div class="card">
-      <div class="monitor-card-label">应用连接数</div>
-      <div class="monitor-card-value" data-latest="pid_conns">-</div>
-      <div class="monitor-card-sub">TCP</div>
-    </div>
-  </div>
-  <div class="col-3 mb-2">
-    <div class="card">
       <div class="monitor-card-label">系统 CPU</div>
       <div class="monitor-card-value" data-latest="os_cpu">-</div>
       <div class="monitor-card-sub">全局负载</div>
     </div>
   </div>
-</div>
-<div class="row">
   <div class="col-3 mb-2">
     <div class="card">
       <div class="monitor-card-label">系统内存</div>
@@ -152,21 +175,14 @@
       <div class="monitor-card-sub">TCP</div>
     </div>
   </div>
-  <div class="col-3 mb-2">
-    <div class="card">
-      <div class="monitor-card-label">最近刷新</div>
-      <div class="monitor-card-value" data-latest="ts">-</div>
-      <div class="monitor-card-sub">采样时间</div>
-    </div>
-  </div>
 </div>
 
-<div class="card mt-4">
-  <div class="monitor-chart-head">
-    <div class="monitor-chart-title" data-monitor-metric-label>监控趋势</div>
-    <div class="monitor-chart-meta" data-monitor-range>-</div>
+<div class="mt-4">
+  <div class="monitor-chart-group-head">
+    <span>趋势图</span>
+    <span data-monitor-range>-</span>
   </div>
-  <div class="monitor-chart-wrap" data-monitor-chart>
+  <div class="monitor-chart-grid" data-monitor-charts>
     <p class="text-lighter">正在加载图表...</p>
   </div>
   <div class="monitor-error" data-monitor-error hidden></div>
@@ -178,11 +194,9 @@
     var metricsAPIURL = '{{ url_for "admin.metrics.api" }}';
 
     var activeGranularity = '{{ .ActiveGranularity }}' || '1m';
-    var activeMetric = '{{ .ActiveMetric }}' || 'pid_cpu';
 
-    var chartEl = document.querySelector('[data-monitor-chart]');
+    var chartsEl = document.querySelector('[data-monitor-charts]');
     var rangeEl = document.querySelector('[data-monitor-range]');
-    var metricLabelEl = document.querySelector('[data-monitor-metric-label]');
     var errorEl = document.querySelector('[data-monitor-error]');
 
     var latestTimer = null;
@@ -264,7 +278,7 @@
       setText('[data-latest="os_ram"]', formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram));
       setText('[data-latest="os_load"]', Number(os.load_avg || 0).toFixed(3));
       setText('[data-latest="os_conns"]', formatNumber(os.conns));
-      setText('[data-latest="ts"]', formatDateTime(latest.ts));
+      setText('[data-latest-ts]', formatDateTime(latest.ts));
     }
 
     function buildURL(baseURL, params) {
@@ -282,9 +296,34 @@
     function updateLocation() {
       var nextURL = buildURL('{{ url_for "admin.monitor" }}', {
         granularity: activeGranularity,
-        metric: activeMetric,
       });
       history.replaceState(null, '', nextURL.pathname + nextURL.search);
+    }
+
+    function renderCharts(charts) {
+      if (!chartsEl) {
+        return;
+      }
+      if (!Array.isArray(charts) || charts.length === 0) {
+        chartsEl.innerHTML = '<p class="text-lighter">暂无图表数据</p>';
+        return;
+      }
+
+      var html = charts.map(function(item) {
+        var metric = item && item.metric ? item.metric : {};
+        var label = escapeHTML(metric.label || '未命名指标');
+        var unit = escapeHTML(metric.unit || '');
+        var svg = item && item.svg ? item.svg : '<p class="text-lighter">暂无数据</p>';
+        return '<div class="card monitor-chart-card">'
+          + '<div class="monitor-chart-head">'
+          + '<div class="monitor-chart-title">' + label + '</div>'
+          + '<div class="monitor-chart-unit">' + unit + '</div>'
+          + '</div>'
+          + '<div class="monitor-chart-wrap">' + svg + '</div>'
+          + '</div>';
+      }).join('');
+
+      chartsEl.innerHTML = html;
     }
 
     async function loadMonitorHistory() {
@@ -297,7 +336,6 @@
       try {
         var url = buildURL(monitorAPIURL, {
           granularity: activeGranularity,
-          metric: activeMetric,
         });
         var response = await fetch(url.toString(), {
           headers: {
@@ -312,24 +350,17 @@
           throw new Error(json.error || '读取监控数据失败');
         }
 
-        if (chartEl) {
-          chartEl.innerHTML = json.chart_svg || '<p class="text-lighter">暂无图表数据</p>';
-        }
-
-        if (metricLabelEl && json.metric && json.metric.label) {
-          metricLabelEl.textContent = json.metric.label + ' 趋势';
-        }
-
         if (rangeEl) {
           rangeEl.textContent = formatDateTime(json.start_at) + ' - ' + formatDateTime(json.end_at);
         }
 
+        renderCharts(json.charts || []);
         renderLatest(json.latest || null);
       } catch (err) {
         var msg = err && err.message ? err.message : '读取监控数据失败';
         renderError(msg);
-        if (chartEl) {
-          chartEl.innerHTML = '<p class="text-lighter">加载失败</p>';
+        if (chartsEl) {
+          chartsEl.innerHTML = '<p class="text-lighter">加载失败</p>';
         }
         notify(msg, '监控数据', { variant: 'danger' });
       } finally {
@@ -369,20 +400,6 @@
           loadMonitorHistory();
         });
       });
-
-      document.querySelectorAll('[data-monitor-metric]').forEach(function(tab) {
-        tab.addEventListener('click', function(event) {
-          event.preventDefault();
-          var next = tab.getAttribute('data-monitor-metric') || '';
-          if (!next || next === activeMetric) {
-            return;
-          }
-          activeMetric = next;
-          setTabState('data-monitor-metric', activeMetric);
-          updateLocation();
-          loadMonitorHistory();
-        });
-      });
     }
 
     function startLatestTicker() {
@@ -394,7 +411,6 @@
 
     bindTabEvents();
     setTabState('data-monitor-granularity', activeGranularity);
-    setTabState('data-monitor-metric', activeMetric);
     loadMonitorHistory();
     startLatestTicker();
   })();

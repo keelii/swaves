@@ -29,12 +29,12 @@ func TestNewURLForResolver(t *testing.T) {
 	}
 
 	settingsURL, err := resolver("admin.settings.all", map[string]string{
-		"kind": "媒体服务",
+		"kind": "third_party_services",
 	}, nil)
 	if err != nil {
 		t.Fatalf("resolve admin.settings.all failed: %v", err)
 	}
-	if settingsURL != "/settings/all?kind=%E5%AA%92%E4%BD%93%E6%9C%8D%E5%8A%A1" {
+	if settingsURL != "/settings/all?kind=third_party_services" {
 		t.Fatalf("unexpected admin.settings.all url: %s", settingsURL)
 	}
 

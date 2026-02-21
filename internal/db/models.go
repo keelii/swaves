@@ -3552,6 +3552,9 @@ func syncDefaultSettingMeta(db *DB, existing *Setting, defaults Setting) error {
 	if existing.Kind != defaults.Kind {
 		updateData["kind"] = defaults.Kind
 	}
+	if existing.Type != defaults.Type {
+		updateData["type"] = defaults.Type
+	}
 
 	if len(updateData) == 0 {
 		return nil
