@@ -1106,7 +1106,7 @@ func TestListSettingsByKindSubKindOrder(t *testing.T) {
 		}
 	}
 
-	want := []string{seeCode, imagekitCode, s3Code, generalCode}
+	want := []string{generalCode, seeCode, imagekitCode, s3Code}
 	if len(got) != len(want) {
 		t.Fatalf("unexpected matched settings length: got=%d want=%d codes=%v", len(got), len(want), got)
 	}
@@ -1147,9 +1147,9 @@ func TestEnsureDefaultSettingsSyncKind(t *testing.T) {
 func TestEnsureDefaultSettingsSyncSubKind(t *testing.T) {
 	db := openTestDB(t)
 
-	s3Endpoint, err := GetSettingByCode(db, "sync_push_endpoint")
+	s3Endpoint, err := GetSettingByCode(db, "s3_api_endpoint")
 	if err != nil {
-		t.Fatalf("GetSettingByCode(sync_push_endpoint) failed: %v", err)
+		t.Fatalf("GetSettingByCode(s3_api_endpoint) failed: %v", err)
 	}
 
 	if err := Update(db, specSettings, s3Endpoint.ID, map[string]interface{}{
@@ -1162,12 +1162,12 @@ func TestEnsureDefaultSettingsSyncSubKind(t *testing.T) {
 		t.Fatalf("EnsureDefaultSettings failed: %v", err)
 	}
 
-	updated, err := GetSettingByCode(db, "sync_push_endpoint")
+	updated, err := GetSettingByCode(db, "s3_api_endpoint")
 	if err != nil {
-		t.Fatalf("GetSettingByCode(sync_push_endpoint) after ensure failed: %v", err)
+		t.Fatalf("GetSettingByCode(s3_api_endpoint) after ensure failed: %v", err)
 	}
 	if updated.SubKind != SettingSubKindS3 {
-		t.Fatalf("expected sync_push_endpoint sub_kind %s, got %s", SettingSubKindS3, updated.SubKind)
+		t.Fatalf("expected s3_api_endpoint sub_kind %s, got %s", SettingSubKindS3, updated.SubKind)
 	}
 }
 

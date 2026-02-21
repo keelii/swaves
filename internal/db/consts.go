@@ -433,14 +433,14 @@ var settingKindOrder = []string{
 
 var settingSubKindOrder = map[string][]string{
 	SettingKindThirdPartyServices: {
+		SettingSubKindGeneral,
 		SettingSubKindSEE,
 		SettingSubKindImageKit,
 		SettingSubKindS3,
-		SettingSubKindGeneral,
 	},
 	SettingKindAdminSecurity: {
-		SettingSubKindGeneral,
 		SettingSubKindMedia,
+		SettingSubKindGeneral,
 	},
 }
 
@@ -458,7 +458,7 @@ var SettingSubKindLabels = map[string]map[string]string{
 	SettingKindThirdPartyServices: {
 		SettingSubKindSEE:      "S.EE",
 		SettingSubKindImageKit: "ImageKit",
-		SettingSubKindS3:       "S3",
+		SettingSubKindS3:       "Amazon S3",
 		SettingSubKindGeneral:  "通用",
 	},
 	SettingKindAdminSecurity: {
@@ -488,22 +488,21 @@ var DefaultSettings = []Setting{
 	{Sort: 15, Kind: SettingKindContentRouting, Name: "文章地址扩展名", Code: "post_url_ext", Type: "text", Value: "", Description: "分类 URL 扩展名", Attrs: consts.PostUrlExtValidatorJSON},
 	{Sort: 16, Kind: SettingKindContentRouting, Name: "分类地址前缀", Code: "category_url_prefix", Reload: 1, Type: "prefix-field", Value: "categories", PrefixValue: "/", Attrs: consts.UrlPrefixValidatorJSON, Description: "分类 URL 前缀"},
 	{Sort: 17, Kind: SettingKindContentRouting, Name: "标签地址前缀", Code: "tag_url_prefix", Reload: 1, Type: "prefix-field", Value: "tags", PrefixValue: "/", Attrs: consts.UrlPrefixValidatorJSON, Description: "标签 URL 前缀"},
-	{Sort: 10, Kind: SettingKindBackupSync, Name: "远程备份开启", Code: "sync_push_enabled", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "是否启用远程备份任务", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
+	{Sort: 10, Kind: SettingKindBackupSync, Name: "远程备份开启", Code: "sync_push_enabled", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 11, Kind: SettingKindBackupSync, Name: "远程备份服务商", Code: "sync_push_provider", Type: "select", Value: "s3", DefaultOptionValue: "s3", Description: "远程备份目标服务商", Options: `[{"label": "S3", "value": "s3"}, {"label": "ImageKit", "value": "imagekit"}]`},
-	{Sort: 12, Kind: SettingKindBackupSync, Name: "S3 Bucket", Code: "sync_push_bucket", Type: "text", Value: "", Description: "S3 Bucket 名称（必填，仅 S3 备份时使用）"},
-	{Sort: 13, Kind: SettingKindBackupSync, Name: "本地备份目录", Code: "backup_local_dir", Type: "text", Value: "backups", Description: "本地备份目录（支持绝对路径或相对程序根目录路径）"},
+	{Sort: 13, Kind: SettingKindBackupSync, Name: "本地备份目录", Code: "backup_local_dir", Type: "text", Value: "backups", Description: "本地备份目录"},
 	{Sort: 14, Kind: SettingKindBackupSync, Name: "本地备份间隔 (min)", Code: "backup_local_interval_min", Type: "number", Value: "1440", DefaultOptionValue: "1440", Description: "两次本地备份之间的最小间隔（分钟）", Attrs: `{"min": 1, "max": 10080}`},
-	{Sort: 15, Kind: SettingKindBackupSync, Name: "本地备份最大数量", Code: "backup_local_max_count", Type: "number", Value: "30", DefaultOptionValue: "30", Description: "本地仅保留最新 N 个备份文件", Attrs: `{"min": 1, "max": 500}`},
+	{Sort: 15, Kind: SettingKindBackupSync, Name: "本地备份最大数量", Code: "backup_local_max_count", Type: "number", Value: "30", DefaultOptionValue: "30", Description: "本地仅保留最新多少个备份文件", Attrs: `{"min": 1, "max": 500}`},
 	{Sort: 16, Kind: SettingKindBackupSync, Name: "远程备份超时 (sec)", Code: "sync_push_timeout_sec", Type: "number", Value: "60", DefaultOptionValue: "60", Description: "远程备份超时时间（秒）", Attrs: `{"min": 1, "max": 600}`},
-	{Sort: 10, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 API Endpoint", Code: "sync_push_endpoint", Type: "url", Value: "", Description: "S3 API Endpoint（远程备份使用，不包含 bucket，例如：https://s3.example.com）"},
-	{Sort: 11, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Access Key ID", Code: "s3_access_key_id", Type: "text", Value: consts.S3AccessKeyID, Description: "S3 access key id"},
+	{Sort: 10, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 API Endpoint", Code: "s3_api_endpoint", Type: "url", Value: consts.S3Endpoint, Description: "S3 API Endpoint"},
+	{Sort: 12, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Bucket", Code: "s3_bucket", Type: "text", Value: "swaves-backup", Description: "S3 Bucket 名称（必填，仅 S3 备份时使用）"},
+	{Sort: 11, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Access Key ID", Code: "s3_access_key_id", Type: "secret", Value: consts.S3AccessKeyID, Description: "S3 access key id"},
 	{Sort: 12, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Secret Access Key", Code: "s3_secret_access_key", Type: "secret", Value: consts.S3SecretAccessKey, Description: "S3 secret access key"},
 	{Sort: 13, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API 地址", Code: "media_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload", Description: "S.EE API 地址（可填写上传接口完整地址）"},
 	{Sort: 14, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API Token", Code: "media_see_api_token", Type: "secret", Value: consts.SeeApiToken, Description: "S.EE Bearer Token"},
 	{Sort: 15, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit-endpoint", Code: "media_imagekit_endpoint", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API Endpoint"},
 	{Sort: 16, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit Private Key", Code: "media_imagekit_private_key", Type: "secret", Value: consts.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
-	{Sort: 17, Kind: SettingKindThirdPartyServices, Name: "GA4 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 ID"},
-	{Sort: 18, Kind: SettingKindThirdPartyServices, Name: "Giscus Config", Code: "giscus_config", Type: "textarea", Value: "", Description: "Giscus 配置 (JSON)"},
+	{Sort: 17, Kind: SettingKindThirdPartyServices, Name: "Google analytics ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google analytics ID"},
 	{Sort: 10, Kind: SettingKindAdminSecurity, Name: "管理后台路径", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: consts.UrlPrefixValidatorJSON},
 	{Sort: 11, Kind: SettingKindAdminSecurity, Name: "管理后台密码", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
 	{Sort: 12, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindMedia, Name: "媒体默认服务", Code: "media_default_provider", Type: "select", Value: "see", Description: "媒体上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},

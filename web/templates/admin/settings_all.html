@@ -28,6 +28,12 @@
     gap: var(--space-4);
   }
 
+  fieldset.settings-options {
+    width: 630px;
+  }
+  .settings-item-label details {
+    width: 630px;
+  }
   .settings-sub-kind-group {
     width: 630px;
     margin: 0;
@@ -49,12 +55,14 @@
   .settings-item {
     display: flex;
     gap: var(--space-4);
+    margin-bottom: 1em;
   }
   .settings-item .settings-item-label {
     /*width: 300px;*/
   }
-  .settings-item-label input,
-  .settings-item-label textarea {
+  .settings-item-label input:not([type="radio"]),
+  .settings-item-label textarea,
+  .settings-item-label select {
     width: 300px;
   }
 

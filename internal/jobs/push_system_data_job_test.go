@@ -173,11 +173,11 @@ func TestLoadPushJobConfigReadsSettingsAndEnv(t *testing.T) {
 	if err := db.UpdateSettingByCode(dbx, "sync_push_provider", "s3"); err != nil {
 		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_provider", err)
 	}
-	if err := db.UpdateSettingByCode(dbx, "sync_push_bucket", "my-bucket"); err != nil {
-		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_bucket", err)
+	if err := db.UpdateSettingByCode(dbx, "s3_bucket", "my-bucket"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "s3_bucket", err)
 	}
-	if err := db.UpdateSettingByCode(dbx, "sync_push_endpoint", "https://s3.example.com"); err != nil {
-		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_endpoint", err)
+	if err := db.UpdateSettingByCode(dbx, "s3_api_endpoint", "https://s3.example.com"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "s3_api_endpoint", err)
 	}
 	if err := db.UpdateSettingByCode(dbx, "sync_push_timeout_sec", "120"); err != nil {
 		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_timeout_sec", err)
@@ -230,11 +230,11 @@ func TestLoadPushJobConfigUsesExplicitBucketSetting(t *testing.T) {
 	if err := db.UpdateSettingByCode(dbx, "sync_push_provider", "s3"); err != nil {
 		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_provider", err)
 	}
-	if err := db.UpdateSettingByCode(dbx, "sync_push_bucket", "bucket-from-setting"); err != nil {
-		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_bucket", err)
+	if err := db.UpdateSettingByCode(dbx, "s3_bucket", "bucket-from-setting"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "s3_bucket", err)
 	}
-	if err := db.UpdateSettingByCode(dbx, "sync_push_endpoint", "https://proxy.example.com/root"); err != nil {
-		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "sync_push_endpoint", err)
+	if err := db.UpdateSettingByCode(dbx, "s3_api_endpoint", "https://proxy.example.com/root"); err != nil {
+		t.Fatalf("UpdateSettingByCode(%s) failed: %v", "s3_api_endpoint", err)
 	}
 
 	reloadPushJobSettings(t, dbx)

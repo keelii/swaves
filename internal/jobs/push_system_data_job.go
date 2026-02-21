@@ -88,7 +88,7 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 		}
 	default:
 		if cfg.S3Bucket == "" {
-			return nil, errors.New("s3 bucket is empty (setting: sync_push_bucket)")
+			return nil, errors.New("s3 bucket is empty (setting: s3_bucket)")
 		}
 		if cfg.S3Region == "" {
 			return nil, errors.New("s3 region is empty")
@@ -330,8 +330,8 @@ func loadPushJobConfig() pushJobConfig {
 		timeoutSec = 60
 	}
 
-	rawS3Endpoint := strings.TrimSpace(store.GetSetting("sync_push_endpoint"))
-	s3Bucket := strings.TrimSpace(store.GetSetting("sync_push_bucket"))
+	rawS3Endpoint := strings.TrimSpace(store.GetSetting("s3_api_endpoint"))
+	s3Bucket := strings.TrimSpace(store.GetSetting("s3_bucket"))
 
 	s3Endpoint := ""
 	endpointBucket := ""
