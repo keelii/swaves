@@ -94,17 +94,6 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		},
 	},
 	{
-		Key:   "pid_conns",
-		Label: "应用连接数",
-		Unit:  "",
-		chartValue: func(point monitorHistoryPoint) int {
-			return point.PID.Conns
-		},
-		formatValue: func(point monitorHistoryPoint) string {
-			return fmt.Sprintf("%d", point.PID.Conns)
-		},
-	},
-	{
 		Key:   "os_cpu",
 		Label: "系统 CPU",
 		Unit:  "%",
