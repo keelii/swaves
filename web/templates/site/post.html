@@ -61,7 +61,7 @@
 
     <fieldset>
       <legend>发表评论</legend>
-      <form method="post" action="{{ GetBasePath }}/_action/comment/{{ .Post.ID }}" id="comment-form">
+      <form method="post" action="{{ url_for "site.action.comment" (dict "postID" .Post.ID) }}" id="comment-form">
         <input type="hidden" name="return_url" value="{{ .UrlPath }}">
         <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
         <p>

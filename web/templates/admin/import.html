@@ -359,7 +359,7 @@ $(function() {
     var seen = {};
     var list = [];
     value.split(',').forEach(function(part) {
-      var item = String(part || '').trim();
+      var item = normalizeImportListValue(part);
       if (!item) {
         return;
       }
@@ -373,7 +373,7 @@ $(function() {
   }
 
   function appendUnique(list, value) {
-    value = String(value || '').trim();
+    value = normalizeImportListValue(value);
     if (!value) {
       return list;
     }
@@ -443,9 +443,18 @@ $(function() {
       created_at: String(raw.created_at || raw.CreatedAt || ''),
       created_at_unix: Number(raw.created_at_unix || raw.CreatedAtUnix || 0),
       tags: String(raw.tags || raw.Tags || ''),
-      category: String(raw.category || raw.Category || ''),
-      categories: String(raw.categories || raw.Categories || '')
+      category: normalizeImportListValue(raw.category || raw.Category || ''),
+      categories: splitCSV(raw.categories || raw.Categories || '').join(', ')
     };
+  }
+
+  function normalizeImportListValue(raw) {
+    var value = String(raw == null ? '' : raw).trim();
+    if (!value) {
+      return '';
+    }
+    value = value.replace(/^["']+|["']+$/g, '').trim();
+    return value;
   }
 
   function createImportRow(item) {
@@ -496,7 +505,7 @@ $(function() {
       return;
     }
 
-    var selected = String($select.attr('data-selected') || '').trim();
+    var selected = normalizeImportListValue($select.attr('data-selected'));
     var options = splitCSV($select.attr('data-categories'));
 
     if (selected) {
