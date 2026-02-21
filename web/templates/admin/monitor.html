@@ -158,18 +158,25 @@
 </div>
 
 <div class="row">
-  <div class="col-6 mb-6">
+  <div class="col-4 mb-6">
     <div class="card">
       <div class="monitor-card-label">系统 CPU</div>
       <div class="monitor-card-value" data-latest="os_cpu">-</div>
       <div class="monitor-card-sub">全局负载</div>
     </div>
   </div>
-  <div class="col-6 mb-6">
+  <div class="col-4 mb-6">
     <div class="card">
       <div class="monitor-card-label">系统内存</div>
       <div class="monitor-card-value" data-latest="os_ram">-</div>
       <div class="monitor-card-sub">已用 / 总量</div>
+    </div>
+  </div>
+  <div class="col-4 mb-6">
+    <div class="card">
+      <div class="monitor-card-label">系统连接数</div>
+      <div class="monitor-card-value" data-latest="os_conns">-</div>
+      <div class="monitor-card-sub">TCP</div>
     </div>
   </div>
 </div>
@@ -285,6 +292,7 @@
 
       setText('[data-latest="os_cpu"]', formatPercent(os.cpu));
       setText('[data-latest="os_ram"]', formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram));
+      setText('[data-latest="os_conns"]', formatNumber(os.conns));
       setText('[data-latest-ts]', formatDateTime(latest.ts));
     }
 
