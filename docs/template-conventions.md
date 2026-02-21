@@ -59,6 +59,23 @@ It does not define business logic.
   - Example: `{% import "macros/forms.html" as forms %}`
 - Wildcard import style is not allowed.
 
+### 9) Full migration policy
+
+- Migration policy is full replacement.
+- Runtime engine switch is not allowed.
+- Rollback path via dual-engine mode is not allowed.
+
+### 10) Recursive templates
+
+- Recursive rendering MUST use MiniJinja recursive loop style (`for ... recursive` + `loop(...)`).
+- Legacy recursive `define/template` patterns from Go templates MUST be replaced.
+
+### 11) Development hot reload
+
+- Development hot reload MUST use strategy 1:
+  - call `ClearTemplates()` before rendering.
+- Production MUST NOT use per-request template cache clearing.
+
 ## SHOULD
 
 ### 1) Keep templates display-oriented
@@ -91,13 +108,6 @@ It does not define business logic.
 - MUST NOT silently depend on hidden context injection.
 - MUST NOT add migration logic into unrelated initialization flow.
 
-## Transitional compatibility (migration window)
-
-During migration, legacy keys may exist temporarily.
-
-- New templates MUST use `Req/Auth/Site`.
-- Refactored templates MUST remove legacy accesses when touched.
-
 ## Review gate
 
 A template PR is mergeable only if:
@@ -106,4 +116,3 @@ A template PR is mergeable only if:
 - reserved key rule passes
 - route generation rule passes (`url_for`)
 - new reusable UI follows macro-first rule
-

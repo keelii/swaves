@@ -7,8 +7,10 @@
 - [ ] Reusable UI uses macro-first, not copy-paste.
 - [ ] `import` uses aliases and no wildcard import.
 - [ ] `include` is used only for lightweight fragments.
+- [ ] Recursive templates are migrated to `for ... recursive` style.
 - [ ] Internal links use `url_for`.
 - [ ] No new hardcoded admin paths are introduced.
-- [ ] New code uses `Req/Auth/Site` and does not spread legacy keys.
-- [ ] Manual regression for key pages is completed (home, post, admin list).
-
+- [ ] New code uses `Req/Auth/Site` only.
+- [ ] Development hot reload uses `ClearTemplates()` before render.
+- [ ] Production does not clear template cache per request.
+- [ ] Manual regression for key pages is completed (site and admin critical routes).
