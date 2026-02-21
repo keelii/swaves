@@ -295,7 +295,7 @@ func (h Handler) GetRaw(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid filename")
 	}
 
-	return c.SendString(post.Content)
+	return c.SendString(fmt.Sprintf("# %s\n\n%s", post.Title, post.Content))
 }
 
 //func (h Handler) GetPost(c fiber.Ctx) error {
