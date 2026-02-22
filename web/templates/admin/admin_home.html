@@ -115,28 +115,25 @@
             {% endfor %}
         </div>
 
-          {% for tab in UVChartTabs %}
-            <div role="tabpanel">
-              <div class="row mb-4">
-                <div class="col-12 text-right text-lighter">{{ tab.StartLabel }} — {{ tab.EndLabel }}</div>
+        {% for tab in UVChartTabs %}
+          <div role="tabpanel">
+            <div class="row">
+              <div class="col-2 vstack">
+                <div class="dashboard-label">唯一访客</div>
+                <div class="dashboard-uv-total">{% if tab.Total %}{{ tab.Total }}{% else %}0{% endif %}</div>
+                <div class="text-lighter">{{ tab.Label }}内访客</div>
               </div>
-              <div class="row">
-                <div class="col-2 vstack">
-                  <div class="dashboard-label">唯一访客</div>
-                  <div class="dashboard-uv-total">{% if tab.Total %}{{ tab.Total }}{% else %}0{% endif %}</div>
-                  <div class="text-lighter">{{ tab.Label }}内访客</div>
-                </div>
-              <div class="col-10 dashboard-uv-chart" data-uv-chart>
-                {% if tab.SVG %}
-                  {{ tab.SVG | safe }}
-                  <div class="dashboard-uv-tooltip" data-uv-tooltip hidden></div>
-                {% else %}
-                  <p class="text-lighter">暂无 UV 数据</p>
-                {% endif %}
-              </div>
+            <div class="col-10 dashboard-uv-chart" data-uv-chart>
+              {% if tab.SVG %}
+                {{ tab.SVG | safe }}
+                <div class="dashboard-uv-tooltip" data-uv-tooltip hidden></div>
+              {% else %}
+                <p class="text-lighter">暂无 UV 数据</p>
+              {% endif %}
             </div>
-            </div>
-          {% endfor %}
+          </div>
+          </div>
+        {% endfor %}
       </ot-tabs>
     </div>
   </div>

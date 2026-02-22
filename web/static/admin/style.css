@@ -29,6 +29,9 @@ a[role="tab"] {
   text-decoration: none;
   font-weight: normal;
 }
+ot-tabs  [role="tabpanel"]:last-child {
+  padding-bottom: 0;
+}
 input {
   margin-block-start: 0;
 }
