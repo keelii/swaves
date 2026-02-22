@@ -1,0 +1,28 @@
+{% set commentCore = Comment.Comment or Comment %}
+{% set commentParentAuthor = Comment.ParentAuthor or commentCore.ParentAuthor %}
+{% set commentChildren = Comment.Children %}
+<li class="comment-item" id="comment-{{ commentCore.ID }}">
+  <div style="display:flex;align-items:flex-start;gap:0.6rem;">
+    <img src="{{ commentAvatar(commentCore.AuthorEmail, commentCore.Author, 40) }}" alt="{{ commentCore.Author }}" width="40" height="40" style="border-radius:999px;display:block;flex:0 0 40px;">
+    <div>
+      <strong>{{ commentCore.Author }}</strong>
+      <small> · {{ commentCore.CreatedAt | relativeTime }}</small>
+      {% if commentCore.ParentID > 0 %}
+        <small> · 回复 @{{ commentParentAuthor }}</small>
+      {% endif %}
+    </div>
+  </div>
+  <div>{{ commentCore.Content }}</div>
+  <div>
+    <button type="button" data-comment-reply data-comment-id="{{ commentCore.ID }}" data-comment-author="{{ commentCore.Author }}">回复</button>
+  </div>
+  {% if commentChildren %}
+    <ol class="comment-children">
+      {% for childComment in commentChildren %}
+        {% with Comment = childComment %}
+          {% include "/site/include/comment_item" %}
+        {% endwith %}
+      {% endfor %}
+    </ol>
+  {% endif %}
+</li>

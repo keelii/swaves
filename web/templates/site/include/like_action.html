@@ -1,0 +1,76 @@
+<form method="post" action="{{ url_for("site.action.like", dict("postID", PostID)) }}" style="display:inline-flex;align-items: center" data-like-form>
+  <input type="hidden" name="return_url" value="{{ UrlPath }}">
+  <button title="点赞数" type="submit" data-like-button data-liked="{% if Liked %}1{% else %}0{% endif %}" aria-label="点赞">
+    {{ lucide_icon("heart", 16) }}
+    <span data-like-count>{% if LikeCount %}{{ LikeCount }}{% else %}0{% endif %}</span>
+  </button>
+</form>
+<script>
+  (function () {
+    if (window.__swavesLikeAsyncInit) {
+      return;
+    }
+    window.__swavesLikeAsyncInit = true;
+
+    function toLikeCount(value) {
+      var count = Number.parseInt(value, 10);
+      if (Number.isNaN(count) || count < 0) {
+        return 0;
+      }
+      return count;
+    }
+
+    function updateLikeButton(button, likeCount, liked) {
+      var countEl = button.querySelector("[data-like-count]");
+      if (countEl) {
+        countEl.textContent = String(likeCount);
+      }
+      button.dataset.liked = liked ? "1" : "0";
+    }
+
+    async function handleLikeSubmit(event) {
+      event.preventDefault();
+
+      var form = event.currentTarget;
+      var button = form.querySelector("[data-like-button]");
+      if (!button || button.disabled) {
+        return;
+      }
+
+      var countEl = button.querySelector("[data-like-count]");
+      var previousCount = countEl ? countEl.textContent : "";
+      var previousLiked = button.dataset.liked || "0";
+      button.disabled = true;
+
+      try {
+        var response = await fetch(form.action, {
+          method: "POST",
+          body: new FormData(form),
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("点赞请求失败");
+        }
+
+        var result = await response.json();
+        updateLikeButton(button, toLikeCount(result.likeCount), !!result.liked);
+      } catch (error) {
+        if (countEl) {
+          countEl.textContent = previousCount;
+        }
+        button.dataset.liked = previousLiked;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    var forms = document.querySelectorAll("[data-like-form]");
+    forms.forEach(function (form) {
+      form.addEventListener("submit", handleLikeSubmit);
+    });
+  })();
+</script>

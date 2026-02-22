@@ -1,0 +1,28 @@
+<nav aria-label="分页导航" class="pagination">
+  {% set searchQueryEscaped = SearchQueryEscaped %}
+  {% if Pager %}
+  <div class="ivalign gap-1">
+    {% if not page_has_prev(Pager) %}
+    <span class="page-link page-link-prev" tabindex="-1">上一页</span>
+    {% else %}
+    <a class="page-link page-link-prev" href="?page={{ page_prev(Pager) }}&pageSize={{ Pager.PageSize }}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}" tabindex="-1">上一页</a>
+    {% endif %}
+
+    {% for item in page_items(Pager) %}
+    {% if item.Type == "ellipsis" %}
+    <span class="page-link" aria-hidden="true">…</span>
+    {% elif item.Current %}
+    <span class="page-link">{{ item.Page }}</span>
+    {% else %}
+    <a class="page-link-num page-link" href="?page={{ item.Page }}&pageSize={{ Pager.PageSize }}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}">{{ item.Page }}</a>
+    {% endif %}
+    {% endfor %}
+
+    {% if not page_has_next(Pager) %}
+    <span class="page-link page-link-next">下一页</span>
+    {% else %}
+    <a class="page-link page-link-next" href="?page={{ page_next(Pager) }}&pageSize={{ Pager.PageSize }}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}">下一页</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</nav>

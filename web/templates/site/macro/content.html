@@ -1,0 +1,18 @@
+{% macro category_item(item, label=false) -%}
+  {% if item %}
+    <span>
+    {% if label %}分类{% endif %} <a href="{{ item.PermLink }}">{{ item.Name }}</a>
+    </span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro tag_list(items, label=false) -%}
+  {% if items and (items|length) > 0 %}
+    <span>
+    {% if label %}标签{% endif %}
+    {% for item in items %}
+      <a href="{{ item.PermLink }}">{{ item.Name }}</a>{% if not loop.last %},{% endif %}
+    {% endfor %}
+    </span>
+  {% endif %}
+{%- endmacro %}
