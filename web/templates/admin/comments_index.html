@@ -27,7 +27,7 @@
     <tr>
       <td class="cell-4">{{ comment.ID }}</td>
       <td>
-        <a href="{{ GetPostUrl(comment.PostID, comment.PostKind, comment.PostSlug, comment.PostPubAt) }}#comment-{{ comment.ID }}" target="_blank" rel="noopener">{{ comment.PostTitle }}</a>
+        <a href="{{ GetPostUrl({"ID": comment.PostID, "Kind": comment.PostKind, "Slug": comment.PostSlug, "PublishedAt": comment.PostPubAt}) }}#comment-{{ comment.ID }}" target="_blank" rel="noopener">{{ comment.PostTitle }}</a>
         <div class="text-light">文章ID={{ comment.PostID }}</div>
       </td>
       <td>

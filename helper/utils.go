@@ -13,6 +13,7 @@ import (
 	"swaves/internal/logger"
 
 	"github.com/gosimple/slug"
+	"github.com/mitsuhiko/minijinja/minijinja-go/v2/value"
 	"golang.org/x/net/html"
 )
 
@@ -158,6 +159,76 @@ func JSONEncode(str string) string {
 func JSONStringify(v interface{}) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func DecodeAnyToType[T any](raw any) (T, bool) {
+	var zero T
+	switch typed := raw.(type) {
+	case T:
+		return typed, true
+	case *T:
+		if typed == nil {
+			return zero, false
+		}
+		return *typed, true
+	}
+	raw = normalizeDecodeInput(raw)
+	switch typed := raw.(type) {
+	case T:
+		return typed, true
+	case *T:
+		if typed == nil {
+			return zero, false
+		}
+		return *typed, true
+	}
+	payload, err := json.Marshal(raw)
+	if err != nil {
+		logger.Error("failed to marshal value for type decode: %v", err)
+		return zero, false
+	}
+	var decoded T
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		logger.Error("failed to unmarshal value for type decode: %v", err)
+		return zero, false
+	}
+	return decoded, true
+}
+
+func normalizeDecodeInput(raw any) any {
+	switch typed := raw.(type) {
+	case value.Value:
+		if typed.IsNone() || typed.IsUndefined() || typed.IsSilentUndefined() {
+			return nil
+		}
+		return normalizeDecodeInput(typed.Raw())
+	case map[string]value.Value:
+		converted := make(map[string]any, len(typed))
+		for key, item := range typed {
+			converted[key] = normalizeDecodeInput(item)
+		}
+		return converted
+	case map[string]any:
+		converted := make(map[string]any, len(typed))
+		for key, item := range typed {
+			converted[key] = normalizeDecodeInput(item)
+		}
+		return converted
+	case []value.Value:
+		converted := make([]any, len(typed))
+		for idx, item := range typed {
+			converted[idx] = normalizeDecodeInput(item)
+		}
+		return converted
+	case []any:
+		converted := make([]any, len(typed))
+		for idx, item := range typed {
+			converted[idx] = normalizeDecodeInput(item)
+		}
+		return converted
+	default:
+		return raw
+	}
 }
 
 func BuildGAvatarURL(email, author string, size int) string {
