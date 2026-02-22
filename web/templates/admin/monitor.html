@@ -124,18 +124,20 @@
 {% set activeScope = ActiveScope|default("app") %}
 
 <div class="monitor-toolbar items-center mb-2">
-  <nav class="monitor-tabs" role="tablist" aria-label="时间粒度" data-monitor-granularity-tabs>
-    {% for granularity in monitorGranularities %}
-      {% set granularityKey = granularity.Key %}
-      {% set granularityLabel = granularity.Label | default(granularityKey) %}
-      <a
-        role="tab"
-        aria-selected="{% if activeGranularity == granularityKey %}true{% else %}false{% endif %}"
-        href="{{ url_for('admin.monitor', granularity=granularityKey, scope=activeScope) }}"
-        data-monitor-granularity="{{ granularityKey }}"
-      >{{ granularityLabel }}</a>
-    {% endfor %}
-  </nav>
+  <ot-tabs class="monitor-tabs">
+    <div role="tablist" aria-label="时间粒度" data-monitor-granularity-tabs>
+      {% for granularity in monitorGranularities %}
+        {% set granularityKey = granularity.Key %}
+        {% set granularityLabel = granularity.Label | default(granularityKey) %}
+        <a
+          role="tab"
+          aria-selected="{% if activeGranularity == granularityKey %}true{% else %}false{% endif %}"
+          href="{{ url_for('admin.monitor', granularity=granularityKey, scope=activeScope) }}"
+          data-monitor-granularity="{{ granularityKey }}"
+        >{{ granularityLabel }}</a>
+      {% endfor %}
+    </div>
+  </ot-tabs>
   <div class="monitor-toolbar-meta">
     最近采样：<span data-latest-ts>-</span>
   </div>
@@ -190,20 +192,22 @@
 </div>
 
 <div class="mt-2">
-  <nav class="monitor-tabs mb-2" role="tablist" aria-label="监控指标" data-monitor-scope-tabs>
+  <ot-tabs class="monitor-tabs mb-2">
+    <div role="tablist" aria-label="监控指标" data-monitor-scope-tabs>
       <a
-      role="tab"
-      aria-selected="{% if activeScope == "app" %}true{% else %}false{% endif %}"
-      href="{{ url_for('admin.monitor', granularity=activeGranularity, scope='app') }}"
-      data-monitor-scope="app"
-    >应用</a>
-    <a
-      role="tab"
-      aria-selected="{% if activeScope == "system" %}true{% else %}false{% endif %}"
-      href="{{ url_for('admin.monitor', granularity=activeGranularity, scope='system') }}"
-      data-monitor-scope="system"
-    >系统</a>
-  </nav>
+        role="tab"
+        aria-selected="{% if activeScope == "app" %}true{% else %}false{% endif %}"
+        href="{{ url_for('admin.monitor', granularity=activeGranularity, scope='app') }}"
+        data-monitor-scope="app"
+      >应用</a>
+      <a
+        role="tab"
+        aria-selected="{% if activeScope == "system" %}true{% else %}false{% endif %}"
+        href="{{ url_for('admin.monitor', granularity=activeGranularity, scope='system') }}"
+        data-monitor-scope="system"
+      >系统</a>
+    </div>
+  </ot-tabs>
   <div class="monitor-chart-grid" data-monitor-charts>
     <p class="text-lighter">正在加载图表...</p>
   </div>

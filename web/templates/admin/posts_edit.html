@@ -1,4 +1,4 @@
-{% extends "admin/layout/layout" %}
+{% extends "admin/layout/layout.html" %}
 {% block content %}
 
 <form id="form" method="post" action="{{ url_for('admin.posts.update', id=Post.ID) }}">
@@ -30,17 +30,17 @@
 
       <label data-field>
         标签
-        {% with SelectedTagNames = (SelectedTagNames|default("")) %}{% include "admin/include/tag_select" %}{% endwith %}
+        {% with SelectedTagNames = (SelectedTagNames|default("")) %}{% include "admin/include/tag_select.html" %}{% endwith %}
       </label>
 
       <label data-field>
         分类
-        {% with Root = dict("Categories", Categories), SelectedID = Category.ID %}{% include "admin/include/category_select" %}{% endwith %}
+        {% with Root = dict("Categories", Categories), SelectedID = Category.ID %}{% include "admin/include/category_select.html" %}{% endwith %}
       </label>
     </div>
   </div>
 
-  {% with Value = Post.Content %}{% include "admin/include/markdown_preview" %}{% endwith %}
+  {% with Value = Post.Content %}{% include "admin/include/markdown_preview.html" %}{% endwith %}
 
 </form>
 {% endblock %}

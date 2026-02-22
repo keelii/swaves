@@ -237,7 +237,6 @@ svg {
 
 /* 一级菜单 */
 .menu-item {
-    padding: 10px 16px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -246,6 +245,13 @@ svg {
     white-space: nowrap;
     position: relative;
     font-size: 14px;
+    margin-block-end: var(--space-1);
+}
+div.menu-item {
+  padding: 10px 16px;
+}
+.menu-item a {
+  padding: 10px 16px;
 }
 .menu-arrow {
   width: 16px;

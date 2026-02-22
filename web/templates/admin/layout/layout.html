@@ -1,4 +1,4 @@
-{% extends "admin/layout/base" %}
+{% extends "admin/layout/base.html" %}
 {% block head_extra %}
   <meta name="robots" content="noindex, nofollow" />
   <!-- https://github.com/edwardtufte/tufte-css -->
@@ -60,7 +60,7 @@
       {{ settings("site_name") }} 管理后台
     </div>
     <div class="nav-actions flex justify-between grow">
-      {% with Req = Req, Post = (Post|default(none)) %}{% include "admin/include/actions" %}{% endwith %}
+      {% with Req = Req, Post = (Post|default(none)) %}{% include "admin/include/actions.html" %}{% endwith %}
       <div class="nav-user">
           {% if Auth.IsLogin %}
             <span>欢迎，{{ settings("author") }}</span> <a href="{{ url_for('admin.logout') }}">退出</a>
@@ -78,18 +78,18 @@
   <div class="main-wrapper">
     <!-- 左侧菜单 -->
     <div class="sidebar-menu" id="sidebar">
-      {% with Req = Req %}{% include "admin/include/menu" %}{% endwith %}
+      {% with Req = Req %}{% include "admin/include/menu.html" %}{% endwith %}
     </div>
 
     <!-- 主内容区域 -->
     <div class="content-area">
       <div class="content-header content-box" style="display:none;">
         <div class="content-title">
-          {% with Req = Req, Post = (Post|default(none)) %}{% include "admin/include/actions" %}{% endwith %}
+          {% with Req = Req, Post = (Post|default(none)) %}{% include "admin/include/actions.html" %}{% endwith %}
         </div>
       </div>
       <div class="content-body content-box">
-        {% with Error = Error %}{% include "admin/include/error_message" %}{% endwith %}
+        {% with Error = Error %}{% include "admin/include/error_message.html" %}{% endwith %}
         {% block content %}{% endblock %}
       </div>
     </div>

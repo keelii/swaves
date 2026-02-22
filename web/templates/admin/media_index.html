@@ -1,6 +1,6 @@
-{% extends "admin/layout/layout" %}
+{% extends "admin/layout/layout.html" %}
 {% block content %}
-{% from "admin/macro/ui" import table_empty %}
+{% from "admin/macro/ui.html" import table_empty %}
 
 <style>
   .media-upload {
@@ -201,7 +201,7 @@
   <tfoot>
     <tr>
       <td colspan="8">
-        {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination" %}{% endwith %}
+        {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination.html" %}{% endwith %}
       </td>
     </tr>
   </tfoot>

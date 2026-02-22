@@ -9,10 +9,10 @@ import (
 
 func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{% import "macros" as ui %}{{ ui.row(dict("Value", "ok")) }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{% import "macros.html" as ui %}{{ ui.row(dict("Value", "ok")) }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(tempDir, "macros.html"), []byte(`{% macro row(ctx) %}{% with Value = ctx.Value, __root = ctx %}{% include "partial" %}{% endwith %}{% endmacro %}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "macros.html"), []byte(`{% macro row(ctx) %}{% with Value = ctx.Value, __root = ctx %}{% include "partial.html" %}{% endwith %}{% endmacro %}`), 0o644); err != nil {
 		t.Fatalf("write macro template failed: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(tempDir, "partial.html"), []byte(`{{ Value }} / {{ __root.Value }}`), 0o644); err != nil {
@@ -50,9 +50,9 @@ func TestGlobalMacroNamespaceAvailableAcrossExtendsAndInclude(t *testing.T) {
 
 	mustWriteTemplate("admin/macro/ui.html", `{% macro hi(label) %}{{ label }}{% endmacro %}`)
 	mustWriteTemplate("admin/layout/base.html", `{% block body %}{% endblock %}`)
-	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base" %}{% block body %}{% include "admin/include/actions" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base.html" %}{% block body %}{% include "admin/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
 	mustWriteTemplate("admin/include/actions.html", `{{ ui.hi("A") }}`)
-	mustWriteTemplate("page.html", `{% extends "admin/layout/layout" %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
+	mustWriteTemplate("page.html", `{% extends "admin/layout/layout.html" %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
 
 	view := newMiniJinjaView(tempDir, false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
@@ -85,8 +85,8 @@ func TestExtendsAndIncludeSupportRootPathsWithoutLeadingSlash(t *testing.T) {
 
 	mustWriteTemplate("admin/layout/base.html", `{% block body %}{% endblock %}`)
 	mustWriteTemplate("admin/include/actions.html", `A`)
-	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base" %}{% block body %}{% include "admin/include/actions" %}{% block content %}{% endblock %}{% endblock %}`)
-	mustWriteTemplate("admin/categories_index.html", `{% extends "admin/layout/layout" %}{% block content %}B{% endblock %}`)
+	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base.html" %}{% block body %}{% include "admin/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplate("admin/categories_index.html", `{% extends "admin/layout/layout.html" %}{% block content %}B{% endblock %}`)
 
 	view := newMiniJinjaView(tempDir, false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
@@ -117,7 +117,7 @@ func TestIncludeSupportsExplicitRelativeSubPath(t *testing.T) {
 		}
 	}
 
-	mustWriteTemplate("admin/page.html", `{% include "./include/item" %}`)
+	mustWriteTemplate("admin/page.html", `{% include "./include/item.html" %}`)
 	mustWriteTemplate("admin/include/item.html", `ok`)
 
 	view := newMiniJinjaView(tempDir, false)

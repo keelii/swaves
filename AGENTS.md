@@ -45,7 +45,7 @@ It is intended as a practical guide for future changes.
 - Root context contract is `Req`, `Auth`, `Site`; `__root` is internal compatibility context.
 - Business binding must not overwrite reserved keys (`Req`, `Auth`, `Site`, `__root`).
 - Avoid blindly injecting all request locals into templates; pass explicit, stable fields through render helpers.
-- Template `extends`/`include`/`import`/`from` paths must use template-root-relative form (no leading `/`, no `.html` suffix), for example `admin/layout/layout`.
+- Template paths must use template-root-relative form (no leading `/`); `extends`/`include`/`import`/`from` paths must explicitly include `.html` (for example `admin/layout/layout.html`).
 - In HTML attributes that contain template expressions, keep outer attribute quotes as `"` and use `'` for template string literals (for example `href="{{ url_for('admin.comments.list') }}"`).
 - Internal template links must continue using `url_for`, not hardcoded admin paths.
 - Development hot reload uses `SWAVES_TEMPLATE_RELOAD`; production must not clear template cache per request.
@@ -56,7 +56,7 @@ It is intended as a practical guide for future changes.
 - Keep domain-local template structure consistent: `admin/layout|include|macro` and `site/layout|include|macro`; do not mix admin templates into site folders or vice versa.
 - Use `macro` for atomic reusable HTML snippets; keep macro logic shallow and avoid embedding page-level business flow.
 - Use `include` for reusable business components/modules that can be composed by pages/layouts.
-- In templates, prefer explicit macro imports (`{% from "admin/macro/ui" import action_btn_content %}`) over alias-wide imports (`{% import ... as ui %}`).
+- In templates, prefer explicit macro imports (`{% from "admin/macro/ui.html" import action_btn_content %}`) over alias-wide imports (`{% import ... as ui %}`).
 - Macro signatures should use explicit parameters (with defaults for optional args); avoid `ctx`/`dict` bag-style parameter passing when direct arguments are possible.
 - Keep template expressions minimal and readable: remove redundant nested parentheses.
 - For route generation, prefer direct key/value style in `url_for` calls; avoid Go-template-style `dict(...)` wrappers when the helper supports direct args.

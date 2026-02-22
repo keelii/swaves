@@ -1,4 +1,4 @@
-{% extends "admin/layout/layout" %}
+{% extends "admin/layout/layout.html" %}
 {% block content %}
 
 <table>
@@ -33,7 +33,7 @@
   <tfoot>
   <tr>
     <td colspan="7">
-      {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination" %}{% endwith %}
+      {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination.html" %}{% endwith %}
     </td>
   </tr>
   </tfoot>

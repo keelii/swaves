@@ -1,4 +1,4 @@
-{% extends "admin/layout/layout" %}
+{% extends "admin/layout/layout.html" %}
 {% block content %}
 
 {% macro macro_category_item(__ctx) %}
@@ -10,7 +10,7 @@
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form id="form" method="post" style="display:inline" action="{{ url_for('admin.categories.parent.update', id=__ctx.Category.ID) }}" class="category-parent-form">
-            {% with Root = __ctx.Root, SelectedID = __ctx.Category.ParentID, EmptyOption = "顶级分类" %}{% include "admin/include/category_select" %}{% endwith %}
+            {% with Root = __ctx.Root, SelectedID = __ctx.Category.ParentID, EmptyOption = "顶级分类" %}{% include "admin/include/category_select.html" %}{% endwith %}
         </form>
         <div>
           {{ ui.action_icon_link(url_for('admin.categories.edit', id=__ctx.Category.ID), "编辑", "square-pen") }}

@@ -1,10 +1,10 @@
-{% extends "site/layout/layout" %}
+{% extends "site/layout/layout.html" %}
 {% block content %}
 {% set displayPost = Post.DisplayPost %}
 {% set postData = displayPost.Post %}
 {% set postCategory = Post.Category %}
 {% set postTags = Post.Tags %}
-{% from "site/macro/content" import category_item, tag_list %}
+{% from "site/macro/content.html" import category_item, tag_list %}
 
 <header>
   <h1>{{ postData.Title }}</h1>
@@ -16,10 +16,10 @@
       <a href="{{ url_for('admin.posts.edit', id=postData.ID) }}">编辑</a>
     {% endif %}
     {% with Count = ReadUV %}
-      {% include "site/include/read_uv" %}
+      {% include "site/include/read_uv.html" %}
     {% endwith %}
     {% with PostID = postData.ID, UrlPath = UrlPath, LikeCount = LikeCount, Liked = Liked %}
-      {% include "site/include/like_action" %}
+      {% include "site/include/like_action.html" %}
     {% endwith %}
   </nav>
 </header>
@@ -54,7 +54,7 @@
         <ol class="comment-list">
           {% for item in Comments %}
             {% with Comment = item %}
-              {% include "site/include/comment_item" %}
+              {% include "site/include/comment_item.html" %}
             {% endwith %}
           {% endfor %}
         </ol>
