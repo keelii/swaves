@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <table>
   <thead>
   <tr>
@@ -15,27 +16,27 @@
   </thead>
 
   <tbody>
-  {{ range .Categories }}
+  {% for category in Categories %}
   <tr>
-    <td class="cell-4">{{ .ID }}</td>
-    <td>{{ .Name }}</td>
-    <td><a href="{{ GetCategoryUrl . }}" target="_blank" rel="noopener">{{ .Slug }}</a></td>
+    <td class="cell-4">{{ category.ID }}</td>
+    <td>{{ category.Name }}</td>
+    <td><a href="{{ GetCategoryUrl(category) }}" target="_blank" rel="noopener">{{ category.Slug }}</a></td>
     <td>
-      {{ if eq .ParentID 0 }}
+      {% if ((category.ParentID == 0)) %}
         <span>-</span>
-      {{ else }}
-        {{ if index $.ParentMap .ID }}{{ index $.ParentMap .ID }}{{ else }}{{ .ParentID }}{{ end }}
-      {{ end }}
+      {% else %}
+        {{ ParentMap[category.ID] | default(category.ParentID) }}
+      {% endif %}
     </td>
-    <td>{{ .Description }}</td>
-    <td>{{ .Sort }}</td>
-    <td><a href="{{ url_for "admin.posts.list" }}?kind=0&category={{ .ID }}">{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</a></td>
-    <td>{{ relativeTime .CreatedAt }}</td>
-    <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.categories.edit" "DeleteRoute" "admin.categories.delete" "ID" .ID }}
+    <td>{{ category.Description }}</td>
+    <td>{{ category.Sort }}</td>
+    <td><a href="{{ url_for("admin.posts.list") }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
+    <td>{{ category.CreatedAt | relativeTime }}</td>
+    <td>{{ category.UpdatedAt | relativeTime }}</td>
+    {{ ui.table_row_actions(dict("EditRoute", "admin.categories.edit", "DeleteRoute", "admin.categories.delete", "ID", category.ID)) }}
   </tr>
-  {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 10 "Message" "暂无分类" }}
-  {{ end }}
+  {% else %}
+  {{ ui.table_empty(dict("ColSpan", 10, "Message", "暂无分类")) }}
+  {% endfor %}
   </tbody>
 </table>

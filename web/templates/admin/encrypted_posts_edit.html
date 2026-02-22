@@ -1,15 +1,16 @@
-<form id="form" method="post" action="{{ url_for "admin.encrypted_posts.update" (dict "id" .Post.ID) }}">
-  {{ $displayDate := "" }}{{ if .Post.ExpiresAt }}{{ $displayDate = formatTime .Post.ExpiresAt }}{{ end }}
+{% import "/admin/includes/ui_macros" as ui %}
+<form id="form" method="post" action="{{ url_for("admin.encrypted_posts.update", (dict("id", Post.ID))) }}">
+  {% set displayDate = "" %}{% if Post.ExpiresAt %}{% set displayDate = Post.ExpiresAt | formatTime %}{% endif %}
   <div class="row">
     <div class="col-6">
       <label data-field>
         文章标题
-        <input class="w-100" type="text" name="title" value="{{ .Post.Title }}" required placeholder="加密文章标题">
+        <input class="w-100" type="text" name="title" value="{{ Post.Title }}" required placeholder="加密文章标题">
       </label>
 
       <label data-field>
         文章 URL 标识
-        <input type="text" value="{{ .Post.Slug }}" disabled>
+        <input type="text" value="{{ Post.Slug }}" disabled>
       </label>
 
       <label data-field>
@@ -17,10 +18,10 @@
         <input class="w-100" type="password" name="password" placeholder="留空以保持当前密码">
       </label>
 
-      {{ template "admin/includes/expires_at_field" dict "Label" "过期时间" "ReadOnly" true "HasExpiry" .Post.ExpiresAt "DisplayDate" $displayDate }}
+      {{ ui.expires_at_field(dict("Label", "过期时间", "ReadOnly", true, "HasExpiry", Post.ExpiresAt, "DisplayDate", displayDate)) }}
     </div>
   </div>
 
-  {{ template "admin/includes/markdown_preview" dict "Placeholder" "加密文章内容（支持 Markdown）" "Value" .Post.Content }}
+  {{ ui.markdown_preview(dict("Placeholder", "加密文章内容（支持 Markdown）", "Value", Post.Content)) }}
 
 </form>

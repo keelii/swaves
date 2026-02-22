@@ -1,25 +1,27 @@
-<form id="form" method="post" action="{{ url_for "admin.posts.create" }}">
-  {{ $draftTitle := or .DraftTitle "" }}
-  {{ $draftSlug := or .DraftSlug "" }}
-  {{ $draftKind := or .DraftKind "0" }}
-  {{ $draftCategoryID := .DraftCategoryID }}
-  {{ $draftCommentEnabled := .DraftCommentEnabled }}
-  {{ $draftContent := or .DraftContent "" }}
+{% import "/admin/includes/ui_macros" as ui %}
+<form id="form" method="post" action="{{ url_for("admin.posts.create") }}">
+  {% set draftTitle = (DraftTitle or "") %}
+  {% set draftSlug = (DraftSlug or "") %}
+  {% set draftKind = (DraftKind or "0") %}
+  {% set draftCategoryID = DraftCategoryID %}
+  {% set draftCommentEnabled = DraftCommentEnabled %}
+  {% set draftContent = (DraftContent or "") %}
   <div class="row">
     <div class="col-6">
       <label data-field>
         文章标题
-        <input class="w-100" type="text" name="title" id="title" required placeholder="文章标题" value="{{ $draftTitle }}">
+        <input class="w-100" type="text" name="title" id="title" required placeholder="文章标题" value="{{ draftTitle }}">
       </label>
       <label data-field>
         文章 URL 标识
         <span class="hstack">
-          <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ $draftSlug }}" style="flex: 1;">
+          <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ draftSlug }}" style="flex: 1;">
           <button class="outline" onclick="autoSetSlug()" type="button">自动生成</button>
         </span>
         <script>
+          var slugAPIURL = {{ url_for("api.slug") | tojson }};
           function autoSetSlug() {
-            fetch('{{ url_for "api.slug" }}?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
+            fetch(slugAPIURL + '?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
               if (json && json.data) $('#slug').val(json.data);
             });
           }
@@ -28,23 +30,23 @@
 
       <fieldset class="hstack">
         <legend>类型</legend>
-          {{ template "admin/includes/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "文章") (dict "Value" "1" "Label" "页面")) "Selected" $draftKind }}
+          {{ ui.form_field_radio(dict("Label", "", "Name", "kind", "Options", (slice((dict("Value", "0", "Label", "文章")), (dict("Value", "1", "Label", "页面")))), "Selected", draftKind)) }}
       </fieldset>
 
-      {{ template "admin/includes/form_field_checkbox" dict "Label" "开启评论" "Name" "comment_enabled" "Value" 1 "Checked" $draftCommentEnabled }}
+      {{ ui.form_field_checkbox(dict("Label", "开启评论", "Name", "comment_enabled", "Value", 1, "Checked", draftCommentEnabled)) }}
 
       <label data-field>
         标签
-          {{ template "admin/includes/tag_select" . }}
+          {{ ui.tag_select(__root) }}
       </label>
 
       <label data-field>
         分类
-          {{ template "admin/includes/category_select" dict "Root" $ "SelectedID" $draftCategoryID }}
+          {{ ui.category_select(dict("Root", __root, "SelectedID", draftCategoryID)) }}
       </label>
 
 
     </div>
   </div>
-  {{ template "admin/includes/markdown_preview" dict "Value" $draftContent "Required" true }}
+  {{ ui.markdown_preview(dict("Value", draftContent, "Required", true)) }}
 </form>

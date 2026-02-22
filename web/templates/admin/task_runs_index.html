@@ -1,4 +1,4 @@
-<h3>任务：{{ .Task.Name }} ({{ .Task.Code }})</h3>
+<h3>任务：{{ Task.Name }} ({{ Task.Code }})</h3>
 
 <table>
   <thead>
@@ -15,33 +15,33 @@
   </thead>
 
   <tbody>
-  {{ range .Runs }}
+  {% for run in Runs %}
   <tr>
-    <td>{{ .TaskCode }}</td>
-    <td>{{ .ID }}</td>
+    <td>{{ run.TaskCode }}</td>
+    <td>{{ run.ID }}</td>
     <td>
-        {{ if eq .Status "success" }}
+        {% if ((run.Status == "success")) %}
             <div class="badge success">成功</div>
-        {{ else }}
+        {% else %}
           <div class="badge danger">失败</div>
-        {{ end }}
+        {% endif %}
     </td>
     <td>
-        {{ if eq .Status "success" }}
-            {{ .Message }}
-        {{ else }}
-            <span class="text-danger">{{ .Message }}</span>
-        {{ end }}
+        {% if ((run.Status == "success")) %}
+            {{ run.Message }}
+        {% else %}
+            <span class="text-danger">{{ run.Message }}</span>
+        {% endif %}
     </td>
-    <td>{{ .Duration }}</td>
-    <td>{{ formatTime .StartedAt }}</td>
-    <td>{{ formatTime .FinishedAt }}</td>
-    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ run.Duration }}</td>
+    <td>{{ run.StartedAt | formatTime }}</td>
+    <td>{{ run.FinishedAt | formatTime }}</td>
+    <td>{{ run.CreatedAt | formatTime }}</td>
   </tr>
-  {{ else }}
+  {% else %}
   <tr>
     <td colspan="8">暂无执行记录</td>
   </tr>
-  {{ end }}
+  {% endfor %}
   </tbody>
 </table>

@@ -18,76 +18,103 @@ func TestPrepareTemplateBindingAddsSystemNamespaces(t *testing.T) {
 		"ReqID":   "req-1",
 	}
 
-	prepared := prepareTemplateBinding(original)
+	prepared, err := prepareTemplateBinding(original)
+	if err != nil {
+		t.Fatalf("prepare binding failed: %v", err)
+	}
 
 	if got := prepared["Title"]; got != "Dashboard" {
 		t.Fatalf("expected Title preserved, got %#v", got)
 	}
 
-	ctx, ok := prepared["_ctx"].(templateContextMeta)
+	req, ok := prepared["Req"].(templateReqMeta)
 	if !ok {
-		t.Fatalf("expected _ctx type templateContextMeta, got %T", prepared["_ctx"])
+		t.Fatalf("expected Req type templateReqMeta, got %T", prepared["Req"])
 	}
-	if ctx.RouteName != "admin.home" {
-		t.Fatalf("unexpected route name: %q", ctx.RouteName)
+	if req.RouteName != "admin.home" {
+		t.Fatalf("unexpected route name: %q", req.RouteName)
 	}
-	if ctx.Path != "/admin" {
-		t.Fatalf("unexpected path: %q", ctx.Path)
+	if req.Path != "/admin" {
+		t.Fatalf("unexpected path: %q", req.Path)
 	}
-	if ctx.ReqID != "req-1" {
-		t.Fatalf("unexpected req id: %q", ctx.ReqID)
+	if req.ReqID != "req-1" {
+		t.Fatalf("unexpected req id: %q", req.ReqID)
 	}
-	if got := ctx.Query["page"]; got != "2" {
+	if got := req.Query["page"]; got != "2" {
 		t.Fatalf("unexpected query page: %q", got)
 	}
 
-	auth, ok := prepared["_auth"].(templateAuthMeta)
+	auth, ok := prepared["Auth"].(templateAuthMeta)
 	if !ok {
-		t.Fatalf("expected _auth type templateAuthMeta, got %T", prepared["_auth"])
+		t.Fatalf("expected Auth type templateAuthMeta, got %T", prepared["Auth"])
 	}
 	if !auth.IsLogin {
-		t.Fatalf("expected _auth.IsLogin to be true")
+		t.Fatalf("expected Auth.IsLogin to be true")
 	}
 
-	site, ok := prepared["_site"].(templateSiteMeta)
+	site, ok := prepared["Site"].(templateSiteMeta)
 	if !ok {
-		t.Fatalf("expected _site type templateSiteMeta, got %T", prepared["_site"])
+		t.Fatalf("expected Site type templateSiteMeta, got %T", prepared["Site"])
 	}
 	if site.Settings == nil {
-		t.Fatalf("expected _site.Settings to be initialized")
+		t.Fatalf("expected Site.Settings to be initialized")
 	}
 
-	if _, exists := original["_ctx"]; exists {
-		t.Fatalf("original map should not be mutated with _ctx")
+	rootCtxRaw, exists := prepared[internalRootContextKey]
+	if !exists {
+		t.Fatalf("expected %s in prepared binding", internalRootContextKey)
+	}
+	rootCtx, ok := rootCtxRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("expected %s type map[string]any, got %T", internalRootContextKey, rootCtxRaw)
+	}
+	if got := rootCtx["Title"]; got != "Dashboard" {
+		t.Fatalf("expected %s.Title preserved, got %#v", internalRootContextKey, got)
+	}
+
+	if _, exists := original["Req"]; exists {
+		t.Fatalf("original map should not be mutated with Req")
 	}
 }
 
 func TestPrepareTemplateBindingNormalizesBoolAndQuery(t *testing.T) {
-	prepared := prepareTemplateBinding(fiber.Map{
+	prepared, err := prepareTemplateBinding(fiber.Map{
 		"Path":    "/monitor",
 		"Query":   map[string]interface{}{"page": 3, "kind": "uv"},
 		"IsLogin": "1",
 	})
+	if err != nil {
+		t.Fatalf("prepare binding failed: %v", err)
+	}
 
-	ctx, ok := prepared["_ctx"].(templateContextMeta)
+	req, ok := prepared["Req"].(templateReqMeta)
 	if !ok {
-		t.Fatalf("expected _ctx type templateContextMeta, got %T", prepared["_ctx"])
+		t.Fatalf("expected Req type templateReqMeta, got %T", prepared["Req"])
 	}
-	if ctx.Path != "/monitor" {
-		t.Fatalf("unexpected path: %q", ctx.Path)
+	if req.Path != "/monitor" {
+		t.Fatalf("unexpected path: %q", req.Path)
 	}
-	if got := ctx.Query["page"]; got != "3" {
+	if got := req.Query["page"]; got != "3" {
 		t.Fatalf("unexpected query page: %q", got)
 	}
-	if got := ctx.Query["kind"]; got != "uv" {
+	if got := req.Query["kind"]; got != "uv" {
 		t.Fatalf("unexpected query kind: %q", got)
 	}
 
-	auth, ok := prepared["_auth"].(templateAuthMeta)
+	auth, ok := prepared["Auth"].(templateAuthMeta)
 	if !ok {
-		t.Fatalf("expected _auth type templateAuthMeta, got %T", prepared["_auth"])
+		t.Fatalf("expected Auth type templateAuthMeta, got %T", prepared["Auth"])
 	}
 	if !auth.IsLogin {
-		t.Fatalf("expected _auth.IsLogin true for string value 1")
+		t.Fatalf("expected Auth.IsLogin true for string value 1")
+	}
+}
+
+func TestPrepareTemplateBindingRejectsReservedKeys(t *testing.T) {
+	_, err := prepareTemplateBinding(fiber.Map{
+		"Req": "not allowed",
+	})
+	if err == nil {
+		t.Fatalf("expected reserved key collision error")
 	}
 }

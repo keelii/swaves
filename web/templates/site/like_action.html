@@ -1,8 +1,10 @@
-<form method="post" action="{{ url_for "site.action.like" (dict "postID" .PostID) }}" style="display:inline-flex;align-items: center" data-like-form>
-  <input type="hidden" name="return_url" value="{{ .UrlPath }}">
-  <button title="点赞数" type="submit" data-like-button data-liked="{{ if .Liked }}1{{ else }}0{{ end }}" aria-label="点赞">
-    {{ template "lucide_icon" dict "name" "heart" "size" "16" }}
-    <span data-like-count>{{ if .LikeCount }}{{ .LikeCount }}{{ else }}0{{ end }}</span>
+<form method="post" action="{{ url_for("site.action.like", dict("postID", PostID)) }}" style="display:inline-flex;align-items: center" data-like-form>
+  <input type="hidden" name="return_url" value="{{ UrlPath }}">
+  <button title="点赞数" type="submit" data-like-button data-liked="{% if Liked %}1{% else %}0{% endif %}" aria-label="点赞">
+    {% with name = "heart", size = "16" %}
+      {% include "../lucide_icon" %}
+    {% endwith %}
+    <span data-like-count>{% if LikeCount %}{{ LikeCount }}{% else %}0{% endif %}</span>
   </button>
 </form>
 <script>

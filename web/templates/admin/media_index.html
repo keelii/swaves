@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <style>
   .media-upload {
     margin-bottom: 2em;
@@ -93,19 +94,24 @@
   }
 </style>
 
+{% set defaultProviderReady = DefaultProviderReady|default(false) %}
+{% set defaultProviderError = DefaultProviderError %}
+{% set defaultProvider = DefaultProvider %}
+{% set mediaProviderLabelMap = MediaProviderLabelMap|default(dict()) %}
+
 <section class="media-upload">
   <input type="file" id="media-drop-input" style="display:none;" multiple>
   <div
     id="media-dropzone"
     class="media-upload-dropzone"
-    data-upload-ready="{{ if .DefaultProviderReady }}1{{ else }}0{{ end }}"
-    data-upload-error="{{ .DefaultProviderError }}"
+    data-upload-ready="{% if defaultProviderReady %}1{% else %}0{% endif %}"
+    data-upload-error="{{ defaultProviderError }}"
   >
     <p class="media-upload-title">拖拽文件到这里上传</p>
     <p class="media-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
-    <p class="media-upload-status{{ if not .DefaultProviderReady }} error{{ end }}" id="media-upload-status">
-      当前默认服务：{{ $label := index .MediaProviderLabelMap .DefaultProvider }}{{ if $label }}{{ $label }}{{ else }}{{ .DefaultProvider }}{{ end }}
-      {{ if not .DefaultProviderReady }}（{{ .DefaultProviderError }}）{{ end }}
+    <p class="media-upload-status{% if (not defaultProviderReady) %} error{% endif %}" id="media-upload-status">
+      当前默认服务：{{ mediaProviderLabelMap[defaultProvider] | default(defaultProvider) }}
+      {% if (not defaultProviderReady) %}（{{ defaultProviderError }}）{% endif %}
     </p>
   </div>
 </section>
@@ -124,67 +130,64 @@
     </tr>
   </thead>
   <tbody>
-    {{ range .Items }}
-      <tr data-media-id="{{ .ID }}">
-        <td class="cell-4">{{ .ID }}</td>
-        <td>{{ .Kind }}</td>
+    {% for mediaItem in Items %}
+      <tr data-media-id="{{ mediaItem.id }}">
+        <td class="cell-4">{{ mediaItem.id }}</td>
+        <td>{{ mediaItem.kind }}</td>
+        <td>{{ mediaProviderLabelMap[mediaItem.provider] | default(mediaItem.provider) }}</td>
+        <td>{{ mediaItem.original_name }}</td>
         <td>
-          {{ $label := index $.MediaProviderLabelMap .Provider }}
-          {{ if $label }}{{ $label }}{{ else }}{{ .Provider }}{{ end }}
-        </td>
-        <td>{{ .OriginalName }}</td>
-        <td>
-          {{ if .FileURL }}
-            <a href="{{ .FileURL }}" target="_blank" rel="noopener" class="media-cell-url" title="{{ .FileURL }}">{{ .FileURL }}</a>
-          {{ else }}
+          {% if mediaItem.file_url %}
+            <a href="{{ mediaItem.file_url }}" target="_blank" rel="noopener" class="media-cell-url" title="{{ mediaItem.file_url }}">{{ mediaItem.file_url }}</a>
+          {% else %}
             -
-          {{ end }}
+          {% endif %}
         </td>
-        <td>{{ humanSize .SizeBytes }}</td>
-        <td>{{ formatTime .CreatedAt }}</td>
+        <td>{{ mediaItem.size_bytes | humanSize }}</td>
+        <td>{{ mediaItem.created_at | formatTime }}</td>
         <td class="cell-6">
           <div class="row-actions media-row-actions">
-            {{ if .FileURL }}
+            {% if mediaItem.file_url %}
               <button
                 type="button"
                 class="row-action-btn media-copy-url"
-                data-url="{{ .FileURL }}"
+                data-url="{{ mediaItem.file_url }}"
                 aria-label="复制图片链接"
                 data-title="复制图片链接"
               >
-                {{ template "lucide_icon" dict "name" "link-2" "size" "16" }}
+                {{ ui.lucide_icon(dict("name", "link-2", "size", "16")) }}
               </button>
               <button
                 type="button"
                 class="row-action-btn media-copy-markdown"
-                data-url="{{ .FileURL }}"
-                data-name="{{ .OriginalName }}"
+                data-url="{{ mediaItem.file_url }}"
+                data-name="{{ mediaItem.original_name }}"
                 aria-label="复制 Markdown 代码"
                 data-title="复制 Markdown 代码"
               >
-                {{ template "lucide_icon" dict "name" "link-2" "size" "16" }}
+                {{ ui.lucide_icon(dict("name", "link-2", "size", "16")) }}
               </button>
-            {{ end }}
+            {% endif %}
             <button
               type="button"
               class="row-action-btn media-delete"
-              data-id="{{ .ID }}"
+              data-id="{{ mediaItem.id }}"
               aria-label="删除"
               title="删除"
             >
-              {{ template "lucide_icon" dict "name" "trash-2" "size" "16" }}
+              {{ ui.lucide_icon(dict("name", "trash-2", "size", "16")) }}
             </button>
           </div>
         </td>
       </tr>
-    {{ else }}
-      {{ template "admin/includes/table_empty" dict "ColSpan" 8 "Message" "暂无媒体资源" }}
-    {{ end }}
+    {% else %}
+      {{ ui.table_empty(dict("ColSpan", 8, "Message", "暂无媒体资源")) }}
+    {% endfor %}
   </tbody>
   <tfoot>
     <tr>
       <td colspan="8">
-        {{ template "admin/includes/pagination" . }}
+        {{ ui.pagination(__root) }}
       </td>
     </tr>
   </tfoot>
@@ -213,7 +216,7 @@
 
 <script>
 $(function() {
-  var mediaAssetsAPIBase = '{{ url_for "admin.media.assets.list" }}';
+  var mediaAssetsAPIBase = {{ url_for("admin.media.assets.list") | tojson }};
   var $dropzone = $('#media-dropzone');
   var $fileInput = $('#media-drop-input');
   var $uploadStatus = $('#media-upload-status');

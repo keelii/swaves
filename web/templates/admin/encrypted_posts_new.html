@@ -1,4 +1,5 @@
-<form id="form" method="post" action="{{ url_for "admin.encrypted_posts.create" }}">
+{% import "/admin/includes/ui_macros" as ui %}
+<form id="form" method="post" action="{{ url_for("admin.encrypted_posts.create") }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
@@ -11,10 +12,10 @@
         <input class="w-100" type="password" name="password" placeholder="可选密码（仅用于他人访问）">
       </label>
 
-      {{ template "admin/includes/expires_at_field" dict "Label" "过期时间" "CustomDate" "" "HasExpiry" false }}
+      {{ ui.expires_at_field(dict("Label", "过期时间", "CustomDate", "", "HasExpiry", false)) }}
     </div>
   </div>
 
-  {{ template "admin/includes/markdown_preview" dict "Placeholder" "加密文章内容（支持 Markdown）" "Value" "" "Required" true }}
+  {{ ui.markdown_preview(dict("Placeholder", "加密文章内容（支持 Markdown）", "Value", "", "Required", true)) }}
 
 </form>

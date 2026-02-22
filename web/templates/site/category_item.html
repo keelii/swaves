@@ -1,3 +1,5 @@
-<span>
-{{ if .Label }}分类{{ end }} <a href="{{ .Item.PermLink }}">{{ .Item.Name }}</a>
-</span>
+{% if Item %}
+  <span>
+  {% if Label %}分类{% endif %} <a href="{{ Item.PermLink }}">{{ Item.Name }}</a>
+  </span>
+{% endif %}

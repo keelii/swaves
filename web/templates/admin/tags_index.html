@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <table>
   <thead>
   <tr>
@@ -12,25 +13,25 @@
   </thead>
 
   <tbody>
-  {{ range .Tags }}
+  {% for tag in Tags %}
   <tr>
-    <td class="cell-4">{{ .ID }}</td>
-    <td>{{ .Name }}</td>
-    <td><a href="{{ GetTagUrl . }}" target="_blank" rel="noopener">{{ .Slug }}</a></td>
-    <td><a href="{{ url_for "admin.posts.list" }}?kind=0&tag={{ .ID }}">{{ $count := index $.PostCounts .ID }}{{ if $count }}{{ $count }}{{ else }}0{{ end }}</a></td>
-    <td>{{ relativeTime .CreatedAt }}</td>
-    <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.tags.edit" "DeleteRoute" "admin.tags.delete" "ID" .ID }}
+    <td class="cell-4">{{ tag.ID }}</td>
+    <td>{{ tag.Name }}</td>
+    <td><a href="{{ GetTagUrl(tag) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
+    <td><a href="{{ url_for("admin.posts.list") }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
+    <td>{{ tag.CreatedAt | relativeTime }}</td>
+    <td>{{ tag.UpdatedAt | relativeTime }}</td>
+    {{ ui.table_row_actions(dict("EditRoute", "admin.tags.edit", "DeleteRoute", "admin.tags.delete", "ID", tag.ID)) }}
   </tr>
-  {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "暂无标签" }}
-  {{ end }}
+  {% else %}
+  {{ ui.table_empty(dict("ColSpan", 7, "Message", "暂无标签")) }}
+  {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="7">
-      {{template "admin/includes/pagination" .}}
+      {{ ui.pagination(__root) }}
     </td>
   </tr>
   </tfoot>

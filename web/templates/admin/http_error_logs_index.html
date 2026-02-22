@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 
 <table>
   <thead>
@@ -17,37 +18,37 @@
   </thead>
 
   <tbody>
-  {{ range .Logs }}
+  {% for log in Logs %}
   <tr>
-    <td>{{ .ID }}</td>
-    <td>{{ .ReqID }}</td>
-    <td>{{ .ClientIP }}</td>
-    <td>{{ .Method }}</td>
-    <td>{{ .Path }}</td>
-    <td>{{ .Status }}</td>
-    <td>{{ if .UserAgent }}{{ long_text .UserAgent 30 1 }}{{ else }}-{{ end }}</td>
-    <td>{{ if .QueryParams }}{{ .QueryParams }}{{ else }}-{{ end }}</td>
-    <td>{{ if .BodyParams }}
-      {{ long_text .BodyParams 30 1 }}
-      {{ else }}-{{ end }}</td>
-    <td>{{ formatTime .CreatedAt }}</td>
+    <td>{{ log.ID }}</td>
+    <td>{{ log.ReqID }}</td>
+    <td>{{ log.ClientIP }}</td>
+    <td>{{ log.Method }}</td>
+    <td>{{ log.Path }}</td>
+    <td>{{ log.Status }}</td>
+    <td>{% if log.UserAgent %}{{ long_text(log.UserAgent, 30, 1) }}{% else %}-{% endif %}</td>
+    <td>{% if log.QueryParams %}{{ log.QueryParams }}{% else %}-{% endif %}</td>
+    <td>{% if log.BodyParams %}
+      {{ long_text(log.BodyParams, 30, 1) }}
+      {% else %}-{% endif %}</td>
+    <td>{{ log.CreatedAt | formatTime }}</td>
     <td>
       <div class="row-actions">
-        <form id="form" method="post" action="{{ url_for "admin.http_error_logs.delete" (dict "id" .ID) }}">
-          {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+        <form id="form" method="post" action="{{ url_for("admin.http_error_logs.delete", (dict("id", log.ID))) }}">
+          {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "删除", "danger", true)) }}
         </form>
       </div>
     </td>
   </tr>
-  {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 11 "Message" "暂无日志" }}
-  {{ end }}
+  {% else %}
+  {{ ui.table_empty(dict("ColSpan", 11, "Message", "暂无日志")) }}
+  {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="11">
-      {{template "admin/includes/pagination" .}}
+      {{ ui.pagination(__root) }}
     </td>
   </tr>
   </tfoot>

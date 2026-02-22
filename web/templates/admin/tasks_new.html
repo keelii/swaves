@@ -1,9 +1,10 @@
-<form id="form" method="post" action="{{ url_for "admin.tasks.create" }}">
+{% import "/admin/includes/ui_macros" as ui %}
+<form id="form" method="post" action="{{ url_for("admin.tasks.create") }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         是否启用
-        {{ template "admin/includes/toggle" dict "ID" "task_enabled_new" "Name" "enabled" "Checked" true "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
+        {{ ui.toggle(dict("ID", "task_enabled_new", "Name", "enabled", "Checked", true, "DataLabels", "禁用,启用", "DataOnValue", "1", "DataOffValue", "0")) }}
       </label>
 
       <fieldset>

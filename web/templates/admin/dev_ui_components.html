@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <h2 style="margin-bottom: 1em;">界面组件展示</h2>
 
 <section style="margin-bottom: 2em;">
@@ -161,9 +162,9 @@
   <h3>.tag（圆角标签 + 删除 icon）</h3>
   <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">使用 admin/includes/tag_item：传入 Label；需删除 icon 时传 RemoveHref（链接）。</p>
   <div class="inline-flex items-center gap-4" style="flex-wrap: wrap;">
-    {{ template "admin/includes/tag_item" dict "Label" "标签一" "RemoveHref" "#" }}
-    {{ template "admin/includes/tag_item" dict "Label" "标签二" }}
-    {{ template "admin/includes/tag_item" dict "Label" "可删除" "RemoveHref" "#" }}
+    {{ ui.tag_item(dict("Label", "标签一", "RemoveHref", "#")) }}
+    {{ ui.tag_item(dict("Label", "标签二")) }}
+    {{ ui.tag_item(dict("Label", "可删除", "RemoveHref", "#")) }}
   </div>
 </section>
 

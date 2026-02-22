@@ -1,27 +1,28 @@
-<form id="form" method="post" action="{{ url_for "admin.redirects.update" (dict "id" .Redirect.ID) }}">
+{% import "/admin/includes/ui_macros" as ui %}
+<form id="form" method="post" action="{{ url_for("admin.redirects.update", (dict("id", Redirect.ID))) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         来源路径
-        <input type="text" name="from" required value="{{ .Redirect.From }}" placeholder="/old-path">
+        <input type="text" name="from" required value="{{ Redirect.From }}" placeholder="/old-path">
       </label>
 
       <label data-field>
         目标路径
-        <input type="text" name="to" required value="{{ .Redirect.To }}" placeholder="/new-path">
+        <input type="text" name="to" required value="{{ Redirect.To }}" placeholder="/new-path">
       </label>
 
       <label data-field>
         状态码
         <select name="status">
-          <option value="301"{{ if eq .Redirect.Status 301 }} selected{{ end }}>301 - 永久重定向</option>
-          <option value="302"{{ if eq .Redirect.Status 302 }} selected{{ end }}>302 - 临时重定向</option>
+          <option value="301"{% if ((Redirect.Status == 301)) %} selected{% endif %}>301 - 永久重定向</option>
+          <option value="302"{% if ((Redirect.Status == 302)) %} selected{% endif %}>302 - 临时重定向</option>
         </select>
       </label>
 
       <label data-field>
         启用
-        {{ template "admin/includes/toggle" dict "ID" (printf "redirect_enabled_%d" .Redirect.ID) "Name" "enabled" "Checked" (eq .Redirect.Enabled 1) "DataLabels" "禁用,启用" "DataOnValue" "1" "DataOffValue" "0" }}
+        {{ ui.toggle(dict("ID", (printf("redirect_enabled_%d", Redirect.ID)), "Name", "enabled", "Checked", (((Redirect.Enabled == 1))), "DataLabels", "禁用,启用", "DataOnValue", "1", "DataOffValue", "0")) }}
       </label>
     </div>
   </div>

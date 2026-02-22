@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <table>
   <thead>
   <tr>
@@ -16,56 +17,56 @@
   </thead>
 
   <tbody>
-  {{ range .Tasks }}
+  {% for task in Tasks %}
   <tr>
-    <td class="cell-4">{{ .ID }}</td>
-    <td>{{ .Code }}</td>
-    <td>{{ .Name }}</td>
-    <td>{{ .Description }}</td>
-    <td>{{ .Schedule }}</td>
+    <td class="cell-4">{{ task.ID }}</td>
+    <td>{{ task.Code }}</td>
+    <td>{{ task.Name }}</td>
+    <td>{{ task.Description }}</td>
+    <td>{{ task.Schedule }}</td>
     <td>
-        {{ if eq .Enabled 1 }}
+        {% if ((task.Enabled == 1)) %}
             <div class="badge success">启用</div>
-        {{ else }}
+        {% else %}
           <div class="badge secondary">停用</div>
-        {{ end }}
+        {% endif %}
     </td>
-    <td><a href="{{ url_for "admin.tasks.runs" (dict "code" .Code) }}">执行记录</a></td>
+    <td><a href="{{ url_for("admin.tasks.runs", (dict("code", task.Code))) }}">执行记录</a></td>
     <td>
-      {{ if .LastStatus }}
-        {{ if eq .LastStatus "success" }}
+      {% if task.LastStatus %}
+        {% if ((task.LastStatus == "success")) %}
           <div class="badge success">成功</div>
-        {{ else if eq .LastStatus "error" }}
+        {% else %}{% if ((task.LastStatus == "error")) %}
           <div class="badge danger">失败</div>
-        {{ else if eq .LastStatus "pending" }}
+        {% else %}{% if ((task.LastStatus == "pending")) %}
           <div class="badge secondary">待执行</div>
-        {{ else }}
-          <div class="badge outline">{{ .LastStatus }}</div>
-        {{ end }}
-      {{ else }}
+        {% else %}
+          <div class="badge outline">{{ task.LastStatus }}</div>
+        {% endif %}{% endif %}{% endif %}
+      {% else %}
         -
-      {{ end }}
+      {% endif %}
     </td>
-    <td>{{ if .LastRunAt }}{{ formatTime .LastRunAt }}{{ else }}-{{ end }}</td>
-    <td style="display: none">{{ formatTime .CreatedAt }}</td>
+    <td>{% if task.LastRunAt %}{{ task.LastRunAt | formatTime }}{% else %}-{% endif %}</td>
+    <td style="display: none">{{ task.CreatedAt | formatTime }}</td>
     <td>
       <div class="row-actions">
-        {{ template "admin/includes/action_icon_link" dict "href" (url_for "admin.tasks.edit" (dict "id" .ID)) "name" "square-pen" "label" "编辑" }}
-        <form id="form" method="POST" action="{{ url_for "admin.tasks.trigger" (dict "code" .Code) }}">
-          {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "terminal" "label" "执行" "danger" true }}
+        {{ ui.action_icon_link(dict("href", (url_for("admin.tasks.edit", (dict("id", task.ID)))), "name", "square-pen", "label", "编辑")) }}
+        <form id="form" method="POST" action="{{ url_for("admin.tasks.trigger", (dict("code", task.Code))) }}">
+          {{ ui.action_icon_button(dict("type", "submit", "name", "terminal", "label", "执行", "danger", true)) }}
         </form>
-          {{ if ne .Kind 0 }}
-            <form id="form" method="POST" action="{{ url_for "admin.tasks.delete" (dict "id" .ID) }}">
-                {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+          {% if (task.Kind != 0) %}
+            <form id="form" method="POST" action="{{ url_for("admin.tasks.delete", (dict("id", task.ID))) }}">
+                {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "删除", "danger", true)) }}
             </form>
-          {{ end }}
+          {% endif %}
       </div>
     </td>
   </tr>
-  {{ else }}
+  {% else %}
   <tr>
     <td colspan="11">暂无任务</td>
   </tr>
-  {{ end }}
+  {% endfor %}
   </tbody>
 </table>

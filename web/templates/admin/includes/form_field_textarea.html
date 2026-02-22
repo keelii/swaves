@@ -1,10 +1,8 @@
-{{/* 通用文本域字段
-使用方式: {{ template "admin/includes/form_field_textarea" dict "Label" "描述" "Name" "description" "Value" .Category.Description "Rows" 3 "Cols" 80 "Placeholder" "" "Help" "" }}
-*/}}
+
 <p>
   <label>
-    <textarea name="{{ .Name }}" rows="{{ .Rows }}" cols="{{ .Cols }}"{{ if .Placeholder }} placeholder="{{ .Placeholder }}"{{ end }}>{{ .Value }}</textarea>
-    {{ .Label }}
-    {{ if .Help }}<small>{{ .Help }}</small>{{ end }}
+    <textarea name="{{ Name }}" rows="{{ Rows|default(3) }}" cols="{{ Cols|default(80) }}"{% if Placeholder %} placeholder="{{ Placeholder }}"{% endif %}>{{ Value }}</textarea>
+    {{ Label }}
+    {% if Help %}<small>{{ Help }}</small>{% endif %}
   </label>
 </p>

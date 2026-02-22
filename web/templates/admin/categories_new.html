@@ -1,13 +1,13 @@
-<form id="form" method="post" action="{{ url_for "admin.categories.create" }}">
+<form id="form" method="post" action="{{ url_for("admin.categories.create") }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         父分类
         <select name="parent_id">
-          <option value="0"{{ if eq .ParentID 0 }} selected{{ end }}>顶级分类</option>
-          {{ range .Categories }}
-            <option value="{{ .ID }}"{{ if eq $.ParentID .ID }} selected{{ end }}>{{ .Name }}</option>
-          {{ end }}
+          <option value="0"{% if ((ParentID == 0)) %} selected{% endif %}>顶级分类</option>
+          {% for category in Categories %}
+            <option value="{{ category.ID }}"{% if ((__root.ParentID == category.ID)) %} selected{% endif %}>{{ category.Name }}</option>
+          {% endfor %}
         </select>
         <small>（选择父分类，选择“顶级分类”表示无父级）</small>
       </label>

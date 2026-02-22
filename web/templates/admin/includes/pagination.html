@@ -1,38 +1,39 @@
 <nav aria-label="分页导航" class="pagination">
   <div class="inline-flex items-center gap-4">
-    {{if le .Pager.Page 1}}
+    {% if not page_has_prev(Pager) %}
     <span class="page-link" tabindex="-1">上一页</span>
-    {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page -1}}&pageSize={{.Pager.PageSize}}{{if .KindQuery}}&kind={{.KindQuery}}{{end}}{{if .ProviderFilter}}&provider={{.ProviderFilter}}{{end}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}{{if .FilterTagIDStr}}&tag={{.FilterTagIDStr}}{{end}}{{if .FilterCategoryIDStr}}&category={{.FilterCategoryIDStr}}{{end}}{{if .StatusFilter}}&status={{.StatusFilter}}{{end}}" tabindex="-1">上一页</a>
-    {{end}}
+    {% else %}
+    <a class="page-link" href="?page={{ page_prev(Pager) }}&pageSize={{ Pager.PageSize }}{% if KindQuery %}&kind={{ KindQuery }}{% endif %}{% if ProviderFilter %}&provider={{ ProviderFilter }}{% endif %}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}{% if StatusFilter %}&status={{ StatusFilter }}{% endif %}" tabindex="-1">上一页</a>
+    {% endif %}
 
-    {{range $i := until .Pager.Num}}
-    {{$pageNum := add $i 1}}
-    {{if eq $.Pager.Page $pageNum}}
-    <span class="page-link">{{$pageNum}}</span>
-    {{else}}
-    <a class="page-link" href="?page={{$pageNum}}&pageSize={{$.Pager.PageSize}}{{if $.KindQuery}}&kind={{$.KindQuery}}{{end}}{{if $.ProviderFilter}}&provider={{$.ProviderFilter}}{{end}}{{if $.SearchQueryEscaped}}&q={{$.SearchQueryEscaped}}{{end}}{{if $.FilterTagIDStr}}&tag={{$.FilterTagIDStr}}{{end}}{{if $.FilterCategoryIDStr}}&category={{$.FilterCategoryIDStr}}{{end}}{{if $.StatusFilter}}&status={{$.StatusFilter}}{{end}}">{{$pageNum}}</a>
-    {{end}}
-    {{end}}
+    {% for item in page_items(Pager) %}
+    {% if item.Type == "ellipsis" %}
+    <span class="page-link" aria-hidden="true">…</span>
+    {% elif item.Current %}
+    <span class="page-link">{{ item.Page }}</span>
+    {% else %}
+    <a class="page-link" href="?page={{ item.Page }}&pageSize={{ __root.Pager.PageSize }}{% if __root.KindQuery %}&kind={{ __root.KindQuery }}{% endif %}{% if __root.ProviderFilter %}&provider={{ __root.ProviderFilter }}{% endif %}{% if __root.SearchQueryEscaped %}&q={{ __root.SearchQueryEscaped }}{% endif %}{% if __root.FilterTagIDStr %}&tag={{ __root.FilterTagIDStr }}{% endif %}{% if __root.FilterCategoryIDStr %}&category={{ __root.FilterCategoryIDStr }}{% endif %}{% if __root.StatusFilter %}&status={{ __root.StatusFilter }}{% endif %}">{{ item.Page }}</a>
+    {% endif %}
+    {% endfor %}
 
-    {{if ge .Pager.Page .Pager.Num}}
+    {% if not page_has_next(Pager) %}
     <span class="page-link">下一页</span>
-    {{else}}
-    <a class="page-link" href="?page={{add .Pager.Page 1}}&pageSize={{.Pager.PageSize}}{{if .KindQuery}}&kind={{.KindQuery}}{{end}}{{if .ProviderFilter}}&provider={{.ProviderFilter}}{{end}}{{if .SearchQueryEscaped}}&q={{.SearchQueryEscaped}}{{end}}{{if .FilterTagIDStr}}&tag={{.FilterTagIDStr}}{{end}}{{if .FilterCategoryIDStr}}&category={{.FilterCategoryIDStr}}{{end}}{{if .StatusFilter}}&status={{.StatusFilter}}{{end}}">下一页</a>
-    {{end}}
+    {% else %}
+    <a class="page-link" href="?page={{ page_next(Pager) }}&pageSize={{ Pager.PageSize }}{% if KindQuery %}&kind={{ KindQuery }}{% endif %}{% if ProviderFilter %}&provider={{ ProviderFilter }}{% endif %}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}{% if StatusFilter %}&status={{ StatusFilter }}{% endif %}">下一页</a>
+    {% endif %}
   </div>
 
   <div class="inline-flex items-center gap-2">
     <span for="page-size-select">每页</span>
     <select id="page-size-select">
-      <option value="5" {{if eq .Pager.PageSize 5}}selected{{end}}>5</option>
-      <option value="10" {{if eq .Pager.PageSize 10}}selected{{end}}>10</option>
-      <option value="20" {{if eq .Pager.PageSize 20}}selected{{end}}>20</option>
-      <option value="50" {{if eq .Pager.PageSize 50}}selected{{end}}>50</option>
-      <option value="100" {{if eq .Pager.PageSize 100}}selected{{end}}>100</option>
+      <option value="5" {% if ((Pager.PageSize == 5)) %}selected{% endif %}>5</option>
+      <option value="10" {% if ((Pager.PageSize == 10)) %}selected{% endif %}>10</option>
+      <option value="20" {% if ((Pager.PageSize == 20)) %}selected{% endif %}>20</option>
+      <option value="50" {% if ((Pager.PageSize == 50)) %}selected{% endif %}>50</option>
+      <option value="100" {% if ((Pager.PageSize == 100)) %}selected{% endif %}>100</option>
     </select>
     <span>条</span>
-    <span>共 {{.Pager.Total}} 条</span>
+    <span>共 {{ Pager.Total }} 条</span>
   </div>
 </nav>
 

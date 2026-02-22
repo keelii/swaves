@@ -1,6 +1,6 @@
-{{ $placeholder := or .Placeholder "文章内容（支持 Markdown）" }}
-{{ $value := or .Value "" }}
-{{ $required := or .Required false }}
+{% set placeholder = Placeholder|default("文章内容（支持 Markdown）") %}
+{% set value = Value %}
+{% set required = Required|default(false) %}
 <style>
   /* markdown 编辑/预览：tab 内容区可见，预览模式内用 split 分预览与 TOC */
   .markdown-editor-wrap .tab-card .tab-content {
@@ -237,7 +237,7 @@
     </div>
     <div class="tab-content">
       <div class="tab-pane active" id="pane-edit">
-        <textarea name="content" id="content" rows="40" cols="80" placeholder="{{ $placeholder }}"{{ if $required }} required{{ end }}>{{ $value }}</textarea>
+        <textarea name="content" id="content" rows="40" cols="80" placeholder="{{ placeholder }}"{% if required %} required{% endif %}>{{ value }}</textarea>
       </div>
       <div class="tab-pane" id="pane-preview">
         <div class="markdown-preview-row split" id="preview-split-row">
@@ -290,6 +290,12 @@ $(function() {
   var $pickerProvider = $('#media-picker-provider');
   var $pickerSummary = $('#media-picker-summary');
   var $pickerLoadMore = $('#media-picker-load-more');
+  var markdownAPIURL = {{ url_for("api.markdown") | tojson }};
+  var mediaAssetsAPIURL = {{ url_for("admin.media.assets.list") | tojson }};
+  if (!mediaAssetsAPIURL) {
+    var adminBaseURL = {{ GetAdminUrl() | tojson }};
+    mediaAssetsAPIURL = (String(adminBaseURL || '').replace(/\/+$/, '') || '/admin') + '/api/media/assets';
+  }
   var splitInstance = null;
   var pickerPage = 1;
   var pickerPageSize = 24;
@@ -323,7 +329,11 @@ $(function() {
       $('#split-toc').empty();
       return;
     }
-    fetch('{{ url_for "api.markdown" }}', {
+    if (!markdownAPIURL) {
+      $preview.text('预览接口不可用');
+      return;
+    }
+    fetch(markdownAPIURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: text })
@@ -433,7 +443,12 @@ $(function() {
       query.set('provider', provider);
     }
 
-    return fetch('{{ url_for "admin.media.assets.list" }}?' + query.toString(), {
+    if (!mediaAssetsAPIURL) {
+      window.alert('加载图库失败：接口地址不可用');
+      return Promise.resolve();
+    }
+
+    return fetch(mediaAssetsAPIURL + '?' + query.toString(), {
       method: 'GET'
     })
       .then(function(r) { return r.json(); })

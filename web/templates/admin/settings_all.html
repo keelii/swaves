@@ -103,17 +103,23 @@
   }
 </style>
 
-{{ if gt (len .SettingKinds) 0 }}
+{% set settingKinds = SettingKinds|default(slice()) %}
+{% set settingKindLabels = SettingKindLabels|default(dict()) %}
+{% set activeKind = ActiveKind %}
+{% set activeKindGroups = ActiveKindGroups|default(slice()) %}
+{% set contentRoutingKind = ContentRoutingKind %}
+
+{% if (((settingKinds|length)) > 0) %}
 <div class="settings-kind-tabs" role="tablist" aria-label="Settings Categories">
-  {{ range .SettingKinds }}
-  {{ $label := index $.SettingKindLabels . }}
-  <a role="tab" aria-selected="{{ if eq $.ActiveKind . }}true{{ else }}false{{ end }}" href="{{ url_for "admin.settings.all" (dict "kind" .) }}">{{ if $label }}{{ $label }}{{ else }}{{ . }}{{ end }}</a>
-  {{ end }}
+  {% for kind in settingKinds %}
+  {% set label = settingKindLabels[kind] %}
+  <a role="tab" aria-selected="{% if ((activeKind == kind)) %}true{% else %}false{% endif %}" href="{{ url_for("admin.settings.all", dict("kind", kind)) }}">{% if label %}{{ label }}{% else %}{{ kind }}{% endif %}</a>
+  {% endfor %}
 </div>
 
-<form id="form" method="post" action="{{ url_for "admin.settings.all.update" (dict "kind" .ActiveKind) }}" class="settings-all-form">
+<form id="form" method="post" action="{{ url_for("admin.settings.all.update", dict("kind", activeKind)) }}" class="settings-all-form">
   <section class="settings-kind">
-      {{ if eq .ActiveKind .ContentRoutingKind }}
+      {% if ((activeKind == contentRoutingKind)) %}
         <div class="settings-item-label">
           <details>
             <summary>快速设置?</summary>
@@ -137,112 +143,119 @@
             </ul>
           </details>
         </div>
-      {{ end }}
+      {% endif %}
     <div class="settings-kind-fields">
-      {{ range .ActiveKindGroups }}
-        {{ $subGroup := . }}
-        {{ if $subGroup.Code }}
-        <fieldset class="settings-sub-kind-group" data-sub-kind="{{ $subGroup.Code }}">
-          <legend>{{ $subGroup.Label }}</legend>
-        {{ end }}
-        {{ range $subGroup.Settings }}
-            {{ $setting := . }}
-            {{ $code := $setting.Code }}
-            {{ $attrs := $setting.AttrsParsed }}
+      {% for subGroup in activeKindGroups %}
+        {% if subGroup.Code %}
+        <fieldset class="settings-sub-kind-group" data-sub-kind="{{ subGroup.Code }}">
+          <legend>{{ subGroup.Label }}</legend>
+        {% endif %}
+        {% for settingView in subGroup.Settings %}
+            {% set setting = settingView.Setting %}
+            {% set code = setting.Code %}
+            {% set attrs = settingView.AttrsParsed %}
+            {% set settingType = setting.Type %}
+            {% set settingName = setting.Name %}
+            {% set settingValue = setting.Value %}
+            {% set settingPrefixValue = setting.PrefixValue %}
+            {% set settingDescription = setting.Description %}
+            {% set settingDefaultOptionValue = setting.DefaultOptionValue %}
+            {% set settingOptionsParsed = settingView.OptionsParsed %}
+            {% set settingCheckboxValues = settingView.CheckboxValues %}
             <div class="settings-item">
-              {{ if eq $setting.Type "radio" }}
-              <div class="settings-item-label" data-setting-code="{{ $code }}" data-setting-name="{{ $setting.Name }}">
-              {{ else }}
-              <label class="settings-item-label" data-setting-code="{{ $code }}" data-setting-name="{{ $setting.Name }}">
-              {{ end }}
+              {% if ((settingType == "radio")) %}
+              <div class="settings-item-label" data-setting-code="{{ code }}" data-setting-name="{{ settingName }}">
+              {% else %}
+              <label class="settings-item-label" data-setting-code="{{ code }}" data-setting-name="{{ settingName }}">
+              {% endif %}
 
-                {{ if ne $setting.Type "radio" }}
+                {% if (settingType != "radio") %}
                   <div class="settings-item-header">
-                    <span class="settings-item-title">{{ $setting.Name }}</span>
+                    <span class="settings-item-title">{{ settingName }}</span>
                   </div>
-                {{ end }}
+                {% endif %}
 
-                {{ if eq $setting.Type "text" }}
-                  <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                {{ else if eq $setting.Type "prefix-field" }}
-                  {{ $prefixSourceCode := "" }}
-                  {{ if or (eq $code "page_url_prefix") (eq $code "rss_path") (eq $code "post_url_prefix") (eq $code "category_url_prefix") (eq $code "tag_url_prefix") }}
-                    {{ $prefixSourceCode = "base_path" }}
-                  {{ end }}
-                  <fieldset class="group settings-prefix-field" data-prefix-source-code="{{ $prefixSourceCode }}" data-prefix-default="{{ $setting.PrefixValue }}">
-                    <legend data-prefix-legend>{{ $setting.PrefixValue }}</legend>
-                    <input autocomplete="off" type="text" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
+                {% if ((settingType == "text")) %}
+                  <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                {% else %}{% if ((settingType == "prefix-field")) %}
+                  {% set prefixSourceCode = "" %}
+                  {% if ((((code == "page_url_prefix"))) or (((code == "rss_path"))) or (((code == "post_url_prefix"))) or (((code == "category_url_prefix"))) or (((code == "tag_url_prefix")))) %}
+                    {% set prefixSourceCode = "base_path" %}
+                  {% endif %}
+                  <fieldset class="group settings-prefix-field" data-prefix-source-code="{{ prefixSourceCode }}" data-prefix-default="{{ settingPrefixValue }}">
+                    <legend data-prefix-legend>{{ settingPrefixValue }}</legend>
+                    <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
                   </fieldset>
-                {{ else if eq $setting.Type "number" }}
-                  <input type="number" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                {{ else if eq $setting.Type "date" }}
-                  <input type="date" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                {{ else if eq $setting.Type "time" }}
-                  <input type="time" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                {{ else if eq $setting.Type "datetime" }}
-                  <input type="datetime-local" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                {{ else if eq $setting.Type "url" }}
-                  <input type="url" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }}>
-                {{ else if eq $setting.Type "range" }}
+                {% else %}{% if ((settingType == "number")) %}
+                  <input type="number" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                {% else %}{% if ((settingType == "date")) %}
+                  <input type="date" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                {% else %}{% if ((settingType == "time")) %}
+                  <input type="time" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                {% else %}{% if ((settingType == "datetime")) %}
+                  <input type="datetime-local" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                {% else %}{% if ((settingType == "url")) %}
+                  <input type="url" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                {% else %}{% if ((settingType == "range")) %}
                   <span class="settings-range-wrap">
-                    <input type="range" id="setting_{{ $code }}_range" name="setting_{{ $code }}" value="{{ $setting.Value }}"{{ renderAttrs $attrs }} data-range-value{{ if eq $code "font_size" }} data-unit=" px"{{ end }}>
-                    <output class="range-value" for="setting_{{ $code }}_range">{{ $setting.Value }}{{ if eq $code "font_size" }} px{{ end }}</output>
+                    <input type="range" id="setting_{{ code }}_range" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }} data-range-value{% if ((code == "font_size")) %} data-unit=" px"{% endif %}>
+                    <output class="range-value" for="setting_{{ code }}_range">{{ settingValue }}{% if ((code == "font_size")) %} px{% endif %}</output>
                   </span>
-                {{ else if eq $setting.Type "password" }}
-                  <input type="password" name="setting_{{ $code }}" placeholder="留空则保持当前值"{{ renderAttrs $attrs }}>
-                {{ else if eq $setting.Type "secret" }}
+                {% else %}{% if ((settingType == "password")) %}
+                  <input type="password" name="setting_{{ code }}" placeholder="留空则保持当前值"{{ renderAttrs(attrs) }}>
+                {% else %}{% if ((settingType == "secret")) %}
                   <span class="settings-secret-wrap">
-                    <input type="password" id="setting_{{ $code }}_secret" name="setting_{{ $code }}" value="{{ $setting.Value }}" autocomplete="off"{{ renderAttrs $attrs }}>
-                    <button class="button outline settings-secret-toggle" type="button" data-target-id="setting_{{ $code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
+                    <input type="password" id="setting_{{ code }}_secret" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ renderAttrs(attrs) }}>
+                    <button class="button outline settings-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
                   </span>
-                {{ else if eq $setting.Type "textarea" }}
-                  <textarea name="setting_{{ $code }}"{{ renderAttrs $attrs }}>{{ $setting.Value }}</textarea>
-                {{ else if eq $setting.Type "radio" }}
-                  {{ $currentValue := or $setting.Value $setting.DefaultOptionValue }}
+                {% else %}{% if ((settingType == "textarea")) %}
+                  <textarea name="setting_{{ code }}"{{ renderAttrs(attrs) }}>{{ settingValue }}</textarea>
+                {% else %}{% if ((settingType == "radio")) %}
+                  {% set currentValue = (settingValue or settingDefaultOptionValue) %}
                   <fieldset class="settings-options hstack">
-                    <legend>{{ $setting.Name }}</legend>
-                    {{ range $setting.OptionsParsed }}
+                    <legend>{{ settingName }}</legend>
+                    {% for radioOption in settingOptionsParsed %}
                     <label class="settings-option hstack">
-                      <input type="radio" name="setting_{{ $code }}" value="{{ .value }}" {{ if eq $currentValue .value }}checked{{ end }}{{ renderAttrs $attrs }}>
-                      <span>{{ .label }}</span>
+                      <input type="radio" name="setting_{{ code }}" value="{{ radioOption.value }}" {% if ((currentValue == radioOption.value)) %}checked{% endif %}{{ renderAttrs(attrs) }}>
+                      <span>{{ radioOption.label }}</span>
                     </label>
-                    {{ end }}
+                    {% endfor %}
                   </fieldset>
-                {{ else if eq $setting.Type "checkbox" }}
+                {% else %}{% if ((settingType == "checkbox")) %}
                   <div class="settings-options">
-                    {{ range $setting.OptionsParsed }}
+                    {% for checkboxOption in settingOptionsParsed %}
                       <label class="settings-option">
-                        <input type="checkbox" name="setting_{{ $code }}" value="{{ .value }}" {{ if index $setting.CheckboxValues .value }}checked{{ end }}{{ renderAttrs $attrs }}>
-                        <span>{{ .label }}</span>
+                        <input type="checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}" {% if settingCheckboxValues[checkboxOption.value] %}checked{% endif %}{{ renderAttrs(attrs) }}>
+                        <span>{{ checkboxOption.label }}</span>
                       </label>
-                    {{ end }}
+                    {% endfor %}
                   </div>
-                {{ else if eq $setting.Type "select" }}
-                  {{ $currentValue := or $setting.Value $setting.DefaultOptionValue }}
-                  <select name="setting_{{ $code }}"{{ renderAttrs $attrs }}>
-                    {{ range $setting.OptionsParsed }}
-                      <option value="{{ .value }}" {{ if eq $currentValue .value }}selected{{ end }}>{{ .label }}</option>
-                    {{ end }}
+                {% else %}{% if ((settingType == "select")) %}
+                  {% set currentValue = (settingValue or settingDefaultOptionValue) %}
+                  <select name="setting_{{ code }}"{{ renderAttrs(attrs) }}>
+                    {% for selectOption in settingOptionsParsed %}
+                      <option value="{{ selectOption.value }}" {% if ((currentValue == selectOption.value)) %}selected{% endif %}>{{ selectOption.label }}</option>
+                    {% endfor %}
                   </select>
-                {{ end }}
-              {{ if eq $setting.Type "radio" }}
+                {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
+              {% if ((settingType == "radio")) %}
               </div>
-              {{ else }}
+              {% else %}
               </label>
-              {{ end }}
-              <div class="settings-item-desc">{{ if $setting.Description }}{{ $setting.Description }}{{ else }}-{{ end }}</div>
+              {% endif %}
+              <div class="settings-item-desc">{% if settingDescription %}{{ settingDescription }}{% else %}-{% endif %}</div>
             </div>
-        {{ end }}
-        {{ if $subGroup.Code }}
+        {% endfor %}
+        {% if subGroup.Code %}
         </fieldset>
-        {{ end }}
-      {{ end }}
+        {% endif %}
+      {% endfor %}
     </div>
   </section>
 </form>
-{{ else }}
+{% else %}
 <div role="alert" data-variant="warning">暂无可编辑设置</div>
-{{ end }}
+{% endif %}
 
 <script>
 $(function() {

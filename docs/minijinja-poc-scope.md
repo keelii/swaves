@@ -6,8 +6,8 @@
 - All admin templates.
 - Introduce a renderer adapter contract aligned with `Req/Auth/Site`.
 - Keep existing business handlers unchanged as much as possible.
-- Replace legacy Go-template layout/embed usage with `extends/block`.
-- Replace recursive template patterns with MiniJinja recursive loops.
+- Keep legacy layout/embed composition behavior for compatibility.
+- Replace recursive template patterns with MiniJinja-compatible macro recursion.
 - Keep template file extension as `.html` for all migrated files.
 
 ## Out of scope
@@ -21,7 +21,7 @@
 
 - Site and admin pages render with equivalent behavior.
 - Context access contract is stable (`Req/Auth/Site`).
-- Template `extends/import/macro/include` conventions are validated.
+- Template compatibility conventions (`template(...)`, macro recursion) are validated.
 - No regression in core navigation, pagination, and admin workflows.
 - Development hot reload works without app restart.
 

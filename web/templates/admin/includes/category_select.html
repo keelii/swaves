@@ -1,10 +1,10 @@
 <select name="categories" id="categories-select">
-  {{ if $.EmptyOption }}
-    <option value="">{{ $.EmptyOption }}</option>
-  {{ else }}
+  {% if __root.EmptyOption %}
+    <option value="">{{ __root.EmptyOption }}</option>
+  {% else %}
     <option value="">顶级分类</option>
-  {{ end }}
-  {{ range .Root.Categories }}
-    <option value="{{ .ID }}" {{ if eq $.SelectedID .ID }}selected{{ end }}>{{ .Name }}</option>
-  {{ end }}
+  {% endif %}
+  {% for category in Root.Categories %}
+    <option value="{{ category.ID }}" {% if (((__root.SelectedID|default(0)) == category.ID)) %}selected{% endif %}>{{ category.Name }}</option>
+  {% endfor %}
 </select>

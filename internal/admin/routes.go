@@ -119,6 +119,12 @@ func RegisterRoutes(
 
 	adminGroup.Get("/import", handler.GetImportHandler).Name("admin.import.show")
 	adminGroup.Post("/import", handler.PostImportHandler).Name("admin.import.submit")
+	adminGroup.Get("/import/parse-item", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusMethodNotAllowed).JSON(fiber.Map{
+			"ok":    false,
+			"error": "method not allowed: use POST multipart/form-data",
+		})
+	})
 	adminGroup.Post("/import/parse-item", handler.PostImportParseItemHandler).Name("admin.import.parse_item")
 	adminGroup.Post("/import/confirm-item", handler.PostImportConfirmItemHandler).Name("admin.import.confirm_item")
 	adminGroup.Post("/import/cancel", handler.PostImportCancelHandler).Name("admin.import.cancel")

@@ -1,14 +1,15 @@
-{{ $type := or (index .Query "type") "posts" }}
+{% import "/admin/includes/ui_macros" as ui %}
+{% set type = (Query["type"] or "posts") %}
 <nav role="tablist" aria-label="回收站类型" class="mb-4">
-  <a role="tab" aria-selected="{{ if eq $type "posts" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.trash.list" (dict "type" "posts") }}">文章</a>
-  <a role="tab" aria-selected="{{ if eq $type "encrypted-posts" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.trash.list" (dict "type" "encrypted-posts") }}">加密文章</a>
-  <a role="tab" aria-selected="{{ if eq $type "tags" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.trash.list" (dict "type" "tags") }}">标签</a>
-  <a role="tab" aria-selected="{{ if eq $type "categories" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.trash.list" (dict "type" "categories") }}">分类</a>
-  <a role="tab" aria-selected="{{ if eq $type "redirects" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.trash.list" (dict "type" "redirects") }}">重定向</a>
+  <a role="tab" aria-selected="{% if ((type == "posts")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.trash.list", (dict("type", "posts"))) }}">文章</a>
+  <a role="tab" aria-selected="{% if ((type == "encrypted-posts")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.trash.list", (dict("type", "encrypted-posts"))) }}">加密文章</a>
+  <a role="tab" aria-selected="{% if ((type == "tags")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.trash.list", (dict("type", "tags"))) }}">标签</a>
+  <a role="tab" aria-selected="{% if ((type == "categories")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.trash.list", (dict("type", "categories"))) }}">分类</a>
+  <a role="tab" aria-selected="{% if ((type == "redirects")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.trash.list", (dict("type", "redirects"))) }}">重定向</a>
 </nav>
 
-{{ if eq .ModelType "posts" }}
-  {{ if .Data }}
+{% if ((ModelType == "posts")) %}
+  {% if Data %}
   <table>
     <thead>
     <tr>
@@ -21,34 +22,34 @@
     </tr>
     </thead>
     <tbody>
-    {{ range .Data }}
+    {% for postItem in Data %}
     <tr>
-      <td class="cell-4">{{ .ID }}</td>
-      <td>{{ .Title }}</td>
-      <td>{{ .Slug }}</td>
-      <td>{{ .Status }}</td>
-      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td class="cell-4">{{ postItem.ID }}</td>
+      <td>{{ postItem.Title }}</td>
+      <td>{{ postItem.Slug }}</td>
+      <td>{{ postItem.Status }}</td>
+      <td>{% if postItem.DeletedAt %}{{ postItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="{{ url_for "admin.trash.posts.restore" (dict "id" .ID) }}">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.posts.restore", (dict("id", postItem.ID))) }}">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "undo", "label", "恢复")) }}
           </form>
-          <form id="form" method="post" action="{{ url_for "admin.trash.posts.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.posts.delete", (dict("id", postItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "硬删除", "danger", true)) }}
           </form>
         </div>
       </td>
     </tr>
-    {{ end }}
+    {% endfor %}
     </tbody>
   </table>
-  {{ else }}
+  {% else %}
   <p>暂无已删除文章。</p>
-  {{ end }}
-{{ end }}
+  {% endif %}
+{% endif %}
 
-{{ if eq .ModelType "encrypted-posts" }}
-  {{ if .Data }}
+{% if ((ModelType == "encrypted-posts")) %}
+  {% if Data %}
   <table>
     <thead>
     <tr>
@@ -60,33 +61,33 @@
     </tr>
     </thead>
     <tbody>
-    {{ range .Data }}
+    {% for encryptedPostItem in Data %}
     <tr>
-      <td class="cell-4">{{ .ID }}</td>
-      <td>{{ .Title }}</td>
-      <td>{{ .Slug }}</td>
-      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td class="cell-4">{{ encryptedPostItem.ID }}</td>
+      <td>{{ encryptedPostItem.Title }}</td>
+      <td>{{ encryptedPostItem.Slug }}</td>
+      <td>{% if encryptedPostItem.DeletedAt %}{{ encryptedPostItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="{{ url_for "admin.trash.encrypted_posts.restore" (dict "id" .ID) }}">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.encrypted_posts.restore", (dict("id", encryptedPostItem.ID))) }}">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "undo", "label", "恢复")) }}
           </form>
-          <form id="form" method="post" action="{{ url_for "admin.trash.encrypted_posts.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.encrypted_posts.delete", (dict("id", encryptedPostItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "硬删除", "danger", true)) }}
           </form>
         </div>
       </td>
     </tr>
-    {{ end }}
+    {% endfor %}
     </tbody>
   </table>
-  {{ else }}
+  {% else %}
   <p>暂无已删除加密文章。</p>
-  {{ end }}
-{{ end }}
+  {% endif %}
+{% endif %}
 
-{{ if eq .ModelType "tags" }}
-  {{ if .Data }}
+{% if ((ModelType == "tags")) %}
+  {% if Data %}
   <table>
     <thead>
     <tr>
@@ -98,33 +99,33 @@
     </tr>
     </thead>
     <tbody>
-    {{ range .Data }}
+    {% for tagItem in Data %}
     <tr>
-      <td class="cell-4">{{ .ID }}</td>
-      <td>{{ .Name }}</td>
-      <td>{{ .Slug }}</td>
-      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td class="cell-4">{{ tagItem.ID }}</td>
+      <td>{{ tagItem.Name }}</td>
+      <td>{{ tagItem.Slug }}</td>
+      <td>{% if tagItem.DeletedAt %}{{ tagItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="{{ url_for "admin.trash.tags.restore" (dict "id" .ID) }}">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.tags.restore", (dict("id", tagItem.ID))) }}">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "undo", "label", "恢复")) }}
           </form>
-          <form id="form" method="post" action="{{ url_for "admin.trash.tags.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.tags.delete", (dict("id", tagItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "硬删除", "danger", true)) }}
           </form>
         </div>
       </td>
     </tr>
-    {{ end }}
+    {% endfor %}
     </tbody>
   </table>
-  {{ else }}
+  {% else %}
   <p>暂无已删除标签。</p>
-  {{ end }}
-{{ end }}
+  {% endif %}
+{% endif %}
 
-{{ if eq .ModelType "categories" }}
-  {{ if .Data }}
+{% if ((ModelType == "categories")) %}
+  {% if Data %}
   <table>
     <thead>
     <tr>
@@ -138,35 +139,35 @@
     </tr>
     </thead>
     <tbody>
-    {{ range .Data }}
+    {% for categoryItem in Data %}
     <tr>
-      <td class="cell-4">{{ .ID }}</td>
-      <td>{{ .Name }}</td>
-      <td>{{ .Slug }}</td>
-      <td>{{ if eq .ParentID 0 }}-{{ else }}{{ .ParentID }}{{ end }}</td>
-      <td>{{ .Description }}</td>
-      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td class="cell-4">{{ categoryItem.ID }}</td>
+      <td>{{ categoryItem.Name }}</td>
+      <td>{{ categoryItem.Slug }}</td>
+      <td>{% if ((categoryItem.ParentID == 0)) %}-{% else %}{{ categoryItem.ParentID }}{% endif %}</td>
+      <td>{{ categoryItem.Description }}</td>
+      <td>{% if categoryItem.DeletedAt %}{{ categoryItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="{{ url_for "admin.trash.categories.restore" (dict "id" .ID) }}">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.categories.restore", (dict("id", categoryItem.ID))) }}">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "undo", "label", "恢复")) }}
           </form>
-          <form id="form" method="post" action="{{ url_for "admin.trash.categories.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.categories.delete", (dict("id", categoryItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "硬删除", "danger", true)) }}
           </form>
         </div>
       </td>
     </tr>
-    {{ end }}
+    {% endfor %}
     </tbody>
   </table>
-  {{ else }}
+  {% else %}
   <p>暂无已删除分类。</p>
-  {{ end }}
-{{ end }}
+  {% endif %}
+{% endif %}
 
-{{ if eq .ModelType "redirects" }}
-  {{ if .Data }}
+{% if ((ModelType == "redirects")) %}
+  {% if Data %}
   <table>
     <thead>
     <tr>
@@ -178,27 +179,27 @@
     </tr>
     </thead>
     <tbody>
-    {{ range .Data }}
+    {% for redirectItem in Data %}
     <tr>
-      <td class="cell-4">{{ .ID }}</td>
-      <td>{{ .From }}</td>
-      <td>{{ .To }}</td>
-      <td>{{ if .DeletedAt }}{{ relativeTime .DeletedAt }}{{ else }}-{{ end }}</td>
+      <td class="cell-4">{{ redirectItem.ID }}</td>
+      <td>{{ redirectItem.From }}</td>
+      <td>{{ redirectItem.To }}</td>
+      <td>{% if redirectItem.DeletedAt %}{{ redirectItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
       <td>
         <div class="row-actions">
-          <form id="form" method="post" action="{{ url_for "admin.trash.redirects.restore" (dict "id" .ID) }}">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "undo" "label" "恢复" }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.redirects.restore", (dict("id", redirectItem.ID))) }}">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "undo", "label", "恢复")) }}
           </form>
-          <form id="form" method="post" action="{{ url_for "admin.trash.redirects.delete" (dict "id" .ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "硬删除" "danger" true }}
+          <form id="form" method="post" action="{{ url_for("admin.trash.redirects.delete", (dict("id", redirectItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "硬删除", "danger", true)) }}
           </form>
         </div>
       </td>
     </tr>
-    {{ end }}
+    {% endfor %}
     </tbody>
   </table>
-  {{ else }}
+  {% else %}
   <p>暂无已删除重定向。</p>
-  {{ end }}
-{{ end }}
+  {% endif %}
+{% endif %}

@@ -1,30 +1,32 @@
-  <header>
-    <h1>{{ .Entity.Name }}</h1>
+{% from "includes/content_macros" import category_item, tag_list %}
 
-    {{ template "site/includes/list_nav" dict "IsCategory" .IsCategory "IsTag" .IsTag }}
-  </header>
+<header>
+  <h1>{{ Entity.Name }}</h1>
 
-  {{ if .Entity.Description }}
-  <section>
-      <p class="subtitle">{{ .Entity.Description }}</p>
-  </section>
-  {{ end }}
+  {% with IsCategory = IsCategory, IsTag = IsTag %}
+    {% include "includes/list_nav" %}
+  {% endwith %}
+</header>
 
-  <ul>
-    {{ range .List }}
-    <li>
-      <a href="{{ .PermLink }}">{{ .Title }}</a>
-      <span class="relation">
-        {{ template "site/tag_list" dict "Items" .Tags "Label" true }}
-        {{ if not $.IsCategory }}
-            {{if .Category}}
-                {{template "site/category_item" dict "Item" .Category "Label" true}}
-            {{end}}
-        {{ end }}
-      </span>
-      <span class="published">{{ relativeTime .CreatedAt }}</span>
-    </li>
-    {{ else }}
-    <li>暂无文章</li>
-    {{ end }}
-  </ul>
+{% if Entity.Description %}
+<section>
+  <p class="subtitle">{{ Entity.Description }}</p>
+</section>
+{% endif %}
+
+<ul>
+  {% for item in List %}
+  <li>
+    <a href="{{ item.PermLink }}">{{ item.Title }}</a>
+    <span class="relation">
+      {{ tag_list(item.Tags, true) }}
+      {% if (not IsCategory) and item.Category %}
+        {{ category_item(item.Category, true) }}
+      {% endif %}
+    </span>
+    <span class="published">{{ item.CreatedAt | relativeTime }}</span>
+  </li>
+  {% else %}
+  <li>暂无文章</li>
+  {% endfor %}
+</ul>

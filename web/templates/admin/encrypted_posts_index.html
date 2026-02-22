@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <table>
   <thead>
   <tr>
@@ -12,25 +13,25 @@
   </thead>
 
   <tbody>
-  {{ range .Posts }}
+  {% for post in Posts %}
   <tr>
-    <td class="cell-4">{{ .ID }}</td>
-    <td>{{ .Title }}</td>
-    <td>{{ .Slug }}</td>
-    <td>{{ if .ExpiresAt }}{{ formatTime .ExpiresAt }}{{ else }}永不过期{{ end }}</td>
-    <td>{{ relativeTime .CreatedAt }}</td>
-    <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.encrypted_posts.edit" "DeleteRoute" "admin.encrypted_posts.delete" "ID" .ID }}
+    <td class="cell-4">{{ post.ID }}</td>
+    <td>{{ post.Title }}</td>
+    <td>{{ post.Slug }}</td>
+    <td>{% if post.ExpiresAt %}{{ post.ExpiresAt | formatTime }}{% else %}永不过期{% endif %}</td>
+    <td>{{ post.CreatedAt | relativeTime }}</td>
+    <td>{{ post.UpdatedAt | relativeTime }}</td>
+    {{ ui.table_row_actions(dict("EditRoute", "admin.encrypted_posts.edit", "DeleteRoute", "admin.encrypted_posts.delete", "ID", post.ID)) }}
   </tr>
-  {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "暂无加密文章" }}
-  {{ end }}
+  {% else %}
+  {{ ui.table_empty(dict("ColSpan", 7, "Message", "暂无加密文章")) }}
+  {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="7">
-      {{template "admin/includes/pagination" .}}
+      {{ ui.pagination(__root) }}
     </td>
   </tr>
   </tfoot>

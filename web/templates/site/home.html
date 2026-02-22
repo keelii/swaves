@@ -1,17 +1,21 @@
 <header>
-  <h1>{{ settings "site_title" }}</h1>
-  {{ template "site/includes/nav" . }}
+  <h1>{{ settings("site_title") }}</h1>
+  {% with Pages = Pages, IsLogin = IsLogin %}
+    {% include "includes/nav" %}
+  {% endwith %}
 </header>
 
 <ul class="articles">
-  {{ range .Articles }}
+  {% for article in Articles %}
   <li>
-    <a href="{{ .PermLink }}">{{ .Title }}</a>
-    <span class="published">{{ relativeTime .PublishedAt }}</span>
+    <a href="{{ article.PermLink }}">{{ article.Post.Title }}</a>
+    <span class="published">{{ article.Post.PublishedAt | relativeTime }}</span>
   </li>
-  {{ else }}
+  {% else %}
   <li>暂无文章</li>
-  {{ end }}
+  {% endfor %}
 </ul>
 
-{{template "site/includes/pagination" .}}
+{% with Pager = Pager, SearchQueryEscaped = SearchQueryEscaped %}
+  {% include "includes/pagination" %}
+{% endwith %}

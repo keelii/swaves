@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <style>
   .dashboard-label {
     font-size: var(--text-8);
@@ -58,47 +59,47 @@
 <div class="row">
   <div class="col-2 mb-2">
     <div class="card">
-      <div class="dashboard-label">活跃用户（{{ if .ActiveUsersWindowLabel }}{{ .ActiveUsersWindowLabel }}{{ else }}30分钟{{ end }}）</div>
-      <div class="dashboard-number">{{ if .ActiveUsers }}{{ .ActiveUsers }}{{ else }}0{{ end }}</div>
+      <div class="dashboard-label">活跃用户（{% if ActiveUsersWindowLabel %}{{ ActiveUsersWindowLabel }}{% else %}30分钟{% endif %}）</div>
+      <div class="dashboard-number">{% if ActiveUsers %}{{ ActiveUsers }}{% else %}0{% endif %}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
       <div class="dashboard-label">总访问（UV）</div>
-      <div class="dashboard-number">{{ if .TotalUV }}{{ .TotalUV }}{{ else }}0{{ end }}</div>
+      <div class="dashboard-number">{% if TotalUV %}{{ TotalUV }}{% else %}0{% endif %}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
       <div class="dashboard-label">总点赞</div>
-      <div class="dashboard-number">{{ if .TotalLikes }}{{ .TotalLikes }}{{ else }}0{{ end }}</div>
+      <div class="dashboard-number">{% if TotalLikes %}{{ TotalLikes }}{% else %}0{% endif %}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
       <div class="dashboard-label salign">
         <span>文章总数</span>
-        <a href="{{ url_for "admin.posts.new" }}">{{ template "lucide_icon" dict "name" "plus" "label" "新建文章" }}</a>
+        <a href="{{ url_for("admin.posts.new") }}">{{ ui.lucide_icon(dict("name", "plus", "label", "新建文章")) }}</a>
       </div>
-      <div class="dashboard-number">{{ if .PostCount }}{{ .PostCount }}{{ else }}0{{ end }}</div>
+      <div class="dashboard-number">{% if PostCount %}{{ PostCount }}{% else %}0{% endif %}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
       <div class="dashboard-label salign">
         <span>分类总数</span>
-        <a href="{{ url_for "admin.categories.new" }}">{{ template "lucide_icon" dict "name" "plus" "label" "新建分类" }}</a>
+        <a href="{{ url_for("admin.categories.new") }}">{{ ui.lucide_icon(dict("name", "plus", "label", "新建分类")) }}</a>
       </div>
-      <div class="dashboard-number">{{ if .CategoryCount }}{{ .CategoryCount }}{{ else }}0{{ end }}</div>
+      <div class="dashboard-number">{% if CategoryCount %}{{ CategoryCount }}{% else %}0{% endif %}</div>
     </div>
   </div>
   <div class="col-2 mb-2">
     <div class="card">
       <div class="dashboard-label salign">
         <span>标签总数</span>
-        <a href="{{ url_for "admin.tags.new" }}">{{ template "lucide_icon" dict "name" "plus" "label" "新建标签" }}</a>
+        <a href="{{ url_for("admin.tags.new") }}">{{ ui.lucide_icon(dict("name", "plus", "label", "新建标签")) }}</a>
       </div>
-      <div class="dashboard-number">{{ if .TagCount }}{{ .TagCount }}{{ else }}0{{ end }}</div>
+      <div class="dashboard-number">{% if TagCount %}{{ TagCount }}{% else %}0{% endif %}</div>
     </div>
   </div>
 </div>
@@ -108,33 +109,33 @@
     <div class="card">
       <ot-tabs>
         <div role="tablist">
-            {{ range .UVChartTabs }}
-              <button type="button" role="tab" aria-selected="{{ if .Active }}true{{ else }}false{{ end }}">{{ .Label }}</button>
-            {{ end }}
+            {% for tab in UVChartTabs %}
+              <button type="button" role="tab" aria-selected="{% if tab.Active %}true{% else %}false{% endif %}">{{ tab.Label }}</button>
+            {% endfor %}
         </div>
 
-          {{ range .UVChartTabs }}
+          {% for tab in UVChartTabs %}
             <div role="tabpanel">
               <div class="row mb-4">
-                <div class="col-12 text-right text-lighter">{{ .StartLabel }} — {{ .EndLabel }}</div>
+                <div class="col-12 text-right text-lighter">{{ tab.StartLabel }} — {{ tab.EndLabel }}</div>
               </div>
               <div class="row">
                 <div class="col-2 vstack">
                   <div class="dashboard-label">唯一访客</div>
-                  <div class="dashboard-uv-total">{{ if .Total }}{{ .Total }}{{ else }}0{{ end }}</div>
-                  <div class="text-lighter">{{ .Label }}内访客</div>
+                  <div class="dashboard-uv-total">{% if tab.Total %}{{ tab.Total }}{% else %}0{% endif %}</div>
+                  <div class="text-lighter">{{ tab.Label }}内访客</div>
                 </div>
               <div class="col-10 dashboard-uv-chart" data-uv-chart>
-                {{ if .SVG }}
-                  {{ safeHTML .SVG }}
+                {% if tab.SVG %}
+                  {{ tab.SVG | safe }}
                   <div class="dashboard-uv-tooltip" data-uv-tooltip hidden></div>
-                {{ else }}
+                {% else %}
                   <p class="text-lighter">暂无 UV 数据</p>
-                {{ end }}
+                {% endif %}
               </div>
             </div>
             </div>
-          {{ end }}
+          {% endfor %}
       </ot-tabs>
     </div>
   </div>
@@ -298,21 +299,21 @@
         </tr>
         </thead>
         <tbody>
-        {{ if .TopUVContents }}
-          {{ range $idx, $item := .TopUVContents }}
+        {% if TopUVContents %}
+          {% for uvContent in TopUVContents %}{% set idx = loop.index0 %}{% set item = uvContent %}
             <tr>
-              <td class="col-tight">{{ add $idx 1 }}</td>
+              <td class="col-tight">{{ idx + 1 }}</td>
               <td>
-                <a href="{{ BuildPostURL $item.ID $item.Kind $item.Slug $item.PublishedAt }}" target="_blank" rel="noopener">{{ $item.Title }}</a>
+                <a href="{{ BuildPostURL(item.ID, item.Kind, item.Slug, item.PublishedAt) }}" target="_blank" rel="noopener">{{ item.Title }}</a>
               </td>
-              <td class="text-right col-value">{{ $item.UV }}</td>
+              <td class="text-right col-value">{{ item.UV }}</td>
             </tr>
-          {{ end }}
-        {{ else }}
+          {% endfor %}
+        {% else %}
           <tr>
             <td colspan="3">暂无访问数据</td>
           </tr>
-        {{ end }}
+        {% endif %}
         </tbody>
       </table>
     </div>
@@ -329,19 +330,19 @@
         </tr>
         </thead>
         <tbody>
-        {{ if .TopLikedContents }}
-          {{ range $idx, $item := .TopLikedContents }}
+        {% if TopLikedContents %}
+          {% for likedContent in TopLikedContents %}{% set idx = loop.index0 %}{% set item = likedContent %}
             <tr>
-              <td class="col-tight">{{ add $idx 1 }}</td>
-              <td>{{ $item.Title }}</td>
-              <td class="text-right col-value">{{ $item.Likes }}</td>
+              <td class="col-tight">{{ idx + 1 }}</td>
+              <td>{{ item.Title }}</td>
+              <td class="text-right col-value">{{ item.Likes }}</td>
             </tr>
-          {{ end }}
-        {{ else }}
+          {% endfor %}
+        {% else %}
           <tr>
             <td colspan="3">暂无点赞数据</td>
           </tr>
-        {{ end }}
+        {% endif %}
         </tbody>
       </table>
     </div>

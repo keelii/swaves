@@ -1,10 +1,8 @@
-{{/* 通用错误提示，传入当前上下文（需含 .Error）
-使用方式: {{ template "admin/includes/error_message" . }}
-*/}}
-{{ if .Error }}
+
+{% if Error %}
   <div class="errors">
     <div role="alert" data-variant="error">
-      <strong>错误：</strong> {{ .Error }}
+      <strong>错误：</strong> {{ Error }}
     </div>
   </div>
-{{ end }}
+{% endif %}

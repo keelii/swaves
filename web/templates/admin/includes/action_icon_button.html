@@ -1,3 +1,4 @@
-<button type="{{ if .type }}{{ .type }}{{ else }}button{{ end }}" class="row-action-btn{{ if .danger }} row-action-btn-danger{{ end }}" aria-label="{{ .label }}" title="{{ .label }}">
-  {{ template "lucide_icon" dict "name" .name "size" .size }}
+{% import "/admin/includes/ui_macros" as ui %}
+<button type="{{ type|default("button") }}" class="row-action-btn{% if danger|default(false) %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" title="{{ label }}">
+  {{ ui.lucide_icon(dict("name", name, "size", (size|default(16)))) }}
 </button>

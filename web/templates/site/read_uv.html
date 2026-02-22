@@ -1,4 +1,6 @@
 <span class="read-uv" title="阅读数">
-  {{ template "lucide_icon" dict "name" "book-open-check" "size" "16" }}
-  <span>{{ if .Count }}{{ .Count }}{{ else }}0{{ end }}</span>
+  {% with name = "book-open-check", size = "16" %}
+    {% include "../lucide_icon" %}
+  {% endwith %}
+  <span>{% if Count %}{{ Count }}{% else %}0{% endif %}</span>
 </span>

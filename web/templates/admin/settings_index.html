@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <table>
   <thead>
   <tr>
@@ -16,29 +17,29 @@
   </thead>
 
   <tbody>
-  {{ range .Settings }}
+  {% for setting in Settings %}
   <tr>
-    <td class="cell-4">{{ .ID }}</td>
-    <td>{{ .Name }}</td>
-    <td>{{ .Kind }}</td>
-    <td>{{ if .SubKind }}{{ .SubKind }}{{ else }}-{{ end }}</td>
-    <td>{{ .Code }}</td>
-    <td>{{ .Type }}</td>
+    <td class="cell-4">{{ setting.ID }}</td>
+    <td>{{ setting.Name }}</td>
+    <td>{{ setting.Kind }}</td>
+    <td>{% if setting.SubKind %}{{ setting.SubKind }}{% else %}-{% endif %}</td>
+    <td>{{ setting.Code }}</td>
+    <td>{{ setting.Type }}</td>
     <td>
-      {{ if or (eq .Type "password") (eq .Type "secret") }}
+      {% if ((((setting.Type == "password"))) or (((setting.Type == "secret")))) %}
         <span>••••••</span>
-      {{ else }}
-        {{ .Value }}
-      {{ end }}
+      {% else %}
+        {{ setting.Value }}
+      {% endif %}
     </td>
-    <td>{{ if eq .Reload 1 }}是{{ else }}—{{ end }}</td>
-    <td>{{ relativeTime .CreatedAt }}</td>
-    <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.settings.edit" "DeleteRoute" "admin.settings.delete" "ID" .ID }}
+    <td>{% if ((setting.Reload == 1)) %}是{% else %}—{% endif %}</td>
+    <td>{{ setting.CreatedAt | relativeTime }}</td>
+    <td>{{ setting.UpdatedAt | relativeTime }}</td>
+    {{ ui.table_row_actions(dict("EditRoute", "admin.settings.edit", "DeleteRoute", "admin.settings.delete", "ID", setting.ID)) }}
   </tr>
-  {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 11 "Message" "暂无设置项" }}
-  {{ end }}
+  {% else %}
+  {{ ui.table_empty(dict("ColSpan", 11, "Message", "暂无设置项")) }}
+  {% endfor %}
   </tbody>
 
 </table>

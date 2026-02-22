@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <style>
   #import-edit-rows td input {
     margin-bottom: 0;
@@ -90,14 +91,19 @@
   }
 </style>
 
-{{ if .Error }}
-<div role="alert" data-variant="warning">{{ .Error }}</div>
-{{ end }}
-{{ if .Success }}
-<div role="alert" data-variant="success">{{ .Success }}</div>
-{{ end }}
+{% set errorMessage = Error %}
+{% set successMessage = Success %}
+{% set importingItems = ImportingItems|default(slice()) %}
+{% set allCategories = AllCategories|default(slice()) %}
 
-<form id="form" method="post" action="{{ url_for "admin.import.submit" }}" enctype="multipart/form-data">
+{% if errorMessage %}
+<div role="alert" data-variant="warning">{{ errorMessage }}</div>
+{% endif %}
+{% if successMessage %}
+<div role="alert" data-variant="success">{{ successMessage }}</div>
+{% endif %}
+
+<form id="form" method="post" action="{{ url_for("admin.import.submit") }}" enctype="multipart/form-data">
   <section class="import-upload">
     <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
     <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖拽 Markdown 文件">
@@ -217,10 +223,10 @@
   </div>
 </form>
 
-<div id="import-edit-panel" class="import-edit-panel"{{ if not (gt (len .ImportingItems) 0) }} hidden{{ end }}>
+<div id="import-edit-panel" class="import-edit-panel"{% if (not ((((importingItems|length)) > 0))) %} hidden{% endif %}>
   <div class="import-edit-actions">
-    <div id="import-edit-summary" class="w-100" role="alert" data-variant="{{ if gt (len .ImportingItems) 0 }}warning{{ else }}success{{ end }}">
-      {{ if gt (len .ImportingItems) 0 }}待确认 {{ len .ImportingItems }} 条导入记录{{ else }}暂无待确认导入记录{{ end }}
+    <div id="import-edit-summary" class="w-100" role="alert" data-variant="{% if (((importingItems|length)) > 0) %}warning{% else %}success{% endif %}">
+      {% if (((importingItems|length)) > 0) %}待确认 {{ (importingItems|length) }} 条导入记录{% else %}暂无待确认导入记录{% endif %}
     </div>
   </div>
   <div class="hstack">
@@ -241,31 +247,17 @@
     </tr>
     </thead>
     <tbody id="import-edit-rows">
-    {{ range .ImportingItems }}
-      {{ template "admin/includes/import_edit_row" . }}
-    {{ else }}
+    {% for importingItem in importingItems %}
+      {{ ui.import_edit_row(importingItem) }}
+    {% else %}
       <tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>
-    {{ end }}
+    {% endfor %}
     </tbody>
   </table>
 </div>
 
 <template id="import-edit-row-template">
-  {{ template "admin/includes/import_edit_row" (dict
-    "PostID" 0
-    "Filename" ""
-    "Title" ""
-    "Slug" ""
-    "Content" ""
-    "ContentPreview" "-"
-    "Status" "draft"
-    "Kind" "0"
-    "CreatedAt" ""
-    "CreatedAtUnix" 0
-    "Tags" ""
-    "Category" ""
-    "Categories" ""
-  ) }}
+  {{ ui.import_edit_row((dict("PostID", 0, "Filename", "", "Title", "", "Slug", "", "Content", "", "ContentPreview", "-", "Status", "draft", "Kind", "0", "CreatedAt", "", "CreatedAtUnix", 0, "Tags", "", "Category", "", "Categories", ""))) }}
 </template>
 
 <dialog id="import-cancel-dialog">
@@ -281,14 +273,12 @@
 
 <script>
 $(function() {
-  var parseItemURL = '{{ url_for "admin.import.parse_item" }}';
-  var confirmItemURL = '{{ url_for "admin.import.confirm_item" }}';
-  var cancelItemURL = '{{ url_for "admin.import.cancel" }}';
-  var postListURL = '{{ url_for "admin.posts.list" }}';
-  var baseCategoryOptions = [
-    {{- range .AllCategories }}
-    {{ printf "%q" .Name }},
-    {{- end }}
+  var parseItemURL = {{ url_for("admin.import.parse_item") | tojson }};
+  var confirmItemURL = {{ url_for("admin.import.confirm_item") | tojson }};
+  var cancelItemURL = {{ url_for("admin.import.cancel") | tojson }};
+  var postListURL = {{ url_for("admin.posts.list") | tojson }};
+  var baseCategoryOptions = [{% for category in allCategories %}
+    {{ category.Name | tojson }},{% endfor %}
   ];
 
   var $form = $('#form');

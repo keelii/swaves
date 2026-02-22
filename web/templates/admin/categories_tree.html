@@ -1,3 +1,38 @@
+{% import "/admin/includes/ui_macros" as ui %}
+{% macro macro_category_item(__ctx) %}
+  <li class="category-item">
+    <div class="flex items-center">
+      <div>{{ __ctx.Category.Sort }}</div>
+      <div>
+        <strong>{{ __ctx.Category.Name }}</strong>
+      </div>
+      <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
+        <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.parent.update", (dict("id", __ctx.Category.ID))) }}" class="category-parent-form">
+            {{ ui.category_select(dict("Root", __ctx.Root, "SelectedID", __ctx.Category.ParentID, "EmptyOption", "顶级分类")) }}
+        </form>
+        <div>
+          {{ ui.action_icon_link(dict("href", (url_for("admin.categories.edit", (dict("id", __ctx.Category.ID)))), "name", "square-pen", "label", "编辑")) }}
+          {{ ui.action_icon_link(dict("href", (url_for("admin.categories.new", (dict("parent_id", __ctx.Category.ID)))), "name", "plus", "label", "添加")) }}
+        </div>
+        <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.delete", (dict("id", __ctx.Category.ID))) }}">
+          <button type="submit">
+              {{ ui.action_btn_content(dict("name", "trash-2", "size", "14", "label", "删除")) }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+      {% if __ctx.Children %}
+        <ul class="categories-subtree">
+            {% set root = __ctx.Root %}
+            {% for node in __ctx.Children %}
+                {{ macro_category_item(dict("Category", node.Category, "Children", node.Children, "Root", root)) }}
+            {% endfor %}
+        </ul>
+      {% endif %}
+  </li>
+{% endmacro %}
+
 <style>
     /* 树整体 */
     .categories-tree {
@@ -69,51 +104,19 @@
         border-top: 1px dashed #ddd;
     }
 </style>
-{{ define "category_item" }}
-  <li class="category-item">
-    <div class="flex items-center">
-      <div>{{ .Category.Sort }}</div>
-      <div>
-        <strong>{{ .Category.Name }}</strong>
-      </div>
-      <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
-        <form id="form" method="post" style="display:inline" action="{{ url_for "admin.categories.parent.update" (dict "id" .Category.ID) }}" class="category-parent-form">
-            {{ template "admin/includes/category_select" dict "Root" .Root "SelectedID" .Category.ParentID "EmptyOption" "顶级分类" }}
-        </form>
-        <div>
-          {{ template "admin/includes/action_icon_link" dict "href" (url_for "admin.categories.edit" (dict "id" .Category.ID)) "name" "square-pen" "label" "编辑" }}
-          {{ template "admin/includes/action_icon_link" dict "href" (url_for "admin.categories.new" (dict "parent_id" .Category.ID)) "name" "plus" "label" "添加" }}
-        </div>
-        <form id="form" method="post" style="display:inline" action="{{ url_for "admin.categories.delete" (dict "id" .Category.ID) }}">
-          <button type="submit">
-              {{ template "admin/includes/action_btn_content" dict "name" "trash-2" "size" "14" "label" "删除" }}
-          </button>
-        </form>
-      </div>
-    </div>
-
-      {{ if .Children }}
-        <ul class="categories-subtree">
-            {{ $root := .Root }}
-            {{ range .Children }}
-                {{ template "category_item" dict "Category" .Category "Children" .Children "Root" $root }}
-            {{ end }}
-        </ul>
-      {{ end }}
-  </li>
-{{ end }}
 
 
-{{ if .Tree }}
+
+{% if Tree %}
   <ul class="categories-tree">
-    {{ $rootData := dict "Categories" .Categories }}
-    {{ range .Tree }}
-        {{ template "category_item" dict "Category" .Category "Children" .Children "Root" $rootData }}
-    {{ end }}
+    {% set rootData = dict("Categories", Categories) %}
+    {% for node in Tree %}
+        {{ macro_category_item(dict("Category", node.Category, "Children", node.Children, "Root", rootData)) }}
+    {% endfor %}
   </ul>
-{{ else }}
+{% else %}
   <p>暂无分类</p>
-{{ end }}
+{% endif %}
 
 <script>
 $(function() {

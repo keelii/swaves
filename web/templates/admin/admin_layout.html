@@ -1,8 +1,9 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <!doctype html>
-<html lang="{{ settings "language" }}">
+<html lang="{{ settings("language") }}">
 <head>
   <meta charset="utf-8">
-  <title>{{ .Title }} - {{ settings "site_name" }}</title>
+  <title>{{ Title }} - {{ settings("site_name") }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
   <!-- https://github.com/edwardtufte/tufte-css -->
@@ -13,7 +14,7 @@
   <script src="/static/admin/jquery-4.0.0.slim.min.js"></script>
   <style>
       :root {
-        --admin-font-size: {{ settings "font_size"}}px;
+        --admin-font-size: {{ settings("font_size") }}px;
         /*--font-sans: -apple-system, system-ui, sans-serif;*/
         /*--font-sans: Inter, -apple-system, "system-ui", "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";*/
       }
@@ -56,25 +57,25 @@
       }
   </style>
 </head>
-<body{{ if eq (settings "mode") "dark" }} data-theme="dark"{{ end }}>
+<body{% if (((settings("mode")) == "dark")) %} data-theme="dark"{% endif %}>
 
 <div class="admin-container">
   <!-- 顶部导航 -->
   <div class="top-navigation flex justify-between">
     <div class="nav-brand">
       <span class="menu-toggle-btn" onclick="toggleSidebar()">☰</span>
-      {{ settings "site_name" }} 管理后台
+      {{ settings("site_name") }} 管理后台
     </div>
     <div class="nav-actions flex justify-between grow">
-      {{template "admin/includes/actions" .}}
+      {{ ui.actions(__root) }}
       <div class="nav-user">
-          {{ if .IsLogin }}
-            <span>欢迎，{{ settings "author" }}</span> <a href="{{ url_for "admin.logout" }}">退出</a>
-          {{ else }}
-            <span>请先</span> <a href="{{ url_for "admin.login.show" }}">登录</a>
-          {{ end }}
+          {% if IsLogin %}
+            <span>欢迎，{{ settings("author") }}</span> <a href="{{ url_for("admin.logout") }}">退出</a>
+          {% else %}
+            <span>请先</span> <a href="{{ url_for("admin.login.show") }}">登录</a>
+          {% endif %}
         <div class="user-avatar">
-            <img width="32" height="32" src="{{ GetAuthorGravatarUrl 32 }}" alt="{{ settings "author" }}">
+            <img width="32" height="32" src="{{ GetAuthorGravatarUrl(32) }}" alt="{{ settings("author") }}">
         </div>
       </div>
     </div>
@@ -84,19 +85,19 @@
   <div class="main-wrapper">
     <!-- 左侧菜单 -->
     <div class="sidebar-menu" id="sidebar">
-      {{template "admin/includes/menu" .}}
+      {{ ui.menu(__root) }}
     </div>
 
     <!-- 主内容区域 -->
     <div class="content-area">
       <div class="content-header content-box" style="display:none;">
         <div class="content-title">
-          {{template "admin/includes/actions" .}}
+          {{ ui.actions(__root) }}
         </div>
       </div>
       <div class="content-body content-box">
-        {{ template "admin/includes/error_message" . }}
-        {{embed}}
+        {{ ui.error_message(__root) }}
+        {{ embed }}
       </div>
     </div>
   </div>

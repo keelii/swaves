@@ -1,8 +1,8 @@
-{{if gt (len .Items) 0}}
+{% if Items and ((Items|length) > 0) %}
 <span>
-{{ if .Label }}标签{{ end }}
-{{range $i, $t := .Items}}
-  <a href="{{ $t.PermLink }}">{{ $t.Name }}</a>{{ if ne (add $i 1) (len $.Items) }},{{ end }}
-{{end}}
+{% if Label %}标签{% endif %}
+{% for tag in Items %}{% set t = tag %}
+  <a href="{{ t.PermLink }}">{{ t.Name }}</a>{% if not loop.last %},{% endif %}
+{% endfor %}
 </span>
-{{end}}
+{% endif %}

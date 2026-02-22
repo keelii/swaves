@@ -5,8 +5,8 @@
 
 <article>
   <p>
-    <a href="{{ .ReturnURL }}">返回来源页，重试</a>
-    或者 <a href="{{ GetBasePath }}">返回首页</a>
+    <a href="{{ ReturnURL }}">返回来源页，重试</a>
+    或者 <a href="{{ GetBasePath() }}">返回首页</a>
   </p>
-  {{ if .ReqID }}<p><small>请求ID: {{ .ReqID }}</small></p>{{ end }}
+  {% if ReqID %}<p><small>请求ID: {{ ReqID }}</small></p>{% endif %}
 </article>

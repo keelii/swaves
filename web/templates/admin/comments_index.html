@@ -1,10 +1,11 @@
-{{ $status := or .StatusFilter "" }}
+{% import "/admin/includes/ui_macros" as ui %}
+{% set status = (StatusFilter or "") %}
 
 <nav role="tablist" aria-label="评论状态" class="mb-4">
-  <a role="tab" aria-selected="{{ if eq $status "" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" }}">全部</a>
-  <a role="tab" aria-selected="{{ if eq $status "pending" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" (dict "status" "pending") }}">待审核</a>
-  <a role="tab" aria-selected="{{ if eq $status "approved" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" (dict "status" "approved") }}">已通过</a>
-  <a role="tab" aria-selected="{{ if eq $status "spam" }}true{{ else }}false{{ end }}" href="{{ url_for "admin.comments.list" (dict "status" "spam") }}">垃圾</a>
+  <a role="tab" aria-selected="{% if ((status == "")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.comments.list") }}">全部</a>
+  <a role="tab" aria-selected="{% if ((status == "pending")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.comments.list", (dict("status", "pending"))) }}">待审核</a>
+  <a role="tab" aria-selected="{% if ((status == "approved")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.comments.list", (dict("status", "approved"))) }}">已通过</a>
+  <a role="tab" aria-selected="{% if ((status == "spam")) %}true{% else %}false{% endif %}" href="{{ url_for("admin.comments.list", (dict("status", "spam"))) }}">垃圾</a>
 </nav>
 
 <table>
@@ -20,74 +21,74 @@
   </tr>
   </thead>
   <tbody>
-  {{ range .Comments }}
+  {% for comment in Comments %}
     <tr>
-      <td class="cell-4">{{ .ID }}</td>
+      <td class="cell-4">{{ comment.ID }}</td>
       <td>
-        <a href="{{ url_for "admin.posts.edit" (dict "id" .PostID) }}">{{ .PostTitle }}</a>
-        <div class="text-light">文章ID={{ .PostID }}</div>
+        <a href="{{ url_for("admin.posts.edit", (dict("id", comment.PostID))) }}">{{ comment.PostTitle }}</a>
+        <div class="text-light">文章ID={{ comment.PostID }}</div>
       </td>
       <td>
         <div style="display:flex;align-items:flex-start;gap:0.5rem;">
-          <img src="{{ commentAvatar .AuthorEmail .Author 32 }}" alt="{{ .Author }}" width="20" height="20">
+          <img src="{{ commentAvatar(comment.AuthorEmail, comment.Author, 32) }}" alt="{{ comment.Author }}" width="20" height="20">
           <div>
-            <div>{{ .Author }}</div>
-            {{ if .AuthorEmail }}<div class="text-light">{{ .AuthorEmail }}</div>{{ end }}
-            {{ if .AuthorURL }}<div class="text-light">{{ .AuthorURL }}</div>{{ end }}
+            <div>{{ comment.Author }}</div>
+            {% if comment.AuthorEmail %}<div class="text-light">{{ comment.AuthorEmail }}</div>{% endif %}
+            {% if comment.AuthorURL %}<div class="text-light">{{ comment.AuthorURL }}</div>{% endif %}
           </div>
         </div>
       </td>
       <td>
-        {{ if gt .ParentID 0 }}
-          <div class="text-light">回复 #{{ .ParentID }}{{ if .ParentAuthor }} (@{{ .ParentAuthor }}){{ end }}</div>
-        {{ end }}
-        <div style="white-space: pre-wrap;">{{ .Content }}</div>
+        {% if (comment.ParentID > 0) %}
+          <div class="text-light">回复 #{{ comment.ParentID }}{% if comment.ParentAuthor %} (@{{ comment.ParentAuthor }}){% endif %}</div>
+        {% endif %}
+        <div style="white-space: pre-wrap;">{{ comment.Content }}</div>
       </td>
       <td>
-        {{ if eq .Status "approved" }}
+        {% if ((comment.Status == "approved")) %}
           <span class="badge success">已通过</span>
-        {{ else if eq .Status "spam" }}
+        {% else %}{% if ((comment.Status == "spam")) %}
           <span class="badge danger">垃圾</span>
-        {{ else }}
+        {% else %}
           <span class="badge secondary">待审核</span>
-        {{ end }}
+        {% endif %}{% endif %}
       </td>
-      <td>{{ relativeTime .CreatedAt }}</td>
+      <td>{{ comment.CreatedAt | relativeTime }}</td>
       <td>
         <div class="row-actions">
-          {{ if ne .Status "approved" }}
-            <form method="post" action="{{ url_for "admin.comments.approve" (dict "id" .ID) }}">
-              <input type="hidden" name="status_filter" value="{{ $status }}">
+          {% if (comment.Status != "approved") %}
+            <form method="post" action="{{ url_for("admin.comments.approve", (dict("id", comment.ID))) }}">
+              <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">通过</button>
             </form>
-          {{ end }}
-          {{ if ne .Status "pending" }}
-            <form method="post" action="{{ url_for "admin.comments.pending" (dict "id" .ID) }}">
-              <input type="hidden" name="status_filter" value="{{ $status }}">
+          {% endif %}
+          {% if (comment.Status != "pending") %}
+            <form method="post" action="{{ url_for("admin.comments.pending", (dict("id", comment.ID))) }}">
+              <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">待审</button>
             </form>
-          {{ end }}
-          {{ if ne .Status "spam" }}
-            <form method="post" action="{{ url_for "admin.comments.spam" (dict "id" .ID) }}">
-              <input type="hidden" name="status_filter" value="{{ $status }}">
+          {% endif %}
+          {% if (comment.Status != "spam") %}
+            <form method="post" action="{{ url_for("admin.comments.spam", (dict("id", comment.ID))) }}">
+              <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">垃圾</button>
             </form>
-          {{ end }}
-          <form method="post" action="{{ url_for "admin.comments.delete" (dict "id" .ID) }}">
-            <input type="hidden" name="status_filter" value="{{ $status }}">
-            {{ template "admin/includes/action_icon_button" dict "type" "submit" "name" "trash-2" "label" "删除" "danger" true }}
+          {% endif %}
+          <form method="post" action="{{ url_for("admin.comments.delete", (dict("id", comment.ID))) }}">
+            <input type="hidden" name="status_filter" value="{{ status }}">
+            {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "删除", "danger", true)) }}
           </form>
         </div>
       </td>
     </tr>
-  {{ else }}
-    {{ template "admin/includes/table_empty" dict "ColSpan" 7 "Message" "暂无评论" }}
-  {{ end }}
+  {% else %}
+    {{ ui.table_empty(dict("ColSpan", 7, "Message", "暂无评论")) }}
+  {% endfor %}
   </tbody>
   <tfoot>
   <tr>
     <td colspan="7">
-      {{template "admin/includes/pagination" .}}
+      {{ ui.pagination(__root) }}
     </td>
   </tr>
   </tfoot>

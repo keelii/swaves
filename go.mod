@@ -12,11 +12,11 @@ require (
 	github.com/gofiber/contrib/v3/monitor v1.0.0-rc.1
 	github.com/gofiber/fiber/v3 v3.0.0-rc.3
 	github.com/gofiber/storage/sqlite3/v2 v2.2.3
-	github.com/gofiber/template/html/v3 v3.0.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/feeds v1.2.0
 	github.com/gosimple/slug v1.15.0
 	github.com/mattn/go-sqlite3 v1.14.33
+	github.com/mitsuhiko/minijinja/minijinja-go/v2 v2.16.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/simukti/sqldb-logger v0.0.0-20230108155151-646c1a075551
 	github.com/yuin/goldmark v1.7.16
@@ -54,7 +54,6 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mitsuhiko/minijinja/minijinja-go/v2 v2.16.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/shirou/gopsutil/v4 v4.25.7 // indirect

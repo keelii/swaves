@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="{{ settings "language" }}">
+<html lang="{{ settings("language") }}">
 <head>
+  {% set pageTitle = Title|default(settings("site_title"))|default("Swaves") %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Title }}</title>
+  <title>{{ pageTitle }}</title>
   <!--<link rel="stylesheet" href="/static/admin/oat/oat.min.css">-->
   <link rel="stylesheet" href="/static/site/tufte-css/tufte.min.css">
   <link rel="stylesheet" href="/static/site/style.css">
@@ -12,12 +13,12 @@
 </head>
 <body>
   <main>
-      {{embed}}
+      {{ embed }}
   </main>
 
   <footer>
     <p>
-      <small>{{ settings "site_copyright" | replace_datetime }}</small>
+      <small>{{ replace_datetime(settings("site_copyright")) }}</small>
     </p>
   </footer>
 

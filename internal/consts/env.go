@@ -1,6 +1,8 @@
 package consts
 
-import "os"
+import (
+	"os"
+)
 
 var (
 	SeeApiToken        = os.Getenv("SWAVES_SEE_API_TOKEN")

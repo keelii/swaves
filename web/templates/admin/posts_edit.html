@@ -1,42 +1,43 @@
-<form id="form" method="post" action="{{ url_for "admin.posts.update" (dict "id" .Post.ID) }}">
+{% import "/admin/includes/ui_macros" as ui %}
+<form id="form" method="post" action="{{ url_for("admin.posts.update", (dict("id", Post.ID))) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         文章标题
-        <input class="w-100" type="text" name="title" value="{{ .Post.Title }}" required placeholder="文章标题">
+        <input class="w-100" type="text" name="title" value="{{ Post.Title }}" required placeholder="文章标题">
       </label>
 
       <label data-field>
         文章 URL 标识
         <span class="hstack">
-          <input type="text" value="{{ .Post.Slug }}" disabled style="flex: 1;">
-          {{ if and (eq .Post.Status "published") (gt .Post.PublishedAt 0) }}
-            <a class="valign" href="{{ GetPostUrl .Post }}" target="_blank" rel="noopener" title="查看文章">
-              {{ template "lucide_icon" dict "name" "link-2" "size" "24" }}
+          <input type="text" value="{{ Post.Slug }}" disabled style="flex: 1;">
+          {% if ((((Post.Status == "published"))) and ((Post.PublishedAt > 0))) %}
+            <a class="valign" href="{{ GetPostUrl(Post) }}" target="_blank" rel="noopener" title="查看文章">
+              {{ ui.lucide_icon(dict("name", "link-2", "size", "24")) }}
             </a>
-          {{ end }}
+          {% endif %}
         </span>
       </label>
 
       <fieldset class="hstack">
         <legend>类型</legend>
-        {{ template "admin/includes/form_field_radio" dict "Label" "" "Name" "kind" "Options" (slice (dict "Value" "0" "Label" "文章") (dict "Value" "1" "Label" "页面")) "Selected" (printf "%d" .Post.Kind) }}
+        {{ ui.form_field_radio(dict("Label", "", "Name", "kind", "Options", (slice((dict("Value", "0", "Label", "文章")), (dict("Value", "1", "Label", "页面")))), "Selected", (printf("%d", Post.Kind)))) }}
       </fieldset>
 
-      {{ template "admin/includes/form_field_checkbox" dict "Label" "开启评论" "Name" "comment_enabled" "Value" 1 "Checked" (eq .Post.CommentEnabled 1) }}
+      {{ ui.form_field_checkbox(dict("Label", "开启评论", "Name", "comment_enabled", "Value", 1, "Checked", (((Post.CommentEnabled == 1))))) }}
 
       <label data-field>
         标签
-        {{ template "admin/includes/tag_select" . }}
+        {{ ui.tag_select(__root) }}
       </label>
 
       <label data-field>
         分类
-        {{ template "admin/includes/category_select" dict "Root" $ "SelectedID" .Category.ID }}
+        {{ ui.category_select(dict("Root", __root, "SelectedID", Category.ID)) }}
       </label>
     </div>
   </div>
 
-  {{ template "admin/includes/markdown_preview" dict "Value" .Post.Content }}
+  {{ ui.markdown_preview(dict("Value", Post.Content)) }}
 
 </form>

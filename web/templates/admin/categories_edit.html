@@ -1,38 +1,38 @@
-<form id="form" method="post" action="{{ url_for "admin.categories.update" (dict "id" .Category.ID) }}">
+<form id="form" method="post" action="{{ url_for("admin.categories.update", (dict("id", Category.ID))) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         父分类
         <select name="parent_id">
-          <option value="0"{{ if eq .Category.ParentID 0 }} selected{{ end }}>顶级分类</option>
-          {{ range .Categories }}
-            <option value="{{ .ID }}"{{ if eq $.Category.ParentID .ID }} selected{{ end }}>{{ .Name }}</option>
-          {{ end }}
+          <option value="0"{% if ((Category.ParentID == 0)) %} selected{% endif %}>顶级分类</option>
+          {% for category in Categories %}
+            <option value="{{ category.ID }}"{% if ((__root.Category.ParentID == category.ID)) %} selected{% endif %}>{{ category.Name }}</option>
+          {% endfor %}
         </select>
         <small>（选择父分类，选择“顶级分类”表示无父级）</small>
       </label>
 
       <label data-field>
         名称
-        <input type="text" name="name" required value="{{ .Category.Name }}" placeholder="分类名称">
+        <input type="text" name="name" required value="{{ Category.Name }}" placeholder="分类名称">
         <small>（显示名称）</small>
       </label>
 
       <label data-field>
         URL 标识
-        <input type="text" name="slug" required value="{{ .Category.Slug }}" placeholder="url标识">
+        <input type="text" name="slug" required value="{{ Category.Slug }}" placeholder="url标识">
         <small>（URL 标识，同级下需唯一）</small>
       </label>
 
       <label data-field>
         Description
-        <textarea name="description" rows="3" cols="80" placeholder="可选描述信息">{{ .Category.Description }}</textarea>
+        <textarea name="description" rows="3" cols="80" placeholder="可选描述信息">{{ Category.Description }}</textarea>
         <small>（可选描述）</small>
       </label>
 
       <label data-field>
         Sort
-        <input type="number" name="sort" value="{{ .Category.Sort }}">
+        <input type="number" name="sort" value="{{ Category.Sort }}">
         <small>（同级排序，越小越靠前）</small>
       </label>
     </div>

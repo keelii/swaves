@@ -1,114 +1,127 @@
+{% set displayPost = Post.DisplayPost %}
+{% set postData = displayPost.Post %}
+{% set postCategory = Post.Category %}
+{% set postTags = Post.Tags %}
+{% from "includes/content_macros" import category_item, tag_list %}
+
 <header>
-  <h1>{{ .Post.Title }}</h1>
+  <h1>{{ postData.Title }}</h1>
   <nav class="valign">
-    <span class="author">{{ settings "author" }}</span>
-    <span>{{ articleTime .Post.PublishedAt }}</span>
-    <a href="{{ GetBasePath }}">首页</a>
-    {{if .IsLogin}}
-      <a href="{{ GetAdminEditPostUrl .Post.Raw }}">编辑</a>
-    {{end}}
-    {{ template "site/read_uv" dict "Count" .ReadUV }}
-    {{ template "site/like_action" dict "PostID" .Post.ID "UrlPath" .UrlPath "LikeCount" .LikeCount "Liked" .Liked }}
+    <span class="author">{{ settings("author") }}</span>
+    <span>{{ postData.PublishedAt | articleTime }}</span>
+    <a href="{{ GetBasePath() }}">首页</a>
+    {% if IsLogin and (postData.ID > 0) %}
+      <a href="{{ url_for("admin.posts.edit", dict("id", postData.ID)) }}">编辑</a>
+    {% endif %}
+    {% with Count = ReadUV %}
+      {% include "read_uv" %}
+    {% endwith %}
+    {% with PostID = postData.ID, UrlPath = UrlPath, LikeCount = LikeCount, Liked = Liked %}
+      {% include "like_action" %}
+    {% endwith %}
   </nav>
 </header>
 <article>
   <section>
-    {{ .Post.HTML | safeHTML }}
+    {{ displayPost.HTML | safe }}
   </section>
 </article>
-{{ if eq .Post.Kind 0 }}
+{% if (postData.Kind == 0) %}
 <section>
   <hr>
-    <p>
-    {{if .Post.Category}}
-        {{template "site/category_item" dict "Item" .Post.Category "Label" true}}
-    {{end}}
-      <br>
-    {{if .Post.Tags}}
-        {{template "site/tag_list" dict "Items" .Post.Tags "Label" true}}
-    {{end}}
-    </p>
+  <p>
+    {% if postCategory %}
+      {{ category_item(postCategory, true) }}
+    {% endif %}
+    <br>
+    {% if postTags %}
+      {{ tag_list(postTags, true) }}
+    {% endif %}
+  </p>
   <hr>
 </section>
-{{ end }}
-{{ if eq .Post.CommentEnabled 1 }}
+{% endif %}
+
+{% if (postData.CommentEnabled == 1) %}
   <section>
   <footer>
     <div id="comments">
-    <h2>评论 ({{ .CommentCount }})</h2>
+      <h2>评论 ({{ CommentCount }})</h2>
 
-    {{ if .Comments }}
-      <ol class="comment-list">
-          {{ range .Comments }}
-              {{ template "site/comment_item" . }}
-          {{ end }}
-      </ol>
-    {{ else }}
-      <p><small>暂无评论，欢迎抢沙发。</small></p>
-    {{ end }}
+      {% if Comments %}
+        <ol class="comment-list">
+          {% for item in Comments %}
+            {% with Comment = item %}
+              {% include "comment_item" %}
+            {% endwith %}
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p><small>暂无评论，欢迎抢沙发。</small></p>
+      {% endif %}
 
-    {{ if eq .CommentFeedback "approved" }}
-      <p><small>评论已发布。</small></p>
-    {{ else if eq .CommentFeedback "pending" }}
-      <p><small>评论已提交，等待审核。</small></p>
-    {{ else if eq .CommentFeedback "captcha_required" }}
-      <p><small>提交较频繁，请先完成验证码再继续评论。</small></p>
-    {{ else if eq .CommentFeedback "captcha_failed" }}
-      <p><small>验证码错误或已过期，请刷新页面后重试。</small></p>
-    {{ else if eq .CommentFeedback "rate_limited" }}
-      <p><small>提交过于频繁，请稍后再试。</small></p>
-    {{ end }}
+      {% if (CommentFeedback == "approved") %}
+        <p><small>评论已发布。</small></p>
+      {% else %}{% if (CommentFeedback == "pending") %}
+        <p><small>评论已提交，等待审核。</small></p>
+      {% else %}{% if (CommentFeedback == "captcha_required") %}
+        <p><small>提交较频繁，请先完成验证码再继续评论。</small></p>
+      {% else %}{% if (CommentFeedback == "captcha_failed") %}
+        <p><small>验证码错误或已过期，请刷新页面后重试。</small></p>
+      {% else %}{% if (CommentFeedback == "rate_limited") %}
+        <p><small>提交过于频繁，请稍后再试。</small></p>
+      {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
 
-    <fieldset>
-      <legend>发表评论</legend>
-      <form method="post" action="{{ url_for "site.action.comment" (dict "postID" .Post.ID) }}" id="comment-form">
-        <input type="hidden" name="return_url" value="{{ .UrlPath }}">
-        <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
-        <p>
-          <label for="comment-author">昵称</label>
-          <input id="comment-author" name="author" type="text" required maxlength="80" value="{{ .CommentForm.Author }}">
-        </p>
-        <p>
-          <label for="comment-email">邮箱</label>
-          <input id="comment-email" name="author_email" type="email" maxlength="120" placeholder="可选" value="{{ .CommentForm.AuthorEmail }}">
-          <small>填写后可自动显示 Gravatar 头像服务中的头像。</small>
-        </p>
-        <p>
-          <label for="comment-url">网址</label>
-          <input id="comment-url" name="author_url" type="url" maxlength="300" placeholder="可选" value="{{ .CommentForm.AuthorURL }}">
-        </p>
-        <p>
-          <label for="comment-content">内容</label>
-          <textarea id="comment-content" style="vertical-align: top;" name="content" rows="8" cols="40" minlength="5" maxlength="5000" required></textarea>
-        </p>
-        <p>
-          <label for="comment-remember-me">
-            <label>　　</label>
-            <input id="comment-remember-me" name="remember_me" type="checkbox" value="1"{{ if .CommentForm.RememberMe }} checked{{ end }}>
-            记住我（下次自动填充昵称、邮箱和网址）
-          </label>
-        </p>
-        {{ if .CommentCaptchaRequired }}
+      <fieldset>
+        <legend>发表评论</legend>
+        <form method="post" action="{{ url_for("site.action.comment", dict("postID", postData.ID)) }}" id="comment-form">
+          <input type="hidden" name="return_url" value="{{ UrlPath }}">
+          <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
           <p>
-            <label for="comment-captcha-answer">验证码</label>
-            <span>{{ .CommentCaptcha.Prompt }}</span>
-            <input type="hidden" name="captcha_token" value="{{ .CommentCaptcha.Token }}">
-            <input id="comment-captcha-answer" name="captcha_answer" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="16" required style="width: 6em;" autocomplete="off">
+            <label for="comment-author">昵称</label>
+            <input id="comment-author" name="author" type="text" required maxlength="80" value="{{ CommentForm.Author }}">
           </p>
-        {{ end }}
-        <p id="comment-reply-state" style="display:none;">
-          <label>　　</label><small>回复 @<span id="comment-reply-author"></span></small>
-          <button type="button" id="comment-reply-cancel">取消回复</button>
-        </p>
-        <p>
-          <label>　　</label><button type="submit">提交评论</button>
-        </p>
-      </form>
-    </fieldset>
+          <p>
+            <label for="comment-email">邮箱</label>
+            <input id="comment-email" name="author_email" type="email" maxlength="120" placeholder="可选" value="{{ CommentForm.AuthorEmail }}">
+            <small>填写后可自动显示 Gravatar 头像服务中的头像。</small>
+          </p>
+          <p>
+            <label for="comment-url">网址</label>
+            <input id="comment-url" name="author_url" type="url" maxlength="300" placeholder="可选" value="{{ CommentForm.AuthorURL }}">
+          </p>
+          <p>
+            <label for="comment-content">内容</label>
+            <textarea id="comment-content" style="vertical-align: top;" name="content" rows="8" cols="40" minlength="5" maxlength="5000" required></textarea>
+          </p>
+          <p>
+            <label for="comment-remember-me">
+              <label>　　</label>
+              <input id="comment-remember-me" name="remember_me" type="checkbox" value="1"{% if CommentForm.RememberMe %} checked{% endif %}>
+              记住我（下次自动填充昵称、邮箱和网址）
+            </label>
+          </p>
+          {% if CommentCaptchaRequired %}
+            <p>
+              <label for="comment-captcha-answer">验证码</label>
+              <span>{{ CommentCaptcha.Prompt }}</span>
+              <input type="hidden" name="captcha_token" value="{{ CommentCaptcha.Token }}">
+              <input id="comment-captcha-answer" name="captcha_answer" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="16" required style="width: 6em;" autocomplete="off">
+            </p>
+          {% endif %}
+          <p id="comment-reply-state" style="display:none;">
+            <label>　　</label><small>回复 @<span id="comment-reply-author"></span></small>
+            <button type="button" id="comment-reply-cancel">取消回复</button>
+          </p>
+          <p>
+            <label>　　</label><button type="submit">提交评论</button>
+          </p>
+        </form>
+      </fieldset>
     </div>
   </footer>
   </section>
-{{ else }}
+{% else %}
   <section>
   <footer>
     <div id="comments">
@@ -117,20 +130,20 @@
     </div>
   </footer>
   </section>
-{{ end }}
+{% endif %}
 
-{{ if eq .Post.Kind 0 }}
+{% if (postData.Kind == 0) %}
   <section>
     <p class="salign">
-        {{if .Post.Prev}}
-          <span>上一篇：<a href="{{ .Post.Prev.PermLink }}" class="prev">{{ .Post.Prev.Title }}</a></span>
-        {{end}}
-        {{if .Post.Next}}
-          <span>下一篇：<a href="{{ .Post.Next.PermLink }}" class="next">{{ .Post.Next.Title }}</a></span>
-        {{end}}
+      {% if displayPost.Prev %}
+        <span>上一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev">{{ displayPost.Prev.Title }}</a></span>
+      {% endif %}
+      {% if displayPost.Next %}
+        <span>下一篇：<a href="{{ displayPost.Next.PermLink }}" class="next">{{ displayPost.Next.Title }}</a></span>
+      {% endif %}
     </p>
   </section>
-{{ end }}
+{% endif %}
 
 <script>
   (function () {

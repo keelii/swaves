@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <style>
     body {
         height: 100vh;
@@ -89,13 +90,13 @@
   <div class="content-box">
     <div class="login-header">
       <div class="login-logo">🔐</div>
-      <h1 class="login-title">开始吧，{{ settings "author" }}</h1>
+      <h1 class="login-title">开始吧，{{ settings("author") }}</h1>
     </div>
 
-    {{ template "admin/includes/error_message" . }}
+    {{ ui.error_message(__root) }}
 
-    <form id="form" method="POST" action="{{ url_for "admin.login.submit" }}">
-      {{ if .ReturnUrl }}<input type="hidden" name="returnUrl" value="{{ .ReturnUrl }}">{{ end }}
+    <form id="form" method="POST" action="{{ url_for("admin.login.submit") }}">
+      {% if ReturnUrl %}<input type="hidden" name="returnUrl" value="{{ ReturnUrl }}">{% endif %}
       <div class="form-group">
         <div class="password-wrapper">
           <input

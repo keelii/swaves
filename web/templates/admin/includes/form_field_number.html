@@ -1,10 +1,8 @@
-{{/* 通用数字输入字段
-使用方式: {{ template "admin/includes/form_field_number" dict "Label" "排序" "Name" "sort" "Value" .Category.Sort "Help" "" }}
-*/}}
+
 <p>
   <label>
-    <input type="number" name="{{ .Name }}" value="{{ .Value }}">
-    {{ .Label }}
-    {{ if .Help }}<small>{{ .Help }}</small>{{ end }}
+    <input type="number" name="{{ Name }}" value="{{ Value }}">
+    {{ Label }}
+    {% if Help %}<small>{{ Help }}</small>{% endif %}
   </label>
 </p>

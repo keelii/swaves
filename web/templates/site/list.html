@@ -1,42 +1,46 @@
-<header>
-  <h1>{{ .Title }}</h1>
+{% macro macro_site_category_tree_nodes(__ctx) %}
+  {% for categoryNode in __ctx %}
+  <li>
+    <a href="{{ categoryNode.Item.PermLink }}">{{ categoryNode.Item.Name }}</a>
+    <span class="post-count">({{ categoryNode.Item.PostCount }})</span>
+    <span>{{ categoryNode.Item.CreatedAt | relativeTime }}</span>
+    {% if (((categoryNode.Children|length)) > 0) %}
+    <ul>
+      {{ macro_site_category_tree_nodes(categoryNode.Children) }}
+    </ul>
+    {% endif %}
+  </li>
+  {% endfor %}
+{% endmacro %}
 
-  {{ template "site/includes/list_nav" dict "IsCategory" true "IsTag" true }}
+<header>
+  <h1>{{ Title }}</h1>
+
+  {% with IsCategory = true, IsTag = true %}
+    {% include "includes/list_nav" %}
+  {% endwith %}
 </header>
 
-{{ define "site/category_tree_nodes" }}
-  {{ range . }}
-  <li>
-    <a href="{{ .Item.PermLink }}">{{ .Item.Name }}</a>
-    <span class="post-count">({{ .Item.PostCount }})</span>
-    <span>{{ relativeTime .Item.CreatedAt }}</span>
-    {{ if gt (len .Children) 0 }}
-    <ul>
-      {{ template "site/category_tree_nodes" .Children }}
-    </ul>
-    {{ end }}
-  </li>
-  {{ end }}
-{{ end }}
 
-{{ if .IsCategory }}
+
+{% if IsCategory %}
 <ul class="category-index">
-  {{ if gt (len .List) 0 }}
-    {{ template "site/category_tree_nodes" .List }}
-  {{ else }}
+  {% if (((List|length)) > 0) %}
+    {{ macro_site_category_tree_nodes(List) }}
+  {% else %}
   <li>暂无分类</li>
-  {{ end }}
+  {% endif %}
 </ul>
-{{ else }}
+{% else %}
 <ul class="tag-index">
-  {{ range .List }}
+  {% for tag in List %}
   <li>
-    <a href="{{ .PermLink }}">{{ .Name }}</a>
-    <span class="post-count">({{ .PostCount }})</span>
-    <span>{{ relativeTime .CreatedAt }}</span>
+    <a href="{{ tag.PermLink }}">{{ tag.Name }}</a>
+    <span class="post-count">({{ tag.PostCount }})</span>
+    <span>{{ tag.CreatedAt | relativeTime }}</span>
   </li>
-  {{ else }}
+  {% else %}
   <li>暂无数据</li>
-  {{ end }}
+  {% endfor %}
 </ul>
-{{ end }}
+{% endif %}

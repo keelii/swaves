@@ -1,3 +1,4 @@
+{% import "/admin/includes/ui_macros" as ui %}
 <table>
   <thead>
   <tr>
@@ -13,34 +14,34 @@
   </thead>
 
   <tbody>
-  {{ range .Redirects }}
+  {% for redirect in Redirects %}
   <tr>
-    <td class="cell-4">{{ .ID }}</td>
-    <td>{{ .From }}</td>
-    <td>{{ .To }}</td>
+    <td class="cell-4">{{ redirect.ID }}</td>
+    <td>{{ redirect.From }}</td>
+    <td>{{ redirect.To }}</td>
     <td>
-      {{ if eq .Status 301 }}
+      {% if ((redirect.Status == 301)) %}
         <span>301</span>（永久）
-      {{ else if eq .Status 302 }}
+      {% else %}{% if ((redirect.Status == 302)) %}
         <span>302</span>（临时）
-      {{ else }}
-        {{ .Status }}
-      {{ end }}
+      {% else %}
+        {{ redirect.Status }}
+      {% endif %}{% endif %}
     </td>
-    <td>{{ if eq .Enabled 1 }}是{{ else }}否{{ end }}</td>
-    <td>{{ relativeTime .CreatedAt }}</td>
-    <td>{{ relativeTime .UpdatedAt }}</td>
-    {{ template "admin/includes/table_row_actions" dict "EditRoute" "admin.redirects.edit" "DeleteRoute" "admin.redirects.delete" "ID" .ID }}
+    <td>{% if ((redirect.Enabled == 1)) %}是{% else %}否{% endif %}</td>
+    <td>{{ redirect.CreatedAt | relativeTime }}</td>
+    <td>{{ redirect.UpdatedAt | relativeTime }}</td>
+    {{ ui.table_row_actions(dict("EditRoute", "admin.redirects.edit", "DeleteRoute", "admin.redirects.delete", "ID", redirect.ID)) }}
   </tr>
-  {{ else }}
-  {{ template "admin/includes/table_empty" dict "ColSpan" 8 "Message" "暂无重定向规则" }}
-  {{ end }}
+  {% else %}
+  {{ ui.table_empty(dict("ColSpan", 8, "Message", "暂无重定向规则")) }}
+  {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="8">
-      {{template "admin/includes/pagination" .}}
+      {{ ui.pagination(__root) }}
     </td>
   </tr>
   </tfoot>
