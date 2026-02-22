@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% import "/admin/macro/ui" as ui %}
+{% from "/admin/macro/ui" import toggle %}
 <form id="form" method="post" action="{{ url_for("admin.redirects.update", (dict("id", Redirect.ID))) }}">
   <div class="row">
     <div class="col-6">
@@ -24,7 +24,7 @@
 
       <label data-field>
         启用
-        {{ ui.toggle(printf("redirect_enabled_%d", Redirect.ID), "enabled", checked=(Redirect.Enabled == 1), data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
+        {{ toggle(printf("redirect_enabled_%d", Redirect.ID), "enabled", checked=(Redirect.Enabled == 1), data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
       </label>
     </div>
   </div>

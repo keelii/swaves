@@ -1,12 +1,12 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% import "/admin/macro/ui" as ui %}
+{% from "/admin/macro/ui" import form_field_text, form_field_textarea, form_field_number, form_field_checkbox %}
 <form id="form" method="post" action="{{ url_for("admin.settings.update", (dict("id", Setting.ID))) }}">
 
-  {{ ui.form_field_text("分类", "kind", Setting.Kind, required=true, placeholder="例如: system, url, integration, default", help="（例如：system、url、integration、default）") }}
-  {{ ui.form_field_text("子分类", "sub_kind", Setting.SubKind, placeholder="例如: general, see, imagekit, s3", help="（可选，分类下的子分类 code）") }}
-  {{ ui.form_field_text("名称", "name", Setting.Name, required=true, placeholder="人类可读的名称", help="（用于界面展示的人类可读名称）") }}
-  {{ ui.form_field_text("编码", "code", Setting.Code, required=true, placeholder="例如: site_name, admin_password", help="（唯一键，例如：site_name、admin_password）") }}
+  {{ form_field_text("分类", "kind", Setting.Kind, required=true, placeholder="例如: system, url, integration, default", help="（例如：system、url、integration、default）") }}
+  {{ form_field_text("子分类", "sub_kind", Setting.SubKind, placeholder="例如: general, see, imagekit, s3", help="（可选，分类下的子分类 code）") }}
+  {{ form_field_text("名称", "name", Setting.Name, required=true, placeholder="人类可读的名称", help="（用于界面展示的人类可读名称）") }}
+  {{ form_field_text("编码", "code", Setting.Code, required=true, placeholder="例如: site_name, admin_password", help="（唯一键，例如：site_name、admin_password）") }}
 
   <p>
     <label>
@@ -32,9 +32,9 @@
     </label>
   </p>
 
-  {{ ui.form_field_textarea("选项（JSON）", "options", Setting.Options, rows=3, cols=80, placeholder="[{\"label\": \"选项1\", \"value\": \"value1\"}, {\"label\": \"选项2\", \"value\": \"value2\"}]", help="（单选/复选/下拉类型必填，格式为 {label, value} 的 JSON 数组）") }}
-  {{ ui.form_field_textarea("属性（JSON）", "attrs", Setting.Attrs, rows=3, cols=80, placeholder="{\"min\": 0, \"max\": 100, \"step\": 1}", help="（可选 HTML 属性，JSON 对象）") }}
-  {{ ui.form_field_text("前缀值", "prefix_value", Setting.PrefixValue, placeholder="如：/、blog（前缀字段类型使用）", help="（可选，前缀字段类型使用）") }}
+  {{ form_field_textarea("选项（JSON）", "options", Setting.Options, rows=3, cols=80, placeholder="[{\"label\": \"选项1\", \"value\": \"value1\"}, {\"label\": \"选项2\", \"value\": \"value2\"}]", help="（单选/复选/下拉类型必填，格式为 {label, value} 的 JSON 数组）") }}
+  {{ form_field_textarea("属性（JSON）", "attrs", Setting.Attrs, rows=3, cols=80, placeholder="{\"min\": 0, \"max\": 100, \"step\": 1}", help="（可选 HTML 属性，JSON 对象）") }}
+  {{ form_field_text("前缀值", "prefix_value", Setting.PrefixValue, placeholder="如：/、blog（前缀字段类型使用）", help="（可选，前缀字段类型使用）") }}
 
   <p>
     <label>
@@ -94,9 +94,9 @@
     </label>
   </p>
 
-  {{ ui.form_field_textarea("描述", "description", Setting.Description, rows=2, cols=80, placeholder="帮助文本，显示在管理界面中", help="（显示在管理界面的帮助说明）") }}
-  {{ ui.form_field_number("排序", "sort", Setting.Sort, help="（分类内排序，越小越靠前）") }}
-  {{ ui.form_field_checkbox("修改后需重启生效", "reload", checked=(Setting.Reload == 1), value="1") }}
+  {{ form_field_textarea("描述", "description", Setting.Description, rows=2, cols=80, placeholder="帮助文本，显示在管理界面中", help="（显示在管理界面的帮助说明）") }}
+  {{ form_field_number("排序", "sort", Setting.Sort, help="（分类内排序，越小越靠前）") }}
+  {{ form_field_checkbox("修改后需重启生效", "reload", checked=(Setting.Reload == 1), value="1") }}
 
 </form>
 <script>

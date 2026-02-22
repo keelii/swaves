@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% import "/admin/macro/ui" as ui %}
+{% from "/admin/macro/ui" import tag_item %}
 <h2 style="margin-bottom: 1em;">界面组件展示</h2>
 
 <section style="margin-bottom: 2em;">
@@ -162,11 +162,11 @@
 
 <section style="margin-bottom: 2em;">
   <h3>.tag（圆角标签 + 删除 icon）</h3>
-  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">使用 ui.tag_item(label, remove_href)：传入标签文本；需删除 icon 时传 remove_href。</p>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">使用 tag_item(label, remove_href)：传入标签文本；需删除 icon 时传 remove_href。</p>
   <div class="inline-flex items-center gap-4" style="flex-wrap: wrap;">
-    {{ ui.tag_item("标签一", "#") }}
-    {{ ui.tag_item("标签二") }}
-    {{ ui.tag_item("可删除", "#") }}
+    {{ tag_item("标签一", "#") }}
+    {{ tag_item("标签二") }}
+    {{ tag_item("可删除", "#") }}
   </div>
 </section>
 

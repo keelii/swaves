@@ -49,6 +49,18 @@ It is intended as a practical guide for future changes.
 - Internal template links must continue using `url_for`, not hardcoded admin paths.
 - Development hot reload uses `SWAVES_TEMPLATE_RELOAD`; production must not clear template cache per request.
 
+### 17) Template Layer Conventions (MiniJinja)
+
+- `admin` and `site` are weakly isolated at folder level: keep their templates separated by directory, but code-level reuse is allowed when explicit (for example shared helpers under `internal/share`).
+- Keep domain-local template structure consistent: `admin/layout|include|macro` and `site/layout|include|macro`; do not mix admin templates into site folders or vice versa.
+- Use `macro` for atomic reusable HTML snippets; keep macro logic shallow and avoid embedding page-level business flow.
+- Use `include` for reusable business components/modules that can be composed by pages/layouts.
+- In templates, prefer explicit macro imports (`{% from "/admin/macro/ui" import action_btn_content %}`) over alias-wide imports (`{% import ... as ui %}`).
+- Macro signatures should use explicit parameters (with defaults for optional args); avoid `ctx`/`dict` bag-style parameter passing when direct arguments are possible.
+- Keep template expressions minimal and readable: remove redundant nested parentheses.
+- For route generation, prefer direct key/value style in `url_for` calls; avoid Go-template-style `dict(...)` wrappers when the helper supports direct args.
+
+
 ## Category B) Product Workflow and Data Semantics
 
 ### 4) Media Library Rules
@@ -145,6 +157,11 @@ Before merge, verify all items below:
 - [ ] Duplicate template/JS HTML blocks are synchronized or unified.
 - [ ] Template binding does not introduce `Req/Auth/Site/__root` key collisions.
 - [ ] Template `import/include` paths use absolute template paths (`/`-prefixed).
+- [ ] Admin/site template directories remain weakly isolated (`admin/*` and `site/*`), with shared logic extracted explicitly.
+- [ ] Macro/import style follows MiniJinja conventions (`from ... import ...` with explicit symbols, no alias-wide import drift).
+- [ ] Macro signatures use explicit params/defaults; avoid `ctx` or dict-bag arguments where not necessary.
+- [ ] Macro vs include responsibilities stay clear (macro=atomic snippet, include=business component).
+- [ ] Template URL generation prefers direct key/value `url_for` args over `dict(...)` wrappers where supported.
 - [ ] Template reload behavior follows `SWAVES_TEMPLATE_RELOAD` (dev-only per-request clearing).
 - [ ] Job registry lifecycle remains safe (listen hook init + shutdown destroy).
 - [ ] Added/updated tests cover new behavior and removed legacy behavior.

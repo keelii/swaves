@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% import "/admin/macro/ui" as ui %}
+{% from "/admin/macro/ui" import action_icon_button %}
 {% set type = (Query["type"] or "posts") %}
 <nav role="tablist" aria-label="回收站类型" class="mb-4">
   <a role="tab" aria-selected="{% if type == "posts" %}true{% else %}false{% endif %}" href="{{ url_for("admin.trash.list", (dict("type", "posts"))) }}">文章</a>
@@ -34,10 +34,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ url_for("admin.trash.posts.restore", (dict("id", postItem.ID))) }}">
-            {{ ui.action_icon_button("恢复", "undo", type="submit") }}
+            {{ action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ url_for("admin.trash.posts.delete", (dict("id", postItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
+            {{ action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
       </td>
@@ -72,10 +72,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ url_for("admin.trash.encrypted_posts.restore", (dict("id", encryptedPostItem.ID))) }}">
-            {{ ui.action_icon_button("恢复", "undo", type="submit") }}
+            {{ action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ url_for("admin.trash.encrypted_posts.delete", (dict("id", encryptedPostItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
+            {{ action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
       </td>
@@ -110,10 +110,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ url_for("admin.trash.tags.restore", (dict("id", tagItem.ID))) }}">
-            {{ ui.action_icon_button("恢复", "undo", type="submit") }}
+            {{ action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ url_for("admin.trash.tags.delete", (dict("id", tagItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
+            {{ action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
       </td>
@@ -152,10 +152,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ url_for("admin.trash.categories.restore", (dict("id", categoryItem.ID))) }}">
-            {{ ui.action_icon_button("恢复", "undo", type="submit") }}
+            {{ action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ url_for("admin.trash.categories.delete", (dict("id", categoryItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
+            {{ action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
       </td>
@@ -190,10 +190,10 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ url_for("admin.trash.redirects.restore", (dict("id", redirectItem.ID))) }}">
-            {{ ui.action_icon_button("恢复", "undo", type="submit") }}
+            {{ action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ url_for("admin.trash.redirects.delete", (dict("id", redirectItem.ID))) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
-            {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
+            {{ action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
       </td>

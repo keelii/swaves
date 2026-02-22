@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% import "/admin/macro/ui" as ui %}
+{% from "/admin/macro/ui" import table_row_actions, table_empty %}
 <table>
   <thead>
   <tr>
@@ -33,10 +33,10 @@
     <td>{% if redirect.Enabled == 1 %}是{% else %}否{% endif %}</td>
     <td>{{ redirect.CreatedAt | relativeTime }}</td>
     <td>{{ redirect.UpdatedAt | relativeTime }}</td>
-    {{ ui.table_row_actions("admin.redirects.edit", "admin.redirects.delete", redirect.ID) }}
+    {{ table_row_actions("admin.redirects.edit", "admin.redirects.delete", redirect.ID) }}
   </tr>
   {% else %}
-  {{ ui.table_empty(8, "暂无重定向规则") }}
+  {{ table_empty(8, "暂无重定向规则") }}
   {% endfor %}
   </tbody>
 

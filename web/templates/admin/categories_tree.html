@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% import "/admin/macro/ui" as ui %}
+{% from "/admin/macro/ui" import action_icon_link, action_btn_content %}
 {% macro macro_category_item(__ctx) %}
   <li class="category-item">
     <div class="flex items-center">
@@ -13,12 +13,12 @@
             {% with Root = __ctx.Root, SelectedID = __ctx.Category.ParentID, EmptyOption = "顶级分类" %}{% include "/admin/include/category_select" %}{% endwith %}
         </form>
         <div>
-          {{ ui.action_icon_link(url_for("admin.categories.edit", (dict("id", __ctx.Category.ID))), "编辑", "square-pen") }}
-          {{ ui.action_icon_link(url_for("admin.categories.new", (dict("parent_id", __ctx.Category.ID))), "添加", "plus") }}
+          {{ action_icon_link(url_for("admin.categories.edit", (dict("id", __ctx.Category.ID))), "编辑", "square-pen") }}
+          {{ action_icon_link(url_for("admin.categories.new", (dict("parent_id", __ctx.Category.ID))), "添加", "plus") }}
         </div>
         <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.delete", (dict("id", __ctx.Category.ID))) }}">
           <button type="submit">
-              {{ ui.action_btn_content("trash-2", "删除", 14) }}
+              {{ action_btn_content("trash-2", "删除", 14) }}
           </button>
         </form>
       </div>

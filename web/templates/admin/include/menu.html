@@ -1,4 +1,3 @@
-{% import "/admin/macro/ui" as ui %}
 <ul class="menu-list unstyled">
   <li class="menu-item{% if url_is(Req.RouteName, "admin.home") %} active{% endif %}">
     <a href="{{ url_for("admin.home") }}" class="menu-text">工作台</a>
