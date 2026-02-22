@@ -601,7 +601,17 @@ input[type="range"] {
 #page-size-select {
   width: 4em;
 }
-
+.cell-slug {
+  white-space: normal;        /* 确保不是 nowrap */
+  overflow-wrap: anywhere;    /* 允许在任意位置断行（推荐） */
+  word-break: break-word;     /* 兼容兜底 */
+}
+.cell-tag {
+  /*width: 4em;*/
+}
+.ceil-wsn {
+  white-space: nowrap;
+}
 .cell-3 {
   width: 3em;
 }

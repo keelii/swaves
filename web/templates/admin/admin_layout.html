@@ -67,9 +67,9 @@
       {{ settings("site_name") }} 管理后台
     </div>
     <div class="nav-actions flex justify-between grow">
-      {{ ui.actions(__root) }}
+      {{ ui.actions(dict("Req", Req, "Post", (Post|default(none)))) }}
       <div class="nav-user">
-          {% if IsLogin %}
+          {% if Auth.IsLogin %}
             <span>欢迎，{{ settings("author") }}</span> <a href="{{ url_for("admin.logout") }}">退出</a>
           {% else %}
             <span>请先</span> <a href="{{ url_for("admin.login.show") }}">登录</a>
@@ -85,18 +85,18 @@
   <div class="main-wrapper">
     <!-- 左侧菜单 -->
     <div class="sidebar-menu" id="sidebar">
-      {{ ui.menu(__root) }}
+      {{ ui.menu(dict("Req", Req)) }}
     </div>
 
     <!-- 主内容区域 -->
     <div class="content-area">
       <div class="content-header content-box" style="display:none;">
         <div class="content-title">
-          {{ ui.actions(__root) }}
+          {{ ui.actions(dict("Req", Req, "Post", (Post|default(none)))) }}
         </div>
       </div>
       <div class="content-body content-box">
-        {{ ui.error_message(__root) }}
+        {{ ui.error_message(dict("Error", Error)) }}
         {{ embed }}
       </div>
     </div>

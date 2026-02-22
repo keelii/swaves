@@ -93,7 +93,7 @@
       <h1 class="login-title">开始吧，{{ settings("author") }}</h1>
     </div>
 
-    {{ ui.error_message(__root) }}
+    {{ ui.error_message(dict("Error", Error)) }}
 
     <form id="form" method="POST" action="{{ url_for("admin.login.submit") }}">
       {% if ReturnUrl %}<input type="hidden" name="returnUrl" value="{{ ReturnUrl }}">{% endif %}

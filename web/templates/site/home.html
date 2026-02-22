@@ -1,6 +1,6 @@
 <header>
   <h1>{{ settings("site_title") }}</h1>
-  {% with Pages = Pages, IsLogin = IsLogin %}
+  {% with Pages = Pages, IsLogin = Auth.IsLogin %}
     {% include "includes/nav" %}
   {% endwith %}
 </header>

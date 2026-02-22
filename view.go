@@ -688,12 +688,6 @@ func registerTemplateFilter(
 }
 
 func registerValueFormatter(env *minijinja.Environment, name string, formatter func(raw interface{}) string) {
-	registerTemplateFunction(env, name, func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(formatter(nil)), nil
-		}
-		return value.FromString(formatter(miniValueToAny(args[0]))), nil
-	})
 	registerTemplateFilter(env, name, func(val value.Value, _ []value.Value) (value.Value, error) {
 		return value.FromString(formatter(miniValueToAny(val))), nil
 	})
@@ -705,16 +699,6 @@ func registerTimestampFormatter(
 	empty string,
 	formatter func(ts int64) string,
 ) {
-	registerTemplateFunction(env, name, func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(empty), nil
-		}
-		ts, ok := parseTimestamp(miniValueToAny(args[0]))
-		if !ok || ts == 0 {
-			return value.FromString(empty), nil
-		}
-		return value.FromString(formatter(ts)), nil
-	})
 	registerTemplateFilter(env, name, func(val value.Value, _ []value.Value) (value.Value, error) {
 		ts, ok := parseTimestamp(miniValueToAny(val))
 		if !ok || ts == 0 {

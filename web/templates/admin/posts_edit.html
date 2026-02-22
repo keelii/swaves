@@ -28,12 +28,12 @@
 
       <label data-field>
         标签
-        {{ ui.tag_select(__root) }}
+        {{ ui.tag_select(dict("SelectedTagNames", (SelectedTagNames|default("")))) }}
       </label>
 
       <label data-field>
         分类
-        {{ ui.category_select(dict("Root", __root, "SelectedID", Category.ID)) }}
+        {{ ui.category_select(dict("Root", dict("Categories", Categories), "SelectedID", Category.ID)) }}
       </label>
     </div>
   </div>

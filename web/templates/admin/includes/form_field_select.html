@@ -4,7 +4,7 @@
     {{ Label }}<br>
     <select name="{{ Name }}">
       {% for option in Options %}
-        <option value="{{ option.Value }}"{% if ((__root.Selected == option.Value)) %} selected{% endif %}>{{ option.Label }}</option>
+        <option value="{{ option.Value }}"{% if ((Selected == option.Value)) %} selected{% endif %}>{{ option.Label }}</option>
       {% endfor %}
     </select>
     {% if Help %}<small>{{ Help }}</small>{% endif %}

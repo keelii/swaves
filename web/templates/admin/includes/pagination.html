@@ -1,9 +1,15 @@
 <nav aria-label="分页导航" class="pagination">
+  {% set kindQuery = Req.Query["kind"] | default("") %}
+  {% set providerFilter = Req.Query["provider"] | default("") %}
+  {% set searchQueryEscaped = Req.Query["q"] | default("") %}
+  {% set filterTagIDStr = Req.Query["tag"] | default("") %}
+  {% set filterCategoryIDStr = Req.Query["category"] | default("") %}
+  {% set statusFilter = Req.Query["status"] | default("") %}
   <div class="inline-flex items-center gap-4">
     {% if not page_has_prev(Pager) %}
     <span class="page-link" tabindex="-1">上一页</span>
     {% else %}
-    <a class="page-link" href="?page={{ page_prev(Pager) }}&pageSize={{ Pager.PageSize }}{% if KindQuery %}&kind={{ KindQuery }}{% endif %}{% if ProviderFilter %}&provider={{ ProviderFilter }}{% endif %}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}{% if StatusFilter %}&status={{ StatusFilter }}{% endif %}" tabindex="-1">上一页</a>
+    <a class="page-link" href="?page={{ page_prev(Pager) }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}" tabindex="-1">上一页</a>
     {% endif %}
 
     {% for item in page_items(Pager) %}
@@ -12,14 +18,14 @@
     {% elif item.Current %}
     <span class="page-link">{{ item.Page }}</span>
     {% else %}
-    <a class="page-link" href="?page={{ item.Page }}&pageSize={{ __root.Pager.PageSize }}{% if __root.KindQuery %}&kind={{ __root.KindQuery }}{% endif %}{% if __root.ProviderFilter %}&provider={{ __root.ProviderFilter }}{% endif %}{% if __root.SearchQueryEscaped %}&q={{ __root.SearchQueryEscaped }}{% endif %}{% if __root.FilterTagIDStr %}&tag={{ __root.FilterTagIDStr }}{% endif %}{% if __root.FilterCategoryIDStr %}&category={{ __root.FilterCategoryIDStr }}{% endif %}{% if __root.StatusFilter %}&status={{ __root.StatusFilter }}{% endif %}">{{ item.Page }}</a>
+    <a class="page-link" href="?page={{ item.Page }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}">{{ item.Page }}</a>
     {% endif %}
     {% endfor %}
 
     {% if not page_has_next(Pager) %}
     <span class="page-link">下一页</span>
     {% else %}
-    <a class="page-link" href="?page={{ page_next(Pager) }}&pageSize={{ Pager.PageSize }}{% if KindQuery %}&kind={{ KindQuery }}{% endif %}{% if ProviderFilter %}&provider={{ ProviderFilter }}{% endif %}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}{% if StatusFilter %}&status={{ StatusFilter }}{% endif %}">下一页</a>
+    <a class="page-link" href="?page={{ page_next(Pager) }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}">下一页</a>
     {% endif %}
   </div>
 

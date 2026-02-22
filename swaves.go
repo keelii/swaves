@@ -34,7 +34,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 	//defer globalStore.Close()
 
 	store.InitSettings(globalStore)
-	view, initURLResolver, urlFor := NewViewEngine("./web/templates", true)
+	view, initURLResolver, urlFor := NewViewEngine("./web/templates", consts.TemplateReload)
 
 	app := fiber.New(fiber.Config{
 		AppName:       config.AppName,

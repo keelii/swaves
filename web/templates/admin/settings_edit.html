@@ -40,7 +40,7 @@
         <select name="default_option_value">
           <option value="">顶级分类</option>
           {% for defaultOption in Setting.OptionsParsed %}
-            <option value="{{ defaultOption.value }}" {% if ((__root.Setting.DefaultOptionValue == defaultOption.value)) %}selected{% endif %}>{{ defaultOption.label }}</option>
+            <option value="{{ defaultOption.value }}" {% if ((Setting.DefaultOptionValue == defaultOption.value)) %}selected{% endif %}>{{ defaultOption.label }}</option>
           {% endfor %}
         </select>
         <span>默认选项值</span>
@@ -73,7 +73,7 @@
         {% if Setting.OptionsParsed %}
           <select name="value"{{ renderAttrs(Setting.AttrsParsed) }}>
             {% for valueOption in Setting.OptionsParsed %}
-              <option value="{{ valueOption.value }}" {% if ((__root.Setting.Value == valueOption.value)) %}selected{% endif %}>{{ valueOption.label }}</option>
+              <option value="{{ valueOption.value }}" {% if ((Setting.Value == valueOption.value)) %}selected{% endif %}>{{ valueOption.label }}</option>
             {% endfor %}
           </select>
           <span>值</span>

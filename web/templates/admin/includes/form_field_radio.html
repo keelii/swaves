@@ -2,7 +2,7 @@
   <div class="inline-flex items-center gap-4">
     {% for option in Options %}
     <label class="inline-flex items-center gap-2">
-      <input type="radio" name="{{ __root.Name }}" value="{{ option.Value }}"{% if (((__root.Selected|default(none)) == option.Value)) %} checked{% endif %}>
+      <input type="radio" name="{{ Name }}" value="{{ option.Value }}"{% if (((Selected|default(none)) == option.Value)) %} checked{% endif %}>
       {{ option.Label }}
     </label>
     {% endfor %}

@@ -1,143 +1,143 @@
 {% macro action_btn_content(ctx) %}
-{% with name = ctx.name, size = ctx.size, label = ctx.label, __root = ctx %}
+{% with name = ctx.name, size = ctx.size, label = ctx.label %}
 {% include "/admin/includes/action_btn_content" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro action_icon_button(ctx) %}
-{% with type = ctx.type, danger = ctx.danger, label = ctx.label, name = ctx.name, size = ctx.size, __root = ctx %}
+{% with type = ctx.type, danger = ctx.danger, label = ctx.label, name = ctx.name, size = ctx.size %}
 {% include "/admin/includes/action_icon_button" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro action_icon_link(ctx) %}
-{% with href = ctx.href, danger = ctx.danger, label = ctx.label, name = ctx.name, size = ctx.size, __root = ctx %}
+{% with href = ctx.href, danger = ctx.danger, label = ctx.label, name = ctx.name, size = ctx.size %}
 {% include "/admin/includes/action_icon_link" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro actions(ctx) %}
-{% with RouteName = ctx.RouteName, Post = ctx.Post, __root = ctx %}
+{% with Req = ctx.Req, Post = ctx.Post %}
 {% include "/admin/includes/actions" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro category_select(ctx) %}
-{% with Root = ctx.Root, SelectedID = ctx.SelectedID, EmptyOption = ctx.EmptyOption, __root = ctx %}
+{% with Root = ctx.Root, SelectedID = ctx.SelectedID, EmptyOption = ctx.EmptyOption %}
 {% include "/admin/includes/category_select" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro error_message(ctx) %}
-{% with Error = ctx.Error, __root = ctx %}
+{% with Error = ctx.Error %}
 {% include "/admin/includes/error_message" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro expires_at_field(ctx) %}
-{% with Label = ctx.Label, ReadOnly = ctx.ReadOnly, LabelSuffix = ctx.LabelSuffix, HasExpiry = ctx.HasExpiry, DisplayDate = ctx.DisplayDate, CustomDate = ctx.CustomDate, __root = ctx %}
+{% with Label = ctx.Label, ReadOnly = ctx.ReadOnly, LabelSuffix = ctx.LabelSuffix, HasExpiry = ctx.HasExpiry, DisplayDate = ctx.DisplayDate, CustomDate = ctx.CustomDate %}
 {% include "/admin/includes/expires_at_field" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro form_field_checkbox(ctx) %}
-{% with Name = ctx.Name, Value = ctx.Value, Checked = ctx.Checked, Label = ctx.Label, __root = ctx %}
+{% with Name = ctx.Name, Value = ctx.Value, Checked = ctx.Checked, Label = ctx.Label %}
 {% include "/admin/includes/form_field_checkbox" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro form_field_number(ctx) %}
-{% with Name = ctx.Name, Value = ctx.Value, Label = ctx.Label, Help = ctx.Help, __root = ctx %}
+{% with Name = ctx.Name, Value = ctx.Value, Label = ctx.Label, Help = ctx.Help %}
 {% include "/admin/includes/form_field_number" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro form_field_radio(ctx) %}
-{% with Options = ctx.Options, Name = ctx.Name, Selected = ctx.Selected, __root = ctx %}
+{% with Options = ctx.Options, Name = ctx.Name, Selected = ctx.Selected %}
 {% include "/admin/includes/form_field_radio" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro form_field_select(ctx) %}
-{% with Label = ctx.Label, Name = ctx.Name, Options = ctx.Options, Selected = ctx.Selected, Help = ctx.Help, __root = ctx %}
+{% with Label = ctx.Label, Name = ctx.Name, Options = ctx.Options, Selected = ctx.Selected, Help = ctx.Help %}
 {% include "/admin/includes/form_field_select" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro form_field_text(ctx) %}
-{% with Name = ctx.Name, Value = ctx.Value, Required = ctx.Required, Placeholder = ctx.Placeholder, Label = ctx.Label, Help = ctx.Help, __root = ctx %}
+{% with Name = ctx.Name, Value = ctx.Value, Required = ctx.Required, Placeholder = ctx.Placeholder, Label = ctx.Label, Help = ctx.Help %}
 {% include "/admin/includes/form_field_text" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro form_field_textarea(ctx) %}
-{% with Name = ctx.Name, Rows = ctx.Rows, Cols = ctx.Cols, Placeholder = ctx.Placeholder, Value = ctx.Value, Label = ctx.Label, Help = ctx.Help, __root = ctx %}
+{% with Name = ctx.Name, Rows = ctx.Rows, Cols = ctx.Cols, Placeholder = ctx.Placeholder, Value = ctx.Value, Label = ctx.Label, Help = ctx.Help %}
 {% include "/admin/includes/form_field_textarea" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro import_edit_row(ctx) %}
-{% with PostID = ctx.PostID, Filename = ctx.Filename, CreatedAtUnix = ctx.CreatedAtUnix, Title = ctx.Title, Slug = ctx.Slug, CreatedAt = ctx.CreatedAt, Status = ctx.Status, Kind = ctx.Kind, Tags = ctx.Tags, Category = ctx.Category, Categories = ctx.Categories, Content = ctx.Content, ContentPreview = ctx.ContentPreview, __root = ctx %}
+{% with PostID = ctx.PostID, Filename = ctx.Filename, CreatedAtUnix = ctx.CreatedAtUnix, Title = ctx.Title, Slug = ctx.Slug, CreatedAt = ctx.CreatedAt, Status = ctx.Status, Kind = ctx.Kind, Tags = ctx.Tags, Category = ctx.Category, Categories = ctx.Categories, Content = ctx.Content, ContentPreview = ctx.ContentPreview %}
 {% include "/admin/includes/import_edit_row" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro markdown_preview(ctx) %}
-{% with Placeholder = ctx.Placeholder, Value = ctx.Value, Required = ctx.Required, __root = ctx %}
+{% with Placeholder = ctx.Placeholder, Value = ctx.Value, Required = ctx.Required %}
 {% include "/admin/includes/markdown_preview" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro menu(ctx) %}
-{% with RouteName = ctx.RouteName, __root = ctx %}
+{% with Req = ctx.Req %}
 {% include "/admin/includes/menu" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro pagination(ctx) %}
-{% with Pager = ctx.Pager, KindQuery = ctx.KindQuery, ProviderFilter = ctx.ProviderFilter, SearchQueryEscaped = ctx.SearchQueryEscaped, FilterTagIDStr = ctx.FilterTagIDStr, FilterCategoryIDStr = ctx.FilterCategoryIDStr, StatusFilter = ctx.StatusFilter, __root = ctx %}
+{% with Pager = ctx.Pager, Req = ctx.Req %}
 {% include "/admin/includes/pagination" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro post_search(ctx) %}
-{% with KindQuery = ctx.KindQuery, FilterTagIDStr = ctx.FilterTagIDStr, FilterCategoryIDStr = ctx.FilterCategoryIDStr, SearchQuery = ctx.SearchQuery, __root = ctx %}
+{% with KindQuery = ctx.KindQuery, FilterTagIDStr = ctx.FilterTagIDStr, FilterCategoryIDStr = ctx.FilterCategoryIDStr, SearchQuery = ctx.SearchQuery %}
 {% include "/admin/includes/post_search" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro table_empty(ctx) %}
-{% with ColSpan = ctx.ColSpan, Message = ctx.Message, __root = ctx %}
+{% with ColSpan = ctx.ColSpan, Message = ctx.Message %}
 {% include "/admin/includes/table_empty" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro table_row_actions(ctx) %}
-{% with EditRoute = ctx.EditRoute, DeleteRoute = ctx.DeleteRoute, ID = ctx.ID, __root = ctx %}
+{% with EditRoute = ctx.EditRoute, DeleteRoute = ctx.DeleteRoute, ID = ctx.ID %}
 {% include "/admin/includes/table_row_actions" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro tag_item(ctx) %}
-{% with Tag = ctx.Tag, KindQuery = ctx.KindQuery, SearchQueryEscaped = ctx.SearchQueryEscaped, FilterCategoryIDStr = ctx.FilterCategoryIDStr, Label = ctx.Label, RemoveHref = ctx.RemoveHref, __root = ctx %}
+{% with Tag = ctx.Tag, KindQuery = ctx.KindQuery, SearchQueryEscaped = ctx.SearchQueryEscaped, FilterCategoryIDStr = ctx.FilterCategoryIDStr, Label = ctx.Label, RemoveHref = ctx.RemoveHref %}
 {% include "/admin/includes/tag_item" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro tag_select(ctx) %}
-{% with SelectedTagNames = ctx.SelectedTagNames, __root = ctx %}
+{% with SelectedTagNames = ctx.SelectedTagNames %}
 {% include "/admin/includes/tag_select" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro toggle(ctx) %}
-{% with DataLabels = ctx.DataLabels, DataOnValue = ctx.DataOnValue, DataOffValue = ctx.DataOffValue, ID = ctx.ID, Checked = ctx.Checked, ReadOnly = ctx.ReadOnly, Name = ctx.Name, __root = ctx %}
+{% with DataLabels = ctx.DataLabels, DataOnValue = ctx.DataOnValue, DataOffValue = ctx.DataOffValue, ID = ctx.ID, Checked = ctx.Checked, ReadOnly = ctx.ReadOnly, Name = ctx.Name %}
 {% include "/admin/includes/toggle" %}
 {% endwith %}
 {% endmacro %}
 
 {% macro lucide_icon(ctx) %}
-{% with name = ctx.name, size = ctx.size, __root = ctx %}
+{% with name = ctx.name, size = ctx.size %}
 {% include "/lucide_icon" %}
 {% endwith %}
 {% endmacro %}

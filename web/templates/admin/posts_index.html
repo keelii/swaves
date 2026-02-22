@@ -26,10 +26,10 @@
   <tr>
     <th>ID</th>
     <th>标题</th>
-    <th>URL标识</th>
-    <th>标签</th>
+    <th class="cell-slug">URL标识</th>
+    <th class="cell-tag">标签</th>
     <th>分类</th>
-    <th class="cell-6">状态</th>
+    <th class="cell-6 ceil-wsn">状态</th>
     <th class="cell-4">UV</th>
     <th class="cell-6">创建时间</th>
     <th class="cell-6">更新时间</th>
@@ -41,24 +41,24 @@
   {% for postWithRelation in Posts %}
   <tr>
     <td class="cell-4">{{ postWithRelation.Post.ID }}</td>
-    <td>{% if __root.SearchQuery %}{{ highlight(postWithRelation.Post.Title, __root.SearchQuery) }}{% else %}{{ postWithRelation.Post.Title }}{% endif %}</td>
+    <td>{% if SearchQuery %}{{ highlight(postWithRelation.Post.Title, SearchQuery) }}{% else %}{{ postWithRelation.Post.Title }}{% endif %}</td>
     <td>
         {% if ((postWithRelation.Post.Status == "published")) %}
-          <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{% if __root.SearchQuery %}{{ highlight(postWithRelation.Post.Slug, __root.SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}</a>
+          <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{% if SearchQuery %}{{ highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}</a>
         {% else %}
-          {% if __root.SearchQuery %}{{ highlight(postWithRelation.Post.Slug, __root.SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}
+          {% if SearchQuery %}{{ highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}
         {% endif %}
     </td>
     <td>
       {% if postWithRelation.Tags %}
-        {% for tag in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ url_for("admin.posts.list") }}?kind={{ __root.KindQuery }}{% if __root.SearchQueryEscaped %}&q={{ __root.SearchQueryEscaped }}{% endif %}{% if __root.FilterCategoryIDStr %}&category={{ __root.FilterCategoryIDStr }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>{% endfor %}
+        {% for tag in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ url_for("admin.posts.list") }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>{% endfor %}
       {% else %}
         <span>-</span>
       {% endif %}
     </td>
     <td>
       {% if postWithRelation.Category %}
-        <a href="{{ url_for("admin.posts.list") }}?kind={{ __root.KindQuery }}{% if __root.SearchQueryEscaped %}&q={{ __root.SearchQueryEscaped }}{% endif %}{% if __root.FilterTagIDStr %}&tag={{ __root.FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
+        <a href="{{ url_for("admin.posts.list") }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
       {% else %}
         <span>-</span>
       {% endif %}
@@ -85,7 +85,7 @@
   <tfoot>
   <tr>
     <td colspan="10">
-      {{ ui.pagination(__root) }}
+      {{ ui.pagination(dict("Pager", Pager, "Req", Req)) }}
     </td>
   </tr>
   </tfoot>

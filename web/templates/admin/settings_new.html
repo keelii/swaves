@@ -78,7 +78,7 @@
           <select name="default_option_value" id="default_option_value">
             <option value="">顶级分类</option>
             {% for option in OptionsParsed %}
-              <option value="{{ option.value }}" {% if ((__root.DefaultOptionValue == option.value)) %}selected{% endif %}>{{ option.label }}</option>
+              <option value="{{ option.value }}" {% if (((DefaultOptionValue|default("")) == option.value)) %}selected{% endif %}>{{ option.label }}</option>
             {% endfor %}
           </select>
           <small>（从上方选项中选择默认值；选项变更后会自动更新）</small>
