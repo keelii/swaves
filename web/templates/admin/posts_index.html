@@ -28,7 +28,6 @@
   <tr>
     <th class="cell-4">ID</th>
     <th>标题</th>
-    <th>URL标识</th>
     <th class="cell-9">标签</th>
     <th class="cell-8">分类</th>
     <th class="cell-6">状态</th>
@@ -43,12 +42,12 @@
   {% for postWithRelation in Posts %}
   <tr>
     <td class="cell-4">{{ postWithRelation.Post.ID }}</td>
-    <td>{% if SearchQuery %}{{ highlight(postWithRelation.Post.Title, SearchQuery) }}{% else %}{{ postWithRelation.Post.Title }}{% endif %}</td>
     <td>
-        {% if postWithRelation.Post.Status == "published" %}
-          <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{% if SearchQuery %}{{ highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}</a>
-        {% else %}
-          {% if SearchQuery %}{{ highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}
+      {% if SearchQuery %}{{ highlight(postWithRelation.Post.Title, SearchQuery) }}{% else %}{{ postWithRelation.Post.Title }}{% endif %}
+      {% if postWithRelation.Post.Status == "published" %}
+        <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener" class="inline-flex" style="margin-left: 6px;" title="{{ postWithRelation.Post.Slug }}" aria-label="打开文章链接">
+          {{ lucide_icon("link", 14) }}
+        </a>
         {% endif %}
     </td>
     <td>
@@ -80,13 +79,13 @@
     {{ ui.table_row_actions("admin.posts.edit", "admin.posts.delete", postWithRelation.Post.ID) }}
   </tr>
   {% else %}
-  {{ ui.table_empty(10, "暂无文章") }}
+  {{ ui.table_empty(9, "暂无文章") }}
   {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
-    <td colspan="10">
+    <td colspan="9">
       {% with Pager = Pager %}{% include "admin/include/pagination.html" %}{% endwith %}
     </td>
   </tr>
