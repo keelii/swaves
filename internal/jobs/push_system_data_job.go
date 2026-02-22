@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"swaves/internal/media"
 	"swaves/internal/store"
 	"time"
@@ -57,7 +57,7 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 	}
 	defer func() {
 		if removeErr := os.RemoveAll(tmpDir); removeErr != nil {
-			log.Printf("[task] remote_backup_data cleanup tmp dir failed: %v", removeErr)
+			logger.Warn("[task] remote_backup_data cleanup tmp dir failed: %v", removeErr)
 		}
 	}()
 
@@ -94,10 +94,10 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 			return nil, errors.New("s3 region is empty")
 		}
 		if cfg.S3AccessKey == "" {
-			log.Printf("[task] remote_backup_data missing setting: s3_access_key_id")
+			logger.Warn("[task] remote_backup_data missing setting: s3_access_key_id")
 		}
 		if cfg.S3SecretKey == "" {
-			log.Printf("[task] remote_backup_data missing setting: s3_secret_access_key")
+			logger.Warn("[task] remote_backup_data missing setting: s3_secret_access_key")
 		}
 
 		uploadResponse, uploadStatus, uploadErr := uploadSnapshotToS3(cfg, reg.Config.AppName, snapshot, objectKey)
@@ -343,7 +343,7 @@ func loadPushJobConfig() pushJobConfig {
 		s3Endpoint, endpointBucket, endpointForcePath, parseErr = splitS3EndpointBucket(rawS3Endpoint)
 	}
 	if parseErr != nil {
-		log.Printf("[task] push_system_data invalid endpoint: %v", parseErr)
+		logger.Warn("[task] push_system_data invalid endpoint: %v", parseErr)
 	}
 
 	if s3Bucket == "" {

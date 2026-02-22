@@ -3,13 +3,13 @@ package site
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"swaves/helper"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"swaves/internal/middleware"
 	"swaves/internal/pathutil"
 	"swaves/internal/share"
@@ -47,14 +47,14 @@ func (h Handler) trackEntityUV(c fiber.Ctx, entityType db.UVEntityType, entityID
 	}
 
 	if _, err := db.UpsertUVUnique(h.Model, entityType, entityID, visitorID); err != nil {
-		log.Printf("track entity uv failed: %v", err)
+		logger.Warn("track entity uv failed: %v", err)
 	}
 }
 
 func (h Handler) getEntityUVCount(entityType db.UVEntityType, entityID int64) int {
 	count, err := db.CountUVUnique(h.Model, entityType, entityID)
 	if err != nil {
-		log.Printf("count entity uv failed: %v", err)
+		logger.Warn("count entity uv failed: %v", err)
 		return 0
 	}
 	return count
@@ -63,7 +63,7 @@ func (h Handler) getEntityUVCount(entityType db.UVEntityType, entityID int64) in
 func (h Handler) getPostLikeState(c fiber.Ctx, postID int64) (int, bool) {
 	likeCount, err := db.CountEntityLikes(h.Model, postID)
 	if err != nil {
-		log.Printf("count entity like failed: %v", err)
+		logger.Warn("count entity like failed: %v", err)
 		return 0, false
 	}
 
@@ -74,7 +74,7 @@ func (h Handler) getPostLikeState(c fiber.Ctx, postID int64) (int, bool) {
 
 	liked, err := db.IsEntityLikedByVisitor(h.Model, postID, visitorID)
 	if err != nil {
-		log.Printf("check entity like failed: %v", err)
+		logger.Warn("check entity like failed: %v", err)
 		return likeCount, false
 	}
 
@@ -240,7 +240,7 @@ func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error
 
 	//// 注入 Locals
 	//c.Context().VisitUserValues(func(k []byte, v interface{}) {
-	//	//log.Println("Injecting local:", string(k))
+	//	//logger.Error("Injecting local:", string(k))
 	//	data[string(k)] = v
 	//})
 

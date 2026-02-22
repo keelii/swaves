@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"log"
 	"strings"
+	"swaves/internal/logger"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -16,7 +16,7 @@ const (
 func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
 	granularity, err := resolveMonitorGranularity(c.Query("granularity", ""))
 	if err != nil {
-		log.Printf("[monitor] invalid granularity on page: raw=%s err=%v", c.Query("granularity", ""), err)
+		logger.Warn("[monitor] invalid granularity on page: raw=%s err=%v", c.Query("granularity", ""), err)
 		granularity = monitorGranularityConfigs[0]
 	}
 	scope := resolveMonitorScope(c.Query("scope", ""))
@@ -32,14 +32,14 @@ func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
 func (h *Handler) GetMetricsAPIHandler(c fiber.Ctx) error {
 	point, ok, err := h.Monitor.LatestPoint()
 	if err != nil {
-		log.Printf("[monitor] metrics api failed: err=%v", err)
+		logger.Error("[monitor] metrics api failed: err=%v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "读取监控数据失败",
 			"ok":    false,
 		})
 	}
 	if !ok {
-		log.Printf("[monitor] metrics api unavailable: no sample yet")
+		logger.Warn("[monitor] metrics api unavailable: no sample yet")
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
 			"error": "监控数据尚未就绪",
 			"ok":    false,
@@ -57,7 +57,7 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 	granularityRaw := c.Query("granularity", "")
 	granularity, err := resolveMonitorGranularity(granularityRaw)
 	if err != nil {
-		log.Printf("[monitor] monitor api invalid granularity: raw=%s err=%v", granularityRaw, err)
+		logger.Warn("[monitor] monitor api invalid granularity: raw=%s err=%v", granularityRaw, err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 			"ok":    false,
@@ -67,7 +67,7 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 
 	aggregated, latest, err := h.Monitor.Aggregated(time.Now(), granularity)
 	if err != nil {
-		log.Printf("[monitor] aggregate failed: granularity=%s err=%v", granularity.Key, err)
+		logger.Error("[monitor] aggregate failed: granularity=%s err=%v", granularity.Key, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "聚合监控数据失败",
 			"ok":    false,
@@ -81,7 +81,7 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 		}
 		chartSVG, buildErr := buildMonitorMetricChartSVG(aggregated, metric, granularity)
 		if buildErr != nil {
-			log.Printf("[monitor] build chart failed: granularity=%s metric=%s err=%v", granularity.Key, metric.Key, buildErr)
+			logger.Error("[monitor] build chart failed: granularity=%s metric=%s err=%v", granularity.Key, metric.Key, buildErr)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "生成图表失败",
 				"ok":    false,
@@ -125,7 +125,7 @@ func resolveMonitorScope(raw string) string {
 	case monitorScopeSystem:
 		return monitorScopeSystem
 	default:
-		log.Printf("[monitor] invalid scope on page: raw=%s", raw)
+		logger.Warn("[monitor] invalid scope on page: raw=%s", raw)
 		return monitorScopeApp
 	}
 }

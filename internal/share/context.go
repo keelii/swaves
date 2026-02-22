@@ -1,11 +1,11 @@
 package share
 
 import (
-	"log"
 	"strconv"
 	"strings"
 	"swaves/helper"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"swaves/internal/pathutil"
 	"swaves/internal/store"
 	"sync"
@@ -25,7 +25,7 @@ func NewURLForStore() *URLForStore {
 
 func (s *URLForStore) SetResolver(resolver URLForResolver) {
 	if s == nil {
-		log.Printf("[url_for] skip set resolver: store is nil")
+		logger.Warn("[url_for] skip set resolver: store is nil")
 		return
 	}
 	s.mu.Lock()
@@ -36,12 +36,12 @@ func (s *URLForStore) SetResolver(resolver URLForResolver) {
 func (s *URLForStore) URLFor(name string, params map[string]string, query map[string]string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		log.Printf("[url_for] skip resolve: empty route name")
+		logger.Warn("[url_for] skip resolve: empty route name")
 		return ""
 	}
 
 	if s == nil {
-		log.Printf("[url_for] skip resolve: store is nil (name=%s)", name)
+		logger.Warn("[url_for] skip resolve: store is nil (name=%s)", name)
 		return ""
 	}
 
@@ -49,13 +49,13 @@ func (s *URLForStore) URLFor(name string, params map[string]string, query map[st
 	resolver := s.resolver
 	s.mu.RUnlock()
 	if resolver == nil {
-		log.Printf("[url_for] skip resolve: resolver is nil (name=%s)", name)
+		logger.Warn("[url_for] skip resolve: resolver is nil (name=%s)", name)
 		return ""
 	}
 
 	resolved, err := resolver(name, params, query)
 	if err != nil {
-		log.Printf("[url_for] resolve failed: name=%s err=%v", name, err)
+		logger.Error("[url_for] resolve failed: name=%s err=%v", name, err)
 		return ""
 	}
 	return resolved

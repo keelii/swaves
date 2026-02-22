@@ -1,10 +1,10 @@
 package store
 
 import (
-	"log"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"sync/atomic"
 )
 
@@ -12,7 +12,7 @@ var Settings atomic.Value
 
 func InitSettings(gStore *GlobalStore) {
 	if err := ReloadSettings(gStore); err != nil {
-		log.Fatal("initial settings load failed:", err)
+		logger.Fatal("initial settings load failed: %v", err)
 	}
 
 	// 只注册一次回调
@@ -26,7 +26,7 @@ func InitSettings(gStore *GlobalStore) {
 		}
 
 		if err := ReloadSettings(gStore); err != nil {
-			log.Println("reload settings failed:", err)
+			logger.Error("reload settings failed: %v", err)
 		}
 	}
 }
@@ -34,24 +34,24 @@ func InitSettings(gStore *GlobalStore) {
 func ReloadSettings(gStore *GlobalStore) error {
 	m, err := db.LoadSettingsToMap(gStore.Model)
 	if err != nil {
-		log.Println("Error loading settings: ", err)
+		logger.Error("error loading settings: %v", err)
 		return err
 	}
 
 	Settings.Store(m)
-	log.Printf("Settings loaded successfully [%d]\n", len(m))
+	logger.Info("settings loaded successfully: count=%d", len(m))
 	return nil
 }
 
 func GetSetting(code string) string {
 	s, ok := Settings.Load().(map[string]string)
 	if !ok {
-		log.Println("Error converting Settings to map[string]string")
+		logger.Error("error converting settings to map[string]string")
 		return ""
 	}
 	val, exists := s[code]
 	if !exists {
-		log.Println("No settings found for code:", code)
+		logger.Warn("no settings found for code: %s", code)
 	}
 	return val
 }
@@ -80,7 +80,7 @@ func GetSettingInt(code string, defaultValue int) int {
 
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
-		log.Printf("parse int setting %s=%q failed: %v", code, value, err)
+		logger.Warn("parse int setting %s=%q failed: %v", code, value, err)
 		return defaultValue
 	}
 	return parsed

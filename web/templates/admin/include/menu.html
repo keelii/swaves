@@ -14,7 +14,7 @@
         <a href="{{ url_for('admin.posts.list') }}">文章列表</a>
       </li>
       <li class="submenu-item{% if url_is(Req.RouteName, "admin.media.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.media.list') }}">媒体库</a>
+        <a href="{{ url_for('admin.media.list', kind='image') }}">媒体库</a>
       </li>
       <li class="submenu-item{% if url_is(Req.RouteName, "admin.comments.list") %} active{% endif %}">
         <a href="{{ url_for('admin.comments.list') }}">评论管理</a>

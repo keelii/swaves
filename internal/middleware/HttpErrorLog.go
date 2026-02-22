@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"log"
 	"strings"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -61,7 +61,7 @@ func HttpErrorLog(dbx *db.DB) fiber.Handler {
 		}
 
 		if _, createErr := db.CreateHttpErrorLog(dbx, logItem); createErr != nil {
-			log.Printf("http error log create failed: %v", createErr)
+			logger.Error("http error log create failed: %v", createErr)
 		}
 
 		return err

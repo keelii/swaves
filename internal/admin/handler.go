@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"swaves/helper"
 	"swaves/internal/db"
 	job "swaves/internal/jobs"
+	"swaves/internal/logger"
 	"swaves/internal/middleware"
 	"swaves/internal/share"
 	"swaves/internal/store"
@@ -417,14 +417,14 @@ func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 
 func (h *Handler) adminRouteURL(name string, params map[string]string, query map[string]string) string {
 	if h.URLFor == nil {
-		log.Printf("[admin] route resolve failed: resolver is nil name=%s params=%v query=%v", name, params, query)
+		logger.Warn("[admin] route resolve failed: resolver is nil name=%s params=%v query=%v", name, params, query)
 		return ""
 	}
 	path := h.URLFor(name, params, query)
 	if path != "" {
 		return path
 	}
-	log.Printf("[admin] route resolve failed: name=%s params=%v query=%v", name, params, query)
+	logger.Warn("[admin] route resolve failed: name=%s params=%v query=%v", name, params, query)
 	return ""
 }
 
@@ -1560,7 +1560,7 @@ func buildSettingView(s db.Setting) SettingView {
 		if err == nil {
 			view.OptionsParsed = options
 		} else {
-			log.Println("Error parsing options for setting", s.Options, err)
+			logger.Warn("Error parsing options for setting %s: %v", s.Options, err)
 		}
 	}
 
@@ -1581,7 +1581,7 @@ func buildSettingView(s db.Setting) SettingView {
 		if err == nil {
 			view.AttrsParsed = attrs
 		} else {
-			log.Println("Error parsing attrs for setting", s.Attrs, err)
+			logger.Warn("Error parsing attrs for setting %s: %v", s.Attrs, err)
 		}
 	}
 
@@ -1766,7 +1766,7 @@ func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {
 		if err == nil {
 			view.OptionsParsed = options
 		} else {
-			log.Println("Error parsing options for setting", setting.Options, err)
+			logger.Warn("Error parsing options for setting %s: %v", setting.Options, err)
 		}
 	}
 
@@ -1778,7 +1778,7 @@ func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {
 		if err == nil {
 			view.AttrsParsed = attrs
 		} else {
-			log.Println("Error parsing attrs for setting", setting.Attrs, err)
+			logger.Warn("Error parsing attrs for setting %s: %v", setting.Attrs, err)
 		}
 	}
 
@@ -2510,7 +2510,7 @@ func readImportParseOptions(c fiber.Ctx) importParseOptions {
 func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 	importingItems, err := ListImportingPreviewItemsService(h.Model)
 	if err != nil {
-		log.Printf("list importing items failed: %v", err)
+		logger.Error("list importing items failed: %v", err)
 		return RenderAdminView(c, "import", fiber.Map{
 			"Title":          "Import Markdown",
 			"ImportingItems": []PreviewPostItem{},
@@ -2521,7 +2521,7 @@ func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 
 	allCategories, err := GetAllCategoriesFlat(h.Model)
 	if err != nil {
-		log.Printf("list categories for import failed: %v", err)
+		logger.Warn("list categories for import failed: %v", err)
 		allCategories = []db.Category{}
 	} else {
 		for i := range allCategories {
@@ -2688,7 +2688,7 @@ func (h *Handler) PostImportConfirmItemHandler(c fiber.Ctx) error {
 func (h *Handler) PostImportCancelHandler(c fiber.Ctx) error {
 	deletedCount, err := CancelImportingPreviewItemsService(h.Model)
 	if err != nil {
-		log.Printf("cancel importing items failed: %v", err)
+		logger.Error("cancel importing items failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": "取消导入失败: " + err.Error(),
@@ -2710,7 +2710,7 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 			statusCode = fiber.StatusRequestEntityTooLarge
 		}
 		c.Status(statusCode)
-		log.Printf("import multipart parse failed: status=%d method=%s path=%s ip=%s err=%v", statusCode, c.Method(), c.Path(), c.IP(), err)
+		logger.Warn("import multipart parse failed: status=%d method=%s path=%s ip=%s err=%v", statusCode, c.Method(), c.Path(), c.IP(), err)
 		return RenderAdminView(c, "import", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "Failed to parse form: " + err.Error(),
@@ -2930,7 +2930,7 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 生成导出文件名（包含时间戳）
 	name := strings.ToLower(c.App().Config().AppName) + "_export"
 
-	log.Println("export to:", os.TempDir(), name)
+	logger.Info("export to: tmp_dir=%s name=%s", os.TempDir(), name)
 
 	// 创建临时目录
 	tmpDir, err := os.MkdirTemp(os.TempDir(), name+"-")
@@ -2942,7 +2942,7 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	}
 	cleanupTmpDir := func() {
 		if removeErr := os.RemoveAll(tmpDir); removeErr != nil {
-			log.Printf("export cleanup temp dir failed: dir=%s err=%v", tmpDir, removeErr)
+			logger.Warn("export cleanup temp dir failed: dir=%s err=%v", tmpDir, removeErr)
 		}
 	}
 
@@ -2974,7 +2974,7 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	go func(dir string) {
 		time.Sleep(5 * time.Second) // 等待下载完成
 		if removeErr := os.RemoveAll(dir); removeErr != nil {
-			log.Printf("export cleanup temp dir failed: dir=%s err=%v", dir, removeErr)
+			logger.Warn("export cleanup temp dir failed: dir=%s err=%v", dir, removeErr)
 		}
 	}(tmpDir)
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html"
-	"log"
+	"swaves/internal/logger"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/renderer"
@@ -39,13 +39,13 @@ func (r *FigureRenderer) renderImage(w util.BufWriter, source []byte, node ast.N
 				`<figure class="fullwidth"><img src="%s" alt="%s"><figcaption>%s</figcaption>`,
 				src, alt, title)
 			if err != nil {
-				log.Println(err)
+				logger.Error("render image with caption failed: %v", err)
 				return ast.WalkStop, err
 			}
 		} else {
 			_, err := fmt.Fprintf(w, `<p><img src="%s" alt="%s"></p>`, src, alt)
 			if err != nil {
-				log.Println(err)
+				logger.Error("render image failed: %v", err)
 				return ast.WalkStop, err
 			}
 		}

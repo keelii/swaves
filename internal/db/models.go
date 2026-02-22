@@ -8,11 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"swaves/internal/consts"
+	"swaves/internal/logger"
 	"swaves/internal/types"
 	"sync/atomic"
 	"time"
@@ -47,18 +47,18 @@ func Open(opts Options) *DB {
 
 	//sqlDB, err = sql.Open("sqlite3", opts.DSN)
 	//if err != nil {
-	//	log.Fatalf("open sqlite failed: %v", err)
+	//	logger.Fatal("open sqlite failed: %v", err)
 	//}
 	//
 	_, err = sqlDB.Exec(`PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;`)
 	if err != nil {
-		log.Fatalf("set journal_mode failed: %v", err)
+		logger.Fatal("set journal_mode failed: %v", err)
 	}
 
 	conn := &DB{DB: sqlDB}
 
 	if r2 := InitDatabase(conn); r2 != nil {
-		log.Fatalf("migrate failed: %v", r2)
+		logger.Fatal("migrate failed: %v", r2)
 	}
 
 	return conn
@@ -74,7 +74,7 @@ func InitDatabase(db *DB) error {
 	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
-		log.Fatalf("ensure default settings failed: %v", err)
+		logger.Fatal("ensure default settings failed: %v", err)
 	}
 
 	return nil
@@ -206,13 +206,13 @@ var (
 // Create 核心 Create
 func Create(db *DB, spec TableSpec, data map[string]interface{}) (int64, error) {
 	if db == nil {
-		log.Fatal("db is nil")
+		logger.Fatal("db is nil")
 	}
 	if spec.Name == "" {
-		log.Fatal("table name is empty")
+		logger.Fatal("table name is empty")
 	}
 	if len(data) == 0 {
-		log.Fatal("no data to insert")
+		logger.Fatal("no data to insert")
 	}
 
 	if spec.HasCreatedAt {
@@ -1861,7 +1861,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 
 	total, err := Count(db, specPosts, "status = ? AND kind = ?", []interface{}{"published", kind})
 	if err != nil {
-		log.Printf("[db] ListPublishedPosts Count: %v", err)
+		logger.Error("[db] ListPublishedPosts Count: %v", err)
 		return []Post{}
 	}
 	if kind == PostKindPage {
@@ -1887,7 +1887,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		return p, nil
 	})
 	if err != nil {
-		log.Printf("[db] ListPublishedPosts Read: %v", err)
+		logger.Error("[db] ListPublishedPosts Read: %v", err)
 		return []Post{}
 	}
 	res := make([]Post, len(results))
@@ -1912,7 +1912,7 @@ func ListPublishedPages(db *DB) []Post {
 		return p, nil
 	})
 	if err != nil {
-		log.Printf("[db] ListPublishedPages Read: %v", err)
+		logger.Error("[db] ListPublishedPages Read: %v", err)
 		return []Post{}
 	}
 	res := make([]Post, len(results))
@@ -4215,12 +4215,12 @@ func ErrInternalError(label string) error {
 	return fmt.Errorf("%s: %w", label, errInternalSentinel)
 }
 
-// WrapInternalErr 包装 SQL 等执行产生的 error：先 log.Printf 再返回带 label 的包装错误，便于上层区分
+// WrapInternalErr 包装 SQL 等执行产生的 error：先 logger.Error 再返回带 label 的包装错误，便于上层区分
 func WrapInternalErr(label string, err error) error {
 	if err == nil {
 		return nil
 	}
-	log.Printf("[db] %s: %v", label, err)
+	logger.Error("[db] %s: %v", label, err)
 	return fmt.Errorf("%s: %w", label, errors.Join(errInternalSentinel, err))
 }
 
@@ -4686,14 +4686,14 @@ func ExportSQLiteWithHash(db *DB, dir string) (res *ExportResult, err error) {
 
 	// 1. 确保目录存在
 	if err = os.MkdirAll(dir, 0755); err != nil {
-		log.Printf("[WARN] failed to create directory: %v", err)
+		logger.Warn("failed to create directory: %v", err)
 		return nil, errors.New("failed to create directory")
 	}
 
 	// 2. 临时文件
 	tmpFile, err := os.Create(filepath.Join(dir, "__tmp__"))
 	if err != nil {
-		log.Println("[WARN] failed to create temp file:", err)
+		logger.Warn("failed to create temp file: %v", err)
 		return nil, errors.New("failed to create temp file")
 	}
 	tmpPath := tmpFile.Name()

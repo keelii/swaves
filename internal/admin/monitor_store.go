@@ -3,11 +3,11 @@ package admin
 import (
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"runtime"
 	"strings"
+	"swaves/internal/logger"
 	"sync"
 	"time"
 
@@ -141,7 +141,7 @@ type systemMonitorCollector struct {
 func NewMonitorStore() *MonitorStore {
 	collector, err := newSystemMonitorCollector()
 	if err != nil {
-		log.Printf("[monitor] init collector failed: %v", err)
+		logger.Error("[monitor] init collector failed: %v", err)
 	}
 	return newMonitorStore(collector, monitorSampleInterval, int(monitorRetentionSeconds))
 }
@@ -165,12 +165,12 @@ func (s *MonitorStore) ensureStarted() error {
 	s.startOnce.Do(func() {
 		if s.collector == nil {
 			s.startErr = errors.New("monitor collector is nil")
-			log.Printf("[monitor] start failed: %v", s.startErr)
+			logger.Error("[monitor] start failed: %v", s.startErr)
 			return
 		}
 
 		if err := s.collectAndStore(time.Now()); err != nil {
-			log.Printf("[monitor] initial collect failed: %v", err)
+			logger.Warn("[monitor] initial collect failed: %v", err)
 		}
 
 		ticker := time.NewTicker(s.interval)
@@ -219,7 +219,7 @@ func (s *MonitorStore) handleCollectError(err error) {
 	s.lastCollectErr = errText
 	s.mu.Unlock()
 
-	log.Printf("[monitor] collect failed: %s", errText)
+	logger.Error("[monitor] collect failed: %s", errText)
 }
 
 func (s *MonitorStore) clearCollectError() {
@@ -229,7 +229,7 @@ func (s *MonitorStore) clearCollectError() {
 	s.mu.Unlock()
 
 	if hadError {
-		log.Printf("[monitor] collect recovered")
+		logger.Info("[monitor] collect recovered")
 	}
 }
 

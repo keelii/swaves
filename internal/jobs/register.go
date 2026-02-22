@@ -2,8 +2,8 @@ package job
 
 import (
 	"fmt"
-	"log"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"swaves/internal/store"
 	"swaves/internal/types"
 	"sync"
@@ -42,11 +42,11 @@ type JobItem struct {
 // 初始化 Registry
 func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 	if gStore == nil || gStore.Model == nil {
-		log.Printf("[task] init registry skipped: global store/model is nil")
+		logger.Warn("[task] init registry skipped: global store/model is nil")
 		return
 	}
 	if !registryInitStarted.CompareAndSwap(false, true) {
-		log.Printf("[task] init registry skipped: already initialized")
+		logger.Info("[task] init registry skipped: already initialized")
 		return
 	}
 
@@ -88,7 +88,7 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 
 	tasks, err := db.ListTasks(gStore.Model)
 	if err != nil {
-		log.Printf("[task] fetch tasks failed: %v", err)
+		logger.Error("[task] fetch tasks failed: %v", err)
 	}
 	c := cron.New()
 	reg.cron = c
@@ -99,20 +99,20 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 			continue
 		}
 		if _, ok := reg.jobs[t.Code]; !ok {
-			log.Printf("[task] skip unregistered task code: %s", t.Code)
+			logger.Warn("[task] skip unregistered task code: %s", t.Code)
 			continue
 		}
 
-		log.Printf("add cron job<%s>: %s", t.Schedule, t.Code)
+		logger.Info("add cron job<%s>: %s", t.Schedule, t.Code)
 		_, err = c.AddFunc(t.Schedule, func() {
 			ExecuteTask(gStore.Model, t)
 		})
 		if err != nil {
-			log.Printf("[task] add cron failed code=%s schedule=%s: %v", t.Code, t.Schedule, err)
+			logger.Error("[task] add cron failed code=%s schedule=%s: %v", t.Code, t.Schedule, err)
 		}
 	}
 	c.Start()
-	log.Printf("[task] registry initialized")
+	logger.Info("[task] registry initialized")
 }
 
 func ExecuteTask(dbx *db.DB, t db.Task) {
@@ -120,7 +120,7 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	reg := registry
 	registryMu.RUnlock()
 	if reg == nil {
-		log.Printf("[task] registry not initialized for task: %s", t.Code)
+		logger.Warn("[task] registry not initialized for task: %s", t.Code)
 		return
 	}
 
@@ -128,9 +128,9 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	jobItem, ok := reg.jobs[t.Code]
 	if !ok {
 		err := fmt.Errorf("job not registered: %s", t.Code)
-		log.Printf("[task] %v", err)
+		logger.Error("[task] %v", err)
 		if updateErr := db.UpdateTaskStatus(dbx, t.Code, "error", startAt.Unix()); updateErr != nil {
-			log.Printf("[task] update task status failed code=%s status=error: %v", t.Code, updateErr)
+			logger.Error("[task] update task status failed code=%s status=error: %v", t.Code, updateErr)
 		}
 		if t.Kind == db.TaskUser {
 			if _, createErr := db.CreateTaskRun(dbx, &db.TaskRun{
@@ -141,7 +141,7 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 				FinishedAt: time.Now().Unix(),
 				Duration:   int64(time.Since(startAt).Milliseconds()),
 			}); createErr != nil {
-				log.Printf("[task] create task run failed code=%s status=error: %v", t.Code, createErr)
+				logger.Error("[task] create task run failed code=%s status=error: %v", t.Code, createErr)
 			}
 		}
 		return
@@ -149,7 +149,7 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 
 	retPtr, err := jobItem.Func(reg)
 	if err == nil && retPtr == nil {
-		log.Printf("[task] execute job %s no-op", t.Code)
+		logger.Info("[task] execute job %s no-op", t.Code)
 		return
 	}
 
@@ -161,12 +161,12 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	status := "success"
 	if err != nil {
 		status = "error"
-		log.Printf("[task] execute job %s failed: %v", t.Code, err)
+		logger.Error("[task] execute job %s failed: %v", t.Code, err)
 	} else {
-		log.Printf("[task] execute job %s success: %s", t.Code, ret)
+		logger.Info("[task] execute job %s success: %s", t.Code, ret)
 	}
 	if updateErr := db.UpdateTaskStatus(dbx, t.Code, status, startAt.Unix()); updateErr != nil {
-		log.Printf("[task] update task status failed code=%s status=%s: %v", t.Code, status, updateErr)
+		logger.Error("[task] update task status failed code=%s status=%s: %v", t.Code, status, updateErr)
 	}
 
 	if t.Kind == db.TaskInternal {
@@ -187,7 +187,7 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	}
 
 	if _, createErr := db.CreateTaskRun(dbx, taskRun); createErr != nil {
-		log.Printf("[task] create task run failed code=%s status=%s: %v", t.Code, status, createErr)
+		logger.Error("[task] create task run failed code=%s status=%s: %v", t.Code, status, createErr)
 		return
 	}
 }
@@ -211,7 +211,7 @@ func DestroyRegistry() {
 	registry = nil
 	registryMu.Unlock()
 	if reg == nil {
-		log.Printf("[task] destroy registry skipped: registry is nil")
+		logger.Info("[task] destroy registry skipped: registry is nil")
 		registryInitStarted.Store(false)
 		return
 	}
@@ -221,7 +221,7 @@ func DestroyRegistry() {
 		<-stopCtx.Done()
 	}
 	registryInitStarted.Store(false)
-	log.Printf("[task] registry destroyed")
+	logger.Info("[task] registry destroyed")
 }
 
 func ensureBuiltinTask(dbx *db.DB, task db.Task) {
@@ -230,11 +230,11 @@ func ensureBuiltinTask(dbx *db.DB, task db.Task) {
 		return
 	}
 	if !db.IsErrNotFound(err) {
-		log.Printf("[task] ensure builtin task %s failed: %v", task.Code, err)
+		logger.Error("[task] ensure builtin task %s failed: %v", task.Code, err)
 		return
 	}
 
 	if _, err = db.CreateTask(dbx, &task); err != nil {
-		log.Printf("[task] create builtin task %s failed: %v", task.Code, err)
+		logger.Error("[task] create builtin task %s failed: %v", task.Code, err)
 	}
 }

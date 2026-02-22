@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
 	"os"
 	"os/exec"
+	"swaves/internal/logger"
 	"swaves/internal/types"
 	"time"
 
@@ -18,7 +18,7 @@ func watchParent() {
 			time.Sleep(time.Second)
 			pid := os.Getppid()
 			if pid != ppid {
-				log.Println("parent process exited, exiting worker", pid, ppid)
+				logger.Warn("parent process exited, exiting worker: pid=%d old_ppid=%d", pid, ppid)
 				os.Exit(1)
 			}
 		}
@@ -47,17 +47,21 @@ func launcher() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		log.Println("[launcher] start worker")
+		logger.Info("[launcher] start worker")
 		err := cmd.Start()
 		if err != nil {
-			log.Println("[launcher] failed to start worker:", err)
+			logger.Error("[launcher] failed to start worker: %v", err)
 			time.Sleep(time.Second)
 			continue
 		}
 
 		// 阻塞等待 worker 退出
 		err = cmd.Wait()
-		log.Println("[launcher] worker exited:", err)
+		if err != nil {
+			logger.Warn("[launcher] worker exited: %v", err)
+		} else {
+			logger.Info("[launcher] worker exited")
+		}
 
 		time.Sleep(200 * time.Millisecond)
 	}

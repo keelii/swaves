@@ -3,13 +3,13 @@ package job
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"swaves/helper"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"swaves/internal/store"
 	"time"
 )
@@ -105,7 +105,7 @@ func resolveBackupDir(dir string) string {
 	}
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Println("[backup] getwd error:", err)
+		logger.Warn("[backup] getwd error: %v", err)
 		return dir
 	}
 	return filepath.Join(wd, dir)

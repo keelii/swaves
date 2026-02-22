@@ -2,9 +2,9 @@ package md
 
 import (
 	"bytes"
-	"log"
 	"strings"
 	"swaves/helper"
+	"swaves/internal/logger"
 
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -87,7 +87,7 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 	var buf bytes.Buffer
 	context := parser.NewContext(parser.WithIDs(NewUnicodeIDs()))
 	if err := md.Convert(source, &buf, parser.WithContext(context)); err != nil {
-		log.Fatalf("md.Convert: %s", err)
+		logger.Fatal("md.Convert: %s", err)
 	}
 
 	metaData := meta.Get(context)

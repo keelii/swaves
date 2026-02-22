@@ -3,12 +3,12 @@ package admin
 import (
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"swaves/internal/media"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
@@ -31,6 +31,9 @@ var mediaKindOptions = []string{db.MediaKindImage, db.MediaKindBackup, db.MediaK
 func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	kind := normalizeMediaKind(c.Query("kind"))
+	if kind == "" {
+		kind = db.MediaKindImage
+	}
 	provider := ""
 	defaultProvider := h.defaultMediaProvider()
 	defaultProviderErr := h.validateMediaProviderConfig(defaultProvider)
@@ -38,14 +41,14 @@ func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
 
 	total, err := db.CountMedia(h.Model, kind, provider)
 	if err != nil {
-		log.Printf("[media] count media list failed: err=%v", err)
+		logger.Error("[media] count media list failed: err=%v", err)
 		return err
 	}
 	kindCounts[""] = total
 	for _, item := range mediaKindOptions {
 		count, countErr := db.CountMedia(h.Model, item, provider)
 		if countErr != nil {
-			log.Printf("[media] count media kind failed: kind=%s err=%v", item, countErr)
+			logger.Error("[media] count media kind failed: kind=%s err=%v", item, countErr)
 			return countErr
 		}
 		kindCounts[item] = count
@@ -69,7 +72,7 @@ func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
 		Offset:   offset,
 	})
 	if err != nil {
-		log.Printf("[media] list media failed: page=%d size=%d err=%v", pager.Page, pager.PageSize, err)
+		logger.Error("[media] list media failed: page=%d size=%d err=%v", pager.Page, pager.PageSize, err)
 		return err
 	}
 
@@ -94,7 +97,7 @@ func (h *Handler) GetMediaAssetsAPIHandler(c fiber.Ctx) error {
 
 	total, err := db.CountMedia(h.Model, kind, provider)
 	if err != nil {
-		log.Printf("[media] count assets failed: kind=%s provider=%s err=%v", kind, provider, err)
+		logger.Error("[media] count assets failed: kind=%s provider=%s err=%v", kind, provider, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -109,7 +112,7 @@ func (h *Handler) GetMediaAssetsAPIHandler(c fiber.Ctx) error {
 		Offset:   offset,
 	})
 	if err != nil {
-		log.Printf("[media] list assets failed: kind=%s provider=%s page=%d size=%d err=%v", kind, provider, pager.Page, pager.PageSize, err)
+		logger.Error("[media] list assets failed: kind=%s provider=%s page=%d size=%d err=%v", kind, provider, pager.Page, pager.PageSize, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -135,14 +138,14 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 
 	provider, err := h.resolveMediaProvider(providerName)
 	if err != nil {
-		log.Printf("[media] resolve provider failed: provider=%s err=%v", providerName, err)
+		logger.Warn("[media] resolve provider failed: provider=%s err=%v", providerName, err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
 	if err = h.validateMediaProviderConfig(provider.Name()); err != nil {
-		log.Printf("[media] upload blocked: provider=%s reason=%v", provider.Name(), err)
+		logger.Warn("[media] upload blocked: provider=%s reason=%v", provider.Name(), err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -197,7 +200,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 		Bytes:       content,
 	})
 	if err != nil {
-		log.Printf("[media] upload failed: provider=%s file=%s err=%v", provider.Name(), fileHeader.Filename, err)
+		logger.Error("[media] upload failed: provider=%s file=%s err=%v", provider.Name(), fileHeader.Filename, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -238,7 +241,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 				})
 			}
 		}
-		log.Printf("[media] create media record failed: provider=%s asset_id=%s name=%s err=%v", item.Provider, item.ProviderAssetID, item.OriginalName, err)
+		logger.Error("[media] create media record failed: provider=%s asset_id=%s name=%s err=%v", item.Provider, item.ProviderAssetID, item.OriginalName, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -268,7 +271,7 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 				"error": "media not found",
 			})
 		}
-		log.Printf("[media] get media by id failed: id=%d err=%v", id, err)
+		logger.Error("[media] get media by id failed: id=%d err=%v", id, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -277,14 +280,28 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 
 	provider, err := h.resolveMediaProvider(item.Provider)
 	if err != nil {
-		log.Printf("[media] resolve provider for delete failed: id=%d provider=%s err=%v", id, item.Provider, err)
+		if strings.Contains(strings.ToLower(err.Error()), "unsupported provider") {
+			logger.Warn("[media] skip provider delete for unsupported provider: id=%d provider=%s", id, item.Provider)
+			if err = db.DeleteMedia(h.Model, item.ID); err != nil {
+				logger.Error("[media] delete media record failed after unsupported provider skip: id=%d err=%v", item.ID, err)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"ok":    false,
+					"error": err.Error(),
+				})
+			}
+			return c.JSON(fiber.Map{
+				"ok":      true,
+				"warning": "provider unsupported, deleted metadata only",
+			})
+		}
+		logger.Warn("[media] resolve provider for delete failed: id=%d provider=%s err=%v", id, item.Provider, err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
 	if err = h.validateMediaProviderConfig(provider.Name()); err != nil {
-		log.Printf("[media] delete blocked by provider config: id=%d provider=%s err=%v", id, provider.Name(), err)
+		logger.Warn("[media] delete blocked by provider config: id=%d provider=%s err=%v", id, provider.Name(), err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -303,7 +320,7 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 	}
 
 	if err = provider.Delete(c.RequestCtx(), deleteKey); err != nil {
-		log.Printf("[media] provider delete failed: id=%d provider=%s delete_key=%s err=%v", id, provider.Name(), deleteKey, err)
+		logger.Error("[media] provider delete failed: id=%d provider=%s delete_key=%s err=%v", id, provider.Name(), deleteKey, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -311,7 +328,7 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 	}
 
 	if err = db.DeleteMedia(h.Model, item.ID); err != nil {
-		log.Printf("[media] delete media record failed: id=%d err=%v", item.ID, err)
+		logger.Error("[media] delete media record failed: id=%d err=%v", item.ID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),

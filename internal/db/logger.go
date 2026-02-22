@@ -2,8 +2,8 @@ package db
 
 import (
 	"context"
-	"log"
 	"strings"
+	"swaves/internal/logger"
 
 	"github.com/simukti/sqldb-logger"
 )
@@ -28,7 +28,7 @@ func (l *SqlLogger) Log(
 	sql = strings.ReplaceAll(sql, "\n", " ")
 	sql = strings.Join(strings.Fields(sql), " ")
 
-	log.Printf(
+	logger.Info(
 		"[SQL] %s | %v | %v",
 		sql,
 		args,

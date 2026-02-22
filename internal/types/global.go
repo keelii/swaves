@@ -1,9 +1,9 @@
 package types
 
 import (
-	"log"
 	"strings"
 	"swaves/internal/consts"
+	"swaves/internal/logger"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/session"
@@ -37,7 +37,7 @@ func (s *SessionStore) AcquireSession(c fiber.Ctx) (*session.Session, error) {
 	sessionID := strings.TrimSpace(c.Cookies(sessionCookieName))
 	if sessionID != "" {
 		if delErr := s.Store.Delete(c.Context(), sessionID); delErr != nil {
-			log.Println("Error deleting legacy session:", delErr)
+			logger.Warn("delete legacy session failed: %v", delErr)
 		}
 	}
 
@@ -50,13 +50,13 @@ func (s *SessionStore) SaveSession(c fiber.Ctx) bool {
 
 	sess, err = s.AcquireSession(c)
 	if err != nil {
-		log.Println("Error getting session:", err)
+		logger.Error("get session failed: %v", err)
 		return false
 	}
 	defer sess.Release()
 
 	if err = sess.Regenerate(); err != nil {
-		log.Println("Session regenerate error:", err)
+		logger.Error("session regenerate failed: %v", err)
 		return false
 	}
 
@@ -64,10 +64,10 @@ func (s *SessionStore) SaveSession(c fiber.Ctx) bool {
 	sess.SetIdleTimeout(consts.LoginSessionExpire)
 
 	if err = sess.Save(); err != nil {
-		log.Println("Session save error:", err)
+		logger.Error("session save failed: %v", err)
 		return false
 	}
-	log.Println("Session saved.")
+	logger.Info("session saved")
 	return true
 }
 
@@ -76,27 +76,27 @@ func (s *SessionStore) ClearSession(c fiber.Ctx) bool {
 	var sess *session.Session
 	sess, err = s.AcquireSession(c)
 	if err != nil {
-		log.Println("Error getting session:", err)
+		logger.Error("get session failed: %v", err)
 		return false
 	}
 	defer sess.Release()
 	if err = sess.Destroy(); err != nil {
-		log.Println("Error destroying session:", err)
+		logger.Error("destroy session failed: %v", err)
 		return false
 	}
-	log.Println("Session cleared")
+	logger.Info("session cleared")
 	return true
 }
 
 func (s *SessionStore) IsLogin(c fiber.Ctx) bool {
 	sess, err := s.AcquireSession(c)
 	if err != nil {
-		log.Println("Error getting session:", err)
+		logger.Error("get session failed: %v", err)
 		return false
 	}
 	defer sess.Release()
 	isLogin := sess.Get(consts.LoginAdminName)
-	//log.Println("isLogin:", isLogin)
+	//logger.Error("isLogin:", isLogin)
 	return isLogin == true
 }
 

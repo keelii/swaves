@@ -97,9 +97,8 @@
 {% set mediaProviderLabelMap = MediaProviderLabelMap|default(dict()) %}
 {% set mediaKindLabelMap = MediaKindLabelMap|default(dict()) %}
 {% set kindCounts = KindCounts|default(dict()) %}
-{% set currentKind = CurrentKind|default("") %}
+{% set currentKind = CurrentKind|default("image") %}
 {% set pageSizeQuery = Req.Query["pageSize"] | default("") %}
-{% set allCount = kindCounts[""] | default(0) %}
 {% set imageCount = kindCounts["image"] | default(0) %}
 {% set fileCount = kindCounts["file"] | default(0) %}
 {% set backupCount = kindCounts["backup"] | default(0) %}
@@ -123,7 +122,6 @@
 
 <div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
   <nav role="tablist" aria-label="媒体类型">
-    <a role="tab" aria-selected="{% if currentKind == "" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list') }}{% if pageSizeQuery %}?pageSize={{ pageSizeQuery }}{% endif %}">全部 ({{ allCount }})</a>
     <a role="tab" aria-selected="{% if currentKind == "image" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='image') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["image"] | default("图片") }} ({{ imageCount }})</a>
     <a role="tab" aria-selected="{% if currentKind == "file" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='file') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["file"] | default("文件") }} ({{ fileCount }})</a>
     <a role="tab" aria-selected="{% if currentKind == "backup" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='backup') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["backup"] | default("备份") }} ({{ backupCount }})</a>
@@ -171,16 +169,18 @@
               >
                 {{ lucide_icon("link-2", 16) }}
               </button>
-              <button
-                type="button"
-                class="row-action-btn media-copy-markdown"
-                data-url="{{ mediaItem.file_url }}"
-                data-name="{{ mediaItem.original_name }}"
-                aria-label="复制 Markdown 代码"
-                data-title="复制 Markdown 代码"
-              >
-                {{ lucide_icon("link-2", 16) }}
-              </button>
+              {% if mediaItem.kind == "image" %}
+                <button
+                  type="button"
+                  class="row-action-btn media-copy-markdown"
+                  data-url="{{ mediaItem.file_url }}"
+                  data-name="{{ mediaItem.original_name }}"
+                  aria-label="复制 Markdown 代码"
+                  data-title="复制 Markdown 代码"
+                >
+                  {{ lucide_icon("link-2", 16) }}
+                </button>
+              {% endif %}
             {% endif %}
             <button
               type="button"

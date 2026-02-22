@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log"
 	"swaves/internal/admin"
 	"swaves/internal/api"
 	"swaves/internal/consts"
 	"swaves/internal/db"
 	"swaves/internal/jobs"
+	"swaves/internal/logger"
 	"swaves/internal/middleware"
 	"swaves/internal/site"
 	"swaves/internal/store"
@@ -51,7 +51,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 				msg = err.Error()
 			}
 
-			log.Println("[ERROR]HTTP:", code, msg, c.Path())
+			logger.Error("[http] code=%d msg=%s path=%s", code, msg, c.Path())
 			return c.Status(code).SendString(msg)
 		},
 	})
@@ -95,8 +95,10 @@ func NewApp(config types.AppConfig) SwavesApp {
 }
 
 func (swv *SwavesApp) Listen(opts fiber.ListenConfig) {
-	log.Println(swv.Config.AppName + " listening on " + swv.Config.ListenAddr)
-	log.Fatal(swv.App.Listen(swv.Config.ListenAddr, opts))
+	logger.Info("%s listening on %s", swv.Config.AppName, swv.Config.ListenAddr)
+	if err := swv.App.Listen(swv.Config.ListenAddr, opts); err != nil {
+		logger.Fatal("%v", err)
+	}
 }
 
 func (swv *SwavesApp) Shutdown() {

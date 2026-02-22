@@ -5,12 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"swaves/internal/consts"
+	"swaves/internal/logger"
 
 	"github.com/gosimple/slug"
 	"golang.org/x/net/html"
@@ -37,7 +37,7 @@ var (
 func FlattenTOC(input string, listType string, attrKey string) string {
 	doc, err := html.Parse(strings.NewReader(input))
 	if err != nil {
-		log.Println("解析 HTML 失败:", err)
+		logger.Warn("解析 HTML 失败: %v", err)
 		return input
 	}
 
@@ -61,7 +61,7 @@ func FlattenTOC(input string, listType string, attrKey string) string {
 
 	var buf strings.Builder
 	if err = html.Render(&buf, doc); err != nil {
-		log.Println("渲染 HTML 失败:", err)
+		logger.Warn("渲染 HTML 失败: %v", err)
 		return input
 	}
 	return buf.String()
