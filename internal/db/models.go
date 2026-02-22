@@ -3734,12 +3734,12 @@ func LoadSettingsToMap(db *DB) (map[string]string, error) {
 }
 
 const (
-	MediaKindImage  = "image"
-	MediaKindBackup = "backup"
-	MediaKindFile   = "file"
+	AssetKindImage  = "image"
+	AssetKindBackup = "backup"
+	AssetKindFile   = "file"
 )
 
-type Media struct {
+type Asset struct {
 	ID                int64  `json:"id"`
 	Kind              string `json:"kind"`
 	Provider          string `json:"provider"`
@@ -3752,32 +3752,32 @@ type Media struct {
 	CreatedAt         int64  `json:"created_at"`
 }
 
-type MediaQueryOptions struct {
+type AssetQueryOptions struct {
 	Kind     string
 	Provider string
 	Limit    int
 	Offset   int
 }
 
-func CreateMedia(db *DB, m *Media) (int64, error) {
+func CreateAsset(db *DB, m *Asset) (int64, error) {
 	if m == nil {
-		return 0, WrapInternalErr("CreateMedia", fmt.Errorf("media is nil"))
+		return 0, WrapInternalErr("CreateAsset", fmt.Errorf("asset is nil"))
 	}
 	if strings.TrimSpace(m.Kind) == "" {
-		m.Kind = MediaKindImage
+		m.Kind = AssetKindImage
 	}
 	if strings.TrimSpace(m.Provider) == "" {
-		return 0, WrapInternalErr("CreateMedia", fmt.Errorf("provider is required"))
+		return 0, WrapInternalErr("CreateAsset", fmt.Errorf("provider is required"))
 	}
 	if strings.TrimSpace(m.ProviderAssetID) == "" {
-		return 0, WrapInternalErr("CreateMedia", fmt.Errorf("provider_asset_id is required"))
+		return 0, WrapInternalErr("CreateAsset", fmt.Errorf("provider_asset_id is required"))
 	}
 	if m.CreatedAt == 0 {
 		m.CreatedAt = now()
 	}
 
 	id, err := Create(db, TableSpec{
-		Name:         TableMedia,
+		Name:         TableAssets,
 		HasDeletedAt: false,
 		HasCreatedAt: false,
 		HasUpdatedAt: false,
@@ -3793,21 +3793,21 @@ func CreateMedia(db *DB, m *Media) (int64, error) {
 		"created_at":          m.CreatedAt,
 	})
 	if err != nil {
-		return 0, WrapInternalErr("CreateMedia", err)
+		return 0, WrapInternalErr("CreateAsset", err)
 	}
 
 	m.ID = id
 	return id, nil
 }
 
-func GetMediaByID(db *DB, id int64) (*Media, error) {
+func GetAssetByID(db *DB, id int64) (*Asset, error) {
 	row := db.QueryRow(`
 		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, remark, size_bytes, created_at
-		FROM `+string(TableMedia)+`
+		FROM `+string(TableAssets)+`
 		WHERE id = ?
 	`, id)
 
-	var m Media
+	var m Asset
 	if err := row.Scan(
 		&m.ID,
 		&m.Kind,
@@ -3821,23 +3821,23 @@ func GetMediaByID(db *DB, id int64) (*Media, error) {
 		&m.CreatedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound("GetMediaByID")
+			return nil, ErrNotFound("GetAssetByID")
 		}
-		return nil, WrapInternalErr("GetMediaByID", err)
+		return nil, WrapInternalErr("GetAssetByID", err)
 	}
 
 	return &m, nil
 }
 
-func GetMediaByProviderAssetID(db *DB, provider string, providerAssetID string) (*Media, error) {
+func GetAssetByProviderAssetID(db *DB, provider string, providerAssetID string) (*Asset, error) {
 	row := db.QueryRow(`
 		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, remark, size_bytes, created_at
-		FROM `+string(TableMedia)+`
+		FROM `+string(TableAssets)+`
 		WHERE provider = ? AND provider_asset_id = ?
 		LIMIT 1
 	`, strings.TrimSpace(provider), strings.TrimSpace(providerAssetID))
 
-	var m Media
+	var m Asset
 	if err := row.Scan(
 		&m.ID,
 		&m.Kind,
@@ -3851,40 +3851,40 @@ func GetMediaByProviderAssetID(db *DB, provider string, providerAssetID string) 
 		&m.CreatedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound("GetMediaByProviderAssetID")
+			return nil, ErrNotFound("GetAssetByProviderAssetID")
 		}
-		return nil, WrapInternalErr("GetMediaByProviderAssetID", err)
+		return nil, WrapInternalErr("GetAssetByProviderAssetID", err)
 	}
 
 	return &m, nil
 }
 
-func DeleteMedia(db *DB, id int64) error {
-	if _, err := db.Exec(`DELETE FROM `+string(TableMedia)+` WHERE id = ?`, id); err != nil {
-		return WrapInternalErr("DeleteMedia", err)
+func DeleteAsset(db *DB, id int64) error {
+	if _, err := db.Exec(`DELETE FROM `+string(TableAssets)+` WHERE id = ?`, id); err != nil {
+		return WrapInternalErr("DeleteAsset", err)
 	}
 	return nil
 }
 
-func CountMedia(db *DB, kind, provider string) (int, error) {
-	whereClause, whereArgs := buildMediaWhereClause(kind, provider)
-	query := `SELECT COUNT(*) FROM ` + string(TableMedia)
+func CountAssets(db *DB, kind, provider string) (int, error) {
+	whereClause, whereArgs := buildAssetWhereClause(kind, provider)
+	query := `SELECT COUNT(*) FROM ` + string(TableAssets)
 	if whereClause != "" {
 		query += ` WHERE ` + whereClause
 	}
 
 	var total int
 	if err := db.QueryRow(query, whereArgs...).Scan(&total); err != nil {
-		return 0, WrapInternalErr("CountMedia", err)
+		return 0, WrapInternalErr("CountAssets", err)
 	}
 	return total, nil
 }
 
-func ListMedia(db *DB, opts MediaQueryOptions) ([]Media, error) {
-	whereClause, whereArgs := buildMediaWhereClause(opts.Kind, opts.Provider)
+func ListAssets(db *DB, opts AssetQueryOptions) ([]Asset, error) {
+	whereClause, whereArgs := buildAssetWhereClause(opts.Kind, opts.Provider)
 	query := `
 		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, remark, size_bytes, created_at
-		FROM ` + string(TableMedia)
+		FROM ` + string(TableAssets)
 	if whereClause != "" {
 		query += ` WHERE ` + whereClause
 	}
@@ -3897,13 +3897,13 @@ func ListMedia(db *DB, opts MediaQueryOptions) ([]Media, error) {
 
 	rows, err := db.Query(query, whereArgs...)
 	if err != nil {
-		return nil, WrapInternalErr("ListMedia", err)
+		return nil, WrapInternalErr("ListAssets", err)
 	}
 	defer rows.Close()
 
-	items := make([]Media, 0)
+	items := make([]Asset, 0)
 	for rows.Next() {
-		var m Media
+		var m Asset
 		if err = rows.Scan(
 			&m.ID,
 			&m.Kind,
@@ -3916,19 +3916,19 @@ func ListMedia(db *DB, opts MediaQueryOptions) ([]Media, error) {
 			&m.SizeBytes,
 			&m.CreatedAt,
 		); err != nil {
-			return nil, WrapInternalErr("ListMedia.Scan", err)
+			return nil, WrapInternalErr("ListAssets.Scan", err)
 		}
 		items = append(items, m)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, WrapInternalErr("ListMedia.Rows", err)
+		return nil, WrapInternalErr("ListAssets.Rows", err)
 	}
 
 	return items, nil
 }
 
-func buildMediaWhereClause(kind, provider string) (string, []interface{}) {
+func buildAssetWhereClause(kind, provider string) (string, []interface{}) {
 	conditions := make([]string, 0, 2)
 	args := make([]interface{}, 0, 2)
 

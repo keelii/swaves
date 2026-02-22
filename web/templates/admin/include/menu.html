@@ -13,8 +13,8 @@
       <li class="submenu-item{% if url_is(RouteName, "admin.posts.list") %} active{% endif %}">
         <a href="{{ url_for('admin.posts.list') }}">文章列表</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.media.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.media.list', kind='image') }}">媒体库</a>
+      <li class="submenu-item{% if url_is(RouteName, "admin.assets.list") %} active{% endif %}">
+        <a href="{{ url_for('admin.assets.list', kind='image') }}">资源库</a>
       </li>
       <li class="submenu-item{% if url_is(RouteName, "admin.comments.list") %} active{% endif %}">
         <a href="{{ url_for('admin.comments.list') }}">评论管理</a>

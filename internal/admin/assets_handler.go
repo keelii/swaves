@@ -7,48 +7,48 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"swaves/internal/asset"
 	"swaves/internal/db"
 	"swaves/internal/logger"
-	"swaves/internal/media"
 	"swaves/internal/middleware"
 	"swaves/internal/store"
 
 	"github.com/gofiber/fiber/v3"
 )
 
-type mediaProviderOption struct {
+type assetProviderOption struct {
 	Value string
 	Label string
 }
 
-var mediaProviderOptions = []mediaProviderOption{
+var assetProviderOptions = []assetProviderOption{
 	{Value: "see", Label: "S.EE"},
 	{Value: "imagekit", Label: "ImageKit"},
 }
 
-var mediaKindOptions = []string{db.MediaKindImage, db.MediaKindBackup, db.MediaKindFile}
+var assetKindOptions = []string{db.AssetKindImage, db.AssetKindBackup, db.AssetKindFile}
 
-func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
+func (h *Handler) GetAssetListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
-	kind := normalizeMediaKind(c.Query("kind"))
+	kind := normalizeAssetKind(c.Query("kind"))
 	if kind == "" {
-		kind = db.MediaKindImage
+		kind = db.AssetKindImage
 	}
 	provider := ""
-	defaultProvider := h.defaultMediaProvider()
-	defaultProviderErr := h.validateMediaProviderConfig(defaultProvider)
+	defaultProvider := h.defaultAssetProvider()
+	defaultProviderErr := h.validateAssetProviderConfig(defaultProvider)
 	kindCounts := map[string]int{}
 
-	total, err := db.CountMedia(h.Model, kind, provider)
+	total, err := db.CountAssets(h.Model, kind, provider)
 	if err != nil {
-		logger.Error("[media] count media list failed: err=%v", err)
+		logger.Error("[asset] count asset list failed: err=%v", err)
 		return err
 	}
 	kindCounts[""] = total
-	for _, item := range mediaKindOptions {
-		count, countErr := db.CountMedia(h.Model, item, provider)
+	for _, item := range assetKindOptions {
+		count, countErr := db.CountAssets(h.Model, item, provider)
 		if countErr != nil {
-			logger.Error("[media] count media kind failed: kind=%s err=%v", item, countErr)
+			logger.Error("[asset] count asset kind failed: kind=%s err=%v", item, countErr)
 			return countErr
 		}
 		kindCounts[item] = count
@@ -65,39 +65,39 @@ func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
 	}
 	offset := (pager.Page - 1) * pager.PageSize
 
-	items, err := db.ListMedia(h.Model, db.MediaQueryOptions{
+	items, err := db.ListAssets(h.Model, db.AssetQueryOptions{
 		Kind:     kind,
 		Provider: provider,
 		Limit:    pager.PageSize,
 		Offset:   offset,
 	})
 	if err != nil {
-		logger.Error("[media] list media failed: page=%d size=%d err=%v", pager.Page, pager.PageSize, err)
+		logger.Error("[asset] list assets failed: page=%d size=%d err=%v", pager.Page, pager.PageSize, err)
 		return err
 	}
 
-	return RenderAdminView(c, "media_index", fiber.Map{
-		"Title":                 "Media",
+	return RenderAdminView(c, "assets_index", fiber.Map{
+		"Title":                 "资源库",
 		"Items":                 items,
 		"Pager":                 pager,
 		"CurrentKind":           kind,
 		"KindCounts":            kindCounts,
-		"MediaKindLabelMap":     mediaKindLabelMap(),
+		"AssetKindLabelMap":     assetKindLabelMap(),
 		"DefaultProvider":       defaultProvider,
 		"DefaultProviderReady":  defaultProviderErr == nil,
 		"DefaultProviderError":  errorString(defaultProviderErr),
-		"MediaProviderLabelMap": mediaProviderLabelMap(),
+		"AssetProviderLabelMap": assetProviderLabelMap(),
 	}, "")
 }
 
-func (h *Handler) GetMediaAssetsAPIHandler(c fiber.Ctx) error {
+func (h *Handler) GetAssetListAPIHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
-	kind := normalizeMediaKind(c.Query("kind"))
-	provider := normalizeMediaProvider(c.Query("provider"))
+	kind := normalizeAssetKind(c.Query("kind"))
+	provider := normalizeAssetProvider(c.Query("provider"))
 
-	total, err := db.CountMedia(h.Model, kind, provider)
+	total, err := db.CountAssets(h.Model, kind, provider)
 	if err != nil {
-		logger.Error("[media] count assets failed: kind=%s provider=%s err=%v", kind, provider, err)
+		logger.Error("[asset] count assets failed: kind=%s provider=%s err=%v", kind, provider, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -105,14 +105,14 @@ func (h *Handler) GetMediaAssetsAPIHandler(c fiber.Ctx) error {
 	}
 
 	offset := (pager.Page - 1) * pager.PageSize
-	items, err := db.ListMedia(h.Model, db.MediaQueryOptions{
+	items, err := db.ListAssets(h.Model, db.AssetQueryOptions{
 		Kind:     kind,
 		Provider: provider,
 		Limit:    pager.PageSize,
 		Offset:   offset,
 	})
 	if err != nil {
-		logger.Error("[media] list assets failed: kind=%s provider=%s page=%d size=%d err=%v", kind, provider, pager.Page, pager.PageSize, err)
+		logger.Error("[asset] list assets failed: kind=%s provider=%s page=%d size=%d err=%v", kind, provider, pager.Page, pager.PageSize, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -133,27 +133,27 @@ func (h *Handler) GetMediaAssetsAPIHandler(c fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
-	providerName := h.defaultMediaProvider()
+func (h *Handler) PostAssetUploadAPIHandler(c fiber.Ctx) error {
+	providerName := h.defaultAssetProvider()
 	remark := strings.TrimSpace(c.FormValue("remark"))
 
-	provider, err := h.resolveMediaProvider(providerName)
+	provider, err := h.resolveAssetProvider(providerName)
 	if err != nil {
-		logger.Warn("[media] resolve provider failed: provider=%s err=%v", providerName, err)
+		logger.Warn("[asset] resolve provider failed: provider=%s err=%v", providerName, err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
-	if err = h.validateMediaProviderConfig(provider.Name()); err != nil {
-		logger.Warn("[media] upload blocked: provider=%s reason=%v", provider.Name(), err)
+	if err = h.validateAssetProviderConfig(provider.Name()); err != nil {
+		logger.Warn("[asset] upload blocked: provider=%s reason=%v", provider.Name(), err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
 
-	kind := db.MediaKindImage
+	kind := db.AssetKindImage
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -195,20 +195,20 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 		contentType = http.DetectContentType(content)
 	}
 
-	uploaded, err := provider.Upload(c.RequestCtx(), media.UploadInput{
+	uploaded, err := provider.Upload(c.RequestCtx(), asset.UploadInput{
 		FileName:    fileHeader.Filename,
 		ContentType: contentType,
 		Bytes:       content,
 	})
 	if err != nil {
-		logger.Error("[media] upload failed: provider=%s file=%s err=%v", provider.Name(), fileHeader.Filename, err)
+		logger.Error("[asset] upload failed: provider=%s file=%s err=%v", provider.Name(), fileHeader.Filename, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
 
-	item := &db.Media{
+	item := &db.Asset{
 		Kind:              kind,
 		Provider:          provider.Name(),
 		ProviderAssetID:   strings.TrimSpace(uploaded.ProviderAssetID),
@@ -231,10 +231,10 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 		item.SizeBytes = int64(len(content))
 	}
 
-	_, err = db.CreateMedia(h.Model, item)
+	_, err = db.CreateAsset(h.Model, item)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique constraint failed") {
-			existing, getErr := db.GetMediaByProviderAssetID(h.Model, item.Provider, item.ProviderAssetID)
+			existing, getErr := db.GetAssetByProviderAssetID(h.Model, item.Provider, item.ProviderAssetID)
 			if getErr == nil {
 				return c.JSON(fiber.Map{
 					"ok":        true,
@@ -243,7 +243,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 				})
 			}
 		}
-		logger.Error("[media] create media record failed: provider=%s asset_id=%s name=%s err=%v", item.Provider, item.ProviderAssetID, item.OriginalName, err)
+		logger.Error("[asset] create asset record failed: provider=%s asset_id=%s name=%s err=%v", item.Provider, item.ProviderAssetID, item.OriginalName, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -256,7 +256,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
+func (h *Handler) DeleteAssetAPIHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || id <= 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -265,27 +265,27 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	item, err := db.GetMediaByID(h.Model, id)
+	item, err := db.GetAssetByID(h.Model, id)
 	if err != nil {
 		if db.IsErrNotFound(err) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"ok":    false,
-				"error": "media not found",
+				"error": "asset not found",
 			})
 		}
-		logger.Error("[media] get media by id failed: id=%d err=%v", id, err)
+		logger.Error("[asset] get asset by id failed: id=%d err=%v", id, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
 
-	provider, err := h.resolveMediaProvider(item.Provider)
+	provider, err := h.resolveAssetProvider(item.Provider)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unsupported provider") {
-			logger.Warn("[media] skip provider delete for unsupported provider: id=%d provider=%s", id, item.Provider)
-			if err = db.DeleteMedia(h.Model, item.ID); err != nil {
-				logger.Error("[media] delete media record failed after unsupported provider skip: id=%d err=%v", item.ID, err)
+			logger.Warn("[asset] skip provider delete for unsupported provider: id=%d provider=%s", id, item.Provider)
+			if err = db.DeleteAsset(h.Model, item.ID); err != nil {
+				logger.Error("[asset] delete asset record failed after unsupported provider skip: id=%d err=%v", item.ID, err)
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"ok":    false,
 					"error": err.Error(),
@@ -296,14 +296,14 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 				"warning": "provider unsupported, deleted metadata only",
 			})
 		}
-		logger.Warn("[media] resolve provider for delete failed: id=%d provider=%s err=%v", id, item.Provider, err)
+		logger.Warn("[asset] resolve provider for delete failed: id=%d provider=%s err=%v", id, item.Provider, err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
-	if err = h.validateMediaProviderConfig(provider.Name()); err != nil {
-		logger.Warn("[media] delete blocked by provider config: id=%d provider=%s err=%v", id, provider.Name(), err)
+	if err = h.validateAssetProviderConfig(provider.Name()); err != nil {
+		logger.Warn("[asset] delete blocked by provider config: id=%d provider=%s err=%v", id, provider.Name(), err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -322,15 +322,15 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 	}
 
 	if err = provider.Delete(c.RequestCtx(), deleteKey); err != nil {
-		logger.Error("[media] provider delete failed: id=%d provider=%s delete_key=%s err=%v", id, provider.Name(), deleteKey, err)
+		logger.Error("[asset] provider delete failed: id=%d provider=%s delete_key=%s err=%v", id, provider.Name(), deleteKey, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
 	}
 
-	if err = db.DeleteMedia(h.Model, item.ID); err != nil {
-		logger.Error("[media] delete media record failed: id=%d err=%v", item.ID, err)
+	if err = db.DeleteAsset(h.Model, item.ID); err != nil {
+		logger.Error("[asset] delete asset record failed: id=%d err=%v", item.ID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
@@ -342,62 +342,62 @@ func (h *Handler) DeleteMediaAssetAPIHandler(c fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) resolveMediaProvider(providerName string) (media.Provider, error) {
-	factory := media.NewFactory(media.FactoryConfig{
-		DefaultProvider: h.defaultMediaProvider(),
-		SEEBaseURL:      store.GetSetting("media_see_api_base"),
-		SEEToken:        store.GetSetting("media_see_api_token"),
+func (h *Handler) resolveAssetProvider(providerName string) (asset.Provider, error) {
+	factory := asset.NewFactory(asset.FactoryConfig{
+		DefaultProvider: h.defaultAssetProvider(),
+		SEEBaseURL:      store.GetSetting("asset_see_api_base"),
+		SEEToken:        store.GetSetting("asset_see_api_token"),
 
-		ImageKitEndpoint:   store.GetSetting("media_imagekit_endpoint"),
-		ImageKitPrivateKey: store.GetSetting("media_imagekit_private_key"),
+		ImageKitEndpoint:   store.GetSetting("asset_imagekit_endpoint"),
+		ImageKitPrivateKey: store.GetSetting("asset_imagekit_private_key"),
 	})
 
 	rawProvider := strings.TrimSpace(providerName)
-	resolved := normalizeMediaProvider(providerName)
+	resolved := normalizeAssetProvider(providerName)
 	if rawProvider != "" && resolved == "" {
 		return nil, errors.New("unsupported provider: " + providerName)
 	}
 
 	provider := factory.Resolve(resolved)
 	if provider == nil {
-		return nil, errors.New("unable to resolve media provider")
+		return nil, errors.New("unable to resolve asset provider")
 	}
 	return provider, nil
 }
 
-func (h *Handler) defaultMediaProvider() string {
-	provider := strings.TrimSpace(strings.ToLower(store.GetSetting("media_default_provider")))
+func (h *Handler) defaultAssetProvider() string {
+	provider := strings.TrimSpace(strings.ToLower(store.GetSetting("asset_default_provider")))
 	if provider == "imagekit" {
 		return provider
 	}
 	return "see"
 }
 
-func mediaProviderLabelMap() map[string]string {
+func assetProviderLabelMap() map[string]string {
 	result := map[string]string{}
-	for _, item := range mediaProviderOptions {
+	for _, item := range assetProviderOptions {
 		result[item.Value] = item.Label
 	}
 	return result
 }
 
-func mediaKindLabelMap() map[string]string {
+func assetKindLabelMap() map[string]string {
 	return map[string]string{
 		"":                 "全部",
-		db.MediaKindImage:  "图片",
-		db.MediaKindFile:   "文件",
-		db.MediaKindBackup: "备份",
+		db.AssetKindImage:  "图片",
+		db.AssetKindFile:   "文件",
+		db.AssetKindBackup: "备份",
 	}
 }
 
-func normalizeMediaProvider(raw string) string {
+func normalizeAssetProvider(raw string) string {
 	raw = strings.TrimSpace(strings.ToLower(raw))
 	switch raw {
 	case "s.ee", "smms", "sm.ms":
 		raw = "see"
 	}
 
-	for _, item := range mediaProviderOptions {
+	for _, item := range assetProviderOptions {
 		if raw == item.Value {
 			return raw
 		}
@@ -405,9 +405,9 @@ func normalizeMediaProvider(raw string) string {
 	return ""
 }
 
-func normalizeMediaKind(raw string) string {
+func normalizeAssetKind(raw string) string {
 	raw = strings.TrimSpace(strings.ToLower(raw))
-	for _, item := range mediaKindOptions {
+	for _, item := range assetKindOptions {
 		if raw == item {
 			return raw
 		}
@@ -415,13 +415,13 @@ func normalizeMediaKind(raw string) string {
 	return ""
 }
 
-func (h *Handler) validateMediaProviderConfig(providerName string) error {
+func (h *Handler) validateAssetProviderConfig(providerName string) error {
 	switch strings.TrimSpace(strings.ToLower(providerName)) {
 	case "imagekit":
-		if strings.TrimSpace(store.GetSetting("media_imagekit_private_key")) == "" {
+		if strings.TrimSpace(store.GetSetting("asset_imagekit_private_key")) == "" {
 			return errors.New("ImageKit Private Key 未配置，请到设置 > 第三方服务 填写")
 		}
-		imageKitEndpoint := strings.TrimSpace(store.GetSetting("media_imagekit_endpoint"))
+		imageKitEndpoint := strings.TrimSpace(store.GetSetting("asset_imagekit_endpoint"))
 		if imageKitEndpoint == "" {
 			return errors.New("ImageKit-endpoint 未配置，请到设置 > 第三方服务 填写")
 		}
@@ -431,7 +431,7 @@ func (h *Handler) validateMediaProviderConfig(providerName string) error {
 	case "see":
 		fallthrough
 	default:
-		if strings.TrimSpace(store.GetSetting("media_see_api_token")) == "" {
+		if strings.TrimSpace(store.GetSetting("asset_see_api_token")) == "" {
 			return errors.New("S.EE API Token 未配置，请到设置 > 第三方服务 填写")
 		}
 	}

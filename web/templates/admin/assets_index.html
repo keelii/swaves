@@ -3,7 +3,7 @@
 {% from "admin/macro/ui.html" import table_empty %}
 
 <style>
-  .media-upload {
+  .asset-upload {
     margin-bottom: 2em;
     /*margin-bottom: var(--space-4);*/
     /*padding: var(--space-4);*/
@@ -12,7 +12,7 @@
     /*background: var(--card);*/
   }
 
-  .media-upload-dropzone {
+  .asset-upload-dropzone {
     border: 2px dashed var(--border);
     border-radius: var(--radius-medium);
     background: var(--background);
@@ -28,69 +28,69 @@
     transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
-  .media-upload-dropzone.dragover {
+  .asset-upload-dropzone.dragover {
     border-color: var(--primary);
     background: var(--muted);
   }
 
-  .media-upload-dropzone.is-uploading {
+  .asset-upload-dropzone.is-uploading {
     cursor: progress;
     opacity: 0.7;
   }
 
-  .media-upload-title {
+  .asset-upload-title {
     margin: 0;
     font-size: 1.05rem;
     font-weight: 600;
   }
 
-  .media-upload-subtitle {
+  .asset-upload-subtitle {
     margin: 0;
     color: var(--muted-foreground);
   }
 
-  .media-upload-status {
+  .asset-upload-status {
     margin: 0;
     color: var(--muted-foreground);
     font-size: 0.875rem;
   }
 
-  .media-upload-status.error {
+  .asset-upload-status.error {
     color: #b42318;
   }
 
-  .media-upload-tip {
+  .asset-upload-tip {
     color: var(--muted-foreground);
     margin: var(--space-2) 0 0;
   }
 
-  .media-upload-remark {
+  .asset-upload-remark {
     margin-top: var(--space-3);
     width: min(560px, 100%);
   }
 
-  .media-cell-url {
+  .asset-cell-url {
     max-width: 320px;
   }
 
-  .media-row-actions {
+  .asset-row-actions {
     display: inline-flex;
     gap: var(--space-2);
     align-items: center;
     flex-wrap: wrap;
   }
 
-  .media-row-actions .media-delete {
+  .asset-row-actions .asset-delete {
     color: #b42318;
   }
 
-  .media-row-actions .media-delete:hover {
+  .asset-row-actions .asset-delete:hover {
     border-color: #b42318;
     color: #b42318;
   }
 
   @media (max-width: 960px) {
-    .media-upload-dropzone {
+    .asset-upload-dropzone {
       min-height: 150px;
     }
   }
@@ -99,8 +99,8 @@
 {% set defaultProviderReady = DefaultProviderReady|default(false) %}
 {% set defaultProviderError = DefaultProviderError %}
 {% set defaultProvider = DefaultProvider %}
-{% set mediaProviderLabelMap = MediaProviderLabelMap|default({}) %}
-{% set mediaKindLabelMap = MediaKindLabelMap|default({}) %}
+{% set assetProviderLabelMap = AssetProviderLabelMap|default({}) %}
+{% set assetKindLabelMap = AssetKindLabelMap|default({}) %}
 {% set kindCounts = KindCounts|default({}) %}
 {% set currentKind = CurrentKind|default("image") %}
 {% set query = Query|default({}) %}
@@ -109,29 +109,29 @@
 {% set fileCount = kindCounts["file"] | default(0) %}
 {% set backupCount = kindCounts["backup"] | default(0) %}
 
-<section class="media-upload">
-  <input type="file" id="media-drop-input" style="display:none;" multiple>
+<section class="asset-upload">
+  <input type="file" id="asset-drop-input" style="display:none;" multiple>
   <div
-    id="media-dropzone"
-    class="media-upload-dropzone"
+    id="asset-dropzone"
+    class="asset-upload-dropzone"
     data-upload-ready="{% if defaultProviderReady %}1{% else %}0{% endif %}"
     data-upload-error="{{ defaultProviderError }}"
   >
-    <p class="media-upload-title">拖拽文件到这里上传</p>
-    <p class="media-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
-    <p class="media-upload-status{% if not defaultProviderReady %} error{% endif %}" id="media-upload-status">
-      当前默认服务：{{ mediaProviderLabelMap[defaultProvider] | default(defaultProvider) }}
+    <p class="asset-upload-title">拖拽文件到这里上传</p>
+    <p class="asset-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
+    <p class="asset-upload-status{% if not defaultProviderReady %} error{% endif %}" id="asset-upload-status">
+      当前默认服务：{{ assetProviderLabelMap[defaultProvider] | default(defaultProvider) }}
       {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
     </p>
-    <input type="text" id="media-upload-remark" class="media-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
+    <input type="text" id="asset-upload-remark" class="asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
   </div>
 </section>
 
 <div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
-  <nav role="tablist" aria-label="媒体类型">
-    <a role="tab" aria-selected="{% if currentKind == "image" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='image') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["image"] | default("图片") }} ({{ imageCount }})</a>
-    <a role="tab" aria-selected="{% if currentKind == "file" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='file') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["file"] | default("文件") }} ({{ fileCount }})</a>
-    <a role="tab" aria-selected="{% if currentKind == "backup" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='backup') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["backup"] | default("备份") }} ({{ backupCount }})</a>
+  <nav role="tablist" aria-label="资源类型">
+    <a role="tab" aria-selected="{% if currentKind == "image" %}true{% else %}false{% endif %}" href="{{ url_for('admin.assets.list', kind='image') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["image"] | default("图片") }} ({{ imageCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "file" %}true{% else %}false{% endif %}" href="{{ url_for('admin.assets.list', kind='file') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["file"] | default("文件") }} ({{ fileCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "backup" %}true{% else %}false{% endif %}" href="{{ url_for('admin.assets.list', kind='backup') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["backup"] | default("备份") }} ({{ backupCount }})</a>
   </nav>
 </div>
 
@@ -150,40 +150,40 @@
     </tr>
   </thead>
   <tbody>
-    {% for mediaItem in Items %}
-      <tr data-media-id="{{ mediaItem.id }}">
-        <td class="cell-4">{{ mediaItem.id }}</td>
-        <td>{{ mediaKindLabelMap[mediaItem.kind] | default(mediaItem.kind) }}</td>
-        <td>{{ mediaProviderLabelMap[mediaItem.provider] | default(mediaItem.provider) }}</td>
-        <td>{{ mediaItem.original_name }}</td>
-        <td>{% if mediaItem.remark %}{{ mediaItem.remark }}{% else %}-{% endif %}</td>
+    {% for assetItem in Items %}
+      <tr data-asset-id="{{ assetItem.id }}">
+        <td class="cell-4">{{ assetItem.id }}</td>
+        <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
+        <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
+        <td>{{ assetItem.original_name }}</td>
+        <td>{% if assetItem.remark %}{{ assetItem.remark }}{% else %}-{% endif %}</td>
         <td>
-          {% if mediaItem.file_url %}
-            <a href="{{ mediaItem.file_url }}" target="_blank" rel="noopener" class="media-cell-url" title="{{ mediaItem.file_url }}">{{ mediaItem.file_url }}</a>
+          {% if assetItem.file_url %}
+            <a href="{{ assetItem.file_url }}" target="_blank" rel="noopener" class="asset-cell-url" title="{{ assetItem.file_url }}">{{ assetItem.file_url }}</a>
           {% else %}
             -
           {% endif %}
         </td>
-        <td>{{ mediaItem.size_bytes | humanSize }}</td>
-        <td>{{ mediaItem.created_at | formatTime }}</td>
+        <td>{{ assetItem.size_bytes | humanSize }}</td>
+        <td>{{ assetItem.created_at | formatTime }}</td>
         <td class="cell-6">
-          <div class="row-actions media-row-actions">
-            {% if mediaItem.file_url %}
+          <div class="row-actions asset-row-actions">
+            {% if assetItem.file_url %}
               <button
                 type="button"
-                class="row-action-btn media-copy-url"
-                data-url="{{ mediaItem.file_url }}"
+                class="row-action-btn asset-copy-url"
+                data-url="{{ assetItem.file_url }}"
                 aria-label="复制图片链接"
                 data-title="复制图片链接"
               >
                 {{ lucide_icon("link-2", 16) }}
               </button>
-              {% if mediaItem.kind == "image" %}
+              {% if assetItem.kind == "image" %}
                 <button
                   type="button"
-                  class="row-action-btn media-copy-markdown"
-                  data-url="{{ mediaItem.file_url }}"
-                  data-name="{{ mediaItem.original_name }}"
+                  class="row-action-btn asset-copy-markdown"
+                  data-url="{{ assetItem.file_url }}"
+                  data-name="{{ assetItem.original_name }}"
                   aria-label="复制 Markdown 代码"
                   data-title="复制 Markdown 代码"
                 >
@@ -193,8 +193,8 @@
             {% endif %}
             <button
               type="button"
-              class="row-action-btn media-delete"
-              data-id="{{ mediaItem.id }}"
+              class="row-action-btn asset-delete"
+              data-id="{{ assetItem.id }}"
               aria-label="删除"
               title="删除"
             >
@@ -204,7 +204,7 @@
         </td>
       </tr>
     {% else %}
-      {{ table_empty(9, "暂无媒体资源") }}
+      {{ table_empty(9, "暂无资源") }}
     {% endfor %}
   </tbody>
   <tfoot>
@@ -216,41 +216,41 @@
   </tfoot>
 </table>
 
-<dialog id="media-alert-dialog">
+<dialog id="asset-alert-dialog">
   <header>
-    <h4 id="media-alert-title">提示</h4>
+    <h4 id="asset-alert-title">提示</h4>
   </header>
-  <p id="media-alert-message"></p>
+  <p id="asset-alert-message"></p>
   <footer>
-    <button class="button" type="button" commandfor="media-alert-dialog" command="close">知道了</button>
+    <button class="button" type="button" commandfor="asset-alert-dialog" command="close">知道了</button>
   </footer>
 </dialog>
 
-<dialog id="media-confirm-dialog">
+<dialog id="asset-confirm-dialog">
   <header>
-    <h4 id="media-confirm-title">确认操作</h4>
+    <h4 id="asset-confirm-title">确认操作</h4>
   </header>
-  <p id="media-confirm-message"></p>
+  <p id="asset-confirm-message"></p>
   <footer>
-    <button class="button outline" type="button" commandfor="media-confirm-dialog" command="close">取消</button>
-    <button class="button" type="button" id="media-confirm-ok">确认</button>
+    <button class="button outline" type="button" commandfor="asset-confirm-dialog" command="close">取消</button>
+    <button class="button" type="button" id="asset-confirm-ok">确认</button>
   </footer>
 </dialog>
 
 <script>
 $(function() {
-  var mediaAssetsAPIBase = {{ url_for('admin.media.assets.list') | tojson }};
-  var $dropzone = $('#media-dropzone');
-  var $fileInput = $('#media-drop-input');
-  var $uploadRemark = $('#media-upload-remark');
-  var $uploadStatus = $('#media-upload-status');
-  var $alertDialog = $('#media-alert-dialog');
-  var $alertTitle = $('#media-alert-title');
-  var $alertMessage = $('#media-alert-message');
-  var $confirmDialog = $('#media-confirm-dialog');
-  var $confirmTitle = $('#media-confirm-title');
-  var $confirmMessage = $('#media-confirm-message');
-  var $confirmOK = $('#media-confirm-ok');
+  var assetAPIBase = {{ url_for('admin.assets.api.list') | tojson }};
+  var $dropzone = $('#asset-dropzone');
+  var $fileInput = $('#asset-drop-input');
+  var $uploadRemark = $('#asset-upload-remark');
+  var $uploadStatus = $('#asset-upload-status');
+  var $alertDialog = $('#asset-alert-dialog');
+  var $alertTitle = $('#asset-alert-title');
+  var $alertMessage = $('#asset-alert-message');
+  var $confirmDialog = $('#asset-confirm-dialog');
+  var $confirmTitle = $('#asset-confirm-title');
+  var $confirmMessage = $('#asset-confirm-message');
+  var $confirmOK = $('#asset-confirm-ok');
   var isUploading = false;
   var uploadReady = ($dropzone.attr('data-upload-ready') || '') === '1';
   var uploadError = ($dropzone.attr('data-upload-error') || '').trim();
@@ -258,7 +258,7 @@ $(function() {
   var uploadStatusBaseIsError = $uploadStatus.hasClass('error');
   var confirmResolver = null;
 
-  function showMediaNotice(message, title) {
+  function showAssetNotice(message, title) {
     notify(message, title || '提示', {
       variant: 'warning',
       dialog: $alertDialog,
@@ -310,7 +310,7 @@ $(function() {
       fd.append('remark', remark);
     }
 
-    return fetch(mediaAssetsAPIBase, {
+    return fetch(assetAPIBase, {
       method: 'POST',
       body: fd
     })
@@ -353,7 +353,7 @@ $(function() {
 
   function handleFiles(fileList) {
     if (!uploadReady) {
-      showMediaNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
     }
 
@@ -406,9 +406,9 @@ $(function() {
             }
             message += '。失败原因：' + detailText;
           }
-          showMediaNotice(message);
+          showAssetNotice(message);
         } else {
-          showMediaNotice('上传完成：共 ' + successCount + ' 个文件');
+          showAssetNotice('上传完成：共 ' + successCount + ' 个文件');
         }
 
         if (successCount > 0) {
@@ -471,7 +471,7 @@ $(function() {
 
   $dropzone.on('click', function() {
     if (!uploadReady) {
-      showMediaNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
     }
 
@@ -504,7 +504,7 @@ $(function() {
 
   $dropzone.on('drop', function(e) {
     if (!uploadReady) {
-      showMediaNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
     }
 
@@ -520,38 +520,38 @@ $(function() {
     handleFiles(dt.files);
   });
 
-  $(document).on('click', '.media-copy-url', function() {
+  $(document).on('click', '.asset-copy-url', function() {
     var url = $(this).data('url') || '';
     copyToClipboard(url).then(function() {
-      showMediaNotice('已复制链接');
+      showAssetNotice('已复制链接');
     }).catch(function() {
-      showMediaNotice('复制失败');
+      showAssetNotice('复制失败');
     });
   });
 
-  $(document).on('click', '.media-copy-markdown', function() {
+  $(document).on('click', '.asset-copy-markdown', function() {
     var url = $(this).data('url') || '';
     var name = $(this).data('name') || '';
     var markdown = markdownImage(url, name);
     copyToClipboard(markdown).then(function() {
-      showMediaNotice('已复制 Markdown');
+      showAssetNotice('已复制 Markdown');
     }).catch(function() {
-      showMediaNotice('复制失败');
+      showAssetNotice('复制失败');
     });
   });
 
-  $(document).on('click', '.media-delete', function() {
+  $(document).on('click', '.asset-delete', function() {
     var id = $(this).data('id');
     if (!id) {
-      showMediaNotice('无效 ID');
+      showAssetNotice('无效 ID');
       return;
     }
-    askConfirm('确认删除该媒体？会同时删除远端文件。', '确认删除').then(function(confirmed) {
+    askConfirm('确认删除该资源？会同时删除远端文件。', '确认删除').then(function(confirmed) {
       if (!confirmed) {
         return;
       }
 
-      fetch(mediaAssetsAPIBase + '/' + id, {
+      fetch(assetAPIBase + '/' + id, {
         method: 'DELETE'
       })
         .then(function(r) { return r.json().then(function(body) { return { status: r.status, body: body }; }); })
@@ -560,10 +560,10 @@ $(function() {
             var msg = (ret.body && ret.body.error) || ('删除失败，状态码 ' + ret.status);
             throw new Error(msg);
           }
-          $('tr[data-media-id="' + id + '"]').remove();
+          $('tr[data-asset-id="' + id + '"]').remove();
         })
         .catch(function(err) {
-          showMediaNotice(err.message || '删除失败');
+          showAssetNotice(err.message || '删除失败');
         });
     });
   });

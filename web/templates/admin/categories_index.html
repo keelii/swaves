@@ -29,7 +29,7 @@
   <tr>
     <td class="cell-4">{{ category.ID }}</td>
     <td>{{ category.Name }}</td>
-    <td><a href="{{ GetCategoryUrl(category) }}" target="_blank" rel="noopener">{{ category.Slug }}</a></td>
+    <td><a href="{{ GetCategoryUrl(category.Slug) }}" target="_blank" rel="noopener">{{ category.Slug }}</a></td>
     <td>
       {% if category.ParentID == 0 %}
         <span>-</span>

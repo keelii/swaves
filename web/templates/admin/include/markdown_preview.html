@@ -1,7 +1,7 @@
 {% set placeholder = Placeholder|default("文章内容（支持 Markdown）") %}
 {% set value = Value %}
 {% set required = Required|default(false) %}
-{% set showMediaPicker = ShowMediaPicker|default(true) %}
+{% set showAssetPicker = ShowAssetPicker|default(true) %}
 <style>
   /* markdown 编辑/预览：tab 内容区可见，预览模式内用 split 分预览与 TOC */
   .markdown-editor-wrap .tab-card .tab-content {
@@ -23,7 +23,7 @@
     align-items: center;
     padding-right: 0.5em;
   }
-  .markdown-editor-wrap .media-picker-open {
+  .markdown-editor-wrap .asset-picker-open {
     border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--card);
@@ -133,7 +133,7 @@
     background: rgba(0, 0, 0, 0.3);
   }
 
-  .media-picker-modal {
+  .asset-picker-modal {
     position: fixed;
     inset: 0;
     z-index: 30;
@@ -143,10 +143,10 @@
     justify-content: center;
     padding: 1em;
   }
-  .media-picker-modal.show {
+  .asset-picker-modal.show {
     display: flex;
   }
-  .media-picker-panel {
+  .asset-picker-panel {
     width: min(980px, 96vw);
     max-height: 85vh;
     background: var(--background);
@@ -156,7 +156,7 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .media-picker-header {
+  .asset-picker-header {
     display: flex;
     align-items: center;
     gap: 0.75em;
@@ -164,20 +164,20 @@
     border-bottom: 1px solid var(--border);
     background: var(--card);
   }
-  .media-picker-header h4 {
+  .asset-picker-header h4 {
     margin: 0;
     font-size: 1rem;
   }
-  .media-picker-body {
+  .asset-picker-body {
     overflow: auto;
     padding: 1em;
   }
-  .media-picker-grid {
+  .asset-picker-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 0.75em;
   }
-  .media-picker-item {
+  .asset-picker-item {
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--card);
@@ -187,33 +187,33 @@
     cursor: pointer;
     text-align: left;
   }
-  .media-picker-thumb {
+  .asset-picker-thumb {
     width: 100%;
     height: 120px;
     object-fit: cover;
     background: var(--muted);
   }
-  .media-picker-meta {
+  .asset-picker-meta {
     padding: 0.5em;
     display: flex;
     flex-direction: column;
     gap: 0.25em;
   }
-  .media-picker-name {
+  .asset-picker-name {
     font-size: 0.875rem;
     line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .media-picker-url {
+  .asset-picker-url {
     font-size: 0.75rem;
     color: var(--muted-foreground);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .media-picker-footer {
+  .asset-picker-footer {
     border-top: 1px solid var(--border);
     padding: 0.75em 1em;
     display: flex;
@@ -221,7 +221,7 @@
     align-items: center;
     background: var(--card);
   }
-  .media-picker-empty {
+  .asset-picker-empty {
     padding: 1em;
     text-align: center;
     color: var(--muted-foreground);
@@ -232,9 +232,9 @@
     <div class="tab-nav">
       <div class="tab-item active" data-tab="edit">编辑</div>
       <div class="tab-item" data-tab="preview">预览</div>
-      {% if showMediaPicker %}
+      {% if showAssetPicker %}
         <div class="tab-nav-right">
-          <button class="media-picker-open" type="button" id="open-media-picker">图库</button>
+          <button class="asset-picker-open" type="button" id="open-asset-picker">图库</button>
         </div>
       {% endif %}
     </div>
@@ -255,29 +255,29 @@
     </div>
   </div>
 </div>
-{% if showMediaPicker %}
-  <div class="media-picker-modal" id="media-picker-modal">
-    <div class="media-picker-panel">
-      <div class="media-picker-header">
+{% if showAssetPicker %}
+  <div class="asset-picker-modal" id="asset-picker-modal">
+    <div class="asset-picker-panel">
+      <div class="asset-picker-header">
         <h4>插入图片</h4>
         <label>
           服务
-          <select id="media-picker-provider">
+          <select id="asset-picker-provider">
             <option value="">全部</option>
             <option value="see">S.EE</option>
             <option value="imagekit">ImageKit</option>
           </select>
         </label>
-        <button class="button outline" type="button" id="media-picker-refresh">刷新</button>
-        <button class="button outline" type="button" id="media-picker-close" style="margin-left:auto;">关闭</button>
+        <button class="button outline" type="button" id="asset-picker-refresh">刷新</button>
+        <button class="button outline" type="button" id="asset-picker-close" style="margin-left:auto;">关闭</button>
       </div>
-      <div class="media-picker-body">
-        <div id="media-picker-grid" class="media-picker-grid"></div>
-        <div id="media-picker-empty" class="media-picker-empty" style="display:none;">暂无图片，可先到媒体库上传。</div>
+      <div class="asset-picker-body">
+        <div id="asset-picker-grid" class="asset-picker-grid"></div>
+        <div id="asset-picker-empty" class="asset-picker-empty" style="display:none;">暂无图片，可先到资源库上传。</div>
       </div>
-      <div class="media-picker-footer">
-        <small id="media-picker-summary">-</small>
-        <button class="button outline" type="button" id="media-picker-load-more">加载更多</button>
+      <div class="asset-picker-footer">
+        <small id="asset-picker-summary">-</small>
+        <button class="button outline" type="button" id="asset-picker-load-more">加载更多</button>
       </div>
     </div>
   </div>
@@ -285,22 +285,22 @@
 <script src="/static/admin/split.min.js"></script>
 <script>
 $(function() {
-  var showMediaPicker = {{ showMediaPicker | tojson }};
+  var showAssetPicker = {{ showAssetPicker | tojson }};
   var $ta = $('textarea[name="content"]');
   var $preview = $('#content-preview');
   var $navItems = $('.markdown-editor-wrap .tab-item');
   var $panes = $('.markdown-editor-wrap .tab-pane');
-  var $pickerModal = $('#media-picker-modal');
-  var $pickerGrid = $('#media-picker-grid');
-  var $pickerEmpty = $('#media-picker-empty');
-  var $pickerProvider = $('#media-picker-provider');
-  var $pickerSummary = $('#media-picker-summary');
-  var $pickerLoadMore = $('#media-picker-load-more');
+  var $pickerModal = $('#asset-picker-modal');
+  var $pickerGrid = $('#asset-picker-grid');
+  var $pickerEmpty = $('#asset-picker-empty');
+  var $pickerProvider = $('#asset-picker-provider');
+  var $pickerSummary = $('#asset-picker-summary');
+  var $pickerLoadMore = $('#asset-picker-load-more');
   var markdownAPIURL = {{ url_for('api.markdown') | tojson }};
-  var mediaAssetsAPIURL = {{ url_for('admin.media.assets.list') | tojson }};
-  if (!mediaAssetsAPIURL) {
+  var assetAPIURL = {{ url_for('admin.assets.api.list') | tojson }};
+  if (!assetAPIURL) {
     var adminBaseURL = {{ GetAdminUrl() | tojson }};
-    mediaAssetsAPIURL = (String(adminBaseURL || '').replace(/\/+$/, '') || '/admin') + '/api/media/assets';
+    assetAPIURL = (String(adminBaseURL || '').replace(/\/+$/, '') || '/admin') + '/api/assets';
   }
   var splitInstance = null;
   var pickerPage = 1;
@@ -419,11 +419,11 @@ $(function() {
       var url = item.file_url || '';
       if (!url) return;
       var card = [
-        '<button type="button" class="media-picker-item" data-url="', escapeHtml(url), '" data-name="', escapeHtml(item.original_name || ''), '">',
-          '<img class="media-picker-thumb" src="', escapeHtml(url), '" loading="lazy" alt="', escapeHtml(item.original_name || ''), '">',
-          '<div class="media-picker-meta">',
-            '<div class="media-picker-name" title="', escapeHtml(item.original_name || ''), '">', escapeHtml(item.original_name || '（未命名）'), '</div>',
-            '<div class="media-picker-url" title="', escapeHtml(url), '">', escapeHtml(url), '</div>',
+        '<button type="button" class="asset-picker-item" data-url="', escapeHtml(url), '" data-name="', escapeHtml(item.original_name || ''), '">',
+          '<img class="asset-picker-thumb" src="', escapeHtml(url), '" loading="lazy" alt="', escapeHtml(item.original_name || ''), '">',
+          '<div class="asset-picker-meta">',
+            '<div class="asset-picker-name" title="', escapeHtml(item.original_name || ''), '">', escapeHtml(item.original_name || '（未命名）'), '</div>',
+            '<div class="asset-picker-url" title="', escapeHtml(url), '">', escapeHtml(url), '</div>',
           '</div>',
         '</button>'
       ].join('');
@@ -449,12 +449,12 @@ $(function() {
       query.set('provider', provider);
     }
 
-    if (!mediaAssetsAPIURL) {
+    if (!assetAPIURL) {
       window.alert('加载图库失败：接口地址不可用');
       return Promise.resolve();
     }
 
-    return fetch(mediaAssetsAPIURL + '?' + query.toString(), {
+    return fetch(assetAPIURL + '?' + query.toString(), {
       method: 'GET'
     })
       .then(function(r) { return r.json(); })
@@ -492,16 +492,16 @@ $(function() {
     });
   }
 
-  if (showMediaPicker) {
-    $('#open-media-picker').on('click', function() {
+  if (showAssetPicker) {
+    $('#open-asset-picker').on('click', function() {
       openPicker();
     });
 
-    $('#media-picker-close').on('click', function() {
+    $('#asset-picker-close').on('click', function() {
       closePicker();
     });
 
-    $('#media-picker-refresh').on('click', function() {
+    $('#asset-picker-refresh').on('click', function() {
       loadPickerData(false);
     });
 
@@ -519,7 +519,7 @@ $(function() {
       }
     });
 
-    $(document).on('click', '.media-picker-item', function() {
+    $(document).on('click', '.asset-picker-item', function() {
       var item = {
         file_url: $(this).attr('data-url') || '',
         original_name: $(this).attr('data-name') || ''

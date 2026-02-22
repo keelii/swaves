@@ -1607,9 +1607,9 @@ type settingsValueUpdate struct {
 	SkipUpdate bool
 }
 
-func isMediaSettingCode(code string) bool {
+func isAssetSettingCode(code string) bool {
 	switch strings.TrimSpace(code) {
-	case "media_default_provider", "media_see_api_token", "media_imagekit_endpoint", "media_imagekit_private_key":
+	case "asset_default_provider", "asset_see_api_token", "asset_imagekit_endpoint", "asset_imagekit_private_key":
 		return true
 	default:
 		return false
@@ -1632,33 +1632,33 @@ func (h *Handler) buildSettingsAllRedirectPath(kind string, errMsg string) strin
 	return redirectPath
 }
 
-func (h *Handler) validateMediaSettingPayload(overrides map[string]string) error {
+func (h *Handler) validateAssetSettingPayload(overrides map[string]string) error {
 	if len(overrides) == 0 {
 		return nil
 	}
 
 	values := map[string]string{
-		"media_default_provider":     strings.TrimSpace(store.GetSetting("media_default_provider")),
-		"media_see_api_token":        strings.TrimSpace(store.GetSetting("media_see_api_token")),
-		"media_imagekit_endpoint":    strings.TrimSpace(store.GetSetting("media_imagekit_endpoint")),
-		"media_imagekit_private_key": strings.TrimSpace(store.GetSetting("media_imagekit_private_key")),
+		"asset_default_provider":     strings.TrimSpace(store.GetSetting("asset_default_provider")),
+		"asset_see_api_token":        strings.TrimSpace(store.GetSetting("asset_see_api_token")),
+		"asset_imagekit_endpoint":    strings.TrimSpace(store.GetSetting("asset_imagekit_endpoint")),
+		"asset_imagekit_private_key": strings.TrimSpace(store.GetSetting("asset_imagekit_private_key")),
 	}
-	hasMediaOverride := false
+	hasAssetOverride := false
 	for code, value := range overrides {
-		if !isMediaSettingCode(code) {
+		if !isAssetSettingCode(code) {
 			continue
 		}
 		values[code] = strings.TrimSpace(value)
-		hasMediaOverride = true
+		hasAssetOverride = true
 	}
-	if !hasMediaOverride {
+	if !hasAssetOverride {
 		return nil
 	}
 
-	rawProvider := strings.TrimSpace(strings.ToLower(values["media_default_provider"]))
-	provider := normalizeMediaProvider(rawProvider)
+	rawProvider := strings.TrimSpace(strings.ToLower(values["asset_default_provider"]))
+	provider := normalizeAssetProvider(rawProvider)
 	if rawProvider != "" && provider == "" {
-		return errors.New("保存失败：媒体默认服务无效，仅支持 S.EE 或 ImageKit")
+		return errors.New("保存失败：资源默认服务无效，仅支持 S.EE 或 ImageKit")
 	}
 	if provider == "" {
 		provider = "see"
@@ -1666,20 +1666,20 @@ func (h *Handler) validateMediaSettingPayload(overrides map[string]string) error
 
 	switch provider {
 	case "imagekit":
-		if values["media_imagekit_private_key"] == "" {
-			return errors.New("保存失败：当前媒体默认服务为 ImageKit，请填写 ImageKit Private Key")
+		if values["asset_imagekit_private_key"] == "" {
+			return errors.New("保存失败：当前资源默认服务为 ImageKit，请填写 ImageKit Private Key")
 		}
-		if values["media_imagekit_endpoint"] == "" {
-			return errors.New("保存失败：当前媒体默认服务为 ImageKit，请填写 ImageKit-endpoint")
+		if values["asset_imagekit_endpoint"] == "" {
+			return errors.New("保存失败：当前资源默认服务为 ImageKit，请填写 ImageKit-endpoint")
 		}
-		if err := validateImageKitEndpoint(values["media_imagekit_endpoint"]); err != nil {
+		if err := validateImageKitEndpoint(values["asset_imagekit_endpoint"]); err != nil {
 			return errors.New("保存失败：" + err.Error())
 		}
 	case "see":
 		fallthrough
 	default:
-		if values["media_see_api_token"] == "" {
-			return errors.New("保存失败：当前媒体默认服务为 S.EE，请填写 S.EE API Token")
+		if values["asset_see_api_token"] == "" {
+			return errors.New("保存失败：当前资源默认服务为 S.EE，请填写 S.EE API Token")
 		}
 	}
 
@@ -1699,7 +1699,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	}
 
 	updates := make([]settingsValueUpdate, 0, len(settings))
-	mediaOverrides := make(map[string]string)
+	assetOverrides := make(map[string]string)
 
 	for _, setting := range settings {
 		fieldName := "setting_" + setting.Code
@@ -1718,8 +1718,8 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 				Code:  setting.Code,
 				Value: value,
 			})
-			if isMediaSettingCode(setting.Code) && value != setting.Value {
-				mediaOverrides[setting.Code] = value
+			if isAssetSettingCode(setting.Code) && value != setting.Value {
+				assetOverrides[setting.Code] = value
 			}
 		} else {
 			// 其他类型直接获取单个值
@@ -1736,13 +1736,13 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 				Code:  setting.Code,
 				Value: value,
 			})
-			if isMediaSettingCode(setting.Code) && value != setting.Value {
-				mediaOverrides[setting.Code] = value
+			if isAssetSettingCode(setting.Code) && value != setting.Value {
+				assetOverrides[setting.Code] = value
 			}
 		}
 	}
 
-	if err = h.validateMediaSettingPayload(mediaOverrides); err != nil {
+	if err = h.validateAssetSettingPayload(assetOverrides); err != nil {
 		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(activeKind, err.Error()))
 	}
 
@@ -1856,11 +1856,11 @@ func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 		setting.Value = value
 	}
 
-	mediaOverrides := make(map[string]string)
-	if isMediaSettingCode(originalCode) && setting.Value != originalValue {
-		mediaOverrides[originalCode] = setting.Value
+	assetOverrides := make(map[string]string)
+	if isAssetSettingCode(originalCode) && setting.Value != originalValue {
+		assetOverrides[originalCode] = setting.Value
 	}
-	if err = h.validateMediaSettingPayload(mediaOverrides); err != nil {
+	if err = h.validateAssetSettingPayload(assetOverrides); err != nil {
 		return renderEditWithError(err.Error())
 	}
 

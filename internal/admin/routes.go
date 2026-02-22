@@ -43,10 +43,10 @@ func RegisterRoutes(
 	adminGroup.Post("/posts/:id/edit", handler.PostUpdatePostHandler).Name("admin.posts.update")
 	adminGroup.Post("/posts/:id/delete", handler.PostDeletePostHandler).Name("admin.posts.delete")
 
-	adminGroup.Get("/media", handler.GetMediaListHandler).Name("admin.media.list")
-	adminGroup.Get("/api/media/assets", handler.GetMediaAssetsAPIHandler).Name("admin.media.assets.list")
-	adminGroup.Post("/api/media/assets", handler.PostMediaUploadAPIHandler).Name("admin.media.assets.upload")
-	adminGroup.Delete("/api/media/assets/:id", handler.DeleteMediaAssetAPIHandler).Name("admin.media.assets.delete")
+	adminGroup.Get("/assets", handler.GetAssetListHandler).Name("admin.assets.list")
+	adminGroup.Get("/api/assets", handler.GetAssetListAPIHandler).Name("admin.assets.api.list")
+	adminGroup.Post("/api/assets", handler.PostAssetUploadAPIHandler).Name("admin.assets.api.upload")
+	adminGroup.Delete("/api/assets/:id", handler.DeleteAssetAPIHandler).Name("admin.assets.api.delete")
 
 	adminGroup.Get("/comments", handler.GetCommentListHandler).Name("admin.comments.list")
 	adminGroup.Post("/comments/:id/approve", handler.PostApproveCommentHandler).Name("admin.comments.approve")

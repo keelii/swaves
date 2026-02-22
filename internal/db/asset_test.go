@@ -2,11 +2,11 @@ package db
 
 import "testing"
 
-func TestMediaRemarkPersisted(t *testing.T) {
+func TestAssetRemarkPersisted(t *testing.T) {
 	db := openTestDB(t)
 
-	item := &Media{
-		Kind:              MediaKindImage,
+	item := &Asset{
+		Kind:              AssetKindImage,
 		Provider:          "see",
 		ProviderAssetID:   uniqueValue("asset"),
 		ProviderDeleteKey: "delete-key",
@@ -16,25 +16,25 @@ func TestMediaRemarkPersisted(t *testing.T) {
 		SizeBytes:         1024,
 	}
 
-	id, err := CreateMedia(db, item)
+	id, err := CreateAsset(db, item)
 	if err != nil {
-		t.Fatalf("CreateMedia failed: %v", err)
+		t.Fatalf("CreateAsset failed: %v", err)
 	}
 
-	got, err := GetMediaByID(db, id)
+	got, err := GetAssetByID(db, id)
 	if err != nil {
-		t.Fatalf("GetMediaByID failed: %v", err)
+		t.Fatalf("GetAssetByID failed: %v", err)
 	}
 	if got.Remark != "manual note" {
 		t.Fatalf("unexpected remark: got %q want %q", got.Remark, "manual note")
 	}
 
-	list, err := ListMedia(db, MediaQueryOptions{Limit: 20, Offset: 0})
+	list, err := ListAssets(db, AssetQueryOptions{Limit: 20, Offset: 0})
 	if err != nil {
-		t.Fatalf("ListMedia failed: %v", err)
+		t.Fatalf("ListAssets failed: %v", err)
 	}
 	if len(list) == 0 {
-		t.Fatal("ListMedia returned empty result")
+		t.Fatal("ListAssets returned empty result")
 	}
 	if list[0].Remark != "manual note" {
 		t.Fatalf("unexpected list remark: got %q want %q", list[0].Remark, "manual note")

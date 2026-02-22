@@ -64,12 +64,12 @@ It is intended as a practical guide for future changes.
 
 ## Category B) Product Workflow and Data Semantics
 
-### 4) Media Library Rules
+### 4) Asset Library Rules
 
-- Runtime uses one media provider at a time.
-- Provider selection UI is not shown in media upload/list pages.
+- Runtime uses one asset provider at a time.
+- Provider selection UI is not shown in asset upload/list pages.
 - Provider switches happen only in settings via default config.
-- Media list page reads from database records, not provider list API calls.
+- Asset list page reads from database records, not provider list API calls.
 
 ### 5) Settings and Prefix Fields
 
@@ -89,7 +89,7 @@ It is intended as a practical guide for future changes.
 ### 18) Encrypted Post Privacy Boundary
 
 - Encrypted posts are a privacy boundary for authors; any data associated with encrypted posts must stay isolated from regular post/domain tables and cross-module linkage.
-- Do not embed reusable convenience features from public/normal content modules into encrypted post pages (for example media library picker or media upload entry points).
+- Do not embed reusable convenience features from public/normal content modules into encrypted post pages (for example asset library picker or asset upload entry points).
 - Any new encrypted-post feature must be reviewed with privacy-first defaults: no implicit cross-reference, no auto-link to shared content assets, no leakage through shared management workflows.
 
 ## Category C) Runtime Reliability and Safety
@@ -171,7 +171,7 @@ Before merge, verify all items below:
 - [ ] Macro signatures use explicit params/defaults; avoid `ctx` or dict-bag arguments where not necessary.
 - [ ] Macro vs include responsibilities stay clear (macro=atomic snippet, include=business component).
 - [ ] Template URL generation prefers direct key/value `url_for` args over `dict(...)` wrappers where supported.
-- [ ] Encrypted post module remains privacy-isolated: no shared media/library embedding and no cross-module linkage regression.
+- [ ] Encrypted post module remains privacy-isolated: no shared asset/library embedding and no cross-module linkage regression.
 - [ ] Template reload behavior follows `SWAVES_TEMPLATE_RELOAD` (dev-only per-request clearing).
 - [ ] Job registry lifecycle remains safe (listen hook init + shutdown destroy).
 - [ ] Added/updated tests cover new behavior and removed legacy behavior.

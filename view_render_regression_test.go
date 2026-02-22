@@ -197,18 +197,18 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 	}
 }
 
-func TestRenderAdminMediaIndexWithItems(t *testing.T) {
+func TestRenderAdminAssetsIndexWithItems(t *testing.T) {
 	view, _, _ := NewViewEngine("./web/templates", false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/media_index", map[string]any{
-		"Items": []db.Media{
+	err := view.Render(&out, "admin/assets_index", map[string]any{
+		"Items": []db.Asset{
 			{
 				ID:           11,
-				Kind:         db.MediaKindImage,
+				Kind:         db.AssetKindImage,
 				Provider:     "see",
 				OriginalName: "cover.png",
 				FileURL:      "https://example.com/cover.png",
@@ -220,20 +220,21 @@ func TestRenderAdminMediaIndexWithItems(t *testing.T) {
 		"DefaultProvider":       "see",
 		"DefaultProviderReady":  true,
 		"DefaultProviderError":  "",
-		"MediaProviderLabelMap": map[string]string{"see": "S.EE"},
+		"AssetProviderLabelMap": map[string]string{"see": "S.EE"},
+		"AssetKindLabelMap":     map[string]string{"image": "图片"},
 	})
 	if err != nil {
-		t.Fatalf("render media index failed: %v", err)
+		t.Fatalf("render assets index failed: %v", err)
 	}
 	rendered := out.String()
-	if !strings.Contains(rendered, `data-media-id="11"`) {
-		t.Fatalf("expected media row id rendered, got: %s", rendered)
+	if !strings.Contains(rendered, `data-asset-id="11"`) {
+		t.Fatalf("expected asset row id rendered, got: %s", rendered)
 	}
 	if !strings.Contains(rendered, "cover.png") {
-		t.Fatalf("expected media file name rendered, got: %s", rendered)
+		t.Fatalf("expected asset file name rendered, got: %s", rendered)
 	}
-	if strings.Contains(rendered, "暂无媒体资源") {
-		t.Fatalf("expected non-empty media table, got: %s", rendered)
+	if strings.Contains(rendered, "暂无资源") {
+		t.Fatalf("expected non-empty asset table, got: %s", rendered)
 	}
 }
 
@@ -319,7 +320,7 @@ func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
 	}
 }
 
-func TestRenderAdminPostsEditUsesMediaAssetsAPIPath(t *testing.T) {
+func TestRenderAdminPostsEditUsesAssetAPIPath(t *testing.T) {
 	view, _, _ := NewViewEngine("./web/templates", false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -345,11 +346,11 @@ func TestRenderAdminPostsEditUsesMediaAssetsAPIPath(t *testing.T) {
 	}
 
 	rendered := out.String()
-	if !strings.Contains(rendered, "/api/media/assets") {
-		t.Fatalf("expected rendered output to contain media assets api path")
+	if !strings.Contains(rendered, "/api/assets") {
+		t.Fatalf("expected rendered output to contain asset api path")
 	}
 	if strings.Contains(rendered, "admin/posts/2/&") {
-		t.Fatalf("unexpected malformed media request base in rendered output")
+		t.Fatalf("unexpected malformed asset request base in rendered output")
 	}
 }
 

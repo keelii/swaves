@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"swaves/internal/db"
 	"testing"
+
+	"github.com/mitsuhiko/minijinja/minijinja-go/v2/value"
 )
 
 func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
@@ -222,5 +225,71 @@ func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	}
 	if capturedParams["id"] != "9" || capturedParams["tab"] != "comments" {
 		t.Fatalf("captured params = %#v", capturedParams)
+	}
+}
+
+func TestDecodeAnyToTypeConvertsMiniJinjaNoneToNil(t *testing.T) {
+	category, ok := decodeAnyToType[db.Category](map[string]value.Value{
+		"Slug":      value.FromString("go"),
+		"DeletedAt": value.None(),
+	})
+	if !ok {
+		t.Fatalf("decodeAnyToType should decode map with none values")
+	}
+	if category.Slug != "go" {
+		t.Fatalf("category slug = %q, want %q", category.Slug, "go")
+	}
+	if category.DeletedAt != nil {
+		t.Fatalf("category deleted_at = %v, want nil", *category.DeletedAt)
+	}
+}
+
+func TestBuildPostFromRawReadsMiniJinjaMap(t *testing.T) {
+	post := buildPostFromRaw(map[string]value.Value{
+		"ID":          value.FromInt(12),
+		"Kind":        value.FromInt(int64(db.PostKindPage)),
+		"Slug":        value.FromString("about"),
+		"Title":       value.FromString("About"),
+		"PublishedAt": value.FromInt(1700000000),
+	})
+
+	if post.ID != 12 {
+		t.Fatalf("post ID = %d, want 12", post.ID)
+	}
+	if post.Kind != db.PostKindPage {
+		t.Fatalf("post kind = %d, want %d", post.Kind, db.PostKindPage)
+	}
+	if post.Slug != "about" {
+		t.Fatalf("post slug = %q, want %q", post.Slug, "about")
+	}
+	if post.Title != "About" {
+		t.Fatalf("post title = %q, want %q", post.Title, "About")
+	}
+	if post.PublishedAt != 1700000000 {
+		t.Fatalf("post published_at = %d, want 1700000000", post.PublishedAt)
+	}
+}
+
+func TestBuildPostFromArgsReadsScalarArguments(t *testing.T) {
+	post, ok := buildPostFromArgs([]value.Value{
+		value.FromInt(7),
+		value.FromInt(int64(db.PostKindPost)),
+		value.FromString("hello"),
+		value.FromString("1700001111"),
+	})
+	if !ok {
+		t.Fatalf("buildPostFromArgs should parse scalar arguments")
+	}
+	if post.ID != 7 {
+		t.Fatalf("post ID = %d, want 7", post.ID)
+	}
+	if post.Kind != db.PostKindPost {
+		t.Fatalf("post kind = %d, want %d", post.Kind, db.PostKindPost)
+	}
+	if post.Slug != "hello" {
+		t.Fatalf("post slug = %q, want %q", post.Slug, "hello")
+	}
+	if post.PublishedAt != 1700001111 {
+		t.Fatalf("post published_at = %d, want 1700001111", post.PublishedAt)
 	}
 }

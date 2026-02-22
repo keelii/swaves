@@ -28,7 +28,7 @@ const (
 	TableUniqueVisitors TableName = "t_unique_visitors"
 	TableUVUnique       TableName = TableUniqueVisitors
 	TableLikes          TableName = "t_likes"
-	TableMedia          TableName = "t_media"
+	TableAssets         TableName = "t_assets"
 )
 
 const InitialSQL = `
@@ -279,7 +279,7 @@ const InitialSQL = `
 	CREATE INDEX IF NOT EXISTS idx_likes_visitor_id
 	ON ` + TableLikes + ` (visitor_id);
 
-	CREATE TABLE IF NOT EXISTS ` + TableMedia + ` (
+	CREATE TABLE IF NOT EXISTS ` + TableAssets + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		kind TEXT NOT NULL,
 		provider TEXT NOT NULL,
@@ -292,14 +292,14 @@ const InitialSQL = `
 		created_at INTEGER NOT NULL
 	);
 
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_media_provider_asset
-	ON ` + TableMedia + ` (provider, provider_asset_id);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_provider_asset
+	ON ` + TableAssets + ` (provider, provider_asset_id);
 
-	CREATE INDEX IF NOT EXISTS idx_media_kind_created
-	ON ` + TableMedia + ` (kind, created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_assets_kind_created
+	ON ` + TableAssets + ` (kind, created_at DESC);
 
-	CREATE INDEX IF NOT EXISTS idx_media_provider_created
-	ON ` + TableMedia + ` (provider, created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_assets_provider_created
+	ON ` + TableAssets + ` (provider, created_at DESC);
 `
 const InternalLang = `[
 	  {"label": "简体中文（中国大陆）", "value": "zh-CN"},
@@ -419,7 +419,7 @@ const (
 	SettingSubKindSEE      = "see"
 	SettingSubKindImageKit = "imagekit"
 	SettingSubKindS3       = "s3"
-	SettingSubKindMedia    = "media"
+	SettingSubKindAsset    = "asset"
 )
 
 var settingKindOrder = []string{
@@ -440,7 +440,7 @@ var settingSubKindOrder = map[string][]string{
 		SettingSubKindS3,
 	},
 	SettingKindAdminSecurity: {
-		SettingSubKindMedia,
+		SettingSubKindAsset,
 		SettingSubKindGeneral,
 	},
 }
@@ -464,7 +464,7 @@ var SettingSubKindLabels = map[string]map[string]string{
 	},
 	SettingKindAdminSecurity: {
 		SettingSubKindGeneral: "通用",
-		SettingSubKindMedia:   "媒体",
+		SettingSubKindAsset:   "资源",
 	},
 }
 
@@ -498,14 +498,14 @@ var DefaultSettings = []Setting{
 	{Sort: 12, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Bucket", Code: "s3_bucket", Type: "text", Value: "swaves-backup", Description: "S3 Bucket 名称（必填，仅 S3 备份时使用）"},
 	{Sort: 11, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Access Key ID", Code: "s3_access_key_id", Type: "secret", Value: consts.S3AccessKeyID, Description: "S3 access key id"},
 	{Sort: 12, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindS3, Name: "S3 Secret Access Key", Code: "s3_secret_access_key", Type: "secret", Value: consts.S3SecretAccessKey, Description: "S3 secret access key"},
-	{Sort: 13, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API 地址", Code: "media_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload", Description: "S.EE API 地址（可填写上传接口完整地址）"},
-	{Sort: 14, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API Token", Code: "media_see_api_token", Type: "secret", Value: consts.SeeApiToken, Description: "S.EE Bearer Token"},
-	{Sort: 15, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit-endpoint", Code: "media_imagekit_endpoint", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API Endpoint"},
-	{Sort: 16, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit Private Key", Code: "media_imagekit_private_key", Type: "secret", Value: consts.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
+	{Sort: 13, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API 地址", Code: "asset_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload", Description: "S.EE API 地址（可填写上传接口完整地址）"},
+	{Sort: 14, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindSEE, Name: "S.EE API Token", Code: "asset_see_api_token", Type: "secret", Value: consts.SeeApiToken, Description: "S.EE Bearer Token"},
+	{Sort: 15, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit-endpoint", Code: "asset_imagekit_endpoint", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API Endpoint"},
+	{Sort: 16, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit Private Key", Code: "asset_imagekit_private_key", Type: "secret", Value: consts.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
 	{Sort: 17, Kind: SettingKindThirdPartyServices, Name: "Google analytics ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google analytics ID"},
 	{Sort: 10, Kind: SettingKindAdminSecurity, Name: "管理后台路径", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: consts.UrlPrefixValidatorJSON},
 	{Sort: 11, Kind: SettingKindAdminSecurity, Name: "管理后台密码", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
-	{Sort: 12, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindMedia, Name: "媒体默认服务", Code: "media_default_provider", Type: "select", Value: "see", Description: "媒体上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
+	{Sort: 12, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindAsset, Name: "资源默认服务", Code: "asset_default_provider", Type: "select", Value: "see", Description: "资源上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
 	{Sort: 10, Kind: SettingKindUIExperience, Name: "文字大小", Code: "font_size", Type: "number", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 	{Sort: 11, Kind: SettingKindUIExperience, Name: "界面模式", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},

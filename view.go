@@ -6,6 +6,7 @@ import (
 	"fmt"
 	HTML "html"
 	"io"
+	"math"
 	"net/url"
 	"os"
 	"path"
@@ -17,6 +18,7 @@ import (
 	"swaves/helper"
 	"swaves/internal/consts"
 	"swaves/internal/db"
+	"swaves/internal/logger"
 	"swaves/internal/share"
 	"swaves/internal/store"
 	"time"
@@ -650,75 +652,18 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-		tag, ok := decodeTemplateArg[db.Tag](args[0])
-		if !ok {
-			return value.FromString(""), nil
-		}
-		return value.FromString(share.GetTagUrl(tag)), nil
+		slug := strings.TrimSpace(toStringValue(args[0].Raw()))
+		return value.FromString(share.GetTagUrl(db.Tag{Slug: slug})), nil
 	})
 	registerTemplateFunction(env, "GetCategoryUrl", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-		category, ok := decodeTemplateArg[db.Category](args[0])
-		if !ok {
-			return value.FromString(""), nil
-		}
-		return value.FromString(share.GetCategoryUrl(category)), nil
-	})
-	registerTemplateFunction(env, "BuildPostURL", func(args []value.Value) (value.Value, error) {
-		if len(args) < 4 {
-			return value.FromString(""), nil
-		}
-
-		id := int64(0)
-		if parsed, ok := args[0].AsInt(); ok {
-			id = parsed
-		} else if parsed, ok := decodeAnyToType[int64](args[0].Raw()); ok {
-			id = parsed
-		} else {
-			parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(args[0].Raw())), 10, 64)
-			if err != nil {
-				return value.FromString(""), nil
-			}
-			id = parsed
-		}
-
-		kind := db.PostKind(0)
-		if parsed, ok := args[1].AsInt(); ok {
-			kind = db.PostKind(parsed)
-		} else if parsed, ok := decodeAnyToType[int](args[1].Raw()); ok {
-			kind = db.PostKind(parsed)
-		} else {
-			parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[1].Raw())))
-			if err != nil {
-				return value.FromString(""), nil
-			}
-			kind = db.PostKind(parsed)
-		}
-
-		slug := toStringValue(args[2].Raw())
-
-		publishedAt := int64(0)
-		if parsed, ok := args[3].AsInt(); ok {
-			publishedAt = parsed
-		} else if parsed, ok := decodeAnyToType[int64](args[3].Raw()); ok {
-			publishedAt = parsed
-		} else {
-			parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(args[3].Raw())), 10, 64)
-			if err != nil {
-				return value.FromString(""), nil
-			}
-			publishedAt = parsed
-		}
-
-		return value.FromString(share.BuildPostURL(id, kind, slug, publishedAt)), nil
+		slug := strings.TrimSpace(toStringValue(args[0].Raw()))
+		return value.FromString(share.GetCategoryUrl(db.Category{Slug: slug})), nil
 	})
 	registerTemplateFunction(env, "GetPostUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
-		}
-		post, ok := decodeTemplateArg[db.Post](args[0])
+		post, ok := buildPostFromArgs(args)
 		if !ok {
 			return value.FromString(""), nil
 		}
@@ -764,12 +709,9 @@ func registerValueFormatter(env *minijinja.Environment, name string, formatter f
 	})
 }
 
-func decodeTemplateArg[T any](input value.Value) (T, bool) {
-	return decodeAnyToType[T](input.Raw())
-}
-
 func decodeAnyToType[T any](raw any) (T, bool) {
 	var zero T
+	raw = unwrapTemplateValue(raw)
 	switch typed := raw.(type) {
 	case T:
 		return typed, true
@@ -781,13 +723,228 @@ func decodeAnyToType[T any](raw any) (T, bool) {
 	}
 	payload, err := json.Marshal(raw)
 	if err != nil {
+		logger.Error("failed to marshal template argument: %v", err)
 		return zero, false
 	}
 	var decoded T
 	if err := json.Unmarshal(payload, &decoded); err != nil {
+		logger.Error("failed to unmarshal template argument: %v", err)
 		return zero, false
 	}
 	return decoded, true
+}
+
+func buildPostFromArgs(args []value.Value) (db.Post, bool) {
+	if len(args) == 0 {
+		return db.Post{}, false
+	}
+	if len(args) == 1 {
+		return buildPostFromRaw(args[0].Raw()), true
+	}
+	if len(args) < 4 {
+		return db.Post{}, false
+	}
+
+	id, ok := readInt64TemplateArg(args[0])
+	if !ok {
+		return db.Post{}, false
+	}
+	kind, ok := readInt64TemplateArg(args[1])
+	if !ok {
+		return db.Post{}, false
+	}
+	slug := strings.TrimSpace(toStringValue(args[2].Raw()))
+	if slug == "" {
+		return db.Post{}, false
+	}
+	publishedAt, ok := readInt64TemplateArg(args[3])
+	if !ok {
+		return db.Post{}, false
+	}
+
+	return db.Post{
+		ID:          id,
+		Kind:        db.PostKind(kind),
+		Slug:        slug,
+		PublishedAt: publishedAt,
+	}, true
+}
+
+func buildPostFromRaw(raw any) db.Post {
+	switch typed := raw.(type) {
+	case db.Post:
+		return typed
+	case *db.Post:
+		if typed != nil {
+			return *typed
+		}
+		return db.Post{}
+	}
+
+	raw = unwrapTemplateValue(raw)
+	post := db.Post{}
+	if id, ok := readInt64Field(raw, "ID", "Id", "id"); ok {
+		post.ID = id
+	}
+	if kind, ok := readInt64Field(raw, "Kind", "kind"); ok {
+		post.Kind = db.PostKind(kind)
+	}
+	if slug, ok := readStringField(raw, "Slug", "slug"); ok {
+		post.Slug = strings.TrimSpace(slug)
+	}
+	if title, ok := readStringField(raw, "Title", "title"); ok {
+		post.Title = strings.TrimSpace(title)
+	}
+	if publishedAt, ok := readInt64Field(raw, "PublishedAt", "publishedAt", "published_at"); ok {
+		post.PublishedAt = publishedAt
+	}
+	return post
+}
+
+func readInt64TemplateArg(v value.Value) (int64, bool) {
+	if parsed, ok := v.AsInt(); ok {
+		return parsed, true
+	}
+	return toInt64Value(v.Raw())
+}
+
+func readTemplateField(raw any, keys ...string) (any, bool) {
+	for _, key := range keys {
+		trimmed := strings.TrimSpace(key)
+		if trimmed == "" {
+			continue
+		}
+		if item, ok := safeLookup(raw, trimmed); ok {
+			return item, true
+		}
+	}
+	return nil, false
+}
+
+func readInt64Field(raw any, keys ...string) (int64, bool) {
+	item, ok := readTemplateField(raw, keys...)
+	if !ok {
+		return 0, false
+	}
+	return toInt64Value(item)
+}
+
+func readStringField(raw any, keys ...string) (string, bool) {
+	item, ok := readTemplateField(raw, keys...)
+	if !ok {
+		return "", false
+	}
+	item = unwrapTemplateValue(item)
+	if item == nil {
+		return "", false
+	}
+	return toStringValue(item), true
+}
+
+func toInt64Value(raw any) (int64, bool) {
+	raw = unwrapTemplateValue(raw)
+	switch typed := raw.(type) {
+	case int:
+		return int64(typed), true
+	case int8:
+		return int64(typed), true
+	case int16:
+		return int64(typed), true
+	case int32:
+		return int64(typed), true
+	case int64:
+		return typed, true
+	case uint:
+		if uint64(typed) > uint64(math.MaxInt64) {
+			return 0, false
+		}
+		return int64(typed), true
+	case uint8:
+		return int64(typed), true
+	case uint16:
+		return int64(typed), true
+	case uint32:
+		return int64(typed), true
+	case uint64:
+		if typed > uint64(math.MaxInt64) {
+			return 0, false
+		}
+		return int64(typed), true
+	case float32:
+		value64 := float64(typed)
+		valueInt := int64(value64)
+		if value64 != float64(valueInt) {
+			return 0, false
+		}
+		return valueInt, true
+	case float64:
+		valueInt := int64(typed)
+		if typed != float64(valueInt) {
+			return 0, false
+		}
+		return valueInt, true
+	case json.Number:
+		if parsed, err := typed.Int64(); err == nil {
+			return parsed, true
+		}
+		parsedFloat, err := typed.Float64()
+		if err != nil {
+			return 0, false
+		}
+		parsedInt := int64(parsedFloat)
+		if parsedFloat != float64(parsedInt) {
+			return 0, false
+		}
+		return parsedInt, true
+	case string:
+		trimmed := strings.TrimSpace(typed)
+		if trimmed == "" {
+			return 0, false
+		}
+		parsed, err := strconv.ParseInt(trimmed, 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		return parsed, true
+	default:
+		return 0, false
+	}
+}
+
+func unwrapTemplateValue(raw any) any {
+	switch typed := raw.(type) {
+	case value.Value:
+		if typed.IsNone() || typed.IsUndefined() || typed.IsSilentUndefined() {
+			return nil
+		}
+		return unwrapTemplateValue(typed.Raw())
+	case map[string]value.Value:
+		converted := make(map[string]any, len(typed))
+		for key, item := range typed {
+			converted[key] = unwrapTemplateValue(item)
+		}
+		return converted
+	case map[string]any:
+		converted := make(map[string]any, len(typed))
+		for key, item := range typed {
+			converted[key] = unwrapTemplateValue(item)
+		}
+		return converted
+	case []value.Value:
+		converted := make([]any, len(typed))
+		for idx, item := range typed {
+			converted[idx] = unwrapTemplateValue(item)
+		}
+		return converted
+	case []any:
+		converted := make([]any, len(typed))
+		for idx, item := range typed {
+			converted[idx] = unwrapTemplateValue(item)
+		}
+		return converted
+	default:
+		return raw
+	}
 }
 
 func renderHTMLAttrs(raw any) string {

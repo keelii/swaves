@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"swaves/internal/asset"
 	"swaves/internal/db"
 	"swaves/internal/logger"
-	"swaves/internal/media"
 	"swaves/internal/store"
 	"time"
 
@@ -71,7 +71,7 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 
 	statusCode := 0
 	response := ""
-	mediaID := int64(0)
+	assetID := int64(0)
 
 	switch provider {
 	case pushProviderImageKit:
@@ -82,9 +82,9 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 
 		statusCode = uploadStatus
 		response = uploadResponse
-		mediaID, err = createRemoteBackupMediaRecordByUpload(reg.DB, provider, snapshot, uploadRes)
+		assetID, err = createRemoteBackupAssetRecordByUpload(reg.DB, provider, snapshot, uploadRes)
 		if err != nil {
-			return nil, fmt.Errorf("remote backup saved but media record failed: %w", err)
+			return nil, fmt.Errorf("remote backup saved but asset record failed: %w", err)
 		}
 	default:
 		if cfg.S3Bucket == "" {
@@ -107,24 +107,24 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 
 		statusCode = uploadStatus
 		response = uploadResponse
-		mediaID, err = createRemoteBackupMediaRecordForS3(reg.DB, cfg, snapshot, objectKey)
+		assetID, err = createRemoteBackupAssetRecordForS3(reg.DB, cfg, snapshot, objectKey)
 		if err != nil {
-			return nil, fmt.Errorf("remote backup saved but media record failed: %w", err)
+			return nil, fmt.Errorf("remote backup saved but asset record failed: %w", err)
 		}
 	}
 
 	return jobMessage(fmt.Sprintf(
-		"provider=%s status=%d hash=%s size=%dB media_id=%d response=%s",
+		"provider=%s status=%d hash=%s size=%dB asset_id=%d response=%s",
 		provider,
 		statusCode,
 		shortHash(snapshot.Hash),
 		snapshot.Size,
-		mediaID,
+		assetID,
 		response,
 	)), nil
 }
 
-func uploadSnapshotToImageKit(cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (*media.UploadResult, string, int, error) {
+func uploadSnapshotToImageKit(cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (*asset.UploadResult, string, int, error) {
 	if strings.TrimSpace(cfg.ImageKitEndpoint) == "" {
 		return nil, "", 0, errors.New("imagekit endpoint is empty")
 	}
@@ -137,7 +137,7 @@ func uploadSnapshotToImageKit(cfg pushJobConfig, snapshot *db.ExportResult, obje
 		return nil, "", 0, fmt.Errorf("open snapshot failed: %w", err)
 	}
 
-	provider := media.NewImageKitProvider(media.ImageKitConfig{
+	provider := asset.NewImageKitProvider(asset.ImageKitConfig{
 		Endpoint:   cfg.ImageKitEndpoint,
 		PrivateKey: cfg.ImageKitPrivateKey,
 	})
@@ -145,7 +145,7 @@ func uploadSnapshotToImageKit(cfg pushJobConfig, snapshot *db.ExportResult, obje
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 
-	result, err := provider.Upload(ctx, media.UploadInput{
+	result, err := provider.Upload(ctx, asset.UploadInput{
 		FileName:    objectKey,
 		ContentType: "application/x-sqlite3",
 		Bytes:       fileBytes,
@@ -201,7 +201,7 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 	return response, statusCode, nil
 }
 
-func createRemoteBackupMediaRecordForS3(dbx *db.DB, cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (int64, error) {
+func createRemoteBackupAssetRecordForS3(dbx *db.DB, cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (int64, error) {
 	assetID := buildRemoteBackupAssetID(cfg.S3Bucket, objectKey)
 	deleteKey := assetID
 	fileURL := buildRemoteBackupFileURL(cfg.S3Bucket, objectKey)
@@ -210,7 +210,7 @@ func createRemoteBackupMediaRecordForS3(dbx *db.DB, cfg pushJobConfig, snapshot 
 		originalName = buildS3ObjectKey(snapshot.File)
 	}
 
-	return createRemoteBackupMediaRecordByUpload(dbx, pushProviderS3, snapshot, &media.UploadResult{
+	return createRemoteBackupAssetRecordByUpload(dbx, pushProviderS3, snapshot, &asset.UploadResult{
 		ProviderAssetID:   assetID,
 		ProviderDeleteKey: deleteKey,
 		FileURL:           fileURL,
@@ -219,7 +219,7 @@ func createRemoteBackupMediaRecordForS3(dbx *db.DB, cfg pushJobConfig, snapshot 
 	})
 }
 
-func createRemoteBackupMediaRecordByUpload(dbx *db.DB, providerName string, snapshot *db.ExportResult, upload *media.UploadResult) (int64, error) {
+func createRemoteBackupAssetRecordByUpload(dbx *db.DB, providerName string, snapshot *db.ExportResult, upload *asset.UploadResult) (int64, error) {
 	if upload == nil {
 		return 0, errors.New("upload result is nil")
 	}
@@ -234,8 +234,8 @@ func createRemoteBackupMediaRecordByUpload(dbx *db.DB, providerName string, snap
 		sizeBytes = snapshot.Size
 	}
 
-	item := &db.Media{
-		Kind:              db.MediaKindBackup,
+	item := &db.Asset{
+		Kind:              db.AssetKindBackup,
 		Provider:          strings.TrimSpace(providerName),
 		ProviderAssetID:   strings.TrimSpace(upload.ProviderAssetID),
 		ProviderDeleteKey: strings.TrimSpace(upload.ProviderDeleteKey),
@@ -245,13 +245,13 @@ func createRemoteBackupMediaRecordByUpload(dbx *db.DB, providerName string, snap
 		CreatedAt:         time.Now().Unix(),
 	}
 
-	id, err := db.CreateMedia(dbx, item)
+	id, err := db.CreateAsset(dbx, item)
 	if err == nil {
 		return id, nil
 	}
 
 	if strings.Contains(strings.ToLower(err.Error()), "unique constraint failed") {
-		existing, getErr := db.GetMediaByProviderAssetID(dbx, item.Provider, item.ProviderAssetID)
+		existing, getErr := db.GetAssetByProviderAssetID(dbx, item.Provider, item.ProviderAssetID)
 		if getErr == nil {
 			return existing.ID, nil
 		}
@@ -366,8 +366,8 @@ func loadPushJobConfig() pushJobConfig {
 		S3AccessKey:        strings.TrimSpace(store.GetSetting("s3_access_key_id")),
 		S3SecretKey:        strings.TrimSpace(store.GetSetting("s3_secret_access_key")),
 		S3ForcePath:        s3ForcePath,
-		ImageKitEndpoint:   strings.TrimSpace(store.GetSetting("media_imagekit_endpoint")),
-		ImageKitPrivateKey: strings.TrimSpace(store.GetSetting("media_imagekit_private_key")),
+		ImageKitEndpoint:   strings.TrimSpace(store.GetSetting("asset_imagekit_endpoint")),
+		ImageKitPrivateKey: strings.TrimSpace(store.GetSetting("asset_imagekit_private_key")),
 		Timeout:            time.Duration(timeoutSec) * time.Second,
 	}
 }

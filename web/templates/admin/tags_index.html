@@ -25,7 +25,7 @@
   <tr>
     <td class="cell-4">{{ tag.ID }}</td>
     <td>{{ tag.Name }}</td>
-    <td><a href="{{ GetTagUrl(tag) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
+    <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
     <td><a href="{{ url_for('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
     <td>{{ tag.CreatedAt | relativeTime }}</td>
     <td>{{ tag.UpdatedAt | relativeTime }}</td>
