@@ -129,9 +129,9 @@
 
 <div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
   <nav role="tablist" aria-label="资源类型">
-    <a role="tab" aria-selected="{% if currentKind == "image" %}true{% else %}false{% endif %}" href="{{ url_for('admin.assets.list', kind='image') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["image"] | default("图片") }} ({{ imageCount }})</a>
-    <a role="tab" aria-selected="{% if currentKind == "file" %}true{% else %}false{% endif %}" href="{{ url_for('admin.assets.list', kind='file') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["file"] | default("文件") }} ({{ fileCount }})</a>
-    <a role="tab" aria-selected="{% if currentKind == "backup" %}true{% else %}false{% endif %}" href="{{ url_for('admin.assets.list', kind='backup') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["backup"] | default("备份") }} ({{ backupCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "image" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.assets.list', kind='image') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["image"] | default("图片") }} ({{ imageCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "file" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.assets.list', kind='file') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["file"] | default("文件") }} ({{ fileCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "backup" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.assets.list', kind='backup') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["backup"] | default("备份") }} ({{ backupCount }})</a>
   </nav>
 </div>
 
@@ -176,7 +176,7 @@
                 aria-label="复制图片链接"
                 data-title="复制图片链接"
               >
-                {{ lucide_icon("link-2", 16) }}
+                {{ LucideIcon("link-2", 16) }}
               </button>
               {% if assetItem.kind == "image" %}
                 <button
@@ -187,7 +187,7 @@
                   aria-label="复制 Markdown 代码"
                   data-title="复制 Markdown 代码"
                 >
-                  {{ lucide_icon("link-2", 16) }}
+                  {{ LucideIcon("link-2", 16) }}
                 </button>
               {% endif %}
             {% endif %}
@@ -198,7 +198,7 @@
               aria-label="删除"
               title="删除"
             >
-              {{ lucide_icon("trash-2", 16) }}
+              {{ LucideIcon("trash-2", 16) }}
             </button>
           </div>
         </td>
@@ -239,7 +239,7 @@
 
 <script>
 $(function() {
-  var assetAPIBase = {{ url_for('admin.assets.api.list') | tojson }};
+  var assetAPIBase = {{ UrlFor('admin.assets.api.list') | tojson }};
   var $dropzone = $('#asset-dropzone');
   var $fileInput = $('#asset-drop-input');
   var $uploadRemark = $('#asset-upload-remark');

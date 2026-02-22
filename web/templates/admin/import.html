@@ -104,7 +104,7 @@
 <div role="alert" data-variant="success">{{ successMessage }}</div>
 {% endif %}
 
-<form id="form" method="post" action="{{ url_for('admin.import.submit') }}" enctype="multipart/form-data">
+<form id="form" method="post" action="{{ UrlFor('admin.import.submit') }}" enctype="multipart/form-data">
   <section class="import-upload">
     <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
     <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖拽 Markdown 文件">
@@ -274,10 +274,10 @@
 
 <script>
 $(function() {
-  var parseItemURL = {{ url_for('admin.import.parse_item') | tojson }};
-  var confirmItemURL = {{ url_for('admin.import.confirm_item') | tojson }};
-  var cancelItemURL = {{ url_for('admin.import.cancel') | tojson }};
-  var postListURL = {{ url_for('admin.posts.list') | tojson }};
+  var parseItemURL = {{ UrlFor('admin.import.parse_item') | tojson }};
+  var confirmItemURL = {{ UrlFor('admin.import.confirm_item') | tojson }};
+  var cancelItemURL = {{ UrlFor('admin.import.cancel') | tojson }};
+  var postListURL = {{ UrlFor('admin.posts.list') | tojson }};
   var baseCategoryOptions = [{% for category in allCategories %}
     {{ category.Name | tojson }},{% endfor %}
   ];

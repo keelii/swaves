@@ -115,11 +115,11 @@
 <div class="settings-kind-tabs" role="tablist" aria-label="Settings Categories">
   {% for kind in settingKinds %}
   {% set label = settingKindLabels[kind] %}
-  <a role="tab" aria-selected="{% if activeKind == kind %}true{% else %}false{% endif %}" href="{{ url_for('admin.settings.all', kind=kind) }}">{% if label %}{{ label }}{% else %}{{ kind }}{% endif %}</a>
+  <a role="tab" aria-selected="{% if activeKind == kind %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.settings.all', kind=kind) }}">{% if label %}{{ label }}{% else %}{{ kind }}{% endif %}</a>
   {% endfor %}
 </div>
 
-<form id="form" method="post" action="{{ url_for('admin.settings.all.update', kind=activeKind) }}" class="settings-all-form">
+<form id="form" method="post" action="{{ UrlFor('admin.settings.all.update', kind=activeKind) }}" class="settings-all-form">
   <section class="settings-kind">
       {% if activeKind == contentRoutingKind %}
         <div class="settings-item-label">
@@ -178,7 +178,7 @@
                 {% endif %}
 
                 {% if settingType == "text" %}
-                  <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                  <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
                 {% else %}{% if settingType == "prefix-field" %}
                   {% set prefixSourceCode = "" %}
                   {% if (code == "page_url_prefix") or (code == "rss_path") or (code == "post_url_prefix") or (code == "category_url_prefix") or (code == "tag_url_prefix") %}
@@ -186,39 +186,39 @@
                   {% endif %}
                   <fieldset class="group settings-prefix-field" data-prefix-source-code="{{ prefixSourceCode }}" data-prefix-default="{{ settingPrefixValue }}">
                     <legend data-prefix-legend>{{ settingPrefixValue }}</legend>
-                    <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                    <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
                   </fieldset>
                 {% else %}{% if settingType == "number" %}
-                  <input type="number" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                  <input type="number" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
                 {% else %}{% if settingType == "date" %}
-                  <input type="date" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                  <input type="date" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
                 {% else %}{% if settingType == "time" %}
-                  <input type="time" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                  <input type="time" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
                 {% else %}{% if settingType == "datetime" %}
-                  <input type="datetime-local" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                  <input type="datetime-local" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
                 {% else %}{% if settingType == "url" %}
-                  <input type="url" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }}>
+                  <input type="url" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
                 {% else %}{% if settingType == "range" %}
                   <span class="settings-range-wrap">
-                    <input type="range" id="setting_{{ code }}_range" name="setting_{{ code }}" value="{{ settingValue }}"{{ renderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
+                    <input type="range" id="setting_{{ code }}_range" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
                     <output class="range-value" for="setting_{{ code }}_range">{{ settingValue }}{% if code == "font_size" %} px{% endif %}</output>
                   </span>
                 {% else %}{% if settingType == "password" %}
-                  <input type="password" name="setting_{{ code }}" placeholder="留空则保持当前值"{{ renderAttrs(attrs) }}>
+                  <input type="password" name="setting_{{ code }}" placeholder="留空则保持当前值"{{ RenderAttrs(attrs) }}>
                 {% else %}{% if settingType == "secret" %}
                   <span class="settings-secret-wrap">
-                    <input type="password" id="setting_{{ code }}_secret" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ renderAttrs(attrs) }}>
+                    <input type="password" id="setting_{{ code }}_secret" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ RenderAttrs(attrs) }}>
                     <button class="button outline settings-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
                   </span>
                 {% else %}{% if settingType == "textarea" %}
-                  <textarea name="setting_{{ code }}"{{ renderAttrs(attrs) }}>{{ settingValue }}</textarea>
+                  <textarea name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
                 {% else %}{% if settingType == "radio" %}
                   {% set currentValue = (settingValue or settingDefaultOptionValue) %}
                   <fieldset class="settings-options hstack">
                     <legend>{{ settingName }}</legend>
                     {% for radioOption in settingOptionsParsed %}
                     <label class="settings-option hstack">
-                      <input type="radio" name="setting_{{ code }}" value="{{ radioOption.value }}" {% if currentValue == radioOption.value %}checked{% endif %}{{ renderAttrs(attrs) }}>
+                      <input type="radio" name="setting_{{ code }}" value="{{ radioOption.value }}" {% if currentValue == radioOption.value %}checked{% endif %}{{ RenderAttrs(attrs) }}>
                       <span>{{ radioOption.label }}</span>
                     </label>
                     {% endfor %}
@@ -227,14 +227,14 @@
                   <div class="settings-options">
                     {% for checkboxOption in settingOptionsParsed %}
                       <label class="settings-option">
-                        <input type="checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}" {% if settingCheckboxValues[checkboxOption.value] %}checked{% endif %}{{ renderAttrs(attrs) }}>
+                        <input type="checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}" {% if settingCheckboxValues[checkboxOption.value] %}checked{% endif %}{{ RenderAttrs(attrs) }}>
                         <span>{{ checkboxOption.label }}</span>
                       </label>
                     {% endfor %}
                   </div>
                 {% else %}{% if settingType == "select" %}
                   {% set currentValue = (settingValue or settingDefaultOptionValue) %}
-                  <select name="setting_{{ code }}"{{ renderAttrs(attrs) }}>
+                  <select name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>
                     {% for selectOption in settingOptionsParsed %}
                       <option value="{{ selectOption.value }}" {% if currentValue == selectOption.value %}selected{% endif %}>{{ selectOption.label }}</option>
                     {% endfor %}

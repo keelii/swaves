@@ -1,12 +1,12 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
 
-<form id="form" method="post" action="{{ url_for('admin.tasks.update', id=Task.ID) }}">
+<form id="form" method="post" action="{{ UrlFor('admin.tasks.update', id=Task.ID) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         是否启用
-        {{ ui.toggle(printf("task_enabled_%d", Task.ID), "enabled", checked=(Task.Enabled == 1), data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
+        {{ ui.toggle(Printf("task_enabled_%d", Task.ID), "enabled", checked=(Task.Enabled == 1), data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
       </label>
 
       <fieldset>

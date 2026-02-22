@@ -1,19 +1,19 @@
 {% macro action_btn_content(icon_name, label, icon_size=16) %}
 <span class="btn-icon" aria-hidden="true">
-  {{ lucide_icon(icon_name, icon_size) }}
+  {{ LucideIcon(icon_name, icon_size) }}
 </span>
 <span>{{ label }}</span>
 {% endmacro %}
 
 {% macro action_icon_button(label, icon_name, type="button", danger=false, icon_size=16) %}
 <button type="{{ type }}" class="row-action-btn{% if danger %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" title="{{ label }}">
-  {{ lucide_icon(icon_name, icon_size) }}
+  {{ LucideIcon(icon_name, icon_size) }}
 </button>
 {% endmacro %}
 
 {% macro action_icon_link(href, label, icon_name, danger=false, icon_size=16) %}
 <a href="{{ href }}" class="row-action-btn{% if danger %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" title="{{ label }}">
-  {{ lucide_icon(icon_name, icon_size) }}
+  {{ LucideIcon(icon_name, icon_size) }}
 </a>
 {% endmacro %}
 
@@ -92,8 +92,8 @@
 {% macro table_row_actions(edit_route, delete_route, id) %}
 <td>
   <div class="row-actions">
-    {{ action_icon_link(url_for(edit_route, id=id), "编辑", "square-pen") }}
-    <form id="form" method="post" action="{{ url_for(delete_route, id=id) }}">
+    {{ action_icon_link(UrlFor(edit_route, id=id), "编辑", "square-pen") }}
+    <form id="form" method="post" action="{{ UrlFor(delete_route, id=id) }}">
       {{ action_icon_button("删除", "trash-2", type="submit", danger=true) }}
     </form>
   </div>
@@ -103,13 +103,13 @@
 {% macro tag_item(label, remove_href="", tag=none, kind_query="", search_query_escaped="", filter_category_id_str="") %}
 <span class="badge secondary">
   {% if tag and kind_query %}
-  <a href="{{ url_for('admin.posts.list') }}?kind={{ kind_query }}{% if search_query_escaped %}&q={{ search_query_escaped }}{% endif %}{% if filter_category_id_str %}&category={{ filter_category_id_str }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>
+  <a href="{{ UrlFor('admin.posts.list') }}?kind={{ kind_query }}{% if search_query_escaped %}&q={{ search_query_escaped }}{% endif %}{% if filter_category_id_str %}&category={{ filter_category_id_str }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>
   {% else %}
   {{ label }}
   {% endif %}
   {% if remove_href %}
   <a href="{{ remove_href }}" class="tag-remove btn-icon" aria-label="删除">
-    {{ lucide_icon("x", 14) }}
+    {{ LucideIcon("x", 14) }}
   </a>
   {% endif %}
 </span>

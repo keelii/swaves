@@ -91,12 +91,12 @@
   <div class="content-box">
     <div class="login-header">
       <div class="login-logo">🔐</div>
-      <h1 class="login-title">开始吧，{{ settings("author") }}</h1>
+      <h1 class="login-title">开始吧，{{ Settings("author") }}</h1>
     </div>
 
     {% with Error = Error %}{% include "admin/include/error_message.html" %}{% endwith %}
 
-    <form id="form" method="POST" action="{{ url_for('admin.login.submit') }}">
+    <form id="form" method="POST" action="{{ UrlFor('admin.login.submit') }}">
       {% if ReturnUrl %}<input type="hidden" name="returnUrl" value="{{ ReturnUrl }}">{% endif %}
       <div class="form-group">
         <div class="password-wrapper">

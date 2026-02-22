@@ -166,7 +166,7 @@ func TestMapLookupHandlesMissingAndNumericKeys(t *testing.T) {
 
 func TestURLForSupportsKeywordArguments(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for('admin.posts.edit', id=PostID, tab='comments') }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('admin.posts.edit', id=PostID, tab='comments') }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
@@ -204,7 +204,7 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 
 func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for('admin.posts.edit', {"id": "1", "tab": "draft"}, id=PostID, tab='comments') }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('admin.posts.edit', {"id": "1", "tab": "draft"}, id=PostID, tab='comments') }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 

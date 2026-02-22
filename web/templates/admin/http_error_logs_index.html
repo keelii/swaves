@@ -27,15 +27,15 @@
     <td>{{ log.Method }}</td>
     <td>{{ log.Path }}</td>
     <td>{{ log.Status }}</td>
-    <td>{% if log.UserAgent %}{{ long_text(log.UserAgent, 30, 1) }}{% else %}-{% endif %}</td>
+    <td>{% if log.UserAgent %}{{ LongText(log.UserAgent, 30, 1) }}{% else %}-{% endif %}</td>
     <td>{% if log.QueryParams %}{{ log.QueryParams }}{% else %}-{% endif %}</td>
     <td>{% if log.BodyParams %}
-      {{ long_text(log.BodyParams, 30, 1) }}
+      {{ LongText(log.BodyParams, 30, 1) }}
       {% else %}-{% endif %}</td>
     <td>{{ log.CreatedAt | formatTime }}</td>
     <td>
       <div class="row-actions">
-        <form id="form" method="post" action="{{ url_for('admin.http_error_logs.delete', id=log.ID) }}">
+        <form id="form" method="post" action="{{ UrlFor('admin.http_error_logs.delete', id=log.ID) }}">
           {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
         </form>
       </div>

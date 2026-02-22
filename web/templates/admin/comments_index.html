@@ -4,10 +4,10 @@
 {% set status = (StatusFilter or "") %}
 
 <nav role="tablist" aria-label="评论状态" class="mb-4">
-  <a role="tab" aria-selected="{% if status == "" %}true{% else %}false{% endif %}" href="{{ url_for('admin.comments.list') }}">全部</a>
-  <a role="tab" aria-selected="{% if status == "pending" %}true{% else %}false{% endif %}" href="{{ url_for('admin.comments.list', status='pending') }}">待审核</a>
-  <a role="tab" aria-selected="{% if status == "approved" %}true{% else %}false{% endif %}" href="{{ url_for('admin.comments.list', status='approved') }}">已通过</a>
-  <a role="tab" aria-selected="{% if status == "spam" %}true{% else %}false{% endif %}" href="{{ url_for('admin.comments.list', status='spam') }}">垃圾</a>
+  <a role="tab" aria-selected="{% if status == "" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.comments.list') }}">全部</a>
+  <a role="tab" aria-selected="{% if status == "pending" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.comments.list', status='pending') }}">待审核</a>
+  <a role="tab" aria-selected="{% if status == "approved" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.comments.list', status='approved') }}">已通过</a>
+  <a role="tab" aria-selected="{% if status == "spam" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.comments.list', status='spam') }}">垃圾</a>
 </nav>
 
 <table>
@@ -59,24 +59,24 @@
       <td>
         <div class="row-actions">
           {% if comment.Status != "approved" %}
-            <form method="post" action="{{ url_for('admin.comments.approve', id=comment.ID) }}">
+            <form method="post" action="{{ UrlFor('admin.comments.approve', id=comment.ID) }}">
               <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">通过</button>
             </form>
           {% endif %}
           {% if comment.Status != "pending" %}
-            <form method="post" action="{{ url_for('admin.comments.pending', id=comment.ID) }}">
+            <form method="post" action="{{ UrlFor('admin.comments.pending', id=comment.ID) }}">
               <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">待审</button>
             </form>
           {% endif %}
           {% if comment.Status != "spam" %}
-            <form method="post" action="{{ url_for('admin.comments.spam', id=comment.ID) }}">
+            <form method="post" action="{{ UrlFor('admin.comments.spam', id=comment.ID) }}">
               <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">垃圾</button>
             </form>
           {% endif %}
-          <form method="post" action="{{ url_for('admin.comments.delete', id=comment.ID) }}">
+          <form method="post" action="{{ UrlFor('admin.comments.delete', id=comment.ID) }}">
             <input type="hidden" name="status_filter" value="{{ status }}">
             {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
           </form>

@@ -1,7 +1,7 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
 
-<form id="form" method="post" action="{{ url_for('admin.settings.update', id=Setting.ID) }}">
+<form id="form" method="post" action="{{ UrlFor('admin.settings.update', id=Setting.ID) }}">
 
   {{ ui.form_field_text("分类", "kind", Setting.Kind, required=true, placeholder="例如: system, url, integration, default", help="（例如：system、url、integration、default）") }}
   {{ ui.form_field_text("子分类", "sub_kind", Setting.SubKind, placeholder="例如: general, see, imagekit, s3", help="（可选，分类下的子分类 code）") }}
@@ -58,36 +58,36 @@
   <p>
       <label>
       {% if Setting.Type == "password" %}
-        <input type="password" name="value" placeholder="留空则保持当前值"{{ renderAttrs(Setting.AttrsParsed) }}>
+        <input type="password" name="value" placeholder="留空则保持当前值"{{ RenderAttrs(Setting.AttrsParsed) }}>
       {% else %}{% if Setting.Type == "secret" %}
         <span class="hstack">
-          <input type="password" id="setting_secret_value" name="value" value="{{ Setting.Value }}" placeholder="当前值" autocomplete="off"{{ renderAttrs(Setting.AttrsParsed) }} style="flex:1;">
+          <input type="password" id="setting_secret_value" name="value" value="{{ Setting.Value }}" placeholder="当前值" autocomplete="off"{{ RenderAttrs(Setting.AttrsParsed) }} style="flex:1;">
           <button class="outline" type="button" id="toggle_setting_secret_value">显示</button>
         </span>
       {% else %}{% if Setting.Type == "prefix-field" %}
         <fieldset class="group">
           <legend>{% if Setting.PrefixValue %}{{ Setting.PrefixValue }}{% else %}前缀{% endif %}</legend>
-          <input type="text" name="value" value="{{ Setting.Value }}"{{ renderAttrs(Setting.AttrsParsed) }} placeholder="当前值">
+          <input type="text" name="value" value="{{ Setting.Value }}"{{ RenderAttrs(Setting.AttrsParsed) }} placeholder="当前值">
         </fieldset>
       {% else %}{% if Setting.Type == "textarea" %}
-        <textarea name="value"{{ renderAttrs(Setting.AttrsParsed) }} placeholder="当前值">{{ Setting.Value }}</textarea>
+        <textarea name="value"{{ RenderAttrs(Setting.AttrsParsed) }} placeholder="当前值">{{ Setting.Value }}</textarea>
       {% else %}{% if Setting.Type == "select" %}
         {% if Setting.OptionsParsed %}
-          <select name="value"{{ renderAttrs(Setting.AttrsParsed) }}>
+          <select name="value"{{ RenderAttrs(Setting.AttrsParsed) }}>
             {% for valueOption in Setting.OptionsParsed %}
               <option value="{{ valueOption.value }}" {% if Setting.Value == valueOption.value %}selected{% endif %}>{{ valueOption.label }}</option>
             {% endfor %}
           </select>
           <span>值</span>
         {% else %}
-          <input type="text" name="value" value="{{ Setting.Value }}"{{ renderAttrs(Setting.AttrsParsed) }} placeholder="当前值">
+          <input type="text" name="value" value="{{ Setting.Value }}"{{ RenderAttrs(Setting.AttrsParsed) }} placeholder="当前值">
           <span>值</span>
           <small style="color: orange;">警告：选项解析失败，请检查选项 JSON 格式。</small>
         {% endif %}
       {% else %}{% if Setting.Type == "range" %}
-        <input type="range" name="value" value="{{ Setting.Value }}"{{ renderAttrs(Setting.AttrsParsed) }}>
+        <input type="range" name="value" value="{{ Setting.Value }}"{{ RenderAttrs(Setting.AttrsParsed) }}>
       {% else %}
-        <input type="text" name="value" value="{{ Setting.Value }}"{{ renderAttrs(Setting.AttrsParsed) }} placeholder="当前值">
+        <input type="text" name="value" value="{{ Setting.Value }}"{{ RenderAttrs(Setting.AttrsParsed) }} placeholder="当前值">
       {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
       <span>值</span>
       <small>（当前值）</small>

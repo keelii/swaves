@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="{{ settings("language") }}">
+<html lang="{{ Settings("language") }}">
 <head>
   <meta charset="utf-8">
-  <title>{{ Title }} - {{ settings("site_name") }}</title>
+  <title>{{ Title }} - {{ Settings("site_name") }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="/static/admin/oat/oat.min.css" />
   <link rel="stylesheet" href="/static/admin/style.css" />
   {% block head_extra %}{% endblock %}
 </head>
-<body{% if settings("mode") == "dark" %} data-theme="dark"{% endif %}>
+<body{% if Settings("mode") == "dark" %} data-theme="dark"{% endif %}>
 {% block body %}
   {% block content %}{% endblock %}
 {% endblock %}

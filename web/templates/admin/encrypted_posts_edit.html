@@ -1,6 +1,6 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
-<form id="form" method="post" action="{{ url_for('admin.encrypted_posts.update', id=Post.ID) }}">
+<form id="form" method="post" action="{{ UrlFor('admin.encrypted_posts.update', id=Post.ID) }}">
   {% set displayDate = "" %}{% if Post.ExpiresAt %}{% set displayDate = Post.ExpiresAt | formatTime %}{% endif %}
   <div class="row">
     <div class="col-6">

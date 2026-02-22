@@ -346,7 +346,51 @@ func wrapMapLookup(raw any) any {
 }
 
 func registerViewFunc(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) string) {
-	env.AddFunction("lucide_icon", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	env.AddFilter("humanSize", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("humanSize filter does not support keyword arguments")
+		}
+		return value.FromString(formatHumanSize(val.Raw())), nil
+	})
+	env.AddFilter("formatTime", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("formatTime filter does not support keyword arguments")
+		}
+		ts, ok := val.AsInt()
+		if !ok || ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(time.Unix(ts, 0).Format(consts.BaseTimeFormat)), nil
+	})
+	env.AddFilter("relativeTime", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("relativeTime filter does not support keyword arguments")
+		}
+		ts, ok := val.AsInt()
+		if !ok || ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(relativeTimeString(ts)), nil
+	})
+	env.AddFilter("articleTime", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("articleTime filter does not support keyword arguments")
+		}
+		ts, ok := val.AsInt()
+		if !ok || ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(time.Unix(ts, 0).Format(consts.ArticleTimeFormat)), nil
+	})
+	env.AddFilter("datetimeReplacer", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("datetimeReplacer filter does not support keyword arguments")
+		}
+		text := toStringValue(val.Raw())
+		return value.FromString(strings.ReplaceAll(text, "{{year}}", time.Now().Format("2006"))), nil
+	})
+
+	env.AddFunction("LucideIcon", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		name := ""
 		size := "16"
 		if len(args) > 0 {
@@ -366,7 +410,7 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromSafeString(renderLucideIconSVG(name, size)), nil
 	})
-	env.AddFunction("url_for", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	env.AddFunction("UrlFor", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
@@ -393,44 +437,20 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(urlFor(name, params, query)), nil
 	})
-
-	registerTemplateFilter(env, "humanSize", func(val value.Value, _ []value.Value) (value.Value, error) {
-		return value.FromString(formatHumanSize(val.Raw())), nil
-	})
-	registerTemplateFilter(env, "formatTime", func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts, ok := val.AsInt()
-		if !ok || ts == 0 {
-			return value.FromString("-"), nil
+	env.AddFunction("Settings", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("Settings does not support keyword arguments")
 		}
-		return value.FromString(time.Unix(ts, 0).Format(consts.BaseTimeFormat)), nil
-	})
-	registerTemplateFilter(env, "relativeTime", func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts, ok := val.AsInt()
-		if !ok || ts == 0 {
-			return value.FromString("-"), nil
-		}
-		return value.FromString(relativeTimeString(ts)), nil
-	})
-	registerTemplateFilter(env, "articleTime", func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts, ok := val.AsInt()
-		if !ok || ts == 0 {
-			return value.FromString("-"), nil
-		}
-		return value.FromString(time.Unix(ts, 0).Format(consts.ArticleTimeFormat)), nil
-	})
-	registerTemplateFilter(env, "datetimeReplacer", func(val value.Value, _ []value.Value) (value.Value, error) {
-		text := toStringValue(val.Raw())
-		return value.FromString(strings.ReplaceAll(text, "{{year}}", time.Now().Format("2006"))), nil
-	})
-
-	registerTemplateFunction(env, consts.GlobalSettingKey, func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
 		key := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(store.GetSetting(key)), nil
 	})
-	registerTemplateFunction(env, "printf", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("Printf", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("Printf does not support keyword arguments")
+		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
@@ -441,7 +461,10 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(fmt.Sprintf(format, values...)), nil
 	})
-	registerTemplateFunction(env, "long_text", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("LongText", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("LongText does not support keyword arguments")
+		}
 		text := ""
 		if len(args) > 0 {
 			text = toStringValue(args[0].Raw())
@@ -482,13 +505,19 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		)
 		return value.FromSafeString(rendered), nil
 	})
-	registerTemplateFunction(env, "renderAttrs", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("RenderAttrs", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("RenderAttrs does not support keyword arguments")
+		}
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
 		}
 		return value.FromSafeString(renderHTMLAttrs(args[0].Raw())), nil
 	})
-	registerTemplateFunction(env, "highlight", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("Highlight", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("Highlight does not support keyword arguments")
+		}
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
 		}
@@ -519,7 +548,10 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		buf.WriteString(HTML.EscapeString(text[start:]))
 		return value.FromSafeString(buf.String()), nil
 	})
-	registerTemplateFunction(env, "GetAvatarImage", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("GetAvatarImage", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetAvatarImage does not support keyword arguments")
+		}
 		email := ""
 		author := ""
 		size := 0
@@ -543,7 +575,10 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(helper.BuildGAvatarURL(email, author, size)), nil
 	})
-	registerTemplateFunction(env, "GetAuthorGravatarUrl", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("GetAuthorGravatarUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetAuthorGravatarUrl does not support keyword arguments")
+		}
 		size := 0
 		if len(args) > 0 {
 			if parsed, ok := args[0].AsInt(); ok {
@@ -559,7 +594,10 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(share.GetAuthorGravatarUrl(size)), nil
 	})
-	registerTemplateFunction(env, "url_is", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("UrlIs", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("UrlIs does not support keyword arguments")
+		}
 		if len(args) < 2 {
 			return value.FromBool(false), nil
 		}
@@ -574,105 +612,68 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromBool(false), nil
 	})
-	registerTemplateFunction(env, "GetBasePath", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
+	env.AddFunction("GetBasePath", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetBasePath does not support keyword arguments")
 		}
 		return value.FromString(share.GetBasePath()), nil
 	})
-	registerTemplateFunction(env, "GetCategoryPrefix", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
+	env.AddFunction("GetCategoryPrefix", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetCategoryPrefix does not support keyword arguments")
 		}
 		return value.FromString(share.GetCategoryPrefix()), nil
 	})
-	registerTemplateFunction(env, "GetTagPrefix", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
+	env.AddFunction("GetTagPrefix", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetTagPrefix does not support keyword arguments")
 		}
 		return value.FromString(share.GetTagPrefix()), nil
 	})
-	registerTemplateFunction(env, "GetRSSUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
+	env.AddFunction("GetRSSUrl", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetRSSUrl does not support keyword arguments")
 		}
 		return value.FromString(share.GetRSSUrl()), nil
 	})
-	registerTemplateFunction(env, "GetAdminUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
+	env.AddFunction("GetAdminUrl", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetAdminUrl does not support keyword arguments")
 		}
 		return value.FromString(share.GetAdminUrl()), nil
 	})
-	registerTemplateFunction(env, "GetTagUrl", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("GetTagUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetTagUrl does not support keyword arguments")
+		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
 		slug := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(share.GetTagUrl(db.Tag{Slug: slug})), nil
 	})
-	registerTemplateFunction(env, "GetCategoryUrl", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("GetCategoryUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetCategoryUrl does not support keyword arguments")
+		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
 		slug := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(share.GetCategoryUrl(db.Category{Slug: slug})), nil
 	})
-	registerTemplateFunction(env, "GetPostUrl", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("GetPostUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("GetPostUrl does not support keyword arguments")
+		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-
 		post, ok := helper.DecodeAnyToType[db.Post](args[0].Raw())
 		if !ok {
 			return value.FromString(""), nil
 		}
-
 		return value.FromString(share.GetPostUrl(post)), nil
-	})
-}
-
-func register(fn func() string) func([]value.Value) (value.Value, error) {
-	return func(_ []value.Value) (value.Value, error) {
-		return value.FromString(fn()), nil
-	}
-}
-
-func registerNoArgStringFunction(env *minijinja.Environment, name string, fn func() string) {
-	registerTemplateFunction(env, name, func(_ []value.Value) (value.Value, error) {
-		return value.FromString(fn()), nil
-	})
-}
-
-func registerTemplateFunction(
-	env *minijinja.Environment,
-	name string,
-	fn func(args []value.Value) (value.Value, error),
-) {
-	env.AddFunction(name, func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), fmt.Errorf("%s does not support keyword arguments", name)
-		}
-		return fn(args)
-	})
-}
-
-func registerTemplateFilter(
-	env *minijinja.Environment,
-	name string,
-	fn func(val value.Value, args []value.Value) (value.Value, error),
-) {
-	env.AddFilter(name, func(_ minijinja.FilterState, val value.Value, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), fmt.Errorf("%s filter does not support keyword arguments", name)
-		}
-		return fn(val, args)
-	})
-}
-
-func registerValueFormatter(env *minijinja.Environment, name string, formatter func(raw interface{}) string) {
-	registerTemplateFilter(env, name, func(val value.Value, _ []value.Value) (value.Value, error) {
-		return value.FromString(formatter(val.Raw())), nil
 	})
 }
 

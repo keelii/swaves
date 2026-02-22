@@ -132,7 +132,7 @@
         <a
           role="tab"
           aria-selected="{% if activeGranularity == granularityKey %}true{% else %}false{% endif %}"
-          href="{{ url_for('admin.monitor', granularity=granularityKey, scope=activeScope) }}"
+          href="{{ UrlFor('admin.monitor', granularity=granularityKey, scope=activeScope) }}"
           data-monitor-granularity="{{ granularityKey }}"
         >{{ granularityLabel }}</a>
       {% endfor %}
@@ -197,13 +197,13 @@
       <a
         role="tab"
         aria-selected="{% if activeScope == "app" %}true{% else %}false{% endif %}"
-        href="{{ url_for('admin.monitor', granularity=activeGranularity, scope='app') }}"
+        href="{{ UrlFor('admin.monitor', granularity=activeGranularity, scope='app') }}"
         data-monitor-scope="app"
       >应用</a>
       <a
         role="tab"
         aria-selected="{% if activeScope == "system" %}true{% else %}false{% endif %}"
-        href="{{ url_for('admin.monitor', granularity=activeGranularity, scope='system') }}"
+        href="{{ UrlFor('admin.monitor', granularity=activeGranularity, scope='system') }}"
         data-monitor-scope="system"
       >系统</a>
     </div>
@@ -216,7 +216,7 @@
 
 <script>
   (function() {
-    var monitorAPIURL = {{ url_for('admin.monitor.data') | tojson }};
+    var monitorAPIURL = {{ UrlFor('admin.monitor.data') | tojson }};
 
     var activeGranularity = '{{ activeGranularity }}' || '1m';
     var activeScope = '{{ activeScope }}' || 'app';
@@ -320,7 +320,7 @@
     }
 
     function updateLocation() {
-      var nextURL = buildURL({{ url_for('admin.monitor') | tojson }}, {
+      var nextURL = buildURL({{ UrlFor('admin.monitor') | tojson }}, {
         granularity: activeGranularity,
         scope: activeScope,
       });

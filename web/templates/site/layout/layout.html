@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="{{ settings("language") }}">
+<html lang="{{ Settings("language") }}">
 <head>
-  {% set pageTitle = Title|default(settings("site_title"))|default("Swaves") %}
+  {% set pageTitle = Title|default(Settings("site_title"))|default("Swaves") %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ pageTitle }}</title>
@@ -18,7 +18,7 @@
 
   <footer>
     <p>
-      <small>{{ settings("site_copyright") | datetimeReplacer }}</small>
+      <small>{{ Settings("site_copyright") | datetimeReplacer }}</small>
     </p>
   </footer>
 

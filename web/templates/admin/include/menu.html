@@ -1,32 +1,32 @@
 <ul class="menu-list unstyled">
-  <li class="menu-item{% if url_is(RouteName, "admin.home") %} active{% endif %}">
-    <a href="{{ url_for('admin.home') }}" class="menu-text">工作台</a>
+  <li class="menu-item{% if UrlIs(RouteName, "admin.home") %} active{% endif %}">
+    <a href="{{ UrlFor('admin.home') }}" class="menu-text">工作台</a>
   </li>
   <li>
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
       <span class="menu-text">内容管理</span>
       <span class="menu-arrow">
-        {{ lucide_icon("chevron-right", 16) }}
+        {{ LucideIcon("chevron-right", 16) }}
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if url_is(RouteName, "admin.posts.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.posts.list') }}">文章列表</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.posts.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.posts.list') }}">文章列表</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.assets.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.assets.list', kind='image') }}">资源库</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.assets.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.assets.list', kind='image') }}">资源库</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.comments.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.comments.list') }}">评论管理</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.comments.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.comments.list') }}">评论管理</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.encrypted_posts.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.encrypted_posts.list') }}">加密文章列表</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.encrypted_posts.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.encrypted_posts.list') }}">加密文章列表</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.categories.tree") %} active{% endif %}">
-        <a href="{{ url_for('admin.categories.tree') }}">树形分类</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.categories.tree") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.categories.tree') }}">树形分类</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.categories.list", "admin.tags.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.categories.list') }}">分类/标签</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.categories.list", "admin.tags.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.categories.list') }}">分类/标签</a>
       </li>
     </ul>
   </li>
@@ -34,12 +34,12 @@
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
       <span class="menu-text">任务管理</span>
       <span class="menu-arrow">
-          {{ lucide_icon("chevron-right", 16) }}
+          {{ LucideIcon("chevron-right", 16) }}
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if url_is(RouteName, "admin.tasks.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.tasks.list') }}">任务列表</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.tasks.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.tasks.list') }}">任务列表</a>
       </li>
     </ul>
   </li>
@@ -47,15 +47,15 @@
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
       <span class="menu-text">数据管理</span>
       <span class="menu-arrow">
-          {{ lucide_icon("chevron-right", 16) }}
+          {{ LucideIcon("chevron-right", 16) }}
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if url_is(RouteName, "admin.import.show") %} active{% endif %}">
-        <a href="{{ url_for('admin.import.show') }}">导入</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.import.show") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.import.show') }}">导入</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.export.show") %} active{% endif %}">
-        <a href="{{ url_for('admin.export.show') }}">导出</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.export.show") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.export.show') }}">导出</a>
       </li>
     </ul>
   </li>
@@ -63,15 +63,15 @@
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
       <span class="menu-text">站点设置</span>
       <span class="menu-arrow">
-          {{ lucide_icon("chevron-right", 16) }}
+          {{ LucideIcon("chevron-right", 16) }}
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if url_is(RouteName, "admin.settings.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.settings.list') }}">设置列表</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.settings.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.settings.list') }}">设置列表</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.settings.all") %} active{% endif %}">
-        <a href="{{ url_for('admin.settings.all') }}">站点设置</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.settings.all") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.settings.all') }}">站点设置</a>
       </li>
     </ul>
   </li>
@@ -79,21 +79,21 @@
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
       <span class="menu-text">高级设置</span>
       <span class="menu-arrow">
-          {{ lucide_icon("chevron-right", 16) }}
+          {{ LucideIcon("chevron-right", 16) }}
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if url_is(RouteName, "admin.redirects.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.redirects.list') }}">重定向管理</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.redirects.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.redirects.list') }}">重定向管理</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.http_error_logs.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.http_error_logs.list') }}">请求日志</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.http_error_logs.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.http_error_logs.list') }}">请求日志</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.trash.list") %} active{% endif %}">
-        <a href="{{ url_for('admin.trash.list') }}">回收站</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.trash.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.trash.list') }}">回收站</a>
       </li>
-      <li class="submenu-item{% if url_is(RouteName, "admin.monitor") %} active{% endif %}">
-        <a href="{{ url_for('admin.monitor') }}">性能监控</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.monitor") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.monitor') }}">性能监控</a>
       </li>
     </ul>
   </li>
@@ -101,12 +101,12 @@
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
       <span class="menu-text">开发调试</span>
       <span class="menu-arrow">
-          {{ lucide_icon("chevron-right", 16) }}
+          {{ LucideIcon("chevron-right", 16) }}
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if url_is(RouteName, "admin.dev.ui_components") %} active{% endif %}">
-        <a href="{{ url_for('admin.dev.ui_components') }}">UI组件</a>
+      <li class="submenu-item{% if UrlIs(RouteName, "admin.dev.ui_components") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.dev.ui_components') }}">UI组件</a>
       </li>
     </ul>
   </li>
