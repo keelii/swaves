@@ -51,10 +51,16 @@ body {
     border-radius: 0;
 }
 table {
-  /*table-layout: auto;*/
+  table-layout: auto;
 }
 table th {
   white-space: nowrap;
+}
+table td {
+  /*white-space: nowrap;*/
+  white-space: normal;        /* 确保不是 nowrap */
+  overflow-wrap: anywhere;    /* 允许在任意位置断行（推荐） */
+  word-break: break-word;     /* 兼容兜底 */
 }
 svg {
   rect:focus { outline: none }

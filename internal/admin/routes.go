@@ -46,6 +46,7 @@ func RegisterRoutes(
 	adminGroup.Get("/assets", handler.GetAssetListHandler).Name("admin.assets.list")
 	adminGroup.Get("/api/assets", handler.GetAssetListAPIHandler).Name("admin.assets.api.list")
 	adminGroup.Post("/api/assets", handler.PostAssetUploadAPIHandler).Name("admin.assets.api.upload")
+	adminGroup.Post("/api/assets/batch-delete", handler.PostAssetBatchDeleteAPIHandler).Name("admin.assets.api.batch_delete")
 	adminGroup.Delete("/api/assets/:id", handler.DeleteAssetAPIHandler).Name("admin.assets.api.delete")
 
 	adminGroup.Get("/comments", handler.GetCommentListHandler).Name("admin.comments.list")

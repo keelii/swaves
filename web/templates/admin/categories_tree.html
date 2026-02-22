@@ -24,7 +24,7 @@
       </div>
     </div>
 
-      {% if children %}
+      {% if children|length > 0 %}
         <ul class="categories-subtree">
             {% for node in children %}
                 {{ macro_category_item(node.Category, node.Children, root) }}

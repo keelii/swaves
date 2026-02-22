@@ -23,7 +23,7 @@ func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
 
 	return RenderAdminView(c, "monitor", fiber.Map{
 		"Title":             "系统监控",
-		"Granularities":     monitorGranularityOptions(),
+		"Granularities":     monitorGranularityViewOptions(),
 		"ActiveGranularity": granularity.Key,
 		"ActiveScope":       scope,
 	}, "")
@@ -135,4 +135,16 @@ func monitorMetricInScope(metricKey, scope string) bool {
 		return metricKey == "os_cpu" || metricKey == "os_ram"
 	}
 	return metricKey == "pid_cpu" || metricKey == "pid_ram"
+}
+
+func monitorGranularityViewOptions() []fiber.Map {
+	options := monitorGranularityOptions()
+	items := make([]fiber.Map, 0, len(options))
+	for _, item := range options {
+		items = append(items, fiber.Map{
+			"Key":   item.Key,
+			"Label": item.Label,
+		})
+	}
+	return items
 }

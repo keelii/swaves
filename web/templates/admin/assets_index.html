@@ -89,6 +89,26 @@
     color: #b42318;
   }
 
+  .asset-batch-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .asset-batch-count {
+    color: var(--muted-foreground);
+    font-size: var(--text-7);
+  }
+
+  .asset-select-col {
+    width: 2rem;
+    text-align: center;
+  }
+
+  .asset-select-col input[type="checkbox"] {
+    vertical-align: sub;
+  }
+
   @media (max-width: 960px) {
     .asset-upload-dropzone {
       min-height: 150px;
@@ -133,11 +153,18 @@
     <a role="tab" aria-selected="{% if currentKind == "file" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.assets.list', kind='file') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["file"] | default("文件") }} ({{ fileCount }})</a>
     <a role="tab" aria-selected="{% if currentKind == "backup" %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.assets.list', kind='backup') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ assetKindLabelMap["backup"] | default("备份") }} ({{ backupCount }})</a>
   </nav>
+  <div class="asset-batch-tools">
+    <span id="asset-selected-count" class="asset-batch-count">已选 0 项</span>
+    <button type="button" class="button outline small" id="asset-batch-delete" disabled>批量删除</button>
+  </div>
 </div>
 
 <table>
   <thead>
     <tr>
+      <th class="asset-select-col">
+        <input type="checkbox" id="asset-select-all" aria-label="全选">
+      </th>
       <th class="cell-4">ID</th>
       <th>类型</th>
       <th>服务</th>
@@ -152,6 +179,9 @@
   <tbody>
     {% for assetItem in Items %}
       <tr data-asset-id="{{ assetItem.id }}">
+        <td class="asset-select-col">
+          <input type="checkbox" class="asset-select-item" data-id="{{ assetItem.id }}" aria-label="选择资源 {{ assetItem.id }}">
+        </td>
         <td class="cell-4">{{ assetItem.id }}</td>
         <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
         <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
@@ -204,12 +234,12 @@
         </td>
       </tr>
     {% else %}
-      {{ table_empty(9, "暂无资源") }}
+      {{ table_empty(10, "暂无资源") }}
     {% endfor %}
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="9">
+      <td colspan="10">
         {% with Pager = Pager %}{% include "admin/include/pagination.html" %}{% endwith %}
       </td>
     </tr>
@@ -240,10 +270,14 @@
 <script>
 $(function() {
   var assetAPIBase = {{ UrlFor('admin.assets.api.list') | tojson }};
+  var assetBatchDeleteAPI = {{ UrlFor('admin.assets.api.batch_delete') | tojson }};
   var $dropzone = $('#asset-dropzone');
   var $fileInput = $('#asset-drop-input');
   var $uploadRemark = $('#asset-upload-remark');
   var $uploadStatus = $('#asset-upload-status');
+  var $selectAll = $('#asset-select-all');
+  var $selectedCount = $('#asset-selected-count');
+  var $batchDelete = $('#asset-batch-delete');
   var $alertDialog = $('#asset-alert-dialog');
   var $alertTitle = $('#asset-alert-title');
   var $alertMessage = $('#asset-alert-message');
@@ -258,12 +292,105 @@ $(function() {
   var uploadStatusBaseIsError = $uploadStatus.hasClass('error');
   var confirmResolver = null;
 
+  function selectedAssetIDs() {
+    var ids = [];
+    $('.asset-select-item:checked').each(function() {
+      var id = Number($(this).attr('data-id') || '0');
+      if (id > 0) {
+        ids.push(id);
+      }
+    });
+    return ids;
+  }
+
+  function updateBatchDeleteState() {
+    var $items = $('.asset-select-item');
+    var total = $items.length;
+    var selected = $items.filter(':checked').length;
+
+    $selectedCount.text('已选 ' + selected + ' 项');
+    $batchDelete.prop('disabled', selected === 0);
+
+    if (total === 0) {
+      $selectAll.prop('checked', false);
+      $selectAll.prop('indeterminate', false);
+      $selectAll.prop('disabled', true);
+      $batchDelete.prop('disabled', true);
+      return;
+    }
+
+    $selectAll.prop('disabled', false);
+    $selectAll.prop('checked', selected > 0 && selected === total);
+    $selectAll.prop('indeterminate', selected > 0 && selected < total);
+  }
+
+  function parseJSONResponse(response) {
+    return response.text().then(function(raw) {
+      var body = null;
+      if (raw) {
+        try {
+          body = JSON.parse(raw);
+        } catch (e) {
+          body = null;
+        }
+      }
+      return {
+        status: response.status,
+        body: body,
+        raw: String(raw || '').trim()
+      };
+    });
+  }
+
+  function summarizeBatchDeleteResult(ret) {
+    var body = ret && ret.body ? ret.body : {};
+    var deletedIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
+    var failed = Array.isArray(body.failed) ? body.failed : [];
+    var warnings = Array.isArray(body.warnings) ? body.warnings : [];
+
+    deletedIDs.forEach(function(id) {
+      $('tr[data-asset-id="' + id + '"]').remove();
+    });
+    updateBatchDeleteState();
+
+    var text = '批量删除完成：成功 ' + deletedIDs.length + '，失败 ' + failed.length + '。';
+    if (failed.length > 0) {
+      var failedDetails = failed.slice(0, 3).map(function(item) {
+        return '#' + item.id + '：' + String(item.error || '删除失败');
+      }).join('；');
+      if (failedDetails) {
+        text += ' 失败原因：' + failedDetails;
+        if (failed.length > 3) {
+          text += '；...';
+        }
+      }
+    }
+    if (warnings.length > 0) {
+      var warningDetails = warnings.slice(0, 2).map(function(item) {
+        return '#' + item.id + '：' + String(item.warning || '');
+      }).join('；');
+      if (warningDetails) {
+        text += ' 警告：' + warningDetails;
+        if (warnings.length > 2) {
+          text += '；...';
+        }
+      }
+    }
+    return text;
+  }
+
   function showAssetNotice(message, title) {
     notify(message, title || '提示', {
       variant: 'warning',
       dialog: $alertDialog,
       titleTarget: $alertTitle,
       messageTarget: $alertMessage
+    });
+  }
+
+  function showAssetToast(message, title, variant) {
+    notify(message, title || '提示', {
+      variant: variant || 'info'
     });
   }
 
@@ -408,11 +535,18 @@ $(function() {
           }
           showAssetNotice(message);
         } else {
-          showAssetNotice('上传完成：共 ' + successCount + ' 个文件');
+          showAssetToast('上传完成：共 ' + successCount + ' 个文件', '资源上传', 'success');
         }
 
-        if (successCount > 0) {
-          window.location.reload();
+        if (successCount > 0 && failedCount === 0) {
+          window.setTimeout(function() {
+            window.location.reload();
+          }, 900);
+          return;
+        }
+
+        if (successCount > 0 && failedCount > 0) {
+          setUploading(false);
           return;
         }
 
@@ -554,19 +688,68 @@ $(function() {
       fetch(assetAPIBase + '/' + id, {
         method: 'DELETE'
       })
-        .then(function(r) { return r.json().then(function(body) { return { status: r.status, body: body }; }); })
+        .then(parseJSONResponse)
         .then(function(ret) {
           if (!ret.body || ret.body.ok !== true) {
-            var msg = (ret.body && ret.body.error) || ('删除失败，状态码 ' + ret.status);
+            var msg = (ret.body && ret.body.error) || ret.raw || ('删除失败，状态码 ' + ret.status);
             throw new Error(msg);
           }
           $('tr[data-asset-id="' + id + '"]').remove();
+          updateBatchDeleteState();
         })
         .catch(function(err) {
           showAssetNotice(err.message || '删除失败');
         });
     });
   });
+
+  $selectAll.on('change', function() {
+    var checked = $(this).is(':checked');
+    $('.asset-select-item').prop('checked', checked);
+    updateBatchDeleteState();
+  });
+
+  $(document).on('change', '.asset-select-item', function() {
+    updateBatchDeleteState();
+  });
+
+  $batchDelete.on('click', function() {
+    var ids = selectedAssetIDs();
+    if (!ids.length) {
+      showAssetNotice('请先选择要删除的资源');
+      return;
+    }
+
+    askConfirm('确认批量删除选中的 ' + ids.length + ' 个资源？会同时删除远端文件。', '批量删除').then(function(confirmed) {
+      if (!confirmed) {
+        return;
+      }
+
+      fetch(assetBatchDeleteAPI, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ ids: ids })
+      })
+        .then(parseJSONResponse)
+        .then(function(ret) {
+          if (!ret.body) {
+            throw new Error(ret.raw || ('批量删除失败，状态码 ' + ret.status));
+          }
+          if (ret.body.ok === false && ret.body.error) {
+            throw new Error(ret.body.error);
+          }
+          showAssetNotice(summarizeBatchDeleteResult(ret));
+        })
+        .catch(function(err) {
+          showAssetNotice(err.message || '批量删除失败');
+        });
+    });
+  });
+
+  updateBatchDeleteState();
 });
 </script>
 {% endblock %}

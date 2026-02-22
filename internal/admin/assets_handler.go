@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"swaves/internal/asset"
@@ -27,6 +28,23 @@ var assetProviderOptions = []assetProviderOption{
 }
 
 var assetKindOptions = []string{db.AssetKindImage, db.AssetKindBackup, db.AssetKindFile}
+
+var imageAssetExtensions = map[string]struct{}{
+	"apng": {},
+	"avif": {},
+	"bmp":  {},
+	"gif":  {},
+	"heic": {},
+	"heif": {},
+	"ico":  {},
+	"jpeg": {},
+	"jpg":  {},
+	"png":  {},
+	"svg":  {},
+	"tif":  {},
+	"tiff": {},
+	"webp": {},
+}
 
 func (h *Handler) GetAssetListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
@@ -153,8 +171,6 @@ func (h *Handler) PostAssetUploadAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	kind := db.AssetKindImage
-
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		statusCode := fiber.StatusBadRequest
@@ -208,13 +224,18 @@ func (h *Handler) PostAssetUploadAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
+	originalName := strings.TrimSpace(uploaded.OriginalName)
+	if originalName == "" {
+		originalName = strings.TrimSpace(fileHeader.Filename)
+	}
+
 	item := &db.Asset{
-		Kind:              kind,
+		Kind:              detectAssetKindByUploadedSuffix(uploaded, originalName),
 		Provider:          provider.Name(),
 		ProviderAssetID:   strings.TrimSpace(uploaded.ProviderAssetID),
 		ProviderDeleteKey: strings.TrimSpace(uploaded.ProviderDeleteKey),
 		FileURL:           strings.TrimSpace(uploaded.FileURL),
-		OriginalName:      strings.TrimSpace(uploaded.OriginalName),
+		OriginalName:      originalName,
 		Remark:            remark,
 		SizeBytes:         uploaded.SizeBytes,
 	}
@@ -256,6 +277,65 @@ func (h *Handler) PostAssetUploadAPIHandler(c fiber.Ctx) error {
 	})
 }
 
+func detectAssetKindByUploadedSuffix(uploaded *asset.UploadResult, fallbackName string) string {
+	if uploaded == nil {
+		if ext := normalizedAssetSuffix(fallbackName); ext != "" && isImageAssetSuffix(ext) {
+			return db.AssetKindImage
+		}
+		return db.AssetKindFile
+	}
+
+	if ext := normalizedAssetSuffix(uploaded.OriginalName); ext != "" {
+		if isImageAssetSuffix(ext) {
+			return db.AssetKindImage
+		}
+		return db.AssetKindFile
+	}
+
+	if ext := normalizedAssetSuffix(uploaded.FileURL); ext != "" {
+		if isImageAssetSuffix(ext) {
+			return db.AssetKindImage
+		}
+		return db.AssetKindFile
+	}
+
+	if ext := normalizedAssetSuffix(fallbackName); ext != "" && isImageAssetSuffix(ext) {
+		return db.AssetKindImage
+	}
+	return db.AssetKindFile
+}
+
+func normalizedAssetSuffix(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(raw)
+	if err == nil {
+		if parsed.Scheme != "" || parsed.Host != "" {
+			raw = parsed.Path
+		} else if parsed.Path != "" {
+			raw = parsed.Path
+		}
+	}
+
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if idx := strings.IndexAny(raw, "?#"); idx >= 0 {
+		raw = raw[:idx]
+	}
+
+	return strings.TrimPrefix(strings.ToLower(path.Ext(raw)), ".")
+}
+
+func isImageAssetSuffix(suffix string) bool {
+	_, ok := imageAssetExtensions[strings.TrimSpace(strings.ToLower(suffix))]
+	return ok
+}
+
 func (h *Handler) DeleteAssetAPIHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || id <= 0 {
@@ -265,19 +345,89 @@ func (h *Handler) DeleteAssetAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	item, err := db.GetAssetByID(h.Model, id)
+	warning, statusCode, err := h.deleteAssetByID(c, id)
 	if err != nil {
-		if db.IsErrNotFound(err) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"ok":    false,
-				"error": "asset not found",
-			})
-		}
-		logger.Error("[asset] get asset by id failed: id=%d err=%v", id, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(statusCode).JSON(fiber.Map{
 			"ok":    false,
 			"error": err.Error(),
 		})
+	}
+
+	response := fiber.Map{"ok": true}
+	if warning != "" {
+		response["warning"] = warning
+	}
+	return c.JSON(response)
+}
+
+type assetBatchDeletePayload struct {
+	IDs []int64 `json:"ids"`
+}
+
+func (h *Handler) PostAssetBatchDeleteAPIHandler(c fiber.Ctx) error {
+	var payload assetBatchDeletePayload
+	if err := c.Bind().Body(&payload); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "invalid json",
+		})
+	}
+
+	ids := normalizeAssetIDs(payload.IDs)
+	if len(ids) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "ids is required",
+		})
+	}
+
+	deletedIDs := make([]int64, 0, len(ids))
+	failed := make([]fiber.Map, 0)
+	warnings := make([]fiber.Map, 0)
+	for _, id := range ids {
+		warning, statusCode, err := h.deleteAssetByID(c, id)
+		if err != nil {
+			failed = append(failed, fiber.Map{
+				"id":     id,
+				"status": statusCode,
+				"error":  err.Error(),
+			})
+			continue
+		}
+
+		deletedIDs = append(deletedIDs, id)
+		if warning != "" {
+			warnings = append(warnings, fiber.Map{
+				"id":      id,
+				"warning": warning,
+			})
+		}
+	}
+
+	ok := len(failed) == 0
+	response := fiber.Map{
+		"ok":              ok,
+		"requested_count": len(ids),
+		"deleted_count":   len(deletedIDs),
+		"failed_count":    len(failed),
+		"deleted_ids":     deletedIDs,
+		"failed":          failed,
+		"warnings":        warnings,
+	}
+	if !ok {
+		return c.Status(fiber.StatusMultiStatus).JSON(response)
+	}
+	return c.JSON(response)
+}
+
+func (h *Handler) deleteAssetByID(c fiber.Ctx, id int64) (string, int, error) {
+	item, err := db.GetAssetByID(h.Model, id)
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			return "", fiber.StatusNotFound, errors.New("asset not found")
+		}
+		logger.Error("[asset] get asset by id failed: id=%d err=%v", id, err)
+		return "", fiber.StatusInternalServerError, err
 	}
 
 	provider, err := h.resolveAssetProvider(item.Provider)
@@ -286,28 +436,16 @@ func (h *Handler) DeleteAssetAPIHandler(c fiber.Ctx) error {
 			logger.Warn("[asset] skip provider delete for unsupported provider: id=%d provider=%s", id, item.Provider)
 			if err = db.DeleteAsset(h.Model, item.ID); err != nil {
 				logger.Error("[asset] delete asset record failed after unsupported provider skip: id=%d err=%v", item.ID, err)
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"ok":    false,
-					"error": err.Error(),
-				})
+				return "", fiber.StatusInternalServerError, err
 			}
-			return c.JSON(fiber.Map{
-				"ok":      true,
-				"warning": "provider unsupported, deleted metadata only",
-			})
+			return "provider unsupported, deleted metadata only", 0, nil
 		}
 		logger.Warn("[asset] resolve provider for delete failed: id=%d provider=%s err=%v", id, item.Provider, err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"ok":    false,
-			"error": err.Error(),
-		})
+		return "", fiber.StatusBadRequest, err
 	}
 	if err = h.validateAssetProviderConfig(provider.Name()); err != nil {
 		logger.Warn("[asset] delete blocked by provider config: id=%d provider=%s err=%v", id, provider.Name(), err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"ok":    false,
-			"error": err.Error(),
-		})
+		return "", fiber.StatusBadRequest, err
 	}
 
 	deleteKey := strings.TrimSpace(item.ProviderDeleteKey)
@@ -315,31 +453,43 @@ func (h *Handler) DeleteAssetAPIHandler(c fiber.Ctx) error {
 		deleteKey = strings.TrimSpace(item.ProviderAssetID)
 	}
 	if deleteKey == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"ok":    false,
-			"error": "missing delete key",
-		})
+		return "", fiber.StatusBadRequest, errors.New("missing delete key")
 	}
 
 	if err = provider.Delete(c.RequestCtx(), deleteKey); err != nil {
 		logger.Error("[asset] provider delete failed: id=%d provider=%s delete_key=%s err=%v", id, provider.Name(), deleteKey, err)
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"ok":    false,
-			"error": err.Error(),
-		})
+		return "", fiber.StatusBadGateway, err
 	}
 
 	if err = db.DeleteAsset(h.Model, item.ID); err != nil {
 		logger.Error("[asset] delete asset record failed: id=%d err=%v", item.ID, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"ok":    false,
-			"error": err.Error(),
-		})
+		return "", fiber.StatusInternalServerError, err
 	}
 
-	return c.JSON(fiber.Map{
-		"ok": true,
-	})
+	return "", 0, nil
+}
+
+func normalizeAssetIDs(ids []int64) []int64 {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	seen := map[int64]struct{}{}
+	result := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if id <= 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		result = append(result, id)
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 func (h *Handler) resolveAssetProvider(providerName string) (asset.Provider, error) {
