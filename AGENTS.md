@@ -29,7 +29,7 @@ It is intended as a practical guide for future changes.
   - `ByPrefix` style values are for public content URL building.
   - Route-oriented values are for Fiber route registration and redirects.
 - Do not mix prefix semantics into route construction logic.
-- Use named routes and `url_for` for internal links and redirects.
+- Use named routes and `UrlFor` for internal links and redirects.
 - Avoid hardcoded admin paths in templates and JS.
 
 ### 3) Admin Path and Redirects
@@ -44,10 +44,12 @@ It is intended as a practical guide for future changes.
 - Keep template files as `.html` for both site and admin.
 - Template context is flat: expose request/session metadata as explicit top-level fields (for example `RouteName`, `Query`, `IsLogin`, `UrlPath`, `ReqID`) when templates need them.
 - Do not reintroduce compatibility wrapper namespaces such as `Req`/`Auth`/`Site`/`__root`.
+- Register template filters/functions directly via `env.AddFilter` and `env.AddFunction`; do not add wrapper helpers like `registerTemplateFilter` or `registerTemplateFunction`.
+- MiniJinja naming convention is fixed: filter names use lowerCamelCase, function names use UpperCamelCase.
 - Avoid blindly injecting all request locals into templates; pass explicit, stable fields through render helpers.
 - Template paths must use template-root-relative form (no leading `/`); `extends`/`include`/`import`/`from` paths must explicitly include `.html` (for example `admin/layout/layout.html`).
-- In HTML attributes that contain template expressions, keep outer attribute quotes as `"` and use `'` for template string literals (for example `href="{{ url_for('admin.comments.list') }}"`).
-- Internal template links must continue using `url_for`, not hardcoded admin paths.
+- In HTML attributes that contain template expressions, keep outer attribute quotes as `"` and use `'` for template string literals (for example `href="{{ UrlFor('admin.comments.list') }}"`).
+- Internal template links must continue using `UrlFor`, not hardcoded admin paths.
 - Development hot reload uses `SWAVES_TEMPLATE_RELOAD`; production must not clear template cache per request.
 
 ### 17) Template Layer Conventions (MiniJinja)
@@ -59,7 +61,7 @@ It is intended as a practical guide for future changes.
 - In templates, prefer explicit macro imports (`{% from "admin/macro/ui.html" import action_btn_content %}`) over alias-wide imports (`{% import ... as ui %}`).
 - Macro signatures should use explicit parameters (with defaults for optional args); avoid `ctx`/`dict` bag-style parameter passing when direct arguments are possible.
 - Keep template expressions minimal and readable: remove redundant nested parentheses.
-- For route generation, prefer direct key/value style in `url_for` calls; avoid Go-template-style `dict(...)` wrappers when the helper supports direct args.
+- For route generation, prefer direct key/value style in `UrlFor` calls; avoid Go-template-style `dict(...)` wrappers when the helper supports direct args.
 
 
 ## Category B) Product Workflow and Data Semantics
@@ -170,7 +172,9 @@ Before merge, verify all items below:
 - [ ] Macro/import style follows MiniJinja conventions (`from ... import ...` with explicit symbols, no alias-wide import drift).
 - [ ] Macro signatures use explicit params/defaults; avoid `ctx` or dict-bag arguments where not necessary.
 - [ ] Macro vs include responsibilities stay clear (macro=atomic snippet, include=business component).
-- [ ] Template URL generation prefers direct key/value `url_for` args over `dict(...)` wrappers where supported.
+- [ ] MiniJinja helper registration uses direct `env.AddFilter`/`env.AddFunction` calls (no wrapper registration layer).
+- [ ] MiniJinja naming is consistent: filters are lowerCamelCase, functions are UpperCamelCase.
+- [ ] Template URL generation prefers direct key/value `UrlFor` args over `dict(...)` wrappers where supported.
 - [ ] Encrypted post module remains privacy-isolated: no shared asset/library embedding and no cross-module linkage regression.
 - [ ] Template reload behavior follows `SWAVES_TEMPLATE_RELOAD` (dev-only per-request clearing).
 - [ ] Job registry lifecycle remains safe (listen hook init + shutdown destroy).
