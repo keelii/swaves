@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import table_row_actions, table_empty %}
+
 <table>
   <thead>
   <tr>
@@ -37,10 +37,10 @@
     <td>{% if setting.Reload == 1 %}是{% else %}—{% endif %}</td>
     <td>{{ setting.CreatedAt | relativeTime }}</td>
     <td>{{ setting.UpdatedAt | relativeTime }}</td>
-    {{ table_row_actions("admin.settings.edit", "admin.settings.delete", setting.ID) }}
+    {{ ui.table_row_actions("admin.settings.edit", "admin.settings.delete", setting.ID) }}
   </tr>
   {% else %}
-  {{ table_empty(11, "暂无设置项") }}
+  {{ ui.table_empty(11, "暂无设置项") }}
   {% endfor %}
   </tbody>
 

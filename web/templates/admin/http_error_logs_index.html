@@ -1,6 +1,5 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import action_icon_button, table_empty %}
 
 <table>
   <thead>
@@ -36,14 +35,14 @@
     <td>{{ log.CreatedAt | formatTime }}</td>
     <td>
       <div class="row-actions">
-        <form id="form" method="post" action="{{ url_for("admin.http_error_logs.delete", (dict("id", log.ID))) }}">
-          {{ action_icon_button("删除", "trash-2", type="submit", danger=true) }}
+        <form id="form" method="post" action="{{ url_for("admin.http_error_logs.delete", id=log.ID) }}">
+          {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
         </form>
       </div>
     </td>
   </tr>
   {% else %}
-  {{ table_empty(11, "暂无日志") }}
+  {{ ui.table_empty(11, "暂无日志") }}
   {% endfor %}
   </tbody>
 

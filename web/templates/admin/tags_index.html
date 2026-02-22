@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import table_row_actions, table_empty %}
+
 <table>
   <thead>
   <tr>
@@ -23,10 +23,10 @@
     <td><a href="{{ url_for("admin.posts.list") }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
     <td>{{ tag.CreatedAt | relativeTime }}</td>
     <td>{{ tag.UpdatedAt | relativeTime }}</td>
-    {{ table_row_actions("admin.tags.edit", "admin.tags.delete", tag.ID) }}
+    {{ ui.table_row_actions("admin.tags.edit", "admin.tags.delete", tag.ID) }}
   </tr>
   {% else %}
-  {{ table_empty(7, "暂无标签") }}
+  {{ ui.table_empty(7, "暂无标签") }}
   {% endfor %}
   </tbody>
 

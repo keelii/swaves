@@ -1,7 +1,7 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import form_field_radio, form_field_checkbox %}
-<form id="form" method="post" action="{{ url_for("admin.posts.update", (dict("id", Post.ID))) }}">
+
+<form id="form" method="post" action="{{ url_for("admin.posts.update", id=Post.ID) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
@@ -23,10 +23,10 @@
 
       <fieldset class="hstack">
         <legend>类型</legend>
-        {{ form_field_radio("kind", (slice((dict("Value", "0", "Label", "文章")), (dict("Value", "1", "Label", "页面")))), selected=(printf("%d", Post.Kind))) }}
+        {{ ui.form_field_radio("kind", (slice((dict("Value", "0", "Label", "文章")), (dict("Value", "1", "Label", "页面")))), selected=(printf("%d", Post.Kind))) }}
       </fieldset>
 
-      {{ form_field_checkbox("开启评论", "comment_enabled", checked=(Post.CommentEnabled == 1), value=1) }}
+      {{ ui.form_field_checkbox("开启评论", "comment_enabled", checked=(Post.CommentEnabled == 1), value=1) }}
 
       <label data-field>
         标签

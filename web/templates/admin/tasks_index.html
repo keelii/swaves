@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import action_icon_link, action_icon_button %}
+
 <table>
   <thead>
   <tr>
@@ -33,7 +33,7 @@
           <div class="badge secondary">停用</div>
         {% endif %}
     </td>
-    <td><a href="{{ url_for("admin.tasks.runs", (dict("code", task.Code))) }}">执行记录</a></td>
+    <td><a href="{{ url_for("admin.tasks.runs", code=task.Code) }}">执行记录</a></td>
     <td>
       {% if task.LastStatus %}
         {% if task.LastStatus == "success" %}
@@ -53,13 +53,13 @@
     <td style="display: none">{{ task.CreatedAt | formatTime }}</td>
     <td>
       <div class="row-actions">
-        {{ action_icon_link(url_for("admin.tasks.edit", (dict("id", task.ID))), "编辑", "square-pen") }}
-        <form id="form" method="POST" action="{{ url_for("admin.tasks.trigger", (dict("code", task.Code))) }}">
-          {{ action_icon_button("执行", "terminal", type="submit", danger=true) }}
+        {{ ui.action_icon_link(url_for("admin.tasks.edit", id=task.ID), "编辑", "square-pen") }}
+        <form id="form" method="POST" action="{{ url_for("admin.tasks.trigger", code=task.Code) }}">
+          {{ ui.action_icon_button("执行", "terminal", type="submit", danger=true) }}
         </form>
           {% if task.Kind != 0 %}
-            <form id="form" method="POST" action="{{ url_for("admin.tasks.delete", (dict("id", task.ID))) }}">
-                {{ action_icon_button("删除", "trash-2", type="submit", danger=true) }}
+            <form id="form" method="POST" action="{{ url_for("admin.tasks.delete", id=task.ID) }}">
+                {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
             </form>
           {% endif %}
       </div>

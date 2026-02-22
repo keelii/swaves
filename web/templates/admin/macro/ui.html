@@ -92,8 +92,8 @@
 {% macro table_row_actions(edit_route, delete_route, id) %}
 <td>
   <div class="row-actions">
-    {{ action_icon_link(url_for(edit_route, dict("id", id)), "编辑", "square-pen") }}
-    <form id="form" method="post" action="{{ url_for(delete_route, dict("id", id)) }}">
+    {{ action_icon_link(url_for(edit_route, id=id), "编辑", "square-pen") }}
+    <form id="form" method="post" action="{{ url_for(delete_route, id=id) }}">
       {{ action_icon_button("删除", "trash-2", type="submit", danger=true) }}
     </form>
   </div>

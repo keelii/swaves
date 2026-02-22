@@ -13,7 +13,7 @@
     <span>{{ postData.PublishedAt | articleTime }}</span>
     <a href="{{ GetBasePath() }}">首页</a>
     {% if Auth.IsLogin and (postData.ID > 0) %}
-      <a href="{{ url_for("admin.posts.edit", dict("id", postData.ID)) }}">编辑</a>
+      <a href="{{ url_for("admin.posts.edit", id=postData.ID) }}">编辑</a>
     {% endif %}
     {% with Count = ReadUV %}
       {% include "/site/include/read_uv" %}
@@ -76,7 +76,7 @@
 
       <fieldset>
         <legend>发表评论</legend>
-        <form method="post" action="{{ url_for("site.action.comment", dict("postID", postData.ID)) }}" id="comment-form">
+        <form method="post" action="{{ url_for("site.action.comment", postID=postData.ID) }}" id="comment-form">
           <input type="hidden" name="return_url" value="{{ UrlPath }}">
           <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
           <p>

@@ -131,7 +131,7 @@
       <a
         role="tab"
         aria-selected="{% if activeGranularity == granularityKey %}true{% else %}false{% endif %}"
-        href="{{ url_for("admin.monitor", dict("granularity", granularityKey, "scope", activeScope)) }}"
+        href="{{ url_for("admin.monitor", granularity=granularityKey, scope=activeScope) }}"
         data-monitor-granularity="{{ granularityKey }}"
       >{{ granularityLabel }}</a>
     {% endfor %}
@@ -194,13 +194,13 @@
       <a
       role="tab"
       aria-selected="{% if activeScope == "app" %}true{% else %}false{% endif %}"
-      href="{{ url_for("admin.monitor", dict("granularity", activeGranularity, "scope", "app")) }}"
+      href="{{ url_for("admin.monitor", granularity=activeGranularity, scope="app") }}"
       data-monitor-scope="app"
     >应用</a>
     <a
       role="tab"
       aria-selected="{% if activeScope == "system" %}true{% else %}false{% endif %}"
-      href="{{ url_for("admin.monitor", dict("granularity", activeGranularity, "scope", "system")) }}"
+      href="{{ url_for("admin.monitor", granularity=activeGranularity, scope="system") }}"
       data-monitor-scope="system"
     >系统</a>
   </nav>

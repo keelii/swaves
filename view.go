@@ -49,11 +49,15 @@ type templateSiteMeta struct {
 	Settings map[string]string
 }
 
-const internalRootContextKey = "__root"
+const (
+	internalRootContextKey = "__root"
+	globalUINamespace      = "ui"
+	adminUIMacroTemplate   = "/admin/macro/ui"
+)
 
 var (
 	errFiberViewNil         = errors.New("fiber view engine is nil")
-	reservedBindingKeyNames = []string{"Req", "Auth", "Site", internalRootContextKey}
+	reservedBindingKeyNames = []string{"Req", "Auth", "Site", globalUINamespace, internalRootContextKey}
 )
 
 type lucideIconGlobal struct{}
@@ -149,6 +153,9 @@ func (v *FiberView) Load() error {
 	}
 
 	v.env.ClearTemplates()
+	if err := registerTemplateMacroNamespace(v.env, globalUINamespace, adminUIMacroTemplate); err != nil {
+		return err
+	}
 	for _, name := range templateNames {
 		if _, err := v.env.GetTemplate(name); err != nil {
 			return fmt.Errorf("load template %q failed: %w", name, err)
@@ -169,6 +176,9 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 
 	if v.clearOnRender {
 		v.env.ClearTemplates()
+	}
+	if err := registerTemplateMacroNamespace(v.env, globalUINamespace, adminUIMacroTemplate); err != nil {
+		return err
 	}
 
 	templateName, err := normalizeTemplateName(name)
@@ -552,7 +562,7 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		return value.FromBool(false), nil
 	})
 
-	registerTemplateFunction(env, "url_for", func(args []value.Value) (value.Value, error) {
+	env.AddFunction("url_for", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
@@ -564,6 +574,18 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		if len(args) > 2 {
 			query = toStringMap(miniValueToAny(args[2]))
+		}
+		if len(kwargs) > 0 {
+			if params == nil {
+				params = map[string]string{}
+			}
+			for key, raw := range kwargs {
+				k := strings.TrimSpace(key)
+				if k == "" {
+					continue
+				}
+				params[k] = miniValueAsString(raw)
+			}
 		}
 		return value.FromString(urlFor(name, params, query)), nil
 	})
@@ -669,6 +691,38 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		year, month, day := share.GetArticlePublishedDate(post)
 		return anyToMiniValue(map[string]string{"Year": year, "Month": month, "Day": day}), nil
 	})
+}
+
+func registerTemplateMacroNamespace(env *minijinja.Environment, namespace string, templateName string) error {
+	if env == nil {
+		return errors.New("template environment is nil")
+	}
+	namespace = strings.TrimSpace(namespace)
+	if namespace == "" {
+		return errors.New("macro namespace is empty")
+	}
+	normalizedName, err := normalizeTemplateName(templateName)
+	if err != nil {
+		return err
+	}
+	template, err := env.GetTemplate(normalizedName)
+	if err != nil {
+		var templateErr *minijinja.Error
+		if errors.As(err, &templateErr) && templateErr.Kind == minijinja.ErrTemplateNotFound {
+			return nil
+		}
+		return fmt.Errorf("load macro template %q failed: %w", normalizedName, err)
+	}
+	state, err := template.EvalToState(nil)
+	if err != nil {
+		return fmt.Errorf("evaluate macro template %q failed: %w", normalizedName, err)
+	}
+	exports := state.Exports()
+	if len(exports) == 0 {
+		return nil
+	}
+	env.AddGlobal(namespace, value.FromMap(exports))
+	return nil
 }
 
 func registerNoArgStringFunction(env *minijinja.Environment, name string, fn func() string) {

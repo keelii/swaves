@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import action_icon_link, action_btn_content %}
+
 {% macro macro_category_item(__ctx) %}
   <li class="category-item">
     <div class="flex items-center">
@@ -9,16 +9,16 @@
         <strong>{{ __ctx.Category.Name }}</strong>
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
-        <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.parent.update", (dict("id", __ctx.Category.ID))) }}" class="category-parent-form">
+        <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.parent.update", id=__ctx.Category.ID) }}" class="category-parent-form">
             {% with Root = __ctx.Root, SelectedID = __ctx.Category.ParentID, EmptyOption = "顶级分类" %}{% include "/admin/include/category_select" %}{% endwith %}
         </form>
         <div>
-          {{ action_icon_link(url_for("admin.categories.edit", (dict("id", __ctx.Category.ID))), "编辑", "square-pen") }}
-          {{ action_icon_link(url_for("admin.categories.new", (dict("parent_id", __ctx.Category.ID))), "添加", "plus") }}
+          {{ ui.action_icon_link(url_for("admin.categories.edit", id=__ctx.Category.ID), "编辑", "square-pen") }}
+          {{ ui.action_icon_link(url_for("admin.categories.new", parent_id=__ctx.Category.ID), "添加", "plus") }}
         </div>
-        <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.delete", (dict("id", __ctx.Category.ID))) }}">
+        <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.delete", id=__ctx.Category.ID) }}">
           <button type="submit">
-              {{ action_btn_content("trash-2", "删除", 14) }}
+              {{ ui.action_btn_content("trash-2", "删除", 14) }}
           </button>
         </form>
       </div>
@@ -106,8 +106,6 @@
         border-top: 1px dashed #ddd;
     }
 </style>
-
-
 
 {% if Tree %}
   <ul class="categories-tree">

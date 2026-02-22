@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import table_empty %}
+
 <style>
   .media-upload {
     margin-bottom: 2em;
@@ -177,7 +177,7 @@
         </td>
       </tr>
     {% else %}
-      {{ table_empty(8, "暂无媒体资源") }}
+      {{ ui.table_empty(8, "暂无媒体资源") }}
     {% endfor %}
   </tbody>
   <tfoot>

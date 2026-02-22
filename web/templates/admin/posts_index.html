@@ -1,6 +1,6 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import tag_item, table_row_actions, table_empty %}
+
 {% set kind = (Kind or 0) %}
 {% set q = (SearchQueryEscaped or "") %}
 {% set tag = (FilterTagIDStr or "") %}
@@ -15,8 +15,8 @@
       <div class="inline-flex items-center gap-4">
         {% set tagLabel = "标签 " ~ FilterTagName %}
         {% set catLabel = "分类 " ~ FilterCategoryName %}
-        {% if FilterTagName %}{{ tag_item(tagLabel, FilterTagRemoveURL) }}{% endif %}
-        {% if FilterCategoryName %}{{ tag_item(catLabel, FilterCategoryRemoveURL) }}{% endif %}
+        {% if FilterTagName %}{{ ui.tag_item(tagLabel, FilterTagRemoveURL) }}{% endif %}
+        {% if FilterCategoryName %}{{ ui.tag_item(catLabel, FilterCategoryRemoveURL) }}{% endif %}
       </div>
     {% endif %}
     {% with KindQuery = KindQuery, SearchQuery = SearchQuery, FilterTagIDStr = FilterTagIDStr, FilterCategoryIDStr = FilterCategoryIDStr %}{% include "/admin/include/post_search" %}{% endwith %}
@@ -77,10 +77,10 @@
     </td>
     <td>{{ postWithRelation.Post.CreatedAt | relativeTime }}</td>
     <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
-    {{ table_row_actions("admin.posts.edit", "admin.posts.delete", postWithRelation.Post.ID) }}
+    {{ ui.table_row_actions("admin.posts.edit", "admin.posts.delete", postWithRelation.Post.ID) }}
   </tr>
   {% else %}
-  {{ table_empty(10, "暂无文章") }}
+  {{ ui.table_empty(10, "暂无文章") }}
   {% endfor %}
   </tbody>
 

@@ -1,12 +1,12 @@
 {% extends "/admin/layout/layout" %}
 {% block content %}
-{% from "/admin/macro/ui" import toggle %}
-<form id="form" method="post" action="{{ url_for("admin.tasks.update", (dict("id", Task.ID))) }}">
+
+<form id="form" method="post" action="{{ url_for("admin.tasks.update", id=Task.ID) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         是否启用
-        {{ toggle(printf("task_enabled_%d", Task.ID), "enabled", checked=(Task.Enabled == 1), data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
+        {{ ui.toggle(printf("task_enabled_%d", Task.ID), "enabled", checked=(Task.Enabled == 1), data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
       </label>
 
       <fieldset>
@@ -73,16 +73,16 @@ $(function() {
     $val.val($preset.val() === '__custom__' ? $custom.val() : $preset.val());
   }
 
-  function toggle() {
+  function ui.toggle() {
     var isCustom = $preset.val() === '__custom__';
     $wrap.prop('hidden', !isCustom);
     sync();
   }
 
-  toggle();
+  ui.toggle();
 
   $preset.on('change', function() {
-    toggle();
+    ui.toggle();
     if ($preset.val() === '__custom__') {
       $custom.focus();
     }
