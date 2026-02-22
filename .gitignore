@@ -4,3 +4,4 @@ cmd
 data.*
 *.gz
 backups
+.DS_Store
