@@ -137,6 +137,62 @@ article table thead th {
   border-bottom: 2px solid #111;
 }
 
-#comments fieldset p {
-  font-size: 14px;
+.comment-block ol {
+  list-style: none;
+}
+.comment-list {
+  padding: 0;
+}
+.comment-list .comment-children {
+}
+.comment-item {
+}
+.comment-card {
+  /*border: 1px solid #ddd;*/
+  padding: 0.5em;
+}
+
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.comment-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+.comment-avatar {
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+}
+.comment-body {
+  /*margin-bottom: 1em;*/
+}
+.comment-form,
+.comment-form p {
+  font-size: 16px;
+}
+.comment-form-row {
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
+.comment-remember,
+.comment-reply-state,
+.comment-submit-row {
+  padding-left: 2em;
+}
+.comment-submit-row {
+  margin-bottom: 0.5em;
+}
+.comment-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+}
+.comment-form-row [for="comment-content"] {
+  vertical-align: top;
+}
+.comment-help {
+  color: #333;
 }

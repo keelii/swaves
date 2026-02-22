@@ -47,8 +47,8 @@
 {% if postData.CommentEnabled == 1 %}
   <section>
   <footer>
-    <div id="comments">
-      <h2>评论 ({{ CommentCount }})</h2>
+    <div id="comments" class="comment-block">
+      <h2 class="comment-title">评论 ({{ CommentCount }})</h2>
 
       {% if Comments %}
         <ol class="comment-list">
@@ -59,65 +59,66 @@
           {% endfor %}
         </ol>
       {% else %}
-        <p><small>暂无评论，欢迎抢沙发。</small></p>
+        <p class="comment-empty"><small>暂无评论，欢迎抢沙发。</small></p>
       {% endif %}
 
       {% if CommentFeedback == "approved" %}
-        <p><small>评论已发布。</small></p>
-      {% else %}{% if CommentFeedback == "pending" %}
-        <p><small>评论已提交，等待审核。</small></p>
-      {% else %}{% if CommentFeedback == "captcha_required" %}
-        <p><small>提交较频繁，请先完成验证码再继续评论。</small></p>
-      {% else %}{% if CommentFeedback == "captcha_failed" %}
-        <p><small>验证码错误或已过期，请刷新页面后重试。</small></p>
-      {% else %}{% if CommentFeedback == "rate_limited" %}
-        <p><small>提交过于频繁，请稍后再试。</small></p>
-      {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
+{#        <p class="comment-feedback"><small>评论已发布。</small></p>#}
+      {% elif CommentFeedback == "pending" %}
+        <p class="comment-feedback"><small>评论已提交，等待审核。</small></p>
+      {% elif CommentFeedback == "captcha_required" %}
+        <p class="comment-feedback"><small>提交较频繁，请先完成验证码再继续评论。</small></p>
+      {% elif CommentFeedback == "captcha_failed" %}
+        <p class="comment-feedback"><small>验证码错误或已过期，请刷新页面后重试。</small></p>
+      {% elif CommentFeedback == "rate_limited" %}
+        <p class="comment-feedback"><small>提交过于频繁，请稍后再试。</small></p>
+      {% endif %}
 
       <fieldset>
         <legend>发表评论</legend>
-        <form method="post" action="{{ UrlFor('site.action.comment', postID=postData.ID) }}" id="comment-form">
+        <form method="post" action="{{ UrlFor('site.action.comment', postID=postData.ID) }}" id="comment-form" class="comment-form">
           <input type="hidden" name="return_url" value="{{ UrlPath }}">
           <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
-          <p>
+          <p class="comment-form-row">
             <label for="comment-author">昵称</label>
-            <input id="comment-author" name="author" type="text" required maxlength="80" value="{{ CommentForm.Author }}">
+            <input id="comment-author" class="comment-input" name="author" type="text" required maxlength="80" value="{{ CommentForm.Author }}">
           </p>
-          <p>
+          <p class="comment-form-row">
             <label for="comment-email">邮箱</label>
-            <input id="comment-email" name="author_email" type="email" maxlength="120" placeholder="可选" value="{{ CommentForm.AuthorEmail }}">
-            <small>填写后可自动显示 Gravatar 头像服务中的头像。</small>
+            <input id="comment-email" class="comment-input" name="author_email" type="email" maxlength="120" placeholder="可选" value="{{ CommentForm.AuthorEmail }}">
+            <small class="comment-help">填写后可自动显示 Gravatar 头像服务中的头像。</small>
           </p>
-          <p>
+          <p class="comment-form-row">
             <label for="comment-url">网址</label>
-            <input id="comment-url" name="author_url" type="url" maxlength="300" placeholder="可选" value="{{ CommentForm.AuthorURL }}">
+            <input id="comment-url" class="comment-input" name="author_url" type="url" maxlength="300" placeholder="可选" value="{{ CommentForm.AuthorURL }}">
           </p>
-          <p>
+          <p class="comment-form-row">
             <label for="comment-content">内容</label>
-            <textarea id="comment-content" style="vertical-align: top;" name="content" rows="8" cols="40" minlength="5" maxlength="5000" required></textarea>
+            <textarea id="comment-content" class="comment-textarea" name="content" rows="8" cols="40" minlength="5" maxlength="5000" required></textarea>
           </p>
-          <p>
-            <label for="comment-remember-me">
-              <label>　　</label>
+          <p class="comment-form-row comment-remember">
+            <label for="comment-remember-me" class="comment-checkbox-label">
               <input id="comment-remember-me" name="remember_me" type="checkbox" value="1"{% if CommentForm.RememberMe %} checked{% endif %}>
-              记住我（下次自动填充昵称、邮箱和网址）
+              <span>记住我（下次自动填充昵称、邮箱和网址）</span>
             </label>
           </p>
           {% if CommentCaptchaRequired %}
-            <p>
+            <p class="comment-form-row">
               <label for="comment-captcha-answer">验证码</label>
-              <span>{{ CommentCaptcha.Prompt }}</span>
+              <span class="comment-captcha-wrap">
+                <span>{{ CommentCaptcha.Prompt }}</span>
+                <input id="comment-captcha-answer" class="comment-input" name="captcha_answer" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="16" required autocomplete="off">
+              </span>
               <input type="hidden" name="captcha_token" value="{{ CommentCaptcha.Token }}">
-              <input id="comment-captcha-answer" name="captcha_answer" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="16" required style="width: 6em;" autocomplete="off">
             </p>
           {% endif %}
-          <p id="comment-reply-state" style="display:none;">
-            <label>　　</label><small>回复 @<span id="comment-reply-author"></span></small>
-            <button type="button" id="comment-reply-cancel">取消回复</button>
+          <p id="comment-reply-state" class="comment-form-row comment-reply-state" hidden>
+            <small>回复 @<span id="comment-reply-author"></span></small>
+            <button type="button" id="comment-reply-cancel" class="comment-link-btn">取消回复</button>
           </p>
-          <p>
-            <label>　　</label><button type="submit">提交评论</button>
-          </p>
+          <div class="comment-submit-row">
+            <button type="submit">提交评论</button>
+          </div>
         </form>
       </fieldset>
     </div>
@@ -126,9 +127,9 @@
 {% else %}
   <section>
   <footer>
-    <div id="comments">
-      <h2>评论</h2>
-      <p><small>评论已关闭。</small></p>
+    <div id="comments" class="comment-block">
+      <h2 class="comment-title">评论</h2>
+      <p class="comment-empty"><small>评论已关闭。</small></p>
     </div>
   </footer>
   </section>
@@ -160,7 +161,9 @@
     function resetReply() {
       parentInput.value = "0";
       replyAuthor.textContent = "";
-      replyState.style.display = "none";
+      if (replyState) {
+        replyState.hidden = true;
+      }
     }
 
     root.addEventListener("click", function (event) {
@@ -174,7 +177,9 @@
 
       parentInput.value = commentID;
       replyAuthor.textContent = author;
-      replyState.style.display = "block";
+      if (replyState) {
+        replyState.hidden = false;
+      }
       document.getElementById("comment-content").focus();
     });
 

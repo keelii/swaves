@@ -2,19 +2,35 @@
 {% set commentParentAuthor = Comment.ParentAuthor or commentCore.ParentAuthor %}
 {% set commentChildren = Comment.Children %}
 <li class="comment-item" id="comment-{{ commentCore.ID }}">
-  <div style="display:flex;align-items:flex-start;gap:0.6rem;">
-    <img src="{{ GetAvatarImage(commentCore.AuthorEmail, commentCore.Author, 40) }}" alt="{{ commentCore.Author }}" width="40" height="40" style="border-radius:999px;display:block;flex:0 0 40px;">
-    <div>
-      <strong>{{ commentCore.Author }}</strong>
-      <small> · {{ commentCore.CreatedAt | relativeTime }}</small>
-      {% if commentCore.ParentID > 0 %}
-        <small> · 回复 @{{ commentParentAuthor }}</small>
-      {% endif %}
-    </div>
-  </div>
-  <div>{{ commentCore.Content }}</div>
-  <div>
-    <button type="button" data-comment-reply data-comment-id="{{ commentCore.ID }}" data-comment-author="{{ commentCore.Author }}">回复</button>
+  <div class="comment-card">
+    <header class="comment-meta">
+      <div class="comment-info">
+        <img
+          class="comment-avatar"
+          src="{{ GetAvatarImage(commentCore.AuthorEmail, commentCore.Author, 40) }}"
+          alt="{{ commentCore.Author }}"
+          width="40"
+          height="40"
+        >
+        <div class="comment-meta-main">
+          <strong class="comment-author">{{ commentCore.Author }}</strong>
+          <small class="comment-time">· {{ commentCore.CreatedAt | relativeTime }}</small>
+          {% if commentCore.ParentID > 0 %}
+            <small class="comment-reply-to">· 回复 @{{ commentParentAuthor }}</small>
+          {% endif %}
+        </div>
+      </div>
+      <div class="comment-actions">
+        <button
+                type="button"
+                class="comment-reply-btn"
+                data-comment-reply
+                data-comment-id="{{ commentCore.ID }}"
+                data-comment-author="{{ commentCore.Author }}"
+        >回复</button>
+      </div>
+    </header>
+    <div class="comment-body">{{ commentCore.Content }}</div>
   </div>
   {% if commentChildren %}
     <ol class="comment-children">
