@@ -77,7 +77,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 	app.Use(recover.New())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 	//app.Use(logger.New(logger.Config{
-	//	TimeFormat: TimeFormat,
+	//	BaseTimeFormat: BaseTimeFormat,
 	//	Format:     "${time} ${status} - ${method} ${path} ${queryParams} ${body}\n",
 	//}))
 

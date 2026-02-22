@@ -12,6 +12,8 @@ const LoginRoutePath = "/admin/login"
 
 const GlobalSettingKey = "settings"
 
-const TimeFormat = "2006-01-02 15:04:05"
+const BaseTimeFormat = "2006-01-02 15:04:05"
+
+const ArticleTimeFormat = "2006-01-02 15:04:05"
 
 const GravatarDomain = "https://cravatar.cn"

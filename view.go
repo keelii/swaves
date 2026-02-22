@@ -366,6 +366,62 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromSafeString(renderLucideIconSVG(name, size)), nil
 	})
+	env.AddFunction("url_for", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(args) == 0 {
+			return value.FromString(""), nil
+		}
+		name := toStringValue(args[0].Raw())
+		var params map[string]string
+		var query map[string]string
+		if len(args) > 1 {
+			params = toStringMap(args[1].Raw())
+		}
+		if len(args) > 2 {
+			query = toStringMap(args[2].Raw())
+		}
+		if len(kwargs) > 0 {
+			if params == nil {
+				params = map[string]string{}
+			}
+			for key, raw := range kwargs {
+				k := strings.TrimSpace(key)
+				if k == "" {
+					continue
+				}
+				params[k] = toStringValue(raw.Raw())
+			}
+		}
+		return value.FromString(urlFor(name, params, query)), nil
+	})
+
+	registerTemplateFilter(env, "humanSize", func(val value.Value, _ []value.Value) (value.Value, error) {
+		return value.FromString(formatHumanSize(val.Raw())), nil
+	})
+	registerTemplateFilter(env, "formatTime", func(val value.Value, _ []value.Value) (value.Value, error) {
+		ts, ok := val.AsInt()
+		if !ok || ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(time.Unix(ts, 0).Format(consts.BaseTimeFormat)), nil
+	})
+	registerTemplateFilter(env, "relativeTime", func(val value.Value, _ []value.Value) (value.Value, error) {
+		ts, ok := val.AsInt()
+		if !ok || ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(relativeTimeString(ts)), nil
+	})
+	registerTemplateFilter(env, "articleTime", func(val value.Value, _ []value.Value) (value.Value, error) {
+		ts, ok := val.AsInt()
+		if !ok || ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(time.Unix(ts, 0).Format(consts.ArticleTimeFormat)), nil
+	})
+	registerTemplateFilter(env, "datetimeReplacer", func(val value.Value, _ []value.Value) (value.Value, error) {
+		text := toStringValue(val.Raw())
+		return value.FromString(strings.ReplaceAll(text, "{{year}}", time.Now().Format("2006"))), nil
+	})
 
 	registerTemplateFunction(env, consts.GlobalSettingKey, func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
@@ -374,7 +430,6 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		key := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(store.GetSetting(key)), nil
 	})
-
 	registerTemplateFunction(env, "printf", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
@@ -386,7 +441,6 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(fmt.Sprintf(format, values...)), nil
 	})
-
 	registerTemplateFunction(env, "long_text", func(args []value.Value) (value.Value, error) {
 		text := ""
 		if len(args) > 0 {
@@ -428,96 +482,12 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		)
 		return value.FromSafeString(rendered), nil
 	})
-
-	registerValueFormatter(env, "humanSize", formatHumanSize)
-	registerTemplateFilter(env, "formatTime", func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts := int64(0)
-		if parsed, ok := val.AsInt(); ok {
-			ts = parsed
-		} else {
-			raw := val.Raw()
-			if parsed, ok := helper.DecodeAnyToType[int64](unwrapTemplateValue(raw)); ok {
-				ts = parsed
-			} else {
-				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
-				if err == nil {
-					ts = parsed
-				}
-			}
-		}
-		if ts == 0 {
-			return value.FromString("-"), nil
-		}
-		return value.FromString(time.Unix(ts, 0).Format(consts.TimeFormat)), nil
-	})
-	registerTemplateFilter(env, "relativeTime", func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts := int64(0)
-		if parsed, ok := val.AsInt(); ok {
-			ts = parsed
-		} else {
-			raw := val.Raw()
-			if parsed, ok := helper.DecodeAnyToType[int64](unwrapTemplateValue(raw)); ok {
-				ts = parsed
-			} else {
-				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
-				if err == nil {
-					ts = parsed
-				}
-			}
-		}
-		if ts == 0 {
-			return value.FromString("-"), nil
-		}
-		return value.FromString(relativeTimeString(ts)), nil
-	})
-	registerTemplateFilter(env, "articleTime", func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts := int64(0)
-		if parsed, ok := val.AsInt(); ok {
-			ts = parsed
-		} else {
-			raw := val.Raw()
-			if parsed, ok := helper.DecodeAnyToType[int64](unwrapTemplateValue(raw)); ok {
-				ts = parsed
-			} else {
-				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
-				if err == nil {
-					ts = parsed
-				}
-			}
-		}
-		if ts == 0 {
-			return value.FromString("-"), nil
-		}
-		return value.FromString(time.Unix(ts, 0).Format("2006年1月2日 15:04")), nil
-	})
-	registerTemplateFilter(env, "formatDateTimeLocal", func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts := int64(0)
-		if parsed, ok := val.AsInt(); ok {
-			ts = parsed
-		} else {
-			raw := val.Raw()
-			if parsed, ok := helper.DecodeAnyToType[int64](unwrapTemplateValue(raw)); ok {
-				ts = parsed
-			} else {
-				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
-				if err == nil {
-					ts = parsed
-				}
-			}
-		}
-		if ts == 0 {
-			return value.FromString(""), nil
-		}
-		return value.FromString(time.Unix(ts, 0).Format("2006-01-02T15:04")), nil
-	})
-
 	registerTemplateFunction(env, "renderAttrs", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
 		}
 		return value.FromSafeString(renderHTMLAttrs(args[0].Raw())), nil
 	})
-
 	registerTemplateFunction(env, "highlight", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
@@ -549,13 +519,7 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		buf.WriteString(HTML.EscapeString(text[start:]))
 		return value.FromSafeString(buf.String()), nil
 	})
-
-	registerTemplateFilter(env, "replace_datetime", func(val value.Value, _ []value.Value) (value.Value, error) {
-		text := toStringValue(val.Raw())
-		return value.FromString(strings.ReplaceAll(text, "{{year}}", time.Now().Format("2006"))), nil
-	})
-
-	registerTemplateFunction(env, "commentAvatar", func(args []value.Value) (value.Value, error) {
+	registerTemplateFunction(env, "GetAvatarImage", func(args []value.Value) (value.Value, error) {
 		email := ""
 		author := ""
 		size := 0
@@ -568,7 +532,7 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if len(args) > 2 {
 			if parsed, ok := args[2].AsInt(); ok {
 				size = int(parsed)
-			} else if parsed, ok := helper.DecodeAnyToType[int](unwrapTemplateValue(args[2].Raw())); ok {
+			} else if parsed, ok := helper.DecodeAnyToType[int](args[2].Raw()); ok {
 				size = parsed
 			} else {
 				parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[2].Raw())))
@@ -579,18 +543,12 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(helper.BuildGAvatarURL(email, author, size)), nil
 	})
-
-	registerNoArgStringFunction(env, "GetBasePath", share.GetBasePath)
-	registerNoArgStringFunction(env, "GetCategoryPrefix", share.GetCategoryPrefix)
-	registerNoArgStringFunction(env, "GetTagPrefix", share.GetTagPrefix)
-	registerNoArgStringFunction(env, "GetRSSUrl", share.GetRSSUrl)
-	registerNoArgStringFunction(env, "GetAdminUrl", share.GetAdminUrl)
 	registerTemplateFunction(env, "GetAuthorGravatarUrl", func(args []value.Value) (value.Value, error) {
 		size := 0
 		if len(args) > 0 {
 			if parsed, ok := args[0].AsInt(); ok {
 				size = int(parsed)
-			} else if parsed, ok := helper.DecodeAnyToType[int](unwrapTemplateValue(args[0].Raw())); ok {
+			} else if parsed, ok := helper.DecodeAnyToType[int](args[0].Raw()); ok {
 				size = parsed
 			} else {
 				parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[0].Raw())))
@@ -601,7 +559,6 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(share.GetAuthorGravatarUrl(size)), nil
 	})
-
 	registerTemplateFunction(env, "url_is", func(args []value.Value) (value.Value, error) {
 		if len(args) < 2 {
 			return value.FromBool(false), nil
@@ -617,35 +574,36 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromBool(false), nil
 	})
-
-	env.AddFunction("url_for", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	registerTemplateFunction(env, "GetBasePath", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-		name := toStringValue(args[0].Raw())
-		var params map[string]string
-		var query map[string]string
-		if len(args) > 1 {
-			params = toStringMap(args[1].Raw())
-		}
-		if len(args) > 2 {
-			query = toStringMap(args[2].Raw())
-		}
-		if len(kwargs) > 0 {
-			if params == nil {
-				params = map[string]string{}
-			}
-			for key, raw := range kwargs {
-				k := strings.TrimSpace(key)
-				if k == "" {
-					continue
-				}
-				params[k] = toStringValue(raw.Raw())
-			}
-		}
-		return value.FromString(urlFor(name, params, query)), nil
+		return value.FromString(share.GetBasePath()), nil
 	})
-
+	registerTemplateFunction(env, "GetCategoryPrefix", func(args []value.Value) (value.Value, error) {
+		if len(args) == 0 {
+			return value.FromString(""), nil
+		}
+		return value.FromString(share.GetCategoryPrefix()), nil
+	})
+	registerTemplateFunction(env, "GetTagPrefix", func(args []value.Value) (value.Value, error) {
+		if len(args) == 0 {
+			return value.FromString(""), nil
+		}
+		return value.FromString(share.GetTagPrefix()), nil
+	})
+	registerTemplateFunction(env, "GetRSSUrl", func(args []value.Value) (value.Value, error) {
+		if len(args) == 0 {
+			return value.FromString(""), nil
+		}
+		return value.FromString(share.GetRSSUrl()), nil
+	})
+	registerTemplateFunction(env, "GetAdminUrl", func(args []value.Value) (value.Value, error) {
+		if len(args) == 0 {
+			return value.FromString(""), nil
+		}
+		return value.FromString(share.GetAdminUrl()), nil
+	})
 	registerTemplateFunction(env, "GetTagUrl", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
@@ -664,17 +622,20 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-		//post, ok := buildPostFromRaw(args[0].Raw())
-		//if !ok {
-		//	return value.FromString(""), nil
-		//}
-		post, ok := helper.DecodeAnyToType[db.Post](unwrapTemplateValue(args[0].Raw()))
+
+		post, ok := helper.DecodeAnyToType[db.Post](args[0].Raw())
 		if !ok {
 			return value.FromString(""), nil
 		}
 
 		return value.FromString(share.GetPostUrl(post)), nil
 	})
+}
+
+func register(fn func() string) func([]value.Value) (value.Value, error) {
+	return func(_ []value.Value) (value.Value, error) {
+		return value.FromString(fn()), nil
+	}
 }
 
 func registerNoArgStringFunction(env *minijinja.Environment, name string, fn func() string) {
@@ -713,69 +674,6 @@ func registerValueFormatter(env *minijinja.Environment, name string, formatter f
 	registerTemplateFilter(env, name, func(val value.Value, _ []value.Value) (value.Value, error) {
 		return value.FromString(formatter(val.Raw())), nil
 	})
-}
-
-func buildPostFromArgs(args []value.Value) (db.Post, bool) {
-	if len(args) == 0 {
-		return db.Post{}, false
-	}
-	return buildPostFromRaw(args[0].Raw())
-}
-
-func buildPostFromRaw(raw any) (db.Post, bool) {
-	switch typed := raw.(type) {
-	case db.Post:
-		return typed, true
-	case *db.Post:
-		if typed != nil {
-			return *typed, true
-		}
-		return db.Post{}, false
-	}
-	post, ok := helper.DecodeAnyToType[db.Post](unwrapTemplateValue(raw))
-	if !ok {
-		return db.Post{}, false
-	}
-	if strings.TrimSpace(post.Slug) == "" {
-		return db.Post{}, false
-	}
-	return post, true
-}
-
-func unwrapTemplateValue(raw any) any {
-	switch typed := raw.(type) {
-	case value.Value:
-		if typed.IsNone() || typed.IsUndefined() || typed.IsSilentUndefined() {
-			return nil
-		}
-		return unwrapTemplateValue(typed.Raw())
-	case map[string]value.Value:
-		converted := make(map[string]any, len(typed))
-		for key, item := range typed {
-			converted[key] = unwrapTemplateValue(item)
-		}
-		return converted
-	case map[string]any:
-		converted := make(map[string]any, len(typed))
-		for key, item := range typed {
-			converted[key] = unwrapTemplateValue(item)
-		}
-		return converted
-	case []value.Value:
-		converted := make([]any, len(typed))
-		for idx, item := range typed {
-			converted[idx] = unwrapTemplateValue(item)
-		}
-		return converted
-	case []any:
-		converted := make([]any, len(typed))
-		for idx, item := range typed {
-			converted[idx] = unwrapTemplateValue(item)
-		}
-		return converted
-	default:
-		return raw
-	}
 }
 
 func renderHTMLAttrs(raw any) string {
@@ -1047,7 +945,7 @@ func relativeTimeString(ts int64) string {
 		if diff < 60 {
 			return "刚刚"
 		}
-		return time.Unix(ts, 0).Format(consts.TimeFormat)
+		return time.Unix(ts, 0).Format(consts.BaseTimeFormat)
 	}
 	switch {
 	case diff < 60:
