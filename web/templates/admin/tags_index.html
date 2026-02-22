@@ -1,5 +1,11 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
+<ot-tabs>
+  <div role="tablist" class="mb-4">
+    <a href="{{ url_for('admin.categories.list') }}" role="tab" aria-selected="false">分类</a>
+    <a href="{{ url_for('admin.tags.list') }}" role="tab" aria-selected="true">标签</a>
+  </div>
+</ot-tabs>
 
 <table>
   <thead>
@@ -20,7 +26,7 @@
     <td class="cell-4">{{ tag.ID }}</td>
     <td>{{ tag.Name }}</td>
     <td><a href="{{ GetTagUrl(tag) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
-    <td><a href="{{ url_for("admin.posts.list") }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
+    <td><a href="{{ url_for('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
     <td>{{ tag.CreatedAt | relativeTime }}</td>
     <td>{{ tag.UpdatedAt | relativeTime }}</td>
     {{ ui.table_row_actions("admin.tags.edit", "admin.tags.delete", tag.ID) }}
@@ -33,7 +39,7 @@
   <tfoot>
   <tr>
     <td colspan="7">
-      {% with Pager = Pager, Req = Req %}{% include "/admin/include/pagination" %}{% endwith %}
+      {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination" %}{% endwith %}
     </td>
   </tr>
   </tfoot>

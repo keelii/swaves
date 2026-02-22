@@ -1,6 +1,6 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
-<form id="form" method="post" action="{{ url_for("admin.encrypted_posts.update", id=Post.ID) }}">
+<form id="form" method="post" action="{{ url_for('admin.encrypted_posts.update', id=Post.ID) }}">
   {% set displayDate = "" %}{% if Post.ExpiresAt %}{% set displayDate = Post.ExpiresAt | formatTime %}{% endif %}
   <div class="row">
     <div class="col-6">
@@ -19,11 +19,11 @@
         <input class="w-100" type="password" name="password" placeholder="留空以保持当前密码">
       </label>
 
-      {% with Label = "过期时间", ReadOnly = true, HasExpiry = Post.ExpiresAt, DisplayDate = displayDate %}{% include "/admin/include/expires_at_field" %}{% endwith %}
+      {% with Label = "过期时间", ReadOnly = true, HasExpiry = Post.ExpiresAt, DisplayDate = displayDate %}{% include "admin/include/expires_at_field" %}{% endwith %}
     </div>
   </div>
 
-  {% with Placeholder = "加密文章内容（支持 Markdown）", Value = Post.Content %}{% include "/admin/include/markdown_preview" %}{% endwith %}
+  {% with Placeholder = "加密文章内容（支持 Markdown）", Value = Post.Content, ShowMediaPicker = false %}{% include "admin/include/markdown_preview" %}{% endwith %}
 
 </form>
 {% endblock %}

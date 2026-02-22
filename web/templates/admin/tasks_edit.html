@@ -1,7 +1,7 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
 
-<form id="form" method="post" action="{{ url_for("admin.tasks.update", id=Task.ID) }}">
+<form id="form" method="post" action="{{ url_for('admin.tasks.update', id=Task.ID) }}">
   <div class="row">
     <div class="col-6">
       <label data-field>

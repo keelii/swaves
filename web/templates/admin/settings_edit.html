@@ -1,7 +1,7 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
 
-<form id="form" method="post" action="{{ url_for("admin.settings.update", id=Setting.ID) }}">
+<form id="form" method="post" action="{{ url_for('admin.settings.update', id=Setting.ID) }}">
 
   {{ ui.form_field_text("分类", "kind", Setting.Kind, required=true, placeholder="例如: system, url, integration, default", help="（例如：system、url、integration、default）") }}
   {{ ui.form_field_text("子分类", "sub_kind", Setting.SubKind, placeholder="例如: general, see, imagekit, s3", help="（可选，分类下的子分类 code）") }}

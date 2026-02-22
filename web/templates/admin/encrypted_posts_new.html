@@ -1,6 +1,6 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
-<form id="form" method="post" action="{{ url_for("admin.encrypted_posts.create") }}">
+<form id="form" method="post" action="{{ url_for('admin.encrypted_posts.create') }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
@@ -13,11 +13,11 @@
         <input class="w-100" type="password" name="password" placeholder="可选密码（仅用于他人访问）">
       </label>
 
-      {% with Label = "过期时间", CustomDate = "", HasExpiry = false %}{% include "/admin/include/expires_at_field" %}{% endwith %}
+      {% with Label = "过期时间", CustomDate = "", HasExpiry = false %}{% include "admin/include/expires_at_field" %}{% endwith %}
     </div>
   </div>
 
-  {% with Placeholder = "加密文章内容（支持 Markdown）", Value = "", Required = true %}{% include "/admin/include/markdown_preview" %}{% endwith %}
+  {% with Placeholder = "加密文章内容（支持 Markdown）", Value = "", Required = true, ShowMediaPicker = false %}{% include "admin/include/markdown_preview" %}{% endwith %}
 
 </form>
 {% endblock %}

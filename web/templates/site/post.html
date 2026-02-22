@@ -1,10 +1,10 @@
-{% extends "/site/layout/layout" %}
+{% extends "site/layout/layout" %}
 {% block content %}
 {% set displayPost = Post.DisplayPost %}
 {% set postData = displayPost.Post %}
 {% set postCategory = Post.Category %}
 {% set postTags = Post.Tags %}
-{% from "/site/macro/content" import category_item, tag_list %}
+{% from "site/macro/content" import category_item, tag_list %}
 
 <header>
   <h1>{{ postData.Title }}</h1>
@@ -13,13 +13,13 @@
     <span>{{ postData.PublishedAt | articleTime }}</span>
     <a href="{{ GetBasePath() }}">首页</a>
     {% if Auth.IsLogin and (postData.ID > 0) %}
-      <a href="{{ url_for("admin.posts.edit", id=postData.ID) }}">编辑</a>
+      <a href="{{ url_for('admin.posts.edit', id=postData.ID) }}">编辑</a>
     {% endif %}
     {% with Count = ReadUV %}
-      {% include "/site/include/read_uv" %}
+      {% include "site/include/read_uv" %}
     {% endwith %}
     {% with PostID = postData.ID, UrlPath = UrlPath, LikeCount = LikeCount, Liked = Liked %}
-      {% include "/site/include/like_action" %}
+      {% include "site/include/like_action" %}
     {% endwith %}
   </nav>
 </header>
@@ -54,7 +54,7 @@
         <ol class="comment-list">
           {% for item in Comments %}
             {% with Comment = item %}
-              {% include "/site/include/comment_item" %}
+              {% include "site/include/comment_item" %}
             {% endwith %}
           {% endfor %}
         </ol>
@@ -76,7 +76,7 @@
 
       <fieldset>
         <legend>发表评论</legend>
-        <form method="post" action="{{ url_for("site.action.comment", postID=postData.ID) }}" id="comment-form">
+        <form method="post" action="{{ url_for('site.action.comment', postID=postData.ID) }}" id="comment-form">
           <input type="hidden" name="return_url" value="{{ UrlPath }}">
           <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
           <p>

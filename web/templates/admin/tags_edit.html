@@ -1,7 +1,7 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
 
-<form id="form" method="post" action="{{ url_for("admin.tags.update", id=Tag.ID) }}">
+<form id="form" method="post" action="{{ url_for('admin.tags.update', id=Tag.ID) }}">
 
   {{ ui.form_field_text("名称", "name", Tag.Name, required=true, placeholder="标签名称") }}
   {{ ui.form_field_text("URL 标识", "slug", Tag.Slug, required=true, placeholder="url标识") }}

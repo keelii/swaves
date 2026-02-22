@@ -1,6 +1,6 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
-<form id="form" method="post" action="{{ url_for("admin.settings.create") }}">
+<form id="form" method="post" action="{{ url_for('admin.settings.create') }}">
 
   <p>
     <label>

@@ -30,15 +30,25 @@ var mediaKindOptions = []string{db.MediaKindImage, db.MediaKindBackup, db.MediaK
 
 func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
-	kind := ""
+	kind := normalizeMediaKind(c.Query("kind"))
 	provider := ""
 	defaultProvider := h.defaultMediaProvider()
 	defaultProviderErr := h.validateMediaProviderConfig(defaultProvider)
+	kindCounts := map[string]int{}
 
 	total, err := db.CountMedia(h.Model, kind, provider)
 	if err != nil {
 		log.Printf("[media] count media list failed: err=%v", err)
 		return err
+	}
+	kindCounts[""] = total
+	for _, item := range mediaKindOptions {
+		count, countErr := db.CountMedia(h.Model, item, provider)
+		if countErr != nil {
+			log.Printf("[media] count media kind failed: kind=%s err=%v", item, countErr)
+			return countErr
+		}
+		kindCounts[item] = count
 	}
 	pager.Total = total
 	if pager.PageSize > 0 {
@@ -67,6 +77,9 @@ func (h *Handler) GetMediaListHandler(c fiber.Ctx) error {
 		"Title":                 "Media",
 		"Items":                 items,
 		"Pager":                 pager,
+		"CurrentKind":           kind,
+		"KindCounts":            kindCounts,
+		"MediaKindLabelMap":     mediaKindLabelMap(),
 		"DefaultProvider":       defaultProvider,
 		"DefaultProviderReady":  defaultProviderErr == nil,
 		"DefaultProviderError":  errorString(defaultProviderErr),
@@ -347,6 +360,15 @@ func mediaProviderLabelMap() map[string]string {
 		result[item.Value] = item.Label
 	}
 	return result
+}
+
+func mediaKindLabelMap() map[string]string {
+	return map[string]string{
+		"":                 "全部",
+		db.MediaKindImage:  "图片",
+		db.MediaKindFile:   "文件",
+		db.MediaKindBackup: "备份",
+	}
 }
 
 func normalizeMediaProvider(raw string) string {

@@ -50,9 +50,9 @@ func TestGlobalMacroNamespaceAvailableAcrossExtendsAndInclude(t *testing.T) {
 
 	mustWriteTemplate("admin/macro/ui.html", `{% macro hi(label) %}{{ label }}{% endmacro %}`)
 	mustWriteTemplate("admin/layout/base.html", `{% block body %}{% endblock %}`)
-	mustWriteTemplate("admin/layout/layout.html", `{% extends "/admin/layout/base" %}{% block body %}{% include "/admin/include/actions" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base" %}{% block body %}{% include "admin/include/actions" %}{% block content %}{% endblock %}{% endblock %}`)
 	mustWriteTemplate("admin/include/actions.html", `{{ ui.hi("A") }}`)
-	mustWriteTemplate("page.html", `{% extends "/admin/layout/layout" %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
+	mustWriteTemplate("page.html", `{% extends "admin/layout/layout" %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
 
 	view := newMiniJinjaView(tempDir, false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
@@ -67,6 +67,72 @@ func TestGlobalMacroNamespaceAvailableAcrossExtendsAndInclude(t *testing.T) {
 		t.Fatalf("render page failed: %v", err)
 	}
 	if got := out.String(); got != "AB" {
+		t.Fatalf("unexpected render output: %q", got)
+	}
+}
+
+func TestExtendsAndIncludeSupportRootPathsWithoutLeadingSlash(t *testing.T) {
+	tempDir := t.TempDir()
+	mustWriteTemplate := func(relativeName string, source string) {
+		templatePath := filepath.Join(tempDir, relativeName)
+		if err := os.MkdirAll(filepath.Dir(templatePath), 0o755); err != nil {
+			t.Fatalf("create template directory failed: %v", err)
+		}
+		if err := os.WriteFile(templatePath, []byte(source), 0o644); err != nil {
+			t.Fatalf("write template %q failed: %v", relativeName, err)
+		}
+	}
+
+	mustWriteTemplate("admin/layout/base.html", `{% block body %}{% endblock %}`)
+	mustWriteTemplate("admin/include/actions.html", `A`)
+	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base" %}{% block body %}{% include "admin/include/actions" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplate("admin/categories_index.html", `{% extends "admin/layout/layout" %}{% block content %}B{% endblock %}`)
+
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		return name
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "admin/categories_index", map[string]any{}); err != nil {
+		t.Fatalf("render template failed: %v", err)
+	}
+	if got := out.String(); got != "AB" {
+		t.Fatalf("unexpected render output: %q", got)
+	}
+}
+
+func TestIncludeSupportsExplicitRelativeSubPath(t *testing.T) {
+	tempDir := t.TempDir()
+	mustWriteTemplate := func(relativeName string, source string) {
+		templatePath := filepath.Join(tempDir, relativeName)
+		if err := os.MkdirAll(filepath.Dir(templatePath), 0o755); err != nil {
+			t.Fatalf("create template directory failed: %v", err)
+		}
+		if err := os.WriteFile(templatePath, []byte(source), 0o644); err != nil {
+			t.Fatalf("write template %q failed: %v", relativeName, err)
+		}
+	}
+
+	mustWriteTemplate("admin/page.html", `{% include "./include/item" %}`)
+	mustWriteTemplate("admin/include/item.html", `ok`)
+
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		return name
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "admin/page", map[string]any{}); err != nil {
+		t.Fatalf("render template failed: %v", err)
+	}
+	if got := out.String(); got != "ok" {
 		t.Fatalf("unexpected render output: %q", got)
 	}
 }
@@ -98,7 +164,7 @@ func TestMapLookupHandlesMissingAndNumericKeys(t *testing.T) {
 
 func TestURLForSupportsKeywordArguments(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for("admin.posts.edit", id=PostID, tab="comments") }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for('admin.posts.edit', id=PostID, tab='comments') }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
@@ -136,7 +202,7 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 
 func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for("admin.posts.edit", dict("id", "1", "tab", "draft"), id=PostID, tab="comments") }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for('admin.posts.edit', dict('id', '1', 'tab', 'draft'), id=PostID, tab='comments') }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 

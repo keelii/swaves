@@ -1,4 +1,4 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
 
 {% set kind = (Kind or 0) %}
@@ -7,8 +7,8 @@
 {% set cat = (FilterCategoryIDStr or "") %}
 <div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
   <nav role="tablist" aria-label="内容类型">
-    <a role="tab" aria-selected="{% if kind == 0 %}true{% else %}false{% endif %}" href="{{ url_for("admin.posts.list") }}?kind=0{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">文章 ({{ CountPost }})</a>
-    <a role="tab" aria-selected="{% if kind == 1 %}true{% else %}false{% endif %}" href="{{ url_for("admin.posts.list") }}?kind=1{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">页面 ({{ CountPage }})</a>
+    <a role="tab" aria-selected="{% if kind == 0 %}true{% else %}false{% endif %}" href="{{ url_for('admin.posts.list') }}?kind=0{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">文章 ({{ CountPost }})</a>
+    <a role="tab" aria-selected="{% if kind == 1 %}true{% else %}false{% endif %}" href="{{ url_for('admin.posts.list') }}?kind=1{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">页面 ({{ CountPage }})</a>
   </nav>
   <div class="tab-nav-right">
     {% if FilterTagName or FilterCategoryName %}
@@ -19,7 +19,7 @@
         {% if FilterCategoryName %}{{ ui.tag_item(catLabel, FilterCategoryRemoveURL) }}{% endif %}
       </div>
     {% endif %}
-    {% with KindQuery = KindQuery, SearchQuery = SearchQuery, FilterTagIDStr = FilterTagIDStr, FilterCategoryIDStr = FilterCategoryIDStr %}{% include "/admin/include/post_search" %}{% endwith %}
+    {% with KindQuery = KindQuery, SearchQuery = SearchQuery, FilterTagIDStr = FilterTagIDStr, FilterCategoryIDStr = FilterCategoryIDStr %}{% include "admin/include/post_search" %}{% endwith %}
   </div>
 </div>
 
@@ -53,14 +53,14 @@
     </td>
     <td>
       {% if postWithRelation.Tags %}
-        {% for tag in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ url_for("admin.posts.list") }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>{% endfor %}
+        {% for tag in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ url_for('admin.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>{% endfor %}
       {% else %}
         <span>-</span>
       {% endif %}
     </td>
     <td>
       {% if postWithRelation.Category %}
-        <a href="{{ url_for("admin.posts.list") }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
+        <a href="{{ url_for('admin.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
       {% else %}
         <span>-</span>
       {% endif %}
@@ -87,7 +87,7 @@
   <tfoot>
   <tr>
     <td colspan="10">
-      {% with Pager = Pager, Req = Req %}{% include "/admin/include/pagination" %}{% endwith %}
+      {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination" %}{% endwith %}
     </td>
   </tr>
   </tfoot>

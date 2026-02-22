@@ -1,12 +1,12 @@
-{% extends "/site/layout/layout" %}
+{% extends "site/layout/layout" %}
 {% block content %}
-{% from "/site/macro/content" import category_item, tag_list %}
+{% from "site/macro/content" import category_item, tag_list %}
 
 <header>
   <h1>{{ Entity.Name }}</h1>
 
   {% with IsCategory = IsCategory, IsTag = IsTag %}
-    {% include "/site/include/list_nav" %}
+    {% include "site/include/list_nav" %}
   {% endwith %}
 </header>
 

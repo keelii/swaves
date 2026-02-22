@@ -1,9 +1,9 @@
-{% extends "/site/layout/layout" %}
+{% extends "site/layout/layout" %}
 {% block content %}
 <header>
   <h1>{{ settings("site_title") }}</h1>
   {% with Pages = Pages, IsLogin = Auth.IsLogin %}
-    {% include "/site/include/nav" %}
+    {% include "site/include/nav" %}
   {% endwith %}
 </header>
 
@@ -19,6 +19,6 @@
 </ul>
 
 {% with Pager = Pager, SearchQueryEscaped = SearchQueryEscaped %}
-  {% include "/site/include/pagination" %}
+  {% include "site/include/pagination" %}
 {% endwith %}
 {% endblock %}

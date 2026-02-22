@@ -1,4 +1,4 @@
-{% extends "/site/layout/layout" %}
+{% extends "site/layout/layout" %}
 {% block content %}
 {% macro macro_site_category_tree_nodes(__ctx) %}
   {% for categoryNode in __ctx %}
@@ -19,7 +19,7 @@
   <h1>{{ Title }}</h1>
 
   {% with IsCategory = true, IsTag = true %}
-    {% include "/site/include/list_nav" %}
+    {% include "site/include/list_nav" %}
   {% endwith %}
 </header>
 

@@ -1,4 +1,4 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
 <style>
   #import-edit-rows td input {
@@ -104,7 +104,7 @@
 <div role="alert" data-variant="success">{{ successMessage }}</div>
 {% endif %}
 
-<form id="form" method="post" action="{{ url_for("admin.import.submit") }}" enctype="multipart/form-data">
+<form id="form" method="post" action="{{ url_for('admin.import.submit') }}" enctype="multipart/form-data">
   <section class="import-upload">
     <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
     <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖拽 Markdown 文件">
@@ -249,7 +249,7 @@
     </thead>
     <tbody id="import-edit-rows">
     {% for importingItem in importingItems %}
-      {% with Item = importingItem %}{% include "/admin/include/import_edit_row" %}{% endwith %}
+      {% with Item = importingItem %}{% include "admin/include/import_edit_row" %}{% endwith %}
     {% else %}
       <tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>
     {% endfor %}
@@ -258,7 +258,7 @@
 </div>
 
 <template id="import-edit-row-template">
-  {% with Item = (dict("PostID", 0, "Filename", "", "Title", "", "Slug", "", "Content", "", "ContentPreview", "-", "Status", "draft", "Kind", "0", "CreatedAt", "", "CreatedAtUnix", 0, "Tags", "", "Category", "", "Categories", "")) %}{% include "/admin/include/import_edit_row" %}{% endwith %}
+  {% with Item = (dict("PostID", 0, "Filename", "", "Title", "", "Slug", "", "Content", "", "ContentPreview", "-", "Status", "draft", "Kind", "0", "CreatedAt", "", "CreatedAtUnix", 0, "Tags", "", "Category", "", "Categories", "")) %}{% include "admin/include/import_edit_row" %}{% endwith %}
 </template>
 
 <dialog id="import-cancel-dialog">
@@ -274,10 +274,10 @@
 
 <script>
 $(function() {
-  var parseItemURL = {{ url_for("admin.import.parse_item") | tojson }};
-  var confirmItemURL = {{ url_for("admin.import.confirm_item") | tojson }};
-  var cancelItemURL = {{ url_for("admin.import.cancel") | tojson }};
-  var postListURL = {{ url_for("admin.posts.list") | tojson }};
+  var parseItemURL = {{ url_for('admin.import.parse_item') | tojson }};
+  var confirmItemURL = {{ url_for('admin.import.confirm_item') | tojson }};
+  var cancelItemURL = {{ url_for('admin.import.cancel') | tojson }};
+  var postListURL = {{ url_for('admin.posts.list') | tojson }};
   var baseCategoryOptions = [{% for category in allCategories %}
     {{ category.Name | tojson }},{% endfor %}
   ];

@@ -223,15 +223,33 @@ func newMiniJinjaTemplateLoader(templateRoot string) minijinja.LoaderFunc {
 }
 
 func resolveTemplateImportPath(name string, parent string) string {
-	name = strings.TrimSpace(name)
+	name = strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
 	if name == "" {
 		return name
 	}
+
 	if strings.HasPrefix(name, "/") {
-		return strings.TrimPrefix(path.Clean(name), "/")
+		cleaned := path.Clean(name)
+		return appendTemplateHTMLExtension(strings.TrimPrefix(cleaned, "/"))
 	}
+
+	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") || name == "." || name == ".." {
+		parentDir := path.Dir(strings.TrimSpace(parent))
+		cleaned := path.Clean(name)
+		return appendTemplateHTMLExtension(path.Clean(path.Join(parentDir, cleaned)))
+	}
+
+	cleaned := path.Clean(name)
+	if cleaned == "." {
+		return ""
+	}
+
+	if strings.Contains(cleaned, "/") {
+		return appendTemplateHTMLExtension(cleaned)
+	}
+
 	parentDir := path.Dir(strings.TrimSpace(parent))
-	return path.Clean(path.Join(parentDir, name))
+	return appendTemplateHTMLExtension(path.Clean(path.Join(parentDir, cleaned)))
 }
 
 func collectTemplateNames(templateRoot string) ([]string, error) {
@@ -277,10 +295,19 @@ func normalizeTemplateName(name string) (string, error) {
 	if strings.HasPrefix(normalized, "../") || normalized == ".." {
 		return "", fmt.Errorf("template name %q points outside root", name)
 	}
-	if path.Ext(normalized) == "" {
-		normalized += ".html"
-	}
+	normalized = appendTemplateHTMLExtension(normalized)
 	return normalized, nil
+}
+
+func appendTemplateHTMLExtension(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	if path.Ext(name) != "" {
+		return name
+	}
+	return name + ".html"
 }
 
 func cloneAnyMap(source map[string]any) map[string]any {

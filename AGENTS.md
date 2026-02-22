@@ -45,7 +45,8 @@ It is intended as a practical guide for future changes.
 - Root context contract is `Req`, `Auth`, `Site`; `__root` is internal compatibility context.
 - Business binding must not overwrite reserved keys (`Req`, `Auth`, `Site`, `__root`).
 - Avoid blindly injecting all request locals into templates; pass explicit, stable fields through render helpers.
-- Template `import`/`include` paths must be absolute template paths (start with `/`).
+- Template `extends`/`include`/`import`/`from` paths must use template-root-relative form (no leading `/`, no `.html` suffix), for example `admin/layout/layout`.
+- In HTML attributes that contain template expressions, keep outer attribute quotes as `"` and use `'` for template string literals (for example `href="{{ url_for('admin.comments.list') }}"`).
 - Internal template links must continue using `url_for`, not hardcoded admin paths.
 - Development hot reload uses `SWAVES_TEMPLATE_RELOAD`; production must not clear template cache per request.
 
@@ -55,7 +56,7 @@ It is intended as a practical guide for future changes.
 - Keep domain-local template structure consistent: `admin/layout|include|macro` and `site/layout|include|macro`; do not mix admin templates into site folders or vice versa.
 - Use `macro` for atomic reusable HTML snippets; keep macro logic shallow and avoid embedding page-level business flow.
 - Use `include` for reusable business components/modules that can be composed by pages/layouts.
-- In templates, prefer explicit macro imports (`{% from "/admin/macro/ui" import action_btn_content %}`) over alias-wide imports (`{% import ... as ui %}`).
+- In templates, prefer explicit macro imports (`{% from "admin/macro/ui" import action_btn_content %}`) over alias-wide imports (`{% import ... as ui %}`).
 - Macro signatures should use explicit parameters (with defaults for optional args); avoid `ctx`/`dict` bag-style parameter passing when direct arguments are possible.
 - Keep template expressions minimal and readable: remove redundant nested parentheses.
 - For route generation, prefer direct key/value style in `url_for` calls; avoid Go-template-style `dict(...)` wrappers when the helper supports direct args.
@@ -84,6 +85,12 @@ It is intended as a practical guide for future changes.
 - Confirm action finalizes state and writes edited values.
 - Cancel action must clean related records (posts, tags, categories links).
 - Return specific failure reasons to user, not generic "import failed" only.
+
+### 18) Encrypted Post Privacy Boundary
+
+- Encrypted posts are a privacy boundary for authors; any data associated with encrypted posts must stay isolated from regular post/domain tables and cross-module linkage.
+- Do not embed reusable convenience features from public/normal content modules into encrypted post pages (for example media library picker or media upload entry points).
+- Any new encrypted-post feature must be reviewed with privacy-first defaults: no implicit cross-reference, no auto-link to shared content assets, no leakage through shared management workflows.
 
 ## Category C) Runtime Reliability and Safety
 
@@ -162,6 +169,7 @@ Before merge, verify all items below:
 - [ ] Macro signatures use explicit params/defaults; avoid `ctx` or dict-bag arguments where not necessary.
 - [ ] Macro vs include responsibilities stay clear (macro=atomic snippet, include=business component).
 - [ ] Template URL generation prefers direct key/value `url_for` args over `dict(...)` wrappers where supported.
+- [ ] Encrypted post module remains privacy-isolated: no shared media/library embedding and no cross-module linkage regression.
 - [ ] Template reload behavior follows `SWAVES_TEMPLATE_RELOAD` (dev-only per-request clearing).
 - [ ] Job registry lifecycle remains safe (listen hook init + shutdown destroy).
 - [ ] Added/updated tests cover new behavior and removed legacy behavior.

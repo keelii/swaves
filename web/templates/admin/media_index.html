@@ -1,5 +1,6 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
+{% from "admin/macro/ui" import table_empty %}
 
 <style>
   .media-upload {
@@ -94,6 +95,14 @@
 {% set defaultProviderError = DefaultProviderError %}
 {% set defaultProvider = DefaultProvider %}
 {% set mediaProviderLabelMap = MediaProviderLabelMap|default(dict()) %}
+{% set mediaKindLabelMap = MediaKindLabelMap|default(dict()) %}
+{% set kindCounts = KindCounts|default(dict()) %}
+{% set currentKind = CurrentKind|default("") %}
+{% set pageSizeQuery = Req.Query["pageSize"] | default("") %}
+{% set allCount = kindCounts[""] | default(0) %}
+{% set imageCount = kindCounts["image"] | default(0) %}
+{% set fileCount = kindCounts["file"] | default(0) %}
+{% set backupCount = kindCounts["backup"] | default(0) %}
 
 <section class="media-upload">
   <input type="file" id="media-drop-input" style="display:none;" multiple>
@@ -112,6 +121,15 @@
   </div>
 </section>
 
+<div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
+  <nav role="tablist" aria-label="媒体类型">
+    <a role="tab" aria-selected="{% if currentKind == "" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list') }}{% if pageSizeQuery %}?pageSize={{ pageSizeQuery }}{% endif %}">全部 ({{ allCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "image" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='image') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["image"] | default("图片") }} ({{ imageCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "file" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='file') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["file"] | default("文件") }} ({{ fileCount }})</a>
+    <a role="tab" aria-selected="{% if currentKind == "backup" %}true{% else %}false{% endif %}" href="{{ url_for('admin.media.list', kind='backup') }}{% if pageSizeQuery %}&pageSize={{ pageSizeQuery }}{% endif %}">{{ mediaKindLabelMap["backup"] | default("备份") }} ({{ backupCount }})</a>
+  </nav>
+</div>
+
 <table>
   <thead>
     <tr>
@@ -129,7 +147,7 @@
     {% for mediaItem in Items %}
       <tr data-media-id="{{ mediaItem.id }}">
         <td class="cell-4">{{ mediaItem.id }}</td>
-        <td>{{ mediaItem.kind }}</td>
+        <td>{{ mediaKindLabelMap[mediaItem.kind] | default(mediaItem.kind) }}</td>
         <td>{{ mediaProviderLabelMap[mediaItem.provider] | default(mediaItem.provider) }}</td>
         <td>{{ mediaItem.original_name }}</td>
         <td>
@@ -177,13 +195,13 @@
         </td>
       </tr>
     {% else %}
-      {{ ui.table_empty(8, "暂无媒体资源") }}
+      {{ table_empty(8, "暂无媒体资源") }}
     {% endfor %}
   </tbody>
   <tfoot>
     <tr>
       <td colspan="8">
-        {% with Pager = Pager, Req = Req %}{% include "/admin/include/pagination" %}{% endwith %}
+        {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination" %}{% endwith %}
       </td>
     </tr>
   </tfoot>
@@ -212,7 +230,7 @@
 
 <script>
 $(function() {
-  var mediaAssetsAPIBase = {{ url_for("admin.media.assets.list") | tojson }};
+  var mediaAssetsAPIBase = {{ url_for('admin.media.assets.list') | tojson }};
   var $dropzone = $('#media-dropzone');
   var $fileInput = $('#media-drop-input');
   var $uploadStatus = $('#media-upload-status');

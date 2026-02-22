@@ -1,5 +1,12 @@
-{% extends "/admin/layout/layout" %}
+{% extends "admin/layout/layout" %}
 {% block content %}
+
+<ot-tabs>
+  <div role="tablist" class="mb-4">
+    <a href="{{ url_for('admin.categories.list') }}" role="tab" aria-selected="true">分类</a>
+    <a href="{{ url_for('admin.tags.list') }}" role="tab" aria-selected="false">标签</a>
+  </div>
+</ot-tabs>
 
 <table>
   <thead>
@@ -32,7 +39,7 @@
     </td>
     <td>{{ category.Description }}</td>
     <td>{{ category.Sort }}</td>
-    <td><a href="{{ url_for("admin.posts.list") }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
+    <td><a href="{{ url_for('admin.posts.list') }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
     <td>{{ category.CreatedAt | relativeTime }}</td>
     <td>{{ category.UpdatedAt | relativeTime }}</td>
     {{ ui.table_row_actions("admin.categories.edit", "admin.categories.delete", category.ID) }}

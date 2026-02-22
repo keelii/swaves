@@ -1,4 +1,4 @@
-{% extends "/admin/layout/base" %}
+{% extends "admin/layout/base" %}
 {% block content %}
 <style>
     body {
@@ -94,9 +94,9 @@
       <h1 class="login-title">开始吧，{{ settings("author") }}</h1>
     </div>
 
-    {% with Error = Error %}{% include "/admin/include/error_message" %}{% endwith %}
+    {% with Error = Error %}{% include "admin/include/error_message" %}{% endwith %}
 
-    <form id="form" method="POST" action="{{ url_for("admin.login.submit") }}">
+    <form id="form" method="POST" action="{{ url_for('admin.login.submit') }}">
       {% if ReturnUrl %}<input type="hidden" name="returnUrl" value="{{ ReturnUrl }}">{% endif %}
       <div class="form-group">
         <div class="password-wrapper">
