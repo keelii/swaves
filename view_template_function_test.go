@@ -9,7 +9,7 @@ import (
 
 func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{% import "macros.html" as ui %}{{ ui.row(dict("Value", "ok")) }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{% import "macros.html" as ui %}{{ ui.row({"Value": "ok"}) }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(tempDir, "macros.html"), []byte(`{% macro row(ctx) %}{% with Value = ctx.Value, __root = ctx %}{% include "partial.html" %}{% endwith %}{% endmacro %}`), 0o644); err != nil {
@@ -202,7 +202,7 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 
 func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for('admin.posts.edit', dict('id', '1', 'tab', 'draft'), id=PostID, tab='comments') }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ url_for('admin.posts.edit', {"id": "1", "tab": "draft"}, id=PostID, tab='comments') }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 

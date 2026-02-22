@@ -19,7 +19,6 @@ import (
 	"swaves/internal/db"
 	"swaves/internal/share"
 	"swaves/internal/store"
-	itypes "swaves/internal/types"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -34,54 +33,14 @@ type FiberView struct {
 	clearOnRender bool
 }
 
-type templateReqMeta struct {
-	RouteName string
-	Path      string
-	Query     map[string]string
-	ReqID     string
-}
-
-type templateAuthMeta struct {
-	IsLogin bool
-}
-
-type templateSiteMeta struct {
-	Settings map[string]string
-}
-
 const (
-	internalRootContextKey = "__root"
-	globalUINamespace      = "ui"
-	adminUIMacroTemplate   = "/admin/macro/ui"
+	globalUINamespace    = "ui"
+	adminUIMacroTemplate = "/admin/macro/ui"
 )
 
 var (
-	errFiberViewNil         = errors.New("fiber view engine is nil")
-	reservedBindingKeyNames = []string{"Req", "Auth", "Site", globalUINamespace, internalRootContextKey}
+	errFiberViewNil = errors.New("fiber view engine is nil")
 )
-
-type lucideIconGlobal struct{}
-
-func (g lucideIconGlobal) Call(_ value.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-	name := ""
-	size := "16"
-	if len(args) > 0 {
-		name = strings.TrimSpace(miniValueAsString(args[0]))
-	}
-	if len(args) > 1 {
-		size = strings.TrimSpace(miniValueAsString(args[1]))
-	}
-	if rawName, ok := kwargs["name"]; ok && name == "" {
-		name = strings.TrimSpace(miniValueAsString(rawName))
-	}
-	if rawSize, ok := kwargs["size"]; ok && len(args) <= 1 {
-		size = strings.TrimSpace(miniValueAsString(rawSize))
-	}
-	if size == "" {
-		size = "16"
-	}
-	return value.FromSafeString(renderLucideIconSVG(name, size)), nil
-}
 
 func renderLucideIconSVG(name, size string) string {
 	template, ok := lucideSVGByName[name]
@@ -153,8 +112,25 @@ func (v *FiberView) Load() error {
 	}
 
 	v.env.ClearTemplates()
-	if err := registerTemplateMacroNamespace(v.env, globalUINamespace, adminUIMacroTemplate); err != nil {
+	macroTemplateName, err := normalizeTemplateName(adminUIMacroTemplate)
+	if err != nil {
 		return err
+	}
+	macroTemplate, err := v.env.GetTemplate(macroTemplateName)
+	if err != nil {
+		var templateErr *minijinja.Error
+		if !errors.As(err, &templateErr) || templateErr.Kind != minijinja.ErrTemplateNotFound {
+			return fmt.Errorf("load macro template %q failed: %w", macroTemplateName, err)
+		}
+	} else {
+		state, err := macroTemplate.EvalToState(nil)
+		if err != nil {
+			return fmt.Errorf("evaluate macro template %q failed: %w", macroTemplateName, err)
+		}
+		exports := state.Exports()
+		if len(exports) > 0 {
+			v.env.AddGlobal(globalUINamespace, value.FromMap(exports))
+		}
 	}
 	for _, name := range templateNames {
 		if _, err := v.env.GetTemplate(name); err != nil {
@@ -168,17 +144,30 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 	if v == nil || v.env == nil {
 		return errFiberViewNil
 	}
-	prepared, err := prepareTemplateBinding(binding)
-	if err != nil {
-		return err
-	}
-	miniBinding := buildMiniBinding(prepared)
+	acquired := templatecore.AcquireViewContext(binding)
 
 	if v.clearOnRender {
 		v.env.ClearTemplates()
 	}
-	if err := registerTemplateMacroNamespace(v.env, globalUINamespace, adminUIMacroTemplate); err != nil {
+	macroTemplateName, err := normalizeTemplateName(adminUIMacroTemplate)
+	if err != nil {
 		return err
+	}
+	macroTemplate, err := v.env.GetTemplate(macroTemplateName)
+	if err != nil {
+		var templateErr *minijinja.Error
+		if !errors.As(err, &templateErr) || templateErr.Kind != minijinja.ErrTemplateNotFound {
+			return fmt.Errorf("load macro template %q failed: %w", macroTemplateName, err)
+		}
+	} else {
+		state, err := macroTemplate.EvalToState(nil)
+		if err != nil {
+			return fmt.Errorf("evaluate macro template %q failed: %w", macroTemplateName, err)
+		}
+		exports := state.Exports()
+		if len(exports) > 0 {
+			v.env.AddGlobal(globalUINamespace, value.FromMap(exports))
+		}
 	}
 
 	templateName, err := normalizeTemplateName(name)
@@ -191,7 +180,11 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 	if err != nil {
 		return fmt.Errorf("load template %q failed: %w", templateName, err)
 	}
-	return tmpl.RenderToWrite(miniBinding, out)
+	context := make(map[string]value.Value, len(acquired))
+	for key, raw := range acquired {
+		context[key] = value.FromAny(wrapMapLookup(raw))
+	}
+	return tmpl.RenderToWrite(context, out)
 }
 
 func newMiniJinjaTemplateLoader(templateRoot string) minijinja.LoaderFunc {
@@ -310,14 +303,6 @@ func appendTemplateHTMLExtension(name string) string {
 	return name + ".html"
 }
 
-func cloneAnyMap(source map[string]any) map[string]any {
-	cloned := make(map[string]any, len(source))
-	for key, value := range source {
-		cloned[key] = value
-	}
-	return cloned
-}
-
 type templateMapLookup struct {
 	data any
 }
@@ -327,15 +312,15 @@ func (m *templateMapLookup) GetAttr(name string) value.Value {
 	if !ok {
 		return value.Undefined()
 	}
-	return anyToMiniValue(item)
+	return value.FromAny(wrapMapLookup(item))
 }
 
 func (m *templateMapLookup) GetItem(key value.Value) value.Value {
-	item, ok := safeLookup(m.data, miniValueToAny(key))
+	item, ok := safeLookup(m.data, key.Raw())
 	if !ok {
 		return value.Undefined()
 	}
-	return anyToMiniValue(item)
+	return value.FromAny(wrapMapLookup(item))
 }
 
 func wrapMapLookup(raw any) any {
@@ -360,63 +345,44 @@ func wrapMapLookup(raw any) any {
 	return &templateMapLookup{data: raw}
 }
 
-func buildMiniBinding(input map[string]any) map[string]value.Value {
-	converted := make(map[string]value.Value, len(input))
-	for key, item := range input {
-		converted[key] = anyToMiniValue(item)
-	}
-	return converted
-}
-
 func registerViewFunc(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) string) {
-	env.AddGlobal("lucide_icon", value.FromCallable(lucideIconGlobal{}))
+	env.AddFunction("lucide_icon", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		name := ""
+		size := "16"
+		if len(args) > 0 {
+			name = strings.TrimSpace(toStringValue(args[0].Raw()))
+		}
+		if len(args) > 1 {
+			size = strings.TrimSpace(toStringValue(args[1].Raw()))
+		}
+		if rawName, ok := kwargs["name"]; ok && name == "" {
+			name = strings.TrimSpace(toStringValue(rawName.Raw()))
+		}
+		if rawSize, ok := kwargs["size"]; ok && len(args) <= 1 {
+			size = strings.TrimSpace(toStringValue(rawSize.Raw()))
+		}
+		if size == "" {
+			size = "16"
+		}
+		return value.FromSafeString(renderLucideIconSVG(name, size)), nil
+	})
 
 	registerTemplateFunction(env, consts.GlobalSettingKey, func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-		key := strings.TrimSpace(miniValueAsString(args[0]))
+		key := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(store.GetSetting(key)), nil
-	})
-
-	registerTemplateFunction(env, "dict", func(args []value.Value) (value.Value, error) {
-		if len(args)%2 != 0 {
-			return value.Undefined(), errors.New("invalid dict call: must have even number of arguments")
-		}
-		values := make(map[string]any, len(args)/2)
-		for idx := 0; idx < len(args); idx += 2 {
-			key, ok := args[idx].AsString()
-			if !ok {
-				return value.Undefined(), errors.New("dict keys must be strings")
-			}
-			values[key] = miniValueToAny(args[idx+1])
-		}
-		return anyToMiniValue(values), nil
-	})
-
-	registerTemplateFunction(env, "slice", func(args []value.Value) (value.Value, error) {
-		values := make([]any, 0, len(args))
-		for _, item := range args {
-			values = append(values, miniValueToAny(item))
-		}
-		return anyToMiniValue(values), nil
-	})
-
-	registerTemplateFunction(env, "index", func(args []value.Value) (value.Value, error) {
-		if len(args) < 2 {
-			return value.Undefined(), nil
-		}
-		return args[0].GetItem(args[1]), nil
 	})
 
 	registerTemplateFunction(env, "printf", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-		format := miniValueAsString(args[0])
+		format := toStringValue(args[0].Raw())
 		values := make([]any, 0, len(args)-1)
 		for _, item := range args[1:] {
-			values = append(values, miniValueToAny(item))
+			values = append(values, item.Raw())
 		}
 		return value.FromString(fmt.Sprintf(format, values...)), nil
 	})
@@ -424,18 +390,32 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 	registerTemplateFunction(env, "long_text", func(args []value.Value) (value.Value, error) {
 		text := ""
 		if len(args) > 0 {
-			text = miniValueAsString(args[0])
+			text = toStringValue(args[0].Raw())
 		}
 		cols := 30
 		if len(args) > 1 {
-			cols = miniValueAsInt(args[1])
+			if parsed, ok := args[1].AsInt(); ok {
+				cols = int(parsed)
+			} else {
+				parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[1].Raw())))
+				if err == nil {
+					cols = parsed
+				}
+			}
 		}
 		if cols <= 0 {
 			cols = 30
 		}
 		rows := 1
 		if len(args) > 2 {
-			rows = miniValueAsInt(args[2])
+			if parsed, ok := args[2].AsInt(); ok {
+				rows = int(parsed)
+			} else {
+				parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[2].Raw())))
+				if err == nil {
+					rows = parsed
+				}
+			}
 		}
 		if rows <= 0 {
 			rows = 1
@@ -449,65 +429,103 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		return value.FromSafeString(rendered), nil
 	})
 
-	registerTemplateFunction(env, "page_items", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return anyToMiniValue([]itypes.PageItem{}), nil
-		}
-		pager := toPagination(miniValueToAny(args[0]))
-		return anyToMiniValue(pager.GetPageItems()), nil
-	})
-	registerTemplateFunction(env, "page_has_prev", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromBool(false), nil
-		}
-		return value.FromBool(toPagination(miniValueToAny(args[0])).HasPrev()), nil
-	})
-	registerTemplateFunction(env, "page_has_next", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromBool(false), nil
-		}
-		return value.FromBool(toPagination(miniValueToAny(args[0])).HasNext()), nil
-	})
-	registerTemplateFunction(env, "page_prev", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromInt(1), nil
-		}
-		return value.FromInt(int64(toPagination(miniValueToAny(args[0])).PrevPage())), nil
-	})
-	registerTemplateFunction(env, "page_next", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromInt(1), nil
-		}
-		return value.FromInt(int64(toPagination(miniValueToAny(args[0])).NextPage())), nil
-	})
-
-	registerTimestampFormatter(env, "formatTime", "-", func(ts int64) string {
-		return time.Unix(ts, 0).Format(consts.TimeFormat)
-	})
 	registerValueFormatter(env, "humanSize", formatHumanSize)
-	registerTimestampFormatter(env, "relativeTime", "-", relativeTimeString)
-	registerTimestampFormatter(env, "articleTime", "-", func(ts int64) string {
-		return time.Unix(ts, 0).Format("2006年1月2日 15:04")
+	registerTemplateFilter(env, "formatTime", func(val value.Value, _ []value.Value) (value.Value, error) {
+		ts := int64(0)
+		if parsed, ok := val.AsInt(); ok {
+			ts = parsed
+		} else {
+			raw := val.Raw()
+			if parsed, ok := decodeAnyToType[int64](raw); ok {
+				ts = parsed
+			} else {
+				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
+				if err == nil {
+					ts = parsed
+				}
+			}
+		}
+		if ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(time.Unix(ts, 0).Format(consts.TimeFormat)), nil
 	})
-	registerTimestampFormatter(env, "formatDateTimeLocal", "", func(ts int64) string {
-		return time.Unix(ts, 0).Format("2006-01-02T15:04")
+	registerTemplateFilter(env, "relativeTime", func(val value.Value, _ []value.Value) (value.Value, error) {
+		ts := int64(0)
+		if parsed, ok := val.AsInt(); ok {
+			ts = parsed
+		} else {
+			raw := val.Raw()
+			if parsed, ok := decodeAnyToType[int64](raw); ok {
+				ts = parsed
+			} else {
+				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
+				if err == nil {
+					ts = parsed
+				}
+			}
+		}
+		if ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(relativeTimeString(ts)), nil
+	})
+	registerTemplateFilter(env, "articleTime", func(val value.Value, _ []value.Value) (value.Value, error) {
+		ts := int64(0)
+		if parsed, ok := val.AsInt(); ok {
+			ts = parsed
+		} else {
+			raw := val.Raw()
+			if parsed, ok := decodeAnyToType[int64](raw); ok {
+				ts = parsed
+			} else {
+				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
+				if err == nil {
+					ts = parsed
+				}
+			}
+		}
+		if ts == 0 {
+			return value.FromString("-"), nil
+		}
+		return value.FromString(time.Unix(ts, 0).Format("2006年1月2日 15:04")), nil
+	})
+	registerTemplateFilter(env, "formatDateTimeLocal", func(val value.Value, _ []value.Value) (value.Value, error) {
+		ts := int64(0)
+		if parsed, ok := val.AsInt(); ok {
+			ts = parsed
+		} else {
+			raw := val.Raw()
+			if parsed, ok := decodeAnyToType[int64](raw); ok {
+				ts = parsed
+			} else {
+				parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(raw)), 10, 64)
+				if err == nil {
+					ts = parsed
+				}
+			}
+		}
+		if ts == 0 {
+			return value.FromString(""), nil
+		}
+		return value.FromString(time.Unix(ts, 0).Format("2006-01-02T15:04")), nil
 	})
 
 	registerTemplateFunction(env, "renderAttrs", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
 		}
-		return value.FromSafeString(renderHTMLAttrs(miniValueToAny(args[0]))), nil
+		return value.FromSafeString(renderHTMLAttrs(args[0].Raw())), nil
 	})
 
 	registerTemplateFunction(env, "highlight", func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
 		}
-		text := miniValueAsString(args[0])
+		text := toStringValue(args[0].Raw())
 		query := ""
 		if len(args) > 1 {
-			query = miniValueAsString(args[1])
+			query = toStringValue(args[1].Raw())
 		}
 		if query == "" {
 			return value.FromSafeString(HTML.EscapeString(text)), nil
@@ -532,11 +550,8 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		return value.FromSafeString(buf.String()), nil
 	})
 
-	registerTemplateFunction(env, "replace_datetime", func(args []value.Value) (value.Value, error) {
-		text := ""
-		if len(args) > 0 {
-			text = miniValueAsString(args[0])
-		}
+	registerTemplateFilter(env, "replace_datetime", func(val value.Value, _ []value.Value) (value.Value, error) {
+		text := toStringValue(val.Raw())
 		return value.FromString(strings.ReplaceAll(text, "{{year}}", time.Now().Format("2006"))), nil
 	})
 
@@ -545,22 +560,27 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		author := ""
 		size := 0
 		if len(args) > 0 {
-			email = miniValueAsString(args[0])
+			email = toStringValue(args[0].Raw())
 		}
 		if len(args) > 1 {
-			author = miniValueAsString(args[1])
+			author = toStringValue(args[1].Raw())
 		}
 		if len(args) > 2 {
-			size = miniValueAsInt(args[2])
+			if parsed, ok := args[2].AsInt(); ok {
+				size = int(parsed)
+			} else if parsed, ok := decodeAnyToType[int](args[2].Raw()); ok {
+				size = parsed
+			} else {
+				parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[2].Raw())))
+				if err == nil {
+					size = parsed
+				}
+			}
 		}
 		return value.FromString(helper.BuildGAvatarURL(email, author, size)), nil
 	})
 
 	registerNoArgStringFunction(env, "GetBasePath", share.GetBasePath)
-	registerNoArgStringFunction(env, "GetPagePath", share.GetPagePath)
-	registerNoArgStringFunction(env, "GetSiteUrl", share.GetSiteUrl)
-	registerNoArgStringFunction(env, "GetSiteAuthor", share.GetSiteAuthor)
-	registerNoArgStringFunction(env, "GetSiteCopyright", share.GetSiteCopyright)
 	registerNoArgStringFunction(env, "GetCategoryPrefix", share.GetCategoryPrefix)
 	registerNoArgStringFunction(env, "GetTagPrefix", share.GetTagPrefix)
 	registerNoArgStringFunction(env, "GetRSSUrl", share.GetRSSUrl)
@@ -568,7 +588,16 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 	registerTemplateFunction(env, "GetAuthorGravatarUrl", func(args []value.Value) (value.Value, error) {
 		size := 0
 		if len(args) > 0 {
-			size = miniValueAsInt(args[0])
+			if parsed, ok := args[0].AsInt(); ok {
+				size = int(parsed)
+			} else if parsed, ok := decodeAnyToType[int](args[0].Raw()); ok {
+				size = parsed
+			} else {
+				parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[0].Raw())))
+				if err == nil {
+					size = parsed
+				}
+			}
 		}
 		return value.FromString(share.GetAuthorGravatarUrl(size)), nil
 	})
@@ -577,12 +606,12 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if len(args) < 2 {
 			return value.FromBool(false), nil
 		}
-		current := strings.TrimSpace(miniValueAsString(args[0]))
+		current := strings.TrimSpace(toStringValue(args[0].Raw()))
 		if current == "" {
 			return value.FromBool(false), nil
 		}
 		for _, candidate := range args[1:] {
-			if current == strings.TrimSpace(miniValueAsString(candidate)) {
+			if current == strings.TrimSpace(toStringValue(candidate.Raw())) {
 				return value.FromBool(true), nil
 			}
 		}
@@ -593,14 +622,14 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
-		name := miniValueAsString(args[0])
+		name := toStringValue(args[0].Raw())
 		var params map[string]string
 		var query map[string]string
 		if len(args) > 1 {
-			params = toStringMap(miniValueToAny(args[1]))
+			params = toStringMap(args[1].Raw())
 		}
 		if len(args) > 2 {
-			query = toStringMap(miniValueToAny(args[2]))
+			query = toStringMap(args[2].Raw())
 		}
 		if len(kwargs) > 0 {
 			if params == nil {
@@ -611,7 +640,7 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 				if k == "" {
 					continue
 				}
-				params[k] = miniValueAsString(raw)
+				params[k] = toStringValue(raw.Raw())
 			}
 		}
 		return value.FromString(urlFor(name, params, query)), nil
@@ -641,10 +670,48 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if len(args) < 4 {
 			return value.FromString(""), nil
 		}
-		id := miniValueAsInt64(args[0])
-		kind := db.PostKind(miniValueAsInt(args[1]))
-		slug := miniValueAsString(args[2])
-		publishedAt := miniValueAsInt64(args[3])
+
+		id := int64(0)
+		if parsed, ok := args[0].AsInt(); ok {
+			id = parsed
+		} else if parsed, ok := decodeAnyToType[int64](args[0].Raw()); ok {
+			id = parsed
+		} else {
+			parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(args[0].Raw())), 10, 64)
+			if err != nil {
+				return value.FromString(""), nil
+			}
+			id = parsed
+		}
+
+		kind := db.PostKind(0)
+		if parsed, ok := args[1].AsInt(); ok {
+			kind = db.PostKind(parsed)
+		} else if parsed, ok := decodeAnyToType[int](args[1].Raw()); ok {
+			kind = db.PostKind(parsed)
+		} else {
+			parsed, err := strconv.Atoi(strings.TrimSpace(toStringValue(args[1].Raw())))
+			if err != nil {
+				return value.FromString(""), nil
+			}
+			kind = db.PostKind(parsed)
+		}
+
+		slug := toStringValue(args[2].Raw())
+
+		publishedAt := int64(0)
+		if parsed, ok := args[3].AsInt(); ok {
+			publishedAt = parsed
+		} else if parsed, ok := decodeAnyToType[int64](args[3].Raw()); ok {
+			publishedAt = parsed
+		} else {
+			parsed, err := strconv.ParseInt(strings.TrimSpace(toStringValue(args[3].Raw())), 10, 64)
+			if err != nil {
+				return value.FromString(""), nil
+			}
+			publishedAt = parsed
+		}
+
 		return value.FromString(share.BuildPostURL(id, kind, slug, publishedAt)), nil
 	})
 	registerTemplateFunction(env, "GetPostUrl", func(args []value.Value) (value.Value, error) {
@@ -657,99 +724,6 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(share.GetPostUrl(post)), nil
 	})
-	registerTemplateFunction(env, "GetPageUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
-		}
-		post, ok := decodeTemplateArg[db.Post](args[0])
-		if !ok {
-			return value.FromString(""), nil
-		}
-		return value.FromString(share.GetPageUrl(post)), nil
-	})
-	registerTemplateFunction(env, "GetArticleUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
-		}
-		post, ok := decodeTemplateArg[db.Post](args[0])
-		if !ok {
-			return value.FromString(""), nil
-		}
-		return value.FromString(share.GetArticleUrl(post)), nil
-	})
-	registerTemplateFunction(env, "GetPostAbsUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
-		}
-		post, ok := decodeTemplateArg[db.Post](args[0])
-		if !ok {
-			return value.FromString(""), nil
-		}
-		return value.FromString(share.GetPostAbsUrl(post)), nil
-	})
-	registerTemplateFunction(env, "GetAdminPostUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
-		}
-		post, ok := decodeTemplateArg[db.Post](args[0])
-		if !ok {
-			return value.FromString(""), nil
-		}
-		return value.FromString(share.GetAdminPostUrl(post)), nil
-	})
-	registerTemplateFunction(env, "GetAdminEditPostUrl", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return value.FromString(""), nil
-		}
-		post, ok := decodeTemplateArg[db.Post](args[0])
-		if !ok {
-			return value.FromString(""), nil
-		}
-		return value.FromString(share.GetAdminEditPostUrl(post)), nil
-	})
-	registerTemplateFunction(env, "GetArticlePublishedDate", func(args []value.Value) (value.Value, error) {
-		if len(args) == 0 {
-			return anyToMiniValue(map[string]string{}), nil
-		}
-		post, ok := decodeTemplateArg[db.Post](args[0])
-		if !ok {
-			return anyToMiniValue(map[string]string{}), nil
-		}
-		year, month, day := share.GetArticlePublishedDate(post)
-		return anyToMiniValue(map[string]string{"Year": year, "Month": month, "Day": day}), nil
-	})
-}
-
-func registerTemplateMacroNamespace(env *minijinja.Environment, namespace string, templateName string) error {
-	if env == nil {
-		return errors.New("template environment is nil")
-	}
-	namespace = strings.TrimSpace(namespace)
-	if namespace == "" {
-		return errors.New("macro namespace is empty")
-	}
-	normalizedName, err := normalizeTemplateName(templateName)
-	if err != nil {
-		return err
-	}
-	template, err := env.GetTemplate(normalizedName)
-	if err != nil {
-		var templateErr *minijinja.Error
-		if errors.As(err, &templateErr) && templateErr.Kind == minijinja.ErrTemplateNotFound {
-			return nil
-		}
-		return fmt.Errorf("load macro template %q failed: %w", normalizedName, err)
-	}
-	state, err := template.EvalToState(nil)
-	if err != nil {
-		return fmt.Errorf("evaluate macro template %q failed: %w", normalizedName, err)
-	}
-	exports := state.Exports()
-	if len(exports) == 0 {
-		return nil
-	}
-	env.AddGlobal(namespace, value.FromMap(exports))
-	return nil
 }
 
 func registerNoArgStringFunction(env *minijinja.Environment, name string, fn func() string) {
@@ -786,73 +760,12 @@ func registerTemplateFilter(
 
 func registerValueFormatter(env *minijinja.Environment, name string, formatter func(raw interface{}) string) {
 	registerTemplateFilter(env, name, func(val value.Value, _ []value.Value) (value.Value, error) {
-		return value.FromString(formatter(miniValueToAny(val))), nil
+		return value.FromString(formatter(val.Raw())), nil
 	})
-}
-
-func registerTimestampFormatter(
-	env *minijinja.Environment,
-	name string,
-	empty string,
-	formatter func(ts int64) string,
-) {
-	registerTemplateFilter(env, name, func(val value.Value, _ []value.Value) (value.Value, error) {
-		ts, ok := parseTimestamp(miniValueToAny(val))
-		if !ok || ts == 0 {
-			return value.FromString(empty), nil
-		}
-		return value.FromString(formatter(ts)), nil
-	})
-}
-
-func parseTimestamp(raw any) (int64, bool) {
-	switch typed := raw.(type) {
-	case *int64:
-		if typed == nil {
-			return 0, false
-		}
-		return *typed, true
-	case *int:
-		if typed == nil {
-			return 0, false
-		}
-		return int64(*typed), true
-	case *uint64:
-		if typed == nil {
-			return 0, false
-		}
-		return int64(*typed), true
-	}
-	parsed, ok := toIndexValue(raw)
-	if !ok {
-		return 0, false
-	}
-	return int64(parsed), true
-}
-
-func miniValueAsString(input value.Value) string {
-	if text, ok := input.AsString(); ok {
-		return text
-	}
-	return toStringValue(miniValueToAny(input))
-}
-
-func miniValueAsInt64(input value.Value) int64 {
-	if integer, ok := input.AsInt(); ok {
-		return integer
-	}
-	if number, ok := toIndexValue(miniValueToAny(input)); ok {
-		return int64(number)
-	}
-	return 0
-}
-
-func miniValueAsInt(input value.Value) int {
-	return int(miniValueAsInt64(input))
 }
 
 func decodeTemplateArg[T any](input value.Value) (T, bool) {
-	return decodeAnyToType[T](miniValueToAny(input))
+	return decodeAnyToType[T](input.Raw())
 }
 
 func decodeAnyToType[T any](raw any) (T, bool) {
@@ -875,74 +788,6 @@ func decodeAnyToType[T any](raw any) (T, bool) {
 		return zero, false
 	}
 	return decoded, true
-}
-
-func toPagination(raw any) itypes.Pagination {
-	switch typed := raw.(type) {
-	case itypes.Pagination:
-		return normalizePagination(typed)
-	case *itypes.Pagination:
-		if typed == nil {
-			return normalizePagination(itypes.Pagination{})
-		}
-		return normalizePagination(*typed)
-	case map[string]any:
-		return normalizePagination(itypes.Pagination{
-			Page:     readIntFromMap(typed, "Page", "page"),
-			PageSize: readIntFromMap(typed, "PageSize", "pageSize"),
-			Num:      readIntFromMap(typed, "Num", "num"),
-			Total:    readIntFromMap(typed, "Total", "total"),
-		})
-	case map[string]string:
-		converted := make(map[string]any, len(typed))
-		for key, item := range typed {
-			converted[key] = item
-		}
-		return normalizePagination(itypes.Pagination{
-			Page:     readIntFromMap(converted, "Page", "page"),
-			PageSize: readIntFromMap(converted, "PageSize", "pageSize"),
-			Num:      readIntFromMap(converted, "Num", "num"),
-			Total:    readIntFromMap(converted, "Total", "total"),
-		})
-	default:
-		decoded, ok := decodeAnyToType[itypes.Pagination](raw)
-		if ok {
-			return normalizePagination(decoded)
-		}
-	}
-	return normalizePagination(itypes.Pagination{})
-}
-
-func readIntFromMap(values map[string]any, keys ...string) int {
-	for _, key := range keys {
-		raw, ok := values[key]
-		if !ok {
-			continue
-		}
-		if parsed, ok := toIndexValue(raw); ok {
-			return parsed
-		}
-	}
-	return 0
-}
-
-func normalizePagination(pager itypes.Pagination) itypes.Pagination {
-	if pager.Page <= 0 {
-		pager.Page = 1
-	}
-	if pager.PageSize <= 0 {
-		pager.PageSize = 10
-	}
-	if pager.Num < 0 {
-		pager.Num = 0
-	}
-	if pager.Total < 0 {
-		pager.Total = 0
-	}
-	if pager.Num > 0 && pager.Page > pager.Num {
-		pager.Page = pager.Num
-	}
-	return pager
 }
 
 func renderHTMLAttrs(raw any) string {
@@ -975,135 +820,47 @@ func renderHTMLAttrs(raw any) string {
 	return " " + strings.Join(parts, " ")
 }
 
-func anyToMiniValue(raw any) value.Value {
-	if raw == nil {
-		return value.Undefined()
-	}
-	switch typed := raw.(type) {
-	case value.Value:
-		return typed
-	case map[string]any:
-		converted := make(map[string]value.Value, len(typed))
-		for key, item := range typed {
-			converted[key] = anyToMiniValue(item)
-		}
-		return value.FromMap(converted)
-	case map[string]string:
-		converted := make(map[string]value.Value, len(typed))
-		for key, item := range typed {
-			converted[key] = value.FromString(item)
-		}
-		return value.FromMap(converted)
-	case []any:
-		items := make([]value.Value, 0, len(typed))
-		for _, item := range typed {
-			items = append(items, anyToMiniValue(item))
-		}
-		return value.FromSlice(items)
-	}
-	return value.FromAny(wrapMapLookup(raw))
-}
-
-func miniValueToAny(input value.Value) any {
-	switch input.Kind() {
-	case value.KindUndefined, value.KindNone:
-		return nil
-	case value.KindBool:
-		boolean, _ := input.AsBool()
-		return boolean
-	case value.KindNumber:
-		if integer, ok := input.AsInt(); ok {
-			return integer
-		}
-		floatValue, _ := input.AsFloat()
-		return floatValue
-	case value.KindString:
-		text, _ := input.AsString()
-		return text
-	case value.KindMap:
-		items, ok := input.AsMap()
-		if !ok {
-			return map[string]any{}
-		}
-		result := make(map[string]any, len(items))
-		for key, item := range items {
-			result[key] = miniValueToAny(item)
-		}
-		return result
-	case value.KindSeq, value.KindIterable:
-		items := input.Iter()
-		result := make([]any, 0, len(items))
-		for _, item := range items {
-			result = append(result, miniValueToAny(item))
-		}
-		return result
-	default:
-		if raw := input.Raw(); raw != nil {
-			return raw
-		}
-		if text, ok := input.AsString(); ok {
-			return text
-		}
-		return input.String()
-	}
-}
-
-func prepareTemplateBinding(binding any) (map[string]any, error) {
-	acquired := templatecore.AcquireViewContext(binding)
-	prepared := make(map[string]any, len(acquired)+4)
-	for key, value := range acquired {
-		prepared[key] = value
-	}
-
-	if reservedKey := findReservedBindingKey(prepared); reservedKey != "" {
-		return nil, fmt.Errorf("template binding key %q is reserved", reservedKey)
-	}
-
-	prepared["Req"] = buildTemplateReqMeta(prepared)
-	prepared["Auth"] = templateAuthMeta{
-		IsLogin: toBoolValue(prepared["IsLogin"]),
-	}
-	prepared["Site"] = templateSiteMeta{
-		Settings: cloneStringMap(store.GetSettingMap()),
-	}
-	for key, raw := range prepared {
-		prepared[key] = wrapMapLookup(raw)
-	}
-	prepared[internalRootContextKey] = cloneAnyMap(prepared)
-	return prepared, nil
-}
-
-func findReservedBindingKey(binding map[string]any) string {
-	for _, key := range reservedBindingKeyNames {
-		if _, exists := binding[key]; exists {
-			return key
-		}
-	}
-	return ""
-}
-
-func buildTemplateReqMeta(data map[string]any) templateReqMeta {
-	path := strings.TrimSpace(toStringValue(data["UrlPath"]))
-	if path == "" {
-		path = strings.TrimSpace(toStringValue(data["Path"]))
-	}
-
-	query := toStringMap(data["Query"])
-	if query == nil {
-		query = map[string]string{}
-	}
-
-	return templateReqMeta{
-		RouteName: strings.TrimSpace(toStringValue(data["RouteName"])),
-		Path:      path,
-		Query:     query,
-		ReqID:     strings.TrimSpace(toStringValue(data["ReqID"])),
-	}
-}
-
 func safeLookup(container any, key any) (any, bool) {
 	if container == nil {
 		return nil, false
+	}
+	parseIndex := func(raw any) (int, bool) {
+		switch typed := raw.(type) {
+		case int:
+			return typed, true
+		case int8:
+			return int(typed), true
+		case int16:
+			return int(typed), true
+		case int32:
+			return int(typed), true
+		case int64:
+			return int(typed), true
+		case uint:
+			return int(typed), true
+		case uint8:
+			return int(typed), true
+		case uint16:
+			return int(typed), true
+		case uint32:
+			return int(typed), true
+		case uint64:
+			return int(typed), true
+		case string:
+			parsed, err := strconv.Atoi(strings.TrimSpace(typed))
+			if err != nil {
+				return 0, false
+			}
+			return parsed, true
+		case json.Number:
+			parsed, err := strconv.Atoi(strings.TrimSpace(typed.String()))
+			if err != nil {
+				return 0, false
+			}
+			return parsed, true
+		default:
+			return 0, false
+		}
 	}
 
 	switch values := container.(type) {
@@ -1117,19 +874,19 @@ func safeLookup(container any, key any) (any, bool) {
 		}
 		return value, true
 	case []any:
-		idx, ok := toIndexValue(key)
+		idx, ok := parseIndex(key)
 		if !ok || idx < 0 || idx >= len(values) {
 			return nil, false
 		}
 		return values[idx], true
 	case []string:
-		idx, ok := toIndexValue(key)
+		idx, ok := parseIndex(key)
 		if !ok || idx < 0 || idx >= len(values) {
 			return nil, false
 		}
 		return values[idx], true
 	case string:
-		idx, ok := toIndexValue(key)
+		idx, ok := parseIndex(key)
 		if !ok || idx < 0 || idx >= len(values) {
 			return nil, false
 		}
@@ -1174,7 +931,7 @@ func safeLookup(container any, key any) (any, bool) {
 		}
 		return nil, false
 	case reflect.Slice, reflect.Array:
-		idx, ok := toIndexValue(key)
+		idx, ok := parseIndex(key)
 		if !ok || idx < 0 || idx >= value.Len() {
 			return nil, false
 		}
@@ -1191,43 +948,6 @@ func safeLookup(container any, key any) (any, bool) {
 		return field.Interface(), true
 	default:
 		return nil, false
-	}
-}
-
-func toIndexValue(raw any) (int, bool) {
-	switch value := raw.(type) {
-	case int:
-		return value, true
-	case int8:
-		return int(value), true
-	case int16:
-		return int(value), true
-	case int32:
-		return int(value), true
-	case int64:
-		return int(value), true
-	case uint:
-		return int(value), true
-	case uint8:
-		return int(value), true
-	case uint16:
-		return int(value), true
-	case uint32:
-		return int(value), true
-	case uint64:
-		return int(value), true
-	case float32:
-		return int(value), true
-	case float64:
-		return int(value), true
-	case string:
-		parsed, err := strconv.Atoi(strings.TrimSpace(value))
-		if err != nil {
-			return 0, false
-		}
-		return parsed, true
-	default:
-		return 0, false
 	}
 }
 
@@ -1253,6 +973,18 @@ func toStringMap(raw interface{}) map[string]string {
 				continue
 			}
 			result[key] = strings.TrimSpace(fmt.Sprint(v))
+		}
+	case map[string]value.Value:
+		for k, v := range values {
+			key := strings.TrimSpace(k)
+			if key == "" {
+				continue
+			}
+			rawValue := v.Raw()
+			if rawValue == nil {
+				continue
+			}
+			result[key] = strings.TrimSpace(fmt.Sprint(rawValue))
 		}
 	default:
 		return nil
@@ -1293,7 +1025,7 @@ func toStringAnyMap(raw interface{}) map[string]any {
 			if trimmed == "" {
 				continue
 			}
-			result[trimmed] = miniValueToAny(item)
+			result[trimmed] = item.Raw()
 		}
 	default:
 		return nil
@@ -1303,17 +1035,6 @@ func toStringAnyMap(raw interface{}) map[string]any {
 		return nil
 	}
 	return result
-}
-
-func cloneStringMap(source map[string]string) map[string]string {
-	if len(source) == 0 {
-		return map[string]string{}
-	}
-	cloned := make(map[string]string, len(source))
-	for key, value := range source {
-		cloned[key] = value
-	}
-	return cloned
 }
 
 func toStringValue(raw interface{}) string {
@@ -1327,38 +1048,6 @@ func toStringValue(raw interface{}) string {
 		return value.String()
 	}
 	return fmt.Sprint(raw)
-}
-
-func toBoolValue(raw interface{}) bool {
-	switch value := raw.(type) {
-	case bool:
-		return value
-	case string:
-		switch strings.TrimSpace(strings.ToLower(value)) {
-		case "1", "true", "yes", "on":
-			return true
-		default:
-			return false
-		}
-	case int:
-		return value != 0
-	case int32:
-		return value != 0
-	case int64:
-		return value != 0
-	case uint:
-		return value != 0
-	case uint32:
-		return value != 0
-	case uint64:
-		return value != 0
-	case float32:
-		return value != 0
-	case float64:
-		return value != 0
-	default:
-		return false
-	}
 }
 
 // relativeTimeString 将 Unix 时间戳转为相对时间中文描述

@@ -287,6 +287,7 @@ const InitialSQL = `
 		provider_delete_key TEXT NOT NULL DEFAULT '',
 		file_url TEXT NOT NULL DEFAULT '',
 		original_name TEXT NOT NULL DEFAULT '',
+		remark TEXT NOT NULL DEFAULT '',
 		size_bytes INTEGER NOT NULL DEFAULT 0,
 		created_at INTEGER NOT NULL
 	);

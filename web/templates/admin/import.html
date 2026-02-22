@@ -94,8 +94,8 @@
 
 {% set errorMessage = Error %}
 {% set successMessage = Success %}
-{% set importingItems = ImportingItems|default(slice()) %}
-{% set allCategories = AllCategories|default(slice()) %}
+{% set importingItems = ImportingItems|default([]) %}
+{% set allCategories = AllCategories|default([]) %}
 
 {% if errorMessage %}
 <div role="alert" data-variant="warning">{{ errorMessage }}</div>
@@ -258,7 +258,7 @@
 </div>
 
 <template id="import-edit-row-template">
-  {% with Item = (dict("PostID", 0, "Filename", "", "Title", "", "Slug", "", "Content", "", "ContentPreview", "-", "Status", "draft", "Kind", "0", "CreatedAt", "", "CreatedAtUnix", 0, "Tags", "", "Category", "", "Categories", "")) %}{% include "admin/include/import_edit_row.html" %}{% endwith %}
+  {% with Item = {"PostID": 0, "Filename": "", "Title": "", "Slug": "", "Content": "", "ContentPreview": "-", "Status": "draft", "Kind": "0", "CreatedAt": "", "CreatedAtUnix": 0, "Tags": "", "Category": "", "Categories": ""} %}{% include "admin/include/import_edit_row.html" %}{% endwith %}
 </template>
 
 <dialog id="import-cancel-dialog">

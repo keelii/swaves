@@ -18,7 +18,7 @@
 
   <footer>
     <p>
-      <small>{{ replace_datetime(settings("site_copyright")) }}</small>
+      <small>{{ settings("site_copyright") | replace_datetime }}</small>
     </p>
   </footer>
 

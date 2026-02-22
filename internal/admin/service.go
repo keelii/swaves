@@ -715,6 +715,78 @@ type CategoryNode struct {
 	Children []*CategoryNode `json:"children"`
 }
 
+type CategorySelectOption struct {
+	ID          int64
+	Name        string
+	DisplayName string
+	Depth       int
+}
+
+func FormatCategorySelectLabel(name string, depth int) string {
+	if depth <= 0 {
+		return name
+	}
+	return strings.Repeat("　", depth) + name
+}
+
+func BuildCategorySelectOptions(list []db.Category) []CategorySelectOption {
+	if len(list) == 0 {
+		return []CategorySelectOption{}
+	}
+
+	categoryByID := make(map[int64]db.Category, len(list))
+	childrenByParent := make(map[int64][]db.Category, len(list))
+	roots := make([]db.Category, 0, len(list))
+
+	for _, category := range list {
+		categoryByID[category.ID] = category
+	}
+
+	for _, category := range list {
+		parentID := category.ParentID
+		if parentID == 0 || parentID == category.ID {
+			roots = append(roots, category)
+			continue
+		}
+		if _, ok := categoryByID[parentID]; !ok {
+			roots = append(roots, category)
+			continue
+		}
+		childrenByParent[parentID] = append(childrenByParent[parentID], category)
+	}
+
+	options := make([]CategorySelectOption, 0, len(list))
+	visited := make(map[int64]bool, len(list))
+
+	var walk func(category db.Category, depth int)
+	walk = func(category db.Category, depth int) {
+		if visited[category.ID] {
+			return
+		}
+		visited[category.ID] = true
+		options = append(options, CategorySelectOption{
+			ID:          category.ID,
+			Name:        category.Name,
+			DisplayName: FormatCategorySelectLabel(category.Name, depth),
+			Depth:       depth,
+		})
+		for _, child := range childrenByParent[category.ID] {
+			walk(child, depth+1)
+		}
+	}
+
+	for _, root := range roots {
+		walk(root, 0)
+	}
+	for _, category := range list {
+		if !visited[category.ID] {
+			walk(category, 0)
+		}
+	}
+
+	return options
+}
+
 func BuildCategoryTree(list []db.Category) []*CategoryNode {
 	nodeMap := make(map[int64]*CategoryNode)
 	var roots []*CategoryNode

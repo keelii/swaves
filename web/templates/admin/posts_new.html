@@ -32,19 +32,19 @@
 
       <fieldset class="hstack">
         <legend>类型</legend>
-          {{ ui.form_field_radio("kind", (slice((dict("Value", "0", "Label", "文章")), (dict("Value", "1", "Label", "页面")))), selected=draftKind) }}
+          {{ ui.form_field_radio("kind", ([{"Value": "0", "Label": "文章"}, {"Value": "1", "Label": "页面"}]), selected=draftKind) }}
       </fieldset>
 
       {{ ui.form_field_checkbox("开启评论", "comment_enabled", checked=draftCommentEnabled, value=1) }}
 
       <label data-field>
         标签
-          {% with SelectedTagNames = (SelectedTagNames|default("")) %}{% include "admin/include/tag_select.html" %}{% endwith %}
+          {% with SelectedTagNames = SelectedTagNames %}{% include "admin/include/tag_select.html" %}{% endwith %}
       </label>
 
       <label data-field>
         分类
-          {% with Root = dict("Categories", Categories), SelectedID = draftCategoryID %}{% include "admin/include/category_select.html" %}{% endwith %}
+          {% with Root = {"CategoryOptions": CategoryOptions}, SelectedID = draftCategoryID %}{% include "admin/include/category_select.html" %}{% endwith %}
       </label>
 
     </div>

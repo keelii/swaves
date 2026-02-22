@@ -42,8 +42,8 @@ It is intended as a practical guide for future changes.
 
 - Template runtime is MiniJinja only; do not introduce dual-engine switch or fallback paths.
 - Keep template files as `.html` for both site and admin.
-- Root context contract is `Req`, `Auth`, `Site`; `__root` is internal compatibility context.
-- Business binding must not overwrite reserved keys (`Req`, `Auth`, `Site`, `__root`).
+- Template context is flat: expose request/session metadata as explicit top-level fields (for example `RouteName`, `Query`, `IsLogin`, `UrlPath`, `ReqID`) when templates need them.
+- Do not reintroduce compatibility wrapper namespaces such as `Req`/`Auth`/`Site`/`__root`.
 - Avoid blindly injecting all request locals into templates; pass explicit, stable fields through render helpers.
 - Template paths must use template-root-relative form (no leading `/`); `extends`/`include`/`import`/`from` paths must explicitly include `.html` (for example `admin/layout/layout.html`).
 - In HTML attributes that contain template expressions, keep outer attribute quotes as `"` and use `'` for template string literals (for example `href="{{ url_for('admin.comments.list') }}"`).
@@ -106,6 +106,7 @@ It is intended as a practical guide for future changes.
 - Do not add migration logic into `InitDatabase`.
 - Keep only `EnsureDefaultSettings` in initialization flow.
 - Any schema/data migration must be implemented outside `InitDatabase`.
+- Current development-phase rule: do not add runtime compatibility migrations for schema changes; directly update `InitialSQL` table definitions and restart the app/database manually.
 
 ### 10) Fiber v3 Upgrade Guidelines
 
@@ -161,9 +162,10 @@ Before merge, verify all items below:
 - [ ] Import failure responses include concrete error detail.
 - [ ] Error branches log context-rich messages.
 - [ ] No migration logic added to `InitDatabase` (except `EnsureDefaultSettings`).
+- [ ] Development-phase schema changes update `InitialSQL` directly; no compatibility migration path added.
 - [ ] Duplicate template/JS HTML blocks are synchronized or unified.
-- [ ] Template binding does not introduce `Req/Auth/Site/__root` key collisions.
-- [ ] Template `import/include` paths use absolute template paths (`/`-prefixed).
+- [ ] Template context remains flat; templates do not depend on `Req/Auth/Site/__root` wrapper namespaces.
+- [ ] Template `import/include` paths use template-root-relative paths (no leading `/`) with explicit `.html` suffix.
 - [ ] Admin/site template directories remain weakly isolated (`admin/*` and `site/*`), with shared logic extracted explicitly.
 - [ ] Macro/import style follows MiniJinja conventions (`from ... import ...` with explicit symbols, no alias-wide import drift).
 - [ ] Macro signatures use explicit params/defaults; avoid `ctx` or dict-bag arguments where not necessary.

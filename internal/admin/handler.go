@@ -593,6 +593,7 @@ func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 	if err != nil {
 		return err
 	}
+	categoryOptions := BuildCategorySelectOptions(categories)
 
 	if data == nil {
 		data = fiber.Map{}
@@ -622,6 +623,7 @@ func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 	data["Title"] = "New Post"
 	data["Tags"] = tags
 	data["Categories"] = categories
+	data["CategoryOptions"] = categoryOptions
 
 	return RenderAdminView(c, "posts_new", data, "")
 }
@@ -732,6 +734,7 @@ func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	categoryOptions := BuildCategorySelectOptions(allCategories)
 
 	// 获取当前 post 的分类（单选）
 	category, err := db.GetPostCategory(h.Model, id)
@@ -752,6 +755,7 @@ func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
 		"SelectedTags":     postWithTags.Tags,
 		"SelectedTagNames": strings.Join(selectedTagNames, ", "),
 		"Categories":       allCategories,
+		"CategoryOptions":  categoryOptions,
 		"Category":         *category,
 	}, "")
 }
@@ -1249,9 +1253,10 @@ func (h *Handler) GetCategoryTreeHandler(c fiber.Ctx) error {
 	//}
 
 	return RenderAdminView(c, "categories_tree", fiber.Map{
-		"Title":      "Category Tree",
-		"Tree":       tree,
-		"Categories": allCategories,
+		"Title":           "Category Tree",
+		"Tree":            tree,
+		"Categories":      allCategories,
+		"CategoryOptions": BuildCategorySelectOptions(allCategories),
 	}, "")
 }
 
@@ -1274,9 +1279,10 @@ func (h *Handler) GetCategoryNewHandler(c fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "categories_new", fiber.Map{
-		"Title":      "New Category",
-		"Categories": all,
-		"ParentID":   parentID,
+		"Title":           "New Category",
+		"Categories":      all,
+		"CategoryOptions": BuildCategorySelectOptions(all),
+		"ParentID":        parentID,
 	}, "")
 }
 
@@ -1305,9 +1311,11 @@ func (h *Handler) PostCreateCategoryHandler(c fiber.Ctx) error {
 	if !helper.IsSlug(slug) {
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_new", fiber.Map{
-			"Title":      "New Category",
-			"Error":      errSlugInvalid("013", slug).Error(),
-			"Categories": all,
+			"Title":           "New Category",
+			"Error":           errSlugInvalid("013", slug).Error(),
+			"Categories":      all,
+			"CategoryOptions": BuildCategorySelectOptions(all),
+			"ParentID":        parentID,
 		}, "")
 	}
 
@@ -1321,9 +1329,11 @@ func (h *Handler) PostCreateCategoryHandler(c fiber.Ctx) error {
 
 	if err := CreateCategoryService(h.Model, in); err != nil {
 		return RenderAdminView(c, "categories_new", fiber.Map{
-			"Title":      "New Category",
-			"Error":      err.Error(),
-			"Categories": []db.Category{},
+			"Title":           "New Category",
+			"Error":           err.Error(),
+			"Categories":      []db.Category{},
+			"CategoryOptions": []CategorySelectOption{},
+			"ParentID":        parentID,
 		}, "")
 	}
 
@@ -1380,9 +1390,10 @@ func (h *Handler) GetCategoryEditHandler(c fiber.Ctx) error {
 	}
 
 	return RenderAdminView(c, "categories_edit", fiber.Map{
-		"Title":      "Edit Category",
-		"Category":   category,
-		"Categories": availableCategories,
+		"Title":           "Edit Category",
+		"Category":        category,
+		"Categories":      availableCategories,
+		"CategoryOptions": BuildCategorySelectOptions(availableCategories),
 	}, "")
 }
 
@@ -1417,10 +1428,11 @@ func (h *Handler) PostUpdateCategoryHandler(c fiber.Ctx) error {
 		category, _ := GetCategoryForEdit(h.Model, id)
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_edit", fiber.Map{
-			"Title":      "Edit Category",
-			"Error":      errSlugInvalid("014", slug).Error(),
-			"Category":   category,
-			"Categories": all,
+			"Title":           "Edit Category",
+			"Error":           errSlugInvalid("014", slug).Error(),
+			"Category":        category,
+			"Categories":      all,
+			"CategoryOptions": BuildCategorySelectOptions(all),
 		}, "")
 	}
 
@@ -1436,10 +1448,11 @@ func (h *Handler) PostUpdateCategoryHandler(c fiber.Ctx) error {
 		category, _ := GetCategoryForEdit(h.Model, id)
 		all, _ := GetAllCategoriesFlat(h.Model)
 		return RenderAdminView(c, "categories_edit", fiber.Map{
-			"Title":      "Edit Category",
-			"Error":      err.Error(),
-			"Category":   category,
-			"Categories": all,
+			"Title":           "Edit Category",
+			"Error":           err.Error(),
+			"Category":        category,
+			"Categories":      all,
+			"CategoryOptions": BuildCategorySelectOptions(all),
 		}, "")
 	}
 

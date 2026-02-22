@@ -135,6 +135,7 @@ func (h *Handler) GetMediaAssetsAPIHandler(c fiber.Ctx) error {
 
 func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 	providerName := h.defaultMediaProvider()
+	remark := strings.TrimSpace(c.FormValue("remark"))
 
 	provider, err := h.resolveMediaProvider(providerName)
 	if err != nil {
@@ -214,6 +215,7 @@ func (h *Handler) PostMediaUploadAPIHandler(c fiber.Ctx) error {
 		ProviderDeleteKey: strings.TrimSpace(uploaded.ProviderDeleteKey),
 		FileURL:           strings.TrimSpace(uploaded.FileURL),
 		OriginalName:      strings.TrimSpace(uploaded.OriginalName),
+		Remark:            remark,
 		SizeBytes:         uploaded.SizeBytes,
 	}
 	if item.ProviderAssetID == "" {

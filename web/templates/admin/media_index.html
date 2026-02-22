@@ -64,6 +64,11 @@
     margin: var(--space-2) 0 0;
   }
 
+  .media-upload-remark {
+    margin-top: var(--space-3);
+    width: min(560px, 100%);
+  }
+
   .media-cell-url {
     max-width: 320px;
   }
@@ -94,11 +99,12 @@
 {% set defaultProviderReady = DefaultProviderReady|default(false) %}
 {% set defaultProviderError = DefaultProviderError %}
 {% set defaultProvider = DefaultProvider %}
-{% set mediaProviderLabelMap = MediaProviderLabelMap|default(dict()) %}
-{% set mediaKindLabelMap = MediaKindLabelMap|default(dict()) %}
-{% set kindCounts = KindCounts|default(dict()) %}
+{% set mediaProviderLabelMap = MediaProviderLabelMap|default({}) %}
+{% set mediaKindLabelMap = MediaKindLabelMap|default({}) %}
+{% set kindCounts = KindCounts|default({}) %}
 {% set currentKind = CurrentKind|default("image") %}
-{% set pageSizeQuery = Req.Query["pageSize"] | default("") %}
+{% set query = Query|default({}) %}
+{% set pageSizeQuery = query["pageSize"] %}
 {% set imageCount = kindCounts["image"] | default(0) %}
 {% set fileCount = kindCounts["file"] | default(0) %}
 {% set backupCount = kindCounts["backup"] | default(0) %}
@@ -117,6 +123,7 @@
       当前默认服务：{{ mediaProviderLabelMap[defaultProvider] | default(defaultProvider) }}
       {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
     </p>
+    <input type="text" id="media-upload-remark" class="media-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
   </div>
 </section>
 
@@ -135,6 +142,7 @@
       <th>类型</th>
       <th>服务</th>
       <th>文件名</th>
+      <th>备注</th>
       <th>链接</th>
       <th class="cell-6">大小</th>
       <th class="cell-12">创建时间</th>
@@ -148,6 +156,7 @@
         <td>{{ mediaKindLabelMap[mediaItem.kind] | default(mediaItem.kind) }}</td>
         <td>{{ mediaProviderLabelMap[mediaItem.provider] | default(mediaItem.provider) }}</td>
         <td>{{ mediaItem.original_name }}</td>
+        <td>{% if mediaItem.remark %}{{ mediaItem.remark }}{% else %}-{% endif %}</td>
         <td>
           {% if mediaItem.file_url %}
             <a href="{{ mediaItem.file_url }}" target="_blank" rel="noopener" class="media-cell-url" title="{{ mediaItem.file_url }}">{{ mediaItem.file_url }}</a>
@@ -195,13 +204,13 @@
         </td>
       </tr>
     {% else %}
-      {{ table_empty(8, "暂无媒体资源") }}
+      {{ table_empty(9, "暂无媒体资源") }}
     {% endfor %}
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="8">
-        {% with Pager = Pager, Req = Req %}{% include "admin/include/pagination.html" %}{% endwith %}
+      <td colspan="9">
+        {% with Pager = Pager %}{% include "admin/include/pagination.html" %}{% endwith %}
       </td>
     </tr>
   </tfoot>
@@ -233,6 +242,7 @@ $(function() {
   var mediaAssetsAPIBase = {{ url_for('admin.media.assets.list') | tojson }};
   var $dropzone = $('#media-dropzone');
   var $fileInput = $('#media-drop-input');
+  var $uploadRemark = $('#media-upload-remark');
   var $uploadStatus = $('#media-upload-status');
   var $alertDialog = $('#media-alert-dialog');
   var $alertTitle = $('#media-alert-title');
@@ -294,7 +304,11 @@ $(function() {
 
   function uploadSingleFile(file) {
     var fd = new FormData();
+    var remark = String($uploadRemark.val() || '').trim();
     fd.append('file', file);
+    if (remark) {
+      fd.append('remark', remark);
+    }
 
     return fetch(mediaAssetsAPIBase, {
       method: 'POST',

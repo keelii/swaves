@@ -105,10 +105,10 @@
   }
 </style>
 
-{% set settingKinds = SettingKinds|default(slice()) %}
-{% set settingKindLabels = SettingKindLabels|default(dict()) %}
+{% set settingKinds = SettingKinds|default([]) %}
+{% set settingKindLabels = SettingKindLabels|default({}) %}
 {% set activeKind = ActiveKind %}
-{% set activeKindGroups = ActiveKindGroups|default(slice()) %}
+{% set activeKindGroups = ActiveKindGroups|default([]) %}
 {% set contentRoutingKind = ContentRoutingKind %}
 
 {% if (settingKinds|length) > 0 %}

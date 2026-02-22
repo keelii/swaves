@@ -1,18 +1,19 @@
 <nav aria-label="分页导航" class="pagination">
-  {% set kindQuery = Req.Query["kind"] | default("") %}
-  {% set providerFilter = Req.Query["provider"] | default("") %}
-  {% set searchQueryEscaped = Req.Query["q"] | default("") %}
-  {% set filterTagIDStr = Req.Query["tag"] | default("") %}
-  {% set filterCategoryIDStr = Req.Query["category"] | default("") %}
-  {% set statusFilter = Req.Query["status"] | default("") %}
+  {% set query = Query|default({}) %}
+  {% set kindQuery = query["kind"] %}
+  {% set providerFilter = query["provider"] %}
+  {% set searchQueryEscaped = query["q"] %}
+  {% set filterTagIDStr = query["tag"] %}
+  {% set filterCategoryIDStr = query["category"] %}
+  {% set statusFilter = query["status"] %}
   <div class="inline-flex items-center gap-4">
-    {% if not page_has_prev(Pager) %}
+    {% if not Pager.HasPrev() %}
     <span class="page-link" tabindex="-1">上一页</span>
     {% else %}
-    <a class="page-link" href="?page={{ page_prev(Pager) }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}" tabindex="-1">上一页</a>
+    <a class="page-link" href="?page={{ Pager.PrevPage() }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}" tabindex="-1">上一页</a>
     {% endif %}
 
-    {% for item in page_items(Pager) %}
+    {% for item in Pager.GetPageItems() %}
     {% if item.Type == "ellipsis" %}
     <span class="page-link" aria-hidden="true">…</span>
     {% elif item.Current %}
@@ -22,10 +23,10 @@
     {% endif %}
     {% endfor %}
 
-    {% if not page_has_next(Pager) %}
+    {% if not Pager.HasNext() %}
     <span class="page-link">下一页</span>
     {% else %}
-    <a class="page-link" href="?page={{ page_next(Pager) }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}">下一页</a>
+    <a class="page-link" href="?page={{ Pager.NextPage() }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}">下一页</a>
     {% endif %}
   </div>
 

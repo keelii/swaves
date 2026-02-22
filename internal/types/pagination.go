@@ -1,6 +1,11 @@
 package types
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+
+	"github.com/mitsuhiko/minijinja/minijinja-go/v2/value"
+)
 
 type Pagination struct {
 	Page     int
@@ -20,6 +25,65 @@ type PageItem struct {
 	Type    PageItemType
 	Page    int
 	Current bool
+}
+
+func (p Pagination) normalized() Pagination {
+	if p.Page <= 0 {
+		p.Page = 1
+	}
+	if p.PageSize <= 0 {
+		p.PageSize = 10
+	}
+	if p.Num < 0 {
+		p.Num = 0
+	}
+	if p.Total < 0 {
+		p.Total = 0
+	}
+	if p.Num > 0 && p.Page > p.Num {
+		p.Page = p.Num
+	}
+	return p
+}
+
+func (p Pagination) GetAttr(name string) value.Value {
+	normalized := p.normalized()
+	switch name {
+	case "Page":
+		return value.FromInt(int64(normalized.Page))
+	case "PageSize":
+		return value.FromInt(int64(normalized.PageSize))
+	case "Num":
+		return value.FromInt(int64(normalized.Num))
+	case "Total":
+		return value.FromInt(int64(normalized.Total))
+	default:
+		return value.Undefined()
+	}
+}
+
+func (p Pagination) CallMethod(_ value.State, name string, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	if len(kwargs) > 0 {
+		return value.Undefined(), fmt.Errorf("pagination method %q does not support keyword arguments", name)
+	}
+	if len(args) > 0 {
+		return value.Undefined(), fmt.Errorf("pagination method %q does not support positional arguments", name)
+	}
+	normalized := p.normalized()
+	switch name {
+	case "GetPageItems":
+		return value.FromAny(normalized.GetPageItems()), nil
+	case "HasPrev":
+		return value.FromBool(normalized.HasPrev()), nil
+	case "HasNext":
+		return value.FromBool(normalized.HasNext()), nil
+	case "PrevPage":
+		return value.FromInt(int64(normalized.PrevPage())), nil
+	case "NextPage":
+		return value.FromInt(int64(normalized.NextPage())), nil
+	default:
+		return value.Undefined(), value.ErrUnknownMethod
+	}
 }
 
 func (p Pagination) GetPageItems() []PageItem {

@@ -1,22 +1,22 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
 
-{% macro macro_category_item(__ctx) %}
+{% macro macro_category_item(category, children, root) %}
   <li class="category-item">
     <div class="flex items-center">
-      <div>{{ __ctx.Category.Sort }}</div>
+      <div>{{ category.Sort }}</div>
       <div>
-        <strong>{{ __ctx.Category.Name }}</strong>
+        <strong>{{ category.Name }}</strong>
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
-        <form id="form" method="post" style="display:inline" action="{{ url_for('admin.categories.parent.update', id=__ctx.Category.ID) }}" class="category-parent-form">
-            {% with Root = __ctx.Root, SelectedID = __ctx.Category.ParentID, EmptyOption = "顶级分类" %}{% include "admin/include/category_select.html" %}{% endwith %}
+        <form id="form" method="post" style="display:inline" action="{{ url_for('admin.categories.parent.update', id=category.ID) }}" class="category-parent-form">
+            {% with Root = root, SelectedID = category.ParentID, EmptyOption = "顶级分类", SelectID = "" %}{% include "admin/include/category_select.html" %}{% endwith %}
         </form>
         <div>
-          {{ ui.action_icon_link(url_for('admin.categories.edit', id=__ctx.Category.ID), "编辑", "square-pen") }}
-          {{ ui.action_icon_link(url_for('admin.categories.new', parent_id=__ctx.Category.ID), "添加", "plus") }}
+          {{ ui.action_icon_link(url_for('admin.categories.edit', id=category.ID), "编辑", "square-pen") }}
+          {{ ui.action_icon_link(url_for('admin.categories.new', parent_id=category.ID), "添加", "plus") }}
         </div>
-        <form id="form" method="post" style="display:inline" action="{{ url_for('admin.categories.delete', id=__ctx.Category.ID) }}">
+        <form id="form" method="post" style="display:inline" action="{{ url_for('admin.categories.delete', id=category.ID) }}">
           <button type="submit">
               {{ ui.action_btn_content("trash-2", "删除", 14) }}
           </button>
@@ -24,11 +24,10 @@
       </div>
     </div>
 
-      {% if __ctx.Children %}
+      {% if children %}
         <ul class="categories-subtree">
-            {% set root = __ctx.Root %}
-            {% for node in __ctx.Children %}
-                {{ macro_category_item(dict("Category", node.Category, "Children", node.Children, "Root", root)) }}
+            {% for node in children %}
+                {{ macro_category_item(node.Category, node.Children, root) }}
             {% endfor %}
         </ul>
       {% endif %}
@@ -109,9 +108,9 @@
 
 {% if Tree %}
   <ul class="categories-tree">
-    {% set rootData = dict("Categories", Categories) %}
+    {% set rootData = {"CategoryOptions": CategoryOptions} %}
     {% for node in Tree %}
-        {{ macro_category_item(dict("Category", node.Category, "Children", node.Children, "Root", rootData)) }}
+        {{ macro_category_item(node.Category, node.Children, rootData) }}
     {% endfor %}
   </ul>
 {% else %}

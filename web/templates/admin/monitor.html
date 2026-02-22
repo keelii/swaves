@@ -119,7 +119,7 @@
   }
 </style>
 
-{% set monitorGranularities = Granularities|default(slice()) %}
+{% set monitorGranularities = Granularities|default([]) %}
 {% set activeGranularity = ActiveGranularity|default("1m") %}
 {% set activeScope = ActiveScope|default("app") %}
 

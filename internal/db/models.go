@@ -3747,6 +3747,7 @@ type Media struct {
 	ProviderDeleteKey string `json:"provider_delete_key"`
 	FileURL           string `json:"file_url"`
 	OriginalName      string `json:"original_name"`
+	Remark            string `json:"remark"`
 	SizeBytes         int64  `json:"size_bytes"`
 	CreatedAt         int64  `json:"created_at"`
 }
@@ -3787,6 +3788,7 @@ func CreateMedia(db *DB, m *Media) (int64, error) {
 		"provider_delete_key": strings.TrimSpace(m.ProviderDeleteKey),
 		"file_url":            strings.TrimSpace(m.FileURL),
 		"original_name":       strings.TrimSpace(m.OriginalName),
+		"remark":              strings.TrimSpace(m.Remark),
 		"size_bytes":          m.SizeBytes,
 		"created_at":          m.CreatedAt,
 	})
@@ -3800,7 +3802,7 @@ func CreateMedia(db *DB, m *Media) (int64, error) {
 
 func GetMediaByID(db *DB, id int64) (*Media, error) {
 	row := db.QueryRow(`
-		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, size_bytes, created_at
+		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, remark, size_bytes, created_at
 		FROM `+string(TableMedia)+`
 		WHERE id = ?
 	`, id)
@@ -3814,6 +3816,7 @@ func GetMediaByID(db *DB, id int64) (*Media, error) {
 		&m.ProviderDeleteKey,
 		&m.FileURL,
 		&m.OriginalName,
+		&m.Remark,
 		&m.SizeBytes,
 		&m.CreatedAt,
 	); err != nil {
@@ -3828,7 +3831,7 @@ func GetMediaByID(db *DB, id int64) (*Media, error) {
 
 func GetMediaByProviderAssetID(db *DB, provider string, providerAssetID string) (*Media, error) {
 	row := db.QueryRow(`
-		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, size_bytes, created_at
+		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, remark, size_bytes, created_at
 		FROM `+string(TableMedia)+`
 		WHERE provider = ? AND provider_asset_id = ?
 		LIMIT 1
@@ -3843,6 +3846,7 @@ func GetMediaByProviderAssetID(db *DB, provider string, providerAssetID string) 
 		&m.ProviderDeleteKey,
 		&m.FileURL,
 		&m.OriginalName,
+		&m.Remark,
 		&m.SizeBytes,
 		&m.CreatedAt,
 	); err != nil {
@@ -3879,7 +3883,7 @@ func CountMedia(db *DB, kind, provider string) (int, error) {
 func ListMedia(db *DB, opts MediaQueryOptions) ([]Media, error) {
 	whereClause, whereArgs := buildMediaWhereClause(opts.Kind, opts.Provider)
 	query := `
-		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, size_bytes, created_at
+		SELECT id, kind, provider, provider_asset_id, provider_delete_key, file_url, original_name, remark, size_bytes, created_at
 		FROM ` + string(TableMedia)
 	if whereClause != "" {
 		query += ` WHERE ` + whereClause
@@ -3908,6 +3912,7 @@ func ListMedia(db *DB, opts MediaQueryOptions) ([]Media, error) {
 			&m.ProviderDeleteKey,
 			&m.FileURL,
 			&m.OriginalName,
+			&m.Remark,
 			&m.SizeBytes,
 			&m.CreatedAt,
 		); err != nil {

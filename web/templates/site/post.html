@@ -12,7 +12,7 @@
     <span class="author">{{ settings("author") }}</span>
     <span>{{ postData.PublishedAt | articleTime }}</span>
     <a href="{{ GetBasePath() }}">首页</a>
-    {% if Auth.IsLogin and (postData.ID > 0) %}
+    {% if IsLogin and (postData.ID > 0) %}
       <a href="{{ url_for('admin.posts.edit', id=postData.ID) }}">编辑</a>
     {% endif %}
     {% with Count = ReadUV %}
