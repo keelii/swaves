@@ -1,0 +1,4 @@
+<form id="form" method="post" action="{{ Action }}">
+  {{ ui.form_field_text("名称", "name", Tag.Name|default(""), required=true, placeholder="标签名称") }}
+  {{ ui.form_field_text("URL 标识", "slug", Tag.Slug|default(""), required=true, placeholder="url标识") }}
+</form>

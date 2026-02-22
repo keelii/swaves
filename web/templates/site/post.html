@@ -31,20 +31,37 @@
 {% if postData.Kind == 0 %}
 <section>
   <hr>
-  <p>
-    {% if postCategory %}
-      {{ category_item(postCategory, true) }}
-    {% endif %}
-    <br>
-    {% if postTags %}
-      {{ tag_list(postTags, true) }}
-    {% endif %}
-  </p>
+  <div class="post-info">
+    <div class="post-catgory-tag">
+      {% if postCategory %}
+        {{ category_item(postCategory, label=true, sep="：") }}
+      {% endif %}
+      <br>
+      {% if postTags %}
+        {{ tag_list(postTags, label=true, sep="：") }}
+      {% endif %}
+    </div>
+    <div class="post-nav">
+      {% if displayPost.Prev %}
+        <span>上一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev">{{ displayPost.Prev.Title }}</a></span>
+      {% endif %}
+      <br>
+      {% if displayPost.Next %}
+        <span>下一篇：<a href="{{ displayPost.Next.PermLink }}" class="next">{{ displayPost.Next.Title }}</a></span>
+      {% endif %}
+    </div>
+  </div>
   <hr>
 </section>
 {% endif %}
+{% if postData.Kind == 0 %}
+  <section>
+  </section>
+{% endif %}
 
-{% if postData.CommentEnabled == 1 %}
+
+
+  {% if postData.CommentEnabled == 1 %}
   <section>
   <footer>
     <div id="comments" class="comment-block">
@@ -132,19 +149,6 @@
       <p class="comment-empty"><small>评论已关闭。</small></p>
     </div>
   </footer>
-  </section>
-{% endif %}
-
-{% if postData.Kind == 0 %}
-  <section>
-    <p class="salign">
-      {% if displayPost.Prev %}
-        <span>上一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev">{{ displayPost.Prev.Title }}</a></span>
-      {% endif %}
-      {% if displayPost.Next %}
-        <span>下一篇：<a href="{{ displayPost.Next.PermLink }}" class="next">{{ displayPost.Next.Title }}</a></span>
-      {% endif %}
-    </p>
   </section>
 {% endif %}
 

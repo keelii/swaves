@@ -1,10 +1,4 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
-
-<form id="form" method="post" action="{{ UrlFor('admin.tags.update', id=Tag.ID) }}">
-
-  {{ ui.form_field_text("名称", "name", Tag.Name, required=true, placeholder="标签名称") }}
-  {{ ui.form_field_text("URL 标识", "slug", Tag.Slug, required=true, placeholder="url标识") }}
-
-</form>
+{% with Action = UrlFor('admin.tags.update', id=Tag.ID), Tag = Tag %}{% include "admin/include/forms/tags_form.html" %}{% endwith %}
 {% endblock %}

@@ -193,6 +193,12 @@ article table thead th {
 .comment-form-row [for="comment-content"] {
   vertical-align: top;
 }
+.comment-time,
 .comment-help {
-  color: #333;
+  color: #666;
+}
+.post-info {
+  display: flex;
+  justify-content: space-between;
+  width: 55%;
 }

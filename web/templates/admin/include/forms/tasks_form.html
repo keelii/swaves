@@ -1,0 +1,130 @@
+{% set is_edit = IsEdit|default(false) %}
+{% set enabled_checked = true %}
+{% set toggle_id = "task_enabled_new" %}
+{% set task_kind = 0 %}
+{% set task_name = "" %}
+{% set task_code = "" %}
+{% set schedule_value = "@daily" %}
+{% set description_value = "" %}
+
+{% if Task %}
+  {% set enabled_checked = Task.Enabled == 1 %}
+  {% set toggle_id = Printf("task_enabled_%d", Task.ID) %}
+  {% set task_kind = Task.Kind %}
+  {% set task_name = Task.Name %}
+  {% set task_code = Task.Code %}
+  {% set schedule_value = Task.Schedule %}
+  {% set description_value = Task.Description %}
+{% endif %}
+
+{% set selected_preset = "__custom__" %}
+{% set custom_schedule = schedule_value %}
+{% if schedule_value == "@hourly" or schedule_value == "@daily" or schedule_value == "@weekly" or schedule_value == "@monthly" or schedule_value == "@yearly" %}
+  {% set selected_preset = schedule_value %}
+  {% set custom_schedule = "" %}
+{% endif %}
+
+<form id="form" method="post" action="{{ Action }}">
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        是否启用
+        {{ ui.toggle(toggle_id, "enabled", checked=enabled_checked, data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
+      </label>
+
+      <fieldset>
+        <legend>任务类型</legend>
+        <label>
+          <input type="radio" name="kind" value="0"{% if task_kind == 0 %} checked{% endif %}>
+          内部任务（不生成运行记录）
+        </label>
+        <label>
+          <input type="radio" name="kind" value="1"{% if task_kind == 1 %} checked{% endif %}>
+          用户任务（生成运行记录）
+        </label>
+        <p>
+          <small>内部任务执行时不写入任务运行记录表（TaskRun）</small>
+        </p>
+      </fieldset>
+
+      <label data-field>
+        任务名称
+        <input type="text" name="name" required value="{{ task_name }}" placeholder="任务名称">
+      </label>
+
+      <label data-field>
+        任务编码
+        {% if is_edit %}
+          <input type="text" value="{{ task_code }}" disabled>
+          <input type="hidden" name="code" value="{{ task_code }}">
+        {% else %}
+          <input type="text" name="code" required value="{{ task_code }}" placeholder="task_code">
+          <small>用于在代码中识别此任务，必须唯一</small>
+        {% endif %}
+      </label>
+
+      <label data-field>
+        执行频率
+        <select id="schedule-preset">
+          <option value="@hourly"{% if selected_preset == "@hourly" %} selected{% endif %}>每小时</option>
+          <option value="@daily"{% if selected_preset == "@daily" %} selected{% endif %}>每天</option>
+          <option value="@weekly"{% if selected_preset == "@weekly" %} selected{% endif %}>每周</option>
+          <option value="@monthly"{% if selected_preset == "@monthly" %} selected{% endif %}>每月</option>
+          <option value="@yearly"{% if selected_preset == "@yearly" %} selected{% endif %}>每年</option>
+          <option value="__custom__"{% if selected_preset == "__custom__" %} selected{% endif %}>自定义</option>
+        </select>
+        <small>选择任务执行频率，或切换为自定义 Cron 表达式。</small>
+      </label>
+
+      <label data-field id="schedule-custom-wrap" hidden>
+        自定义 Cron 表达式
+        <input type="text" id="schedule-custom" placeholder="例如: 0 */5 * * *" value="{{ custom_schedule }}">
+      </label>
+      <input type="hidden" name="schedule" id="schedule-value" value="{{ schedule_value }}">
+
+      <label data-field>
+        任务描述
+        <textarea name="description" rows="3" cols="60" placeholder="任务描述">{{ description_value }}</textarea>
+      </label>
+    </div>
+  </div>
+</form>
+
+<script>
+$(function() {
+  var $preset = $('#schedule-preset');
+  var $wrap = $('#schedule-custom-wrap');
+  var $custom = $('#schedule-custom');
+  var $val = $('#schedule-value');
+
+  function syncScheduleValue() {
+    $val.val($preset.val() === '__custom__' ? $custom.val() : $preset.val());
+  }
+
+  function toggleScheduleInput() {
+    var isCustom = $preset.val() === '__custom__';
+    $wrap.prop('hidden', !isCustom);
+    syncScheduleValue();
+  }
+
+  toggleScheduleInput();
+
+  $preset.on('change', function() {
+    toggleScheduleInput();
+    if ($preset.val() === '__custom__') {
+      $custom.focus();
+    }
+  });
+
+  $custom.on('input change', syncScheduleValue);
+
+  $('#form').on('submit', function(e) {
+    if ($preset.val() === '__custom__' && !$custom.val().trim()) {
+      e.preventDefault();
+      $custom.focus();
+      return false;
+    }
+    syncScheduleValue();
+  });
+});
+</script>

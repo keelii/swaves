@@ -1,32 +1,4 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
-
-<form id="form" method="post" action="{{ UrlFor('admin.redirects.create') }}">
-  <div class="row">
-    <div class="col-6">
-      <label data-field>
-        来源路径
-        <input type="text" name="from" required placeholder="/old-path">
-      </label>
-
-      <label data-field>
-        目标路径
-        <input type="text" name="to" required placeholder="/new-path">
-      </label>
-
-      <label data-field>
-        状态码
-        <select name="status">
-          <option value="301" selected>301 - 永久重定向</option>
-          <option value="302">302 - 临时重定向</option>
-        </select>
-      </label>
-
-      <label data-field>
-        启用
-        {{ ui.toggle("redirect_enabled_new", "enabled", checked=true, data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
-      </label>
-    </div>
-  </div>
-</form>
+{% with Action = UrlFor('admin.redirects.create') %}{% include "admin/include/forms/redirects_form.html" %}{% endwith %}
 {% endblock %}

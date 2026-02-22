@@ -1,0 +1,42 @@
+{% set source_value = "" %}
+{% set target_value = "" %}
+{% set status_value = 301 %}
+{% set enabled_checked = true %}
+{% set toggle_id = "redirect_enabled_new" %}
+
+{% if Redirect %}
+  {% set source_value = Redirect.From %}
+  {% set target_value = Redirect.To %}
+  {% set status_value = Redirect.Status %}
+  {% set enabled_checked = Redirect.Enabled == 1 %}
+  {% set toggle_id = Printf("redirect_enabled_%d", Redirect.ID) %}
+{% endif %}
+
+<form id="form" method="post" action="{{ Action }}">
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        来源路径
+        <input type="text" name="from" required value="{{ source_value }}" placeholder="/old-path">
+      </label>
+
+      <label data-field>
+        目标路径
+        <input type="text" name="to" required value="{{ target_value }}" placeholder="/new-path">
+      </label>
+
+      <label data-field>
+        状态码
+        <select name="status">
+          <option value="301"{% if status_value == 301 %} selected{% endif %}>301 - 永久重定向</option>
+          <option value="302"{% if status_value == 302 %} selected{% endif %}>302 - 临时重定向</option>
+        </select>
+      </label>
+
+      <label data-field>
+        启用
+        {{ ui.toggle(toggle_id, "enabled", checked=enabled_checked, data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
+      </label>
+    </div>
+  </div>
+</form>
