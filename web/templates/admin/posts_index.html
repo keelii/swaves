@@ -1,35 +1,37 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 {% set kind = (Kind or 0) %}
 {% set q = (SearchQueryEscaped or "") %}
 {% set tag = (FilterTagIDStr or "") %}
 {% set cat = (FilterCategoryIDStr or "") %}
 <div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
   <nav role="tablist" aria-label="内容类型">
-    <a role="tab" aria-selected="{% if ((kind == 0)) %}true{% else %}false{% endif %}" href="{{ url_for("admin.posts.list") }}?kind=0{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">文章 ({{ CountPost }})</a>
-    <a role="tab" aria-selected="{% if ((kind == 1)) %}true{% else %}false{% endif %}" href="{{ url_for("admin.posts.list") }}?kind=1{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">页面 ({{ CountPage }})</a>
+    <a role="tab" aria-selected="{% if kind == 0 %}true{% else %}false{% endif %}" href="{{ url_for("admin.posts.list") }}?kind=0{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">文章 ({{ CountPost }})</a>
+    <a role="tab" aria-selected="{% if kind == 1 %}true{% else %}false{% endif %}" href="{{ url_for("admin.posts.list") }}?kind=1{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">页面 ({{ CountPage }})</a>
   </nav>
   <div class="tab-nav-right">
-    {% if (FilterTagName or FilterCategoryName) %}
+    {% if FilterTagName or FilterCategoryName %}
       <div class="inline-flex items-center gap-4">
         {% set tagLabel = "标签 " ~ FilterTagName %}
         {% set catLabel = "分类 " ~ FilterCategoryName %}
-        {% if FilterTagName %}{{ ui.tag_item(dict("Label", tagLabel, "RemoveHref", FilterTagRemoveURL)) }}{% endif %}
-        {% if FilterCategoryName %}{{ ui.tag_item(dict("Label", catLabel, "RemoveHref", FilterCategoryRemoveURL)) }}{% endif %}
+        {% if FilterTagName %}{{ ui.tag_item(tagLabel, FilterTagRemoveURL) }}{% endif %}
+        {% if FilterCategoryName %}{{ ui.tag_item(catLabel, FilterCategoryRemoveURL) }}{% endif %}
       </div>
     {% endif %}
-    {{ ui.post_search(dict("KindQuery", KindQuery, "SearchQuery", SearchQuery, "FilterTagIDStr", FilterTagIDStr, "FilterCategoryIDStr", FilterCategoryIDStr)) }}
+    {% with KindQuery = KindQuery, SearchQuery = SearchQuery, FilterTagIDStr = FilterTagIDStr, FilterCategoryIDStr = FilterCategoryIDStr %}{% include "/admin/include/post_search" %}{% endwith %}
   </div>
 </div>
 
 <table>
   <thead>
   <tr>
-    <th>ID</th>
+    <th class="cell-4">ID</th>
     <th>标题</th>
-    <th class="cell-slug">URL标识</th>
-    <th class="cell-tag">标签</th>
-    <th>分类</th>
-    <th class="cell-6 ceil-wsn">状态</th>
+    <th>URL标识</th>
+    <th class="cell-9">标签</th>
+    <th class="cell-8">分类</th>
+    <th class="cell-6">状态</th>
     <th class="cell-4">UV</th>
     <th class="cell-6">创建时间</th>
     <th class="cell-6">更新时间</th>
@@ -43,7 +45,7 @@
     <td class="cell-4">{{ postWithRelation.Post.ID }}</td>
     <td>{% if SearchQuery %}{{ highlight(postWithRelation.Post.Title, SearchQuery) }}{% else %}{{ postWithRelation.Post.Title }}{% endif %}</td>
     <td>
-        {% if ((postWithRelation.Post.Status == "published")) %}
+        {% if postWithRelation.Post.Status == "published" %}
           <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{% if SearchQuery %}{{ highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}</a>
         {% else %}
           {% if SearchQuery %}{{ highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}
@@ -64,7 +66,7 @@
       {% endif %}
     </td>
     <td>
-        {% if ((postWithRelation.Post.Status == "published")) %}
+        {% if postWithRelation.Post.Status == "published" %}
           <span class="badge success">已发布</span>
         {% else %}
           <span class="badge secondary">草稿</span>
@@ -75,18 +77,19 @@
     </td>
     <td>{{ postWithRelation.Post.CreatedAt | relativeTime }}</td>
     <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
-    {{ ui.table_row_actions(dict("EditRoute", "admin.posts.edit", "DeleteRoute", "admin.posts.delete", "ID", postWithRelation.Post.ID)) }}
+    {{ ui.table_row_actions("admin.posts.edit", "admin.posts.delete", postWithRelation.Post.ID) }}
   </tr>
   {% else %}
-  {{ ui.table_empty(dict("ColSpan", 10, "Message", "暂无文章")) }}
+  {{ ui.table_empty(10, "暂无文章") }}
   {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="10">
-      {{ ui.pagination(dict("Pager", Pager, "Req", Req)) }}
+      {% with Pager = Pager, Req = Req %}{% include "/admin/include/pagination" %}{% endwith %}
     </td>
   </tr>
   </tfoot>
 </table>
+{% endblock %}

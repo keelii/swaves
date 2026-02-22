@@ -1,4 +1,6 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 <table>
   <thead>
   <tr>
@@ -21,18 +23,19 @@
     <td><a href="{{ url_for("admin.posts.list") }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
     <td>{{ tag.CreatedAt | relativeTime }}</td>
     <td>{{ tag.UpdatedAt | relativeTime }}</td>
-    {{ ui.table_row_actions(dict("EditRoute", "admin.tags.edit", "DeleteRoute", "admin.tags.delete", "ID", tag.ID)) }}
+    {{ ui.table_row_actions("admin.tags.edit", "admin.tags.delete", tag.ID) }}
   </tr>
   {% else %}
-  {{ ui.table_empty(dict("ColSpan", 7, "Message", "暂无标签")) }}
+  {{ ui.table_empty(7, "暂无标签") }}
   {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="7">
-      {{ ui.pagination(dict("Pager", Pager, "Req", Req)) }}
+      {% with Pager = Pager, Req = Req %}{% include "/admin/include/pagination" %}{% endwith %}
     </td>
   </tr>
   </tfoot>
 </table>
+{% endblock %}

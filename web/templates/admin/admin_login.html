@@ -1,4 +1,5 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/base" %}
+{% block content %}
 <style>
     body {
         height: 100vh;
@@ -93,7 +94,7 @@
       <h1 class="login-title">开始吧，{{ settings("author") }}</h1>
     </div>
 
-    {{ ui.error_message(dict("Error", Error)) }}
+    {% with Error = Error %}{% include "/admin/include/error_message" %}{% endwith %}
 
     <form id="form" method="POST" action="{{ url_for("admin.login.submit") }}">
       {% if ReturnUrl %}<input type="hidden" name="returnUrl" value="{{ ReturnUrl }}">{% endif %}
@@ -115,3 +116,4 @@
     </form>
   </div>
 </div>
+{% endblock %}

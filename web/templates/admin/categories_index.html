@@ -1,4 +1,6 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 <table>
   <thead>
   <tr>
@@ -22,7 +24,7 @@
     <td>{{ category.Name }}</td>
     <td><a href="{{ GetCategoryUrl(category) }}" target="_blank" rel="noopener">{{ category.Slug }}</a></td>
     <td>
-      {% if ((category.ParentID == 0)) %}
+      {% if category.ParentID == 0 %}
         <span>-</span>
       {% else %}
         {{ ParentMap[category.ID] | default(category.ParentID) }}
@@ -33,10 +35,11 @@
     <td><a href="{{ url_for("admin.posts.list") }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
     <td>{{ category.CreatedAt | relativeTime }}</td>
     <td>{{ category.UpdatedAt | relativeTime }}</td>
-    {{ ui.table_row_actions(dict("EditRoute", "admin.categories.edit", "DeleteRoute", "admin.categories.delete", "ID", category.ID)) }}
+    {{ ui.table_row_actions("admin.categories.edit", "admin.categories.delete", category.ID) }}
   </tr>
   {% else %}
-  {{ ui.table_empty(dict("ColSpan", 10, "Message", "暂无分类")) }}
+  {{ ui.table_empty(10, "暂无分类") }}
   {% endfor %}
   </tbody>
 </table>
+{% endblock %}

@@ -1,3 +1,5 @@
+{% extends "/site/layout/layout" %}
+{% block content %}
 <header>
   <h1>页面找不到</h1>
   <p>页面不存在，可能已被删除或地址写错了。</p>
@@ -10,3 +12,4 @@
   </p>
   {% if ReqID %}<p><small>请求ID: {{ ReqID }}</small></p>{% endif %}
 </article>
+{% endblock %}

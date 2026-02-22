@@ -1,3 +1,5 @@
+{% extends "/admin/layout/layout" %}
+{% block content %}
 <form id="form" method="post" action="{{ url_for("admin.settings.create") }}">
 
   <p>
@@ -36,20 +38,20 @@
     <label>
       类型<br>
       <select name="type" required>
-        <option value="text" {% if (Setting and (((Setting.Type == "text")))) %}selected{% endif %}>文本</option>
-        <option value="number" {% if (Setting and (((Setting.Type == "number")))) %}selected{% endif %}>数字</option>
-        <option value="date" {% if (Setting and (((Setting.Type == "date")))) %}selected{% endif %}>日期</option>
-        <option value="time" {% if (Setting and (((Setting.Type == "time")))) %}selected{% endif %}>时间</option>
-        <option value="datetime" {% if (Setting and (((Setting.Type == "datetime")))) %}selected{% endif %}>日期时间</option>
-        <option value="url" {% if (Setting and (((Setting.Type == "url")))) %}selected{% endif %}>URL</option>
-        <option value="range" {% if (Setting and (((Setting.Type == "range")))) %}selected{% endif %}>范围滑块</option>
-        <option value="password" {% if (Setting and (((Setting.Type == "password")))) %}selected{% endif %}>密码</option>
-        <option value="secret" {% if (Setting and (((Setting.Type == "secret")))) %}selected{% endif %}>密钥</option>
-        <option value="radio" {% if (Setting and (((Setting.Type == "radio")))) %}selected{% endif %}>单选</option>
-        <option value="checkbox" {% if (Setting and (((Setting.Type == "checkbox")))) %}selected{% endif %}>复选</option>
-        <option value="select" {% if (Setting and (((Setting.Type == "select")))) %}selected{% endif %}>下拉</option>
-        <option value="prefix-field" {% if (Setting and (((Setting.Type == "prefix-field")))) %}selected{% endif %}>前缀字段</option>
-        <option value="textarea" {% if (Setting and (((Setting.Type == "textarea")))) %}selected{% endif %}>多行文本</option>
+        <option value="text" {% if Setting and (Setting.Type == "text") %}selected{% endif %}>文本</option>
+        <option value="number" {% if Setting and (Setting.Type == "number") %}selected{% endif %}>数字</option>
+        <option value="date" {% if Setting and (Setting.Type == "date") %}selected{% endif %}>日期</option>
+        <option value="time" {% if Setting and (Setting.Type == "time") %}selected{% endif %}>时间</option>
+        <option value="datetime" {% if Setting and (Setting.Type == "datetime") %}selected{% endif %}>日期时间</option>
+        <option value="url" {% if Setting and (Setting.Type == "url") %}selected{% endif %}>URL</option>
+        <option value="range" {% if Setting and (Setting.Type == "range") %}selected{% endif %}>范围滑块</option>
+        <option value="password" {% if Setting and (Setting.Type == "password") %}selected{% endif %}>密码</option>
+        <option value="secret" {% if Setting and (Setting.Type == "secret") %}selected{% endif %}>密钥</option>
+        <option value="radio" {% if Setting and (Setting.Type == "radio") %}selected{% endif %}>单选</option>
+        <option value="checkbox" {% if Setting and (Setting.Type == "checkbox") %}selected{% endif %}>复选</option>
+        <option value="select" {% if Setting and (Setting.Type == "select") %}selected{% endif %}>下拉</option>
+        <option value="prefix-field" {% if Setting and (Setting.Type == "prefix-field") %}selected{% endif %}>前缀字段</option>
+        <option value="textarea" {% if Setting and (Setting.Type == "textarea") %}selected{% endif %}>多行文本</option>
       </select>
     </label>
   </p>
@@ -78,7 +80,7 @@
           <select name="default_option_value" id="default_option_value">
             <option value="">顶级分类</option>
             {% for option in OptionsParsed %}
-              <option value="{{ option.value }}" {% if (((DefaultOptionValue|default("")) == option.value)) %}selected{% endif %}>{{ option.label }}</option>
+              <option value="{{ option.value }}" {% if DefaultOptionValue|default("") == option.value %}selected{% endif %}>{{ option.label }}</option>
             {% endfor %}
           </select>
           <small>（从上方选项中选择默认值；选项变更后会自动更新）</small>
@@ -127,7 +129,7 @@
 
   <p>
     <label>
-      <input type="checkbox" name="reload" value="1"{% if Setting %}{% if ((Setting.Reload == 1)) %} checked{% endif %}{% endif %}>
+      <input type="checkbox" name="reload" value="1"{% if Setting %}{% if Setting.Reload == 1 %} checked{% endif %}{% endif %}>
       修改后需重启生效
     </label>
   </p>
@@ -196,3 +198,4 @@ $(function() {
   syncValueMask();
 });
 </script>
+{% endblock %}

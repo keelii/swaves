@@ -1,3 +1,5 @@
+{% extends "/admin/layout/layout" %}
+{% block content %}
 <style>
   .monitor-toolbar {
     display: flex;
@@ -128,7 +130,7 @@
       {% set granularityLabel = granularity.Label | default(granularityKey) %}
       <a
         role="tab"
-        aria-selected="{% if ((activeGranularity == granularityKey)) %}true{% else %}false{% endif %}"
+        aria-selected="{% if activeGranularity == granularityKey %}true{% else %}false{% endif %}"
         href="{{ url_for("admin.monitor", dict("granularity", granularityKey, "scope", activeScope)) }}"
         data-monitor-granularity="{{ granularityKey }}"
       >{{ granularityLabel }}</a>
@@ -191,13 +193,13 @@
   <nav class="monitor-tabs mb-2" role="tablist" aria-label="监控指标" data-monitor-scope-tabs>
       <a
       role="tab"
-      aria-selected="{% if ((activeScope == "app")) %}true{% else %}false{% endif %}"
+      aria-selected="{% if activeScope == "app" %}true{% else %}false{% endif %}"
       href="{{ url_for("admin.monitor", dict("granularity", activeGranularity, "scope", "app")) }}"
       data-monitor-scope="app"
     >应用</a>
     <a
       role="tab"
-      aria-selected="{% if ((activeScope == "system")) %}true{% else %}false{% endif %}"
+      aria-selected="{% if activeScope == "system" %}true{% else %}false{% endif %}"
       href="{{ url_for("admin.monitor", dict("granularity", activeGranularity, "scope", "system")) }}"
       data-monitor-scope="system"
     >系统</a>
@@ -565,3 +567,4 @@
     startAutoRefresh();
   })();
 </script>
+{% endblock %}

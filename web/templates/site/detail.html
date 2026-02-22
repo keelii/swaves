@@ -1,10 +1,12 @@
-{% from "includes/content_macros" import category_item, tag_list %}
+{% extends "/site/layout/layout" %}
+{% block content %}
+{% from "/site/macro/content" import category_item, tag_list %}
 
 <header>
   <h1>{{ Entity.Name }}</h1>
 
   {% with IsCategory = IsCategory, IsTag = IsTag %}
-    {% include "includes/list_nav" %}
+    {% include "/site/include/list_nav" %}
   {% endwith %}
 </header>
 
@@ -30,3 +32,4 @@
   <li>暂无文章</li>
   {% endfor %}
 </ul>
+{% endblock %}

@@ -430,9 +430,7 @@ func TestRenderLucideIconWithoutSize(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "lucide_icon", map[string]any{
-		"name": "plus",
-	})
+	err := view.Render(&out, "site/include/read_uv", map[string]any{"Count": 0})
 	if err != nil {
 		t.Fatalf("render lucide icon failed: %v", err)
 	}
@@ -448,9 +446,7 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "site/layout", map[string]any{
-		"embed": "<p>body</p>",
-	})
+	err := view.Render(&out, "site/layout/layout", map[string]any{})
 	if err != nil {
 		t.Fatalf("render site layout failed: %v", err)
 	}

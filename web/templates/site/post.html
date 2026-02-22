@@ -1,8 +1,10 @@
+{% extends "/site/layout/layout" %}
+{% block content %}
 {% set displayPost = Post.DisplayPost %}
 {% set postData = displayPost.Post %}
 {% set postCategory = Post.Category %}
 {% set postTags = Post.Tags %}
-{% from "includes/content_macros" import category_item, tag_list %}
+{% from "/site/macro/content" import category_item, tag_list %}
 
 <header>
   <h1>{{ postData.Title }}</h1>
@@ -14,10 +16,10 @@
       <a href="{{ url_for("admin.posts.edit", dict("id", postData.ID)) }}">编辑</a>
     {% endif %}
     {% with Count = ReadUV %}
-      {% include "read_uv" %}
+      {% include "/site/include/read_uv" %}
     {% endwith %}
     {% with PostID = postData.ID, UrlPath = UrlPath, LikeCount = LikeCount, Liked = Liked %}
-      {% include "like_action" %}
+      {% include "/site/include/like_action" %}
     {% endwith %}
   </nav>
 </header>
@@ -26,7 +28,7 @@
     {{ displayPost.HTML | safe }}
   </section>
 </article>
-{% if (postData.Kind == 0) %}
+{% if postData.Kind == 0 %}
 <section>
   <hr>
   <p>
@@ -42,7 +44,7 @@
 </section>
 {% endif %}
 
-{% if (postData.CommentEnabled == 1) %}
+{% if postData.CommentEnabled == 1 %}
   <section>
   <footer>
     <div id="comments">
@@ -52,7 +54,7 @@
         <ol class="comment-list">
           {% for item in Comments %}
             {% with Comment = item %}
-              {% include "comment_item" %}
+              {% include "/site/include/comment_item" %}
             {% endwith %}
           {% endfor %}
         </ol>
@@ -60,15 +62,15 @@
         <p><small>暂无评论，欢迎抢沙发。</small></p>
       {% endif %}
 
-      {% if (CommentFeedback == "approved") %}
+      {% if CommentFeedback == "approved" %}
         <p><small>评论已发布。</small></p>
-      {% else %}{% if (CommentFeedback == "pending") %}
+      {% else %}{% if CommentFeedback == "pending" %}
         <p><small>评论已提交，等待审核。</small></p>
-      {% else %}{% if (CommentFeedback == "captcha_required") %}
+      {% else %}{% if CommentFeedback == "captcha_required" %}
         <p><small>提交较频繁，请先完成验证码再继续评论。</small></p>
-      {% else %}{% if (CommentFeedback == "captcha_failed") %}
+      {% else %}{% if CommentFeedback == "captcha_failed" %}
         <p><small>验证码错误或已过期，请刷新页面后重试。</small></p>
-      {% else %}{% if (CommentFeedback == "rate_limited") %}
+      {% else %}{% if CommentFeedback == "rate_limited" %}
         <p><small>提交过于频繁，请稍后再试。</small></p>
       {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
 
@@ -132,7 +134,7 @@
   </section>
 {% endif %}
 
-{% if (postData.Kind == 0) %}
+{% if postData.Kind == 0 %}
   <section>
     <p class="salign">
       {% if displayPost.Prev %}
@@ -183,3 +185,4 @@
     }
   })();
 </script>
+{% endblock %}

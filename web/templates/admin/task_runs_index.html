@@ -1,3 +1,5 @@
+{% extends "/admin/layout/layout" %}
+{% block content %}
 <h3>任务：{{ Task.Name }} ({{ Task.Code }})</h3>
 
 <table>
@@ -20,14 +22,14 @@
     <td>{{ run.TaskCode }}</td>
     <td>{{ run.ID }}</td>
     <td>
-        {% if ((run.Status == "success")) %}
+        {% if run.Status == "success" %}
             <div class="badge success">成功</div>
         {% else %}
           <div class="badge danger">失败</div>
         {% endif %}
     </td>
     <td>
-        {% if ((run.Status == "success")) %}
+        {% if run.Status == "success" %}
             {{ run.Message }}
         {% else %}
             <span class="text-danger">{{ run.Message }}</span>
@@ -45,3 +47,4 @@
   {% endfor %}
   </tbody>
 </table>
+{% endblock %}

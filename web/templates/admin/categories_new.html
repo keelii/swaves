@@ -1,12 +1,14 @@
+{% extends "/admin/layout/layout" %}
+{% block content %}
 <form id="form" method="post" action="{{ url_for("admin.categories.create") }}">
   <div class="row">
     <div class="col-6">
       <label data-field>
         父分类
         <select name="parent_id">
-          <option value="0"{% if (((ParentID|default(0)) == 0)) %} selected{% endif %}>顶级分类</option>
+          <option value="0"{% if ParentID|default(0) == 0 %} selected{% endif %}>顶级分类</option>
           {% for category in Categories %}
-            <option value="{{ category.ID }}"{% if (((ParentID|default(0)) == category.ID)) %} selected{% endif %}>{{ category.Name }}</option>
+            <option value="{{ category.ID }}"{% if ParentID|default(0) == category.ID %} selected{% endif %}>{{ category.Name }}</option>
           {% endfor %}
         </select>
         <small>（选择父分类，选择“顶级分类”表示无父级）</small>
@@ -38,3 +40,4 @@
     </div>
   </div>
 </form>
+{% endblock %}

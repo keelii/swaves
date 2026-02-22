@@ -29,6 +29,12 @@ a[role="tab"] {
   text-decoration: none;
   font-weight: normal;
 }
+input {
+  margin-block-start: 0;
+}
+.badge {
+  white-space: nowrap;
+}
 
 [data-theme="dark"] {
     --admin-primary-soft: color-mix(in srgb, var(--primary) 20%, transparent);
@@ -41,7 +47,7 @@ body {
     border-radius: 0;
 }
 table {
-  table-layout: auto;
+  /*table-layout: auto;*/
 }
 table th {
   white-space: nowrap;
@@ -601,13 +607,18 @@ input[type="range"] {
 #page-size-select {
   width: 4em;
 }
-.cell-slug {
+.cell-break {
   white-space: normal;        /* 确保不是 nowrap */
   overflow-wrap: anywhere;    /* 允许在任意位置断行（推荐） */
   word-break: break-word;     /* 兼容兜底 */
 }
+.cell-slug {
+  width: 14em;
+}
 .cell-tag {
+  width: 2em;
   /*width: 4em;*/
+
 }
 .ceil-wsn {
   white-space: nowrap;

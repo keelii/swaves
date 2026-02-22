@@ -1,8 +1,0 @@
-{% if Items and ((Items|length) > 0) %}
-<span>
-{% if Label %}标签{% endif %}
-{% for tag in Items %}{% set t = tag %}
-  <a href="{{ t.PermLink }}">{{ t.Name }}</a>{% if not loop.last %},{% endif %}
-{% endfor %}
-</span>
-{% endif %}

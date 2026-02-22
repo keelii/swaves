@@ -1,4 +1,0 @@
-{% import "/admin/includes/ui_macros" as ui %}
-<a href="{{ href }}" class="row-action-btn{% if danger|default(false) %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" title="{{ label }}">
-  {{ ui.lucide_icon(dict("name", name, "size", (size|default(16)))) }}
-</a>

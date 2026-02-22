@@ -1,10 +1,12 @@
+{% extends "/site/layout/layout" %}
+{% block content %}
 {% macro macro_site_category_tree_nodes(__ctx) %}
   {% for categoryNode in __ctx %}
   <li>
     <a href="{{ categoryNode.Item.PermLink }}">{{ categoryNode.Item.Name }}</a>
     <span class="post-count">({{ categoryNode.Item.PostCount }})</span>
     <span>{{ categoryNode.Item.CreatedAt | relativeTime }}</span>
-    {% if (((categoryNode.Children|length)) > 0) %}
+    {% if (categoryNode.Children|length) > 0 %}
     <ul>
       {{ macro_site_category_tree_nodes(categoryNode.Children) }}
     </ul>
@@ -17,7 +19,7 @@
   <h1>{{ Title }}</h1>
 
   {% with IsCategory = true, IsTag = true %}
-    {% include "includes/list_nav" %}
+    {% include "/site/include/list_nav" %}
   {% endwith %}
 </header>
 
@@ -25,7 +27,7 @@
 
 {% if IsCategory %}
 <ul class="category-index">
-  {% if (((List|length)) > 0) %}
+  {% if (List|length) > 0 %}
     {{ macro_site_category_tree_nodes(List) }}
   {% else %}
   <li>暂无分类</li>
@@ -44,3 +46,4 @@
   {% endfor %}
 </ul>
 {% endif %}
+{% endblock %}

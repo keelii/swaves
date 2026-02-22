@@ -1483,6 +1483,8 @@ func (s CommentStatus) IsValid() bool {
 type Comment struct {
 	ID          int64
 	PostID      int64
+	PostKind    PostKind
+	PostPubAt   int64
 	ParentID    int64
 	Author      string
 	AuthorEmail string
@@ -1633,7 +1635,7 @@ func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Co
 	query := `
 		SELECT
 			c.id, c.post_id, c.parent_id, c.author, c.author_email, c.author_url, c.author_ip, c.visitor_id, c.user_agent, c.content, c.status, c.type, c.created_at, c.updated_at, c.deleted_at,
-			COALESCE(p.title, ''), COALESCE(p.slug, ''), COALESCE(pc.author, '')
+			COALESCE(p.kind, 0), COALESCE(p.published_at, 0), COALESCE(p.title, ''), COALESCE(p.slug, ''), COALESCE(pc.author, '')
 		FROM ` + string(TableComments) + ` c
 		LEFT JOIN ` + string(TablePosts) + ` p ON p.id = c.post_id
 		LEFT JOIN ` + string(TableComments) + ` pc ON pc.id = c.parent_id
@@ -1673,6 +1675,8 @@ func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Co
 			&item.CreatedAt,
 			&item.UpdatedAt,
 			&deletedAt,
+			&item.PostKind,
+			&item.PostPubAt,
 			&item.PostTitle,
 			&item.PostSlug,
 			&item.ParentAuthor,

@@ -1,4 +1,6 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 <table>
   <thead>
   <tr>
@@ -25,7 +27,7 @@
     <td>{{ task.Description }}</td>
     <td>{{ task.Schedule }}</td>
     <td>
-        {% if ((task.Enabled == 1)) %}
+        {% if task.Enabled == 1 %}
             <div class="badge success">启用</div>
         {% else %}
           <div class="badge secondary">停用</div>
@@ -34,11 +36,11 @@
     <td><a href="{{ url_for("admin.tasks.runs", (dict("code", task.Code))) }}">执行记录</a></td>
     <td>
       {% if task.LastStatus %}
-        {% if ((task.LastStatus == "success")) %}
+        {% if task.LastStatus == "success" %}
           <div class="badge success">成功</div>
-        {% else %}{% if ((task.LastStatus == "error")) %}
+        {% else %}{% if task.LastStatus == "error" %}
           <div class="badge danger">失败</div>
-        {% else %}{% if ((task.LastStatus == "pending")) %}
+        {% else %}{% if task.LastStatus == "pending" %}
           <div class="badge secondary">待执行</div>
         {% else %}
           <div class="badge outline">{{ task.LastStatus }}</div>
@@ -51,13 +53,13 @@
     <td style="display: none">{{ task.CreatedAt | formatTime }}</td>
     <td>
       <div class="row-actions">
-        {{ ui.action_icon_link(dict("href", (url_for("admin.tasks.edit", (dict("id", task.ID)))), "name", "square-pen", "label", "编辑")) }}
+        {{ ui.action_icon_link(url_for("admin.tasks.edit", (dict("id", task.ID))), "编辑", "square-pen") }}
         <form id="form" method="POST" action="{{ url_for("admin.tasks.trigger", (dict("code", task.Code))) }}">
-          {{ ui.action_icon_button(dict("type", "submit", "name", "terminal", "label", "执行", "danger", true)) }}
+          {{ ui.action_icon_button("执行", "terminal", type="submit", danger=true) }}
         </form>
-          {% if (task.Kind != 0) %}
+          {% if task.Kind != 0 %}
             <form id="form" method="POST" action="{{ url_for("admin.tasks.delete", (dict("id", task.ID))) }}">
-                {{ ui.action_icon_button(dict("type", "submit", "name", "trash-2", "label", "删除", "danger", true)) }}
+                {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
             </form>
           {% endif %}
       </div>
@@ -70,3 +72,4 @@
   {% endfor %}
   </tbody>
 </table>
+{% endblock %}

@@ -1,4 +1,6 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 <style>
   .media-upload {
     margin-bottom: 2em;
@@ -58,17 +60,11 @@
 
   .media-upload-tip {
     color: var(--muted-foreground);
-    margin: 0;
-    margin-top: var(--space-2);
+    margin: var(--space-2) 0 0;
   }
 
   .media-cell-url {
     max-width: 320px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: inline-block;
-    vertical-align: middle;
   }
 
   .media-row-actions {
@@ -109,9 +105,9 @@
   >
     <p class="media-upload-title">拖拽文件到这里上传</p>
     <p class="media-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
-    <p class="media-upload-status{% if (not defaultProviderReady) %} error{% endif %}" id="media-upload-status">
+    <p class="media-upload-status{% if not defaultProviderReady %} error{% endif %}" id="media-upload-status">
       当前默认服务：{{ mediaProviderLabelMap[defaultProvider] | default(defaultProvider) }}
-      {% if (not defaultProviderReady) %}（{{ defaultProviderError }}）{% endif %}
+      {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
     </p>
   </div>
 </section>
@@ -155,7 +151,7 @@
                 aria-label="复制图片链接"
                 data-title="复制图片链接"
               >
-                {{ ui.lucide_icon(dict("name", "link-2", "size", "16")) }}
+                {{ lucide_icon("link-2", 16) }}
               </button>
               <button
                 type="button"
@@ -165,7 +161,7 @@
                 aria-label="复制 Markdown 代码"
                 data-title="复制 Markdown 代码"
               >
-                {{ ui.lucide_icon(dict("name", "link-2", "size", "16")) }}
+                {{ lucide_icon("link-2", 16) }}
               </button>
             {% endif %}
             <button
@@ -175,19 +171,19 @@
               aria-label="删除"
               title="删除"
             >
-              {{ ui.lucide_icon(dict("name", "trash-2", "size", "16")) }}
+              {{ lucide_icon("trash-2", 16) }}
             </button>
           </div>
         </td>
       </tr>
     {% else %}
-      {{ ui.table_empty(dict("ColSpan", 8, "Message", "暂无媒体资源")) }}
+      {{ ui.table_empty(8, "暂无媒体资源") }}
     {% endfor %}
   </tbody>
   <tfoot>
     <tr>
       <td colspan="8">
-        {{ ui.pagination(dict("Pager", Pager, "Req", Req)) }}
+        {% with Pager = Pager, Req = Req %}{% include "/admin/include/pagination" %}{% endwith %}
       </td>
     </tr>
   </tfoot>
@@ -541,3 +537,4 @@ $(function() {
   });
 });
 </script>
+{% endblock %}

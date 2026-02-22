@@ -1,4 +1,6 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 <style>
   .dashboard-label {
     font-size: var(--text-8);
@@ -79,7 +81,7 @@
     <div class="card">
       <div class="dashboard-label salign">
         <span>文章总数</span>
-        <a href="{{ url_for("admin.posts.new") }}">{{ ui.lucide_icon(dict("name", "plus", "label", "新建文章")) }}</a>
+        <a href="{{ url_for("admin.posts.new") }}">{{ lucide_icon("plus") }}</a>
       </div>
       <div class="dashboard-number">{% if PostCount %}{{ PostCount }}{% else %}0{% endif %}</div>
     </div>
@@ -88,7 +90,7 @@
     <div class="card">
       <div class="dashboard-label salign">
         <span>分类总数</span>
-        <a href="{{ url_for("admin.categories.new") }}">{{ ui.lucide_icon(dict("name", "plus", "label", "新建分类")) }}</a>
+        <a href="{{ url_for("admin.categories.new") }}">{{ lucide_icon("plus") }}</a>
       </div>
       <div class="dashboard-number">{% if CategoryCount %}{{ CategoryCount }}{% else %}0{% endif %}</div>
     </div>
@@ -97,7 +99,7 @@
     <div class="card">
       <div class="dashboard-label salign">
         <span>标签总数</span>
-        <a href="{{ url_for("admin.tags.new") }}">{{ ui.lucide_icon(dict("name", "plus", "label", "新建标签")) }}</a>
+        <a href="{{ url_for("admin.tags.new") }}">{{ lucide_icon("plus") }}</a>
       </div>
       <div class="dashboard-number">{% if TagCount %}{{ TagCount }}{% else %}0{% endif %}</div>
     </div>
@@ -348,3 +350,4 @@
     </div>
   </div>
 </div>
+{% endblock %}

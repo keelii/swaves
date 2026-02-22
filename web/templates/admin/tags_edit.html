@@ -1,7 +1,10 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 <form id="form" method="post" action="{{ url_for("admin.tags.update", (dict("id", Tag.ID))) }}">
 
-  {{ ui.form_field_text(dict("Label", "名称", "Name", "name", "Value", Tag.Name, "Required", true, "Placeholder", "标签名称")) }}
-  {{ ui.form_field_text(dict("Label", "URL 标识", "Name", "slug", "Value", Tag.Slug, "Required", true, "Placeholder", "url标识")) }}
+  {{ ui.form_field_text("名称", "name", Tag.Name, required=true, placeholder="标签名称") }}
+  {{ ui.form_field_text("URL 标识", "slug", Tag.Slug, required=true, placeholder="url标识") }}
 
 </form>
+{% endblock %}

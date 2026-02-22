@@ -224,9 +224,7 @@ func (h Handler) ensureLikePostExists(postID int64) error {
 }
 
 func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
-	if layout == "" {
-		layout = "site/layout"
-	}
+	_ = layout
 	if data == nil {
 		data = fiber.Map{}
 	}
@@ -246,7 +244,7 @@ func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error
 	//	data[string(k)] = v
 	//})
 
-	return c.Render(view, data, layout)
+	return c.Render(view, data)
 }
 
 func (h Handler) GetDate(c fiber.Ctx) error {

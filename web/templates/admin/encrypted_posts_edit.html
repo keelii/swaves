@@ -1,4 +1,5 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
 <form id="form" method="post" action="{{ url_for("admin.encrypted_posts.update", (dict("id", Post.ID))) }}">
   {% set displayDate = "" %}{% if Post.ExpiresAt %}{% set displayDate = Post.ExpiresAt | formatTime %}{% endif %}
   <div class="row">
@@ -18,10 +19,11 @@
         <input class="w-100" type="password" name="password" placeholder="留空以保持当前密码">
       </label>
 
-      {{ ui.expires_at_field(dict("Label", "过期时间", "ReadOnly", true, "HasExpiry", Post.ExpiresAt, "DisplayDate", displayDate)) }}
+      {% with Label = "过期时间", ReadOnly = true, HasExpiry = Post.ExpiresAt, DisplayDate = displayDate %}{% include "/admin/include/expires_at_field" %}{% endwith %}
     </div>
   </div>
 
-  {{ ui.markdown_preview(dict("Placeholder", "加密文章内容（支持 Markdown）", "Value", Post.Content)) }}
+  {% with Placeholder = "加密文章内容（支持 Markdown）", Value = Post.Content %}{% include "/admin/include/markdown_preview" %}{% endwith %}
 
 </form>
+{% endblock %}

@@ -143,11 +143,7 @@ func parseExpiresAtFromOption(option, customValue string) string {
 }
 
 func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
-	if layout == "" {
-		layout = "admin/admin_layout"
-	} else if !strings.Contains(layout, "/") {
-		layout = "admin/" + layout
-	}
+	_ = layout
 
 	if !strings.Contains(view, "/") {
 		view = "admin/" + view
@@ -164,7 +160,7 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 
-	return c.Render(view, data, layout)
+	return c.Render(view, data)
 }
 
 // parseTagsFromCommaSeparated 解析 "标签1, 标签2" 为 tagIDs，不存在的标签会创建

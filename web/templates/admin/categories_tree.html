@@ -1,4 +1,6 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 {% macro macro_category_item(__ctx) %}
   <li class="category-item">
     <div class="flex items-center">
@@ -8,15 +10,15 @@
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.parent.update", (dict("id", __ctx.Category.ID))) }}" class="category-parent-form">
-            {{ ui.category_select(dict("Root", __ctx.Root, "SelectedID", __ctx.Category.ParentID, "EmptyOption", "顶级分类")) }}
+            {% with Root = __ctx.Root, SelectedID = __ctx.Category.ParentID, EmptyOption = "顶级分类" %}{% include "/admin/include/category_select" %}{% endwith %}
         </form>
         <div>
-          {{ ui.action_icon_link(dict("href", (url_for("admin.categories.edit", (dict("id", __ctx.Category.ID)))), "name", "square-pen", "label", "编辑")) }}
-          {{ ui.action_icon_link(dict("href", (url_for("admin.categories.new", (dict("parent_id", __ctx.Category.ID)))), "name", "plus", "label", "添加")) }}
+          {{ ui.action_icon_link(url_for("admin.categories.edit", (dict("id", __ctx.Category.ID))), "编辑", "square-pen") }}
+          {{ ui.action_icon_link(url_for("admin.categories.new", (dict("parent_id", __ctx.Category.ID))), "添加", "plus") }}
         </div>
         <form id="form" method="post" style="display:inline" action="{{ url_for("admin.categories.delete", (dict("id", __ctx.Category.ID))) }}">
           <button type="submit">
-              {{ ui.action_btn_content(dict("name", "trash-2", "size", "14", "label", "删除")) }}
+              {{ ui.action_btn_content("trash-2", "删除", 14) }}
           </button>
         </form>
       </div>
@@ -125,3 +127,4 @@ $(function() {
   });
 });
 </script>
+{% endblock %}

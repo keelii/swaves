@@ -1,4 +1,5 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
 <style>
   #import-edit-rows td input {
     margin-bottom: 0;
@@ -223,10 +224,10 @@
   </div>
 </form>
 
-<div id="import-edit-panel" class="import-edit-panel"{% if (not ((((importingItems|length)) > 0))) %} hidden{% endif %}>
+<div id="import-edit-panel" class="import-edit-panel"{% if not (importingItems|length) > 0 %} hidden{% endif %}>
   <div class="import-edit-actions">
-    <div id="import-edit-summary" class="w-100" role="alert" data-variant="{% if (((importingItems|length)) > 0) %}warning{% else %}success{% endif %}">
-      {% if (((importingItems|length)) > 0) %}待确认 {{ (importingItems|length) }} 条导入记录{% else %}暂无待确认导入记录{% endif %}
+    <div id="import-edit-summary" class="w-100" role="alert" data-variant="{% if (importingItems|length) > 0 %}warning{% else %}success{% endif %}">
+      {% if (importingItems|length) > 0 %}待确认 {{ (importingItems|length) }} 条导入记录{% else %}暂无待确认导入记录{% endif %}
     </div>
   </div>
   <div class="hstack">
@@ -248,7 +249,7 @@
     </thead>
     <tbody id="import-edit-rows">
     {% for importingItem in importingItems %}
-      {{ ui.import_edit_row(importingItem) }}
+      {% with Item = importingItem %}{% include "/admin/include/import_edit_row" %}{% endwith %}
     {% else %}
       <tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>
     {% endfor %}
@@ -257,7 +258,7 @@
 </div>
 
 <template id="import-edit-row-template">
-  {{ ui.import_edit_row((dict("PostID", 0, "Filename", "", "Title", "", "Slug", "", "Content", "", "ContentPreview", "-", "Status", "draft", "Kind", "0", "CreatedAt", "", "CreatedAtUnix", 0, "Tags", "", "Category", "", "Categories", ""))) }}
+  {% with Item = (dict("PostID", 0, "Filename", "", "Title", "", "Slug", "", "Content", "", "ContentPreview", "-", "Status", "draft", "Kind", "0", "CreatedAt", "", "CreatedAtUnix", 0, "Tags", "", "Category", "", "Categories", "")) %}{% include "/admin/include/import_edit_row" %}{% endwith %}
 </template>
 
 <dialog id="import-cancel-dialog">
@@ -1050,3 +1051,4 @@ $(function() {
   syncEditSummaryByRows('warning');
 });
 </script>
+{% endblock %}

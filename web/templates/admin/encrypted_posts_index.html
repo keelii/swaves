@@ -1,4 +1,6 @@
-{% import "/admin/includes/ui_macros" as ui %}
+{% extends "/admin/layout/layout" %}
+{% block content %}
+{% import "/admin/macro/ui" as ui %}
 <table>
   <thead>
   <tr>
@@ -21,18 +23,19 @@
     <td>{% if post.ExpiresAt %}{{ post.ExpiresAt | formatTime }}{% else %}永不过期{% endif %}</td>
     <td>{{ post.CreatedAt | relativeTime }}</td>
     <td>{{ post.UpdatedAt | relativeTime }}</td>
-    {{ ui.table_row_actions(dict("EditRoute", "admin.encrypted_posts.edit", "DeleteRoute", "admin.encrypted_posts.delete", "ID", post.ID)) }}
+    {{ ui.table_row_actions("admin.encrypted_posts.edit", "admin.encrypted_posts.delete", post.ID) }}
   </tr>
   {% else %}
-  {{ ui.table_empty(dict("ColSpan", 7, "Message", "暂无加密文章")) }}
+  {{ ui.table_empty(7, "暂无加密文章") }}
   {% endfor %}
   </tbody>
 
   <tfoot>
   <tr>
     <td colspan="7">
-      {{ ui.pagination(dict("Pager", Pager, "Req", Req)) }}
+      {% with Pager = Pager, Req = Req %}{% include "/admin/include/pagination" %}{% endwith %}
     </td>
   </tr>
   </tfoot>
 </table>
+{% endblock %}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,6 +55,61 @@ var (
 	errFiberViewNil         = errors.New("fiber view engine is nil")
 	reservedBindingKeyNames = []string{"Req", "Auth", "Site", internalRootContextKey}
 )
+
+type lucideIconGlobal struct{}
+
+func (g lucideIconGlobal) Call(_ value.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	name := ""
+	size := "16"
+	if len(args) > 0 {
+		name = strings.TrimSpace(miniValueAsString(args[0]))
+	}
+	if len(args) > 1 {
+		size = strings.TrimSpace(miniValueAsString(args[1]))
+	}
+	if rawName, ok := kwargs["name"]; ok && name == "" {
+		name = strings.TrimSpace(miniValueAsString(rawName))
+	}
+	if rawSize, ok := kwargs["size"]; ok && len(args) <= 1 {
+		size = strings.TrimSpace(miniValueAsString(rawSize))
+	}
+	if size == "" {
+		size = "16"
+	}
+	return value.FromSafeString(renderLucideIconSVG(name, size)), nil
+}
+
+func renderLucideIconSVG(name, size string) string {
+	template, ok := lucideSVGByName[name]
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf(template, HTML.EscapeString(size))
+}
+
+var lucideSVGByName = map[string]string{
+	"trash-2":         `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2" aria-hidden="true"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+	"chevron-left":    `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left-icon lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>`,
+	"chevron-right":   `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>`,
+	"chevron-up":      `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up-icon lucide-chevron-up"><path d="m18 15-6-6-6 6"/></svg>`,
+	"chevron-down":    `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down-icon lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`,
+	"x":               `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+	"import":          `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-import-icon lucide-import" aria-hidden="true"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>`,
+	"list":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-icon lucide-list" aria-hidden="true"><path d="M3 5h.01"/> <path d="M3 12h.01"/> <path d="M3 19h.01"/> <path d="M8 5h13"/> <path d="M8 12h13"/> <path d="M8 19h13"/></svg>`,
+	"list-tree":       `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-tree-icon lucide-list-tree" aria-hidden="true"><path d="M8 5h13"/> <path d="M13 12h8"/> <path d="M13 19h8"/> <path d="M3 10a2 2 0 0 0 2 2h3"/> <path d="M3 5v12a2 2 0 0 0 2 2h3"/></svg>`,
+	"arrow-big-left":  `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-big-left-icon lucide-arrow-big-left" aria-hidden="true"><path d="M13 9a1 1 0 0 1-1-1V5.061a1 1 0 0 0-1.811-.75l-6.835 6.836a1.207 1.207 0 0 0 0 1.707l6.835 6.835a1 1 0 0 0 1.811-.75V16a1 1 0 0 1 1-1h6a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1z"/></svg>`,
+	"arrow-left":      `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left" aria-hidden="true"><path d="m12 19-7-7 7-7"/> <path d="M19 12H5"/> </svg>`,
+	"square-plus":     `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-plus-icon lucide-square-plus"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
+	"plus":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus" aria-hidden="true"> <path d="M5 12h14"/> <path d="M12 5v14"/> </svg>`,
+	"save":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save-icon lucide-save" aria-hidden="true"> <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/> <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/> <path d="M7 3v4a1 1 0 0 0 1 1h7"/> </svg>`,
+	"terminal":        `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-terminal-icon lucide-terminal" aria-hidden="true"> <path d="M12 19h8"/> <path d="m4 17 6-6-6-6"/> </svg>`,
+	"undo":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-undo-icon lucide-undo" aria-hidden="true"> <path d="M3 7v6h6"/> <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/> </svg>`,
+	"square-pen":      `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen" aria-hidden="true"> <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/> <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/> </svg>`,
+	"heart":           `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart-icon lucide-heart"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></svg>`,
+	"book-open-check": `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-check-icon lucide-book-open-check"><path d="M12 21V7"/><path d="m16 12 2 2 4-4"/><path d="M22 6V4a1 1 0 0 0-1-1h-5a4 4 0 0 0-4 4 4 4 0 0 0-4-4H3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6a1 1 0 0 0 1-1v-1.3"/></svg>`,
+	"link-2":          `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg>`,
+	"link":            `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link-icon lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+}
 
 func NewViewEngine(dir string, reload bool) (
 	fiber.Views,
@@ -121,45 +175,13 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 	if err != nil {
 		return err
 	}
-
-	if len(layout) > 0 {
-		layoutName := strings.TrimSpace(layout[0])
-		if layoutName != "" {
-			return v.renderWithLayout(out, templateName, layoutName, miniBinding)
-		}
-	}
+	_ = layout
 
 	tmpl, err := v.env.GetTemplate(templateName)
 	if err != nil {
 		return fmt.Errorf("load template %q failed: %w", templateName, err)
 	}
 	return tmpl.RenderToWrite(miniBinding, out)
-}
-
-func (v *FiberView) renderWithLayout(out io.Writer, pageName string, layoutName string, binding map[string]value.Value) error {
-	pageTemplate, err := v.env.GetTemplate(pageName)
-	if err != nil {
-		return fmt.Errorf("load template %q failed: %w", pageName, err)
-	}
-
-	var pageBody bytes.Buffer
-	if err := pageTemplate.RenderToWrite(binding, &pageBody); err != nil {
-		return fmt.Errorf("render template %q failed: %w", pageName, err)
-	}
-
-	layoutTemplateName, err := normalizeTemplateName(layoutName)
-	if err != nil {
-		return err
-	}
-
-	layoutBinding := cloneValueMap(binding)
-	layoutBinding["embed"] = value.FromSafeString(pageBody.String())
-
-	layoutTemplate, err := v.env.GetTemplate(layoutTemplateName)
-	if err != nil {
-		return fmt.Errorf("load layout %q failed: %w", layoutTemplateName, err)
-	}
-	return layoutTemplate.RenderToWrite(layoutBinding, out)
 }
 
 func newMiniJinjaTemplateLoader(templateRoot string) minijinja.LoaderFunc {
@@ -259,14 +281,6 @@ func cloneAnyMap(source map[string]any) map[string]any {
 	return cloned
 }
 
-func cloneValueMap(source map[string]value.Value) map[string]value.Value {
-	cloned := make(map[string]value.Value, len(source))
-	for key, item := range source {
-		cloned[key] = item
-	}
-	return cloned
-}
-
 type templateMapLookup struct {
 	data any
 }
@@ -318,6 +332,8 @@ func buildMiniBinding(input map[string]any) map[string]value.Value {
 }
 
 func registerViewFunc(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) string) {
+	env.AddGlobal("lucide_icon", value.FromCallable(lucideIconGlobal{}))
+
 	registerTemplateFunction(env, consts.GlobalSettingKey, func(args []value.Value) (value.Value, error) {
 		if len(args) == 0 {
 			return value.FromString(""), nil
