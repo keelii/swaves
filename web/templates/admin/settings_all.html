@@ -1,7 +1,6 @@
 {% extends "admin/layout/layout.html" %}
 {% block page_actions %}
 <button type="submit" form="form" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
-<a class="button" href="{{ UrlFor('admin.settings.list') }}">{{ ui.action_btn_content("list", "返回列表") }}</a>
 {% endblock %}
 {% block content %}
 <style>
