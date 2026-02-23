@@ -125,24 +125,47 @@
         <div class="settings-item-label">
           <details>
             <summary>快速设置?</summary>
-            <ul class="setting-post-shortcuts unstyled">
+            <ul id="setting-shortcuts" class="setting-post-shortcuts unstyled">
               <li>
                 <span>/2006/01/02/hello-world</span>
-                <button class="outline">快速设置</button>
+                <button class="outline" data-options='{"setting_post_url_prefix": "{datetime}", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
               <li>
                 <span>/archives/hello-world</span>
-                <button class="outline">快速设置</button>
+                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
               <li>
                 <span>/archives/1</span>
-                <button class="outline">快速设置</button>
+                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ""}'>快速设置</button>
+              </li>
+              <li>
+                <span>/archives/1.html</span>
+                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ".html"}'>快速设置</button>
               </li>
               <li>
                 <span>/archives/hello-world.html</span>
-                <button class="outline">快速设置</button>
+                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ".html"}'>快速设置</button>
               </li>
             </ul>
+            <script>
+              $(function() {
+                $("#setting-shortcuts button").on("click", function(e) {
+                  var options = $(this).data('options');
+                  console.log(options)
+                  for (var o in options) {
+
+                    var input = $('[name="' + o + '"]');
+                    if (input.length) {
+                      input.val(options[o]);
+                    } else {
+                      console.warn('未找到设置项：' + o);
+                    }
+                  }
+                  console.log(options)
+                  return false
+                })
+              })
+            </script>
           </details>
         </div>
       {% endif %}

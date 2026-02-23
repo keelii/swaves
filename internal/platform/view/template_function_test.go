@@ -202,7 +202,7 @@ func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(
 		filepath.Join(tempDir, "page.html"),
-		[]byte(`{% if UrlIs("admin.posts.list", "admin.posts.edit") %}active{% else %}inactive{% endif %}|{% if UrlIs("admin.home") %}home{% else %}not-home{% endif %}`),
+		[]byte(`{% if UrlIs("admin.posts.edit") %}active{% else %}inactive{% endif %}|{% if UrlIs("admin.home") %}home{% else %}not-home{% endif %}`),
 		0o644,
 	); err != nil {
 		t.Fatalf("write page template failed: %v", err)
@@ -224,6 +224,36 @@ func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 	}
 	if got := out.String(); got != "active|not-home" {
 		t.Fatalf("unexpected render output: %q", got)
+	}
+}
+
+func TestUrlIsRejectsMultipleArguments(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(tempDir, "page.html"),
+		[]byte(`{% if UrlIs("admin.posts.list", "admin.posts.edit") %}active{% else %}inactive{% endif %}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		return name
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "page", map[string]any{
+		"RouteName": "admin.posts.edit",
+	})
+	if err == nil {
+		t.Fatal("expected render error when UrlIs receives multiple arguments")
+	}
+	if !strings.Contains(err.Error(), "UrlIs requires exactly one route name argument") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

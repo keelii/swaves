@@ -66,6 +66,7 @@ var lucideSVGByName = map[string]string{
 	"arrow-left":      `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left" aria-hidden="true"><path d="m12 19-7-7 7-7"/> <path d="M19 12H5"/> </svg>`,
 	"arrow-right":     `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right-icon lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
 	"archive":         `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-archive-icon lucide-archive" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>`,
+	"clipboard":       `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-icon lucide-clipboard" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`,
 	"square-plus":     `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-plus-icon lucide-square-plus"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
 	"plus":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus" aria-hidden="true"> <path d="M5 12h14"/> <path d="M12 5v14"/> </svg>`,
 	"save":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save-icon lucide-save" aria-hidden="true"> <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/> <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/> <path d="M7 3v4a1 1 0 0 0 1 1h7"/> </svg>`,
@@ -641,19 +642,14 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if len(kwargs) > 0 {
 			return value.Undefined(), errors.New("UrlIs does not support keyword arguments")
 		}
-		if len(args) == 0 {
-			return value.FromBool(false), nil
+		if len(args) != 1 {
+			return value.Undefined(), errors.New("UrlIs requires exactly one route name argument")
 		}
 		current := strings.TrimSpace(toStringValue(st.Lookup("RouteName").Raw()))
 		if current == "" {
 			return value.FromBool(false), nil
 		}
-		for _, candidate := range args {
-			if current == strings.TrimSpace(toStringValue(candidate.Raw())) {
-				return value.FromBool(true), nil
-			}
-		}
-		return value.FromBool(false), nil
+		return value.FromBool(current == strings.TrimSpace(toStringValue(args[0].Raw()))), nil
 	})
 	env.AddFunction("GetBasePath", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {

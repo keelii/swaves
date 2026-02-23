@@ -25,7 +25,7 @@
       <li class="submenu-item{% if UrlIs("admin.categories.tree") %} active{% endif %}">
         <a href="{{ UrlFor('admin.categories.tree') }}">树形分类</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.categories.list", "admin.tags.list") %} active{% endif %}">
+      <li class="submenu-item{% if UrlIs("admin.categories.list") or UrlIs("admin.tags.list") %} active{% endif %}">
         <a href="{{ UrlFor('admin.categories.list') }}">分类/标签</a>
       </li>
     </ul>
@@ -67,11 +67,11 @@
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.settings.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.settings.list') }}">设置列表</a>
-      </li>
       <li class="submenu-item{% if UrlIs("admin.settings.all") %} active{% endif %}">
         <a href="{{ UrlFor('admin.settings.all') }}">站点设置</a>
+      </li>
+      <li class="submenu-item{% if UrlIs("admin.settings.list") %} active{% endif %}">
+        <a href="{{ UrlFor('admin.settings.list') }}">设置列表</a>
       </li>
     </ul>
   </li>
