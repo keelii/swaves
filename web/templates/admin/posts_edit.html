@@ -1,46 +1,4 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
-
-<form id="form" method="post" action="{{ UrlFor('admin.posts.update', id=Post.ID) }}">
-  <div class="row">
-    <div class="col-6">
-      <label data-field>
-        文章标题
-        <input class="w-100" type="text" name="title" value="{{ Post.Title }}" required placeholder="文章标题">
-      </label>
-
-      <label data-field>
-        文章 URL 标识
-        <span class="hstack">
-          <input type="text" value="{{ Post.Slug }}" disabled style="flex: 1;">
-          {% if (Post.Status == "published") and (Post.PublishedAt > 0) %}
-            <a class="valign" href="{{ GetPostUrl(Post) }}" target="_blank" rel="noopener" title="查看文章">
-              {{ LucideIcon("link-2", 24) }}
-            </a>
-          {% endif %}
-        </span>
-      </label>
-
-      <fieldset class="hstack">
-        <legend>类型</legend>
-        {{ ui.form_field_radio("kind", ([{"Value": "0", "Label": "文章"}, {"Value": "1", "Label": "页面"}]), selected=(Printf("%d", Post.Kind))) }}
-      </fieldset>
-
-      {{ ui.form_field_checkbox("开启评论", "comment_enabled", checked=(Post.CommentEnabled == 1), value=1) }}
-
-      <label data-field>
-        标签
-        {% with SelectedTagNames = SelectedTagNames %}{% include "admin/include/tag_select.html" %}{% endwith %}
-      </label>
-
-      <label data-field>
-        分类
-        {% with Root = {"CategoryOptions": CategoryOptions}, SelectedID = Category.ID %}{% include "admin/include/category_select.html" %}{% endwith %}
-      </label>
-    </div>
-  </div>
-
-  {% with Value = Post.Content %}{% include "admin/include/markdown_preview.html" %}{% endwith %}
-
-</form>
+{% with Action = UrlFor('admin.posts.update', id=Post.ID), IsEdit = true %}{% include "admin/include/forms/posts_form.html" %}{% endwith %}
 {% endblock %}

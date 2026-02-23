@@ -653,7 +653,70 @@ $(function() {
     Object.keys(options).forEach(function(key) {
       formData.append(key, options[key]);
     });
+    appendCSRFToFormData(formData);
     return formData;
+  }
+
+  function readCSRFMeta(name) {
+    if (typeof getCSRFMetaValue === 'function') {
+      return String(getCSRFMetaValue(name) || '').trim();
+    }
+    var meta = document.querySelector('meta[name="' + name + '"]');
+    if (!meta) {
+      return '';
+    }
+    return String(meta.getAttribute('content') || '').trim();
+  }
+
+  function readCSRFToken() {
+    return readCSRFMeta('csrf-token');
+  }
+
+  function readCSRFFieldName() {
+    var fieldName = readCSRFMeta('csrf-field-name');
+    if (fieldName) {
+      return fieldName;
+    }
+    return '_csrf_token';
+  }
+
+  function withCSRFHeaders(headers) {
+    var merged = headers ? Object.assign({}, headers) : {};
+    var token = readCSRFToken();
+    if (token && !merged['X-CSRF-Token']) {
+      merged['X-CSRF-Token'] = token;
+    }
+    return merged;
+  }
+
+  function appendCSRFToFormData(formData) {
+    if (!formData || typeof formData.append !== 'function') {
+      return;
+    }
+    var token = readCSRFToken();
+    if (!token) {
+      return;
+    }
+    var fieldName = readCSRFFieldName();
+    if (typeof formData.set === 'function') {
+      formData.set(fieldName, token);
+      return;
+    }
+    if (typeof formData.has === 'function' && formData.has(fieldName)) {
+      return;
+    }
+    formData.append(fieldName, token);
+  }
+
+  function appendCSRFToParams(params) {
+    if (!params || typeof params.set !== 'function') {
+      return;
+    }
+    var token = readCSRFToken();
+    if (!token) {
+      return;
+    }
+    params.set(readCSRFFieldName(), token);
   }
 
   function readField($row, fieldName) {
@@ -693,6 +756,7 @@ $(function() {
     params.set('tags', readField($row, 'tags'));
     params.set('category', category);
     params.set('categories', categories);
+    appendCSRFToParams(params);
 
     return params;
   }
@@ -803,11 +867,15 @@ $(function() {
     $cancelConfirmBtn.prop('disabled', true);
 
     try {
+      var cancelPayload = new URLSearchParams();
+      appendCSRFToParams(cancelPayload);
       var response = await fetch(cancelItemURL, {
         method: 'POST',
-        headers: {
+        headers: withCSRFHeaders({
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
           'X-Requested-With': 'XMLHttpRequest'
-        }
+        }),
+        body: cancelPayload.toString()
       });
 
       var result = null;
@@ -892,10 +960,10 @@ $(function() {
       try {
         var response = await fetch(confirmItemURL, {
           method: 'POST',
-          headers: {
+          headers: withCSRFHeaders({
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             'X-Requested-With': 'XMLHttpRequest'
-          },
+          }),
           body: payload.toString()
         });
 
@@ -980,9 +1048,9 @@ $(function() {
         var response = await fetch(parseItemURL, {
           method: 'POST',
           body: formData,
-          headers: {
+          headers: withCSRFHeaders({
             'X-Requested-With': 'XMLHttpRequest'
-          }
+          })
         });
 
         var result = null;

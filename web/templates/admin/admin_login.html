@@ -97,6 +97,7 @@
     {% with Error = Error %}{% include "admin/include/error_message.html" %}{% endwith %}
 
     <form id="form" method="POST" action="{{ UrlFor('admin.login.submit') }}">
+      <input type="hidden" name="{{ CsrfFieldName }}" value="{{ CsrfToken }}">
       {% if ReturnUrl %}<input type="hidden" name="returnUrl" value="{{ ReturnUrl }}">{% endif %}
       <div class="form-group">
         <div class="password-wrapper">

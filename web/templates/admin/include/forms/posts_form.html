@@ -1,0 +1,92 @@
+{% set is_edit = IsEdit|default(false) %}
+{% set title_value = "" %}
+{% set slug_value = "" %}
+{% set kind_value = "0" %}
+{% set selected_category_id = 0 %}
+{% set comment_enabled = true %}
+{% set content_value = "" %}
+{% set selected_tag_names = SelectedTagNames|default("") %}
+{% set markdown_required = true %}
+{% set show_public_link = false %}
+
+{% if is_edit and Post %}
+  {% set title_value = Post.Title %}
+  {% set slug_value = Post.Slug %}
+  {% set kind_value = Printf("%d", Post.Kind) %}
+  {% set selected_category_id = Category.ID|default(0) %}
+  {% set comment_enabled = Post.CommentEnabled == 1 %}
+  {% set content_value = Post.Content %}
+  {% set markdown_required = false %}
+  {% if (Post.Status == "published") and (Post.PublishedAt > 0) %}
+    {% set show_public_link = true %}
+  {% endif %}
+{% else %}
+  {% set title_value = DraftTitle|default("") %}
+  {% set slug_value = DraftSlug|default("") %}
+  {% set kind_value = DraftKind|default("0") %}
+  {% set selected_category_id = DraftCategoryID|default(0) %}
+  {% set comment_enabled = DraftCommentEnabled|default(true) %}
+  {% set content_value = DraftContent|default("") %}
+{% endif %}
+
+{% set post_kind_options = [{"Value": "0", "Label": "文章"}, {"Value": "1", "Label": "页面"}] %}
+
+<form id="form" method="post" action="{{ Action }}">
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        文章标题
+        <input class="w-100" type="text" name="title" id="title" required placeholder="文章标题" value="{{ title_value }}">
+      </label>
+
+      {% if is_edit %}
+      <label data-field>
+        文章 URL 标识
+        <span class="hstack">
+          <input type="text" value="{{ slug_value }}" disabled style="flex: 1;">
+          {% if show_public_link %}
+            <a class="valign" href="{{ GetPostUrl(Post) }}" target="_blank" rel="noopener" title="查看文章">
+              {{ LucideIcon("link-2", 24) }}
+            </a>
+          {% endif %}
+        </span>
+      </label>
+      {% else %}
+      <label data-field>
+        文章 URL 标识
+        <span class="hstack">
+          <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ slug_value }}" style="flex: 1;">
+          <button class="outline" onclick="autoSetSlug()" type="button">自动生成</button>
+        </span>
+        <script>
+          var slugAPIURL = {{ UrlFor('api.slug') | tojson }};
+          function autoSetSlug() {
+            fetch(slugAPIURL + '?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
+              if (json && json.data) $('#slug').val(json.data);
+            });
+          }
+        </script>
+      </label>
+      {% endif %}
+
+      <fieldset class="hstack">
+        <legend>类型</legend>
+        {{ ui.form_field_radio("kind", post_kind_options, selected=kind_value) }}
+      </fieldset>
+
+      {{ ui.form_field_checkbox("开启评论", "comment_enabled", checked=comment_enabled, value=1) }}
+
+      <label data-field>
+        标签
+        {% with SelectedTagNames = selected_tag_names %}{% include "admin/include/tag_select.html" %}{% endwith %}
+      </label>
+
+      <label data-field>
+        分类
+        {% with Root = {"CategoryOptions": CategoryOptions}, SelectedID = selected_category_id %}{% include "admin/include/category_select.html" %}{% endwith %}
+      </label>
+    </div>
+  </div>
+
+  {% with Value = content_value, Required = markdown_required %}{% include "admin/include/markdown_preview.html" %}{% endwith %}
+</form>

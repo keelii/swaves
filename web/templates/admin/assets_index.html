@@ -342,6 +342,23 @@ $(function() {
     });
   }
 
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (!meta) {
+      return '';
+    }
+    return String(meta.getAttribute('content') || '').trim();
+  }
+
+  function withCSRFHeader(headers) {
+    var merged = headers ? Object.assign({}, headers) : {};
+    var token = csrfToken();
+    if (token && !merged['X-CSRF-Token']) {
+      merged['X-CSRF-Token'] = token;
+    }
+    return merged;
+  }
+
   function summarizeBatchDeleteResult(ret) {
     var body = ret && ret.body ? ret.body : {};
     var deletedIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
@@ -439,6 +456,7 @@ $(function() {
 
     return fetch(assetAPIBase, {
       method: 'POST',
+      headers: withCSRFHeader(),
       body: fd
     })
       .then(function(r) {
@@ -686,7 +704,8 @@ $(function() {
       }
 
       fetch(assetAPIBase + '/' + id, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: withCSRFHeader()
       })
         .then(parseJSONResponse)
         .then(function(ret) {
@@ -727,10 +746,10 @@ $(function() {
 
       fetch(assetBatchDeleteAPI, {
         method: 'POST',
-        headers: {
+        headers: withCSRFHeader({
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
+        }),
         body: JSON.stringify({ ids: ids })
       })
         .then(parseJSONResponse)

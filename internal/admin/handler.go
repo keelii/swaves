@@ -159,6 +159,8 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 	data["RouteName"] = routeName
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
+	data["CsrfToken"] = fiber.Locals[string](c, "CsrfToken")
+	data["CsrfFieldName"] = middleware.AdminCSRFFormField
 
 	return c.Render(view, data)
 }

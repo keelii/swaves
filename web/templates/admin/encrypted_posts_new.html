@@ -1,23 +1,4 @@
 {% extends "admin/layout/layout.html" %}
 {% block content %}
-<form id="form" method="post" action="{{ UrlFor('admin.encrypted_posts.create') }}">
-  <div class="row">
-    <div class="col-6">
-      <label data-field>
-        文章标题
-        <input class="w-100" type="text" name="title" required placeholder="加密文章标题">
-      </label>
-
-      <label data-field>
-        访问密码（仅用于他人访问）
-        <input class="w-100" type="password" name="password" placeholder="可选密码（仅用于他人访问）">
-      </label>
-
-      {% with Label = "过期时间", CustomDate = "", HasExpiry = false %}{% include "admin/include/expires_at_field.html" %}{% endwith %}
-    </div>
-  </div>
-
-  {% with Placeholder = "加密文章内容（支持 Markdown）", Value = "", Required = true, ShowAssetPicker = false %}{% include "admin/include/markdown_preview.html" %}{% endwith %}
-
-</form>
+{% with Action = UrlFor('admin.encrypted_posts.create') %}{% include "admin/include/forms/encrypted_posts_form.html" %}{% endwith %}
 {% endblock %}

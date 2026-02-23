@@ -22,6 +22,7 @@ func RegisterRoutes(
 	)
 
 	adminGroup := app.Group(share.GetAdminUrl())
+	adminGroup.Use(middleware.AdminCSRF(gStore.Session))
 	adminGroup.Use(middleware.RequireAdmin(gStore.Session, share.BuildAdminPath("/login")))
 
 	adminGroup.Get("/monitor", handler.GetMonitorHandler).Name("admin.monitor")
