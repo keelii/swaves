@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"swaves/internal/app"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/logger"
 	"swaves/internal/shared/types"
 	"time"
@@ -32,7 +33,7 @@ func worker() {
 		SqliteFile:   "data.sqlite",
 		ListenAddr:   ":3000",
 		AppName:      "swaves",
-		EnableSQLLog: true,
+		EnableSQLLog: consts.EnableSQLLog,
 	})
 	swv.Listen(fiber.ListenConfig{
 		DisableStartupMessage: true,
@@ -74,7 +75,7 @@ func main() {
 		BackupDir:    "backups",
 		ListenAddr:   ":3000",
 		AppName:      "swaves",
-		EnableSQLLog: false,
+		EnableSQLLog: consts.EnableSQLLog,
 	})
 	swv.Listen(fiber.ListenConfig{
 		DisableStartupMessage: true,

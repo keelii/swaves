@@ -198,6 +198,35 @@ func TestRenderInjectsCSRFTokenInputGlobal(t *testing.T) {
 	}
 }
 
+func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(tempDir, "page.html"),
+		[]byte(`{% if UrlIs("admin.posts.list", "admin.posts.edit") %}active{% else %}inactive{% endif %}|{% if UrlIs("admin.home") %}home{% else %}not-home{% endif %}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		return name
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "page", map[string]any{
+		"RouteName": "admin.posts.edit",
+	}); err != nil {
+		t.Fatalf("render page failed: %v", err)
+	}
+	if got := out.String(); got != "active|not-home" {
+		t.Fatalf("unexpected render output: %q", got)
+	}
+}
+
 func TestURLForSupportsKeywordArguments(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('admin.posts.edit', id=PostID, tab='comments') }}`), 0o644); err != nil {

@@ -26,6 +26,7 @@ var (
 	AppEnv = readAppEnv("SWAVES_ENV")
 
 	TemplateReload        = EnvIsNot(envProd)
+	EnableSQLLog          = EnvIs(envDev)
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
 )

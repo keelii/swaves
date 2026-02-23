@@ -5,11 +5,10 @@
 {% set q = (SearchQueryEscaped or "") %}
 {% set tag = (FilterTagIDStr or "") %}
 {% set cat = (FilterCategoryIDStr or "") %}
-<div class="flex justify-between gap-4 mb-4" style="align-items: center; flex-wrap: wrap;">
-  <nav role="tablist" aria-label="内容类型">
-    <a role="tab" aria-selected="{% if kind == 0 %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.posts.list') }}?kind=0{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">文章 ({{ CountPost }})</a>
-    <a role="tab" aria-selected="{% if kind == 1 %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.posts.list') }}?kind=1{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}">页面 ({{ CountPage }})</a>
-  </nav>
+
+<div class="flex justify-between gap-4 mb-4">
+  {% include "admin/include/post_tab.html" %}
+
   <div class="tab-nav-right">
     {% if FilterTagName or FilterCategoryName %}
       <div class="inline-flex items-center gap-4">
@@ -28,11 +27,11 @@
   <tr>
     <th class="cell-4">ID</th>
     <th>标题</th>
-    <th>URL标识</th>
-    <th class="cell-9">标签</th>
-    <th class="cell-8">分类</th>
+{#    <th>URL标识</th>#}
+    <th>标签</th>
+    <th>分类</th>
     <th class="cell-6">状态</th>
-    <th class="cell-4">UV</th>
+    <th>UV</th>
     <th class="cell-6">创建时间</th>
     <th class="cell-6">更新时间</th>
     <th class="cell-6">操作</th>
@@ -44,15 +43,22 @@
   <tr>
     <td class="cell-4">{{ postWithRelation.Post.ID }}</td>
     <td>
-      {% if SearchQuery %}{{ Highlight(postWithRelation.Post.Title, SearchQuery) }}{% else %}{{ postWithRelation.Post.Title }}{% endif %}
+      {% set postTitle = postWithRelation.Post.Title %}
+      {% set highlightPostTitle = Highlight(postTitle, SearchQuery) if SearchQuery else postTitle %}
+
+      {% if postWithRelation.Post.Status == "published" %}
+        <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{{ highlightPostTitle }}</a>
+      {% else %}
+        {{ highlightPostTitle }}
+      {% endif %}
     </td>
-    <td>
-        {% if postWithRelation.Post.Status == "published" %}
-          <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{% if SearchQuery %}{{ Highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}</a>
-        {% else %}
-          {% if SearchQuery %}{{ Highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}
-        {% endif %}
-    </td>
+{#    <td>#}
+{#      {% if postWithRelation.Post.Status == "published" %}#}
+{#        <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{% if SearchQuery %}{{ Highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}</a>#}
+{#      {% else %}#}
+{#        {% if SearchQuery %}{{ Highlight(postWithRelation.Post.Slug, SearchQuery) }}{% else %}{{ postWithRelation.Post.Slug }}{% endif %}#}
+{#      {% endif %}#}
+{#    </td>#}
     <td>
       {% if postWithRelation.Tags %}
         {% for tag in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ UrlFor('admin.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>{% endfor %}

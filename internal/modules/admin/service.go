@@ -2239,3 +2239,11 @@ func ImportPreviewService(dbx *db.DB, items []PreviewPostItem) error {
 	}
 	return nil
 }
+
+func CountPost(dbx *db.DB) (int, int, int) {
+	countPost, _ := db.CountPostsByKind(dbx, db.PostKindPost)
+	countPage, _ := db.CountPostsByKind(dbx, db.PostKindPage)
+	countEncryptedPost, _ := db.CountEncryptedPostsByKind(dbx)
+
+	return countPost, countPage, countEncryptedPost
+}

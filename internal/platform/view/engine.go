@@ -637,18 +637,18 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		}
 		return value.FromString(share.GetAuthorGravatarUrl(size)), nil
 	})
-	env.AddFunction("UrlIs", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	env.AddFunction("UrlIs", func(st *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {
 			return value.Undefined(), errors.New("UrlIs does not support keyword arguments")
 		}
-		if len(args) < 2 {
+		if len(args) == 0 {
 			return value.FromBool(false), nil
 		}
-		current := strings.TrimSpace(toStringValue(args[0].Raw()))
+		current := strings.TrimSpace(toStringValue(st.Lookup("RouteName").Raw()))
 		if current == "" {
 			return value.FromBool(false), nil
 		}
-		for _, candidate := range args[1:] {
+		for _, candidate := range args {
 			if current == strings.TrimSpace(toStringValue(candidate.Raw())) {
 				return value.FromBool(true), nil
 			}

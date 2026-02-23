@@ -467,8 +467,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	var kindPtr *db.PostKind
 	kindPtr = &kind
 
-	countPost, _ := db.CountPostsByKind(h.Model, db.PostKindPost)
-	countPage, _ := db.CountPostsByKind(h.Model, db.PostKindPage)
+	countPost, countPage, countEncryptedPost := CountPost(h.Model)
 
 	searchQuery := c.Query("q")
 	var tagID, categoryID *int64
@@ -569,6 +568,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 		"KindQuery":               kindQuery,
 		"CountPost":               countPost,
 		"CountPage":               countPage,
+		"CountEncryptedPost":      countEncryptedPost,
 		"SearchQuery":             searchQuery,
 		"SearchQueryEscaped":      searchQueryEscaped,
 		"FilterTagIDStr":          filterTagIDStr,
@@ -1132,10 +1132,15 @@ func (h *Handler) GetEncryptedPostListHandler(c fiber.Ctx) error {
 		return err
 	}
 
+	countPost, countPage, countEncryptedPost := CountPost(h.Model)
+
 	return RenderAdminView(c, "encrypted_posts_index", fiber.Map{
-		"Title": "Encrypted Posts",
-		"Posts": posts,
-		"Pager": pager,
+		"Title":              "Encrypted Posts",
+		"Posts":              posts,
+		"Pager":              pager,
+		"CountPost":          countPost,
+		"CountPage":          countPage,
+		"CountEncryptedPost": countEncryptedPost,
 	}, "")
 }
 

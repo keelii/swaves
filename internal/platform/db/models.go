@@ -1836,6 +1836,9 @@ func PublishPost(db *DB, id int64) error {
 func CountPostsByKind(db *DB, kind PostKind) (int, error) {
 	return Count(db, specPosts, "kind = ?", []interface{}{kind})
 }
+func CountEncryptedPostsByKind(db *DB) (int, error) {
+	return Count(db, specEncryptedPosts, "", []interface{}{})
+}
 
 // CountCategories 统计分类数（未删除）
 func CountCategories(db *DB) (int, error) {
