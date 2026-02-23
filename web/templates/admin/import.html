@@ -1,4 +1,8 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="#" onclick="document.querySelector('form').requestSubmit(); return false;">{{ ui.action_btn_content("plus", "导入") }}</a>
+<a class="button" href="{{ UrlFor('admin.posts.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
+{% endblock %}
 {% block content %}
 <style>
   #import-edit-rows td input {

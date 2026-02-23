@@ -1,4 +1,8 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.categories.new') }}">{{ ui.action_btn_content("plus", "新建分类") }}</a>
+<a class="button" href="{{ UrlFor('admin.categories.list') }}">{{ ui.action_btn_content("list", "分类列表") }}</a>
+{% endblock %}
 {% block content %}
 
 {% macro macro_category_item(category, children, root) %}

@@ -1,4 +1,8 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<button type="submit" form="form" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
+<a class="button" href="{{ UrlFor('admin.settings.list') }}">{{ ui.action_btn_content("list", "返回列表") }}</a>
+{% endblock %}
 {% block content %}
 <style>
   [role="alert"] {
@@ -127,23 +131,23 @@
             <summary>快速设置?</summary>
             <ul id="setting-shortcuts" class="setting-post-shortcuts unstyled">
               <li>
-                <span>/2006/01/02/hello-world</span>
+                <span><span class="settings-prefix-text"></span>/2006/01/02/hello-world</span>
                 <button class="outline" data-options='{"setting_post_url_prefix": "{datetime}", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
               <li>
-                <span>/archives/hello-world</span>
+                <span><span class="settings-prefix-text"></span>/archives/hello-world</span>
                 <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
               <li>
-                <span>/archives/1</span>
+                <span><span class="settings-prefix-text"></span>/archives/1</span>
                 <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
               <li>
-                <span>/archives/1.html</span>
+                <span><span class="settings-prefix-text"></span>/archives/1.html</span>
                 <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ".html"}'>快速设置</button>
               </li>
               <li>
-                <span>/archives/hello-world.html</span>
+                <span><span class="settings-prefix-text"></span>/archives/hello-world.html</span>
                 <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ".html"}'>快速设置</button>
               </li>
             </ul>
@@ -305,6 +309,9 @@ $(function() {
     var $baseInput = $('[data-setting-code="base_path"]').find('input,textarea,select').first();
     var basePrefix = normalizePrefixLiteral($baseInput.val());
 
+    if (basePrefix !== '/') {
+      $('.settings-prefix-text').text("/" + basePrefix);
+    }
     $('.settings-prefix-field').each(function() {
       var $group = $(this);
       var sourceCode = String($group.attr('data-prefix-source-code') || '').trim();

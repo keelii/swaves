@@ -1,4 +1,8 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.settings.new') }}">{{ ui.action_btn_content("plus", "新建设置") }}</a>
+<a class="button" href="{{ UrlFor('admin.settings.all') }}">{{ ui.action_btn_content("square-pen", "编辑全部") }}</a>
+{% endblock %}
 {% block content %}
 
 <table>

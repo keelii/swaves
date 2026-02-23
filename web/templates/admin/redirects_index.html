@@ -1,4 +1,7 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.redirects.new') }}">{{ ui.action_btn_content("plus", "新建重定向") }}</a>
+{% endblock %}
 {% block content %}
 
 <table>

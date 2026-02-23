@@ -1,4 +1,8 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.categories.new') }}">{{ ui.action_btn_content("plus", "新建分类") }}</a>
+<a class="button" href="{{ UrlFor('admin.categories.tree') }}">{{ ui.action_btn_content("list-tree", "分类树") }}</a>
+{% endblock %}
 {% block content %}
 
 <ot-tabs>

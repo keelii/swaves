@@ -1,4 +1,7 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.tasks.new') }}">{{ ui.action_btn_content("plus", "新建任务") }}</a>
+{% endblock %}
 {% block content %}
 
 <table>

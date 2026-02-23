@@ -60,9 +60,7 @@
       {{ Settings("site_name") }} 管理后台
     </div>
     <div class="nav-actions flex justify-between grow">
-      {% block page_actions %}
-        {% with Post = (Post|default(none)) %}{% include "admin/include/actions.html" %}{% endwith %}
-      {% endblock %}
+      {% block page_actions %}{% endblock %}
       <div class="nav-user">
           {% if IsLogin %}
             <span>欢迎，{{ Settings("author") }}</span> <a href="{{ UrlFor('admin.logout') }}">退出</a>

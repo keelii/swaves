@@ -1,4 +1,7 @@
 {% extends "admin/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.encrypted_posts.new') }}">{{ ui.action_btn_content("plus", "新建加密文章") }}</a>
+{% endblock %}
 {% block content %}
 
 <div class="flex gap-4">
