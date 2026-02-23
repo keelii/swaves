@@ -6,13 +6,13 @@
 {% endmacro %}
 
 {% macro action_icon_button(label, icon_name, type="button", danger=false, icon_size=16) %}
-<button type="{{ type }}" class="row-action-btn{% if danger %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" title="{{ label }}">
+<button type="{{ type }}" class="row-action-btn{% if danger %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" data-title="{{ label }}">
   {{ LucideIcon(icon_name, icon_size) }}
 </button>
 {% endmacro %}
 
 {% macro action_icon_link(href, label, icon_name, danger=false, icon_size=16) %}
-<a href="{{ href }}" class="row-action-btn{% if danger %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" title="{{ label }}">
+<a href="{{ href }}" class="row-action-btn{% if danger %} row-action-btn-danger{% endif %}" aria-label="{{ label }}" data-title="{{ label }}">
   {{ LucideIcon(icon_name, icon_size) }}
 </a>
 {% endmacro %}
@@ -94,6 +94,7 @@
   <div class="row-actions">
     {{ action_icon_link(UrlFor(edit_route, id=id), "编辑", "square-pen") }}
     <form id="form" method="post" action="{{ UrlFor(delete_route, id=id) }}">
+      {{ _csrf_token() }}
       {{ action_icon_button("删除", "trash-2", type="submit", danger=true) }}
     </form>
   </div>

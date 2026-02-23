@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"swaves/helper"
 	"swaves/internal/db"
 	"testing"
@@ -161,6 +162,39 @@ func TestMapLookupHandlesMissingAndNumericKeys(t *testing.T) {
 	}
 	if got := out.String(); got != "5|0" {
 		t.Fatalf("unexpected render output: %q", got)
+	}
+}
+
+func TestRenderInjectsCSRFTokenInputGlobal(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`<form method="post">{{ _csrf_token() }}</form>`), 0o644); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		return name
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "page", map[string]any{
+		"_csrf_token_value": `token<&>"'`,
+	}); err != nil {
+		t.Fatalf("render page failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, `<input type="hidden" name="_csrf_token"`) {
+		t.Fatalf("expected csrf input in rendered output: %q", got)
+	}
+	if !strings.Contains(got, `value="token&lt;&amp;&gt;&#34;&#39;"`) {
+		t.Fatalf("expected escaped csrf token value in rendered output: %q", got)
+	}
+	if strings.Contains(got, "&lt;input") {
+		t.Fatalf("expected csrf input to be rendered as safe html: %q", got)
 	}
 }
 

@@ -60,23 +60,27 @@
         <div class="row-actions">
           {% if comment.Status != "approved" %}
             <form method="post" action="{{ UrlFor('admin.comments.approve', id=comment.ID) }}">
+              {{ _csrf_token() }}
               <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">通过</button>
             </form>
           {% endif %}
           {% if comment.Status != "pending" %}
             <form method="post" action="{{ UrlFor('admin.comments.pending', id=comment.ID) }}">
+              {{ _csrf_token() }}
               <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">待审</button>
             </form>
           {% endif %}
           {% if comment.Status != "spam" %}
             <form method="post" action="{{ UrlFor('admin.comments.spam', id=comment.ID) }}">
+              {{ _csrf_token() }}
               <input type="hidden" name="status_filter" value="{{ status }}">
               <button type="submit" class="button">垃圾</button>
             </form>
           {% endif %}
           <form method="post" action="{{ UrlFor('admin.comments.delete', id=comment.ID) }}">
+            {{ _csrf_token() }}
             <input type="hidden" name="status_filter" value="{{ status }}">
             {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
           </form>

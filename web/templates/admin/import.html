@@ -105,6 +105,7 @@
 {% endif %}
 
 <form id="form" method="post" action="{{ UrlFor('admin.import.submit') }}" enctype="multipart/form-data">
+  {{ _csrf_token() }}
   <section class="import-upload">
     <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
     <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖拽 Markdown 文件">
@@ -653,70 +654,7 @@ $(function() {
     Object.keys(options).forEach(function(key) {
       formData.append(key, options[key]);
     });
-    appendCSRFToFormData(formData);
     return formData;
-  }
-
-  function readCSRFMeta(name) {
-    if (typeof getCSRFMetaValue === 'function') {
-      return String(getCSRFMetaValue(name) || '').trim();
-    }
-    var meta = document.querySelector('meta[name="' + name + '"]');
-    if (!meta) {
-      return '';
-    }
-    return String(meta.getAttribute('content') || '').trim();
-  }
-
-  function readCSRFToken() {
-    return readCSRFMeta('csrf-token');
-  }
-
-  function readCSRFFieldName() {
-    var fieldName = readCSRFMeta('csrf-field-name');
-    if (fieldName) {
-      return fieldName;
-    }
-    return '_csrf_token';
-  }
-
-  function withCSRFHeaders(headers) {
-    var merged = headers ? Object.assign({}, headers) : {};
-    var token = readCSRFToken();
-    if (token && !merged['X-CSRF-Token']) {
-      merged['X-CSRF-Token'] = token;
-    }
-    return merged;
-  }
-
-  function appendCSRFToFormData(formData) {
-    if (!formData || typeof formData.append !== 'function') {
-      return;
-    }
-    var token = readCSRFToken();
-    if (!token) {
-      return;
-    }
-    var fieldName = readCSRFFieldName();
-    if (typeof formData.set === 'function') {
-      formData.set(fieldName, token);
-      return;
-    }
-    if (typeof formData.has === 'function' && formData.has(fieldName)) {
-      return;
-    }
-    formData.append(fieldName, token);
-  }
-
-  function appendCSRFToParams(params) {
-    if (!params || typeof params.set !== 'function') {
-      return;
-    }
-    var token = readCSRFToken();
-    if (!token) {
-      return;
-    }
-    params.set(readCSRFFieldName(), token);
   }
 
   function readField($row, fieldName) {
@@ -756,7 +694,6 @@ $(function() {
     params.set('tags', readField($row, 'tags'));
     params.set('category', category);
     params.set('categories', categories);
-    appendCSRFToParams(params);
 
     return params;
   }
@@ -868,25 +805,17 @@ $(function() {
 
     try {
       var cancelPayload = new URLSearchParams();
-      appendCSRFToParams(cancelPayload);
-      var response = await fetch(cancelItemURL, {
+      var ret = await sfetchJSON(cancelItemURL, {
         method: 'POST',
-        headers: withCSRFHeaders({
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'X-Requested-With': 'XMLHttpRequest'
-        }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
         body: cancelPayload.toString()
       });
+      var result = ret.body;
 
-      var result = null;
-      try {
-        result = await response.json();
-      } catch (jsonErr) {
-        result = null;
-      }
-
-      if (!response.ok || !result || !result.ok) {
-        var errorMessage = (result && result.error) ? result.error : ('HTTP ' + response.status);
+      if (!ret.ok || !result || !result.ok) {
+        var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
         setEditSummary('取消导入失败：' + errorMessage, 'error');
         notify('取消导入失败：' + errorMessage, '', { variant: 'danger' });
         return;
@@ -958,28 +887,21 @@ $(function() {
       setRowStatus($row, 'running', '确认中...');
 
       try {
-        var response = await fetch(confirmItemURL, {
+        var ret = await sfetchJSON(confirmItemURL, {
           method: 'POST',
-          headers: withCSRFHeaders({
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'X-Requested-With': 'XMLHttpRequest'
-          }),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+          },
           body: payload.toString()
         });
+        var result = ret.body;
 
-        var result = null;
-        try {
-          result = await response.json();
-        } catch (jsonErr) {
-          result = null;
-        }
-
-        if (response.ok && result && result.ok) {
+        if (ret.ok && result && result.ok) {
           successCount++;
           $row.remove();
         } else {
           failCount++;
-          var errMsg = (result && result.error) ? result.error : ('HTTP ' + response.status);
+          var errMsg = (result && result.error) ? result.error : ('HTTP ' + ret.status);
           setRowStatus($row, 'error', '失败: ' + errMsg);
         }
       } catch (err) {
@@ -1001,7 +923,7 @@ $(function() {
     }
 
     if (failCount === 0) {
-      window.location.href = postListURL;
+      goTo(postListURL);
       return;
     }
 
@@ -1045,29 +967,20 @@ $(function() {
       var formData = buildParseFormData(file, options);
 
       try {
-        var response = await fetch(parseItemURL, {
+        var ret = await sfetchJSON(parseItemURL, {
           method: 'POST',
-          body: formData,
-          headers: withCSRFHeaders({
-            'X-Requested-With': 'XMLHttpRequest'
-          })
+          body: formData
         });
+        var result = ret.body;
 
-        var result = null;
-        try {
-          result = await response.json();
-        } catch (jsonErr) {
-          result = null;
-        }
-
-        if (response.ok && result && result.ok) {
+        if (ret.ok && result && result.ok) {
           successCount++;
           if (result.item) {
             appendImportEditRow(result.item);
           }
         } else {
           failCount++;
-          var errMsg = (result && result.error) ? result.error : ('HTTP ' + response.status);
+          var errMsg = (result && result.error) ? result.error : ('HTTP ' + ret.status);
           failedNames.push((file.name || '未命名文件') + '：' + errMsg);
         }
       } catch (err) {

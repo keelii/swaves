@@ -123,86 +123,207 @@ function notify(message, title, options) {
   return false;
 }
 
-function getCSRFMetaValue(name) {
-  var el = document.querySelector('meta[name="' + name + '"]');
-  if (!el) {
+function goTo(target, options) {
+  if (typeof window === "undefined" || !window.location) {
+    return false;
+  }
+
+  var opts = options || {};
+  if (opts.reload === true) {
+    window.location.reload();
+    return true;
+  }
+
+  var href = String(target == null ? "" : target).trim();
+  if (!href) {
+    return false;
+  }
+
+  if (opts.replace === true && typeof window.location.replace === "function") {
+    window.location.replace(href);
+    return true;
+  }
+  if (typeof window.location.assign === "function") {
+    window.location.assign(href);
+    return true;
+  }
+
+  window.location.href = href;
+  return true;
+}
+
+function getCSRFToken() {
+  var input = document.querySelector('input[name="_csrf_token"]');
+  if (!input) {
     return "";
   }
-  return String(el.getAttribute("content") || "").trim();
+  return String(input.value || "").trim();
 }
 
-function isCSRFProtectedMethod(method) {
+function shouldCSRF(method) {
   var verb = String(method || "GET").toUpperCase();
-  return !(verb === "GET" || verb === "HEAD" || verb === "OPTIONS" || verb === "TRACE");
+  return verb === "POST" || verb === "PUT" || verb === "PATCH" || verb === "DELETE";
 }
 
-function ensureFormCSRFToken(form) {
-  if (!form || !form.getAttribute) {
-    return;
+function resolveRequestMethod(input, init) {
+  if (init && typeof init.method === "string") {
+    return init.method;
   }
-  var method = form.getAttribute("method") || "GET";
-  if (!isCSRFProtectedMethod(method)) {
-    return;
+  if (input && typeof input === "object" && typeof input.method === "string") {
+    return input.method;
   }
-
-  var token = getCSRFMetaValue("csrf-token");
-  if (!token) {
-    return;
-  }
-  var fieldName = getCSRFMetaValue("csrf-field-name") || "_csrf_token";
-  var input = form.querySelector('input[name="' + fieldName + '"]');
-  if (!input) {
-    input = document.createElement("input");
-    input.type = "hidden";
-    input.name = fieldName;
-    form.appendChild(input);
-  }
-  input.value = token;
+  return "GET";
 }
 
-function installCSRFFormProtection() {
-  var forms = document.querySelectorAll("form");
-  for (var i = 0; i < forms.length; i += 1) {
-    ensureFormCSRFToken(forms[i]);
+function resolveRequestURL(input) {
+  if (typeof input === "string") {
+    return input;
   }
-  document.addEventListener("submit", function(event) {
-    ensureFormCSRFToken(event.target);
-  });
+  if (typeof URL !== "undefined" && input instanceof URL) {
+    return input.toString();
+  }
+  if (input && typeof input === "object" && typeof input.url === "string") {
+    return input.url;
+  }
+  return window.location.href;
 }
 
-function installCSRFFetchProtection() {
+function appendQueryToURL(rawURL, query) {
+  if (!query) {
+    return rawURL;
+  }
+
+  var url = new URL(String(rawURL), window.location.origin);
+  if (query instanceof URLSearchParams) {
+    query.forEach(function(value, key) {
+      url.searchParams.set(key, value);
+    });
+    return url.toString();
+  }
+
+  if (typeof query === "object") {
+    Object.keys(query).forEach(function(key) {
+      var value = query[key];
+      if (value == null) {
+        return;
+      }
+      if (Array.isArray(value)) {
+        url.searchParams.delete(key);
+        for (var idx = 0; idx < value.length; idx += 1) {
+          if (value[idx] == null) {
+            continue;
+          }
+          url.searchParams.append(key, String(value[idx]));
+        }
+        return;
+      }
+      url.searchParams.set(key, String(value));
+    });
+  }
+
+  return url.toString();
+}
+
+function isSameOriginRequest(input) {
+  try {
+    var url = new URL(resolveRequestURL(input), window.location.origin);
+    return url.origin === window.location.origin;
+  } catch (err) {
+    return true;
+  }
+}
+
+function installSFetch() {
   if (typeof window.fetch !== "function") {
     return;
   }
-
-  var originalFetch = window.fetch;
-  window.fetch = function(input, init) {
+  window.sfetch = function(input, init, opts) {
     var requestInit = init ? Object.assign({}, init) : {};
-    var token = getCSRFMetaValue("csrf-token");
-    var method = requestInit.method;
-    if (!method && input && typeof input === "object" && typeof input.method === "string") {
-      method = input.method;
+    var extra = opts || {};
+    var disableCSRF = extra.disableCSRF === true;
+    var requestInput = input;
+    if (extra.query) {
+      var queryURL = appendQueryToURL(resolveRequestURL(input), extra.query);
+      if (typeof Request !== "undefined" && input instanceof Request) {
+        requestInput = new Request(queryURL, input);
+      } else {
+        requestInput = queryURL;
+      }
     }
-    if (!isCSRFProtectedMethod(method) || !token) {
-      return originalFetch(input, init);
-    }
+    var method = resolveRequestMethod(input, requestInit);
+    var sameOrigin = isSameOriginRequest(requestInput);
 
     var baseHeaders = requestInit.headers;
     if (!baseHeaders && input && typeof input === "object" && input.headers) {
       baseHeaders = input.headers;
     }
+    var headers = null;
+    var ensureHeaders = function() {
+      if (!headers) {
+        headers = new Headers(baseHeaders || undefined);
+      }
+      return headers;
+    };
+
+    if (!disableCSRF && shouldCSRF(method) && sameOrigin) {
+      var token = getCSRFToken();
+      if (token) {
+        var csrfHeaders = ensureHeaders();
+        if (!csrfHeaders.has("X-CSRF-Token")) {
+          csrfHeaders.set("X-CSRF-Token", token);
+        }
+      }
+    }
+
+    if (extra.ajax !== false && sameOrigin) {
+      var ajaxHeaders = ensureHeaders();
+      if (!ajaxHeaders.has("X-Requested-With")) {
+        ajaxHeaders.set("X-Requested-With", "XMLHttpRequest");
+      }
+    }
+
+    if (headers) {
+      requestInit.headers = headers;
+    }
+
+    return window.fetch(requestInput, requestInit);
+  };
+
+  window.sfetchJSON = function(input, init, opts) {
+    var requestInit = init ? Object.assign({}, init) : {};
+    var baseHeaders = requestInit.headers;
+    if (!baseHeaders && input && typeof input === "object" && input.headers) {
+      baseHeaders = input.headers;
+    }
     var headers = new Headers(baseHeaders || undefined);
-    if (!headers.has("X-CSRF-Token")) {
-      headers.set("X-CSRF-Token", token);
+    if (!headers.has("Accept")) {
+      headers.set("Accept", "application/json");
     }
     requestInit.headers = headers;
-    return originalFetch(input, requestInit);
+
+    return window.sfetch(input, requestInit, opts).then(function(response) {
+      return response.text().then(function(raw) {
+        var text = String(raw || "").trim();
+        var body = null;
+        if (text) {
+          try {
+            body = JSON.parse(text);
+          } catch (err) {
+            body = null;
+          }
+        }
+        return {
+          status: response.status,
+          ok: response.ok,
+          body: body,
+          raw: text,
+          response: response
+        };
+      });
+    });
   };
 }
 
 if (typeof document !== "undefined") {
-  document.addEventListener("DOMContentLoaded", function() {
-    installCSRFFormProtection();
-    installCSRFFetchProtection();
-  });
+  installSFetch();
 }

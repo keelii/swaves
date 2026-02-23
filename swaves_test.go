@@ -113,19 +113,19 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 		t.Fatalf("expected valid session cookie")
 	}
 
-	adminHomeReq := httptest.NewRequest("GET", "/admin/", nil)
-	adminHomeReq.Header.Set("Cookie", cookieKV)
-	adminHomeResp, err := swv.App.Test(adminHomeReq)
+	importPageReq := httptest.NewRequest("GET", "/admin/import", nil)
+	importPageReq.Header.Set("Cookie", cookieKV)
+	importPageResp, err := swv.App.Test(importPageReq)
 	if err != nil {
-		t.Fatalf("admin home request failed: %v", err)
+		t.Fatalf("import page request failed: %v", err)
 	}
-	if adminHomeResp.StatusCode != fiber.StatusOK {
-		t.Fatalf("unexpected admin home status: %d", adminHomeResp.StatusCode)
+	if importPageResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected import page status: %d", importPageResp.StatusCode)
 	}
-	adminHomeBody, _ := io.ReadAll(adminHomeResp.Body)
-	metaMatches := regexp.MustCompile(`name="csrf-token" content="([^"]+)"`).FindStringSubmatch(string(adminHomeBody))
+	importPageBody, _ := io.ReadAll(importPageResp.Body)
+	metaMatches := regexp.MustCompile(`name="_csrf_token" value="([^"]+)"`).FindStringSubmatch(string(importPageBody))
 	if len(metaMatches) < 2 || strings.TrimSpace(metaMatches[1]) == "" {
-		t.Fatalf("expected csrf token in admin layout")
+		t.Fatalf("expected csrf token field in import page")
 	}
 	csrfToken := strings.TrimSpace(metaMatches[1])
 

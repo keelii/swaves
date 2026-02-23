@@ -34,9 +34,11 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ UrlFor('admin.trash.posts.restore', id=postItem.ID) }}">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ UrlFor('admin.trash.posts.delete', id=postItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
@@ -72,9 +74,11 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ UrlFor('admin.trash.encrypted_posts.restore', id=encryptedPostItem.ID) }}">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ UrlFor('admin.trash.encrypted_posts.delete', id=encryptedPostItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
@@ -110,9 +114,11 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ UrlFor('admin.trash.tags.restore', id=tagItem.ID) }}">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ UrlFor('admin.trash.tags.delete', id=tagItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
@@ -152,9 +158,11 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ UrlFor('admin.trash.categories.restore', id=categoryItem.ID) }}">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ UrlFor('admin.trash.categories.delete', id=categoryItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>
@@ -190,9 +198,11 @@
       <td>
         <div class="row-actions">
           <form id="form" method="post" action="{{ UrlFor('admin.trash.redirects.restore', id=redirectItem.ID) }}">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("恢复", "undo", type="submit") }}
           </form>
           <form id="form" method="post" action="{{ UrlFor('admin.trash.redirects.delete', id=redirectItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
+            {{ _csrf_token() }}
             {{ ui.action_icon_button("硬删除", "trash-2", type="submit", danger=true) }}
           </form>
         </div>

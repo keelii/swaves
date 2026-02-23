@@ -35,7 +35,11 @@
     <td>{{ log.CreatedAt | formatTime }}</td>
     <td>
       <div class="row-actions">
+        {% if (log.Method == "GET") and (log.Status == 404) %}
+          {{ ui.action_icon_link(UrlFor('admin.redirects.new', from=log.Path), "添加重定向到", "arrow-right") }}
+        {% endif %}
         <form id="form" method="post" action="{{ UrlFor('admin.http_error_logs.delete', id=log.ID) }}">
+          {{ _csrf_token() }}
           {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
         </form>
       </div>

@@ -120,6 +120,7 @@
 </div>
 
 <form id="form" method="post" action="{{ UrlFor('admin.settings.all.update', kind=activeKind) }}" class="settings-all-form">
+  {{ _csrf_token() }}
   <section class="settings-kind">
       {% if activeKind == contentRoutingKind %}
         <div class="settings-item-label">

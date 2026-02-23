@@ -3,12 +3,15 @@ package admin
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"swaves/helper"
 	"swaves/internal/db"
 	"swaves/internal/md"
+	"swaves/internal/pathutil"
+	"swaves/internal/share"
 	"swaves/internal/types"
 	"time"
 )
@@ -517,9 +520,83 @@ func checkRedirectCycle(dbx *db.DB, fromPath, toPath string) error {
 	return errors.New("detected redirect cycle: exceeded maximum redirect chain length")
 }
 
+func normalizeRedirectPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	return pathutil.JoinAbsolute(path)
+}
+
+func extractPathSingleSlug(path string) string {
+	path = strings.Trim(path, "/")
+	if path == "" || strings.Contains(path, "/") {
+		return ""
+	}
+	return path
+}
+
+func findPostRedirectSourceConflicts(dbx *db.DB, fromPath string) (string, string, error) {
+	fromPath = normalizeRedirectPath(fromPath)
+	if fromPath == "" {
+		return "", "", nil
+	}
+	slugCandidate := extractPathSingleSlug(fromPath)
+
+	page := 1
+	for {
+		pager := types.Pagination{
+			Page:     page,
+			PageSize: 200,
+		}
+		posts, err := db.ListPosts(dbx, &db.PostQueryOptions{Pager: &pager})
+		if err != nil {
+			return "", "", err
+		}
+
+		for _, item := range posts {
+			if item.Post == nil {
+				continue
+			}
+
+			if slugCandidate != "" && strings.TrimSpace(item.Post.Slug) == slugCandidate {
+				return "", slugCandidate, nil
+			}
+
+			if item.Post.Status == "published" {
+				postURL := normalizeRedirectPath(share.GetPostUrl(*item.Post))
+				if postURL == fromPath {
+					return postURL, "", nil
+				}
+			}
+		}
+
+		if pager.Num == 0 || page >= pager.Num {
+			break
+		}
+		page++
+	}
+
+	return "", "", nil
+}
+
 func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
+	in.From = normalizeRedirectPath(in.From)
+	in.To = normalizeRedirectPath(in.To)
+
 	if in.From == "" || in.To == "" {
 		return errors.New("from and to required")
+	}
+
+	conflictPath, conflictSlug, err := findPostRedirectSourceConflicts(dbx, in.From)
+	if err != nil {
+		return err
+	}
+	if conflictPath != "" {
+		return fmt.Errorf("来源路径与已发布内容地址冲突：%s", conflictPath)
+	}
+	if conflictSlug != "" {
+		return fmt.Errorf("来源路径与文章 slug 冲突：%s", conflictSlug)
 	}
 
 	// 检查 from 和 to 是否相同
@@ -549,7 +626,7 @@ func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
 		Status:  in.Status,
 		Enabled: in.Enabled,
 	}
-	_, err := db.CreateRedirect(dbx, r)
+	_, err = db.CreateRedirect(dbx, r)
 	return err
 }
 

@@ -19,6 +19,7 @@ import (
 	"swaves/internal/db"
 	"swaves/internal/share"
 	"swaves/internal/store"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -31,6 +32,7 @@ type FiberView struct {
 	env           *minijinja.Environment
 	templateRoot  string
 	clearOnRender bool
+	mu            sync.Mutex
 }
 
 const (
@@ -62,6 +64,7 @@ var lucideSVGByName = map[string]string{
 	"list-tree":       `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-tree-icon lucide-list-tree" aria-hidden="true"><path d="M8 5h13"/> <path d="M13 12h8"/> <path d="M13 19h8"/> <path d="M3 10a2 2 0 0 0 2 2h3"/> <path d="M3 5v12a2 2 0 0 0 2 2h3"/></svg>`,
 	"arrow-big-left":  `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-big-left-icon lucide-arrow-big-left" aria-hidden="true"><path d="M13 9a1 1 0 0 1-1-1V5.061a1 1 0 0 0-1.811-.75l-6.835 6.836a1.207 1.207 0 0 0 0 1.707l6.835 6.835a1 1 0 0 0 1.811-.75V16a1 1 0 0 1 1-1h6a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1z"/></svg>`,
 	"arrow-left":      `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left" aria-hidden="true"><path d="m12 19-7-7 7-7"/> <path d="M19 12H5"/> </svg>`,
+	"arrow-right":     `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right-icon lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
 	"square-plus":     `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-plus-icon lucide-square-plus"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
 	"plus":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus" aria-hidden="true"> <path d="M5 12h14"/> <path d="M12 5v14"/> </svg>`,
 	"save":            `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save-icon lucide-save" aria-hidden="true"> <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/> <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/> <path d="M7 3v4a1 1 0 0 0 1 1h7"/> </svg>`,
@@ -105,6 +108,8 @@ func (v *FiberView) Load() error {
 	if v == nil || v.env == nil {
 		return errFiberViewNil
 	}
+	v.mu.Lock()
+	defer v.mu.Unlock()
 
 	templateNames, err := collectTemplateNames(v.templateRoot)
 	if err != nil {
@@ -144,6 +149,9 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 	if v == nil || v.env == nil {
 		return errFiberViewNil
 	}
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
 	acquired := templatecore.AcquireViewContext(binding)
 
 	if v.clearOnRender {
@@ -345,7 +353,41 @@ func wrapMapLookup(raw any) any {
 	return &templateMapLookup{data: raw}
 }
 
+type csrfTokenInputGlobal struct {
+	call func(state value.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error)
+}
+
+func (g *csrfTokenInputGlobal) GetAttr(name string) value.Value {
+	_ = name
+	return value.Undefined()
+}
+
+func (g *csrfTokenInputGlobal) ObjectCall(state value.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	if g == nil || g.call == nil {
+		return value.FromSafeString(""), nil
+	}
+	return g.call(state, args, kwargs)
+}
+
 func registerViewFunc(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) string) {
+	env.AddGlobal("_csrf_token", value.FromObject(&csrfTokenInputGlobal{
+		call: func(state value.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+			if len(args) > 0 || len(kwargs) > 0 {
+				return value.Undefined(), errors.New("_csrf_token does not support arguments")
+			}
+
+			token := strings.TrimSpace(toStringValue(state.Lookup("_csrf_token_value").Raw()))
+			if token == "" {
+				return value.FromSafeString(""), nil
+			}
+
+			return value.FromSafeString(fmt.Sprintf(
+				`<input type="hidden" name="%s" value="%s">`,
+				"_csrf_token",
+				HTML.EscapeString(token),
+			)), nil
+		},
+	}))
 	env.AddFilter("humanSize", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {
 			return value.Undefined(), errors.New("humanSize filter does not support keyword arguments")

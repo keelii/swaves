@@ -133,6 +133,13 @@ It is intended as a practical guide for future changes.
 - Consolidate reusable JS utilities in `web/static/admin/main.js` and site equivalent.
 - Shared JS utilities must have no dependency besides jQuery.
 
+### 19) Frontend Navigation and Redirect Behavior
+
+- Client-side page navigation/refresh logic must be centralized in shared helper functions (for example `goTo` in `web/static/admin/main.js` and site equivalent).
+- Do not use `window.location.*` directly inside templates or page-local scripts for navigation.
+- When building redirect URLs from the current page context, reuse shared URL resolver helpers (for example `resolveRequestURL`) instead of duplicating origin/href parsing logic.
+- Keep navigation behavior explicit by passing mode via helper options (for example push/replace/reload), not ad-hoc browser API calls.
+
 ### 11) Env and Config Hygiene
 
 - Keep environment variable definitions centralized in `env.go`.
@@ -175,6 +182,7 @@ Before merge, verify all items below:
 - [ ] MiniJinja helper registration uses direct `env.AddFilter`/`env.AddFunction` calls (no wrapper registration layer).
 - [ ] MiniJinja naming is consistent: filters are lowerCamelCase, functions are UpperCamelCase.
 - [ ] Template URL generation prefers direct key/value `UrlFor` args over `dict(...)` wrappers where supported.
+- [ ] Template and page-local JS navigation uses shared `goTo`-style helpers; no direct `window.location.*` calls remain.
 - [ ] Encrypted post module remains privacy-isolated: no shared asset/library embedding and no cross-module linkage regression.
 - [ ] Template reload behavior follows `SWAVES_TEMPLATE_RELOAD` (dev-only per-request clearing).
 - [ ] Job registry lifecycle remains safe (listen hook init + shutdown destroy).

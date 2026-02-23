@@ -10,6 +10,7 @@
       </div>
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form id="form" method="post" style="display:inline" action="{{ UrlFor('admin.categories.parent.update', id=category.ID) }}" class="category-parent-form">
+          {{ _csrf_token() }}
             {% with Root = root, SelectedID = category.ParentID, EmptyOption = "顶级分类", SelectID = "" %}{% include "admin/include/category_select.html" %}{% endwith %}
         </form>
         <div>
@@ -17,6 +18,7 @@
           {{ ui.action_icon_link(UrlFor('admin.categories.new', parent_id=category.ID), "添加", "plus") }}
         </div>
         <form id="form" method="post" style="display:inline" action="{{ UrlFor('admin.categories.delete', id=category.ID) }}">
+          {{ _csrf_token() }}
           <button type="submit">
               {{ ui.action_btn_content("trash-2", "删除", 14) }}
           </button>

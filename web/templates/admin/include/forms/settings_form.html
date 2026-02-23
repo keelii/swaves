@@ -57,6 +57,7 @@
 ] %}
 
 <form id="form" method="post" action="{{ Action }}">
+  {{ _csrf_token() }}
   {{ ui.form_field_text("分类", "kind", kind_value, required=true, placeholder="例如: system, url, integration, default", help="（例如：system、url、integration、default）") }}
   {{ ui.form_field_text("子分类", "sub_kind", sub_kind_value, placeholder="例如: general, see, imagekit, s3", help="（可选，分类下的子分类 code）") }}
   {{ ui.form_field_text("名称", "name", name_value, required=true, placeholder="人类可读的名称", help="（用于界面展示的人类可读名称）") }}

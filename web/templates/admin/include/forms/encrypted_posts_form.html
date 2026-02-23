@@ -20,6 +20,7 @@
 {% endif %}
 
 <form id="form" method="post" action="{{ Action }}">
+  {{ _csrf_token() }}
   <div class="row">
     <div class="col-6">
       <label data-field>

@@ -159,8 +159,7 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 	data["RouteName"] = routeName
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
-	data["CsrfToken"] = fiber.Locals[string](c, "CsrfToken")
-	data["CsrfFieldName"] = middleware.AdminCSRFFormField
+	data["_csrf_token_value"] = fiber.Locals[string](c, "CsrfToken")
 
 	return c.Render(view, data)
 }
@@ -952,17 +951,85 @@ func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
 	}, "")
 }
 
+type redirectTargetOptionView struct {
+	ID        int64
+	Title     string
+	URL       string
+	KindLabel string
+}
+
+func parseRedirectStatus(raw string) int {
+	status, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || (status != 301 && status != 302) {
+		return 301
+	}
+	return status
+}
+
+func (h *Handler) loadRedirectTargetOptions() []redirectTargetOptionView {
+	pager := types.Pagination{
+		Page:     1,
+		PageSize: 200,
+	}
+	posts, err := db.ListPosts(h.Model, &db.PostQueryOptions{Pager: &pager})
+	if err != nil {
+		logger.Error("[redirect] list posts for target options failed: %v", err)
+		return []redirectTargetOptionView{}
+	}
+
+	options := make([]redirectTargetOptionView, 0, len(posts))
+	seenURL := make(map[string]bool, len(posts))
+	for _, item := range posts {
+		if item.Post == nil || item.Post.Status != "published" {
+			continue
+		}
+
+		postURL := strings.TrimSpace(share.GetPostUrl(*item.Post))
+		if postURL == "" || seenURL[postURL] {
+			continue
+		}
+		seenURL[postURL] = true
+
+		title := strings.TrimSpace(item.Post.Title)
+		if title == "" {
+			title = strings.TrimSpace(item.Post.Slug)
+		}
+		if title == "" {
+			title = postURL
+		}
+
+		kindLabel := "文章"
+		if item.Post.Kind == db.PostKindPage {
+			kindLabel = "页面"
+		}
+
+		options = append(options, redirectTargetOptionView{
+			ID:        item.Post.ID,
+			Title:     title,
+			URL:       postURL,
+			KindLabel: kindLabel,
+		})
+	}
+	return options
+}
+
 func (h *Handler) GetRedirectNewHandler(c fiber.Ctx) error {
+	draft := &db.Redirect{
+		From:    strings.TrimSpace(c.Query("from")),
+		To:      strings.TrimSpace(c.Query("to")),
+		Status:  parseRedirectStatus(c.Query("status")),
+		Enabled: 1,
+	}
+
 	return RenderAdminView(c, "redirects_new", fiber.Map{
-		"Title": "New Redirect",
+		"Title":                 "New Redirect",
+		"Redirect":              draft,
+		"RedirectTargetOptions": h.loadRedirectTargetOptions(),
 	}, "")
 }
 
 func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
-	status, err := strconv.Atoi(c.FormValue("status"))
-	if err != nil || (status != 301 && status != 302) {
-		status = 301 // default to 301 if invalid
-	}
+	status := parseRedirectStatus(c.FormValue("status"))
 
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
 	enabledInt := 0
@@ -978,9 +1045,17 @@ func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
 	}
 
 	if err := CreateRedirectService(h.Model, in); err != nil {
+		draft := &db.Redirect{
+			From:    in.From,
+			To:      in.To,
+			Status:  in.Status,
+			Enabled: in.Enabled,
+		}
 		return RenderAdminView(c, "redirects_new", fiber.Map{
-			"Title": "New Redirect",
-			"Error": err,
+			"Title":                 "New Redirect",
+			"Error":                 err.Error(),
+			"Redirect":              draft,
+			"RedirectTargetOptions": h.loadRedirectTargetOptions(),
 		}, "")
 	}
 

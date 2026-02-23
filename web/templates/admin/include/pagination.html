@@ -47,10 +47,10 @@
 <script>
 $(function() {
   $('#page-size-select').on('change', function() {
-    var url = new URL(window.location.href);
+    var url = new URL(resolveRequestURL());
     url.searchParams.set('pageSize', $(this).val());
     url.searchParams.set('page', '1');
-    window.location.href = url.toString();
+    goTo(url.toString());
   });
 });
 </script>

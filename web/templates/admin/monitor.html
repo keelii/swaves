@@ -308,7 +308,7 @@
     }
 
     function buildURL(baseURL, params) {
-      var url = new URL(baseURL, window.location.origin);
+      var url = new URL(baseURL, resolveRequestURL());
       Object.keys(params).forEach(function(key) {
         var value = params[key];
         if (value == null || value === '') {
@@ -494,17 +494,12 @@
           granularity: activeGranularity,
           scope: activeScope,
         });
-        var response = await fetch(url.toString(), {
-          cache: 'no-store',
-          headers: {
-            'Accept': 'application/json'
-          }
+        var ret = await sfetchJSON(url.toString(), {
+          cache: 'no-store'
         });
-        var json = await response.json().catch(function() {
-          return {};
-        });
+        var json = ret.body && typeof ret.body === 'object' ? ret.body : {};
 
-        if (!response.ok || !json.ok) {
+        if (!ret.ok || !json.ok) {
           throw new Error(json.error || '读取监控数据失败');
         }
 

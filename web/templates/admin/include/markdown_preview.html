@@ -339,13 +339,13 @@ $(function() {
       $preview.text('预览接口不可用');
       return;
     }
-    fetch(markdownAPIURL, {
+    sfetchJSON(markdownAPIURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: text })
     })
-      .then(function(r) { return r.json(); })
-      .then(function(res) {
+      .then(function(ret) {
+        var res = ret.body;
         if (res && res.data != null) {
           $preview.html(res.data);
           $('.toc').appendTo($('#split-toc').empty());
@@ -454,12 +454,14 @@ $(function() {
       return Promise.resolve();
     }
 
-    return fetch(assetAPIURL + '?' + query.toString(), {
+    return sfetchJSON(assetAPIURL, {
       method: 'GET'
+    }, {
+      query: query
     })
-      .then(function(r) { return r.json(); })
-      .then(function(res) {
-        if (!res || !res.ok) {
+      .then(function(ret) {
+        var res = ret.body;
+        if (!ret.ok || !res || !res.ok) {
           throw new Error((res && res.error) || '加载图库失败');
         }
         var data = res.data || {};

@@ -43,20 +43,15 @@
       button.disabled = true;
 
       try {
-        var response = await fetch(form.action, {
+        var ret = await sfetchJSON(form.action, {
           method: "POST",
-          body: new FormData(form),
-          headers: {
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest"
-          }
+          body: new FormData(form)
         });
 
-        if (!response.ok) {
+        if (!ret.ok || !ret.body) {
           throw new Error("点赞请求失败");
         }
-
-        var result = await response.json();
+        var result = ret.body;
         updateLikeButton(button, toLikeCount(result.likeCount), !!result.liked);
       } catch (error) {
         if (countEl) {

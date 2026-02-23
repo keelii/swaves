@@ -32,6 +32,7 @@
 {% set post_kind_options = [{"Value": "0", "Label": "文章"}, {"Value": "1", "Label": "页面"}] %}
 
 <form id="form" method="post" action="{{ Action }}">
+  {{ _csrf_token() }}
   <div class="row">
     <div class="col-6">
       <label data-field>
@@ -61,7 +62,12 @@
         <script>
           var slugAPIURL = {{ UrlFor('api.slug') | tojson }};
           function autoSetSlug() {
-            fetch(slugAPIURL + '?name=' + encodeURIComponent($('#title').val())).then(function(r){ return r.json(); }).then(function(json){
+            sfetchJSON(slugAPIURL, {
+              method: 'GET'
+            }, {
+              query: { name: $('#title').val() }
+            }).then(function(ret) {
+              var json = ret.body;
               if (json && json.data) $('#slug').val(json.data);
             });
           }

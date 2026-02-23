@@ -257,6 +257,81 @@ func TestRenderAdminImportWithoutFeedback(t *testing.T) {
 	}
 }
 
+func TestRenderAdminHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
+	view, _, _ := NewViewEngine("./web/templates", false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "admin/http_error_logs_index", map[string]any{
+		"Logs": []db.HttpErrorLog{
+			{
+				ID:        1,
+				Method:    "GET",
+				Path:      "/missing-path",
+				Status:    404,
+				CreatedAt: 1,
+			},
+			{
+				ID:        2,
+				Method:    "POST",
+				Path:      "/missing-post",
+				Status:    404,
+				CreatedAt: 1,
+			},
+		},
+		"Pager": types.Pagination{Page: 1, Num: 1, Total: 2, PageSize: 10},
+	})
+	if err != nil {
+		t.Fatalf("render http_error_logs_index failed: %v", err)
+	}
+
+	rendered := out.String()
+	if count := strings.Count(rendered, "lucide-arrow-right-icon"); count != 1 {
+		t.Fatalf("expected add-redirect icon once, got %d", count)
+	}
+}
+
+func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
+	view, _, _ := NewViewEngine("./web/templates", false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "admin/redirects_new", map[string]any{
+		"Redirect": db.Redirect{
+			From:    "/missing-path",
+			To:      "",
+			Status:  301,
+			Enabled: 1,
+		},
+		"RedirectTargetOptions": []map[string]any{
+			{
+				"ID":        int64(11),
+				"Title":     "Hello World",
+				"URL":       "/posts/hello-world",
+				"KindLabel": "文章",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("render redirects_new failed: %v", err)
+	}
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "选择文章 URL") {
+		t.Fatalf("expected target picker entry in redirects_new")
+	}
+	if !strings.Contains(rendered, "Hello World") {
+		t.Fatalf("expected target option title in redirects_new")
+	}
+	if !strings.Contains(rendered, "redirect_target_picker_choose") {
+		t.Fatalf("expected target picker choose button in redirects_new")
+	}
+}
+
 func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {
 	view, _, _ := NewViewEngine("./web/templates", false)
 	if err := view.Load(); err != nil {
