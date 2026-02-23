@@ -330,6 +330,35 @@ func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
 	if !strings.Contains(rendered, "redirect_target_picker_choose") {
 		t.Fatalf("expected target picker choose button in redirects_new")
 	}
+	if !strings.Contains(rendered, "lucide-archive-icon") {
+		t.Fatalf("expected archive icon for redirects target picker trigger")
+	}
+}
+
+func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
+	view, _, _ := NewViewEngine("./web/templates", false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "admin/redirects_new", map[string]any{
+		"RouteName": "admin.redirects.create",
+		"Redirect": db.Redirect{
+			From:    "/missing-path",
+			To:      "",
+			Status:  301,
+			Enabled: 1,
+		},
+	})
+	if err != nil {
+		t.Fatalf("render redirects_new failed: %v", err)
+	}
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "document.querySelector('form').submit()") {
+		t.Fatalf("expected save action button for admin.redirects.create route")
+	}
 }
 
 func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {

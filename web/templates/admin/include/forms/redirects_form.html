@@ -29,7 +29,9 @@
         <span class="hstack">
           <input id="redirect_to_path" type="text" name="to" required value="{{ target_value }}" placeholder="/new-path" style="flex: 1;">
           {% if show_target_picker %}
-            <a href="#" id="redirect_target_picker_open">选择文章 URL</a>
+            <a href="javascript:;" id="redirect_target_picker_open" class="hstack gap-1" data-title="跳转到发布的文章">
+              {{ LucideIcon("archive", 24) }}
+            </a>
           {% endif %}
         </span>
         {% if show_target_picker %}

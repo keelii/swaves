@@ -33,23 +33,23 @@
 </style>
 <div class="actions flex justify-between">
   <div class="left">
-      {% if UrlIs(RouteName, "admin.posts.new") %}
+      {% if UrlIs(RouteName, "admin.posts.new", "admin.posts.create") %}
         <button type="submit" form="form" name="action" value="save" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
         <button type="submit" form="form" name="action" value="publish" class="button">{{ ui.action_btn_content("square-pen", "发布") }}</button>
-      {% else %}{% if UrlIs(RouteName, "admin.tags.new", "admin.categories.new", "admin.encrypted_posts.new", "admin.redirects.new", "admin.tasks.new", "admin.settings.new") %}
+      {% else %}{% if UrlIs(RouteName, "admin.tags.new", "admin.tags.create", "admin.categories.new", "admin.categories.create", "admin.encrypted_posts.new", "admin.encrypted_posts.create", "admin.redirects.new", "admin.redirects.create", "admin.tasks.new", "admin.tasks.create", "admin.settings.new", "admin.settings.create") %}
         <a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ ui.action_btn_content("square-pen", "保存") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.import.show") %}
+      {% else %}{% if UrlIs(RouteName, "admin.import.show", "admin.import.submit") %}
         <a class="button" href="#" onclick="document.querySelector('form').requestSubmit(); return false;">{{ ui.action_btn_content("plus", "导入") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.settings.all") %}
+      {% else %}{% if UrlIs(RouteName, "admin.settings.all", "admin.settings.all.update") %}
         <button type="submit" form="form" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
-      {% else %}{% if UrlIs(RouteName, "admin.posts.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.posts.edit", "admin.posts.update") %}
         {% if Post and (Post.PublishedAt > 0) %}
         <button type="submit" form="form" name="action" value="update" class="button">{{ ui.action_btn_content("square-pen", "更新") }}</button>
         {% else %}
         <button type="submit" form="form" name="action" value="save" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
         <button type="submit" form="form" name="action" value="publish" class="button">{{ ui.action_btn_content("square-pen", "发布") }}</button>
         {% endif %}
-      {% else %}{% if UrlIs(RouteName, "admin.tags.edit", "admin.categories.edit", "admin.encrypted_posts.edit", "admin.redirects.edit", "admin.tasks.edit", "admin.settings.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.tags.edit", "admin.tags.update", "admin.categories.edit", "admin.categories.update", "admin.encrypted_posts.edit", "admin.encrypted_posts.update", "admin.redirects.edit", "admin.redirects.update", "admin.tasks.edit", "admin.tasks.update", "admin.settings.edit", "admin.settings.update") %}
         <button type="submit" form="form" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
       {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
       {% if UrlIs(RouteName, "admin.posts.list") %}
@@ -68,26 +68,26 @@
       {% else %}{% if UrlIs(RouteName, "admin.settings.list") %}
         <a class="button" href="{{ UrlFor('admin.settings.new') }}">{{ ui.action_btn_content("plus", "新建设置") }}</a>
         <a class="button" href="{{ UrlFor('admin.settings.all') }}">{{ ui.action_btn_content("square-pen", "编辑全部") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.settings.all") %}
+      {% else %}{% if UrlIs(RouteName, "admin.settings.all", "admin.settings.all.update") %}
         <a class="button" href="{{ UrlFor('admin.settings.list') }}">{{ ui.action_btn_content("list", "返回列表") }}</a>
       {% else %}{% if UrlIs(RouteName, "admin.categories.tree") %}
         <a class="button" href="{{ UrlFor('admin.categories.new') }}">{{ ui.action_btn_content("plus", "新建分类") }}</a>
         <a class="button" href="{{ UrlFor('admin.categories.list') }}">{{ ui.action_btn_content("list", "分类列表") }}</a>
       {% else %}{% if UrlIs(RouteName, "admin.tasks.runs") %}
         <a class="button" href="{{ UrlFor('admin.tasks.list') }}">{{ ui.action_btn_content("arrow-left", "返回任务") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.posts.new", "admin.posts.edit", "admin.import.show", "admin.export.show") %}
+      {% else %}{% if UrlIs(RouteName, "admin.posts.new", "admin.posts.create", "admin.posts.edit", "admin.posts.update", "admin.import.show", "admin.import.submit", "admin.export.show") %}
         <a class="button" href="{{ UrlFor('admin.posts.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.tags.new", "admin.tags.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.tags.new", "admin.tags.create", "admin.tags.edit", "admin.tags.update") %}
         <a class="button" href="{{ UrlFor('admin.tags.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.categories.new", "admin.categories.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.categories.new", "admin.categories.create", "admin.categories.edit", "admin.categories.update") %}
         <a class="button" href="{{ UrlFor('admin.categories.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.encrypted_posts.new", "admin.encrypted_posts.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.encrypted_posts.new", "admin.encrypted_posts.create", "admin.encrypted_posts.edit", "admin.encrypted_posts.update") %}
         <a class="button" href="{{ UrlFor('admin.encrypted_posts.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.redirects.new", "admin.redirects.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.redirects.new", "admin.redirects.create", "admin.redirects.edit", "admin.redirects.update") %}
         <a class="button" href="{{ UrlFor('admin.redirects.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.tasks.new", "admin.tasks.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.tasks.new", "admin.tasks.create", "admin.tasks.edit", "admin.tasks.update") %}
         <a class="button" href="{{ UrlFor('admin.tasks.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-      {% else %}{% if UrlIs(RouteName, "admin.settings.new", "admin.settings.edit") %}
+      {% else %}{% if UrlIs(RouteName, "admin.settings.new", "admin.settings.create", "admin.settings.edit", "admin.settings.update") %}
         <a class="button" href="{{ UrlFor('admin.settings.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
       {% else %}
         <a class="button" href="{{ UrlFor('admin.home') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
