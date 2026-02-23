@@ -12,7 +12,7 @@ import (
 )
 
 func TestRenderAdminCategoriesIndexWithMissingCounts(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestRenderAdminCategoriesIndexWithMissingCounts(t *testing.T) {
 }
 
 func TestRenderAdminPostsIndexWithoutFilterNames(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestRenderAdminPostsIndexWithoutFilterNames(t *testing.T) {
 }
 
 func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 }
 
 func TestRenderSitePostWithCommentTree(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 }
 
 func TestRenderAdminAssetsIndexWithItems(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestRenderAdminAssetsIndexWithItems(t *testing.T) {
 }
 
 func TestRenderAdminImportWithoutFeedback(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestRenderAdminImportWithoutFeedback(t *testing.T) {
 }
 
 func TestRenderAdminHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -294,7 +294,7 @@ func TestRenderAdminHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
 }
 
 func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
 }
 
 func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -362,7 +362,7 @@ func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 }
 
 func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -403,7 +403,7 @@ func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {
 }
 
 func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
 }
 
 func TestRenderAdminPostsEditUsesAssetAPIPath(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -459,7 +459,7 @@ func TestRenderAdminPostsEditUsesAssetAPIPath(t *testing.T) {
 }
 
 func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -490,7 +490,7 @@ func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
 }
 
 func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -529,7 +529,7 @@ func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
 }
 
 func TestRenderLucideIconWithoutSize(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -545,7 +545,7 @@ func TestRenderLucideIconWithoutSize(t *testing.T) {
 }
 
 func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}

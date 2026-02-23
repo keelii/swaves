@@ -25,6 +25,11 @@ var (
 var (
 	AppEnv = readAppEnv("SWAVES_ENV")
 
+	IsProduction    = EnvIs(envProd)
+	IsNotProduction = EnvIsNot(envProd)
+	IsTesting       = EnvIs(envTest)
+	IsDevelopment   = EnvIs(envDev)
+
 	TemplateReload        = EnvIsNot(envProd)
 	EnableSQLLog          = EnvIs(envDev)
 	SessionCookieSecure   = EnvIs(envProd)

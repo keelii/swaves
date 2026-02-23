@@ -12,7 +12,7 @@ func testTemplateRoot() string {
 }
 
 func TestMiniJinjaViewLoadTemplates(t *testing.T) {
-	view, _, _ := NewViewEngine(testTemplateRoot(), false)
+	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}

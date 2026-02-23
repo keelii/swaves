@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterRoutes(app *fiber.App) {
+func RegisterModule(app *fiber.App) {
 	apiGroup := app.Group("/api")
 
 	apiGroup.Get("/slug", func(c fiber.Ctx) error {

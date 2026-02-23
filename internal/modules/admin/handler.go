@@ -29,7 +29,6 @@ type Handler struct {
 	Session *types.SessionStore
 	Service *Service
 	Monitor *MonitorStore
-	URLFor  func(name string, params map[string]string, query map[string]string) string
 }
 
 type dashboardUVRangeConfig struct {
@@ -92,14 +91,12 @@ func NewHandler(
 	gStore *store.GlobalStore,
 	adminService *Service,
 	monitorStore *MonitorStore,
-	urlFor func(name string, params map[string]string, query map[string]string) string,
 ) *Handler {
 	return &Handler{
 		Model:   gStore.Model,
 		Session: gStore.Session,
 		Service: adminService,
 		Monitor: monitorStore,
-		URLFor:  urlFor,
 	}
 }
 
@@ -263,6 +260,13 @@ func buildDashboardUVChart(model *db.DB, config dashboardUVRangeConfig, now time
 	}, nil
 }
 
+func (h *Handler) TestRouter(c fiber.Ctx) error {
+	return RenderAdminView(c, "test_home", fiber.Map{
+		"Title":       "Test",
+		"GetRouteUrl": c.GetRouteURL,
+	}, "")
+}
+
 func (h *Handler) GetHome(c fiber.Ctx) error {
 	totalUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
 	if err != nil {
@@ -416,21 +420,48 @@ func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 	}, "base")
 }
 
-func (h *Handler) adminRouteURL(name string, params map[string]string, query map[string]string) string {
-	if h.URLFor == nil {
-		logger.Warn("[admin] route resolve failed: resolver is nil name=%s params=%v query=%v", name, params, query)
+func (h *Handler) adminRouteURL(c fiber.Ctx, name string, params map[string]string, query map[string]string) string {
+	routeParams := fiber.Map{}
+	for key, value := range params {
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		routeParams[key] = value
+	}
+
+	path, err := c.GetRouteURL(name, routeParams)
+	if err != nil {
+		logger.Warn("[admin] route resolve failed: name=%s params=%v err=%v", name, params, err)
 		return ""
 	}
-	path := h.URLFor(name, params, query)
-	if path != "" {
-		return path
+
+	queryValues := url.Values{}
+	for key, value := range query {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		queryValues.Set(k, value)
 	}
-	logger.Warn("[admin] route resolve failed: name=%s params=%v query=%v", name, params, query)
-	return ""
+	for key, raw := range routeParams {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		if _, exists := queryValues[k]; exists {
+			continue
+		}
+		queryValues.Set(k, strings.TrimSpace(fmt.Sprintf("%v", raw)))
+	}
+	encodedQuery := queryValues.Encode()
+	if encodedQuery != "" {
+		path += "?" + encodedQuery
+	}
+	return path
 }
 
 func (h *Handler) redirectToAdminRoute(c fiber.Ctx, name string, params map[string]string, query map[string]string, status ...int) error {
-	path := h.adminRouteURL(name, params, query)
+	path := h.adminRouteURL(c, name, params, query)
 	if path == "" {
 		path = share.BuildAdminPath("")
 	}
@@ -543,7 +574,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	if filterCategoryIDStr != "" {
 		filterTagRemoveQuery["category"] = filterCategoryIDStr
 	}
-	filterTagRemoveURL := h.adminRouteURL("admin.posts.list", nil, filterTagRemoveQuery)
+	filterTagRemoveURL := h.adminRouteURL(c, "admin.posts.list", nil, filterTagRemoveQuery)
 	if filterTagRemoveURL == "" {
 		filterTagRemoveURL = share.BuildAdminPath("/posts")
 	}
@@ -555,7 +586,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	if filterTagIDStr != "" {
 		filterCategoryRemoveQuery["tag"] = filterTagIDStr
 	}
-	filterCategoryRemoveURL := h.adminRouteURL("admin.posts.list", nil, filterCategoryRemoveQuery)
+	filterCategoryRemoveURL := h.adminRouteURL(c, "admin.posts.list", nil, filterCategoryRemoveQuery)
 	if filterCategoryRemoveURL == "" {
 		filterCategoryRemoveURL = share.BuildAdminPath("/posts")
 	}
@@ -1698,7 +1729,7 @@ func isAssetSettingCode(code string) bool {
 	}
 }
 
-func (h *Handler) buildSettingsAllRedirectPath(kind string, errMsg string) string {
+func (h *Handler) buildSettingsAllRedirectPath(c fiber.Ctx, kind string, errMsg string) string {
 	params := map[string]string{}
 	if strings.TrimSpace(kind) != "" {
 		params["kind"] = strings.TrimSpace(kind)
@@ -1707,7 +1738,7 @@ func (h *Handler) buildSettingsAllRedirectPath(kind string, errMsg string) strin
 		params["error"] = strings.TrimSpace(errMsg)
 	}
 
-	redirectPath := h.adminRouteURL("admin.settings.all", nil, params)
+	redirectPath := h.adminRouteURL(c, "admin.settings.all", nil, params)
 	if redirectPath == "" {
 		return share.BuildAdminPath("/settings/all")
 	}
@@ -1825,7 +1856,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	}
 
 	if err = h.validateAssetSettingPayload(assetOverrides); err != nil {
-		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(activeKind, err.Error()))
+		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeKind, err.Error()))
 	}
 
 	for _, item := range updates {
@@ -1837,7 +1868,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(activeKind, ""))
+	return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeKind, ""))
 }
 
 func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {
@@ -2241,13 +2272,13 @@ func normalizeCommentStatus(raw string) db.CommentStatus {
 	}
 }
 
-func (h *Handler) buildCommentListURL(status db.CommentStatus) string {
+func (h *Handler) buildCommentListURL(c fiber.Ctx, status db.CommentStatus) string {
 	query := map[string]string{}
 	if status != "" {
 		query["status"] = string(status)
 	}
 
-	commentURL := h.adminRouteURL("admin.comments.list", nil, query)
+	commentURL := h.adminRouteURL(c, "admin.comments.list", nil, query)
 	if commentURL == "" {
 		return share.BuildAdminPath("/comments")
 	}
@@ -2282,7 +2313,7 @@ func (h *Handler) PostApproveCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(c, normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 func (h *Handler) PostPendingCommentHandler(c fiber.Ctx) error {
@@ -2295,7 +2326,7 @@ func (h *Handler) PostPendingCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(c, normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 func (h *Handler) PostSpamCommentHandler(c fiber.Ctx) error {
@@ -2308,7 +2339,7 @@ func (h *Handler) PostSpamCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(c, normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 func (h *Handler) PostDeleteCommentHandler(c fiber.Ctx) error {
@@ -2321,7 +2352,7 @@ func (h *Handler) PostDeleteCommentHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return webutil.RedirectTo(c, h.buildCommentListURL(normalizeCommentStatus(c.FormValue("status_filter"))))
+	return webutil.RedirectTo(c, h.buildCommentListURL(c, normalizeCommentStatus(c.FormValue("status_filter"))))
 }
 
 // Tasks

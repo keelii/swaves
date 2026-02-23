@@ -36,7 +36,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 
 	store.InitSettings(globalStore)
 	templateRoot := resolveProjectPath("web/templates")
-	viewEngine, initURLResolver, urlFor := view.NewViewEngine(templateRoot, config.TemplateReload)
+	viewEngine, initURLResolver := view.NewViewEngine(templateRoot, config.TemplateReload)
 
 	app := fiber.New(fiber.Config{
 		AppName:       appCfg.AppName,
@@ -77,9 +77,9 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	app.Use(recover.New())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 
-	admin.RegisterRoutes(app, globalStore, urlFor)
-	site.RegisterRoutes(app, globalStore)
-	api.RegisterRoutes(app)
+	admin.RegisterModule(app, globalStore)
+	site.RegisterModule(app, globalStore)
+	api.RegisterModule(app)
 
 	return SwavesApp{
 		App:    app,

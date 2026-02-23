@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/share"
@@ -8,22 +9,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterRoutes(
+func RegisterModule(
 	app *fiber.App,
 	gStore *store.GlobalStore,
-	urlFor func(name string, params map[string]string, query map[string]string) string,
 ) {
 	monitorStore := NewMonitorStore()
 	handler := NewHandler(
 		gStore,
 		NewService(gStore.Model),
 		monitorStore,
-		urlFor,
 	)
 
 	adminGroup := app.Group(share.GetAdminUrl())
 	adminGroup.Use(middleware.AdminCSRF(gStore.Session))
 	adminGroup.Use(middleware.RequireAdmin(gStore.Session, share.BuildAdminPath("/login")))
+
+	if config.IsDevelopment {
+		adminGroup.Get("/test", handler.TestRouter).Name("admin.test")
+	}
 
 	adminGroup.Get("/monitor", handler.GetMonitorHandler).Name("admin.monitor")
 	adminGroup.Get("/metrics", handler.GetMetricsAPIHandler).Name("admin.metrics.api")
