@@ -21,8 +21,8 @@ func NewSessionStore() *types.SessionStore {
 		Storage:        storage,
 		IdleTimeout:    24 * time.Hour, // Session 有效期
 		CookieHTTPOnly: true,
-		CookieSecure:   consts.SessionCookieSecure,
-		CookieSameSite: consts.SessionCookieSameSite,
+		CookieSecure:   config.SessionCookieSecure,
+		CookieSameSite: config.SessionCookieSameSite,
 	})
 
 	return &types.SessionStore{Store: store}

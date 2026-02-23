@@ -257,5 +257,5 @@ func BuildGAvatarURL(email, author string, size int) string {
 	query.Set("r", "g")
 
 	//return "https://cravatar.cn/avatar/" + hash + "?" + query.Encode()
-	return fmt.Sprintf("%s/avatar/%s?%s", consts.GravatarDomain, hash, query.Encode())
+	return fmt.Sprintf("%s/avatar/%s?%s", config.GravatarDomain, hash, query.Encode())
 }

@@ -404,7 +404,7 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if !ok || ts == 0 {
 			return value.FromString("-"), nil
 		}
-		return value.FromString(time.Unix(ts, 0).Format(consts.BaseTimeFormat)), nil
+		return value.FromString(time.Unix(ts, 0).Format(config.BaseTimeFormat)), nil
 	})
 	env.AddFilter("relativeTime", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {
@@ -424,7 +424,7 @@ func registerViewFunc(env *minijinja.Environment, urlFor func(name string, param
 		if !ok || ts == 0 {
 			return value.FromString("-"), nil
 		}
-		return value.FromString(time.Unix(ts, 0).Format(consts.ArticleTimeFormat)), nil
+		return value.FromString(time.Unix(ts, 0).Format(config.ArticleTimeFormat)), nil
 	})
 	env.AddFilter("datetimeReplacer", func(_ minijinja.FilterState, val value.Value, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {
@@ -985,7 +985,7 @@ func relativeTimeString(ts int64) string {
 		if diff < 60 {
 			return "刚刚"
 		}
-		return time.Unix(ts, 0).Format(consts.BaseTimeFormat)
+		return time.Unix(ts, 0).Format(config.BaseTimeFormat)
 	}
 	switch {
 	case diff < 60:

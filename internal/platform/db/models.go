@@ -1856,10 +1856,10 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		pager = &types.Pagination{}
 	}
 	if pager.Page < 1 {
-		pager.Page = consts.DefaultPage
+		pager.Page = config.DefaultPage
 	}
 	if pager.PageSize < 1 {
-		pager.PageSize = consts.DefaultPageSize
+		pager.PageSize = config.DefaultPageSize
 	}
 
 	total, err := Count(db, specPosts, "status = ? AND kind = ?", []interface{}{"published", kind})
@@ -1942,10 +1942,10 @@ func normalizePostQueryOptions(opts *PostQueryOptions) *PostQueryOptions {
 		opts.Pager = &types.Pagination{}
 	}
 	if opts.Pager.Page < 1 {
-		opts.Pager.Page = consts.DefaultPage
+		opts.Pager.Page = config.DefaultPage
 	}
 	if opts.Pager.PageSize < 1 {
-		opts.Pager.PageSize = consts.DefaultPageSize
+		opts.Pager.PageSize = config.DefaultPageSize
 	}
 	return opts
 }

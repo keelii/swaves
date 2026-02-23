@@ -60,8 +60,8 @@ func (s *SessionStore) SaveSession(c fiber.Ctx) bool {
 		return false
 	}
 
-	sess.Set(consts.LoginAdminName, true)
-	sess.SetIdleTimeout(consts.LoginSessionExpire)
+	sess.Set(config.LoginAdminName, true)
+	sess.SetIdleTimeout(config.LoginSessionExpire)
 
 	if err = sess.Save(); err != nil {
 		logger.Error("session save failed: %v", err)
@@ -95,7 +95,7 @@ func (s *SessionStore) IsLogin(c fiber.Ctx) bool {
 		return false
 	}
 	defer sess.Release()
-	isLogin := sess.Get(consts.LoginAdminName)
+	isLogin := sess.Get(config.LoginAdminName)
 	//logger.Error("isLogin:", isLogin)
 	return isLogin == true
 }

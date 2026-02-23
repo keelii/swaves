@@ -13,7 +13,7 @@ import (
 // PaginationMiddleware 将 page/pageSize 封装成 Pagination 放入 c.Locals
 func PaginationMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		pageSize := consts.DefaultPageSize
+		pageSize := config.DefaultPageSize
 		rawPageSize := strings.TrimSpace(fiber.Locals[string](c, "settings.page_size"))
 		if rawPageSize != "" {
 			size, err := strconv.Atoi(rawPageSize)
@@ -23,7 +23,7 @@ func PaginationMiddleware() fiber.Handler {
 		}
 
 		p := types.Pagination{
-			Page:     consts.DefaultPage,
+			Page:     config.DefaultPage,
 			PageSize: pageSize,
 		}
 
@@ -35,10 +35,10 @@ func PaginationMiddleware() fiber.Handler {
 
 		if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
 			if v, err := strconv.Atoi(pageSizeStr); err == nil {
-				if v < consts.MinPageSize {
-					p.PageSize = consts.MinPageSize
-				} else if v > consts.MaxPageSize {
-					p.PageSize = consts.MaxPageSize
+				if v < config.MinPageSize {
+					p.PageSize = config.MinPageSize
+				} else if v > config.MaxPageSize {
+					p.PageSize = config.MaxPageSize
 				} else {
 					p.PageSize = v
 				}
@@ -57,5 +57,5 @@ func GetPagination(c fiber.Ctx) types.Pagination {
 	if p.Page > 0 && p.PageSize > 0 {
 		return p
 	}
-	return types.Pagination{Page: consts.DefaultPage, PageSize: consts.DefaultPageSize}
+	return types.Pagination{Page: config.DefaultPage, PageSize: config.DefaultPageSize}
 }

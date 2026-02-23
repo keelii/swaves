@@ -28,20 +28,18 @@ type SwavesApp struct {
 	Store  *store.GlobalStore
 }
 
-func NewApp(config types.AppConfig) SwavesApp {
+func NewApp(appCfg types.AppConfig) SwavesApp {
 	globalStore := store.NewGlobalStore(db.Open(db.Options{
-		DSN:          config.SqliteFile,
-		EnableSQLLog: config.EnableSQLLog,
+		DSN:          appCfg.SqliteFile,
+		EnableSQLLog: appCfg.EnableSQLLog,
 	}), admin.NewSessionStore())
-
-	//defer globalStore.Close()
 
 	store.InitSettings(globalStore)
 	templateRoot := resolveProjectPath("web/templates")
-	viewEngine, initURLResolver, urlFor := view.NewViewEngine(templateRoot, consts.TemplateReload)
+	viewEngine, initURLResolver, urlFor := view.NewViewEngine(templateRoot, config.TemplateReload)
 
 	app := fiber.New(fiber.Config{
-		AppName:       config.AppName,
+		AppName:       appCfg.AppName,
 		CaseSensitive: true,
 		Views:         viewEngine,
 		BodyLimit:     10 * 1024 * 1024, // 10MB
@@ -61,16 +59,14 @@ func NewApp(config types.AppConfig) SwavesApp {
 	})
 	initURLResolver(app)
 	app.Hooks().OnListen(func(_ fiber.ListenData) error {
-		go job.InitRegistry(globalStore, config) // 初始化定时任务
+		go job.InitRegistry(globalStore, appCfg)
 		return nil
 	})
 
-	// statics
 	app.Use("/static", static.New(resolveProjectPath("web/static")))
 
-	//app.Use(limiter.New())
 	app.Use(middleware.AdminViewContext(globalStore.Session))
-	app.Use(middleware.GlobalSettings(consts.GlobalSettingKey))
+	app.Use(middleware.GlobalSettings(config.GlobalSettingKey))
 	app.Use(middleware.PaginationMiddleware())
 	app.Use(requestid.New(requestid.Config{
 		Header: "X-Req-Id",
@@ -80,12 +76,6 @@ func NewApp(config types.AppConfig) SwavesApp {
 	}))
 	app.Use(recover.New())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
-	//app.Use(logger.New(logger.Config{
-	//	BaseTimeFormat: BaseTimeFormat,
-	//	Format:     "${time} ${status} - ${method} ${path} ${queryParams} ${body}\n",
-	//}))
-
-	//fmt.Println(md.ParseMarkdown(``))
 
 	admin.RegisterRoutes(app, globalStore, urlFor)
 	site.RegisterRoutes(app, globalStore)
@@ -94,7 +84,7 @@ func NewApp(config types.AppConfig) SwavesApp {
 	return SwavesApp{
 		App:    app,
 		Store:  globalStore,
-		Config: &config,
+		Config: &appCfg,
 	}
 }
 
