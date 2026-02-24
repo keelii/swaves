@@ -12,7 +12,7 @@
 
 {# A2: 三列 #}
 {% block window_toolbar_main_left %}
-  <button type="button" class="ui-btn muted icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
     {{ LucideIcon("panel-left", 16) }}
   </button>
   {{ aui.Button("新建文章", "primary") }}
@@ -33,8 +33,8 @@
 {# A6: 三列 #}
 {% block status_main_left %}
   <span>已选择 0 项</span>
-  {{ aui.Button("批量发布", "muted") }}
-  {{ aui.Button("移动分类", "muted") }}
+  {{ aui.Button("批量发布", "outline") }}
+  {{ aui.Button("移动分类", "outline") }}
 {% endblock %}
 {% block status_main_center %}{% endblock %}
 {% block status_main_right %}
@@ -56,7 +56,7 @@
     </div>
 
     <div class="ui-tabs" aria-label="筛选工具">
-      {{ aui.Button("筛选", "muted", selected=true) }}
+      {{ aui.Button("筛选", "outline", selected=true) }}
       {{ aui.Dropdown([{"value":"updated_desc","label":"排序：更新时间↓"},{"value":"updated_asc","label":"排序：更新时间↑"}], "排序", "updated_desc") }}
     </div>
   </div>

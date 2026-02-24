@@ -12,16 +12,16 @@
 
 {# A2: 按钮｜文本｜按钮 #}
 {% block window_toolbar_main_left %}
-  <button type="button" class="ui-btn muted icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
     {{ LucideIcon("panel-left", 16) }}
   </button>
-  {{ aui.Button("保存", "muted") }}
+  {{ aui.Button("保存", "outline") }}
 {% endblock %}
 {% block window_toolbar_main_center %}
   {{ aui.ToolbarTitle("文章 slug") }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-  {{ aui.Button("预览", "muted") }}
+  {{ aui.Button("预览", "outline") }}
   {{ aui.Button("发布", "primary") }}
 {% endblock %}
 
@@ -57,6 +57,7 @@
   {% include "admin_app/include/nav.html" %}
 {% endblock %}
 {% block content %}
-  {% include "admin_app/include/links.html" %}
-  主内容区（文章编辑内容占位；不改内容区样式）
+  <div contenteditable="true" role="textbox" aria-label="文章内容编辑器" class="content-editor" spellcheck="true">
+    <p>在这里编辑文章内容…</p>
+  </div>
 {% endblock %}
