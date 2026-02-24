@@ -1,0 +1,90 @@
+{# admin_app UI building blocks (templates only) #}
+
+{% macro BaseButton(label, type="outline", selected=false, rounded=false, tag="button", href="", attrs="") %}
+{% if tag == "a" %}
+<a{% if href %} href="{{ href }}"{% endif %} class="ui-btn {{ type }}{% if selected %} selected{% endif %}{% if rounded %} rounded{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>{{ label }}</a>
+{% else %}
+<button class="ui-btn {{ type }}{% if selected %} selected{% endif %}{% if rounded %} rounded{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>{{ label }}</button>
+{% endif %}
+{% endmacro %}
+
+{% macro LinkButton(label, type="outline", selected=false, rounded=false, href="javascript:;", attrs="") %}
+{{ BaseButton(label, type, selected, rounded, "a", href, attrs) }}
+{% endmacro %}
+
+{% macro Button(label, type="outline", selected=false, rounded=false, attrs="type=\"button\"") %}
+{{ BaseButton(label, type, selected, rounded, "button", "", attrs) }}
+{% endmacro %}
+
+{% macro LinkIcon(icon_name="", href="javascript:;", attrs="") %}
+<a href="{{ href }}" class="ui-icon-btn"{% if attrs %} {{ attrs | safe }}{% endif %}>
+  {{ LucideIcon(icon_name, 16) }}
+</a>
+{% endmacro %}
+
+{% macro IconButton(icon_name, aria_label, disabled=false) %}
+<button type="button" class="ui-icon-btn" aria-label="{{ aria_label }}"{% if disabled %} disabled aria-disabled="true"{% endif %}>
+  {{ LucideIcon(icon_name, 16) }}
+</button>
+{% endmacro %}
+
+{% macro IconAction(icon_name, aria_label, kind="", disabled=false) %}
+<button type="button" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled aria-disabled="true"{% endif %}>
+  {{ LucideIcon(icon_name, 16) }}
+</button>
+{% endmacro %}
+
+{% macro ToolbarTitle(text) %}
+<div class="toolbar-text">{{ text }}</div>
+{% endmacro %}
+
+{% macro Select(options, aria_label="") %}
+<select class="ui-select"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}>
+  {% for item in options %}
+    <option value="{{ item.value }}">{{ item.label }}</option>
+  {% endfor %}
+</select>
+{% endmacro %}
+
+{% macro Tags(values) %}
+<div class="ui-tags" aria-label="标签选择">
+  {% for tag in values %}
+    <span class="ui-pill">{{ tag }}</span>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro Dropdown(options, aria_label="", value="") %}
+{# options: [{"value":"", "label":""}, ...] #}
+<div class="ui-dropdown" data-role="ui-dropdown">
+  <button type="button" class="ui-btn outline ui-dropdown-btn" data-role="ui-dropdown-button"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}>
+    <span class="label" data-role="ui-dropdown-label"></span>
+    <span class="caret" aria-hidden="true">{{ LucideIcon("chevron-down", 16) }}</span>
+  </button>
+  <select class="ui-dropdown-select" data-role="ui-dropdown-select"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}>
+    {% for item in options %}
+      <option value="{{ item.value }}"{% if item.value == value %} selected{% endif %}>{{ item.label }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endmacro %}
+
+{% macro Pager(current=1, total=1) %}
+<div class="ui-tags" aria-label="分页">
+  <button type="button" class="ui-icon-btn" aria-label="上一页"{% if current <= 1 %} disabled aria-disabled="true"{% endif %}>{{ LucideIcon("chevron-left", 16) }}</button>
+
+  {% if total <= 7 %}
+    {% for page in range(1, total + 1) %}
+      <button type="button" class="ui-page-btn"{% if page == current %} aria-current="page" disabled aria-disabled="true"{% endif %}>{{ page }}</button>
+    {% endfor %}
+  {% else %}
+    {% for page in range(1, 4) %}
+      <button type="button" class="ui-page-btn"{% if page == current %} aria-current="page" disabled aria-disabled="true"{% endif %}>{{ page }}</button>
+    {% endfor %}
+    <span class="ui-pill">…</span>
+    <button type="button" class="ui-page-btn"{% if total == current %} aria-current="page" disabled aria-disabled="true"{% endif %}>{{ total }}</button>
+  {% endif %}
+
+  <button type="button" class="ui-icon-btn" aria-label="下一页"{% if current >= total %} disabled aria-disabled="true"{% endif %}>{{ LucideIcon("chevron-right", 16) }}</button>
+</div>
+{% endmacro %}

@@ -1,0 +1,62 @@
+{% extends "admin_app/layout/layout.html" %}
+{% import "admin_app/include/ui.html" as aui %}
+
+{# Case: 文章新建编辑页 #}
+
+{% block window_toolbar_left %}
+<div class="toolbar-two-col">
+  <div class="toolbar-logo">SWAVES</div>
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+</div>
+{% endblock %}
+
+{# A2: 按钮｜文本｜按钮 #}
+{% block window_toolbar_main_left %}
+  <button type="button" class="ui-btn muted icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
+    {{ LucideIcon("panel-left", 16) }}
+  </button>
+  {{ aui.Button("保存", "muted") }}
+{% endblock %}
+{% block window_toolbar_main_center %}
+  {{ aui.ToolbarTitle("文章 slug") }}
+{% endblock %}
+{% block window_toolbar_main_right %}
+  {{ aui.Button("预览", "muted") }}
+  {{ aui.Button("发布", "primary") }}
+{% endblock %}
+
+{# A5: 两列，左设置，右退出 #}
+{% block status_nav_left %}
+  {{ aui.IconButton("setting", "设置") }}
+{% endblock %}
+{% block status_nav_right %}
+  {{ aui.IconButton("log-out", "退出") }}
+{% endblock %}
+
+{# A6: 分类选择 标签选择 ｜ markdown常用按钮 ｜ 文章字数 #}
+{% block status_main_left %}
+  {{ aui.Select([
+    {"value":"uncategorized","label":"未分类"},
+    {"value":"tech","label":"技术"},
+    {"value":"notes","label":"随笔"}
+  ], "分类选择") }}
+  {{ aui.Tags(["go", "swaves", "notes"]) }}
+{% endblock %}
+{% block status_main_center %}
+  <div class="ui-tags" aria-label="Markdown 常用按钮">
+    {{ aui.IconAction("bold", "加粗") }}
+    {{ aui.IconAction("italic", "斜体") }}
+    {{ aui.IconAction("underline", "下划线") }}
+  </div>
+{% endblock %}
+{% block status_main_right %}
+  <span>字数 0</span>
+{% endblock %}
+
+{% block nav_pane %}
+  {% include "admin_app/include/nav.html" %}
+{% endblock %}
+{% block content %}
+  {% include "admin_app/include/links.html" %}
+  主内容区（文章编辑内容占位；不改内容区样式）
+{% endblock %}

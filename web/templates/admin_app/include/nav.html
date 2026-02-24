@@ -1,0 +1,28 @@
+{% import "admin_app/include/ui.html" as aui %}
+
+<nav class="nav-menu" aria-label="管理菜单">
+  <div class="nav-section">
+    <div class="nav-section-title">内容</div>
+    <a class="nav-item" data-role="nav-link" href="/admin_app/posts_list">
+      <span class="nav-item-icon">{{ LucideIcon("list", 16) }}</span>
+      <span class="nav-item-text">文章列表</span>
+    </a>
+    <a class="nav-item" data-role="nav-link" href="/admin_app/post_edit">
+      <span class="nav-item-icon">{{ LucideIcon("list", 16) }}</span>
+      <span class="nav-item-text">编辑文章</span>
+    </a>
+    <a class="nav-item" data-role="nav-link" href="/admin_app/posts_list">
+      <span class="nav-item-icon">{{ LucideIcon("list", 16) }}</span>
+      <span class="nav-item-text">文章列表</span>
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">系统</div>
+    <a class="nav-item" data-role="nav-link" href="javascript:;">
+      <span class="nav-item-icon">{{ LucideIcon("setting", 16) }}</span>
+      <span class="nav-item-text">概览</span>
+    </a>
+  </div>
+</nav>
+

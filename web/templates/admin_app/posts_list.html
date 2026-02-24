@@ -1,0 +1,147 @@
+{% extends "admin_app/layout/layout.html" %}
+{% import "admin_app/include/ui.html" as aui %}
+
+{# Case: 文章列表页 #}
+
+{% block window_toolbar_left %}
+<div class="toolbar-two-col">
+  <div class="toolbar-logo">SWAVES</div>
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+</div>
+{% endblock %}
+
+{# A2: 三列 #}
+{% block window_toolbar_main_left %}
+  <button type="button" class="ui-btn muted icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
+    {{ LucideIcon("panel-left", 16) }}
+  </button>
+  {{ aui.Button("新建文章", "primary") }}
+{% endblock %}
+{% block window_toolbar_main_center %}
+  {{ aui.ToolbarTitle("文章列表") }}
+{% endblock %}
+{% block window_toolbar_main_right %}{% endblock %}
+
+{# A5: 两列，左设置，右退出 #}
+{% block status_nav_left %}
+  {{ aui.IconButton("setting", "设置") }}
+{% endblock %}
+{% block status_nav_right %}
+  {{ aui.IconButton("log-out", "退出") }}
+{% endblock %}
+
+{# A6: 三列 #}
+{% block status_main_left %}
+  <span>已选择 0 项</span>
+  {{ aui.Button("批量发布", "muted") }}
+  {{ aui.Button("移动分类", "muted") }}
+{% endblock %}
+{% block status_main_center %}{% endblock %}
+{% block status_main_right %}
+  {{ aui.Pager(1, 3) }}
+{% endblock %}
+
+{% block nav_pane %}
+  {% include "admin_app/include/nav.html" %}
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div class="ui-tabs" aria-label="文章状态">
+      {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换"') }}
+      <span class="ui-tab active">全部 86</span>
+      <span class="ui-tab">文章 80</span>
+      <span class="ui-tab">页面 8</span>
+      <span class="ui-tab">草稿 6</span>
+    </div>
+
+    <div class="ui-tabs" aria-label="筛选工具">
+      {{ aui.Button("筛选", "muted", selected=true) }}
+      {{ aui.Dropdown([{"value":"updated_desc","label":"排序：更新时间↓"},{"value":"updated_asc","label":"排序：更新时间↑"}], "排序", "updated_desc") }}
+    </div>
+  </div>
+
+  <div style="height:12px;"></div>
+
+  <div class="data-table-wrap" aria-label="文章表格容器">
+    <table class="data-table" aria-label="文章列表">
+      <thead>
+      <tr>
+        <th style="width:32px;"><input type="checkbox" aria-label="全选" /></th>
+        <th>标题</th>
+        <th>标签</th>
+        <th>分类</th>
+        <th>状态</th>
+        <th>UV</th>
+        <th>更新时间</th>
+        <th>操作</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td><input type="checkbox" aria-label="选择文章" /></td>
+        <td>
+          <div class="cell-title">
+            <a href="javascript:;" aria-label="打开文章">Node.js 作者 Ryan Dahl 的故事</a>
+          </div>
+        </td>
+        <td class="cell-tags">人物, Node.js</td>
+        <td class="cell-cat">fe</td>
+        <td><span class="ui-badge success">已发布</span></td>
+        <td>124</td>
+        <td>16 小时前</td>
+        <td>
+          <div class="cell-actions" aria-label="操作">
+            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
+            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接"') }}
+            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除"') }}
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <td><input type="checkbox" aria-label="选择文章" /></td>
+        <td>
+          <div class="cell-title">
+            <a href="javascript:;" aria-label="打开文章">React 随想：状态管理的边界</a>
+          </div>
+        </td>
+        <td class="cell-tags">react, architecture</td>
+        <td class="cell-cat">fe</td>
+        <td><span class="ui-badge success">已发布</span></td>
+        <td>67</td>
+        <td>1 天前</td>
+        <td>
+          <div class="cell-actions" aria-label="操作">
+            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
+            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接"') }}
+            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除"') }}
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <td><input type="checkbox" aria-label="选择文章" /></td>
+        <td>
+          <div class="cell-title">
+            <a href="javascript:;" aria-label="打开文章">相信数字还是相信直觉</a>
+          </div>
+        </td>
+        <td class="cell-tags">思考</td>
+        <td class="cell-cat">concept</td>
+        <td><span class="ui-badge draft">草稿</span></td>
+        <td>0</td>
+        <td>2 天前</td>
+        <td>
+          <div class="cell-actions" aria-label="操作">
+            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
+            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" aria-disabled="true"') }}
+            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除"') }}
+          </div>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+{% endblock %}

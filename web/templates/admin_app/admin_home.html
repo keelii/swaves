@@ -1,24 +1,32 @@
 {% extends "admin_app/layout/layout.html" %}
+{% import "admin_app/include/ui.html" as aui %}
 
-{% block window_toolbar_left %}左栏工具{% endblock %}
+{% block window_toolbar_left %}
+<div class="toolbar-two-col">
+  <div class="toolbar-logo">SWAVES</div>
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+</div>
+{% endblock %}
+
 {% block window_toolbar_main_left %}
-<button
-  type="button"
-  data-role="toggle-full-main"
-  class="toolbar-chip"
-  style="background:none;color:inherit;cursor:pointer;font:inherit;"
-  aria-pressed="false"
->
-  切换
-</button>
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+  {{ aui.Button("新建文章", "primary") }}
 {% endblock %}
 {% block window_toolbar_main_center %}主区工具{% endblock %}
 {% block window_toolbar_main_right %}{% endblock %}
 
 {% block nav_pane %}
-  导航区
+  {% include "admin_app/include/nav.html" %}
 {% endblock %}
-{% block content %}主内容区{% endblock %}
+{% block content %}
+  {% include "admin_app/include/links.html" %}
+{% endblock %}
 
-{% block status_nav %}导航状态{% endblock %}
+{% block status_nav_left %}
+  {{ aui.IconButton("setting", "设置") }}
+{% endblock %}
+{% block status_nav_right %}
+  {{ aui.IconButton("log-out", "退出") }}
+{% endblock %}
+
 {% block status_bar %}主区状态{% endblock %}

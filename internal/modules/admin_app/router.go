@@ -10,14 +10,22 @@ func RegisterRouter(
 	app *fiber.App,
 	gStore *store.GlobalStore,
 ) {
-	monitorStore := NewMonitorStore()
-	handler := NewHandler(
-		gStore,
-		NewService(gStore.Model),
-		monitorStore,
-	)
+	//monitorStore := NewMonitorStore()
+	//handler := NewHandler(
+	//	gStore,
+	//	NewService(gStore.Model),
+	//	monitorStore,
+	//)
 
 	adminGroup := app.Group("/admin_app")
 
-	adminGroup.Get("/", handler.GetHome).Name("admin_app.home")
+	adminGroup.Get("/", func(c fiber.Ctx) error {
+		return RenderAdminView(c, "admin_home", fiber.Map{}, "")
+	}).Name("admin_app.home")
+	adminGroup.Get("/post_edit", func(c fiber.Ctx) error {
+		return RenderAdminView(c, "post_edit", fiber.Map{}, "")
+	}).Name("admin_app.post_edit")
+	adminGroup.Get("/posts_list", func(c fiber.Ctx) error {
+		return RenderAdminView(c, "posts_list", fiber.Map{}, "")
+	}).Name("admin_app.posts_list")
 }
