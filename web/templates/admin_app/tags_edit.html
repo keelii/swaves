@@ -1,8 +1,0 @@
-{% extends "admin_app/layout/layout.html" %}
-{% block page_actions %}
-<button type="submit" form="form" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
-<a class="button" href="{{ UrlFor('admin.tags.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-{% endblock %}
-{% block content %}
-{% with Action = UrlFor('admin.tags.update', id=Tag.ID), Tag = Tag %}{% include "admin_app/include/forms/tags_form.html" %}{% endwith %}
-{% endblock %}
