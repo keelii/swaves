@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterModule(app *fiber.App, gStore *store.GlobalStore) {
+func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	handler := NewHandler(
 		gStore,
 		NewService(gStore.Model),

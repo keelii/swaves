@@ -77,9 +77,9 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	app.Use(recover.New())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 
-	admin.RegisterModule(app, globalStore)
-	site.RegisterModule(app, globalStore)
-	api.RegisterModule(app)
+	admin.RegisterRouter(app, globalStore)
+	site.RegisterRouter(app, globalStore)
+	api.RegisterRouter(app)
 
 	return SwavesApp{
 		App:    app,

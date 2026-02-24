@@ -9,7 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterModule(
+func RegisterRouter(
 	app *fiber.App,
 	gStore *store.GlobalStore,
 ) {
