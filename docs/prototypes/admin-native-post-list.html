@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swaves Console - 文章列表（Native 风格示意）</title>
+  <style>
+    :root {
+      --bg-app: #f6f7f9;
+      --bg-panel: #ffffff;
+      --bg-hover: #f1f3f6;
+      --bg-soft: #fcfcfd;
+      --text-1: #0f172a;
+      --text-2: #475467;
+      --text-3: #667085;
+      --line: #e4e7ec;
+      --line-soft: #eaecf0;
+      --primary: #2563eb;
+      --primary-soft: #eef4ff;
+      --success-bg: #ecfdf3;
+      --success-text: #027a48;
+      --draft-bg: #f2f4f7;
+      --draft-text: #344054;
+      --radius-sm: 8px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--text-1);
+      background: var(--bg-app);
+      min-height: 100vh;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      grid-template-rows: 56px 1fr;
+      grid-template-areas:
+        "top top"
+        "side main";
+    }
+
+    .topbar {
+      grid-area: top;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg-panel);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .top-left, .top-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand {
+      font-size: 27px;
+      line-height: 1;
+      color: var(--text-2);
+      margin-right: 2px;
+    }
+
+    .app-name {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .search-inline {
+      height: 36px;
+      width: 320px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--bg-panel);
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      color: var(--text-3);
+      font-size: 14px;
+    }
+
+    .shortcut {
+      font-size: 12px;
+      color: var(--text-3);
+      border: 1px solid var(--line);
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: var(--bg-soft);
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--bg-panel);
+      color: var(--text-1);
+      border-radius: var(--radius-sm);
+      height: 36px;
+      padding: 0 12px;
+      font-size: 14px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: #dbeafe;
+      color: #1e40af;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .sidebar {
+      grid-area: side;
+      border-right: 1px solid var(--line);
+      background: var(--bg-panel);
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .nav-group-title {
+      margin: 10px 8px 4px;
+      font-size: 12px;
+      color: #98a2b3;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .nav-item {
+      height: 40px;
+      border-radius: var(--radius-sm);
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text-2);
+      position: relative;
+    }
+
+    .nav-item.active {
+      background: var(--primary-soft);
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .nav-item.active::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      border-radius: 999px;
+      background: var(--primary);
+    }
+
+    .sidebar-foot {
+      margin-top: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--bg-soft);
+      padding: 10px;
+      font-size: 12px;
+      color: var(--text-3);
+      line-height: 1.7;
+    }
+
+    .main {
+      grid-area: main;
+      padding: 20px;
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      min-height: calc(100vh - 96px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .context {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 30px;
+      font-weight: 600;
+    }
+
+    .title-wrap p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--text-3);
+    }
+
+    .chips {
+      display: inline-flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-2);
+      background: #fff;
+    }
+
+    .chip.active {
+      border-color: #c7d7fe;
+      background: var(--primary-soft);
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 16px 12px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .toolbar-left, .toolbar-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm {
+      height: 32px;
+      font-size: 13px;
+      padding: 0 10px;
+      color: var(--text-2);
+    }
+
+    .btn-muted {
+      background: var(--bg-soft);
+    }
+
+    .btn-disabled {
+      color: #98a2b3;
+      background: #f8f9fb;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    thead tr {
+      background: var(--bg-soft);
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 11px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      font-size: 13px;
+      color: var(--text-3);
+      font-weight: 500;
+    }
+
+    tbody tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .col-check { width: 36px; }
+    .col-title { width: 34%; }
+    .col-tags { width: 20%; color: var(--text-2); }
+    .col-cat { width: 10%; }
+    .col-status { width: 10%; }
+    .col-uv { width: 6%; }
+    .col-time { width: 14%; color: var(--text-2); }
+    .col-action { width: 10%; }
+
+    a {
+      color: var(--text-link, #1d4ed8);
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    .status {
+      height: 24px;
+      border-radius: 999px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .status-published {
+      background: var(--success-bg);
+      color: var(--success-text);
+    }
+
+    .status-draft {
+      background: var(--draft-bg);
+      color: var(--draft-text);
+    }
+
+    .actions {
+      display: inline-flex;
+      gap: 6px;
+      opacity: 0.55;
+      transition: opacity 120ms ease-out;
+    }
+
+    tbody tr:hover .actions { opacity: 1; }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      color: var(--text-2);
+      font-size: 13px;
+    }
+
+    .footerbar {
+      margin-top: auto;
+      border-top: 1px solid var(--line-soft);
+      min-height: 52px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .selected {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pager {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .page-num.active {
+      border-color: #c7d7fe;
+      background: var(--primary-soft);
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1180px) {
+      .search-inline { width: 250px; }
+      .col-tags, .col-uv { display: none; }
+    }
+
+    @media (max-width: 960px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 56px auto 1fr;
+        grid-template-areas:
+          "top"
+          "side"
+          "main";
+      }
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+      .sidebar-foot { display: none; }
+      .main { padding: 12px; }
+      .panel { min-height: auto; }
+      .context {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="top-left">
+        <span class="brand">☰</span>
+        <span class="app-name">Swaves Console</span>
+      </div>
+      <div class="search-inline">
+        <span>搜索页面、命令或设置...</span>
+        <span class="shortcut">⌘K</span>
+      </div>
+      <div class="top-right">
+        <button class="btn btn-primary">＋ 新建文章</button>
+        <span class="avatar">KL</span>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <div class="nav-group-title">内容</div>
+      <div class="nav-item">仪表盘</div>
+      <div class="nav-item active">文章列表</div>
+      <div class="nav-item">页面</div>
+      <div class="nav-item">加密内容</div>
+
+      <div class="nav-group-title">互动</div>
+      <div class="nav-item">评论</div>
+
+      <div class="nav-group-title">系统</div>
+      <div class="nav-item">分类体系</div>
+      <div class="nav-item">重定向</div>
+      <div class="nav-item">请求日志</div>
+
+      <div class="nav-group-title">高级</div>
+      <div class="nav-item">导入导出</div>
+      <div class="nav-item">回收站</div>
+      <div class="nav-item">性能监控</div>
+
+      <div class="sidebar-foot">
+        存储 68%<br>
+        任务队列 2<br>
+        错误 0
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="panel">
+        <div class="context">
+          <div class="title-wrap">
+            <h1>文章列表</h1>
+            <p>最近更新：今天 16:20</p>
+            <div class="chips">
+              <span class="chip active">全部 86</span>
+              <span class="chip">已发布 80</span>
+              <span class="chip">草稿 6</span>
+              <span class="chip">最近更新 9</span>
+            </div>
+          </div>
+          <div class="search-inline" style="width: 290px;">
+            <span>搜索标题、标签、分类</span>
+            <span class="shortcut">/</span>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <button class="btn btn-sm btn-muted">筛选</button>
+            <button class="btn btn-sm btn-muted">排序：更新时间↓</button>
+            <button class="btn btn-sm btn-muted">密度：舒适</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-sm btn-disabled">批量操作</button>
+          </div>
+        </div>
+
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-check">□</th>
+                <th class="col-title">标题</th>
+                <th class="col-tags">标签</th>
+                <th class="col-cat">分类</th>
+                <th class="col-status">状态</th>
+                <th class="col-uv">UV</th>
+                <th class="col-time">更新时间</th>
+                <th class="col-action">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>□</td>
+                <td><a href="#">Node.js 作者 Ryan Dahl 的故事</a></td>
+                <td>人物, Node.js</td>
+                <td><a href="#">fe</a></td>
+                <td><span class="status status-published">已发布</span></td>
+                <td>124</td>
+                <td>16 小时前</td>
+                <td><span class="actions"><span class="icon-btn">✏</span><span class="icon-btn">⋯</span></span></td>
+              </tr>
+              <tr>
+                <td>□</td>
+                <td><a href="#">React 随想：状态管理的边界</a></td>
+                <td>react, architecture</td>
+                <td><a href="#">fe</a></td>
+                <td><span class="status status-published">已发布</span></td>
+                <td>67</td>
+                <td>1 天前</td>
+                <td><span class="actions"><span class="icon-btn">✏</span><span class="icon-btn">⋯</span></span></td>
+              </tr>
+              <tr>
+                <td>□</td>
+                <td><a href="#">相信数字还是相信直觉</a></td>
+                <td>思考</td>
+                <td><a href="#">concept</a></td>
+                <td><span class="status status-draft">草稿</span></td>
+                <td>0</td>
+                <td>2 天前</td>
+                <td><span class="actions"><span class="icon-btn">✏</span><span class="icon-btn">⋯</span></span></td>
+              </tr>
+              <tr>
+                <td>□</td>
+                <td><a href="#">我做程序员这十年</a></td>
+                <td>career, life</td>
+                <td><a href="#">jd</a></td>
+                <td><span class="status status-published">已发布</span></td>
+                <td>213</td>
+                <td>3 天前</td>
+                <td><span class="actions"><span class="icon-btn">✏</span><span class="icon-btn">⋯</span></span></td>
+              </tr>
+              <tr>
+                <td>□</td>
+                <td><a href="#">所谓的设计系统，到底解决什么问题</a></td>
+                <td>design-system</td>
+                <td><a href="#">javascript</a></td>
+                <td><span class="status status-published">已发布</span></td>
+                <td>92</td>
+                <td>1 周前</td>
+                <td><span class="actions"><span class="icon-btn">✏</span><span class="icon-btn">⋯</span></span></td>
+              </tr>
+              <tr>
+                <td>□</td>
+                <td><a href="#">Fabric.js 原理与源码解析</a></td>
+                <td>canvas, fabric.js</td>
+                <td><a href="#">fe</a></td>
+                <td><span class="status status-published">已发布</span></td>
+                <td>156</td>
+                <td>2 周前</td>
+                <td><span class="actions"><span class="icon-btn">✏</span><span class="icon-btn">⋯</span></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footerbar">
+          <div class="selected">
+            已选择 0 项
+            <button class="btn btn-sm btn-disabled">批量发布</button>
+            <button class="btn btn-sm btn-disabled">移动分类</button>
+          </div>
+          <div class="pager">
+            <span class="page-num">‹</span>
+            <span class="page-num active">1</span>
+            <span class="page-num">2</span>
+            <span class="page-num">3</span>
+            <span class="page-num">›</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

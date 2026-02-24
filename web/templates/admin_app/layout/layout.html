@@ -1,0 +1,249 @@
+{% extends "admin_app/layout/base.html" %}
+
+{% block head_extra %}
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  :root {
+    --app-font-size: {{ Settings("font_size") }}px;
+    --app-border: #d4d7dc;
+    --app-text: #2f3440;
+    --app-text-soft: #6b7280;
+    --app-border-width: 1px;
+    --app-toolbar-height: 40px;
+    --app-status-height: 30px;
+    --app-pane-nav-width: 240px;
+    --app-toolbar-border-width: 1px;
+    --app-status-border-width: 1px;
+  }
+
+  [data-theme="dark"] {
+    --app-border: #313a49;
+    --app-text: #e4e8ee;
+    --app-text-soft: #8f99aa;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    max-width: none;
+    padding: 0;
+    overflow: hidden;
+    color: var(--app-text);
+    font-size: var(--app-font-size);
+  }
+
+  .app-window {
+    height: 100vh;
+    min-height: 100vh;
+    min-width: 0;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(180px, var(--app-pane-nav-width)) minmax(0, 1fr);
+    border: var(--app-border-width) solid var(--app-border);
+    overflow: hidden;
+  }
+
+  .app-window.full-main {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+
+  .app-window .app-panel {
+    min-height: 0;
+    min-width: 0;
+    display: grid;
+    grid-template-rows: var(--app-toolbar-height) minmax(0, 1fr) var(--app-status-height);
+    border-right: var(--app-border-width) solid var(--app-border);
+  }
+
+  .app-window .app-panel:last-child {
+    border-right: none;
+  }
+
+  .app-window.full-main .app-nav {
+    border-right: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .app-window .app-panel-toolbar {
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border-bottom: var(--app-toolbar-border-width) solid var(--app-border);
+    overflow: hidden;
+  }
+
+  .app-window .app-panel-toolbar.right {
+    justify-content: flex-end;
+  }
+
+  .app-window .app-main-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .app-window .app-main-toolbar .app-toolbar-slot {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .app-window .app-main-toolbar .app-toolbar-slot.center {
+    justify-content: center;
+  }
+
+  .app-window .app-main-toolbar .app-toolbar-slot.right {
+    justify-content: flex-end;
+  }
+
+  .app-window .toolbar-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    max-width: 100%;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: var(--app-border-width) solid var(--app-border);
+    color: var(--app-text-soft);
+    font-size: 0.86rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-window .app-panel-body {
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+  }
+
+  .app-window .app-panel-inner {
+    min-height: 100%;
+    min-width: 0;
+    padding: 14px;
+    box-sizing: border-box;
+  }
+
+  .app-window .status-bar {
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-top: var(--app-status-border-width) solid var(--app-border);
+    color: var(--app-text-soft);
+    font-size: 0.82rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="app-window">
+  <aside class="app-panel app-nav" aria-label="导航栏">
+    <div class="app-panel-toolbar">
+      {% block window_toolbar_left %}{% endblock %}
+    </div>
+    <div class="app-panel-body">
+      <div class="app-panel-inner">
+        {% block nav_pane %}{% endblock %}
+      </div>
+    </div>
+    <div class="status-bar nav-status-bar">
+      {% block status_nav %}{% endblock %}
+    </div>
+  </aside>
+
+  <main class="app-panel app-main" aria-label="内容区">
+    <div class="app-panel-toolbar app-main-toolbar">
+      <div class="app-toolbar-slot left">
+        {% block window_toolbar_main_left %}{% endblock %}
+      </div>
+      <div class="app-toolbar-slot center">
+        {% block window_toolbar_main_center %}{% endblock %}
+      </div>
+      <div class="app-toolbar-slot right">
+        {% block window_toolbar_main_right %}
+          {% block window_toolbar_right %}{% endblock %}
+        {% endblock %}
+      </div>
+    </div>
+    <div class="app-panel-body">
+      <div class="app-panel-inner">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+    <div class="status-bar main-status-bar">
+      {% block status_bar %}{% endblock %}
+    </div>
+  </main>
+</div>
+<script>
+  (function() {
+    var appWindow = document.querySelector('.app-window');
+    var storageKey = 'admin_app.layout_wide_mode';
+
+    if (!appWindow) {
+      return;
+    }
+
+    function getToggleButtons() {
+      return document.querySelectorAll('[data-role="toggle-full-main"]');
+    }
+
+    function applyFullMain(enabled) {
+      appWindow.classList.toggle('full-main', enabled);
+      getToggleButtons().forEach(function(button) {
+        button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+      });
+    }
+
+    function loadFullMainState() {
+      try {
+        return window.localStorage.getItem(storageKey) === '1';
+      } catch (error) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('read full-main state failed', error);
+        }
+        return false;
+      }
+    }
+
+    function saveFullMainState(enabled) {
+      try {
+        window.localStorage.setItem(storageKey, enabled ? '1' : '0');
+      } catch (error) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('save full-main state failed', error);
+        }
+      }
+    }
+
+    applyFullMain(loadFullMainState());
+
+    document.addEventListener('click', function(event) {
+      var button = event.target.closest('[data-role="toggle-full-main"]');
+      if (!button) {
+        return;
+      }
+      var nextState = !appWindow.classList.contains('full-main');
+      applyFullMain(nextState);
+      saveFullMainState(nextState);
+    });
+  })();
+</script>
+{% endblock %}

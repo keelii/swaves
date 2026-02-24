@@ -1,0 +1,24 @@
+{% extends "admin_app/layout/layout.html" %}
+
+{% block window_toolbar_left %}左栏工具{% endblock %}
+{% block window_toolbar_main_left %}
+<button
+  type="button"
+  data-role="toggle-full-main"
+  class="toolbar-chip"
+  style="background:none;color:inherit;cursor:pointer;font:inherit;"
+  aria-pressed="false"
+>
+  切换
+</button>
+{% endblock %}
+{% block window_toolbar_main_center %}主区工具{% endblock %}
+{% block window_toolbar_main_right %}{% endblock %}
+
+{% block nav_pane %}
+  导航区
+{% endblock %}
+{% block content %}主内容区{% endblock %}
+
+{% block status_nav %}导航状态{% endblock %}
+{% block status_bar %}主区状态{% endblock %}

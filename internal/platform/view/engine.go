@@ -90,6 +90,7 @@ func NewViewEngine(dir string, reload bool) (fiber.Views, func(app *fiber.App)) 
 
 func newMiniJinjaView(templateRoot string, clearOnRender bool) *FiberView {
 	env := minijinja.NewEnvironment()
+	env.SetDebug(true)
 	env.SetUndefinedBehavior(minijinja.UndefinedLenient)
 	env.SetDebug(clearOnRender)
 	env.SetLoader(newMiniJinjaTemplateLoader(templateRoot))

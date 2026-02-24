@@ -68,7 +68,7 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 	_ = layout
 
 	if !strings.Contains(view, "/") {
-		view = "admin/" + view
+		view = "admin_app/" + view
 	}
 	if data == nil {
 		data = fiber.Map{}
@@ -178,111 +178,7 @@ func (h *Handler) TestRouter(c fiber.Ctx) error {
 }
 
 func (h *Handler) GetHome(c fiber.Ctx) error {
-	totalUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	activeUsers, err := db.CountActiveVisitors(h.Model, dashboardActiveUsersWindowSeconds)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	totalLikes, err := db.CountTotalLikes(h.Model)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	postCount, err := db.CountPostsByKind(h.Model, db.PostKindPost)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	pageCount, err := db.CountPostsByKind(h.Model, db.PostKindPage)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	categoryCount, err := db.CountCategories(h.Model)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	tagCount, err := db.CountTags(h.Model)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	topUVContents, err := db.ListTopUVContents(h.Model, 10)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	topLikedContents, err := db.ListTopLikedContents(h.Model, 10)
-	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
-	}
-
-	activeRange := resolveDashboardUVRange(c.Query("uv_range")).Key
-	chartTabs := make([]dashboardUVTabData, 0, len(dashboardUVRanges))
-	nowTime := time.Now()
-	for _, rangeConfig := range dashboardUVRanges {
-		chartData, chartErr := buildDashboardUVChart(h.Model, rangeConfig, nowTime)
-		if chartErr != nil {
-			return RenderAdminView(c, "admin_home", fiber.Map{
-				"Title": "工作台",
-				"Error": chartErr.Error(),
-			}, "")
-		}
-		chartTabs = append(chartTabs, dashboardUVTabData{
-			Key:        rangeConfig.Key,
-			Label:      rangeConfig.Label,
-			Active:     rangeConfig.Key == activeRange,
-			SVG:        chartData.SVG,
-			Total:      chartData.Total,
-			StartLabel: chartData.StartLabel,
-			EndLabel:   chartData.EndLabel,
-		})
-	}
-
 	return RenderAdminView(c, "admin_home", fiber.Map{
-		"Title":                  "工作台",
-		"ActiveUsers":            activeUsers,
-		"ActiveUsersWindowLabel": dashboardActiveUsersWindowLabel,
-		"TotalUV":                totalUV,
-		"TotalLikes":             totalLikes,
-		"PostCount":              postCount + pageCount,
-		"CategoryCount":          categoryCount,
-		"TagCount":               tagCount,
-		"TopUVContents":          topUVContents,
-		"TopLikedContents":       topLikedContents,
-		"UVChartTabs":            chartTabs,
+		"Title": "工作台",
 	}, "")
 }
