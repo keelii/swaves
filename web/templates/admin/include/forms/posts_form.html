@@ -33,66 +33,141 @@
 
 <form id="form" method="post" action="{{ Action }}">
   {{ _csrf_token() }}
-  <div class="row">
-    <div class="col-6">
-      <label data-field>
+  <style>
+    .post-editor-form .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75em 1em;
+      margin-bottom: 1em;
+    }
+    .post-editor-form .field-full {
+      grid-column: 1 / -1;
+    }
+    .post-editor-form .slug-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .post-editor-form .slug-input-wrap input {
+      flex: 1;
+    }
+    .post-editor-form .post-options {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75em 1.5em;
+      padding: 0.6em 0.8em;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+    }
+    .post-editor-form .kind-options {
+      display: inline-flex;
+      align-items: center;
+      gap: 1em;
+      margin: 0;
+      padding: 0;
+      border: none;
+      min-inline-size: 0;
+    }
+    .post-editor-form .kind-options legend {
+      margin: 0;
+      padding: 0;
+      font-size: 0.9em;
+      color: var(--muted-foreground);
+    }
+    .post-editor-form .kind-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4em;
+      margin: 0;
+    }
+    .post-editor-form .comment-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5em;
+      margin: 0;
+      white-space: nowrap;
+    }
+    .post-editor-form .post-editor-main textarea {
+      min-height: 56vh;
+    }
+    @media (max-width: 960px) {
+      .post-editor-form .meta-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <div class="post-editor-form">
+    <div class="meta-grid">
+      <label data-field class="field-full">
         文章标题
         <input class="w-100" type="text" name="title" id="title" required placeholder="文章标题" value="{{ title_value }}">
       </label>
 
-      {% if is_edit %}
       <label data-field>
         文章 URL 标识
-        <span class="hstack">
-          <input type="text" value="{{ slug_value }}" disabled style="flex: 1;">
-          {% if show_public_link %}
-            <a class="valign" href="{{ GetPostUrl(Post) }}" target="_blank" rel="noopener" title="查看文章">
-              {{ LucideIcon("link-2", 24) }}
-            </a>
-          {% endif %}
-        </span>
-      </label>
-      {% else %}
-      <label data-field>
-        文章 URL 标识
-        <span class="hstack">
-          <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ slug_value }}" style="flex: 1;">
-          <button class="outline" onclick="autoSetSlug()" type="button">自动生成</button>
-        </span>
-        <script>
-          var slugAPIURL = {{ UrlFor('api.slug') | tojson }};
-          function autoSetSlug() {
-            sfetchJSON(slugAPIURL, {
-              method: 'GET'
-            }, {
-              query: { name: $('#title').val() }
-            }).then(function(ret) {
-              var json = ret.body;
-              if (json && json.data) $('#slug').val(json.data);
-            });
-          }
-        </script>
-      </label>
-      {% endif %}
-
-      <fieldset class="hstack">
-        <legend>类型</legend>
-        {{ ui.form_field_radio("kind", post_kind_options, selected=kind_value) }}
-      </fieldset>
-
-      {{ ui.form_field_checkbox("开启评论", "comment_enabled", checked=comment_enabled, value=1) }}
-
-      <label data-field>
-        标签
-        {% with SelectedTagNames = selected_tag_names %}{% include "admin/include/tag_select.html" %}{% endwith %}
+        {% if is_edit %}
+          <span class="slug-input-wrap">
+            <input type="text" value="{{ slug_value }}" disabled>
+            {% if show_public_link %}
+              <a class="valign" href="{{ GetPostUrl(Post) }}" target="_blank" rel="noopener" title="查看文章">
+                {{ LucideIcon("link-2", 24) }}
+              </a>
+            {% endif %}
+          </span>
+        {% else %}
+          <span class="slug-input-wrap">
+            <input type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ slug_value }}">
+            <button class="outline" onclick="autoSetSlug()" type="button">自动生成</button>
+          </span>
+          <script>
+            var slugAPIURL = {{ UrlFor('api.slug') | tojson }};
+            function autoSetSlug() {
+              sfetchJSON(slugAPIURL, {
+                method: 'GET'
+              }, {
+                query: { name: $('#title').val() }
+              }).then(function(ret) {
+                var json = ret.body;
+                if (json && json.data) $('#slug').val(json.data);
+              });
+            }
+          </script>
+        {% endif %}
       </label>
 
       <label data-field>
         分类
         {% with Root = {"CategoryOptions": CategoryOptions}, SelectedID = selected_category_id %}{% include "admin/include/category_select.html" %}{% endwith %}
       </label>
+
+      <label data-field>
+        标签
+        {% with SelectedTagNames = selected_tag_names %}{% include "admin/include/tag_select.html" %}{% endwith %}
+      </label>
+
+      <div class="field-full post-options">
+        <fieldset class="kind-options">
+          <legend>类型</legend>
+          {% for option in post_kind_options %}
+            <label>
+              <input type="radio" name="kind" value="{{ option.Value }}"{% if kind_value == option.Value %} checked{% endif %}>
+              {{ option.Label }}
+            </label>
+          {% endfor %}
+        </fieldset>
+        <label class="comment-switch">
+          <input type="checkbox" name="comment_enabled" value="1"{% if comment_enabled %} checked{% endif %}>
+          开启评论
+        </label>
+      </div>
+    </div>
+
+    <div class="post-editor-main">
+      {% with Value = content_value, Required = markdown_required %}{% include "admin/include/markdown_preview.html" %}{% endwith %}
     </div>
   </div>
-
-  {% with Value = content_value, Required = markdown_required %}{% include "admin/include/markdown_preview.html" %}{% endwith %}
 </form>

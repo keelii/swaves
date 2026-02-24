@@ -61,34 +61,31 @@
   </li>
   <li>
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
-      <span class="menu-text">站点设置</span>
+      <span class="menu-text">站点管理</span>
       <span class="menu-arrow">
           {{ LucideIcon("chevron-right", 16) }}
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.settings.all") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.settings.all') }}">站点设置</a>
-      </li>
       <li class="submenu-item{% if UrlIs("admin.settings.list") %} active{% endif %}">
         <a href="{{ UrlFor('admin.settings.list') }}">设置列表</a>
       </li>
-    </ul>
-  </li>
-  <li>
-    <div class="menu-item expanded" onclick="toggleSubmenu(this)">
-      <span class="menu-text">高级设置</span>
-      <span class="menu-arrow">
-          {{ LucideIcon("chevron-right", 16) }}
-      </span>
-    </div>
-    <ul class="submenu-list unstyled show">
       <li class="submenu-item{% if UrlIs("admin.redirects.list") %} active{% endif %}">
         <a href="{{ UrlFor('admin.redirects.list') }}">重定向管理</a>
       </li>
       <li class="submenu-item{% if UrlIs("admin.http_error_logs.list") %} active{% endif %}">
         <a href="{{ UrlFor('admin.http_error_logs.list') }}">请求日志</a>
       </li>
+    </ul>
+  </li>
+  <li>
+    <div class="menu-item expanded" onclick="toggleSubmenu(this)">
+      <span class="menu-text">高级功能</span>
+      <span class="menu-arrow">
+          {{ LucideIcon("chevron-right", 16) }}
+      </span>
+    </div>
+    <ul class="submenu-list unstyled show">
       <li class="submenu-item{% if UrlIs("admin.trash.list") %} active{% endif %}">
         <a href="{{ UrlFor('admin.trash.list') }}">回收站</a>
       </li>

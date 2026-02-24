@@ -64,14 +64,14 @@
           {% block page_actions %}{% endblock %}
         </div>
         <div class="nav-user">
-          {% if IsLogin %}
-            <span>欢迎，{{ Settings("author") }}</span> <a href="{{ UrlFor('admin.logout') }}">退出</a>
-          {% else %}
-            <span>请先</span> <a href="{{ UrlFor('admin.login.show') }}">登录</a>
-          {% endif %}
-          <div class="user-avatar">
-            <img width="32" height="32" src="{{ GetAuthorGravatarUrl(62) }}" alt="{{ Settings("author") }}">
-          </div>
+{#          {% if IsLogin %}#}
+{#            <span>欢迎，{{ Settings("author") }}</span> <a href="{{ UrlFor('admin.logout') }}">退出</a>#}
+{#          {% else %}#}
+{#            <span>请先</span> <a href="{{ UrlFor('admin.login.show') }}">登录</a>#}
+{#          {% endif %}#}
+{#          <div class="user-avatar">#}
+{#            <img width="32" height="32" src="{{ GetAuthorGravatarUrl(62) }}" alt="{{ Settings("author") }}">#}
+{#          </div>#}
         </div>
     </div>
   </div>
@@ -81,6 +81,14 @@
     <!-- 左侧菜单 -->
     <div class="sidebar-menu" id="sidebar">
       {% include "admin/include/menu.html" %}
+      <div class="global-setting salign">
+        <a href="{{ UrlFor('admin.logout') }}">
+          {{ LucideIcon("log-out") }}
+        </a>
+        <a href="{{ UrlFor('admin.settings.all') }}">
+          {{ LucideIcon("setting") }}
+        </a>
+      </div>
     </div>
 
     <!-- 主内容区域 -->

@@ -6,6 +6,7 @@
     --toggle-padding: 2px;
 
     --top-nav-height: 60px;
+    --menu-setting-height: 40px;
 
     --primary: #0070F3;
     --ring: transparent;
@@ -168,13 +169,35 @@ svg {
 
 /* 左侧菜单 */
 .sidebar-menu {
+    position: relative;
     width: var(--menu-width);
     background: var(--card);
     border-right: 1px solid var(--border);
     transition: all 0.3s ease;
+    height: 100%;
+    /*overflow-y: auto;*/
+    /*overflow-x: hidden;*/
+}
+.global-setting {
+    position: absolute;
+    bottom: 0;
+    background: #fff;
+    height: var(--menu-setting-height);
+    line-height: var(--menu-setting-height);
+    padding: 0 16px;
+    width: 100%;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+.global-setting a {
+    color: var(--foreground);
+}
+.menu-list {
+    height: calc(100vh - var(--top-nav-height) - var(--menu-setting-height));
     overflow-y: auto;
     overflow-x: hidden;
-    padding-top: var(--space-4);
+}
+.sidebar-menu {
+    /*padding-bottom: var(--top-nav-height)*/
 }
 .sidebar-menu ul {
     padding: 0;
