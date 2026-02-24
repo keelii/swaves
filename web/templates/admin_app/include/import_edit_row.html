@@ -1,0 +1,36 @@
+<tr data-import-item-row data-post-id="{{ Item.PostID }}">
+  <td>
+    <div class="import-field-stack">
+      <input type="hidden" data-field="post_id" value="{{ Item.PostID }}">
+      <input type="hidden" data-field="filename" value="{{ Item.Filename }}">
+      <input type="hidden" data-field="created_at_unix" value="{{ Item.CreatedAtUnix }}">
+      <input type="text" data-field="title" value="{{ Item.Title }}" required style="width: 100%;">
+      <input type="text" data-field="slug" value="{{ Item.Slug }}" required style="width: 100%;">
+      <input type="text" data-field="created_at" value="{{ Item.CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS（可选）" style="width: 100%;">
+    </div>
+  </td>
+  <td>
+    <div class="valign">
+      <label><input type="radio" data-field="status" name="import_status_{{ Item.PostID }}" value="draft" {% if Item.Status == "draft" %}checked{% endif %}> 草稿</label>
+      <label><input type="radio" data-field="status" name="import_status_{{ Item.PostID }}" value="published" {% if Item.Status == "published" %}checked{% endif %}> 已发布</label>
+    </div>
+  </td>
+  <td>
+    <div class="valign">
+      <label><input type="radio" data-field="kind" name="import_kind_{{ Item.PostID }}" value="0" {% if (Item.Kind == "0") or (Item.Kind == "") %}checked{% endif %}> 文章</label>
+      <label><input type="radio" data-field="kind" name="import_kind_{{ Item.PostID }}" value="1" {% if Item.Kind == "1" %}checked{% endif %}> 页面</label>
+    </div>
+  </td>
+  <td>
+    <div class="import-field-stack">
+      <input type="text" data-field="tags" value="{{ Item.Tags }}" placeholder="标签1, 标签2" style="width: 100%;">
+      <select data-field="category" data-selected="{{ Item.Category }}" data-categories="{{ Item.Categories }}" style="width: 100%;"></select>
+      <input type="hidden" data-field="categories" value="{{ Item.Categories }}">
+    </div>
+  </td>
+  <td>
+    <textarea data-field="content" hidden>{{ Item.Content }}</textarea>
+    <div class="import-item-content">{% if Item.ContentPreview %}{{ Item.ContentPreview }}{% else %}-{% endif %}</div>
+  </td>
+  <td data-import-edit-status data-state="pending">待确认</td>
+</tr>

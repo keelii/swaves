@@ -1,0 +1,53 @@
+{% extends "admin_app/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.tasks.list') }}">{{ ui.action_btn_content("arrow-left", "返回任务") }}</a>
+{% endblock %}
+{% block content %}
+<h3>任务：{{ Task.Name }} ({{ Task.Code }})</h3>
+
+<table>
+  <thead>
+  <tr>
+    <th class="cell-12">任务代码</th>
+    <th>记录ID</th>
+    <th class="cell-6">状态</th>
+    <th class="cell-30">消息</th>
+    <th>耗时（毫秒）</th>
+    <th>开始时间</th>
+    <th>结束时间</th>
+    <th>创建时间</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {% for run in Runs %}
+  <tr>
+    <td>{{ run.TaskCode }}</td>
+    <td>{{ run.ID }}</td>
+    <td>
+        {% if run.Status == "success" %}
+            <div class="badge success">成功</div>
+        {% else %}
+          <div class="badge danger">失败</div>
+        {% endif %}
+    </td>
+    <td>
+        {% if run.Status == "success" %}
+            {{ run.Message }}
+        {% else %}
+            <span class="text-danger">{{ run.Message }}</span>
+        {% endif %}
+    </td>
+    <td>{{ run.Duration }}</td>
+    <td>{{ run.StartedAt | formatTime }}</td>
+    <td>{{ run.FinishedAt | formatTime }}</td>
+    <td>{{ run.CreatedAt | formatTime }}</td>
+  </tr>
+  {% else %}
+  <tr>
+    <td colspan="8">暂无执行记录</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

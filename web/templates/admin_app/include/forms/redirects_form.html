@@ -1,0 +1,148 @@
+{% set source_value = "" %}
+{% set target_value = "" %}
+{% set status_value = 301 %}
+{% set enabled_checked = true %}
+{% set toggle_id = "redirect_enabled_new" %}
+{% set target_options = RedirectTargetOptions|default([]) %}
+{% set is_new_redirect = (not Redirect) or (Redirect.ID == 0) %}
+{% set show_target_picker = is_new_redirect and ((target_options|length) > 0) %}
+
+{% if Redirect %}
+  {% set source_value = Redirect.From %}
+  {% set target_value = Redirect.To %}
+  {% set status_value = Redirect.Status %}
+  {% set enabled_checked = Redirect.Enabled == 1 %}
+  {% set toggle_id = Printf("redirect_enabled_%d", Redirect.ID) %}
+{% endif %}
+
+<form id="form" method="post" action="{{ Action }}">
+  {{ _csrf_token() }}
+  <div class="row">
+    <div class="col-6">
+      <label data-field>
+        来源路径
+        <input type="text" name="from" required value="{{ source_value }}" placeholder="/old-path">
+      </label>
+
+      <label data-field>
+        目标路径
+        <span class="hstack">
+          <input id="redirect_to_path" type="text" name="to" required value="{{ target_value }}" placeholder="/new-path" style="flex: 1;">
+          {% if show_target_picker %}
+            <a href="javascript:;" id="redirect_target_picker_open" class="hstack gap-1" data-title="跳转到发布的文章">
+              {{ LucideIcon("archive", 24) }}
+            </a>
+          {% endif %}
+        </span>
+      </label>
+
+      <label data-field>
+        状态码
+        <select name="status">
+          <option value="301"{% if status_value == 301 %} selected{% endif %}>301 - 永久重定向</option>
+          <option value="302"{% if status_value == 302 %} selected{% endif %}>302 - 临时重定向</option>
+        </select>
+      </label>
+
+      <label data-field>
+        启用
+        {{ ui.toggle(toggle_id, "enabled", checked=enabled_checked, data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
+      </label>
+    </div>
+  </div>
+</form>
+
+{% if show_target_picker %}
+<dialog id="redirect_target_picker_dialog" closedby="any" style="max-width: 600px;">
+  <header class="hstack justify-between mb-3">
+    <strong>选择文章 URL</strong>
+  </header>
+
+  <div>
+    <label data-field>
+      <input type="search" class="small" id="redirect_target_picker_search" placeholder="按标题或 URL 过滤">
+    </label>
+
+    <div style="height: 40em; overflow-y: auto;">
+      <ul class="unstyled" id="redirect_target_picker_body">
+        {% for option in target_options %}
+        <li class="salign" data-target-row data-search-text="{{ option.KindLabel }} {{ option.Title }} {{ option.URL }}">
+          <div>
+            <div class="slug">{{ option.Title }}</div>
+            <small><code>{{ option.URL }}</code></small>
+          </div>
+          <div class="pick">
+            <button class="outline small redirect_target_picker_choose" type="button" data-target-url="{{ option.URL }}">使用</button>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</dialog>
+
+<script>
+$(function() {
+  var $dialog = $('#redirect_target_picker_dialog');
+  var $search = $('#redirect_target_picker_search');
+  var $toInput = $('#redirect_to_path');
+  var $rows = $('#redirect_target_picker_body').find('[data-target-row]');
+
+  function openPickerDialog() {
+    var dialog = $dialog.get(0);
+    if (!dialog || typeof dialog.showModal !== 'function') {
+      return false;
+    }
+    if (dialog.open) {
+      dialog.close();
+    }
+    dialog.showModal();
+    return true;
+  }
+
+  function closePickerDialog() {
+    var dialog = $dialog.get(0);
+    if (!dialog || !dialog.open) {
+      return;
+    }
+    dialog.close();
+  }
+
+  function filterRows() {
+    var keyword = String($search.val() || '').trim().toLowerCase();
+    if (!keyword) {
+      $rows.show();
+      return;
+    }
+
+    $rows.each(function() {
+      var text = String($(this).attr('data-search-text') || $(this).text() || '').toLowerCase();
+      $(this).toggle(text.indexOf(keyword) >= 0);
+    });
+  }
+
+  $('#redirect_target_picker_open').on('click', function(event) {
+    event.preventDefault();
+    if (openPickerDialog()) {
+      $search.val('');
+      filterRows();
+      window.setTimeout(function() {
+        $search.trigger('focus');
+      }, 0);
+    }
+  });
+
+  $(document).on('click', '.redirect_target_picker_choose', function() {
+    var targetURL = String($(this).attr('data-target-url') || '').trim();
+    if (!targetURL) {
+      return;
+    }
+    $toInput.val(targetURL);
+    closePickerDialog();
+  });
+
+  $search.on('input search', filterRows);
+  filterRows();
+});
+</script>
+{% endif %}

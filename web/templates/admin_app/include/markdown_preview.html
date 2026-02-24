@@ -1,0 +1,539 @@
+{% set placeholder = Placeholder|default("文章内容（支持 Markdown）") %}
+{% set value = Value %}
+{% set required = Required|default(false) %}
+{% set showAssetPicker = ShowAssetPicker|default(true) %}
+<style>
+  /* markdown 编辑/预览：tab 内容区可见，预览模式内用 split 分预览与 TOC */
+  .markdown-editor-wrap .tab-card .tab-content {
+    height: auto;
+    min-height: 280px;
+    overflow: visible;
+    /*border-top: 1px solid var(--border);*/
+    /*border-radius: 0 4px 4px 4px;*/
+  }
+  .markdown-editor-wrap .tab-pane {
+    display: none;
+  }
+  .markdown-editor-wrap .tab-pane.active {
+    display: block;
+  }
+  .markdown-editor-wrap .tab-nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    padding-right: 0.5em;
+  }
+  .markdown-editor-wrap .asset-picker-open {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--foreground);
+    padding: 0.25em 0.75em;
+    cursor: pointer;
+  }
+  .markdown-editor-wrap .tab-pane textarea {
+    width: 100%;
+    min-height: 240px;
+    resize: vertical;
+  }
+  .markdown-preview-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 240px;
+  }
+  .markdown-preview-row .markdown-editor-col {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+  .markdown-preview-row .markdown-editor-col label {
+    margin-bottom: 0.25em;
+  }
+  .markdown-preview-row .gutter.gutter-horizontal {
+    width: 8px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background-repeat: no-repeat;
+    background-position: 50%;
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+  }
+  .markdown-preview-box {
+    flex: 1;
+    min-height: 200px;
+    padding: 0.75em 1em;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--card);
+    overflow: auto;
+  }
+  .markdown-preview-box:empty::before {
+    content: "预览将在此处显示…";
+    color: var(--muted-foreground);
+  }
+  .markdown-editor-wrap .split-toc-wrap {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /*.toc {*/
+  /*  max-height: calc(100vh - 50px);*/
+  /*}*/
+  /*.toc a, .toc li {*/
+  /*  font-size: 16px;*/
+  /*}*/
+  /*.toc ol {*/
+  /*  padding-left: 1em;*/
+  /*}*/
+  .toc ol { list-style-type: decimal }
+  .toc ol ol { list-style-type: lower-alpha }
+  .toc ol ol ol { list-style-type: lower-roman }
+  .toc ol ol ol ol { list-style-type: lower-greek }
+  .toc ol ol ol ol ol { list-style-type: decimal }
+  .toc ol ol ol ol ol ol { list-style-type: lower-alpha }
+  .toc-toggle {
+    display: none;
+  }
+  .toc-title {
+    position: sticky;
+    padding: 0 1em;
+    margin: 0;
+    height: 40px;
+    line-height: 40px;
+    font-size: 18px;
+    font-style: normal;
+    font-weight: bold;
+    border-bottom: 1px solid #eee;
+  }
+  .toc .toc-list {
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.5em 0.5em 0.5em 1.5em;
+    /*height: calc(100% - 40px);*/
+    box-sizing: border-box;
+  }
+  .toc-list::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .toc-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .toc-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    transition: background 0.2s ease;
+  }
+
+  .toc-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  .asset-picker-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1em;
+  }
+  .asset-picker-modal.show {
+    display: flex;
+  }
+  .asset-picker-panel {
+    width: min(980px, 96vw);
+    max-height: 85vh;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .asset-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.75em 1em;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+  .asset-picker-header h4 {
+    margin: 0;
+    font-size: 1rem;
+  }
+  .asset-picker-body {
+    overflow: auto;
+    padding: 1em;
+  }
+  .asset-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75em;
+  }
+  .asset-picker-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    text-align: left;
+  }
+  .asset-picker-thumb {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    background: var(--muted);
+  }
+  .asset-picker-meta {
+    padding: 0.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+  }
+  .asset-picker-name {
+    font-size: 0.875rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .asset-picker-url {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .asset-picker-footer {
+    border-top: 1px solid var(--border);
+    padding: 0.75em 1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card);
+  }
+  .asset-picker-empty {
+    padding: 1em;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+</style>
+<div class="markdown-editor-wrap">
+  <div class="tab-card simple">
+    <div class="tab-nav">
+      <div class="tab-item active" data-tab="edit">编辑</div>
+      <div class="tab-item" data-tab="preview">预览</div>
+      {% if showAssetPicker %}
+        <div class="tab-nav-right">
+          <button class="asset-picker-open" type="button" id="open-asset-picker">图库</button>
+        </div>
+      {% endif %}
+    </div>
+    <div class="tab-content">
+      <div class="tab-pane active" id="pane-edit">
+        <textarea name="content" id="content" rows="40" cols="80" placeholder="{{ placeholder }}"{% if required %} required{% endif %}>{{ value }}</textarea>
+      </div>
+      <div class="tab-pane" id="pane-preview">
+        <div class="markdown-preview-row split" id="preview-split-row">
+          <div class="markdown-editor-col" id="split-preview">
+            <div id="content-preview" class="markdown-preview-box"></div>
+          </div>
+          <div class="markdown-editor-col split-toc-wrap" id="split-toc-wrap">
+            <div id="split-toc"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% if showAssetPicker %}
+  <div class="asset-picker-modal" id="asset-picker-modal">
+    <div class="asset-picker-panel">
+      <div class="asset-picker-header">
+        <h4>插入图片</h4>
+        <label>
+          <select id="asset-picker-provider">
+            <option value="">全部</option>
+            <option value="see">S.EE</option>
+            <option value="imagekit">ImageKit</option>
+          </select>
+        </label>
+        <button class="button outline" type="button" id="asset-picker-refresh">刷新</button>
+        <button class="button outline" type="button" id="asset-picker-close" style="margin-left:auto;">关闭</button>
+      </div>
+      <div class="asset-picker-body">
+        <div id="asset-picker-grid" class="asset-picker-grid"></div>
+        <div id="asset-picker-empty" class="asset-picker-empty" style="display:none;">暂无图片，可先到资源库上传。</div>
+      </div>
+      <div class="asset-picker-footer">
+        <small id="asset-picker-summary">-</small>
+        <button class="button outline" type="button" id="asset-picker-load-more">加载更多</button>
+      </div>
+    </div>
+  </div>
+{% endif %}
+<script src="/static/admin_app/split.min.js"></script>
+<script>
+$(function() {
+  var showAssetPicker = {{ showAssetPicker | tojson }};
+  var $ta = $('textarea[name="content"]');
+  var $preview = $('#content-preview');
+  var $navItems = $('.markdown-editor-wrap .tab-item');
+  var $panes = $('.markdown-editor-wrap .tab-pane');
+  var $pickerModal = $('#asset-picker-modal');
+  var $pickerGrid = $('#asset-picker-grid');
+  var $pickerEmpty = $('#asset-picker-empty');
+  var $pickerProvider = $('#asset-picker-provider');
+  var $pickerSummary = $('#asset-picker-summary');
+  var $pickerLoadMore = $('#asset-picker-load-more');
+  var markdownAPIURL = {{ UrlFor('api.markdown') | tojson }};
+  var assetAPIURL = {{ UrlFor('admin.assets.api.list') | tojson }};
+  if (!assetAPIURL) {
+    var adminBaseURL = {{ GetAdminUrl() | tojson }};
+    assetAPIURL = (String(adminBaseURL || '').replace(/\/+$/, '') || '/admin') + '/api/assets';
+  }
+  var splitInstance = null;
+  var pickerPage = 1;
+  var pickerPageSize = 24;
+  var pickerTotal = 0;
+
+  function showPane(tab) {
+    $navItems.removeClass('active').filter('[data-tab="' + tab + '"]').addClass('active');
+    $panes.removeClass('active').filter('#pane-' + tab).addClass('active');
+    if (tab === 'preview') {
+      update();
+      if (typeof Split !== 'undefined' && !splitInstance && $('#preview-split-row').length) {
+        splitInstance = Split(['#split-preview', '#split-toc-wrap'], {
+          sizes: [70, 30],
+          minSize: [120, 0],
+          gutterSize: 8,
+          direction: 'horizontal'
+        });
+      }
+    }
+  }
+
+  $navItems.on('click', function() {
+    var tab = $(this).data('tab');
+    showPane(tab);
+  });
+
+  function update() {
+    var text = $ta.val() || '';
+    if (!text.trim()) {
+      $preview.empty();
+      $('#split-toc').empty();
+      return;
+    }
+    if (!markdownAPIURL) {
+      $preview.text('预览接口不可用');
+      return;
+    }
+    sfetchJSON(markdownAPIURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text })
+    })
+      .then(function(ret) {
+        var res = ret.body;
+        if (res && res.data != null) {
+          $preview.html(res.data);
+          $('.toc').appendTo($('#split-toc').empty());
+          if (typeof renderMath !== 'undefined') {
+            // console.log(MathJax.typesetPromise)
+            {#MathJax.typesetPromise([$preview[0]])#}
+            renderMath()
+          }
+        }
+      })
+      .catch(function() { $preview.text('预览请求失败'); });
+  }
+
+  function escapeHtml(raw) {
+    return String(raw || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeMarkdownAlt(raw) {
+    return String(raw || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]');
+  }
+
+  function markdownForImage(item) {
+    var alt = escapeMarkdownAlt(item.original_name || '');
+    return '![' + alt + '](' + (item.file_url || '') + ')';
+  }
+
+  function insertAtCursor(text) {
+    var el = $ta.get(0);
+    if (!el) return;
+
+    var start = el.selectionStart || 0;
+    var end = el.selectionEnd || 0;
+    var value = el.value || '';
+    var prefix = value.slice(0, start);
+    var suffix = value.slice(end);
+
+    var needLeadingBreak = prefix.length > 0 && !prefix.endsWith('\n');
+    var needTrailingBreak = suffix.length > 0 && !suffix.startsWith('\n');
+    var insertText = (needLeadingBreak ? '\n' : '') + text + (needTrailingBreak ? '\n' : '');
+
+    el.value = prefix + insertText + suffix;
+
+    var cursor = prefix.length + insertText.length;
+    el.selectionStart = cursor;
+    el.selectionEnd = cursor;
+    el.focus();
+    $ta.trigger('input');
+  }
+
+  function renderPickerItems(items, appendMode) {
+    if (!appendMode) {
+      $pickerGrid.empty();
+    }
+
+    if (!items || !items.length) {
+      if ($pickerGrid.children().length === 0) {
+        $pickerEmpty.show();
+      }
+      return;
+    }
+
+    $pickerEmpty.hide();
+    items.forEach(function(item) {
+      var url = item.file_url || '';
+      if (!url) return;
+      var card = [
+        '<span type="span" class="asset-picker-item" data-url="', escapeHtml(url), '" data-name="', escapeHtml(item.original_name || ''), '">',
+          '<img class="asset-picker-thumb" src="', escapeHtml(url), '" loading="lazy" alt="', escapeHtml(item.original_name || ''), '">',
+          '<div class="asset-picker-meta">',
+            '<div class="asset-picker-name" title="', escapeHtml(item.original_name || ''), '">', escapeHtml(item.original_name || '（未命名）'), '</div>',
+            '<div class="asset-picker-url" title="', escapeHtml(url), '">', escapeHtml(url), '</div>',
+          '</div>',
+        '</span>'
+      ].join('');
+      $pickerGrid.append(card);
+    });
+  }
+
+  function updatePickerSummary() {
+    var count = $pickerGrid.children().length;
+    $pickerSummary.text('已加载 ' + count + ' / ' + pickerTotal);
+    $pickerLoadMore.prop('disabled', count >= pickerTotal || pickerTotal === 0);
+  }
+
+  function loadPickerData(appendMode) {
+    var page = appendMode ? pickerPage + 1 : 1;
+    var provider = $pickerProvider.val() || '';
+    var query = new URLSearchParams({
+      kind: 'image',
+      page: String(page),
+      pageSize: String(pickerPageSize)
+    });
+    if (provider) {
+      query.set('provider', provider);
+    }
+
+    if (!assetAPIURL) {
+      window.alert('加载图库失败：接口地址不可用');
+      return Promise.resolve();
+    }
+
+    return sfetchJSON(assetAPIURL, {
+      method: 'GET'
+    }, {
+      query: query
+    })
+      .then(function(ret) {
+        var res = ret.body;
+        if (!ret.ok || !res || !res.ok) {
+          throw new Error((res && res.error) || '加载图库失败');
+        }
+        var data = res.data || {};
+        var pager = data.pager || {};
+        var items = data.items || [];
+        pickerPage = page;
+        pickerTotal = pager.Total || pager.total || items.length || 0;
+        renderPickerItems(items, appendMode);
+        updatePickerSummary();
+      })
+      .catch(function(err) {
+        window.alert(err.message || '加载图库失败');
+      });
+  }
+
+  function openPicker() {
+    $pickerModal.addClass('show');
+    loadPickerData(false);
+  }
+
+  function closePicker() {
+    $pickerModal.removeClass('show');
+  }
+
+  if ($ta.length && $preview.length) {
+    var timer;
+    $ta.on('input paste', function() {
+      clearTimeout(timer);
+      timer = setTimeout(update, 280);
+    });
+  }
+
+  if (showAssetPicker) {
+    $('#open-asset-picker').on('click', function() {
+      openPicker();
+    });
+
+    $('#asset-picker-close').on('click', function() {
+      closePicker();
+    });
+
+    $('#asset-picker-refresh').on('click', function() {
+      loadPickerData(false);
+    });
+
+    $pickerProvider.on('change', function() {
+      loadPickerData(false);
+    });
+
+    $pickerLoadMore.on('click', function() {
+      loadPickerData(true);
+    });
+
+    $pickerModal.on('click', function(e) {
+      if (e.target === this) {
+        closePicker();
+      }
+    });
+
+    $(document).on('click', '.asset-picker-item', function() {
+      var item = {
+        file_url: $(this).attr('data-url') || '',
+        original_name: $(this).attr('data-name') || ''
+      };
+      if (!item.file_url) {
+        return;
+      }
+      insertAtCursor(markdownForImage(item));
+      closePicker();
+    });
+  }
+});
+</script>
+
+{% include "admin_app/include/math.html" %}

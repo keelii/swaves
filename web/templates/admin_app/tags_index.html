@@ -1,0 +1,50 @@
+{% extends "admin_app/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.tags.new') }}">{{ ui.action_btn_content("plus", "新建标签") }}</a>
+{% endblock %}
+{% block content %}
+<ot-tabs>
+  <div role="tablist" class="mb-4">
+    <a href="{{ UrlFor('admin.categories.list') }}" role="tab" aria-selected="false">分类</a>
+    <a href="{{ UrlFor('admin.tags.list') }}" role="tab" aria-selected="true">标签</a>
+  </div>
+</ot-tabs>
+
+<table>
+  <thead>
+  <tr>
+    <th class="cell-4">ID</th>
+    <th>名称</th>
+    <th class="cell-12">URL标识</th>
+    <th>文章数量</th>
+    <th>创建时间</th>
+    <th>更新时间</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {% for tag in Tags %}
+  <tr>
+    <td class="cell-4">{{ tag.ID }}</td>
+    <td>{{ tag.Name }}</td>
+    <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
+    <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
+    <td>{{ tag.CreatedAt | relativeTime }}</td>
+    <td>{{ tag.UpdatedAt | relativeTime }}</td>
+    {{ ui.table_row_actions("admin.tags.edit", "admin.tags.delete", tag.ID) }}
+  </tr>
+  {% else %}
+  {{ ui.table_empty(7, "暂无标签") }}
+  {% endfor %}
+  </tbody>
+
+  <tfoot>
+  <tr>
+    <td colspan="7">
+      {% with Pager = Pager %}{% include "admin_app/include/pagination.html" %}{% endwith %}
+    </td>
+  </tr>
+  </tfoot>
+</table>
+{% endblock %}

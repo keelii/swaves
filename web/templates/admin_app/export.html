@@ -1,0 +1,79 @@
+{% extends "admin_app/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.posts.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
+{% endblock %}
+{% block content %}
+<style>
+  .export-page {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .export-title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .export-desc {
+    margin-top: var(--space-3);
+    color: var(--muted-foreground);
+  }
+
+  .export-actions {
+    margin-top: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .export-tip {
+    font-size: var(--text-8);
+    color: var(--muted-foreground);
+  }
+
+  .export-list {
+    margin: var(--space-3) 0 0 0;
+    padding-left: var(--space-5);
+  }
+
+  .export-list li {
+    margin-bottom: var(--space-2);
+    color: var(--muted-foreground);
+  }
+
+  .export-list li:last-child {
+    margin-bottom: 0;
+  }
+</style>
+
+<div class="export-page">
+  <div class="card">
+    <h3 class="export-title">
+      数据库导出
+      <span class="badge outline">SQLite</span>
+    </h3>
+    <p class="export-desc">
+      导出当前数据库为 SQLite 文件，可用于备份、迁移或离线归档。
+    </p>
+    <div class="export-actions">
+      <a href="{{ UrlFor('admin.export.download') }}" class="button">导出数据库</a>
+      <span class="export-tip">文件将保存到浏览器默认下载目录，文件名包含时间戳。</span>
+    </div>
+  </div>
+
+  <div role="alert" data-variant="warning">
+    <div>
+      <strong>导出说明</strong>
+      <ul class="export-list">
+        <li>导出的文件包含文章、标签、分类、设置等全部数据。</li>
+        <li>文件格式为 SQLite 数据库文件（.sqlite）。</li>
+        <li>导出文件可用于在其他 Swaves 实例恢复数据。</li>
+        <li>导出过程可能持续数秒，请等待下载完成。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

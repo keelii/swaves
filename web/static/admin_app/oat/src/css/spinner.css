@@ -1,0 +1,27 @@
+@layer components {
+  .spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid var(--muted);
+    border-top-color: var(--primary);
+    border-radius: var(--radius-full);
+    animation: spin 1s linear infinite;
+
+    &.small {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    &.large {
+      width: 2rem;
+      height: 2rem;
+      border-width: 3px;
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

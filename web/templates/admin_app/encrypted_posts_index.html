@@ -1,0 +1,48 @@
+{% extends "admin_app/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.encrypted_posts.new') }}">{{ ui.action_btn_content("plus", "新建加密文章") }}</a>
+{% endblock %}
+{% block content %}
+
+<div class="flex gap-4">
+  {% include "admin_app/include/post_tab.html" %}
+</div>
+
+<table>
+  <thead>
+  <tr>
+    <th class="cell-4">ID</th>
+    <th>标题</th>
+    <th>URL标识</th>
+    <th>过期时间</th>
+    <th>创建时间</th>
+    <th>更新时间</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {% for post in Posts %}
+  <tr>
+    <td class="cell-4">{{ post.ID }}</td>
+    <td>{{ post.Title }}</td>
+    <td>{{ post.Slug }}</td>
+    <td>{% if post.ExpiresAt %}{{ post.ExpiresAt | formatTime }}{% else %}永不过期{% endif %}</td>
+    <td>{{ post.CreatedAt | relativeTime }}</td>
+    <td>{{ post.UpdatedAt | relativeTime }}</td>
+    {{ ui.table_row_actions("admin.encrypted_posts.edit", "admin.encrypted_posts.delete", post.ID) }}
+  </tr>
+  {% else %}
+  {{ ui.table_empty(7, "暂无加密文章") }}
+  {% endfor %}
+  </tbody>
+
+  <tfoot>
+  <tr>
+    <td colspan="7">
+      {% with Pager = Pager %}{% include "admin_app/include/pagination.html" %}{% endwith %}
+    </td>
+  </tr>
+  </tfoot>
+</table>
+{% endblock %}

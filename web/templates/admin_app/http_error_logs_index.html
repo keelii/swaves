@@ -1,0 +1,62 @@
+{% extends "admin_app/layout/layout.html" %}
+{% block page_actions %}{% endblock %}
+{% block content %}
+
+<table>
+  <thead>
+  <tr>
+    <th class="cell-4">ID</th>
+    <th>请求ID</th>
+    <th>客户端IP</th>
+    <th>方法</th>
+    <th>路径</th>
+    <th>状态</th>
+    <th>用户代理</th>
+    <th>查询参数</th>
+    <th>请求体</th>
+    <th>创建时间</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {% for log in Logs %}
+  <tr>
+    <td>{{ log.ID }}</td>
+    <td>{{ log.ReqID }}</td>
+    <td>{{ log.ClientIP }}</td>
+    <td>{{ log.Method }}</td>
+    <td>{{ log.Path }}</td>
+    <td>{{ log.Status }}</td>
+    <td>{% if log.UserAgent %}{{ LongText(log.UserAgent, 30, 1) }}{% else %}-{% endif %}</td>
+    <td>{% if log.QueryParams %}{{ log.QueryParams }}{% else %}-{% endif %}</td>
+    <td>{% if log.BodyParams %}
+      {{ LongText(log.BodyParams, 30, 1) }}
+      {% else %}-{% endif %}</td>
+    <td>{{ log.CreatedAt | formatTime }}</td>
+    <td>
+      <div class="row-actions">
+        {% if (log.Method == "GET") and (log.Status == 404) %}
+          {{ ui.action_icon_link(UrlFor('admin.redirects.new', from=log.Path), "添加重定向到", "arrow-right") }}
+        {% endif %}
+        <form id="form" method="post" action="{{ UrlFor('admin.http_error_logs.delete', id=log.ID) }}">
+          {{ _csrf_token() }}
+          {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
+        </form>
+      </div>
+    </td>
+  </tr>
+  {% else %}
+  {{ ui.table_empty(11, "暂无日志") }}
+  {% endfor %}
+  </tbody>
+
+  <tfoot>
+  <tr>
+    <td colspan="11">
+      {% with Pager = Pager %}{% include "admin_app/include/pagination.html" %}{% endwith %}
+    </td>
+  </tr>
+  </tfoot>
+</table>
+{% endblock %}

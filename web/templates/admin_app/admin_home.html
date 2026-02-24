@@ -1,0 +1,350 @@
+{% extends "admin_app/layout/layout.html" %}
+{% block page_actions %}{% endblock %}
+{% block content %}
+<style>
+  .dashboard-label {
+    font-size: var(--text-8);
+  }
+
+  .dashboard-number {
+    font-size: var(--text-3);
+  }
+
+  .dashboard-uv-total {
+    margin-top: var(--space-1);
+    font-size: var(--text-2);
+    font-weight: var(--font-bold);
+    line-height: 1.1;
+  }
+
+  .dashboard-uv-chart svg {
+    width: 100%;
+    height: 160px;
+    display: block;
+  }
+
+  .dashboard-uv-chart {
+    position: relative;
+  }
+
+  .dashboard-uv-tooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--card);
+    box-shadow: var(--shadow-small);
+    font-size: var(--text-8);
+    line-height: 1.35;
+    color: var(--foreground);
+    pointer-events: none;
+    white-space: nowrap;
+    transform: translateX(-50%);
+  }
+
+  .dashboard-uv-chart svg line {
+    transition: stroke-width var(--transition-fast), stroke var(--transition-fast);
+  }
+
+  .dashboard-uv-chart svg line.is-active-tick {
+    stroke-width: 0.6;
+    stroke: #0051c3;
+  }
+
+  .col-tight { width: 2em; }
+  .col-value { width: 4em; }
+</style>
+
+<div class="row">
+  <div class="col-2 mb-2">
+    <div class="card">
+      <div class="dashboard-label">活跃用户（{% if ActiveUsersWindowLabel %}{{ ActiveUsersWindowLabel }}{% else %}30分钟{% endif %}）</div>
+      <div class="dashboard-number">{% if ActiveUsers %}{{ ActiveUsers }}{% else %}0{% endif %}</div>
+    </div>
+  </div>
+  <div class="col-2 mb-2">
+    <div class="card">
+      <div class="dashboard-label">总访问（UV）</div>
+      <div class="dashboard-number">{% if TotalUV %}{{ TotalUV }}{% else %}0{% endif %}</div>
+    </div>
+  </div>
+  <div class="col-2 mb-2">
+    <div class="card">
+      <div class="dashboard-label">总点赞</div>
+      <div class="dashboard-number">{% if TotalLikes %}{{ TotalLikes }}{% else %}0{% endif %}</div>
+    </div>
+  </div>
+  <div class="col-2 mb-2">
+    <div class="card">
+      <div class="dashboard-label salign">
+        <span>文章总数</span>
+        <a href="{{ UrlFor('admin.posts.new') }}">{{ LucideIcon("plus") }}</a>
+      </div>
+      <div class="dashboard-number">{% if PostCount %}{{ PostCount }}{% else %}0{% endif %}</div>
+    </div>
+  </div>
+  <div class="col-2 mb-2">
+    <div class="card">
+      <div class="dashboard-label salign">
+        <span>分类总数</span>
+        <a href="{{ UrlFor('admin.categories.new') }}">{{ LucideIcon("plus") }}</a>
+      </div>
+      <div class="dashboard-number">{% if CategoryCount %}{{ CategoryCount }}{% else %}0{% endif %}</div>
+    </div>
+  </div>
+  <div class="col-2 mb-2">
+    <div class="card">
+      <div class="dashboard-label salign">
+        <span>标签总数</span>
+        <a href="{{ UrlFor('admin.tags.new') }}">{{ LucideIcon("plus") }}</a>
+      </div>
+      <div class="dashboard-number">{% if TagCount %}{{ TagCount }}{% else %}0{% endif %}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card">
+      <ot-tabs>
+        <div role="tablist">
+            {% for tab in UVChartTabs %}
+              <button type="button" role="tab" aria-selected="{% if tab.Active %}true{% else %}false{% endif %}">{{ tab.Label }}</button>
+            {% endfor %}
+        </div>
+
+        {% for tab in UVChartTabs %}
+          <div role="tabpanel">
+            <div class="row">
+              <div class="col-2 vstack">
+                <div class="dashboard-label">唯一访客</div>
+                <div class="dashboard-uv-total">{% if tab.Total %}{{ tab.Total }}{% else %}0{% endif %}</div>
+                <div class="text-lighter">{{ tab.Label }}内访客</div>
+              </div>
+            <div class="col-10 dashboard-uv-chart" data-uv-chart>
+              {% if tab.SVG %}
+                {{ tab.SVG | safe }}
+                <div class="dashboard-uv-tooltip" data-uv-tooltip hidden></div>
+              {% else %}
+                <p class="text-lighter">暂无 UV 数据</p>
+              {% endif %}
+            </div>
+          </div>
+          </div>
+        {% endfor %}
+      </ot-tabs>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    function attachUVTooltip(chartEl) {
+      var svg = chartEl.querySelector('svg');
+      var tooltipEl = chartEl.querySelector('[data-uv-tooltip]');
+      if (!svg || !tooltipEl) {
+        return;
+      }
+
+      var hitboxes = svg.querySelectorAll('rect[data-uv]');
+      var points = svg.querySelectorAll('circle');
+      var tickLines = svg.querySelectorAll('line');
+      if (!hitboxes.length) {
+        return;
+      }
+
+      function hideTooltip() {
+        tooltipEl.hidden = true;
+      }
+
+      function clearActiveTick() {
+        tickLines.forEach(function(line) {
+          line.classList.remove('is-active-tick');
+        });
+      }
+
+      function getTickIndex(hitbox) {
+        var index = parseInt(hitbox.getAttribute('data-index') || '', 10);
+        if (isNaN(index) || index < 0) {
+          return -1;
+        }
+        return index;
+      }
+
+      function setActiveTick(index) {
+        clearActiveTick();
+        if (index >= 0 && index < tickLines.length) {
+          tickLines[index].classList.add('is-active-tick');
+        }
+      }
+
+      function getAnchorPosition(hitbox) {
+        var index = getTickIndex(hitbox);
+        if (!isNaN(index) && index >= 0 && index < points.length) {
+          var pointRect = points[index].getBoundingClientRect();
+          return {
+            left: pointRect.left + pointRect.width / 2,
+            top: pointRect.top + pointRect.height / 2,
+          };
+        }
+        var hitboxRect = hitbox.getBoundingClientRect();
+        return {
+          left: hitboxRect.left + hitboxRect.width / 2,
+          top: hitboxRect.top + hitboxRect.height / 2,
+        };
+      }
+
+      function renderTooltip(hitbox) {
+        var label = hitbox.getAttribute('data-label') || '';
+        var uv = hitbox.getAttribute('data-uv') || '0';
+        var tsRaw = hitbox.getAttribute('data-ts');
+        if (!label && tsRaw) {
+          var ts = parseInt(tsRaw, 10);
+          if (!isNaN(ts) && ts > 0) {
+            var dt = new Date(ts * 1000);
+            label = dt.toLocaleString();
+          }
+        }
+
+        tooltipEl.textContent = label ? (label + ' · 访问量 ' + uv) : ('访问量 ' + uv);
+        tooltipEl.hidden = false;
+
+        var chartRect = chartEl.getBoundingClientRect();
+        var anchor = getAnchorPosition(hitbox);
+        var tooltipHalf = tooltipEl.offsetWidth / 2;
+        var left = anchor.left - chartRect.left;
+        var minLeft = tooltipHalf + 4;
+        var maxLeft = chartRect.width - tooltipHalf - 4;
+        if (left < minLeft) {
+          left = minLeft;
+        }
+        if (left > maxLeft) {
+          left = maxLeft;
+        }
+
+        var anchorTop = anchor.top - chartRect.top;
+        var top = anchorTop - tooltipEl.offsetHeight - 8;
+        if (top < 0) {
+          top = anchorTop + 8;
+        }
+        var maxTop = chartRect.height - tooltipEl.offsetHeight;
+        if (top > maxTop) {
+          top = maxTop;
+        }
+
+        tooltipEl.style.left = left + 'px';
+        tooltipEl.style.top = top + 'px';
+      }
+
+      hitboxes.forEach(function(hitbox) {
+        hitbox.setAttribute('tabindex', '0');
+        hitbox.addEventListener('mouseenter', function() {
+          setActiveTick(getTickIndex(hitbox));
+          renderTooltip(hitbox);
+        });
+        hitbox.addEventListener('mousemove', function() {
+          setActiveTick(getTickIndex(hitbox));
+          renderTooltip(hitbox);
+        });
+        hitbox.addEventListener('mouseleave', function(event) {
+          var next = event.relatedTarget;
+          if (next && next instanceof SVGElement && next.hasAttribute('data-uv')) {
+            return;
+          }
+          hideTooltip();
+          clearActiveTick();
+        });
+        hitbox.addEventListener('focus', function() {
+          setActiveTick(getTickIndex(hitbox));
+          renderTooltip(hitbox);
+        });
+        hitbox.addEventListener('blur', function() {
+          hideTooltip();
+          clearActiveTick();
+        });
+      });
+
+      svg.addEventListener('mouseleave', function() {
+        hideTooltip();
+        clearActiveTick();
+      });
+    }
+
+    function initUVTooltips() {
+      document.querySelectorAll('[data-uv-chart]').forEach(attachUVTooltip);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initUVTooltips, { once: true });
+    } else {
+      initUVTooltips();
+    }
+  })();
+</script>
+
+<div class="row mt-4">
+  <div class="col-6 mb-2">
+    <div class="card">
+      <strong>文章/页面访问排行</strong>
+      <table class="rank-table">
+        <thead>
+        <tr>
+          <th class="col-tight">#</th>
+          <th>标题</th>
+          <th class="text-right col-value">UV</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if TopUVContents %}
+          {% for uvContent in TopUVContents %}{% set idx = loop.index0 %}{% set item = uvContent %}
+            <tr>
+              <td class="col-tight">{{ idx + 1 }}</td>
+              <td>
+                <a href="{{ GetPostUrl(item) }}" target="_blank" rel="noopener">{{ item.Title }}</a>
+              </td>
+              <td class="text-right col-value">{{ item.UV }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="3">暂无访问数据</td>
+          </tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-6 mb-2">
+    <div class="card">
+      <strong>点赞排行</strong>
+      <table class="rank-table">
+        <thead>
+        <tr>
+          <th class="col-tight">#</th>
+          <th>标题</th>
+          <th class="text-right col-value">点赞</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if TopLikedContents %}
+          {% for likedContent in TopLikedContents %}{% set idx = loop.index0 %}{% set item = likedContent %}
+            <tr>
+              <td class="col-tight">{{ idx + 1 }}</td>
+              <td>{{ item.Title }}</td>
+              <td class="text-right col-value">{{ item.Likes }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="3">暂无点赞数据</td>
+          </tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

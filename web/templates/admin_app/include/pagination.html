@@ -1,0 +1,56 @@
+<nav aria-label="分页导航" class="pagination">
+  {% set query = Query|default({}) %}
+  {% set kindQuery = query["kind"] %}
+  {% set providerFilter = query["provider"] %}
+  {% set searchQueryEscaped = query["q"] %}
+  {% set filterTagIDStr = query["tag"] %}
+  {% set filterCategoryIDStr = query["category"] %}
+  {% set statusFilter = query["status"] %}
+  <div class="inline-flex items-center gap-4">
+    {% if not Pager.HasPrev() %}
+    <span class="page-link" tabindex="-1">上一页</span>
+    {% else %}
+    <a class="page-link" href="?page={{ Pager.PrevPage() }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}" tabindex="-1">上一页</a>
+    {% endif %}
+
+    {% for item in Pager.GetPageItems() %}
+    {% if item.Type == "ellipsis" %}
+    <span class="page-link" aria-hidden="true">…</span>
+    {% elif item.Current %}
+    <span class="page-link">{{ item.Page }}</span>
+    {% else %}
+    <a class="page-link" href="?page={{ item.Page }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}">{{ item.Page }}</a>
+    {% endif %}
+    {% endfor %}
+
+    {% if not Pager.HasNext() %}
+    <span class="page-link">下一页</span>
+    {% else %}
+    <a class="page-link" href="?page={{ Pager.NextPage() }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}">下一页</a>
+    {% endif %}
+  </div>
+
+  <div class="inline-flex items-center gap-2">
+    <span for="page-size-select">每页</span>
+    <select id="page-size-select">
+      <option value="5" {% if Pager.PageSize == 5 %}selected{% endif %}>5</option>
+      <option value="10" {% if Pager.PageSize == 10 %}selected{% endif %}>10</option>
+      <option value="20" {% if Pager.PageSize == 20 %}selected{% endif %}>20</option>
+      <option value="50" {% if Pager.PageSize == 50 %}selected{% endif %}>50</option>
+      <option value="100" {% if Pager.PageSize == 100 %}selected{% endif %}>100</option>
+    </select>
+    <span>条</span>
+    <span>共 {{ Pager.Total }} 条</span>
+  </div>
+</nav>
+
+<script>
+$(function() {
+  $('#page-size-select').on('change', function() {
+    var url = new URL(resolveRequestURL());
+    url.searchParams.set('pageSize', $(this).val());
+    url.searchParams.set('page', '1');
+    goTo(url.toString());
+  });
+});
+</script>

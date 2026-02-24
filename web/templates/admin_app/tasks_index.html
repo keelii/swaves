@@ -1,0 +1,80 @@
+{% extends "admin_app/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="{{ UrlFor('admin.tasks.new') }}">{{ ui.action_btn_content("plus", "新建任务") }}</a>
+{% endblock %}
+{% block content %}
+
+<table>
+  <thead>
+  <tr>
+    <th class="cell-4">ID</th>
+    <th class="cell-12">编码</th>
+    <th>名称</th>
+    <th>描述</th>
+    <th>调度</th>
+    <th class="cell-6">状态</th>
+    <th>执行记录</th>
+    <th class="cell-6">最后状态</th>
+    <th>最后执行时间</th>
+    <th style="display: none">创建时间</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+
+  <tbody>
+  {% for task in Tasks %}
+  <tr>
+    <td class="cell-4">{{ task.ID }}</td>
+    <td>{{ task.Code }}</td>
+    <td>{{ task.Name }}</td>
+    <td>{{ task.Description }}</td>
+    <td>{{ task.Schedule }}</td>
+    <td>
+        {% if task.Enabled == 1 %}
+            <div class="badge success">启用</div>
+        {% else %}
+          <div class="badge secondary">停用</div>
+        {% endif %}
+    </td>
+    <td><a href="{{ UrlFor('admin.tasks.runs', code=task.Code) }}">执行记录</a></td>
+    <td>
+      {% if task.LastStatus %}
+        {% if task.LastStatus == "success" %}
+          <div class="badge success">成功</div>
+        {% else %}{% if task.LastStatus == "error" %}
+          <div class="badge danger">失败</div>
+        {% else %}{% if task.LastStatus == "pending" %}
+          <div class="badge secondary">待执行</div>
+        {% else %}
+          <div class="badge outline">{{ task.LastStatus }}</div>
+        {% endif %}{% endif %}{% endif %}
+      {% else %}
+        -
+      {% endif %}
+    </td>
+    <td>{% if task.LastRunAt %}{{ task.LastRunAt | formatTime }}{% else %}-{% endif %}</td>
+    <td style="display: none">{{ task.CreatedAt | formatTime }}</td>
+    <td>
+      <div class="row-actions">
+        {{ ui.action_icon_link(UrlFor('admin.tasks.edit', id=task.ID), "编辑", "square-pen") }}
+        <form id="form" method="POST" action="{{ UrlFor('admin.tasks.trigger', code=task.Code) }}">
+          {{ _csrf_token() }}
+          {{ ui.action_icon_button("执行", "terminal", type="submit", danger=true) }}
+        </form>
+          {% if task.Kind != 0 %}
+            <form id="form" method="POST" action="{{ UrlFor('admin.tasks.delete', id=task.ID) }}">
+              {{ _csrf_token() }}
+                {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
+            </form>
+          {% endif %}
+      </div>
+    </td>
+  </tr>
+  {% else %}
+  <tr>
+    <td colspan="11">暂无任务</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
