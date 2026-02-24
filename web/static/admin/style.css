@@ -163,7 +163,7 @@ svg {
 .main-wrapper {
     display: flex;
     flex: 1;
-    overflow: hidden;
+    height: calc(100vh - var(--top-nav-height));
 }
 
 /* 左侧菜单 */

@@ -261,7 +261,6 @@
       <div class="asset-picker-header">
         <h4>插入图片</h4>
         <label>
-          服务
           <select id="asset-picker-provider">
             <option value="">全部</option>
             <option value="see">S.EE</option>
@@ -349,9 +348,10 @@ $(function() {
         if (res && res.data != null) {
           $preview.html(res.data);
           $('.toc').appendTo($('#split-toc').empty());
-          if (typeof MathJax !== 'undefined') {
+          if (typeof renderMath !== 'undefined') {
             // console.log(MathJax.typesetPromise)
-            MathJax.typesetPromise([$preview[0]])
+            {#MathJax.typesetPromise([$preview[0]])#}
+            renderMath()
           }
         }
       })
@@ -419,13 +419,13 @@ $(function() {
       var url = item.file_url || '';
       if (!url) return;
       var card = [
-        '<button type="button" class="asset-picker-item" data-url="', escapeHtml(url), '" data-name="', escapeHtml(item.original_name || ''), '">',
+        '<span type="span" class="asset-picker-item" data-url="', escapeHtml(url), '" data-name="', escapeHtml(item.original_name || ''), '">',
           '<img class="asset-picker-thumb" src="', escapeHtml(url), '" loading="lazy" alt="', escapeHtml(item.original_name || ''), '">',
           '<div class="asset-picker-meta">',
             '<div class="asset-picker-name" title="', escapeHtml(item.original_name || ''), '">', escapeHtml(item.original_name || '（未命名）'), '</div>',
             '<div class="asset-picker-url" title="', escapeHtml(url), '">', escapeHtml(url), '</div>',
           '</div>',
-        '</button>'
+        '</span>'
       ].join('');
       $pickerGrid.append(card);
     });
@@ -535,17 +535,5 @@ $(function() {
   }
 });
 </script>
-<script>
-  window.MathJax = {
-    options: {},
-    startup: {
-      typeset: false   // 关键：禁止自动扫描
-    },
-    tex: {
-      inlineMath: [ ['$','$'] ],
-      displayMath: [ ['$$','$$'] ],
-      processEscapes: false
-    }
-  }
-</script>
-<script id="MathJax-script" src="/static/admin/MathJax/tex-chtml.js" async></script>
+
+{% include "admin/include/math.html" %}

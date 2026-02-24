@@ -202,3 +202,7 @@ article table thead th {
   justify-content: space-between;
   width: 55%;
 }
+
+.katex-display {
+  width: 55%;
+}
