@@ -12617,6 +12617,20 @@ var SEditor = (() => {
   var closeDoubleQuote = new InputRule(/"$/, "\u201D", { inCodeMark: false });
   var openSingleQuote = new InputRule(/(?:^|[\s\{\[\(\<'"\u2018\u201C])(')$/, "\u2018", { inCodeMark: false });
   var closeSingleQuote = new InputRule(/'$/, "\u2019", { inCodeMark: false });
+  function wrappingInputRule(regexp, nodeType, getAttrs = null, joinPredicate) {
+    return new InputRule(regexp, (state, match2, start, end) => {
+      let attrs2 = getAttrs instanceof Function ? getAttrs(match2) : getAttrs;
+      let tr = state.tr.delete(start, end);
+      let $start = tr.doc.resolve(start), range = $start.blockRange(), wrapping = range && findWrapping(range, nodeType, attrs2);
+      if (!wrapping)
+        return null;
+      tr.wrap(range, wrapping);
+      let before = tr.doc.resolve(start - 1).nodeBefore;
+      if (before && before.type == nodeType && canJoin(tr.doc, start - 1) && (!joinPredicate || joinPredicate(match2, before)))
+        tr.join(start - 1);
+      return tr;
+    });
+  }
 
   // node_modules/prosemirror-schema-list/dist/index.js
   function wrapInList(listType, attrs2 = null) {
@@ -19285,6 +19299,23 @@ var SEditor = (() => {
     var inputRuleList = [];
     if (headingRule) {
       inputRuleList.push(headingRule);
+    }
+    if (schema2.nodes.ordered_list) {
+      inputRuleList.push(
+        wrappingInputRule(
+          /^(\d+)\.\s$/,
+          schema2.nodes.ordered_list,
+          function(match2) {
+            return { order: Number(match2[1] || 1) || 1 };
+          },
+          function(match2, node) {
+            return node.childCount + node.attrs.order === (Number(match2[1] || 1) || 1);
+          }
+        )
+      );
+    }
+    if (schema2.nodes.bullet_list) {
+      inputRuleList.push(wrappingInputRule(/^\*\s$/, schema2.nodes.bullet_list));
     }
     return [
       inputRuleList.length ? inputRules({ rules: inputRuleList }) : null,

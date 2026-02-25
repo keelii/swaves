@@ -38,9 +38,11 @@
 {% endblock %}
 {% block status_main_center %}
   <div class="" aria-label="Markdown 常用按钮">
-    {{ aui.IconAction("bold", "加粗", attrs='data-title="加粗"') }}
-    {{ aui.IconAction("italic", "斜体", attrs='data-title="斜体"') }}
-    {{ aui.IconAction("underline", "下划线", attrs='data-title="下划线"') }}
+    {{ aui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}
+    {{ aui.IconAction("italic", "斜体", attrs='data-title="斜体" data-seditor-command="italic"') }}
+    {{ aui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
+    {{ aui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
+    {{ aui.IconAction("underline", "下划线", attrs='data-title="下划线" disabled') }}
   </div>
 {% endblock %}
 {% block status_main_right %}
