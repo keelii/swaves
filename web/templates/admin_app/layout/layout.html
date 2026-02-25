@@ -8,6 +8,10 @@
     --app-border: #d4d7dc;
     --app-text: #2f3440;
     --app-text-soft: #6b7280;
+    --app-spacing: 14px;
+    --ui-select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --ui-checkbox-checked-bg: var(--app-text);
+    --ui-checkbox-checked-fg: #ffffff;
     --app-tooltip-bg: rgba(15, 23, 42, 0.94);
     --app-tooltip-text: #ffffff;
     --app-border-width: 1px;
@@ -22,6 +26,9 @@
     --app-border: #313a49;
     --app-text: #e4e8ee;
     --app-text-soft: #8f99aa;
+    --ui-select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f99aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --ui-checkbox-checked-bg: #e4e8ee;
+    --ui-checkbox-checked-fg: #151a24;
     --app-tooltip-bg: rgba(2, 6, 23, 0.96);
     --app-tooltip-text: #ffffff;
   }
@@ -46,30 +53,29 @@
   .app-window a {
     text-decoration: none;
   }
-
-  .app-window [data-title]:not([data-title=""]),
-  .app-window [data-tooltip]:not([data-tooltip=""]) {
-    position: relative;
+  .app-padding {
+      padding: var(--app-spacing);
   }
+  .app-px { padding-left: var(--app-spacing); padding-right: var(--app-spacing); }
+  .app-py { padding-top: var(--app-spacing); padding-bottom: var(--app-spacing); }
+  .app-pl { padding-left: var(--app-spacing); }
+  .app-pr { padding-right: var(--app-spacing); }
+  .app-pt { padding-top: var(--app-spacing); }
+  .app-pb { padding-bottom: var(--app-spacing); }
 
-  .app-window [data-title]:not([data-title=""])::before,
-  .app-window [data-title]:not([data-title=""])::after,
-  .app-window [data-tooltip]:not([data-tooltip=""])::before,
-  .app-window [data-tooltip]:not([data-tooltip=""])::after {
-    position: absolute;
-    inset-inline-start: 50%;
+
+  .ui-tooltip {
+    position: fixed;
+    inset-inline-start: 0;
+    inset-block-start: 0;
+    z-index: 3000;
     opacity: 0;
     visibility: hidden;
+    transform: translateY(4px);
+    transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s ease;
     pointer-events: none;
-    z-index: 2000;
-  }
-
-  .app-window [data-title]:not([data-title=""])::after,
-  .app-window [data-tooltip]:not([data-tooltip=""])::after {
-    inset-block-end: calc(100% + 10px);
-    transform: translateX(-50%);
     padding: 6px 8px;
-    border-radius: 8px;
+    border-radius: 3px;
     background: var(--app-tooltip-bg);
     color: var(--app-tooltip-text);
     font-size: 0.82rem;
@@ -77,29 +83,32 @@
     white-space: nowrap;
   }
 
-  .app-window [data-title]:not([data-title=""])::after {
-    content: attr(data-title);
+  .ui-tooltip[data-placement="bottom"] {
+    transform: translateY(-4px);
   }
 
-  .app-window [data-tooltip]:not([data-tooltip=""])::after {
-    content: attr(data-tooltip);
+  .ui-tooltip[data-state="open"] {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
   }
 
-  .app-window [data-title]:not([data-title=""])::before,
-  .app-window [data-tooltip]:not([data-tooltip=""])::before {
+  .ui-tooltip::before {
     content: "";
-    inset-block-end: calc(100% + 2px);
+    position: absolute;
+    inset-inline-start: 50%;
     transform: translateX(-50%);
-    border: 6px solid transparent;
+    border: 7px solid transparent;
+  }
+
+  .ui-tooltip[data-placement="top"]::before {
+    inset-block-start: 100%;
     border-top-color: var(--app-tooltip-bg);
   }
 
-  .app-window [data-title]:not([data-title=""]):is(:hover, :focus-visible, :focus-within)::before,
-  .app-window [data-title]:not([data-title=""]):is(:hover, :focus-visible, :focus-within)::after,
-  .app-window [data-tooltip]:not([data-tooltip=""]):is(:hover, :focus-visible, :focus-within)::before,
-  .app-window [data-tooltip]:not([data-tooltip=""]):is(:hover, :focus-visible, :focus-within)::after {
-    opacity: 1;
-    visibility: visible;
+  .ui-tooltip[data-placement="bottom"]::before {
+    inset-block-end: 100%;
+    border-bottom-color: var(--app-tooltip-bg);
   }
 
   .ui-select {
@@ -176,7 +185,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 10px;
     border-bottom: var(--app-toolbar-border-width) solid var(--app-border);
     overflow: visible;
     flex: 0 0 var(--app-toolbar-height);
@@ -194,6 +202,17 @@
     gap: 8px;
   }
 
+  .app-main-toolbar .left {
+      padding-left: var(--app-spacing);
+  }
+  .app-main-toolbar .right {
+      padding-right: var(--app-spacing);
+  }
+  .full-main .app-main-toolbar .left {
+    padding-left: 0;
+  }
+  .app-window .app-toolbar-slot .ui-btn {
+  }
   .app-window .app-main-toolbar .app-toolbar-slot {
     min-width: 0;
     display: flex;
@@ -282,6 +301,10 @@
     cursor: pointer;
     user-select: none;
     white-space: nowrap;
+  }
+
+  .app-window button.ui-btn:active:not(:disabled) {
+    transform: translate(1px, 1px);
   }
 
   .app-window .ui-btn.icon-only {
@@ -394,9 +417,8 @@
   }
 
   .app-window .ui-icon-btn {
-    width: 30px;
     height: 30px;
-    padding: 0;
+    padding: 0 10px;
     border: 0;
     background: transparent;
     color: var(--app-text-soft);
@@ -406,6 +428,10 @@
     border-radius: 8px;
     cursor: pointer;
     user-select: none;
+  }
+
+  .app-window button.ui-icon-btn:active:not(:disabled) {
+    transform: translate(1px, 1px);
   }
 
   .app-window .ui-icon-btn.rounded {
@@ -447,17 +473,25 @@
   }
 
   .app-window .ui-select {
-    appearance: base-select;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
     width: auto;
     max-width: none;
-    padding: 0 8px;
+    min-height: 30px;
+    padding: 0 30px 0 8px;
     border-radius: 8px;
-      border: none;
+    border: none;
     {#border: var(--app-border-width) solid var(--app-border);#}
-    background: transparent;
+    background-color: transparent;
+    background-image: var(--ui-select-caret);
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px 16px;
     color: var(--app-text);
     font-size: 0.86rem;
     min-width: 0;
+    cursor: pointer;
   }
 
   .app-window .ui-form {
@@ -518,7 +552,7 @@
   .app-window .ui-textarea:focus {
     outline: none;
     border-color: rgba(29, 78, 216, 0.35);
-    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.10);
+    {#box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.10);#}
   }
 
   [data-theme="dark"] .app-window .ui-input:focus,
@@ -534,7 +568,14 @@
   }
 
   .app-window .ui-select-input {
-    padding-right: 30px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 32px;
+    background-image: var(--ui-select-caret);
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px 16px;
   }
 
   .app-window .ui-field.has-error .ui-input,
@@ -563,6 +604,59 @@
     color: #fecaca;
   }
 
+  .app-window input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border: var(--app-border-width) solid var(--app-border);
+    border-radius: 3px;
+    background-color: transparent;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+    vertical-align: middle;
+    position: relative;
+  }
+
+  .app-window input[type="checkbox"]:checked {
+    background-color: var(--ui-checkbox-checked-bg);
+    border-color: var(--ui-checkbox-checked-bg);
+  }
+
+  .app-window input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: var(--ui-checkbox-checked-fg);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='4'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='4'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+    -webkit-mask-size: 90%;
+    mask-size: 90%;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  .app-window input[type="checkbox"]:focus-visible {
+    outline: 2px solid rgba(29, 78, 216, 0.35);
+    outline-offset: 2px;
+  }
+
+  [data-theme="dark"] .app-window input[type="checkbox"]:focus-visible {
+    outline-color: rgba(147, 197, 253, 0.35);
+  }
+
+  .app-window input[type="checkbox"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  .app-window input[type="checkbox"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
   .app-window .ui-checkbox {
     display: inline-flex;
     align-items: center;
@@ -572,12 +666,8 @@
     cursor: pointer;
   }
 
-  .app-window .ui-checkbox-input {
-    width: 16px;
-    height: 16px;
-  }
-
-  .app-window .ui-checkbox-input:disabled {
+  .app-window .ui-checkbox-input:disabled + .ui-checkbox-label {
+    opacity: 0.6;
     cursor: not-allowed;
   }
 
@@ -593,7 +683,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 26px;
+    {#min-height: 26px;#}
     padding: 0 8px;
     border-radius: 999px;
     border: var(--app-border-width) solid var(--app-border);
@@ -686,7 +776,7 @@
     min-width: 0;
     border-radius: 3px;
     border: var(--app-border-width) solid var(--app-border);
-    padding: 18px 14px;
+    padding: 18px var(--app-spacing);
     background: rgba(107, 114, 128, 0.04);
     text-align: center;
     color: var(--app-text);
@@ -739,7 +829,7 @@
   .app-window .ui-page-btn,
   .app-window .ui-page-link {
     height: 30px;
-    min-width: 30px;
+    {#min-width: 30px;#}
     padding: 0 8px;
     border: 0;
     background: transparent;
@@ -902,17 +992,20 @@
     flex: 1 1 auto;
   }
 
+  .app-window .app-main-body .app-panel-inner {
+      padding: 0;
+  }
   .app-window .app-panel-inner {
-    min-height: 100%;
+    {#min-height: 100%;#}
     min-width: 0;
-    padding: 14px;
+    padding: var(--app-spacing) 0;
     box-sizing: border-box;
   }
 
   .app-window .nav-menu {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--app-spacing);
     min-width: 0;
   }
 
@@ -928,13 +1021,14 @@
     font-size: 0.82rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    padding: 0 var(--app-spacing);
   }
 
   .app-window .nav-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
+    padding: 8px var(--app-spacing);
     color: var(--app-text);
     text-decoration: none;
     min-width: 0;
@@ -1054,8 +1148,6 @@
     {#border-radius: 12px;#}
     overflow: visible;
     background: transparent;
-      margin-left: -14px;
-      margin-right: -14px;
   }
 
   .app-window .data-table {
@@ -1133,7 +1225,7 @@
   .app-window .data-table .cell-actions .ui-icon-btn {
     {#width: 34px;#}
     {#height: 34px;#}
-    border-radius: 10px;
+    padding: 0 10px;
   }
 
   .app-window .data-table tbody tr:hover td {
@@ -1179,7 +1271,7 @@
     <div class="app-panel-toolbar">
       {% block window_toolbar_left %}{% endblock %}
     </div>
-    <div class="app-panel-body">
+    <div class="app-panel-body app-nav-body">
       <div class="app-panel-inner">
         {% block nav_pane %}{% endblock %}
       </div>
@@ -1203,6 +1295,7 @@
   <main class="app-panel app-main" aria-label="内容区">
     <div class="app-panel-toolbar app-main-toolbar">
       <div class="app-toolbar-slot left">
+        {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
         {% block window_toolbar_main_left %}{% endblock %}
       </div>
       <div class="app-toolbar-slot center">
@@ -1214,7 +1307,7 @@
         {% endblock %}
       </div>
     </div>
-    <div class="app-panel-body">
+    <div class="app-panel-body app-main-body">
       <div class="app-panel-inner">
         {% block content %}{% endblock %}
       </div>
@@ -1295,6 +1388,141 @@
 
     function getToggleButtons() {
       return document.querySelectorAll('[data-role="toggle-full-main"]');
+    }
+
+    var tooltipEl = null;
+    var tooltipOpenDelayMs = 700;
+    var tooltipOffset = 10;
+    var tooltipMargin = 8;
+    var tooltipOpenTimer = null;
+    var tooltipActiveTarget = null;
+    var tooltipOpenTarget = null;
+    var tooltipPrevDescribedBy = null;
+
+    function ensureTooltip() {
+      if (tooltipEl) {
+        return tooltipEl;
+      }
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'ui-tooltip';
+      tooltipEl.id = 'admin-app-tooltip';
+      tooltipEl.setAttribute('role', 'tooltip');
+      tooltipEl.setAttribute('aria-hidden', 'true');
+      tooltipEl.setAttribute('data-placement', 'top');
+      tooltipEl.setAttribute('data-state', 'closed');
+      document.body.appendChild(tooltipEl);
+      return tooltipEl;
+    }
+
+    function readTooltipText(el) {
+      if (!el) {
+        return '';
+      }
+      var text = el.getAttribute('data-title');
+      if (!text) {
+        text = el.getAttribute('data-tooltip');
+      }
+      if (!text) {
+        return '';
+      }
+      return String(text).trim();
+    }
+
+    function setDescribedBy(target) {
+      if (!target || !tooltipEl) {
+        return;
+      }
+      tooltipPrevDescribedBy = target.getAttribute('aria-describedby');
+      var existing = tooltipPrevDescribedBy || '';
+      if (existing.split(/\s+/).indexOf(tooltipEl.id) !== -1) {
+        return;
+      }
+      var next = existing ? existing + ' ' + tooltipEl.id : tooltipEl.id;
+      target.setAttribute('aria-describedby', next);
+    }
+
+    function restoreDescribedBy() {
+      if (!tooltipOpenTarget) {
+        tooltipPrevDescribedBy = null;
+        return;
+      }
+      if (tooltipPrevDescribedBy) {
+        tooltipOpenTarget.setAttribute('aria-describedby', tooltipPrevDescribedBy);
+      } else {
+        tooltipOpenTarget.removeAttribute('aria-describedby');
+      }
+      tooltipPrevDescribedBy = null;
+    }
+
+    function positionTooltip(target) {
+      if (!target || !tooltipEl) {
+        return;
+      }
+      var targetRect = target.getBoundingClientRect();
+
+      tooltipEl.style.left = '0px';
+      tooltipEl.style.top = '0px';
+
+      var tooltipRect = tooltipEl.getBoundingClientRect();
+      var viewportWidth = document.documentElement.clientWidth;
+      var viewportHeight = document.documentElement.clientHeight;
+
+      var left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+      left = clampNumber(left, tooltipMargin, viewportWidth - tooltipRect.width - tooltipMargin);
+
+      var placement = 'top';
+      var top = targetRect.top - tooltipRect.height - tooltipOffset;
+      if (top < tooltipMargin) {
+        placement = 'bottom';
+        top = targetRect.bottom + tooltipOffset;
+      }
+      if (placement === 'bottom' && top + tooltipRect.height > viewportHeight - tooltipMargin) {
+        placement = 'top';
+        top = targetRect.top - tooltipRect.height - tooltipOffset;
+      }
+
+      top = clampNumber(top, tooltipMargin, viewportHeight - tooltipRect.height - tooltipMargin);
+
+      tooltipEl.setAttribute('data-placement', placement);
+      tooltipEl.style.left = Math.round(left) + 'px';
+      tooltipEl.style.top = Math.round(top) + 'px';
+    }
+
+    function openTooltip(target, text) {
+      if (!target) {
+        return;
+      }
+      ensureTooltip();
+      tooltipEl.textContent = text;
+      tooltipEl.setAttribute('aria-hidden', 'false');
+      tooltipOpenTarget = target;
+      setDescribedBy(target);
+      positionTooltip(target);
+      tooltipEl.setAttribute('data-state', 'open');
+    }
+
+    function closeTooltip() {
+      clearTimeout(tooltipOpenTimer);
+      tooltipOpenTimer = null;
+
+      if (tooltipEl) {
+        tooltipEl.setAttribute('aria-hidden', 'true');
+        tooltipEl.setAttribute('data-state', 'closed');
+        tooltipEl.textContent = '';
+      }
+      restoreDescribedBy();
+      tooltipOpenTarget = null;
+      tooltipActiveTarget = null;
+    }
+
+    function scheduleTooltipOpen(target, text) {
+      clearTimeout(tooltipOpenTimer);
+      tooltipOpenTimer = setTimeout(function() {
+        if (tooltipActiveTarget !== target) {
+          return;
+        }
+        openTooltip(target, text);
+      }, tooltipOpenDelayMs);
     }
 
     function applyNavWidth(width) {
@@ -1649,6 +1877,76 @@
         event.preventDefault();
       }
     });
+
+    document.addEventListener('pointerover', function(event) {
+      var target = event.target && event.target.closest ? event.target.closest('[data-title],[data-tooltip]') : null;
+      if (!target) {
+        return;
+      }
+      if (event.relatedTarget && target.contains(event.relatedTarget)) {
+        return;
+      }
+      var text = readTooltipText(target);
+      if (!text) {
+        return;
+      }
+      if (tooltipOpenTarget && tooltipOpenTarget !== target) {
+        closeTooltip();
+      }
+      tooltipActiveTarget = target;
+      scheduleTooltipOpen(target, text);
+    });
+
+    document.addEventListener('pointerout', function(event) {
+      if (!tooltipActiveTarget) {
+        return;
+      }
+      if (event.relatedTarget && tooltipActiveTarget.contains(event.relatedTarget)) {
+        return;
+      }
+      closeTooltip();
+    });
+
+    document.addEventListener('focusin', function(event) {
+      var target = event.target && event.target.closest ? event.target.closest('[data-title],[data-tooltip]') : null;
+      if (!target) {
+        return;
+      }
+      var isFocusVisible = true;
+      try {
+        if (typeof target.matches === 'function') {
+          isFocusVisible = target.matches(':focus-visible');
+        }
+      } catch (error) {
+        isFocusVisible = true;
+      }
+      if (!isFocusVisible) {
+        return;
+      }
+      var text = readTooltipText(target);
+      if (!text) {
+        return;
+      }
+      if (tooltipOpenTarget && tooltipOpenTarget !== target) {
+        closeTooltip();
+      }
+      tooltipActiveTarget = target;
+      scheduleTooltipOpen(target, text);
+    });
+
+    document.addEventListener('focusout', function(event) {
+      if (!tooltipActiveTarget) {
+        return;
+      }
+      if (event.relatedTarget && tooltipActiveTarget.contains(event.relatedTarget)) {
+        return;
+      }
+      closeTooltip();
+    });
+
+    document.addEventListener('pointerdown', closeTooltip, true);
+    document.addEventListener('scroll', closeTooltip, true);
+    window.addEventListener('resize', closeTooltip);
 
     initDropdownLabels();
   })();

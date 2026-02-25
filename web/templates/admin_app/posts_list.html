@@ -4,23 +4,19 @@
 {# Case: 文章列表页 #}
 
 {% block window_toolbar_left %}
-<div class="toolbar-two-col">
-  <div class="toolbar-logo">SWAVES</div>
-  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
-</div>
+  {% include "admin_app/include/window_toolbar_left.html" %}
 {% endblock %}
 
 {# A2: 三列 #}
 {% block window_toolbar_main_left %}
-  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航" data-title="切换 full-main">
-    {{ LucideIcon("panel-left", 16) }}
-  </button>
   {{ aui.Button("新建文章", "primary") }}
 {% endblock %}
 {% block window_toolbar_main_center %}
   {{ aui.ToolbarTitle("文章列表") }}
 {% endblock %}
-{% block window_toolbar_main_right %}{% endblock %}
+{% block window_toolbar_main_right %}
+  {{ aui.Button("草稿", "secondary") }}
+{% endblock %}
 
 {# A5: 两列，左设置，右退出 #}
 {% block status_nav_left %}
@@ -38,7 +34,7 @@
 {% endblock %}
 {% block status_main_center %}{% endblock %}
 {% block status_main_right %}
-  {{ aui.Pager(1, 3, href_prefix="/admin_app/posts_list") }}
+  {{ aui.Pager(1, 3, href_prefix=UrlFor('admin_app.posts_list')) }}
 {% endblock %}
 
 {% block nav_pane %}
@@ -46,19 +42,18 @@
 {% endblock %}
 
 {% block content %}
-  <div style="display: flex; align-items: center; justify-content: space-between;">
+  <div class="app-pt" style="display: flex; align-items: center; justify-content: space-between;">
     {{ aui.TabsStart("文章状态") }}
-      {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换" data-title="切换 full-main"') }}
+      {{ aui.LinkIcon("list-checks", "javascript:;") }}
       {{ aui.Tab("全部 86", href="javascript:;", active=true) }}
       {{ aui.Tab("文章 80", href="javascript:;") }}
       {{ aui.Tab("页面 8", href="javascript:;") }}
       {{ aui.Tab("草稿 6", href="javascript:;") }}
     {{ aui.TabsEnd() }}
 
-    {{ aui.TabsStart("筛选工具") }}
-      {{ aui.Button("筛选", "outline", selected=true) }}
+    <div class="app-pr">
       {{ aui.Dropdown([{"value":"updated_desc","label":"排序：更新时间↓"},{"value":"updated_asc","label":"排序：更新时间↑"}], "排序", "updated_desc") }}
-    {{ aui.TabsEnd() }}
+    </div>
   </div>
 
   <div style="height:12px;"></div>
@@ -67,7 +62,7 @@
     <table class="data-table" aria-label="文章列表">
       <thead>
       <tr>
-        <th style="width:32px;"><input type="checkbox" aria-label="全选" /></th>
+        <th style="width:16px;"><input type="checkbox" aria-label="全选" /></th>
         <th>标题</th>
         <th>标签</th>
         <th>分类</th>
