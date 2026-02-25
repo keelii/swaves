@@ -13,7 +13,8 @@
 {% block window_toolbar_main_center %}
   {{ aui.ToolbarTitle("UI / Forms") }}
 {% endblock %}
-{% block window_toolbar_main_right %}{% endblock %}
+{% block window_toolbar_main_right %}
+{% endblock %}
 
 {% block status_nav_left %}
   {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
@@ -47,8 +48,8 @@
       ], aria_label="排序") }}
     </div>
 
-    <h3>Field / Input / Textarea / Checkbox</h3>
-    <form class="ui-form" method="post" action="javascript:;" aria-label="表单组件示例（无实际请求）">
+  <h3>Field / Input / Textarea / Checkbox</h3>
+  <form class="ui-form" method="post" action="javascript:;" aria-label="表单组件示例（无实际请求）">
       {{ aui.Field(
         "标题",
         aui.Input(id="demo-title", name="title", placeholder="输入标题…"),
@@ -80,23 +81,48 @@
         id="demo-category"
       ) }}
 
-      {{ aui.Field(
-        "选项",
-        aui.Checkbox(id="demo-pinned", name="pinned", label="置顶", checked=true),
-        id="demo-pinned",
-        label_tag="div",
-        help="Checkbox 通过 label 包裹扩大点击区域。"
-      ) }}
+    {{ aui.Field(
+      "选项",
+      aui.Checkbox(id="demo-pinned", name="pinned", label="置顶", checked=true),
+      id="demo-pinned",
+      label_tag="div",
+      help="Checkbox 通过 label 包裹扩大点击区域。"
+    ) }}
 
-      <div class="ui-tags">
-        <button type="submit" class="ui-btn primary">提交（示例）</button>
-        <button type="reset" class="ui-btn outline">重置</button>
-        <button type="button" class="ui-btn outline" disabled>disabled</button>
-      </div>
-    </form>
+    {{ aui.Field(
+      "Radio",
+      (
+        '<div class="ui-tags" aria-label="Radio 示例">' ~
+          aui.Radio(id='demo-visibility-public', name='visibility', value='public', label='公开', checked=true) ~
+          aui.Radio(id='demo-visibility-private', name='visibility', value='private', label='私有') ~
+          aui.Radio(id='demo-visibility-disabled', name='visibility', value='disabled', label='禁用项', attrs='disabled') ~
+        '</div>'
+      ),
+      label_tag="div",
+      help="Radio 同样使用 label 包裹扩大点击区域。"
+    ) }}
+
+    {{ aui.Field(
+      "File Upload",
+      aui.FileUpload(
+        id="demo-upload",
+        name="upload",
+        label="拖拽或点击上传",
+        accept=".png,.jpg,.jpeg,.gif",
+        multiple=true,
+        help="P0：支持拖拽展示文件列表（示例）；真实上传逻辑由业务表单/后端处理。"
+      ),
+      label_tag="div"
+    ) }}
+
+    <div class="ui-tags">
+      <button type="submit" class="ui-btn primary">提交（示例）</button>
+      <button type="reset" class="ui-btn outline">重置</button>
+      <button type="button" class="ui-btn outline" disabled>disabled</button>
+    </div>
+  </form>
 
     <h3>表单提交（提示）</h3>
     <p class="toolbar-text">需要 POST/CSRF 的动作请用 <code>&lt;button type="submit"&gt;</code>，不要用 <code>&lt;a&gt;</code> 冒充提交。</p>
     </div>
 {% endblock %}
-

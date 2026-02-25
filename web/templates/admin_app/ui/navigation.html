@@ -13,7 +13,8 @@
 {% block window_toolbar_main_center %}
   {{ aui.ToolbarTitle("UI / Navigation") }}
 {% endblock %}
-{% block window_toolbar_main_right %}{% endblock %}
+{% block window_toolbar_main_right %}
+{% endblock %}
 
 {% block status_nav_left %}
   {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
@@ -40,6 +41,26 @@
 
     <h3>Pager</h3>
     {{ aui.Pager(current=3, total=12, href_prefix=UrlFor("admin_app.ui.navigation")) }}
+
+    <h3>Tree View</h3>
+    <p class="toolbar-text">Tree 组件使用 <code>&lt;details&gt;</code> / <code>&lt;summary&gt;</code>，默认具备键盘可访问性。</p>
+    {{ aui.TreeStart("分类树") }}
+      {{ aui.TreeItem(
+        "内容",
+        children=(
+          aui.TreeItem("文章", open=true, icon_name="list", children=(
+            aui.TreeItem("草稿", icon_name="terminal") ~
+            aui.TreeItem("已发布", icon_name="save")
+          )) ~
+          aui.TreeItem("页面", icon_name="list-tree")
+        ),
+        open=true,
+        icon_name="list-tree"
+      ) }}
+      {{ aui.TreeItem("设置", icon_name="setting", children=(
+        aui.TreeItem("通用", icon_name="undo") ~
+        aui.TreeItem("权限", icon_name="link-2")
+      )) }}
+    {{ aui.TreeEnd() }}
   </div>
 {% endblock %}
-

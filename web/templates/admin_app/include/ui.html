@@ -1,19 +1,33 @@
 {# admin_app UI building blocks (templates only) #}
 
-{% macro BaseButton(label, type="outline", selected=false, rounded=false, tag="button", href="", attrs="") %}
+{% macro BaseButton(label, type="outline", selected=false, rounded=false, tag="button", href="", icon_name="", icon_size=16, attrs="") %}
 {% if tag == "a" %}
-<a{% if href %} href="{{ href }}"{% endif %} class="ui-btn {{ type }}{% if selected %} selected{% endif %}{% if rounded %} rounded{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>{{ label }}</a>
+<a{% if href %} href="{{ href }}"{% endif %} class="ui-btn {{ type }}{% if selected %} selected{% endif %}{% if rounded %} rounded{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>
+  {% if icon_name %}
+    <span class="ui-btn-icon" aria-hidden="true">{{ LucideIcon(icon_name, icon_size) }}</span>
+  {% endif %}
+  {% if label %}
+    <span class="ui-btn-label">{{ label }}</span>
+  {% endif %}
+</a>
 {% else %}
-<button class="ui-btn {{ type }}{% if selected %} selected{% endif %}{% if rounded %} rounded{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>{{ label }}</button>
+<button class="ui-btn {{ type }}{% if selected %} selected{% endif %}{% if rounded %} rounded{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>
+  {% if icon_name %}
+    <span class="ui-btn-icon" aria-hidden="true">{{ LucideIcon(icon_name, icon_size) }}</span>
+  {% endif %}
+  {% if label %}
+    <span class="ui-btn-label">{{ label }}</span>
+  {% endif %}
+</button>
 {% endif %}
 {% endmacro %}
 
-{% macro LinkButton(label, type="outline", selected=false, rounded=false, href="javascript:;", attrs="") %}
-{{ BaseButton(label, type, selected, rounded, "a", href, attrs) }}
+{% macro LinkButton(label, type="outline", selected=false, rounded=false, href="javascript:;", icon_name="", icon_size=16, attrs="") %}
+{{ BaseButton(label, type, selected, rounded, "a", href, icon_name, icon_size, attrs) }}
 {% endmacro %}
 
-{% macro Button(label, type="outline", selected=false, rounded=false, attrs="type=\"button\"") %}
-{{ BaseButton(label, type, selected, rounded, "button", "", attrs) }}
+{% macro Button(label, type="outline", selected=false, rounded=false, icon_name="", icon_size=16, attrs="type=\"button\"") %}
+{{ BaseButton(label, type, selected, rounded, "button", "", icon_name, icon_size, attrs) }}
 {% endmacro %}
 
 {% macro iterate_kwargs() %}
@@ -70,6 +84,69 @@
   <input type="checkbox" class="ui-checkbox-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if checked %} checked{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
   <span class="ui-checkbox-label">{{ label }}</span>
 </label>
+{% endmacro %}
+
+{% macro Radio(id="", name="", label="", value="", checked=false, attrs="", wrapper_attrs="") %}
+<label class="ui-radio"{% if wrapper_attrs %} {{ wrapper_attrs | safe }}{% endif %}>
+  <input type="radio" class="ui-radio-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if value %} value="{{ value }}"{% endif %}{% if checked %} checked{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
+  <span class="ui-radio-label">{{ label }}</span>
+</label>
+{% endmacro %}
+
+{% macro FileUpload(id="", name="", label="上传文件", accept="", multiple=false, help="", attrs="") %}
+<div class="ui-file-upload" data-role="ui-file-upload">
+  <div class="ui-file-dropzone" data-role="ui-file-dropzone" tabindex="0" data-title="拖拽文件到这里，或点击选择">
+    <div class="ui-file-dropzone-title">{{ label }}</div>
+    <div class="ui-file-dropzone-meta">
+      <span class="ui-file-dropzone-hint">拖拽文件到这里，或点击选择</span>
+      {% if accept %}
+        <span class="ui-file-dropzone-accept">{{ accept }}</span>
+      {% endif %}
+    </div>
+    <input type="file" class="ui-file-input" data-role="ui-file-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if accept %} accept="{{ accept }}"{% endif %}{% if multiple %} multiple{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
+  </div>
+  <div class="ui-file-list" data-role="ui-file-list" aria-live="polite"></div>
+  {% if help %}
+    <div class="ui-field-help">{{ help }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro TreeStart(aria_label="") %}
+<div class="ui-tree"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}>
+{% endmacro %}
+
+{% macro TreeEnd() %}
+</div>
+{% endmacro %}
+
+{% macro TreeItem(label, children="", open=false, icon_name="") %}
+{% if children %}
+<details class="ui-tree-item"{% if open %} open{% endif %}>
+  <summary class="ui-tree-summary">
+    <span class="ui-tree-caret" aria-hidden="true">{{ LucideIcon("chevron-right", 16) }}</span>
+    {% if icon_name %}
+      <span class="ui-tree-icon" aria-hidden="true">{{ LucideIcon(icon_name, 16) }}</span>
+    {% endif %}
+    <span class="ui-tree-label">{{ label }}</span>
+  </summary>
+  {% if children %}
+    <div class="ui-tree-children">
+      {{ children | safe }}
+    </div>
+  {% endif %}
+</details>
+{% else %}
+<div class="ui-tree-item ui-tree-leaf">
+  <div class="ui-tree-summary">
+    <span class="ui-tree-caret ui-tree-caret-placeholder" aria-hidden="true"></span>
+    {% if icon_name %}
+      <span class="ui-tree-icon" aria-hidden="true">{{ LucideIcon(icon_name, 16) }}</span>
+    {% endif %}
+    <span class="ui-tree-label">{{ label }}</span>
+  </div>
+</div>
+{% endif %}
 {% endmacro %}
 
 {% macro Field(label, control, id="", help="", error="", required=false, label_tag="label", attrs="") %}

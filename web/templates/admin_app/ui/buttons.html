@@ -13,7 +13,8 @@
 {% block window_toolbar_main_center %}
   {{ aui.ToolbarTitle("UI / Buttons") }}
 {% endblock %}
-{% block window_toolbar_main_right %}{% endblock %}
+{% block window_toolbar_main_right %}
+{% endblock %}
 
 {% block status_nav_left %}
   {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
@@ -37,6 +38,7 @@
       {{ aui.Button("Primary", "primary") }}
       {{ aui.Button("Secondary", "secondary") }}
       {{ aui.Button("Danger", "danger") }}
+      {{ aui.Button("带图标", "outline", icon_name="plus") }}
       {{ aui.Button("Rounded", "outline", rounded=true) }}
       {{ aui.Button("Selected", "outline", selected=true) }}
     </div>
@@ -47,6 +49,7 @@
       {{ aui.LinkButton("Link primary", "primary", href="javascript:;") }}
       {{ aui.LinkButton("Link secondary", "secondary", href="javascript:;") }}
       {{ aui.LinkButton("Link danger", "danger", href="javascript:;") }}
+      {{ aui.LinkButton("Link 带图标", "outline", href="javascript:;", icon_name="link-2") }}
       {{ aui.LinkButton("Link rounded", "outline", rounded=true, href="javascript:;") }}
       {{ aui.LinkButton("Link selected", "outline", selected=true, href="javascript:;") }}
     </div>
@@ -72,4 +75,3 @@
     </form>
   </div>
 {% endblock %}
-
