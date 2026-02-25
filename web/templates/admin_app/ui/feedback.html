@@ -50,14 +50,15 @@
     <div class="ui-tags" aria-label="Dialog 示例按钮">
       {{ aui.Button("打开 Dialog（示例）", "secondary", attrs='data-role="ui-dialog-open" data-dialog-id="demo-dialog"') }}
     </div>
+    <p class="toolbar-text">默认焦点在“取消”。键盘聚焦后按回车（Enter）应能直接关闭，避免误操作。</p>
     <div style="height: 10px;"></div>
     {{ aui.Dialog(
       "demo-dialog",
       "示例 Dialog",
       "<p>这是 dialog 的 body。内容可长可短；滚动发生在 dialog 内部，不影响页面整体布局。</p><p>第二段文案，用于验证间距与行高。</p>",
       actions=(
-        aui.LinkButton("取消", "outline", href="javascript:;", attrs='aria-label=\"取消\"') ~
-        aui.LinkButton("确认", "primary", href="javascript:;", attrs='aria-label=\"确认\"')
+        aui.Button("取消", "outline", attrs='data-role="ui-dialog-cancel" aria-label="取消"') ~
+        aui.Button("确认", "primary", attrs='aria-label="确认"')
       ),
       open=false
     ) }}
@@ -74,4 +75,3 @@
     ) }}
   </div>
 {% endblock %}
-

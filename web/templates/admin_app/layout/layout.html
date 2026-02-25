@@ -303,6 +303,15 @@
     white-space: nowrap;
   }
 
+  .app-window button.ui-btn:focus-visible {
+    outline: 2px solid rgba(29, 78, 216, 0.35);
+    outline-offset: 1px;
+  }
+
+  [data-theme="dark"] .app-window button.ui-btn:focus-visible {
+    outline-color: rgba(147, 197, 253, 0.35);
+  }
+
   .app-window button.ui-btn:active:not(:disabled) {
     transform: translate(1px, 1px);
   }
@@ -428,6 +437,15 @@
     border-radius: 8px;
     cursor: pointer;
     user-select: none;
+  }
+
+  .app-window button.ui-icon-btn:focus-visible {
+    outline: 2px solid rgba(29, 78, 216, 0.35);
+    outline-offset: 2px;
+  }
+
+  [data-theme="dark"] .app-window button.ui-icon-btn:focus-visible {
+    outline-color: rgba(147, 197, 253, 0.35);
   }
 
   .app-window button.ui-icon-btn:active:not(:disabled) {
@@ -913,6 +931,9 @@
     padding: 6px 12px;
     border-bottom: var(--app-border-width) solid var(--app-border);
   }
+  .ui-dialog-header .ui-icon-btn {
+      padding-right: 0;
+  }
 
   .app-window .ui-dialog-title {
     min-width: 0;
@@ -920,6 +941,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .ui-dialog-title .ui-icon-btn {
+      padding-right: 0;
   }
 
   .app-window .ui-dialog-body {
@@ -1965,7 +1989,7 @@
         return;
       }
 
-      var closeButton = event.target.closest('[data-role="ui-dialog-close"]');
+      var closeButton = event.target.closest('[data-role~="ui-dialog-close"],[data-role~="ui-dialog-cancel"]');
       if (closeButton) {
         var backdrop = closeButton.closest('.ui-dialog-backdrop');
         if (backdrop) {
@@ -1983,6 +2007,18 @@
     });
 
     document.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        var closeTarget = event.target && event.target.closest ? event.target.closest('[data-role~="ui-dialog-close"],[data-role~="ui-dialog-cancel"]') : null;
+        if (closeTarget) {
+          var backdrop = closeTarget.closest('.ui-dialog-backdrop');
+          if (backdrop && !backdrop.hasAttribute('hidden')) {
+            backdrop.setAttribute('hidden', '');
+            event.preventDefault();
+            return;
+          }
+        }
+      }
+
       if (event.key !== 'Escape') {
         return;
       }
