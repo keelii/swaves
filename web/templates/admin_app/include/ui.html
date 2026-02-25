@@ -16,6 +16,9 @@
 {{ BaseButton(label, type, selected, rounded, "button", "", attrs) }}
 {% endmacro %}
 
+{% macro iterate_kwargs() %}
+{% endmacro %}
+
 {% macro LinkIcon(icon_name="", href="javascript:;", attrs="") %}
 <a href="{{ href }}" class="ui-icon-btn"{% if attrs %} {{ attrs | safe }}{% endif %}>
   {{ LucideIcon(icon_name, 16) }}

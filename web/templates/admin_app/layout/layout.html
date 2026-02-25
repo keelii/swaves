@@ -127,7 +127,7 @@
     box-sizing: border-box;
     display: flex;
     align-items: stretch;
-    border: var(--app-border-width) solid var(--app-border);
+    {#border: var(--app-border-width) solid var(--app-border);#}
     overflow: hidden;
   }
 
@@ -1228,6 +1228,29 @@
     padding: 0 10px;
   }
 
+  .app-window .data-table .cell-id-merge {
+    {#width: 72px;#}
+    white-space: nowrap;
+    color: var(--app-text-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .app-window .data-table .cell-id {
+    display: inline-block;
+  }
+
+  .app-window .data-table .cell-checkbox {
+    display: none;
+  }
+
+  .app-window .data-table-wrap.is-multiselect .cell-id {
+    display: none;
+  }
+
+  .app-window .data-table-wrap.is-multiselect .cell-checkbox {
+    display: inline-block;
+  }
+
   .app-window .data-table tbody tr:hover td {
     background: rgba(0, 0, 0, 0.015);
   }
@@ -1663,6 +1686,73 @@
       event.preventDefault();
     });
 
+    function bindTableMultiselect(tableId) {
+      if (!tableId) {
+        return;
+      }
+
+      var table = document.getElementById(tableId);
+      if (!table) {
+        return;
+      }
+
+      var wrap = table.closest('.data-table-wrap');
+      if (!wrap) {
+        return;
+      }
+
+      var toggle = document.querySelector('[data-role="toggle-multiselect"][data-target-table="' + tableId + '"]');
+
+      function syncSelectAllState() {
+        var head = table.querySelector('thead .cell-checkbox');
+        if (!head) {
+          return;
+        }
+        var items = table.querySelectorAll('tbody .cell-checkbox');
+        if (!items || items.length === 0) {
+          head.checked = false;
+          head.indeterminate = false;
+          return;
+        }
+        var checked = 0;
+        items.forEach(function(item) {
+          if (item.checked) {
+            checked += 1;
+          }
+        });
+        head.checked = checked === items.length;
+        head.indeterminate = checked > 0 && checked < items.length;
+      }
+
+      if (toggle) {
+        toggle.addEventListener('click', function(event) {
+          var enabled = !wrap.classList.contains('is-multiselect');
+          wrap.classList.toggle('is-multiselect', enabled);
+          toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+          event.preventDefault();
+        });
+      }
+
+      table.addEventListener('change', function(event) {
+        var selectAll = event.target && event.target.closest ? event.target.closest('thead .cell-checkbox') : null;
+        if (selectAll) {
+          var items = table.querySelectorAll('tbody .cell-checkbox');
+          items.forEach(function(item) {
+            item.checked = selectAll.checked;
+          });
+          syncSelectAllState();
+          return;
+        }
+
+        var rowCheckbox = event.target && event.target.closest ? event.target.closest('tbody .cell-checkbox') : null;
+        if (rowCheckbox) {
+          syncSelectAllState();
+        }
+      });
+
+      syncSelectAllState();
+    }
+
     document.addEventListener('change', function(event) {
       var select = event.target.closest('[data-role="ui-dropdown-select"]');
       if (!select) {
@@ -1809,9 +1899,32 @@
         return false;
       }
       backdrop.removeAttribute('hidden');
-      var closeButton = backdrop.querySelector('[data-role="ui-dialog-close"]');
-      if (closeButton && typeof closeButton.focus === 'function') {
-        closeButton.focus();
+      var focusSelectors = [
+        '.ui-dialog-footer [data-role="ui-dialog-cancel"]',
+        '.ui-dialog-footer .ui-btn.outline',
+        '.ui-dialog-footer [data-role="ui-dialog-close"]',
+        '.ui-dialog-footer a',
+        '.ui-dialog-footer button',
+        '[data-role="ui-dialog-close"]',
+      ];
+      for (var i = 0; i < focusSelectors.length; i++) {
+        var target = backdrop.querySelector(focusSelectors[i]);
+        if (!target) {
+          continue;
+        }
+        if (target.hasAttribute('disabled')) {
+          continue;
+        }
+        if (target.getAttribute('tabindex') === '-1') {
+          continue;
+        }
+        if (typeof target.disabled === 'boolean' && target.disabled) {
+          continue;
+        }
+        if (typeof target.focus === 'function') {
+          target.focus();
+        }
+        break;
       }
       return true;
     }
@@ -1949,6 +2062,7 @@
     window.addEventListener('resize', closeTooltip);
 
     initDropdownLabels();
+    bindTableMultiselect('posts-table');
   })();
 </script>
 {% endblock %}

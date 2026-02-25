@@ -44,7 +44,7 @@
 {% block content %}
   <div class="app-pt" style="display: flex; align-items: center; justify-content: space-between;">
     {{ aui.TabsStart("文章状态") }}
-      {{ aui.LinkIcon("list-checks", "javascript:;") }}
+      {{ aui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({"data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false"})) }}
       {{ aui.Tab("全部 86", href="javascript:;", active=true) }}
       {{ aui.Tab("文章 80", href="javascript:;") }}
       {{ aui.Tab("页面 8", href="javascript:;") }}
@@ -58,11 +58,14 @@
 
   <div style="height:12px;"></div>
 
-  <div class="data-table-wrap" aria-label="文章表格容器">
-    <table class="data-table" aria-label="文章列表">
+  <div class="data-table-wrap" aria-label="文章表格容器" data-role="multiselect-scope">
+    <table id="posts-table" class="data-table" aria-label="文章列表" data-role="data-table">
       <thead>
       <tr>
-        <th style="width:16px;"><input type="checkbox" aria-label="全选" /></th>
+        <th>
+          <span class="cell-id">ID</span>
+          <input class="cell-checkbox" type="checkbox" aria-label="全选" />
+        </th>
         <th>标题</th>
         <th>标签</th>
         <th>分类</th>
@@ -74,7 +77,10 @@
       </thead>
       <tbody>
       <tr>
-        <td><input type="checkbox" aria-label="选择文章" /></td>
+        <td class="cell-id-merge">
+          <span class="cell-id">1024</span>
+          <input class="cell-checkbox" type="checkbox" aria-label="选择文章" />
+        </td>
         <td>
           <div class="cell-title">
             <a href="javascript:;" aria-label="打开文章">Node.js 作者 Ryan Dahl 的故事</a>
@@ -95,7 +101,10 @@
       </tr>
 
       <tr>
-        <td><input type="checkbox" aria-label="选择文章" /></td>
+        <td class="cell-id-merge">
+          <span class="cell-id">1007</span>
+          <input class="cell-checkbox" type="checkbox" aria-label="选择文章" />
+        </td>
         <td>
           <div class="cell-title">
             <a href="javascript:;" aria-label="打开文章">React 随想：状态管理的边界</a>
@@ -116,7 +125,10 @@
       </tr>
 
       <tr>
-        <td><input type="checkbox" aria-label="选择文章" /></td>
+        <td class="cell-id-merge">
+          <span class="cell-id">996</span>
+          <input class="cell-checkbox" type="checkbox" aria-label="选择文章" />
+        </td>
         <td>
           <div class="cell-title">
             <a href="javascript:;" aria-label="打开文章">相信数字还是相信直觉</a>

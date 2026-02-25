@@ -140,6 +140,29 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		}
 		return value.FromSafeString(renderHTMLAttrs(args[0].Raw())), nil
 	})
+	env.AddFunction("HtmlAttrs", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(args) > 1 {
+			return value.Undefined(), errors.New("HtmlAttrs expects 0 or 1 positional argument")
+		}
+		if len(args) == 1 && len(kwargs) > 0 {
+			return value.Undefined(), errors.New("HtmlAttrs does not support using positional args and keyword args together")
+		}
+		if len(args) == 0 && len(kwargs) == 0 {
+			return value.FromSafeString(""), nil
+		}
+		if len(kwargs) > 0 {
+			attrs := make(map[string]any, len(kwargs))
+			for key, raw := range kwargs {
+				k := strings.TrimSpace(key)
+				if k == "" {
+					continue
+				}
+				attrs[k] = raw.Raw()
+			}
+			return value.FromSafeString(renderHTMLAttrs(attrs)), nil
+		}
+		return value.FromSafeString(renderHTMLAttrs(args[0].Raw())), nil
+	})
 	env.AddFunction("Highlight", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {
 			return value.Undefined(), errors.New("Highlight does not support keyword arguments")
