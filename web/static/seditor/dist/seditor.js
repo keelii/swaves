@@ -11638,6 +11638,15 @@ var SEditor = (() => {
       }
     return null;
   }
+  var lift2 = (state, dispatch) => {
+    let { $from, $to } = state.selection;
+    let range = $from.blockRange($to), target = range && liftTarget(range);
+    if (target == null)
+      return false;
+    if (dispatch)
+      dispatch(state.tr.lift(range, target).scrollIntoView());
+    return true;
+  };
   var newlineInCode = (state, dispatch) => {
     let { $head, $anchor } = state.selection;
     if (!$head.parent.type.spec.code || !$head.sameParent($anchor))
@@ -11844,6 +11853,17 @@ var SEditor = (() => {
   }
   var selectTextblockStart = selectTextblockSide(-1);
   var selectTextblockEnd = selectTextblockSide(1);
+  function wrapIn(nodeType, attrs2 = null) {
+    return function(state, dispatch) {
+      let { $from, $to } = state.selection;
+      let range = $from.blockRange($to), wrapping = range && findWrapping(range, nodeType, attrs2);
+      if (!wrapping)
+        return false;
+      if (dispatch)
+        dispatch(state.tr.wrap(range, wrapping).scrollIntoView());
+      return true;
+    };
+  }
   function markApplies(doc3, ranges, type, enterAtoms) {
     for (let i = 0; i < ranges.length; i++) {
       let { $from, $to } = ranges[i];
@@ -19317,6 +19337,9 @@ var SEditor = (() => {
     if (schema2.nodes.bullet_list) {
       inputRuleList.push(wrappingInputRule(/^\*\s$/, schema2.nodes.bullet_list));
     }
+    if (schema2.nodes.blockquote) {
+      inputRuleList.push(wrappingInputRule(/^>\s$/, schema2.nodes.blockquote));
+    }
     return [
       inputRuleList.length ? inputRules({ rules: inputRuleList }) : null,
       history(),
@@ -19336,11 +19359,40 @@ var SEditor = (() => {
   function commandByName(schema2, name) {
     var strong = schema2.marks.strong;
     var em = schema2.marks.em;
+    var blockquote2 = schema2.nodes.blockquote;
     switch (String(name || "").trim()) {
       case "bold":
         return strong ? toggleMark(strong) : null;
       case "italic":
         return em ? toggleMark(em) : null;
+      case "blockquote":
+        if (!blockquote2) {
+          return null;
+        }
+        return function(state, dispatch, view) {
+          var sel = state.selection;
+          if (!sel || !sel.$from || !sel.$to) {
+            return false;
+          }
+          var fromHasBlockquote = false;
+          var toHasBlockquote = false;
+          for (var d = sel.$from.depth; d > 0; d -= 1) {
+            if (sel.$from.node(d).type === blockquote2) {
+              fromHasBlockquote = true;
+              break;
+            }
+          }
+          for (var d2 = sel.$to.depth; d2 > 0; d2 -= 1) {
+            if (sel.$to.node(d2).type === blockquote2) {
+              toHasBlockquote = true;
+              break;
+            }
+          }
+          if (fromHasBlockquote && toHasBlockquote) {
+            return lift2(state, dispatch, view);
+          }
+          return wrapIn(blockquote2)(state, dispatch, view);
+        };
       case "bullet_list":
         return schema2.nodes.bullet_list ? wrapInList(schema2.nodes.bullet_list) : null;
       case "ordered_list":

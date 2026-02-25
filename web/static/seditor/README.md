@@ -46,6 +46,7 @@ Any element with `data-seditor-command="..."` will be bound as a button:
 
 - `bold`
 - `italic`
+- `blockquote`
 - `bullet_list`
 - `ordered_list`
 - `undo`
@@ -61,6 +62,8 @@ heading (`h1`..`h6`).
 Typing `1. ` at the beginning of a paragraph turns it into an ordered list.
 
 Typing `* ` at the beginning of a paragraph turns it into a bullet list.
+
+Typing `> ` at the beginning of a paragraph turns it into a blockquote.
 
 Example:
 

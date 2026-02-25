@@ -1,7 +1,7 @@
 import { EditorState } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { keymap } from "prosemirror-keymap";
-import { baseKeymap, toggleMark } from "prosemirror-commands";
+import { baseKeymap, lift, toggleMark, wrapIn } from "prosemirror-commands";
 import { history, redo, undo } from "prosemirror-history";
 import { InputRule, inputRules, wrappingInputRule } from "prosemirror-inputrules";
 import { liftListItem, sinkListItem, splitListItem, wrapInList } from "prosemirror-schema-list";
@@ -368,6 +368,9 @@ function buildPlugins(schema) {
   if (schema.nodes.bullet_list) {
     inputRuleList.push(wrappingInputRule(/^\*\s$/, schema.nodes.bullet_list));
   }
+  if (schema.nodes.blockquote) {
+    inputRuleList.push(wrappingInputRule(/^>\s$/, schema.nodes.blockquote));
+  }
 
   return [
     inputRuleList.length ? inputRules({ rules: inputRuleList }) : null,
@@ -389,12 +392,41 @@ function buildPlugins(schema) {
 function commandByName(schema, name) {
   var strong = schema.marks.strong;
   var em = schema.marks.em;
+  var blockquote = schema.nodes.blockquote;
 
   switch (String(name || "").trim()) {
     case "bold":
       return strong ? toggleMark(strong) : null;
     case "italic":
       return em ? toggleMark(em) : null;
+    case "blockquote":
+      if (!blockquote) {
+        return null;
+      }
+      return function(state, dispatch, view) {
+        var sel = state.selection;
+        if (!sel || !sel.$from || !sel.$to) {
+          return false;
+        }
+        var fromHasBlockquote = false;
+        var toHasBlockquote = false;
+        for (var d = sel.$from.depth; d > 0; d -= 1) {
+          if (sel.$from.node(d).type === blockquote) {
+            fromHasBlockquote = true;
+            break;
+          }
+        }
+        for (var d2 = sel.$to.depth; d2 > 0; d2 -= 1) {
+          if (sel.$to.node(d2).type === blockquote) {
+            toHasBlockquote = true;
+            break;
+          }
+        }
+        if (fromHasBlockquote && toHasBlockquote) {
+          return lift(state, dispatch, view);
+        }
+        return wrapIn(blockquote)(state, dispatch, view);
+      };
     case "bullet_list":
       return schema.nodes.bullet_list ? wrapInList(schema.nodes.bullet_list) : null;
     case "ordered_list":
