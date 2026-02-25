@@ -1,0 +1,45 @@
+{% extends "admin_app/layout/layout.html" %}
+{% import "admin_app/include/ui.html" as aui %}
+
+{% block window_toolbar_left %}
+  {% include "admin_app/include/window_toolbar_left.html" %}
+{% endblock %}
+
+{% block window_toolbar_main_left %}
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航" data-title="切换 full-main">
+    {{ LucideIcon("panel-left", 16) }}
+  </button>
+{% endblock %}
+{% block window_toolbar_main_center %}
+  {{ aui.ToolbarTitle("UI / Navigation") }}
+{% endblock %}
+{% block window_toolbar_main_right %}{% endblock %}
+
+{% block status_nav_left %}
+  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+{% endblock %}
+{% block status_nav_right %}
+  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+{% endblock %}
+
+{% block nav_pane %}
+  {% include "admin_app/include/nav.html" %}
+{% endblock %}
+
+{% block content %}
+  <div class="app-px">
+    <h2>Navigation</h2>
+
+    <h3>Tabs</h3>
+    {{ aui.TabsStart("Tab Demo") }}
+      {{ aui.Tab("全部", href="javascript:;", active=true) }}
+      {{ aui.Tab("文章", href="javascript:;") }}
+      {{ aui.Tab("页面", href="javascript:;") }}
+      {{ aui.Tab("草稿", href="javascript:;") }}
+    {{ aui.TabsEnd() }}
+
+    <h3>Pager</h3>
+    {{ aui.Pager(current=3, total=12, href_prefix=UrlFor("admin_app.ui.navigation")) }}
+  </div>
+{% endblock %}
+

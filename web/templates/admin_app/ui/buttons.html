@@ -1,0 +1,75 @@
+{% extends "admin_app/layout/layout.html" %}
+{% import "admin_app/include/ui.html" as aui %}
+
+{% block window_toolbar_left %}
+  {% include "admin_app/include/window_toolbar_left.html" %}
+{% endblock %}
+
+{% block window_toolbar_main_left %}
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航" data-title="切换 full-main">
+    {{ LucideIcon("panel-left", 16) }}
+  </button>
+{% endblock %}
+{% block window_toolbar_main_center %}
+  {{ aui.ToolbarTitle("UI / Buttons") }}
+{% endblock %}
+{% block window_toolbar_main_right %}{% endblock %}
+
+{% block status_nav_left %}
+  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+{% endblock %}
+{% block status_nav_right %}
+  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+{% endblock %}
+
+{% block nav_pane %}
+  {% include "admin_app/include/nav.html" %}
+{% endblock %}
+
+{% block content %}
+  <div class="app-px">
+    <h2>Buttons</h2>
+    <p class="toolbar-text">按钮/链接按钮同样式，不同语义；提交类动作请用 <code>&lt;button type="submit"&gt;</code>。</p>
+
+    <h3>Button（<code>&lt;button&gt;</code>）</h3>
+    <div class="ui-tags" aria-label="Button 示例">
+      {{ aui.Button("默认 outline", "outline") }}
+      {{ aui.Button("Primary", "primary") }}
+      {{ aui.Button("Secondary", "secondary") }}
+      {{ aui.Button("Danger", "danger") }}
+      {{ aui.Button("Rounded", "outline", rounded=true) }}
+      {{ aui.Button("Selected", "outline", selected=true) }}
+    </div>
+
+    <h3>LinkButton（<code>&lt;a&gt;</code>，样式同按钮）</h3>
+    <div class="ui-tags" aria-label="LinkButton 示例">
+      {{ aui.LinkButton("Link outline", "outline", href="javascript:;") }}
+      {{ aui.LinkButton("Link primary", "primary", href="javascript:;") }}
+      {{ aui.LinkButton("Link secondary", "secondary", href="javascript:;") }}
+      {{ aui.LinkButton("Link danger", "danger", href="javascript:;") }}
+      {{ aui.LinkButton("Link rounded", "outline", rounded=true, href="javascript:;") }}
+      {{ aui.LinkButton("Link selected", "outline", selected=true, href="javascript:;") }}
+    </div>
+
+    <h3>Disabled</h3>
+    <div class="ui-tags" aria-label="Disabled 示例（button/a）">
+      {{ aui.Button("Disabled outline", "outline", attrs='type="button" disabled') }}
+      {{ aui.Button("Disabled primary", "primary", attrs='type="button" disabled') }}
+      {{ aui.Button("Disabled secondary", "secondary", attrs='type="button" disabled') }}
+      {{ aui.Button("Disabled danger", "danger", attrs='type="button" disabled') }}
+      {{ aui.LinkButton("Disabled link", "outline", href="javascript:;", attrs='disabled tabindex="-1"') }}
+      {{ aui.LinkButton("Disabled link danger", "danger", href="javascript:;", attrs='disabled tabindex="-1"') }}
+    </div>
+
+    <h3>提交动作（提示）</h3>
+    <p class="toolbar-text">不写 JS 的情况下，<code>&lt;a&gt;</code> 不能安全发起 POST（CSRF）；需要“链接样式提交”用 submit button + CSS。</p>
+    <form method="post" action="javascript:;" aria-label="提交示例（无实际请求）">
+      <div class="ui-tags">
+        <button type="submit" class="ui-btn primary">提交（示例）</button>
+        <button type="button" class="ui-btn danger">危险动作（示例）</button>
+        <button type="button" class="ui-btn outline" disabled>disabled</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

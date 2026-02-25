@@ -1,0 +1,77 @@
+{% extends "admin_app/layout/layout.html" %}
+{% import "admin_app/include/ui.html" as aui %}
+
+{% block window_toolbar_left %}
+  {% include "admin_app/include/window_toolbar_left.html" %}
+{% endblock %}
+
+{% block window_toolbar_main_left %}
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航" data-title="切换 full-main">
+    {{ LucideIcon("panel-left", 16) }}
+  </button>
+{% endblock %}
+{% block window_toolbar_main_center %}
+  {{ aui.ToolbarTitle("UI / Feedback") }}
+{% endblock %}
+{% block window_toolbar_main_right %}{% endblock %}
+
+{% block status_nav_left %}
+  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+{% endblock %}
+{% block status_nav_right %}
+  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+{% endblock %}
+
+{% block nav_pane %}
+  {% include "admin_app/include/nav.html" %}
+{% endblock %}
+
+{% block content %}
+  <div class="app-px">
+    <h2>Feedback</h2>
+
+    <h3>Alerts</h3>
+    <div class="ui-tags" style="flex-direction: column; align-items: stretch; gap: 10px;">
+      {{ aui.Alert("用于信息提示：不阻断用户操作。", kind="info", title="Info") }}
+      {{ aui.Alert("操作已成功保存。", kind="success", title="Success") }}
+      {{ aui.Alert("这是一个需要注意的提示（warning）。建议文案尽量短。", kind="warning", title="Warning") }}
+      {{ aui.Alert("危险操作不可撤销；请再次确认。", kind="danger", title="Danger") }}
+    </div>
+
+    <h4>Alerts Inline（不换行）</h4>
+    <div class="ui-tags" aria-label="Inline alert 示例">
+      {{ aui.Alert("这是一条 inline alert（超长时会省略）这是一条 inline alert（超长时会省略）", kind="info", title="Info", inline=true) }}
+      {{ aui.Alert("已保存", kind="success", title="OK", inline=true) }}
+      {{ aui.Alert("注意：有风险", kind="warning", title="Warn", inline=true) }}
+      {{ aui.Alert("请确认删除", kind="danger", title="Danger", inline=true) }}
+    </div>
+
+    <h3>Dialog</h3>
+    <div class="ui-tags" aria-label="Dialog 示例按钮">
+      {{ aui.Button("打开 Dialog（示例）", "secondary", attrs='data-role="ui-dialog-open" data-dialog-id="demo-dialog"') }}
+    </div>
+    <div style="height: 10px;"></div>
+    {{ aui.Dialog(
+      "demo-dialog",
+      "示例 Dialog",
+      "<p>这是 dialog 的 body。内容可长可短；滚动发生在 dialog 内部，不影响页面整体布局。</p><p>第二段文案，用于验证间距与行高。</p>",
+      actions=(
+        aui.LinkButton("取消", "outline", href="javascript:;", attrs='aria-label=\"取消\"') ~
+        aui.LinkButton("确认", "primary", href="javascript:;", attrs='aria-label=\"确认\"')
+      ),
+      open=false
+    ) }}
+
+    <h3>Empty State</h3>
+    {{ aui.EmptyState(
+      "暂无内容",
+      "当前列表为空。你可以新建内容，或调整筛选条件后重试。",
+      icon_name="list",
+      actions=(
+        aui.LinkButton("刷新", "outline", href="javascript:;") ~
+        aui.LinkButton("新建文章", "primary", href="javascript:;")
+      )
+    ) }}
+  </div>
+{% endblock %}
+
