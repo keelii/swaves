@@ -3,7 +3,15 @@
 
 {% block window_toolbar_left %}
 <div class="toolbar-two-col">
-  <div class="toolbar-logo">SWAVES</div>
+  <div class="toolbar-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 96 96" fill="none" role="img" aria-label="Swaves">
+      <path d="M18 50 C28 32 42 32 48 40 C54 48 68 52 78 38"
+            stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 66 C28 50 42 50 48 58 C54 66 68 70 78 56"
+            stroke="#1D4ED8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+    </svg>
+    SWAVES
+  </div>
   {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
 </div>
 {% endblock %}
@@ -19,7 +27,177 @@
   {% include "admin_app/include/nav.html" %}
 {% endblock %}
 {% block content %}
-  {% include "admin_app/include/links.html" %}
+  <h2>admin_app UI 组件 Demo</h2>
+  <p class="toolbar-text">此页仅用于验证布局稳定性与组件样式，不承载业务。</p>
+
+  <h3>Buttons</h3>
+  <div class="ui-tags" aria-label="按钮示例">
+    {{ aui.Button("默认 outline", "outline") }}
+    {{ aui.Button("Primary", "primary") }}
+    {{ aui.Button("Secondary", "secondary") }}
+    {{ aui.Button("Danger", "danger") }}
+    {{ aui.Button("Rounded", "outline", rounded=true) }}
+    {{ aui.Button("Selected", "outline", selected=true) }}
+  </div>
+
+  <h4>Link Buttons（<code>&lt;a&gt;</code>，样式同按钮）</h4>
+  <div class="ui-tags" aria-label="链接按钮示例">
+    {{ aui.LinkButton("Link outline", "outline", href="javascript:;") }}
+    {{ aui.LinkButton("Link primary", "primary", href="javascript:;") }}
+    {{ aui.LinkButton("Link secondary", "secondary", href="javascript:;") }}
+    {{ aui.LinkButton("Link danger", "danger", href="javascript:;") }}
+    {{ aui.LinkButton("Link rounded", "outline", rounded=true, href="javascript:;") }}
+    {{ aui.LinkButton("Link selected", "outline", selected=true, href="javascript:;") }}
+  </div>
+
+  <h4>Disabled</h4>
+  <div class="ui-tags" aria-label="禁用态示例（button/a）">
+    {{ aui.Button("Disabled outline", "outline", attrs='type="button" disabled') }}
+    {{ aui.Button("Disabled primary", "primary", attrs='type="button" disabled') }}
+    {{ aui.Button("Disabled secondary", "secondary", attrs='type="button" disabled') }}
+    {{ aui.Button("Disabled danger", "danger", attrs='type="button" disabled') }}
+    {{ aui.LinkButton("Disabled link", "outline", href="javascript:;", attrs='disabled tabindex="-1"') }}
+    {{ aui.LinkButton("Disabled link danger", "danger", href="javascript:;", attrs='disabled tabindex="-1"') }}
+  </div>
+
+  <h3>Icon Buttons</h3>
+  <div class="ui-tags" aria-label="图标按钮示例">
+    {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换 full-main（隐藏导航）"') }}
+    {{ aui.IconButton("setting", "设置") }}
+    {{ aui.IconButton("log-out", "退出") }}
+    {{ aui.IconButton("setting", "设置（disabled）", disabled=true) }}
+    {{ aui.IconAction("trash-2", "删除", kind="danger") }}
+    {{ aui.IconAction("trash-2", "禁用态", kind="danger", disabled=true) }}
+  </div>
+
+  <h3>Badges / Pills</h3>
+  <div class="ui-tags" aria-label="标签/徽章示例">
+    <span class="ui-badge success">Success</span>
+    <span class="ui-badge draft">Draft</span>
+    <span class="ui-pill">Pill</span>
+    <span class="ui-pill">很长的标签很长的标签很长的标签</span>
+  </div>
+
+  <h3>Select / Dropdown</h3>
+  <div class="ui-tags" aria-label="选择器示例">
+    {{ aui.Select([
+      {"value":"draft", "label":"草稿"},
+      {"value":"published", "label":"已发布"},
+      {"value":"archived", "label":"已归档"}
+    ], aria_label="状态选择") }}
+
+    {{ aui.Dropdown([
+      {"value":"", "label":"排序：默认"},
+      {"value":"created_desc", "label":"按创建时间（新→旧）"},
+      {"value":"created_asc", "label":"按创建时间（旧→新）"},
+      {"value":"updated_desc", "label":"按更新时间（新→旧）"}
+    ], aria_label="排序") }}
+  </div>
+
+  <h3>Tags</h3>
+  {{ aui.Tags(["golang", "minijinja", "oat.css", "admin_app"]) }}
+
+  <h3>Tabs</h3>
+  {{ aui.TabsStart("Tab Demo") }}
+    {{ aui.Tab("全部", href="javascript:;", active=true) }}
+    {{ aui.Tab("文章", href="javascript:;") }}
+    {{ aui.Tab("页面", href="javascript:;") }}
+    {{ aui.Tab("草稿", href="javascript:;") }}
+  {{ aui.TabsEnd() }}
+
+  <h3>Alerts</h3>
+  <div class="ui-tags" style="flex-direction: column; align-items: stretch; gap: 10px;">
+    {{ aui.Alert("用于信息提示：不阻断用户操作。", kind="info", title="Info") }}
+    {{ aui.Alert("操作已成功保存。", kind="success", title="Success") }}
+    {{ aui.Alert("这是一个需要注意的提示（warning）。建议文案尽量短。", kind="warning", title="Warning") }}
+    {{ aui.Alert("危险操作不可撤销；请再次确认。", kind="danger", title="Danger") }}
+  </div>
+
+  <h4>Alerts Inline（不换行）</h4>
+  <div class="ui-tags" aria-label="Inline alert 示例">
+    {{ aui.Alert("这是一条 inline alert（超长时会省略）这是一条 inline alert（超长时会省略）", kind="info", title="Info", inline=true) }}
+    {{ aui.Alert("已保存", kind="success", title="OK", inline=true) }}
+    {{ aui.Alert("注意：有风险", kind="warning", title="Warn", inline=true) }}
+    {{ aui.Alert("请确认删除", kind="danger", title="Danger", inline=true) }}
+  </div>
+
+  <h3>Dialog</h3>
+  <p class="toolbar-text">Dialog 为纯 UI 组件：展示结构与样式；开关逻辑可在后续用事件委托接入。</p>
+  <div class="ui-tags" aria-label="Dialog 示例按钮">
+    {{ aui.Button("打开 Dialog（示例）", "secondary", attrs='data-role="ui-dialog-open" data-dialog-id="demo-dialog"') }}
+  </div>
+  <div style="height: 10px;"></div>
+  {{ aui.Dialog(
+    "demo-dialog",
+    "示例 Dialog",
+    "<p>这是 dialog 的 body。内容可长可短；滚动发生在 dialog 内部，不影响页面整体布局。</p><p>第二段文案，用于验证间距与行高。</p>",
+    actions=(
+      aui.LinkButton("取消", "outline", href="javascript:;", attrs='aria-label=\"取消\"') ~
+      aui.LinkButton("确认", "primary", href="javascript:;", attrs='aria-label=\"确认\"')
+    ),
+    open=false
+  ) }}
+
+  <h3>Pager</h3>
+  {{ aui.Pager(current=3, total=12, href_prefix="/admin_app/posts_list") }}
+
+  <h3>Data Table</h3>
+  <div class="data-table-wrap" aria-label="表格示例">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 42%;">标题</th>
+          <th>标签</th>
+          <th>分类</th>
+          <th style="width: 120px; text-align: right;">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="cell-title">
+              <span class="ui-badge success">已发布</span>
+              <a href="javascript:;">一篇文章的标题（很长很长很长很长很长）</a>
+            </div>
+          </td>
+          <td><div class="cell-tags">golang, admin, layout</div></td>
+          <td><div class="cell-cat">技术</div></td>
+          <td style="text-align: right;">
+            <div class="cell-actions">
+              {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
+              {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接"') }}
+              {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除（仅示例）"') }}
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="cell-title">
+              <span class="ui-badge draft">草稿</span>
+              <a href="javascript:;">草稿文章（示例）</a>
+            </div>
+          </td>
+          <td><div class="cell-tags">draft</div></td>
+          <td><div class="cell-cat">未分类</div></td>
+          <td style="text-align: right;">
+            <div class="cell-actions">
+              {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
+              {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除（仅示例）"') }}
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Form Submit（提示）</h3>
+  <p class="toolbar-text">需要 POST/CSRF 的动作请用 &lt;button type="submit"&gt; + CSS，不用 &lt;a&gt; 冒充提交。</p>
+  <form method="post" action="javascript:;" aria-label="提交示例（无实际请求）">
+    <div class="ui-tags">
+      <button type="submit" class="ui-btn danger">危险动作（示例）</button>
+      <button type="button" class="ui-btn outline" disabled>disabled</button>
+    </div>
+  </form>
 {% endblock %}
 
 {% block status_nav_left %}

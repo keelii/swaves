@@ -38,7 +38,7 @@
 {% endblock %}
 {% block status_main_center %}{% endblock %}
 {% block status_main_right %}
-  {{ aui.Pager(1, 3) }}
+  {{ aui.Pager(1, 3, href_prefix="/admin_app/posts_list") }}
 {% endblock %}
 
 {% block nav_pane %}
@@ -47,18 +47,18 @@
 
 {% block content %}
   <div style="display: flex; align-items: center; justify-content: space-between;">
-    <div class="ui-tabs" aria-label="文章状态">
+    {{ aui.TabsStart("文章状态") }}
       {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换"') }}
-      <span class="ui-tab active">全部 86</span>
-      <span class="ui-tab">文章 80</span>
-      <span class="ui-tab">页面 8</span>
-      <span class="ui-tab">草稿 6</span>
-    </div>
+      {{ aui.Tab("全部 86", href="javascript:;", active=true) }}
+      {{ aui.Tab("文章 80", href="javascript:;") }}
+      {{ aui.Tab("页面 8", href="javascript:;") }}
+      {{ aui.Tab("草稿 6", href="javascript:;") }}
+    {{ aui.TabsEnd() }}
 
-    <div class="ui-tabs" aria-label="筛选工具">
+    {{ aui.TabsStart("筛选工具") }}
       {{ aui.Button("筛选", "outline", selected=true) }}
       {{ aui.Dropdown([{"value":"updated_desc","label":"排序：更新时间↓"},{"value":"updated_asc","label":"排序：更新时间↑"}], "排序", "updated_desc") }}
-    </div>
+    {{ aui.TabsEnd() }}
   </div>
 
   <div style="height:12px;"></div>
@@ -135,7 +135,7 @@
         <td>
           <div class="cell-actions" aria-label="操作">
             {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
-            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" aria-disabled="true"') }}
+            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" disabled tabindex="-1"') }}
             {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除"') }}
           </div>
         </td>

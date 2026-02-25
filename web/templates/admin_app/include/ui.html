@@ -23,13 +23,13 @@
 {% endmacro %}
 
 {% macro IconButton(icon_name, aria_label, disabled=false) %}
-<button type="button" class="ui-icon-btn" aria-label="{{ aria_label }}"{% if disabled %} disabled aria-disabled="true"{% endif %}>
+<button type="button" class="ui-icon-btn" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}>
   {{ LucideIcon(icon_name, 16) }}
 </button>
 {% endmacro %}
 
 {% macro IconAction(icon_name, aria_label, kind="", disabled=false) %}
-<button type="button" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled aria-disabled="true"{% endif %}>
+<button type="button" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}>
   {{ LucideIcon(icon_name, 16) }}
 </button>
 {% endmacro %}
@@ -54,6 +54,48 @@
 </div>
 {% endmacro %}
 
+{% macro Alert(message, kind="info", title="", inline=false, attrs="") %}
+<div class="ui-alert {{ kind }}{% if inline %} inline{% endif %}" role="alert"{% if attrs %} {{ attrs | safe }}{% endif %}>
+  {% if title %}
+    <div class="ui-alert-title">{{ title }}</div>
+  {% endif %}
+  <div class="ui-alert-body">{{ message }}</div>
+</div>
+{% endmacro %}
+
+{% macro TabsStart(aria_label="") %}
+<div class="ui-tabs"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}>
+{% endmacro %}
+
+{% macro TabsEnd() %}
+</div>
+{% endmacro %}
+
+{% macro Tab(label, href="javascript:;", active=false, attrs="") %}
+<a href="{{ href }}" class="ui-tab{% if active %} active{% endif %}"{% if active %} aria-current="page"{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>{{ label }}</a>
+{% endmacro %}
+
+{% macro Dialog(id, title, body, actions="", open=false, attrs="") %}
+<div id="{{ id }}" class="ui-dialog-backdrop" data-role="ui-dialog-backdrop" data-dialog-id="{{ id }}"{% if not open %} hidden{% endif %} role="presentation">
+  <div class="ui-dialog" role="dialog" aria-modal="true" aria-label="{{ title }}"{% if attrs %} {{ attrs | safe }}{% endif %}>
+    <div class="ui-dialog-header">
+      <div class="ui-dialog-title">{{ title }}</div>
+      <button type="button" class="ui-icon-btn" data-role="ui-dialog-close" aria-label="关闭">
+        {{ LucideIcon("x", 16) }}
+      </button>
+    </div>
+    <div class="ui-dialog-body">
+      {{ body | safe }}
+    </div>
+    {% if actions %}
+      <div class="ui-dialog-footer">
+        {{ actions | safe }}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
 {% macro Dropdown(options, aria_label="", value="") %}
 {# options: [{"value":"", "label":""}, ...] #}
 <div class="ui-dropdown" data-role="ui-dropdown">
@@ -69,22 +111,45 @@
 </div>
 {% endmacro %}
 
-{% macro Pager(current=1, total=1) %}
+{% macro Pager(current=1, total=1, href_prefix="javascript:;", page_param="page") %}
 <div class="ui-tags" aria-label="分页">
-  <button type="button" class="ui-icon-btn" aria-label="上一页"{% if current <= 1 %} disabled aria-disabled="true"{% endif %}>{{ LucideIcon("chevron-left", 16) }}</button>
+  {% set sep = "?" %}
+  {% if "?" in href_prefix %}{% set sep = "&" %}{% endif %}
+
+  {% if current <= 1 %}
+    <a href="javascript:;" class="ui-icon-btn" aria-label="上一页" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</a>
+  {% else %}
+    <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ current - 1 }}{% endif %}" class="ui-icon-btn" aria-label="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
+  {% endif %}
 
   {% if total <= 7 %}
     {% for page in range(1, total + 1) %}
-      <button type="button" class="ui-page-btn"{% if page == current %} aria-current="page" disabled aria-disabled="true"{% endif %}>{{ page }}</button>
+      {% if page == current %}
+        <a href="javascript:;" class="ui-page-link" aria-current="page" disabled tabindex="-1">{{ page }}</a>
+      {% else %}
+        <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ page }}{% endif %}" class="ui-page-link">{{ page }}</a>
+      {% endif %}
     {% endfor %}
   {% else %}
     {% for page in range(1, 4) %}
-      <button type="button" class="ui-page-btn"{% if page == current %} aria-current="page" disabled aria-disabled="true"{% endif %}>{{ page }}</button>
+      {% if page == current %}
+        <a href="javascript:;" class="ui-page-link" aria-current="page" disabled tabindex="-1">{{ page }}</a>
+      {% else %}
+        <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ page }}{% endif %}" class="ui-page-link">{{ page }}</a>
+      {% endif %}
     {% endfor %}
-    <span class="ui-pill">…</span>
-    <button type="button" class="ui-page-btn"{% if total == current %} aria-current="page" disabled aria-disabled="true"{% endif %}>{{ total }}</button>
+    <span class="ui-page-ellipsis" aria-hidden="true">…</span>
+    {% if total == current %}
+      <a href="javascript:;" class="ui-page-link" aria-current="page" disabled tabindex="-1">{{ total }}</a>
+    {% else %}
+      <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ total }}{% endif %}" class="ui-page-link">{{ total }}</a>
+    {% endif %}
   {% endif %}
 
-  <button type="button" class="ui-icon-btn" aria-label="下一页"{% if current >= total %} disabled aria-disabled="true"{% endif %}>{{ LucideIcon("chevron-right", 16) }}</button>
+  {% if current >= total %}
+    <a href="javascript:;" class="ui-icon-btn" aria-label="下一页" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</a>
+  {% else %}
+    <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ current + 1 }}{% endif %}" class="ui-icon-btn" aria-label="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
+  {% endif %}
 </div>
 {% endmacro %}
