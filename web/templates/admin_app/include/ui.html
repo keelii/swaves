@@ -22,14 +22,14 @@
 </a>
 {% endmacro %}
 
-{% macro IconButton(icon_name, aria_label, disabled=false) %}
-<button type="button" class="ui-icon-btn" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}>
+{% macro IconButton(icon_name, aria_label, disabled=false, attrs="") %}
+<button type="button" class="ui-icon-btn" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
   {{ LucideIcon(icon_name, 16) }}
 </button>
 {% endmacro %}
 
-{% macro IconAction(icon_name, aria_label, kind="", disabled=false) %}
-<button type="button" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}>
+{% macro IconAction(icon_name, aria_label, kind="", disabled=false, attrs="") %}
+<button type="button" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
   {{ LucideIcon(icon_name, 16) }}
 </button>
 {% endmacro %}
@@ -46,6 +46,51 @@
 </select>
 {% endmacro %}
 
+{% macro Input(id="", name="", value="", type="text", placeholder="", attrs="") %}
+<input type="{{ type }}" class="ui-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if value is not none and value != "" %} value="{{ value }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
+{% endmacro %}
+
+{% macro Textarea(id="", name="", value="", placeholder="", rows=6, attrs="") %}
+<textarea class="ui-textarea"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %} rows="{{ rows }}"{% if attrs %} {{ attrs | safe }}{% endif %}>{{ value }}</textarea>
+{% endmacro %}
+
+{% macro SelectInput(options, id="", name="", value="", attrs="") %}
+<select class="ui-input ui-select-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
+  {% for item in options %}
+    <option value="{{ item.value }}"{% if item.value == value %} selected{% endif %}>{{ item.label }}</option>
+  {% endfor %}
+</select>
+{% endmacro %}
+
+{% macro Checkbox(id="", name="", label="", checked=false, attrs="", wrapper_attrs="") %}
+<label class="ui-checkbox"{% if wrapper_attrs %} {{ wrapper_attrs | safe }}{% endif %}>
+  <input type="checkbox" class="ui-checkbox-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if checked %} checked{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
+  <span class="ui-checkbox-label">{{ label }}</span>
+</label>
+{% endmacro %}
+
+{% macro Field(label, control, id="", help="", error="", required=false, label_tag="label", attrs="") %}
+<div class="ui-field{% if error %} has-error{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>
+  <div class="ui-field-head">
+    {% if label_tag == "label" %}
+      <label class="ui-field-label"{% if id %} for="{{ id }}"{% endif %}>{{ label }}</label>
+    {% else %}
+      <div class="ui-field-label">{{ label }}</div>
+    {% endif %}
+    {% if required %}
+      <span class="ui-field-required" aria-hidden="true">*</span>
+    {% endif %}
+  </div>
+  <div class="ui-field-control">{{ control | safe }}</div>
+  {% if help %}
+    <div class="ui-field-help">{{ help }}</div>
+  {% endif %}
+  {% if error %}
+    <div class="ui-field-error">{{ error }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
 {% macro Tags(values) %}
 <div class="ui-tags" aria-label="标签选择">
   {% for tag in values %}
@@ -60,6 +105,23 @@
     <div class="ui-alert-title">{{ title }}</div>
   {% endif %}
   <div class="ui-alert-body">{{ message }}</div>
+</div>
+{% endmacro %}
+
+{% macro EmptyState(title, message="", icon_name="", actions="", attrs="") %}
+<div class="ui-empty-state" role="status"{% if attrs %} {{ attrs | safe }}{% endif %}>
+  {% if icon_name %}
+    <div class="ui-empty-icon" aria-hidden="true">{{ LucideIcon(icon_name, 20) }}</div>
+  {% endif %}
+  <div class="ui-empty-title">{{ title }}</div>
+  {% if message %}
+    <div class="ui-empty-message">{{ message }}</div>
+  {% endif %}
+  {% if actions %}
+    <div class="ui-empty-actions">
+      {{ actions | safe }}
+    </div>
+  {% endif %}
 </div>
 {% endmacro %}
 
@@ -80,7 +142,7 @@
   <div class="ui-dialog" role="dialog" aria-modal="true" aria-label="{{ title }}"{% if attrs %} {{ attrs | safe }}{% endif %}>
     <div class="ui-dialog-header">
       <div class="ui-dialog-title">{{ title }}</div>
-      <button type="button" class="ui-icon-btn" data-role="ui-dialog-close" aria-label="关闭">
+      <button type="button" class="ui-icon-btn" data-role="ui-dialog-close" aria-label="关闭" data-title="关闭">
         {{ LucideIcon("x", 16) }}
       </button>
     </div>
@@ -117,9 +179,9 @@
   {% if "?" in href_prefix %}{% set sep = "&" %}{% endif %}
 
   {% if current <= 1 %}
-    <a href="javascript:;" class="ui-icon-btn" aria-label="上一页" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</a>
+    <a href="javascript:;" class="ui-icon-btn" aria-label="上一页" data-title="上一页" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</a>
   {% else %}
-    <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ current - 1 }}{% endif %}" class="ui-icon-btn" aria-label="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
+    <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ current - 1 }}{% endif %}" class="ui-icon-btn" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
   {% endif %}
 
   {% if total <= 7 %}
@@ -147,9 +209,9 @@
   {% endif %}
 
   {% if current >= total %}
-    <a href="javascript:;" class="ui-icon-btn" aria-label="下一页" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</a>
+    <a href="javascript:;" class="ui-icon-btn" aria-label="下一页" data-title="下一页" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</a>
   {% else %}
-    <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ current + 1 }}{% endif %}" class="ui-icon-btn" aria-label="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
+    <a href="{{ href_prefix }}{% if href_prefix != 'javascript:;' %}{{ sep }}{{ page_param }}={{ current + 1 }}{% endif %}" class="ui-icon-btn" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
   {% endif %}
 </div>
 {% endmacro %}

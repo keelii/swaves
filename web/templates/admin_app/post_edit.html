@@ -6,13 +6,13 @@
 {% block window_toolbar_left %}
 <div class="toolbar-two-col">
   <div class="toolbar-logo">SWAVES</div>
-  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
 </div>
 {% endblock %}
 
 {# A2: 按钮｜文本｜按钮 #}
 {% block window_toolbar_main_left %}
-  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航" data-title="切换 full-main">
     {{ LucideIcon("panel-left", 16) }}
   </button>
   {{ aui.Button("保存", "outline") }}
@@ -27,10 +27,10 @@
 
 {# A5: 两列，左设置，右退出 #}
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置") }}
+  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出") }}
+  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {# A6: 分类选择 标签选择 ｜ markdown常用按钮 ｜ 文章字数 #}
@@ -44,9 +44,9 @@
 {% endblock %}
 {% block status_main_center %}
   <div class="ui-tags" aria-label="Markdown 常用按钮">
-    {{ aui.IconAction("bold", "加粗") }}
-    {{ aui.IconAction("italic", "斜体") }}
-    {{ aui.IconAction("underline", "下划线") }}
+    {{ aui.IconAction("bold", "加粗", attrs='data-title="加粗"') }}
+    {{ aui.IconAction("italic", "斜体", attrs='data-title="斜体"') }}
+    {{ aui.IconAction("underline", "下划线", attrs='data-title="下划线"') }}
   </div>
 {% endblock %}
 {% block status_main_right %}

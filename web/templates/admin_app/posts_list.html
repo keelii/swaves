@@ -6,13 +6,13 @@
 {% block window_toolbar_left %}
 <div class="toolbar-two-col">
   <div class="toolbar-logo">SWAVES</div>
-  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
 </div>
 {% endblock %}
 
 {# A2: 三列 #}
 {% block window_toolbar_main_left %}
-  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航">
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航" data-title="切换 full-main">
     {{ LucideIcon("panel-left", 16) }}
   </button>
   {{ aui.Button("新建文章", "primary") }}
@@ -24,10 +24,10 @@
 
 {# A5: 两列，左设置，右退出 #}
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置") }}
+  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出") }}
+  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {# A6: 三列 #}
@@ -48,7 +48,7 @@
 {% block content %}
   <div style="display: flex; align-items: center; justify-content: space-between;">
     {{ aui.TabsStart("文章状态") }}
-      {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换"') }}
+      {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换" data-title="切换 full-main"') }}
       {{ aui.Tab("全部 86", href="javascript:;", active=true) }}
       {{ aui.Tab("文章 80", href="javascript:;") }}
       {{ aui.Tab("页面 8", href="javascript:;") }}
@@ -92,9 +92,9 @@
         <td>16 小时前</td>
         <td>
           <div class="cell-actions" aria-label="操作">
-            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
-            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接"') }}
-            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除"') }}
+            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
+            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
           </div>
         </td>
       </tr>
@@ -113,9 +113,9 @@
         <td>1 天前</td>
         <td>
           <div class="cell-actions" aria-label="操作">
-            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
-            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接"') }}
-            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除"') }}
+            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
+            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
           </div>
         </td>
       </tr>
@@ -134,9 +134,9 @@
         <td>2 天前</td>
         <td>
           <div class="cell-actions" aria-label="操作">
-            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
-            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" disabled tabindex="-1"') }}
-            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除"') }}
+            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="disabled: 无法点击" disabled tabindex="-1"') }}
+            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
           </div>
         </td>
       </tr>

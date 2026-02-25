@@ -12,12 +12,12 @@
     </svg>
     SWAVES
   </div>
-  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
 </div>
 {% endblock %}
 
 {% block window_toolbar_main_left %}
-  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽"') }}
+  {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
   {{ aui.Button("新建文章", "primary") }}
 {% endblock %}
 {% block window_toolbar_main_center %}主区工具{% endblock %}
@@ -62,12 +62,12 @@
 
   <h3>Icon Buttons</h3>
   <div class="ui-tags" aria-label="图标按钮示例">
-    {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换 full-main（隐藏导航）"') }}
-    {{ aui.IconButton("setting", "设置") }}
-    {{ aui.IconButton("log-out", "退出") }}
-    {{ aui.IconButton("setting", "设置（disabled）", disabled=true) }}
-    {{ aui.IconAction("trash-2", "删除", kind="danger") }}
-    {{ aui.IconAction("trash-2", "禁用态", kind="danger", disabled=true) }}
+    {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换 full-main（隐藏导航）" data-title="切换 full-main"') }}
+    {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+    {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+    {{ aui.IconButton("setting", "设置（disabled）", disabled=true, attrs='data-title="disabled: 无法点击"') }}
+    {{ aui.IconAction("trash-2", "删除", kind="danger", attrs='data-title="删除"') }}
+    {{ aui.IconAction("trash-2", "禁用态", kind="danger", disabled=true, attrs='data-title="disabled: 无法点击"') }}
   </div>
 
   <h3>Badges / Pills</h3>
@@ -94,8 +94,55 @@
     ], aria_label="排序") }}
   </div>
 
+  <h3>Form</h3>
+  <form class="ui-form" method="post" action="javascript:;" aria-label="表单组件示例（无实际请求）">
+    {{ aui.Field(
+      "标题",
+      aui.Input(id="demo-title", name="title", placeholder="输入标题…"),
+      id="demo-title",
+      help="用于展示在列表/详情页。",
+      required=true
+    ) }}
+
+    {{ aui.Field(
+      "Slug",
+      aui.Input(id="demo-slug", name="slug", placeholder="my-post"),
+      id="demo-slug",
+      error="Slug 已存在，请换一个。"
+    ) }}
+
+    {{ aui.Field(
+      "摘要",
+      aui.Textarea(id="demo-summary", name="summary", placeholder="可选：用于列表展示…", rows=4),
+      id="demo-summary"
+    ) }}
+
+    {{ aui.Field(
+      "分类",
+      aui.SelectInput([
+        {"value":"uncategorized","label":"未分类"},
+        {"value":"tech","label":"技术"},
+        {"value":"notes","label":"随笔"}
+      ], id="demo-category", name="category", value="tech"),
+      id="demo-category"
+    ) }}
+
+    {{ aui.Field(
+      "选项",
+      aui.Checkbox(id="demo-pinned", name="pinned", label="置顶", checked=true),
+      id="demo-pinned",
+      label_tag="div",
+      help="Checkbox 通过 label 包裹扩大点击区域。"
+    ) }}
+
+    <div class="ui-tags">
+      <button type="submit" class="ui-btn primary">提交（示例）</button>
+      <button type="reset" class="ui-btn outline">重置</button>
+    </div>
+  </form>
+
   <h3>Tags</h3>
-  {{ aui.Tags(["golang", "minijinja", "oat.css", "admin_app"]) }}
+  {{ aui.Tags(["golang", "minijinja", "admin_app", "no-oat"]) }}
 
   <h3>Tabs</h3>
   {{ aui.TabsStart("Tab Demo") }}
@@ -138,6 +185,17 @@
     open=false
   ) }}
 
+  <h3>Empty State</h3>
+  {{ aui.EmptyState(
+    "暂无内容",
+    "当前列表为空。你可以新建内容，或调整筛选条件后重试。",
+    icon_name="list",
+    actions=(
+      aui.LinkButton("刷新", "outline", href="javascript:;") ~
+      aui.LinkButton("新建文章", "primary", href="javascript:;")
+    )
+  ) }}
+
   <h3>Pager</h3>
   {{ aui.Pager(current=3, total=12, href_prefix="/admin_app/posts_list") }}
 
@@ -164,9 +222,9 @@
           <td><div class="cell-cat">技术</div></td>
           <td style="text-align: right;">
             <div class="cell-actions">
-              {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
-              {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接"') }}
-              {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除（仅示例）"') }}
+              {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+              {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
+              {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除（仅示例）" data-title="删除"') }}
             </div>
           </td>
         </tr>
@@ -181,8 +239,8 @@
           <td><div class="cell-cat">未分类</div></td>
           <td style="text-align: right;">
             <div class="cell-actions">
-              {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑"') }}
-              {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除（仅示例）"') }}
+              {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+              {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除（仅示例）" data-title="删除"') }}
             </div>
           </td>
         </tr>
@@ -201,10 +259,10 @@
 {% endblock %}
 
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置") }}
+  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出") }}
+  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {% block status_bar %}主区状态{% endblock %}
