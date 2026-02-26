@@ -51,6 +51,12 @@
     --ui-checkbox-checked-fg: #ffffff;
     --app-tooltip-bg: rgba(15, 23, 42, 0.94);
     --app-tooltip-text: #ffffff;
+    --app-radius: 3px;
+    --app-radius-md: 8px;
+    --app-radius-lg: 12px;
+    --app-radius-pill: 999px;
+    --app-focus-shadow: 0 0 0 3px var(--app-focus-outline-color);
+    --app-table-head-bg: #fcfbfd;
     --app-border-width: 1px;
     --app-toolbar-height: 40px;
     --app-status-height: 40px;
@@ -103,6 +109,7 @@
     --app-color-warning-bg: rgba(245, 158, 11, 0.16);
     --app-color-danger-border: rgba(254, 202, 202, 0.22);
     --app-color-danger-bg: rgba(185, 28, 28, 0.16);
+    --app-table-head-bg: rgba(255, 255, 255, 0.03);
     --ui-select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f99aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --ui-checkbox-checked-bg: #e4e8ee;
     --ui-checkbox-checked-fg: #151a24;
@@ -140,7 +147,7 @@
   .ui-dialog-body::-webkit-scrollbar-thumb,
   .content-editor::-webkit-scrollbar-thumb {
     background: var(--app-scrollbar-thumb);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     border: 3px solid var(--app-scrollbar-track);
   }
 
@@ -162,8 +169,13 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  .app-window a {
+  a {
+    color: var(--app-brand-fg);
     text-decoration: none;
+  }
+
+  a:visited {
+    color: var(--app-brand-fg);
   }
   .app-padding {
       padding: var(--app-spacing);
@@ -186,7 +198,7 @@
     transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s ease;
     pointer-events: none;
     padding: 6px 8px;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     background: var(--app-tooltip-bg);
     color: var(--app-tooltip-text);
     font-size: 0.82rem;
@@ -237,7 +249,7 @@
     pointer-events: auto;
     min-width: 220px;
     max-width: 420px;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     background: var(--app-color-neutral-bg);
     color: var(--app-text);
@@ -318,7 +330,7 @@
   .ui-file-dropzone {
     position: relative;
     border: var(--app-border-width) dashed var(--app-border);
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     padding: 14px;
     cursor: pointer;
     background: var(--app-surface-muted-bg);
@@ -326,12 +338,12 @@
   }
 
   .ui-file-dropzone:focus-visible {
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35);
+    box-shadow: var(--app-focus-shadow);
   }
 
   .ui-file-upload[data-state="dragover"] .ui-file-dropzone {
     border-style: solid;
-    background: rgba(96, 165, 250, 0.12);
+    background: var(--app-color-info-bg);
   }
 
   .ui-file-dropzone-title {
@@ -367,7 +379,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 8px 10px;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     background: var(--app-surface-muted-bg);
   }
@@ -393,7 +405,7 @@
   }
 
   .ui-tree-item {
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     background: var(--app-surface-muted-bg);
     overflow: hidden;
@@ -419,7 +431,7 @@
   }
 
   .ui-tree-summary:focus-visible {
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35);
+    box-shadow: var(--app-focus-shadow);
   }
 
   .ui-tree-caret {
@@ -454,15 +466,6 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-  }
-
-  .ui-select {
-      height: auto;
-      margin-block-start: 0;
-      padding-inline-end: 0;
-  }
-  .ui-select:focus {
-      box-shadow: none;
   }
 
   .app-window {
@@ -590,7 +593,7 @@
     min-height: 30px;
     max-width: 100%;
     padding: 0 10px;
-    border-radius: 8px;
+    border-radius: var(--app-radius-md);
     
     color: var(--app-text-soft);
     font-size: 0.86rem;
@@ -639,7 +642,7 @@
     min-height: 30px;
     padding: 0 10px;
     gap: 6px;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     background: transparent;
     color: var(--app-text);
@@ -648,6 +651,7 @@
     cursor: pointer;
     user-select: none;
     white-space: nowrap;
+    text-decoration: none;
   }
 
   .ui-btn-icon {
@@ -689,7 +693,7 @@
     display: inline-flex;
   }
 
-  button.ui-btn:focus-visible {
+  .ui-btn:focus-visible {
     outline: 2px solid var(--app-focus-outline-color);
     outline-offset: 1px;
   }
@@ -704,7 +708,7 @@
   }
 
   .ui-btn.rounded {
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
   }
 
   .ui-btn:disabled {
@@ -793,12 +797,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: var(--app-radius-md);
     cursor: pointer;
     user-select: none;
+    text-decoration: none;
   }
 
-  button.ui-icon-btn:focus-visible {
+  .ui-icon-btn:focus-visible {
     outline: 2px solid var(--app-focus-outline-color);
     outline-offset: 2px;
   }
@@ -808,7 +813,7 @@
   }
 
   .ui-icon-btn.rounded {
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
   }
 
   .ui-icon-btn:disabled {
@@ -845,7 +850,7 @@
     max-width: none;
     min-height: 30px;
     padding: 0 30px 0 8px;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: none;
     
     background-color: transparent;
@@ -857,6 +862,11 @@
     font-size: 0.86rem;
     min-width: 0;
     cursor: pointer;
+  }
+
+  .ui-select:focus-visible {
+    outline: 2px solid var(--app-focus-outline-color);
+    outline-offset: 2px;
   }
 
   .ui-form {
@@ -904,7 +914,7 @@
     width: 100%;
     min-width: 0;
     padding: 8px 10px;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     background: transparent;
     color: var(--app-text);
@@ -962,7 +972,7 @@
     height: 16px;
     margin: 0;
     border: var(--app-border-width) solid var(--app-border);
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     background-color: transparent;
     transition: background-color 0.12s ease, border-color 0.12s ease;
     vertical-align: middle;
@@ -1011,7 +1021,7 @@
     height: 16px;
     margin: 0;
     border: var(--app-border-width) solid var(--app-border);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     background-color: transparent;
     transition: background-color 0.12s ease, border-color 0.12s ease;
     vertical-align: middle;
@@ -1026,7 +1036,7 @@
     content: "";
     position: absolute;
     inset: 3px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     background-color: var(--ui-checkbox-checked-bg);
   }
 
@@ -1094,7 +1104,7 @@
     gap: 6px;
     
     padding: 0 8px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     border: var(--app-border-width) solid var(--app-border);
     color: var(--app-text-soft);
     font-size: 0.82rem;
@@ -1103,7 +1113,7 @@
 
   .ui-alert {
     min-width: 0;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     padding: 12px 12px;
     background: var(--app-color-neutral-bg);
@@ -1159,7 +1169,7 @@
 
   .ui-empty-state {
     min-width: 0;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     padding: 18px var(--app-spacing);
     background: var(--app-empty-bg);
@@ -1271,7 +1281,7 @@
     width: min(520px, 100%);
     max-height: min(80vh, 640px);
     overflow: auto;
-    border-radius: 3px;
+    border-radius: var(--app-radius);
     border: var(--app-border-width) solid var(--app-border);
     background: var(--app-dialog-bg);
     color: var(--app-text);
@@ -1416,6 +1426,10 @@
   .nav-item:hover {
     border-color: var(--app-border);
   }
+  .nav-item:visited {
+      color: var(--app-text);
+      font-weight: 600;
+  }
 
   .nav-item.active {
     border-color: var(--app-border);
@@ -1465,13 +1479,14 @@
     gap: 6px;
     height: 30px;
     padding: 0 12px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     border: var(--app-border-width) solid var(--app-border);
     background: transparent;
     color: var(--app-text-soft);
     font-size: 0.86rem;
     white-space: nowrap;
     user-select: none;
+    text-decoration: none;
   }
 
   .ui-tab.active {
@@ -1486,7 +1501,7 @@
     justify-content: center;
     height: 26px;
     padding: 0 12px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     font-size: 0.82rem;
     white-space: nowrap;
     user-select: none;
@@ -1519,7 +1534,7 @@
     text-align: left;
     font-weight: 600;
     color: var(--app-text-soft);
-    background: #fcfbfd;
+    background: var(--app-table-head-bg);
     padding: 10px 12px;
     border-top: var(--app-border-width) solid var(--app-border);
     border-bottom: var(--app-border-width) solid var(--app-border);
@@ -1609,7 +1624,7 @@
   .content-editor {
     min-height: 420px;
     padding: 12px 12px;
-    border-radius: 12px;
+    border-radius: var(--app-radius-lg);
     outline: none;
     overflow: auto;
   }
