@@ -1,0 +1,89 @@
+{% extends "sui/layout/layout.html" %}
+{% import "sui/include/ui.html" as sui %}
+
+
+{% block window_toolbar_left %}
+  {% include "sui/include/window_toolbar_left.html" %}
+{% endblock %}
+
+{% block window_toolbar_main_left %}
+  <button type="button" class="ui-btn outline icon-only" data-role="toggle-full-main" aria-pressed="false" aria-label="展开导航" data-title="切换 full-main">
+    {{ LucideIcon("panel-left", 16) }}
+  </button>
+{% endblock %}
+{% block window_toolbar_main_center %}
+  {{ sui.ToolbarTitle("UI / Feedback") }}
+{% endblock %}
+{% block window_toolbar_main_right %}
+{% endblock %}
+
+{% block status_nav_left %}
+  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+{% endblock %}
+{% block status_nav_right %}
+  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+{% endblock %}
+
+{% block nav_pane %}
+  {% include "sui/include/nav.html" %}
+{% endblock %}
+
+{% block content %}
+  <div class="app-px">
+    <h2>Feedback</h2>
+
+    <h3>Alerts</h3>
+    <div class="ui-tags" style="flex-direction: column; align-items: stretch; gap: 10px;">
+      {{ sui.Alert("用于信息提示：不阻断用户操作。", kind="info", title="Info") }}
+      {{ sui.Alert("操作已成功保存。", kind="success", title="Success") }}
+      {{ sui.Alert("这是一个需要注意的提示（warning）。建议文案尽量短。", kind="warning", title="Warning") }}
+      {{ sui.Alert("危险操作不可撤销；请再次确认。", kind="danger", title="Danger") }}
+    </div>
+
+    <h4>Alerts Inline（不换行）</h4>
+    <div class="ui-tags" aria-label="Inline alert 示例">
+      {{ sui.Alert("这是一条 inline alert（超长时会省略）这是一条 inline alert（超长时会省略）", kind="info", title="Info", inline=true) }}
+      {{ sui.Alert("已保存", kind="success", title="OK", inline=true) }}
+      {{ sui.Alert("注意：有风险", kind="warning", title="Warn", inline=true) }}
+      {{ sui.Alert("请确认删除", kind="danger", title="Danger", inline=true) }}
+    </div>
+
+    <h3>Dialog</h3>
+    <div class="ui-tags" aria-label="Dialog 示例按钮">
+      {{ sui.Button("打开 Dialog（示例）", "secondary", attrs='data-role="ui-dialog-open" data-dialog-id="demo-dialog"') }}
+    </div>
+    <p class="toolbar-text">默认焦点在“取消”。键盘聚焦后按回车（Enter）应能直接关闭，避免误操作。</p>
+    <div style="height: 10px;"></div>
+    {{ sui.Dialog(
+      "demo-dialog",
+      "示例 Dialog",
+      "<p>这是 dialog 的 body。内容可长可短；滚动发生在 dialog 内部，不影响页面整体布局。</p><p>第二段文案，用于验证间距与行高。</p>",
+      actions=(
+        sui.Button("取消", "outline", attrs='data-role="ui-dialog-cancel" aria-label="取消"') ~
+        sui.Button("确认", "primary", attrs='aria-label="确认"')
+      ),
+      open=false
+    ) }}
+
+    <h3>Toast</h3>
+    <p class="toolbar-text">Toast 适合用于异步提示（上传/导入/后台任务反馈）。</p>
+    <div class="ui-tags" aria-label="Toast 示例按钮">
+      {{ sui.Button("Info", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "info", title: "提示", message: "这是一条 info toast", duration: 2200})\'') }}
+      {{ sui.Button("Success", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "success", title: "成功", message: "保存成功", duration: 2200})\'') }}
+      {{ sui.Button("Warning", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "warning", title: "注意", message: "请检查输入内容", duration: 2600})\'') }}
+      {{ sui.Button("Danger", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "danger", title: "失败", message: "操作失败，请重试", duration: 2800})\'') }}
+      {{ sui.Button("不自动关闭", "secondary", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "info", title: "需要手动关闭", message: "duration=0 表示不会自动关闭", duration: 0})\'') }}
+    </div>
+
+    <h3>Empty State</h3>
+    {{ sui.EmptyState(
+      "暂无内容",
+      "当前列表为空。你可以新建内容，或调整筛选条件后重试。",
+      icon_name="list",
+      actions=(
+        sui.LinkButton("刷新", "outline", href="javascript:;") ~
+        sui.LinkButton("新建文章", "primary", href="javascript:;")
+      )
+    ) }}
+  </div>
+{% endblock %}

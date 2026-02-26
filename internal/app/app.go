@@ -4,9 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"swaves/internal/modules/admin"
-	"swaves/internal/modules/admin_app"
 	"swaves/internal/modules/api"
 	"swaves/internal/modules/site"
+	"swaves/internal/modules/sui"
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/jobs"
@@ -79,7 +79,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 
 	admin.RegisterRouter(app, globalStore)
-	admin_app.RegisterRouter(app, globalStore)
+	sui.RegisterRouter(app, globalStore)
 	site.RegisterRouter(app, globalStore)
 	api.RegisterRouter(app)
 
