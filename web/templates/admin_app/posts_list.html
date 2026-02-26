@@ -1,5 +1,5 @@
 {% extends "admin_app/layout/layout.html" %}
-{% import "admin_app/include/ui.html" as aui %}
+{% import "admin_app/include/ui.html" as sui %}
 
 {# Case: 文章列表页 #}
 
@@ -9,32 +9,32 @@
 
 {# A2: 三列 #}
 {% block window_toolbar_main_left %}
-  {{ aui.Button("新建文章", "primary") }}
+  {{ sui.Button("新建文章", "primary") }}
 {% endblock %}
 {% block window_toolbar_main_center %}
-  {{ aui.ToolbarTitle("文章列表") }}
+  {{ sui.ToolbarTitle("文章列表") }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-  {{ aui.Button("草稿", "secondary") }}
+  {{ sui.Button("草稿", "secondary") }}
 {% endblock %}
 
 {# A5: 两列，左设置，右退出 #}
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {# A6: 三列 #}
 {% block status_main_left %}
   <span>已选择 0 项</span>
-  {{ aui.Button("批量发布", "outline") }}
-  {{ aui.Button("移动分类", "outline") }}
+  {{ sui.Button("批量发布", "outline") }}
+  {{ sui.Button("移动分类", "outline") }}
 {% endblock %}
 {% block status_main_center %}{% endblock %}
 {% block status_main_right %}
-  {{ aui.Pager(1, 3, href_prefix=UrlFor('admin_app.posts_list')) }}
+  {{ sui.Pager(1, 3, href_prefix=UrlFor('admin_app.posts_list')) }}
 {% endblock %}
 
 {% block nav_pane %}
@@ -43,16 +43,16 @@
 
 {% block content %}
   <div class="app-pt" style="display: flex; align-items: center; justify-content: space-between;">
-    {{ aui.TabsStart("文章状态") }}
-      {{ aui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({"data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false"})) }}
-      {{ aui.Tab("全部 86", href="javascript:;", active=true) }}
-      {{ aui.Tab("文章 80", href="javascript:;") }}
-      {{ aui.Tab("页面 8", href="javascript:;") }}
-      {{ aui.Tab("草稿 6", href="javascript:;") }}
-    {{ aui.TabsEnd() }}
+    {{ sui.TabsStart("文章状态") }}
+      {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({"data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false"})) }}
+      {{ sui.Tab("全部 86", href="javascript:;", active=true) }}
+      {{ sui.Tab("文章 80", href="javascript:;") }}
+      {{ sui.Tab("页面 8", href="javascript:;") }}
+      {{ sui.Tab("草稿 6", href="javascript:;") }}
+    {{ sui.TabsEnd() }}
 
     <div class="app-pr">
-      {{ aui.Dropdown([{"value":"updated_desc","label":"排序：更新时间↓"},{"value":"updated_asc","label":"排序：更新时间↑"}], "排序", "updated_desc") }}
+      {{ sui.Dropdown([{"value":"updated_desc","label":"排序：更新时间↓"},{"value":"updated_asc","label":"排序：更新时间↑"}], "排序", "updated_desc") }}
     </div>
   </div>
 
@@ -93,9 +93,9 @@
         <td>16 小时前</td>
         <td>
           <div class="cell-actions" aria-label="操作">
-            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
-            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
-            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
+            {{ sui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+            {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
+            {{ sui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
           </div>
         </td>
       </tr>
@@ -117,9 +117,9 @@
         <td>1 天前</td>
         <td>
           <div class="cell-actions" aria-label="操作">
-            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
-            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
-            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
+            {{ sui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+            {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
+            {{ sui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
           </div>
         </td>
       </tr>
@@ -141,9 +141,9 @@
         <td>2 天前</td>
         <td>
           <div class="cell-actions" aria-label="操作">
-            {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
-            {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="disabled: 无法点击" disabled tabindex="-1"') }}
-            {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
+            {{ sui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+            {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="disabled: 无法点击" disabled tabindex="-1"') }}
+            {{ sui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
           </div>
         </td>
       </tr>

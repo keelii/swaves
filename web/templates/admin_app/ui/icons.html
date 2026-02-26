@@ -1,5 +1,5 @@
 {% extends "admin_app/layout/layout.html" %}
-{% import "admin_app/include/ui.html" as aui %}
+{% import "admin_app/include/ui.html" as sui %}
 
 {% block window_toolbar_left %}
   {% include "admin_app/include/window_toolbar_left.html" %}
@@ -11,16 +11,16 @@
   </button>
 {% endblock %}
 {% block window_toolbar_main_center %}
-  {{ aui.ToolbarTitle("UI / Icon Buttons") }}
+  {{ sui.ToolbarTitle("UI / Icon Buttons") }}
 {% endblock %}
 {% block window_toolbar_main_right %}
 {% endblock %}
 
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {% block nav_pane %}
@@ -34,20 +34,20 @@
 
     <h3>LinkIcon（<code>&lt;a&gt;</code>）</h3>
     <div class="ui-tags" aria-label="LinkIcon 示例">
-      {{ aui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换 full-main" data-title="切换 full-main"') }}
-      {{ aui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
-      {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
-      {{ aui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
-      {{ aui.LinkIcon("link-2", "javascript:;", attrs='aria-label="禁用（示例）" data-title="disabled: 无法点击" disabled tabindex="-1"') }}
+      {{ sui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换 full-main" data-title="切换 full-main"') }}
+      {{ sui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
+      {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
+      {{ sui.LinkIcon("trash-2", "javascript:;", attrs='aria-label="删除" data-title="删除"') }}
+      {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="禁用（示例）" data-title="disabled: 无法点击" disabled tabindex="-1"') }}
     </div>
 
     <h3>IconButton / IconAction（<code>&lt;button&gt;</code>）</h3>
     <div class="ui-tags" aria-label="IconButton 示例">
-      {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
-      {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
-      {{ aui.IconButton("setting", "设置（disabled）", disabled=true, attrs='data-title="disabled: 无法点击"') }}
-      {{ aui.IconAction("trash-2", "删除", kind="danger", attrs='data-title="删除"') }}
-      {{ aui.IconAction("trash-2", "删除（disabled）", kind="danger", disabled=true, attrs='data-title="disabled: 无法点击"') }}
+      {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+      {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+      {{ sui.IconButton("setting", "设置（disabled）", disabled=true, attrs='data-title="disabled: 无法点击"') }}
+      {{ sui.IconAction("trash-2", "删除", kind="danger", attrs='data-title="删除"') }}
+      {{ sui.IconAction("trash-2", "删除（disabled）", kind="danger", disabled=true, attrs='data-title="disabled: 无法点击"') }}
     </div>
   </div>
 {% endblock %}

@@ -1,12 +1,12 @@
 {% extends "admin_app/layout/layout.html" %}
-{% import "admin_app/include/ui.html" as aui %}
+{% import "admin_app/include/ui.html" as sui %}
 
 {% block window_toolbar_left %}
   {% include "admin_app/include/window_toolbar_left.html" %}
 {% endblock %}
 
 {% block window_toolbar_main_left %}
-  {{ aui.Button("新建文章", "primary") }}
+  {{ sui.Button("新建文章", "primary") }}
 {% endblock %}
 {% block window_toolbar_main_center %}主区工具{% endblock %}
 {% block window_toolbar_main_right %}
@@ -22,18 +22,18 @@
 
     <h3>组件</h3>
     <div class="ui-tags" aria-label="组件 Demo 页面">
-      {{ aui.LinkButton("Buttons", "outline", href=UrlFor("admin_app.ui.buttons")) }}
-      {{ aui.LinkButton("Icon Buttons", "outline", href=UrlFor("admin_app.ui.icons")) }}
-      {{ aui.LinkButton("Forms", "outline", href=UrlFor("admin_app.ui.forms")) }}
-      {{ aui.LinkButton("Navigation", "outline", href=UrlFor("admin_app.ui.navigation")) }}
-      {{ aui.LinkButton("Feedback", "outline", href=UrlFor("admin_app.ui.feedback")) }}
-      {{ aui.LinkButton("Data Display", "outline", href=UrlFor("admin_app.ui.data")) }}
+      {{ sui.LinkButton("Buttons", "outline", href=UrlFor("admin_app.ui.buttons")) }}
+      {{ sui.LinkButton("Icon Buttons", "outline", href=UrlFor("admin_app.ui.icons")) }}
+      {{ sui.LinkButton("Forms", "outline", href=UrlFor("admin_app.ui.forms")) }}
+      {{ sui.LinkButton("Navigation", "outline", href=UrlFor("admin_app.ui.navigation")) }}
+      {{ sui.LinkButton("Feedback", "outline", href=UrlFor("admin_app.ui.feedback")) }}
+      {{ sui.LinkButton("Data Display", "outline", href=UrlFor("admin_app.ui.data")) }}
     </div>
 
     <h3>页面样例</h3>
     <div class="ui-tags" aria-label="页面样例入口">
-      {{ aui.LinkButton("文章列表", "outline", href=UrlFor("admin_app.posts_list")) }}
-      {{ aui.LinkButton("编辑文章", "outline", href=UrlFor("admin_app.post_edit")) }}
+      {{ sui.LinkButton("文章列表", "outline", href=UrlFor("admin_app.posts_list")) }}
+      {{ sui.LinkButton("编辑文章", "outline", href=UrlFor("admin_app.post_edit")) }}
     </div>
 
     <h3>约束</h3>
@@ -46,10 +46,10 @@
 {% endblock %}
 
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {% block status_bar %}主区状态{% endblock %}

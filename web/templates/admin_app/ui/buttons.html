@@ -1,5 +1,5 @@
 {% extends "admin_app/layout/layout.html" %}
-{% import "admin_app/include/ui.html" as aui %}
+{% import "admin_app/include/ui.html" as sui %}
 
 {% block window_toolbar_left %}
   {% include "admin_app/include/window_toolbar_left.html" %}
@@ -11,16 +11,16 @@
   </button>
 {% endblock %}
 {% block window_toolbar_main_center %}
-  {{ aui.ToolbarTitle("UI / Buttons") }}
+  {{ sui.ToolbarTitle("UI / Buttons") }}
 {% endblock %}
 {% block window_toolbar_main_right %}
 {% endblock %}
 
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {% block nav_pane %}
@@ -34,34 +34,34 @@
 
     <h3>Button（<code>&lt;button&gt;</code>）</h3>
     <div class="ui-tags" aria-label="Button 示例">
-      {{ aui.Button("默认 outline", "outline") }}
-      {{ aui.Button("Primary", "primary") }}
-      {{ aui.Button("Secondary", "secondary") }}
-      {{ aui.Button("Danger", "danger") }}
-      {{ aui.Button("带图标", "outline", icon_name="plus") }}
-      {{ aui.Button("Rounded", "outline", rounded=true) }}
-      {{ aui.Button("Selected", "outline", selected=true) }}
+      {{ sui.Button("默认 outline", "outline") }}
+      {{ sui.Button("Primary", "primary") }}
+      {{ sui.Button("Secondary", "secondary") }}
+      {{ sui.Button("Danger", "danger") }}
+      {{ sui.Button("带图标", "outline", icon_name="plus") }}
+      {{ sui.Button("Rounded", "outline", rounded=true) }}
+      {{ sui.Button("Selected", "outline", selected=true) }}
     </div>
 
     <h3>LinkButton（<code>&lt;a&gt;</code>，样式同按钮）</h3>
     <div class="ui-tags" aria-label="LinkButton 示例">
-      {{ aui.LinkButton("Link outline", "outline", href="javascript:;") }}
-      {{ aui.LinkButton("Link primary", "primary", href="javascript:;") }}
-      {{ aui.LinkButton("Link secondary", "secondary", href="javascript:;") }}
-      {{ aui.LinkButton("Link danger", "danger", href="javascript:;") }}
-      {{ aui.LinkButton("Link 带图标", "outline", href="javascript:;", icon_name="link-2") }}
-      {{ aui.LinkButton("Link rounded", "outline", rounded=true, href="javascript:;") }}
-      {{ aui.LinkButton("Link selected", "outline", selected=true, href="javascript:;") }}
+      {{ sui.LinkButton("Link outline", "outline", href="javascript:;") }}
+      {{ sui.LinkButton("Link primary", "primary", href="javascript:;") }}
+      {{ sui.LinkButton("Link secondary", "secondary", href="javascript:;") }}
+      {{ sui.LinkButton("Link danger", "danger", href="javascript:;") }}
+      {{ sui.LinkButton("Link 带图标", "outline", href="javascript:;", icon_name="link-2") }}
+      {{ sui.LinkButton("Link rounded", "outline", rounded=true, href="javascript:;") }}
+      {{ sui.LinkButton("Link selected", "outline", selected=true, href="javascript:;") }}
     </div>
 
     <h3>Disabled</h3>
     <div class="ui-tags" aria-label="Disabled 示例（button/a）">
-      {{ aui.Button("Disabled outline", "outline", attrs='type="button" disabled') }}
-      {{ aui.Button("Disabled primary", "primary", attrs='type="button" disabled') }}
-      {{ aui.Button("Disabled secondary", "secondary", attrs='type="button" disabled') }}
-      {{ aui.Button("Disabled danger", "danger", attrs='type="button" disabled') }}
-      {{ aui.LinkButton("Disabled link", "outline", href="javascript:;", attrs='disabled tabindex="-1"') }}
-      {{ aui.LinkButton("Disabled link danger", "danger", href="javascript:;", attrs='disabled tabindex="-1"') }}
+      {{ sui.Button("Disabled outline", "outline", attrs='type="button" disabled') }}
+      {{ sui.Button("Disabled primary", "primary", attrs='type="button" disabled') }}
+      {{ sui.Button("Disabled secondary", "secondary", attrs='type="button" disabled') }}
+      {{ sui.Button("Disabled danger", "danger", attrs='type="button" disabled') }}
+      {{ sui.LinkButton("Disabled link", "outline", href="javascript:;", attrs='disabled tabindex="-1"') }}
+      {{ sui.LinkButton("Disabled link danger", "danger", href="javascript:;", attrs='disabled tabindex="-1"') }}
     </div>
 
     <h3>提交动作（提示）</h3>

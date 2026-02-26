@@ -1,5 +1,5 @@
 {% extends "admin_app/layout/layout.html" %}
-{% import "admin_app/include/ui.html" as aui %}
+{% import "admin_app/include/ui.html" as sui %}
 
 {# Case: 文章新建编辑页 #}
 
@@ -9,41 +9,41 @@
 
 {# A2: 按钮｜文本｜按钮 #}
 {% block window_toolbar_main_left %}
-  {{ aui.Button("保存", "outline") }}
+  {{ sui.Button("保存", "outline") }}
 {% endblock %}
 {% block window_toolbar_main_center %}
-  {{ aui.ToolbarTitle("文章 slug") }}
+  {{ sui.ToolbarTitle("文章 slug") }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-  {{ aui.Button("预览", "outline") }}
-  {{ aui.Button("发布", "primary") }}
+  {{ sui.Button("预览", "outline") }}
+  {{ sui.Button("发布", "primary") }}
 {% endblock %}
 
 {# A5: 两列，左设置，右退出 #}
 {% block status_nav_left %}
-  {{ aui.IconButton("setting", "设置", attrs='data-title="设置"') }}
+  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
 {% endblock %}
 {% block status_nav_right %}
-  {{ aui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
+  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
 {% endblock %}
 
 {# A6: 分类选择 标签选择 ｜ markdown常用按钮 ｜ 文章字数 #}
 {% block status_main_left %}
-  {{ aui.Select([
+  {{ sui.Select([
     {"value":"uncategorized","label":"未分类"},
     {"value":"tech","label":"技术"},
     {"value":"notes","label":"随笔"}
   ], "分类选择") }}
-  {{ aui.Tags(["go", "swaves", "notes"]) }}
+  {{ sui.Tags(["go", "swaves", "notes"]) }}
 {% endblock %}
 {% block status_main_center %}
   <div class="" aria-label="Markdown 常用按钮">
-    {{ aui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}
-    {{ aui.IconAction("italic", "斜体", attrs='data-title="斜体" data-seditor-command="italic"') }}
-    {{ aui.IconAction("quote", "引用", attrs='data-title="引用" data-seditor-command="blockquote"') }}
-    {{ aui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
-    {{ aui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
-    {{ aui.IconAction("underline", "下划线", attrs='data-title="下划线" disabled') }}
+    {{ sui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}
+    {{ sui.IconAction("italic", "斜体", attrs='data-title="斜体" data-seditor-command="italic"') }}
+    {{ sui.IconAction("quote", "引用", attrs='data-title="引用" data-seditor-command="blockquote"') }}
+    {{ sui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
+    {{ sui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
+    {{ sui.IconAction("underline", "下划线", attrs='data-title="下划线" disabled') }}
   </div>
 {% endblock %}
 {% block status_main_right %}
