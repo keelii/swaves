@@ -391,8 +391,16 @@ func Update(db *DB, spec TableSpec, id int64, data map[string]interface{}) error
 		strings.Join(setPairs, ", "),
 		where,
 	)
-	if _, err := db.Exec(query, args...); err != nil {
+	res, err := db.Exec(query, args...)
+	if err != nil {
 		return WrapInternalErr("Update", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return WrapInternalErr("Update.RowsAffected", err)
+	}
+	if affected == 0 {
+		return ErrNotFound("Update")
 	}
 	return nil
 }
@@ -407,21 +415,35 @@ func Delete(db *DB, spec TableSpec, id int64) error {
 		return HardDelete(db, spec, id)
 	}
 	ts := now()
-	_, err := db.Exec(
+	res, err := db.Exec(
 		`UPDATE `+string(spec.Name)+` SET `+spec.deletedAtCol()+`=? WHERE `+spec.idField()+`=? AND `+spec.deletedAtCol()+` IS NULL`,
 		ts, id,
 	)
 	if err != nil {
 		return WrapInternalErr("Delete.Soft", err)
 	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return WrapInternalErr("Delete.Soft.RowsAffected", err)
+	}
+	if affected == 0 {
+		return ErrNotFound("Delete.Soft")
+	}
 	return nil
 }
 
 // HardDelete 物理删除
 func HardDelete(db *DB, spec TableSpec, id int64) error {
-	_, err := db.Exec(`DELETE FROM `+string(spec.Name)+` WHERE `+spec.idField()+`=?`, id)
+	res, err := db.Exec(`DELETE FROM `+string(spec.Name)+` WHERE `+spec.idField()+`=?`, id)
 	if err != nil {
 		return WrapInternalErr("HardDelete", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return WrapInternalErr("HardDelete.RowsAffected", err)
+	}
+	if affected == 0 {
+		return ErrNotFound("HardDelete")
 	}
 	return nil
 }
@@ -431,12 +453,19 @@ func Restore(db *DB, spec TableSpec, id int64) error {
 	if !spec.HasDeletedAt {
 		return nil
 	}
-	_, err := db.Exec(
+	res, err := db.Exec(
 		`UPDATE `+string(spec.Name)+` SET `+spec.deletedAtCol()+`=NULL WHERE `+spec.idField()+`=? AND `+spec.deletedAtCol()+` IS NOT NULL`,
 		id,
 	)
 	if err != nil {
 		return WrapInternalErr("Restore", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return WrapInternalErr("Restore.RowsAffected", err)
+	}
+	if affected == 0 {
+		return ErrNotFound("Restore")
 	}
 	return nil
 }
@@ -891,39 +920,8 @@ func isUVUpsertConflictTargetErr(err error) bool {
 func upsertUVUniqueCompat(db *DB, entityType UVEntityType, entityID int64, visitorIDBytes []byte, ts int64) (bool, error) {
 	threshold := ts - UVLastSeenUpdateMinIntervalSeconds
 
-	var lastSeenAt int64
-	err := db.QueryRow(
-		`SELECT last_seen_at
-		FROM `+string(TableUVUnique)+`
-		WHERE entity_type = ? AND entity_id = ? AND visitor_id = ?
-		ORDER BY last_seen_at DESC
-		LIMIT 1`,
-		entityType, entityID, visitorIDBytes,
-	).Scan(&lastSeenAt)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return false, WrapInternalErr("UpsertUVUnique.CompatSelect", err)
-	}
-
-	if errors.Is(err, sql.ErrNoRows) {
-		res, insertErr := db.Exec(
-			`INSERT INTO `+string(TableUVUnique)+` (entity_type, entity_id, visitor_id, first_seen_at, last_seen_at)
-			VALUES (?, ?, ?, ?, ?)`,
-			entityType, entityID, visitorIDBytes, ts, ts,
-		)
-		if insertErr != nil {
-			return false, WrapInternalErr("UpsertUVUnique.CompatInsert", insertErr)
-		}
-		affected, rowsErr := res.RowsAffected()
-		if rowsErr != nil {
-			return false, WrapInternalErr("UpsertUVUnique.CompatInsertRowsAffected", rowsErr)
-		}
-		return affected > 0, nil
-	}
-
-	if lastSeenAt >= threshold {
-		return false, nil
-	}
-
+	// Legacy compat path when ON CONFLICT target is unavailable:
+	// keep one-step writes to avoid read-then-write races.
 	res, updateErr := db.Exec(
 		`UPDATE `+string(TableUVUnique)+`
 		SET last_seen_at = ?
@@ -936,6 +934,28 @@ func upsertUVUniqueCompat(db *DB, entityType UVEntityType, entityID int64, visit
 	affected, rowsErr := res.RowsAffected()
 	if rowsErr != nil {
 		return false, WrapInternalErr("UpsertUVUnique.CompatUpdateRowsAffected", rowsErr)
+	}
+	if affected > 0 {
+		return true, nil
+	}
+
+	res, insertErr := db.Exec(
+		`INSERT INTO `+string(TableUVUnique)+` (entity_type, entity_id, visitor_id, first_seen_at, last_seen_at)
+		SELECT ?, ?, ?, ?, ?
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM `+string(TableUVUnique)+`
+			WHERE entity_type = ? AND entity_id = ? AND visitor_id = ?
+		)`,
+		entityType, entityID, visitorIDBytes, ts, ts,
+		entityType, entityID, visitorIDBytes,
+	)
+	if insertErr != nil {
+		return false, WrapInternalErr("UpsertUVUnique.CompatInsert", insertErr)
+	}
+	affected, rowsErr = res.RowsAffected()
+	if rowsErr != nil {
+		return false, WrapInternalErr("UpsertUVUnique.CompatInsertRowsAffected", rowsErr)
 	}
 	return affected > 0, nil
 }
