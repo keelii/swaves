@@ -1557,8 +1557,6 @@ a.ui-icon-btn[disabled] {
 }
 
 .data-table-wrap {
-
-
   overflow: visible;
   background: transparent;
 }
@@ -1628,13 +1626,10 @@ a.ui-icon-btn[disabled] {
 }
 
 .data-table .cell-actions .ui-icon-btn {
-
-
   padding: 0 10px;
 }
 
 .data-table .cell-id-merge {
-
   white-space: nowrap;
   color: var(--app-text-soft);
   font-variant-numeric: tabular-nums;
