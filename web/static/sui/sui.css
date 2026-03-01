@@ -1383,10 +1383,10 @@
   }
 
   .app-window .app-main-body .app-panel-inner {
+      height: 100%;
       padding: 0;
   }
   .app-window .app-panel-inner {
-    
     min-width: 0;
     padding: var(--app-spacing) 0;
     box-sizing: border-box;
