@@ -12,7 +12,9 @@
   {{ sui.Button("保存", "outline") }}
 {% endblock %}
 {% block window_toolbar_main_center %}
-  {{ sui.ToolbarTitle("文章 slug") }}
+  <div class="slug">
+    <input type="text" name="" value="文章 slug" class="input-slug" form="form" />
+  </div>
 {% endblock %}
 {% block window_toolbar_main_right %}
   {{ sui.Button("预览", "outline") }}
@@ -56,7 +58,6 @@
 {% block content %}
   <style>
   .content-editor {
-    {#height: 100%;#}
   }
   .content-editor h1,
   .content-editor h2,
@@ -68,10 +69,15 @@
       margin: 0;
   }
   </style>
-  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false"></div>
+  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
+    <div class="title">
+      <input type="text" name="title" class="input-title" id="">
+    </div>
+    <div class="content wysiwyg"></div>
+  </div>
   <textarea id="post-content" name="content" hidden></textarea>
 
-  <script src="/static/seditor/dist/seditor.js"></script>
+  <script src="/static/seditor/dist/seditor.min.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       if (!window.SEditor || typeof window.SEditor.init !== "function") {
@@ -79,7 +85,7 @@
       }
 
       window.__seditor = window.SEditor.init({
-        mount: ".content-editor",
+        mount: ".content",
         textarea: "#post-content"
       });
     });

@@ -1,0 +1,153 @@
+{% extends "dash/layout/layout.html" %}
+{% import "sui/include/ui.html" as sui %}
+
+{% block page_actions %}
+  {{ sui.LinkButton("新建文章", "primary", href=UrlFor('admin.posts.new')) }}
+{% endblock %}
+
+{% block status_main_left %}
+{#
+  <span>共 {{ Pager.Total }} 条</span>
+  <label for="posts-page-size">每页</label>
+  <select class="ui-select" id="posts-page-size" aria-label="每页条数">
+    <option value="5" {% if Pager.PageSize == 5 %}selected{% endif %}>5</option>
+    <option value="10" {% if Pager.PageSize == 10 %}selected{% endif %}>10</option>
+    <option value="20" {% if Pager.PageSize == 20 %}selected{% endif %}>20</option>
+    <option value="50" {% if Pager.PageSize == 50 %}selected{% endif %}>50</option>
+    <option value="100" {% if Pager.PageSize == 100 %}selected{% endif %}>100</option>
+  </select>
+#}
+{% endblock %}
+
+{% block status_main_right %}
+  {% set pagerHrefPrefix = UrlFor('admin.posts.list') ~ "?kind=" ~ (KindQuery|default('0')) ~ ("&q=" ~ SearchQueryEscaped if SearchQueryEscaped else "") ~ ("&tag=" ~ FilterTagIDStr if FilterTagIDStr else "") ~ ("&category=" ~ FilterCategoryIDStr if FilterCategoryIDStr else "") ~ "&pageSize=" ~ Pager.PageSize %}
+  {{ sui.Pager(Pager.Page, Pager.Num, href_prefix=pagerHrefPrefix) }}
+{% endblock %}
+
+{% block content %}
+{% set kind = (Kind or 0) %}
+{% set q = (SearchQueryEscaped or "") %}
+{% set tag = (FilterTagIDStr or "") %}
+{% set cat = (FilterCategoryIDStr or "") %}
+
+<div class="app-pt" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+  {{ sui.TabsStart("内容类型") }}
+    {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({"data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"})) }}
+    {{ sui.Tab("文章 " ~ CountPost, href=UrlFor('admin.posts.list') ~ "?kind=0" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 0)) }}
+    {{ sui.Tab("页面 " ~ CountPage, href=UrlFor('admin.posts.list') ~ "?kind=1" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 1)) }}
+    {{ sui.Tab("加密 " ~ CountEncryptedPost, href=UrlFor('admin.encrypted_posts.list')) }}
+  {{ sui.TabsEnd() }}
+
+  <form method="get" action="{{ UrlFor('admin.posts.list') }}" style="display:flex;align-items:center;gap:10px;">
+    <input type="hidden" name="kind" value="{{ KindQuery|default('0') }}">
+    {% if FilterTagIDStr %}<input type="hidden" name="tag" value="{{ FilterTagIDStr }}">{% endif %}
+    {% if FilterCategoryIDStr %}<input type="hidden" name="category" value="{{ FilterCategoryIDStr }}">{% endif %}
+    <input class="ui-input" type="search" name="q" value="{{ SearchQuery }}" placeholder="搜索标题、内容">
+  </form>
+</div>
+
+{% if FilterTagName or FilterCategoryName %}
+<div class="app-px" style="margin-top:10px;">
+  <div class="ui-tags">
+    {% if FilterTagName %}
+      <a class="ui-pill" href="{{ FilterTagRemoveURL }}">标签 {{ FilterTagName }} ×</a>
+    {% endif %}
+    {% if FilterCategoryName %}
+      <a class="ui-pill" href="{{ FilterCategoryRemoveURL }}">分类 {{ FilterCategoryName }} ×</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="data-table-wrap" style="margin-top:12px;" data-role="multiselect-scope">
+  <table id="posts-table" class="data-table" aria-label="文章列表" data-role="data-table">
+    <thead>
+    <tr>
+      <th>
+        <span class="cell-id">ID</span>
+        <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="全选" />
+      </th>
+      <th>标题</th>
+      <th>标签</th>
+      <th>分类</th>
+      <th>状态</th>
+      <th>UV</th>
+      <th>更新时间</th>
+      <th>操作</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    {% for postWithRelation in Posts %}
+    <tr>
+      <td class="cell-id-merge">
+        <span class="cell-id">{{ postWithRelation.Post.ID }}</span>
+        <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="选择文章" />
+      </td>
+      <td>
+        {% set postTitle = postWithRelation.Post.Title %}
+        {% set highlightPostTitle = Highlight(postTitle, SearchQuery) if SearchQuery else postTitle %}
+        <div class="cell-title">
+          {% if postWithRelation.Post.Status == "published" %}
+            <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{{ highlightPostTitle }}</a>
+          {% else %}
+            <span>{{ highlightPostTitle }}</span>
+          {% endif %}
+        </div>
+      </td>
+      <td class="cell-tags">
+        {% if postWithRelation.Tags %}
+          {% for item in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ UrlFor('admin.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ item.ID }}">{{ item.Name }}</a>{% endfor %}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td class="cell-cat">
+        {% if postWithRelation.Category %}
+          <a href="{{ UrlFor('admin.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>
+        {% if postWithRelation.Post.Status == "published" %}
+          <span class="ui-badge success">已发布</span>
+        {% else %}
+          <span class="ui-badge draft">草稿</span>
+        {% endif %}
+      </td>
+      <td>{{ PostUVMap[postWithRelation.Post.ID] | default(0) }}</td>
+      <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
+      <td>
+        <div class="cell-actions">
+          {{ sui.LinkIcon("square-pen", UrlFor('admin.posts.edit', id=postWithRelation.Post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+          <form method="post" action="{{ UrlFor('admin.posts.delete', id=postWithRelation.Post.ID) }}">
+            {{ _csrf_token() }}
+            {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8">暂无文章</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+(function() {
+  var pageSizeSelect = document.getElementById('posts-page-size');
+  if (!pageSizeSelect) {
+    return;
+  }
+
+  pageSizeSelect.addEventListener('change', function() {
+    var url = new URL(window.location.href);
+    url.searchParams.set('pageSize', pageSizeSelect.value);
+    url.searchParams.set('page', '1');
+    window.location.href = url.toString();
+  });
+})();
+</script>
+{% endblock %}

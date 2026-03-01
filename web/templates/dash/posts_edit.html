@@ -1,0 +1,21 @@
+{% extends "dash/layout/layout.html" %}
+{% import "sui/include/ui.html" as sui %}
+
+{% block window_toolbar_main_left %}
+  {% if Post and (Post.PublishedAt > 0) %}
+    {{ sui.Button("更新", "primary", attrs='type="submit" form="form" name="action" value="update"') }}
+  {% else %}
+    {{ sui.Button("保存", "outline", attrs='type="submit" form="form" name="action" value="save"') }}
+    {{ sui.Button("发布", "primary", attrs='type="submit" form="form" name="action" value="publish"') }}
+  {% endif %}
+{% endblock %}
+
+{% block window_toolbar_main_center %}
+  {{ sui.ToolbarTitle("编辑文章") }}
+{% endblock %}
+
+{% block content %}
+{% with Action = UrlFor('admin.posts.update', id=Post.ID), IsEdit = true %}
+  {% include "dash/include/forms/posts_form.html" %}
+{% endwith %}
+{% endblock %}

@@ -58,7 +58,7 @@ func (h *Handler) GetEncryptedPostListHandler(c fiber.Ctx) error {
 
 	countPost, countPage, countEncryptedPost := CountPost(h.Model)
 
-	return RenderAdminView(c, "admin/encrypted_posts_index.html", fiber.Map{
+	return RenderAdminView(c, "dash/encrypted_posts_index.html", fiber.Map{
 		"Title":              "Encrypted Posts",
 		"Posts":              posts,
 		"Pager":              pager,
@@ -69,7 +69,7 @@ func (h *Handler) GetEncryptedPostListHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) GetEncryptedPostNewHandler(c fiber.Ctx) error {
-	return RenderAdminView(c, "admin/encrypted_posts_new.html", fiber.Map{
+	return RenderAdminView(c, "dash/encrypted_posts_new.html", fiber.Map{
 		"Title": "New Encrypted Post",
 	}, "")
 }
@@ -102,7 +102,7 @@ func (h *Handler) GetEncryptedPostEditHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "admin/encrypted_posts_edit.html", fiber.Map{
+	return RenderAdminView(c, "dash/encrypted_posts_edit.html", fiber.Map{
 		"Title": "Edit Encrypted Post",
 		"Post":  post,
 	}, "")

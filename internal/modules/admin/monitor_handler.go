@@ -21,7 +21,7 @@ func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
 	}
 	scope := resolveMonitorScope(c.Query("scope", ""))
 
-	return RenderAdminView(c, "admin/monitor.html", fiber.Map{
+	return RenderAdminView(c, "dash/monitor.html", fiber.Map{
 		"Title":             "系统监控",
 		"Granularities":     monitorGranularityViewOptions(),
 		"ActiveGranularity": granularity.Key,

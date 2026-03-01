@@ -1,0 +1,44 @@
+{% set label = Label|default("过期时间") %}
+{% if ReadOnly|default(false) %}
+<div class="ui-field">
+  <div class="ui-field-head"><div class="ui-field-label">{{ label }}{% if LabelSuffix %} {{ LabelSuffix }}{% endif %}</div></div>
+  <div class="ui-field-control">
+    <span>{% if HasExpiry|default(false) %}{{ DisplayDate|default("—") }}{% else %}永不过期{% endif %}</span>
+  </div>
+</div>
+{% else %}
+<div class="ui-field">
+  <div class="ui-field-head"><div class="ui-field-label">{{ label }}{% if LabelSuffix %} {{ LabelSuffix }}{% endif %}</div></div>
+  <div class="ui-field-control" style="display:flex;flex-wrap:wrap;gap:10px 14px;">
+    <label class="ui-radio-field"><input type="radio" class="ui-radio" name="expires_at_option" value="none"{% if not HasExpiry|default(false) %} checked{% endif %}><span class="ui-radio-label">永不过期</span></label>
+    <label class="ui-radio-field"><input type="radio" class="ui-radio" name="expires_at_option" value="1min"><span class="ui-radio-label">1 分钟</span></label>
+    <label class="ui-radio-field"><input type="radio" class="ui-radio" name="expires_at_option" value="5min"><span class="ui-radio-label">5 分钟</span></label>
+    <label class="ui-radio-field"><input type="radio" class="ui-radio" name="expires_at_option" value="1hour"><span class="ui-radio-label">1 小时</span></label>
+    <label class="ui-radio-field"><input type="radio" class="ui-radio" name="expires_at_option" value="1day"><span class="ui-radio-label">1 天</span></label>
+    <label class="ui-radio-field"><input type="radio" class="ui-radio" name="expires_at_option" value="custom"{% if HasExpiry|default(false) %} checked{% endif %}><span class="ui-radio-label">自定义</span></label>
+  </div>
+  <div id="custom-date-container" style="display:{% if HasExpiry|default(false) %}block{% else %}none{% endif %};margin-top:10px;">
+    <input class="ui-input" type="datetime-local" name="expires_at_custom" id="expires_at_custom" value="{{ CustomDate }}">
+  </div>
+</div>
+<script>
+$(function() {
+  var $opt = $('input[name="expires_at_option"]');
+  var $customWrap = $('#custom-date-container');
+  var $custom = $('#expires_at_custom');
+
+  function toggleCustomDate() {
+    if ($opt.filter(':checked').val() === 'custom') {
+      $customWrap.show();
+      return;
+    }
+
+    $customWrap.hide();
+    $custom.val('');
+  }
+
+  $opt.on('change', toggleCustomDate);
+  toggleCustomDate();
+});
+</script>
+{% endif %}

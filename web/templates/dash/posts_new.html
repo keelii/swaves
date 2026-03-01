@@ -1,0 +1,18 @@
+{% extends "dash/layout/layout.html" %}
+{% import "sui/include/ui.html" as sui %}
+
+{% block window_toolbar_main_left %}
+  {{ sui.Button("保存", "outline", attrs='type="submit" form="form" name="action" value="save"') }}
+{% endblock %}
+
+{% block window_toolbar_main_center %}
+  {{ sui.ToolbarTitle("新建文章") }}
+{% endblock %}
+
+{% block window_toolbar_main_right %}
+  {{ sui.Button("发布", "primary", attrs='type="submit" form="form" name="action" value="publish"') }}
+{% endblock %}
+
+{% block content %}
+{% with Action = UrlFor('admin.posts.create') %}{% include "dash/include/forms/posts_form.html" %}{% endwith %}
+{% endblock %}

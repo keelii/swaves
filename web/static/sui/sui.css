@@ -144,7 +144,7 @@ a {
 }
 
 a:visited {
-  color: var(--app-brand-fg);
+  /*color: var(--app-brand-fg);*/
 }
 
 /* ==================== 2) 组件样式（ui-*） ==================== */
@@ -459,19 +459,21 @@ a:visited {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
+  height: 30px;
   padding: 0 10px;
   gap: 6px;
   border-radius: var(--app-radius);
   border: var(--app-border-width) solid var(--app-border);
   background: transparent;
   color: var(--app-text);
+  font: inherit;
   font-size: 0.86rem;
   line-height: 1;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
   text-decoration: none;
+  box-sizing: border-box;
 }
 
 .ui-btn-icon {
@@ -1176,10 +1178,13 @@ a.ui-icon-btn[disabled] {
   border: var(--app-border-width) solid var(--app-border);
   background: transparent;
   color: var(--app-text-soft);
+  font: inherit;
   font-size: 0.86rem;
+  line-height: 1;
   white-space: nowrap;
   user-select: none;
   text-decoration: none;
+  box-sizing: border-box;
 }
 
 .ui-tab.active {
@@ -1724,9 +1729,63 @@ a.ui-icon-btn[disabled] {
 }
 
 .content-editor {
-  /*min-height: 420px;*/
-  /*padding: 12px 12px;*/
-  border-radius: var(--app-radius-lg);
+  box-sizing: border-box;
+  height: 100%;
   outline: none;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+}
+.title, .slug {
+  display: flex;
+}
+.title input, .slug input {
+  font-size: inherit;
+  flex-grow: 1;
+}
+.slug {
+  padding: var(--app-spacing);
+  min-width: 20em;
+  text-align: center;
+  border: none;
+}
+
+.input-title, .input-slug {
+  opacity: 0.5;
+  border: none;
+  padding: var(--app-spacing);
+}
+.input-title:focus-visible,
+.input-slug:focus-visible {
+  outline: none;
+}
+.title {
+  width: 50em;
+  margin: 0 auto;
+  box-sizing: border-box;
+  position: relative;
+}
+.title::before {
+  position: absolute;
+  display: block;
+  width: 20px;
+  height: 20px;
+  left: -30px;
+  top: var(--app-spacing);
+  content: "H1";
+  color: #999;
+}
+.content {
+  flex-grow: 1;
+}
+.title, .ProseMirror {
+  border: 1px solid gray;
+}
+.ProseMirror {
+  height: 100%;
+  width: 50em;
+  margin: 0 auto;
+  padding: var(--app-spacing);
+  box-sizing: border-box;
 }

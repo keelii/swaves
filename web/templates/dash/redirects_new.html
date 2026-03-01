@@ -1,0 +1,8 @@
+{% extends "dash/layout/layout.html" %}
+{% block page_actions %}
+<a class="button" href="#" onclick="document.querySelector('form').submit(); return false;">{{ ui.action_btn_content("square-pen", "保存") }}</a>
+<a class="button" href="{{ UrlFor('admin.redirects.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
+{% endblock %}
+{% block content %}
+{% with Action = UrlFor('admin.redirects.create') %}{% include "dash/include/forms/redirects_form.html" %}{% endwith %}
+{% endblock %}

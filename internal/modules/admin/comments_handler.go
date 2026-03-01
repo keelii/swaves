@@ -47,7 +47,7 @@ func (h *Handler) GetCommentListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "admin/comments_index.html", fiber.Map{
+	return RenderAdminView(c, "dash/comments_index.html", fiber.Map{
 		"Title":        "评论管理",
 		"Comments":     comments,
 		"Pager":        pager,

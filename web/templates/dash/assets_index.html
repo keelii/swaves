@@ -1,0 +1,694 @@
+{% extends "dash/layout/layout.html" %}
+{% import "sui/include/ui.html" as sui %}
+{% block page_actions %}{% endblock %}
+{% block status_main_left %}
+  <span id="asset-selected-count" class="asset-batch-count">已选 0 项</span>
+  {{ sui.Button("批量删除", "outline", attrs='type="button" id="asset-batch-delete" disabled') }}
+{% endblock %}
+{% block status_main_right %}
+  {% set pagerKind = CurrentKind|default("image") %}
+  {% set pagerHrefPrefix = UrlFor('admin.assets.list', kind=pagerKind) ~ ("&pageSize=" ~ Pager.PageSize) %}
+  {{ sui.Pager(Pager.Page, Pager.Num, href_prefix=pagerHrefPrefix) }}
+{% endblock %}
+{% block content %}
+
+<style>
+  .asset-upload {
+    margin-bottom: 2em;
+    /*margin-bottom: var(--space-4);*/
+    /*padding: var(--space-4);*/
+    /*border: 1px solid var(--border);*/
+    /*border-radius: var(--radius-medium);*/
+    /*background: var(--card);*/
+  }
+
+  .asset-upload-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-medium);
+    background: var(--background);
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    text-align: center;
+    cursor: pointer;
+    padding: var(--space-4);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .asset-upload-dropzone.dragover {
+    border-color: var(--primary);
+    background: var(--muted);
+  }
+
+  .asset-upload-dropzone.is-uploading {
+    cursor: progress;
+    opacity: 0.7;
+  }
+
+  .asset-upload-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .asset-upload-subtitle {
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+
+  .asset-upload-status {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+  }
+
+  .asset-upload-status.error {
+    color: #b42318;
+  }
+
+  .asset-upload-tip {
+    color: var(--muted-foreground);
+    margin: var(--space-2) 0 0;
+  }
+
+  .asset-upload-remark {
+    margin-top: var(--space-3);
+    width: min(560px, 100%);
+  }
+
+  .asset-cell-url {
+    max-width: 320px;
+  }
+
+  .asset-row-actions {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .asset-row-actions .asset-delete {
+    color: #b42318;
+  }
+
+  .asset-row-actions .asset-delete:hover {
+    border-color: #b42318;
+    color: #b42318;
+  }
+
+  .asset-batch-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .asset-batch-count {
+    color: var(--muted-foreground);
+    font-size: var(--text-7);
+  }
+
+  .asset-select-col {
+    width: 2rem;
+    text-align: center;
+  }
+
+  .asset-select-col input[type="checkbox"] {
+    vertical-align: sub;
+  }
+
+  @media (max-width: 960px) {
+    .asset-upload-dropzone {
+      min-height: 150px;
+    }
+  }
+</style>
+
+{% set defaultProviderReady = DefaultProviderReady|default(false) %}
+{% set defaultProviderError = DefaultProviderError %}
+{% set defaultProvider = DefaultProvider %}
+{% set assetProviderLabelMap = AssetProviderLabelMap|default({}) %}
+{% set assetKindLabelMap = AssetKindLabelMap|default({}) %}
+{% set kindCounts = KindCounts|default({}) %}
+{% set currentKind = CurrentKind|default("image") %}
+{% set query = Query|default({}) %}
+{% set pageSizeQuery = query["pageSize"] %}
+{% set imageCount = kindCounts["image"] | default(0) %}
+{% set fileCount = kindCounts["file"] | default(0) %}
+{% set backupCount = kindCounts["backup"] | default(0) %}
+<div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
+
+<section class="asset-upload">
+  <input type="file" id="asset-drop-input" style="display:none;" multiple>
+  <div
+    id="asset-dropzone"
+    class="asset-upload-dropzone"
+    data-upload-ready="{% if defaultProviderReady %}1{% else %}0{% endif %}"
+    data-upload-error="{{ defaultProviderError }}"
+  >
+    <p class="asset-upload-title">拖拽文件到这里上传</p>
+    <p class="asset-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
+    <p class="asset-upload-status{% if not defaultProviderReady %} error{% endif %}" id="asset-upload-status">
+      当前默认服务：{{ assetProviderLabelMap[defaultProvider] | default(defaultProvider) }}
+      {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
+    </p>
+    <input type="text" id="asset-upload-remark" class="asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
+  </div>
+</section>
+
+<div class="app-px app-pt" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+  {{ sui.TabsStart("资源类型") }}
+    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('admin.assets.list', kind='image') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "image")) }}
+    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('admin.assets.list', kind='file') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "file")) }}
+    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('admin.assets.list', kind='backup') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "backup")) }}
+  {{ sui.TabsEnd() }}
+</div>
+
+<div class="app-px data-table-wrap" data-role="multiselect-scope">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="asset-select-col">
+        <input type="checkbox" id="asset-select-all" class="ui-checkbox" aria-label="全选">
+      </th>
+      <th class="cell-4">ID</th>
+      <th>类型</th>
+      <th>服务</th>
+      <th>文件名</th>
+      <th>备注</th>
+      <th>链接</th>
+      <th class="cell-6">大小</th>
+      <th class="cell-12">创建时间</th>
+      <th class="cell-9">操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for assetItem in Items %}
+      <tr data-asset-id="{{ assetItem.id }}">
+        <td class="asset-select-col">
+          <input type="checkbox" class="asset-select-item ui-checkbox" data-id="{{ assetItem.id }}" aria-label="选择资源 {{ assetItem.id }}">
+        </td>
+        <td class="cell-4">{{ assetItem.id }}</td>
+        <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
+        <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
+        <td>{{ assetItem.original_name }}</td>
+        <td>{% if assetItem.remark %}{{ assetItem.remark }}{% else %}-{% endif %}</td>
+        <td>
+          {% if assetItem.file_url %}
+            <a href="{{ assetItem.file_url }}" target="_blank" rel="noopener" class="asset-cell-url" title="{{ assetItem.file_url }}">{{ assetItem.file_url }}</a>
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>{{ assetItem.size_bytes | humanSize }}</td>
+        <td>{{ assetItem.created_at | formatTime }}</td>
+        <td class="cell-6">
+          <div class="row-actions asset-row-actions">
+            {% if assetItem.file_url %}
+              {{ sui.IconAction("link-2", "复制图片链接", "asset-copy-url", attrs=HtmlAttrs({"data-url": assetItem.file_url, "data-title": "复制图片链接"})) }}
+              {% if assetItem.kind == "image" %}
+                {{ sui.IconAction("link-2", "复制 Markdown 代码", "asset-copy-markdown", attrs=HtmlAttrs({"data-url": assetItem.file_url, "data-name": assetItem.original_name, "data-title": "复制 Markdown 代码"})) }}
+              {% endif %}
+            {% endif %}
+            {{ sui.IconAction("trash-2", "删除", "asset-delete", attrs=HtmlAttrs({"data-id": assetItem.id, "data-title": "删除"})) }}
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="10">暂无资源</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<dialog id="asset-alert-dialog">
+  <header>
+    <h4 id="asset-alert-title">提示</h4>
+  </header>
+  <p id="asset-alert-message"></p>
+  <footer>
+    {{ sui.Button("知道了", "primary", attrs='type="button" commandfor="asset-alert-dialog" command="close"') }}
+  </footer>
+</dialog>
+
+<dialog id="asset-confirm-dialog">
+  <header>
+    <h4 id="asset-confirm-title">确认操作</h4>
+  </header>
+  <p id="asset-confirm-message"></p>
+  <footer>
+    {{ sui.Button("取消", "outline", attrs='type="button" commandfor="asset-confirm-dialog" command="close"') }}
+    {{ sui.Button("确认", "primary", attrs='type="button" id="asset-confirm-ok"') }}
+  </footer>
+</dialog>
+
+<script>
+$(function() {
+  var assetAPIBase = {{ UrlFor('admin.assets.api.list') | tojson }};
+  var assetBatchDeleteAPI = {{ UrlFor('admin.assets.api.batch_delete') | tojson }};
+  var $dropzone = $('#asset-dropzone');
+  var $fileInput = $('#asset-drop-input');
+  var $uploadRemark = $('#asset-upload-remark');
+  var $uploadStatus = $('#asset-upload-status');
+  var $selectAll = $('#asset-select-all');
+  var $selectedCount = $('#asset-selected-count');
+  var $batchDelete = $('#asset-batch-delete');
+  var $alertDialog = $('#asset-alert-dialog');
+  var $alertTitle = $('#asset-alert-title');
+  var $alertMessage = $('#asset-alert-message');
+  var $confirmDialog = $('#asset-confirm-dialog');
+  var $confirmTitle = $('#asset-confirm-title');
+  var $confirmMessage = $('#asset-confirm-message');
+  var $confirmOK = $('#asset-confirm-ok');
+  var isUploading = false;
+  var uploadReady = ($dropzone.attr('data-upload-ready') || '') === '1';
+  var uploadError = ($dropzone.attr('data-upload-error') || '').trim();
+  var uploadStatusBaseText = String($uploadStatus.text() || '').replace(/\s+/g, ' ').trim();
+  var uploadStatusBaseIsError = $uploadStatus.hasClass('error');
+  var confirmResolver = null;
+
+  function selectedAssetIDs() {
+    var ids = [];
+    $('.asset-select-item:checked').each(function() {
+      var id = Number($(this).attr('data-id') || '0');
+      if (id > 0) {
+        ids.push(id);
+      }
+    });
+    return ids;
+  }
+
+  function updateBatchDeleteState() {
+    var $items = $('.asset-select-item');
+    var total = $items.length;
+    var selected = $items.filter(':checked').length;
+
+    $selectedCount.text('已选 ' + selected + ' 项');
+    $batchDelete.prop('disabled', selected === 0);
+
+    if (total === 0) {
+      $selectAll.prop('checked', false);
+      $selectAll.prop('indeterminate', false);
+      $selectAll.prop('disabled', true);
+      $batchDelete.prop('disabled', true);
+      return;
+    }
+
+    $selectAll.prop('disabled', false);
+    $selectAll.prop('checked', selected > 0 && selected === total);
+    $selectAll.prop('indeterminate', selected > 0 && selected < total);
+  }
+
+  function summarizeBatchDeleteResult(ret) {
+    var body = ret && ret.body ? ret.body : {};
+    var deletedIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
+    var failed = Array.isArray(body.failed) ? body.failed : [];
+    var warnings = Array.isArray(body.warnings) ? body.warnings : [];
+
+    deletedIDs.forEach(function(id) {
+      $('tr[data-asset-id="' + id + '"]').remove();
+    });
+    updateBatchDeleteState();
+
+    var text = '批量删除完成：成功 ' + deletedIDs.length + '，失败 ' + failed.length + '。';
+    if (failed.length > 0) {
+      var failedDetails = failed.slice(0, 3).map(function(item) {
+        return '#' + item.id + '：' + String(item.error || '删除失败');
+      }).join('；');
+      if (failedDetails) {
+        text += ' 失败原因：' + failedDetails;
+        if (failed.length > 3) {
+          text += '；...';
+        }
+      }
+    }
+    if (warnings.length > 0) {
+      var warningDetails = warnings.slice(0, 2).map(function(item) {
+        return '#' + item.id + '：' + String(item.warning || '');
+      }).join('；');
+      if (warningDetails) {
+        text += ' 警告：' + warningDetails;
+        if (warnings.length > 2) {
+          text += '；...';
+        }
+      }
+    }
+    return text;
+  }
+
+  function showAssetNotice(message, title) {
+    notify(message, title || '提示', {
+      variant: 'warning',
+      dialog: $alertDialog,
+      titleTarget: $alertTitle,
+      messageTarget: $alertMessage
+    });
+  }
+
+  function showAssetToast(message, title, variant) {
+    notify(message, title || '提示', {
+      variant: variant || 'info'
+    });
+  }
+
+  function askConfirm(message, title) {
+    message = String(message || '');
+    title = String(title || '确认操作');
+
+    return new Promise(function(resolve) {
+      if (confirmResolver) {
+        confirmResolver(false);
+        confirmResolver = null;
+      }
+
+      $confirmTitle.text(title);
+      $confirmMessage.text(message);
+      if (!openDialog($confirmDialog)) {
+        resolve(false);
+        return;
+      }
+
+      confirmResolver = resolve;
+    });
+  }
+
+  function setUploading(working, text) {
+    isUploading = working;
+    $dropzone.toggleClass('is-uploading', working);
+    if (text) {
+      $uploadStatus.text(text);
+      $uploadStatus.removeClass('error');
+      return;
+    }
+    if (!working) {
+      $uploadStatus.text(uploadStatusBaseText);
+      $uploadStatus.toggleClass('error', uploadStatusBaseIsError);
+    }
+  }
+
+  function uploadSingleFile(file) {
+    var fd = new FormData();
+    var remark = String($uploadRemark.val() || '').trim();
+    fd.append('file', file);
+    if (remark) {
+      fd.append('remark', remark);
+    }
+
+    return sfetchJSON(assetAPIBase, {
+      method: 'POST',
+      body: fd
+    })
+      .then(function(ret) {
+        if (!ret.body || ret.body.ok !== true) {
+          var msg = (ret.body && ret.body.error) || ret.raw || ('上传失败，状态码 ' + ret.status);
+          throw new Error(msg);
+        }
+        return ret.body;
+      });
+  }
+
+  function compactErrorMessage(message) {
+    var text = String(message || '').replace(/\s+/g, ' ').trim();
+    if (!text) {
+      return '上传失败';
+    }
+    if (text.length > 320) {
+      return text.slice(0, 320) + '...';
+    }
+    return text;
+  }
+
+  function handleFiles(fileList) {
+    if (!uploadReady) {
+      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      return;
+    }
+
+    if (isUploading) {
+      return;
+    }
+
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) {
+      return;
+    }
+
+    var confirmText = files.length === 1
+      ? ('确认上传文件 "' + files[0].name + '" ?')
+      : ('确认上传这 ' + files.length + ' 个文件？');
+    askConfirm(confirmText, '确认上传').then(function(confirmed) {
+      if (!confirmed) {
+        return;
+      }
+
+      setUploading(true, '上传中 0/' + files.length + '...');
+
+      var successCount = 0;
+      var failedCount = 0;
+      var failedNames = [];
+      var failedDetails = [];
+      var chain = Promise.resolve();
+
+      files.forEach(function(file, idx) {
+        chain = chain.then(function() {
+          setUploading(true, '上传中 ' + (idx + 1) + '/' + files.length + '...');
+          return uploadSingleFile(file).then(function() {
+            successCount += 1;
+          }).catch(function(err) {
+            failedCount += 1;
+            var name = file.name || '（未命名）';
+            failedNames.push(name);
+            failedDetails.push(name + '：' + compactErrorMessage(err && err.message));
+          });
+        });
+      });
+
+      chain.finally(function() {
+        if (failedCount > 0) {
+          var message = '上传完成：成功 ' + successCount + '，失败 ' + failedCount + '。失败文件：' + failedNames.join('、');
+          if (failedDetails.length > 0) {
+            var detailText = failedDetails.slice(0, 3).join('；');
+            if (failedDetails.length > 3) {
+              detailText += '；...';
+            }
+            message += '。失败原因：' + detailText;
+          }
+          showAssetNotice(message);
+        } else {
+          showAssetToast('上传完成：共 ' + successCount + ' 个文件', '资源上传', 'success');
+        }
+
+        if (successCount > 0 && failedCount === 0) {
+          window.setTimeout(function() {
+            goTo('', { reload: true });
+          }, 900);
+          return;
+        }
+
+        if (successCount > 0 && failedCount > 0) {
+          setUploading(false);
+          return;
+        }
+
+        setUploading(false, '上传失败，请重试');
+      });
+    });
+  }
+
+  function copyToClipboard(text) {
+    if (!text) return Promise.reject(new Error('empty text'));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+
+    return new Promise(function(resolve, reject) {
+      var $temp = $('<textarea>').val(text).css({ position: 'fixed', top: '-999px', left: '-999px' }).appendTo('body');
+      $temp[0].focus();
+      $temp[0].select();
+      try {
+        var ok = document.execCommand('copy');
+        $temp.remove();
+        if (!ok) {
+          reject(new Error('copy failed'));
+          return;
+        }
+        resolve();
+      } catch (err) {
+        $temp.remove();
+        reject(err);
+      }
+    });
+  }
+
+  function markdownImage(url, name) {
+    var alt = (name || '').trim();
+    alt = alt.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+    return '![' + alt + '](' + url + ')';
+  }
+
+  $confirmOK.on('click', function() {
+    if (confirmResolver) {
+      var resolve = confirmResolver;
+      confirmResolver = null;
+      resolve(true);
+    }
+    closeDialog($confirmDialog);
+  });
+
+  $confirmDialog.on('close', function() {
+    if (confirmResolver) {
+      var resolve = confirmResolver;
+      confirmResolver = null;
+      resolve(false);
+    }
+  });
+
+  $dropzone.on('click', function() {
+    if (!uploadReady) {
+      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      return;
+    }
+
+    if (isUploading) {
+      return;
+    }
+    if ($fileInput.length) {
+      $fileInput[0].click();
+    }
+  });
+
+  $fileInput.on('change', function() {
+    handleFiles(this.files);
+    this.value = '';
+  });
+
+  $dropzone.on('dragenter dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading) {
+      $dropzone.addClass('dragover');
+    }
+  });
+
+  $dropzone.on('dragleave dragend drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $dropzone.removeClass('dragover');
+  });
+
+  $dropzone.on('drop', function(e) {
+    if (!uploadReady) {
+      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
+      return;
+    }
+
+    if (isUploading) {
+      return;
+    }
+
+    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    if (!dt || !dt.files || !dt.files.length) {
+      return;
+    }
+
+    handleFiles(dt.files);
+  });
+
+  $(document).on('click', '.asset-copy-url', function() {
+    var url = $(this).data('url') || '';
+    copyToClipboard(url).then(function() {
+      showAssetNotice('已复制链接');
+    }).catch(function() {
+      showAssetNotice('复制失败');
+    });
+  });
+
+  $(document).on('click', '.asset-copy-markdown', function() {
+    var url = $(this).data('url') || '';
+    var name = $(this).data('name') || '';
+    var markdown = markdownImage(url, name);
+    copyToClipboard(markdown).then(function() {
+      showAssetNotice('已复制 Markdown');
+    }).catch(function() {
+      showAssetNotice('复制失败');
+    });
+  });
+
+  $(document).on('click', '.asset-delete', function() {
+    var id = $(this).data('id');
+    if (!id) {
+      showAssetNotice('无效 ID');
+      return;
+    }
+    askConfirm('确认删除该资源？会同时删除远端文件。', '确认删除').then(function(confirmed) {
+      if (!confirmed) {
+        return;
+      }
+
+      sfetchJSON(assetAPIBase + '/' + id, {
+        method: 'DELETE',
+      })
+        .then(function(ret) {
+          if (!ret.body || ret.body.ok !== true) {
+            var msg = (ret.body && ret.body.error) || ret.raw || ('删除失败，状态码 ' + ret.status);
+            throw new Error(msg);
+          }
+          $('tr[data-asset-id="' + id + '"]').remove();
+          updateBatchDeleteState();
+        })
+        .catch(function(err) {
+          showAssetNotice(err.message || '删除失败');
+        });
+    });
+  });
+
+  $selectAll.on('change', function() {
+    var checked = $(this).is(':checked');
+    $('.asset-select-item').prop('checked', checked);
+    updateBatchDeleteState();
+  });
+
+  $(document).on('change', '.asset-select-item', function() {
+    updateBatchDeleteState();
+  });
+
+  $batchDelete.on('click', function() {
+    var ids = selectedAssetIDs();
+    if (!ids.length) {
+      showAssetNotice('请先选择要删除的资源');
+      return;
+    }
+
+    askConfirm('确认批量删除选中的 ' + ids.length + ' 个资源？会同时删除远端文件。', '批量删除').then(function(confirmed) {
+      if (!confirmed) {
+        return;
+      }
+
+      sfetchJSON(assetBatchDeleteAPI, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ids: ids })
+      })
+        .then(function(ret) {
+          if (!ret.body) {
+            throw new Error(ret.raw || ('批量删除失败，状态码 ' + ret.status));
+          }
+          if (ret.body.ok === false && ret.body.error) {
+            throw new Error(ret.body.error);
+          }
+          showAssetNotice(summarizeBatchDeleteResult(ret));
+        })
+        .catch(function(err) {
+          showAssetNotice(err.message || '批量删除失败');
+        });
+    });
+  });
+
+  updateBatchDeleteState();
+});
+</script>
+{% endblock %}

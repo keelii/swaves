@@ -1,0 +1,112 @@
+{% extends "dash/layout/layout.html" %}
+{% import "sui/include/ui.html" as sui %}
+
+{% block page_actions %}{% endblock %}
+
+{% block status_main_right %}
+  {% set pagerBase = UrlFor('admin.comments.list') %}
+  {% if StatusFilter %}
+    {% set pagerBase = pagerBase ~ "?status=" ~ StatusFilter %}
+  {% endif %}
+  {% set pagerSep = "&" if "?" in pagerBase else "?" %}
+  {% set pagerHrefPrefix = pagerBase ~ pagerSep ~ "pageSize=" ~ Pager.PageSize %}
+  {{ sui.Pager(Pager.Page, Pager.Num, href_prefix=pagerHrefPrefix) }}
+{% endblock %}
+
+{% block content %}
+{% set status = (StatusFilter or "") %}
+
+<div class="app-px app-pt">
+  {{ sui.TabsStart("评论状态") }}
+    {{ sui.Tab("全部", href=UrlFor('admin.comments.list'), active=(status == "")) }}
+    {{ sui.Tab("待审核", href=UrlFor('admin.comments.list', status='pending'), active=(status == "pending")) }}
+    {{ sui.Tab("已通过", href=UrlFor('admin.comments.list', status='approved'), active=(status == "approved")) }}
+    {{ sui.Tab("垃圾", href=UrlFor('admin.comments.list', status='spam'), active=(status == "spam")) }}
+  {{ sui.TabsEnd() }}
+</div>
+
+<div class="app-px data-table-wrap" style="margin-top:12px;">
+<table class="data-table">
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>文章</th>
+    <th>作者</th>
+    <th>内容</th>
+    <th>状态</th>
+    <th>时间</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+  <tbody>
+  {% for comment in Comments %}
+    <tr>
+      <td>{{ comment.ID }}</td>
+      <td>
+        <a href="{{ GetPostUrl({"ID": comment.PostID, "Kind": comment.PostKind, "Slug": comment.PostSlug, "PublishedAt": comment.PostPubAt}) }}#comment-{{ comment.ID }}" target="_blank" rel="noopener">{{ comment.PostTitle }}</a>
+        <div class="text-light">文章ID={{ comment.PostID }}</div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:flex-start;gap:0.5rem;">
+          <img src="{{ GetAvatarImage(comment.AuthorEmail, comment.Author, 32) }}" alt="{{ comment.Author }}" width="20" height="20">
+          <div>
+            <div>{{ comment.Author }}</div>
+            {% if comment.AuthorEmail %}<div class="text-light">{{ comment.AuthorEmail }}</div>{% endif %}
+            {% if comment.AuthorURL %}<div class="text-light">{{ comment.AuthorURL }}</div>{% endif %}
+          </div>
+        </div>
+      </td>
+      <td>
+        {% if comment.ParentID > 0 %}
+          <div class="text-light">回复 #{{ comment.ParentID }}{% if comment.ParentAuthor %} (@{{ comment.ParentAuthor }}){% endif %}</div>
+        {% endif %}
+        <div style="white-space: pre-wrap;">{{ comment.Content }}</div>
+      </td>
+      <td>
+        {% if comment.Status == "approved" %}
+          <span class="ui-badge success">已通过</span>
+        {% else %}{% if comment.Status == "spam" %}
+          <span class="ui-badge danger">垃圾</span>
+        {% else %}
+          <span class="ui-badge draft">待审核</span>
+        {% endif %}{% endif %}
+      </td>
+      <td>{{ comment.CreatedAt | relativeTime }}</td>
+      <td>
+        <div class="cell-actions">
+          {% if comment.Status != "approved" %}
+            <form method="post" action="{{ UrlFor('admin.comments.approve', id=comment.ID) }}">
+              {{ _csrf_token() }}
+              <input type="hidden" name="status_filter" value="{{ status }}">
+              {{ sui.Button("通过", "outline", attrs='type="submit"') }}
+            </form>
+          {% endif %}
+          {% if comment.Status != "pending" %}
+            <form method="post" action="{{ UrlFor('admin.comments.pending', id=comment.ID) }}">
+              {{ _csrf_token() }}
+              <input type="hidden" name="status_filter" value="{{ status }}">
+              {{ sui.Button("待审", "outline", attrs='type="submit"') }}
+            </form>
+          {% endif %}
+          {% if comment.Status != "spam" %}
+            <form method="post" action="{{ UrlFor('admin.comments.spam', id=comment.ID) }}">
+              {{ _csrf_token() }}
+              <input type="hidden" name="status_filter" value="{{ status }}">
+              {{ sui.Button("垃圾", "outline", attrs='type="submit"') }}
+            </form>
+          {% endif %}
+          <form method="post" action="{{ UrlFor('admin.comments.delete', id=comment.ID) }}">
+            {{ _csrf_token() }}
+            <input type="hidden" name="status_filter" value="{{ status }}">
+            {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+          </form>
+        </div>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7">暂无评论</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,5 @@
+<nav aria-label="内容类型" class="ui-tags">
+  <a class="ui-tab{% if kind == 0 and not UrlIs('admin.encrypted_posts.list') %} active{% endif %}" href="{{ UrlFor('admin.posts.list') }}?kind=0{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}"{% if kind == 0 and not UrlIs("admin.encrypted_posts.list") %} aria-current="page"{% endif %}>文章 {{ CountPost }}</a>
+  <a class="ui-tab{% if kind == 1 and not UrlIs('admin.encrypted_posts.list') %} active{% endif %}" href="{{ UrlFor('admin.posts.list') }}?kind=1{% if q %}&q={{ q }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}"{% if kind == 1 and not UrlIs("admin.encrypted_posts.list") %} aria-current="page"{% endif %}>页面 {{ CountPage }}</a>
+  <a class="ui-tab{% if UrlIs('admin.encrypted_posts.list') %} active{% endif %}" href="{{ UrlFor('admin.encrypted_posts.list') }}"{% if UrlIs("admin.encrypted_posts.list") %} aria-current="page"{% endif %}>加密文章 {{ CountEncryptedPost }}</a>
+</nav>

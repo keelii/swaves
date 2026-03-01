@@ -134,7 +134,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 		filterCategoryRemoveURL = share.BuildAdminPath("/posts")
 	}
 
-	return RenderAdminView(c, "admin/posts_index.html", fiber.Map{
+	return RenderAdminView(c, "dash/posts_index.html", fiber.Map{
 		"Title":                   "Posts",
 		"Posts":                   posts,
 		"Pager":                   pager,
@@ -200,7 +200,7 @@ func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 	data["Categories"] = categories
 	data["CategoryOptions"] = categoryOptions
 
-	return RenderAdminView(c, "admin/posts_new.html", data, "")
+	return RenderAdminView(c, "dash/posts_new.html", data, "")
 }
 
 func (h *Handler) renderPostNewWithDraft(c fiber.Ctx, err error, data fiber.Map) error {
@@ -323,7 +323,7 @@ func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
 		category = &emptyCategory
 	}
 
-	return RenderAdminView(c, "admin/posts_edit.html", fiber.Map{
+	return RenderAdminView(c, "dash/posts_edit.html", fiber.Map{
 		"Title":            "Edit Post",
 		"Post":             postWithTags.Post,
 		"Tags":             allTags,

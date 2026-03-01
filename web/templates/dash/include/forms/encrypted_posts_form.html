@@ -1,0 +1,57 @@
+{% set is_edit = IsEdit|default(false) %}
+{% set title_value = "" %}
+{% set slug_value = "" %}
+{% set password_placeholder = "可选密码（仅用于他人访问）" %}
+{% set content_value = "" %}
+{% set has_expiry = false %}
+{% set display_date = "" %}
+{% set markdown_required = true %}
+
+{% if is_edit and Post %}
+  {% set title_value = Post.Title %}
+  {% set slug_value = Post.Slug %}
+  {% set password_placeholder = "留空以保持当前密码" %}
+  {% set content_value = Post.Content %}
+  {% set has_expiry = Post.ExpiresAt %}
+  {% if Post.ExpiresAt %}
+    {% set display_date = Post.ExpiresAt | formatTime %}
+  {% endif %}
+  {% set markdown_required = false %}
+{% endif %}
+
+<form id="form" method="post" action="{{ Action }}" class="ui-form">
+  {{ _csrf_token() }}
+
+  <div class="ui-field">
+    <div class="ui-field-head">
+      <label class="ui-field-label" for="encrypted-title">文章标题</label>
+      <span class="ui-field-required" aria-hidden="true">*</span>
+    </div>
+    <div class="ui-field-control">
+      <input class="ui-input" id="encrypted-title" type="text" name="title" value="{{ title_value }}" required placeholder="加密文章标题">
+    </div>
+  </div>
+
+  {% if is_edit %}
+  <div class="ui-field">
+    <div class="ui-field-head"><div class="ui-field-label">文章 URL 标识</div></div>
+    <div class="ui-field-control"><input class="ui-input" type="text" value="{{ slug_value }}" disabled></div>
+  </div>
+  {% endif %}
+
+  <div class="ui-field">
+    <div class="ui-field-head"><label class="ui-field-label" for="encrypted-password">访问密码</label></div>
+    <div class="ui-field-control">
+      <input class="ui-input" id="encrypted-password" type="password" name="password" placeholder="{{ password_placeholder }}">
+    </div>
+    <div class="ui-field-help">{% if is_edit %}留空可保持当前密码{% else %}仅用于访客访问，不影响后台登录{% endif %}</div>
+  </div>
+
+  {% if is_edit %}
+    {% with Label = "过期时间", ReadOnly = true, HasExpiry = has_expiry, DisplayDate = display_date %}{% include "dash/include/expires_at_field.html" %}{% endwith %}
+  {% else %}
+    {% with Label = "过期时间", CustomDate = "", HasExpiry = false %}{% include "dash/include/expires_at_field.html" %}{% endwith %}
+  {% endif %}
+
+  {% with Placeholder = "加密文章内容（支持 Markdown）", Value = content_value, Required = markdown_required, ShowAssetPicker = false %}{% include "dash/include/markdown_preview.html" %}{% endwith %}
+</form>

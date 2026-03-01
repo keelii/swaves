@@ -94,7 +94,7 @@ func (h *Handler) GetAssetListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "admin/assets_index.html", fiber.Map{
+	return RenderAdminView(c, "dash/assets_index.html", fiber.Map{
 		"Title":                 "资源库",
 		"Items":                 items,
 		"Pager":                 pager,

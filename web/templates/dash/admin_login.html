@@ -1,0 +1,78 @@
+{% extends "dash/layout/base.html" %}
+{% import "sui/include/ui.html" as sui %}
+
+{% block head_extra %}
+<style>
+  body {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--app-bg);
+    padding: 20px;
+  }
+
+  .auth-shell {
+    width: min(420px, 100%);
+  }
+
+  .auth-card {
+    border: 1px solid var(--app-border);
+    background: var(--app-panel-bg);
+    border-radius: var(--app-radius-lg);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .auth-title {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  .auth-subtitle {
+    margin: 6px 0 0;
+    color: var(--app-text-soft);
+    font-size: 0.9rem;
+  }
+
+  .auth-card .ui-btn {
+    width: 100%;
+    justify-content: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="auth-card">
+    <div>
+      <h1 class="auth-title">登录管理后台</h1>
+      <p class="auth-subtitle">{{ Settings("author") }}，请输入管理员密码继续。</p>
+    </div>
+
+    {% if Error %}
+      {{ sui.Alert(Error, "danger", "登录失败") }}
+    {% endif %}
+
+    <form method="POST" action="{{ UrlFor('admin.login.submit') }}" class="ui-form">
+      {{ _csrf_token() }}
+      {% if ReturnUrl %}<input type="hidden" name="returnUrl" value="{{ ReturnUrl }}">{% endif %}
+
+      <div class="ui-field">
+        <div class="ui-field-head">
+          <label class="ui-field-label" for="password">密码</label>
+          <span class="ui-field-required" aria-hidden="true">*</span>
+        </div>
+        <div class="ui-field-control">
+          <input type="password" id="password" name="password" class="ui-input" autocomplete="current-password" autofocus required>
+        </div>
+      </div>
+
+      {{ sui.Button("登录", "primary", attrs='type="submit"') }}
+    </form>
+  </div>
+</div>
+{% endblock %}

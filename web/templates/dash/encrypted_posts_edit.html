@@ -1,0 +1,14 @@
+{% extends "dash/layout/layout.html" %}
+{% import "sui/include/ui.html" as sui %}
+
+{% block window_toolbar_main_left %}
+  {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
+{% endblock %}
+
+{% block window_toolbar_main_center %}
+  {{ sui.ToolbarTitle("编辑加密文章") }}
+{% endblock %}
+
+{% block content %}
+{% with Action = UrlFor('admin.encrypted_posts.update', id=Post.ID), IsEdit = true %}{% include "dash/include/forms/encrypted_posts_form.html" %}{% endwith %}
+{% endblock %}
