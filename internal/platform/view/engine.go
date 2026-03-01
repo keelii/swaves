@@ -34,7 +34,7 @@ type FiberView struct {
 
 const (
 	globalUINamespace    = "ui"
-	adminUIMacroTemplate = "/admin/macro/ui"
+	adminUIMacroTemplate = "/admin/macro/ui.html"
 )
 
 var (
@@ -239,13 +239,13 @@ func resolveTemplateImportPath(name string, parent string) string {
 
 	if strings.HasPrefix(name, "/") {
 		cleaned := path.Clean(name)
-		return appendTemplateHTMLExtension(strings.TrimPrefix(cleaned, "/"))
+		return strings.TrimPrefix(cleaned, "/")
 	}
 
 	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") || name == "." || name == ".." {
 		parentDir := path.Dir(strings.TrimSpace(parent))
 		cleaned := path.Clean(name)
-		return appendTemplateHTMLExtension(path.Clean(path.Join(parentDir, cleaned)))
+		return path.Clean(path.Join(parentDir, cleaned))
 	}
 
 	cleaned := path.Clean(name)
@@ -254,11 +254,11 @@ func resolveTemplateImportPath(name string, parent string) string {
 	}
 
 	if strings.Contains(cleaned, "/") {
-		return appendTemplateHTMLExtension(cleaned)
+		return cleaned
 	}
 
 	parentDir := path.Dir(strings.TrimSpace(parent))
-	return appendTemplateHTMLExtension(path.Clean(path.Join(parentDir, cleaned)))
+	return path.Clean(path.Join(parentDir, cleaned))
 }
 
 func collectTemplateNames(templateRoot string) ([]string, error) {
@@ -304,19 +304,10 @@ func normalizeTemplateName(name string) (string, error) {
 	if strings.HasPrefix(normalized, "../") || normalized == ".." {
 		return "", fmt.Errorf("template name %q points outside root", name)
 	}
-	normalized = appendTemplateHTMLExtension(normalized)
+	if path.Ext(normalized) != ".html" {
+		return "", fmt.Errorf("template name %q must end with .html", name)
+	}
 	return normalized, nil
-}
-
-func appendTemplateHTMLExtension(name string) string {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return ""
-	}
-	if path.Ext(name) != "" {
-		return name
-	}
-	return name + ".html"
 }
 
 type templateMapLookup struct {

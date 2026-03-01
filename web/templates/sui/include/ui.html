@@ -80,15 +80,15 @@
 {% endmacro %}
 
 {% macro Checkbox(id="", name="", label="", checked=false, attrs="", wrapper_attrs="") %}
-<label class="ui-checkbox"{% if wrapper_attrs %} {{ wrapper_attrs | safe }}{% endif %}>
-  <input type="checkbox" class="ui-checkbox-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if checked %} checked{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
+<label class="ui-checkbox-field"{% if wrapper_attrs %} {{ wrapper_attrs | safe }}{% endif %}>
+  <input type="checkbox" class="ui-checkbox"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if checked %} checked{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
   <span class="ui-checkbox-label">{{ label }}</span>
 </label>
 {% endmacro %}
 
 {% macro Radio(id="", name="", label="", value="", checked=false, attrs="", wrapper_attrs="") %}
-<label class="ui-radio"{% if wrapper_attrs %} {{ wrapper_attrs | safe }}{% endif %}>
-  <input type="radio" class="ui-radio-input"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if value %} value="{{ value }}"{% endif %}{% if checked %} checked{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
+<label class="ui-radio-field"{% if wrapper_attrs %} {{ wrapper_attrs | safe }}{% endif %}>
+  <input type="radio" class="ui-radio"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if value %} value="{{ value }}"{% endif %}{% if checked %} checked{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
   <span class="ui-radio-label">{{ label }}</span>
 </label>
 {% endmacro %}

@@ -18,7 +18,7 @@ func TestZZMapIndexNumericKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	err := view.Render(&out, "page", map[string]any{"PostID": int64(12), "PostUVMap": map[int64]int{12: 5}})
+	err := view.Render(&out, "page.html", map[string]any{"PostID": int64(12), "PostUVMap": map[int64]int{12: 5}})
 	if err != nil {
 		t.Fatal(err)
 	}

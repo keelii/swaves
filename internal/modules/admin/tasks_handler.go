@@ -15,14 +15,14 @@ func (h *Handler) GetTaskListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "tasks_index", fiber.Map{
+	return RenderAdminView(c, "admin/tasks_index.html", fiber.Map{
 		"Title": "Tasks",
 		"Tasks": tasks,
 	}, "")
 }
 
 func (h *Handler) GetTaskNewHandler(c fiber.Ctx) error {
-	return RenderAdminView(c, "tasks_new", fiber.Map{
+	return RenderAdminView(c, "admin/tasks_new.html", fiber.Map{
 		"Title": "New Task",
 	}, "")
 }
@@ -62,7 +62,7 @@ func (h *Handler) GetTaskEditHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "tasks_edit", fiber.Map{
+	return RenderAdminView(c, "admin/tasks_edit.html", fiber.Map{
 		"Title": "Edit Task",
 		"Task":  task,
 	}, "")
@@ -142,7 +142,7 @@ func (h *Handler) GetTaskRunListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "task_runs_index", fiber.Map{
+	return RenderAdminView(c, "admin/task_runs_index.html", fiber.Map{
 		"Title": "Task Runs: " + task.Name,
 		"Task":  task,
 		"Runs":  runs,

@@ -585,6 +585,28 @@
       });
     }
 
+    function initDropdownInteractionMode() {
+      var supportsShowPicker = typeof HTMLSelectElement !== 'undefined' && typeof HTMLSelectElement.prototype.showPicker === 'function';
+      if (supportsShowPicker) {
+        return;
+      }
+
+      var roots = document.querySelectorAll('[data-role="ui-dropdown"]');
+      if (!roots || roots.length === 0) {
+        return;
+      }
+
+      roots.forEach(function(root) {
+        root.classList.add('native-fallback');
+        var button = root.querySelector('[data-role="ui-dropdown-button"]');
+        if (!button) {
+          return;
+        }
+        button.setAttribute('tabindex', '-1');
+        button.setAttribute('aria-hidden', 'true');
+      });
+    }
+
     if (navResizer && navPanel) {
       var isDragging = false;
       var dragStartX = 0;
@@ -1306,6 +1328,7 @@
     document.addEventListener('scroll', closeTooltip, true);
     window.addEventListener('resize', closeTooltip);
 
+    initDropdownInteractionMode();
     initDropdownLabels();
     bindTableMultiselect('posts-table');
   })();

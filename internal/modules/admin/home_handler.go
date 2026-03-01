@@ -67,9 +67,6 @@ var dashboardUVRanges = []dashboardUVRangeConfig{
 func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
 	_ = layout
 
-	if !strings.Contains(view, "/") {
-		view = "admin/" + view
-	}
 	if data == nil {
 		data = fiber.Map{}
 	}
@@ -171,7 +168,7 @@ func buildDashboardUVChart(model *db.DB, config dashboardUVRangeConfig, now time
 }
 
 func (h *Handler) TestRouter(c fiber.Ctx) error {
-	return RenderAdminView(c, "test_home", fiber.Map{
+	return RenderAdminView(c, "admin/test_home.html", fiber.Map{
 		"Title":       "Test",
 		"GetRouteUrl": c.GetRouteURL,
 	}, "")
@@ -180,7 +177,7 @@ func (h *Handler) TestRouter(c fiber.Ctx) error {
 func (h *Handler) GetHome(c fiber.Ctx) error {
 	totalUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -188,7 +185,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	activeUsers, err := db.CountActiveVisitors(h.Model, dashboardActiveUsersWindowSeconds)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -196,7 +193,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	totalLikes, err := db.CountTotalLikes(h.Model)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -204,7 +201,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	postCount, err := db.CountPostsByKind(h.Model, db.PostKindPost)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -212,7 +209,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	pageCount, err := db.CountPostsByKind(h.Model, db.PostKindPage)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -220,7 +217,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	categoryCount, err := db.CountCategories(h.Model)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -228,7 +225,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	tagCount, err := db.CountTags(h.Model)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -236,7 +233,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	topUVContents, err := db.ListTopUVContents(h.Model, 10)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -244,7 +241,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 
 	topLikedContents, err := db.ListTopLikedContents(h.Model, 10)
 	if err != nil {
-		return RenderAdminView(c, "admin_home", fiber.Map{
+		return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 			"Title": "工作台",
 			"Error": err.Error(),
 		}, "")
@@ -256,7 +253,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 	for _, rangeConfig := range dashboardUVRanges {
 		chartData, chartErr := buildDashboardUVChart(h.Model, rangeConfig, nowTime)
 		if chartErr != nil {
-			return RenderAdminView(c, "admin_home", fiber.Map{
+			return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 				"Title": "工作台",
 				"Error": chartErr.Error(),
 			}, "")
@@ -272,7 +269,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 		})
 	}
 
-	return RenderAdminView(c, "admin_home", fiber.Map{
+	return RenderAdminView(c, "admin/admin_home.html", fiber.Map{
 		"Title":                  "工作台",
 		"ActiveUsers":            activeUsers,
 		"ActiveUsersWindowLabel": dashboardActiveUsersWindowLabel,

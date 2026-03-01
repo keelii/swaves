@@ -31,7 +31,7 @@ func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "page", map[string]any{}); err != nil {
+	if err := view.Render(&out, "page.html", map[string]any{}); err != nil {
 		t.Fatalf("render page failed: %v", err)
 	}
 	if got := out.String(); got != "ok / ok" {
@@ -66,7 +66,7 @@ func TestGlobalMacroNamespaceAvailableAcrossExtendsAndInclude(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "page", map[string]any{}); err != nil {
+	if err := view.Render(&out, "page.html", map[string]any{}); err != nil {
 		t.Fatalf("render page failed: %v", err)
 	}
 	if got := out.String(); got != "AB" {
@@ -100,7 +100,7 @@ func TestExtendsAndIncludeSupportRootPathsWithoutLeadingSlash(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "admin/categories_index", map[string]any{}); err != nil {
+	if err := view.Render(&out, "admin/categories_index.html", map[string]any{}); err != nil {
 		t.Fatalf("render template failed: %v", err)
 	}
 	if got := out.String(); got != "AB" {
@@ -132,7 +132,7 @@ func TestIncludeSupportsExplicitRelativeSubPath(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "admin/page", map[string]any{}); err != nil {
+	if err := view.Render(&out, "admin/page.html", map[string]any{}); err != nil {
 		t.Fatalf("render template failed: %v", err)
 	}
 	if got := out.String(); got != "ok" {
@@ -155,7 +155,7 @@ func TestMapLookupHandlesMissingAndNumericKeys(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "page", map[string]any{
+	if err := view.Render(&out, "page.html", map[string]any{
 		"PostCounts": map[int64]int{12: 5},
 	}); err != nil {
 		t.Fatalf("render page failed: %v", err)
@@ -180,7 +180,7 @@ func TestRenderInjectsCSRFTokenInputGlobal(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "page", map[string]any{
+	if err := view.Render(&out, "page.html", map[string]any{
 		"_csrf_token_value": `token<&>"'`,
 	}); err != nil {
 		t.Fatalf("render page failed: %v", err)
@@ -217,7 +217,7 @@ func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "page", map[string]any{
+	if err := view.Render(&out, "page.html", map[string]any{
 		"RouteName": "admin.posts.edit",
 	}); err != nil {
 		t.Fatalf("render page failed: %v", err)
@@ -246,7 +246,7 @@ func TestUrlIsRejectsMultipleArguments(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "page", map[string]any{
+	err := view.Render(&out, "page.html", map[string]any{
 		"RouteName": "admin.posts.edit",
 	})
 	if err == nil {
@@ -278,7 +278,7 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "page", map[string]any{"PostID": 12}); err != nil {
+	if err := view.Render(&out, "page.html", map[string]any{"PostID": 12}); err != nil {
 		t.Fatalf("render page failed: %v", err)
 	}
 	if got := out.String(); got != "ok" {
@@ -312,7 +312,7 @@ func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "page", map[string]any{"PostID": 9}); err != nil {
+	if err := view.Render(&out, "page.html", map[string]any{"PostID": 9}); err != nil {
 		t.Fatalf("render page failed: %v", err)
 	}
 	if capturedParams["id"] != "9" || capturedParams["tab"] != "comments" {

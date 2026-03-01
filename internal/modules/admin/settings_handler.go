@@ -78,7 +78,7 @@ func (h *Handler) GetSettingsHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "settings_index", fiber.Map{
+	return RenderAdminView(c, "admin/settings_index.html", fiber.Map{
 		"Title":    "Settings",
 		"Settings": settings,
 	}, "")
@@ -127,7 +127,7 @@ func (h *Handler) GetSettingsAllHandler(c fiber.Ctx) error {
 		activeKindGroups = buildSettingSubKindGroups(activeKind, settingsByKind[activeKind])
 	}
 
-	return RenderAdminView(c, "settings_all", fiber.Map{
+	return RenderAdminView(c, "admin/settings_all.html", fiber.Map{
 		"Title":              "Settings - Edit All",
 		"SettingsByKind":     settingsByKind,
 		"SettingKinds":       settingKinds,
@@ -370,7 +370,7 @@ func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return RenderAdminView(c, "settings_edit", fiber.Map{
+	return RenderAdminView(c, "admin/settings_edit.html", fiber.Map{
 		"Title":   "Edit Setting",
 		"Setting": view,
 	}, "")
@@ -392,7 +392,7 @@ func (h *Handler) PostUpdateSettingHandler(c fiber.Ctx) error {
 
 	renderEditWithError := func(message string) error {
 		view := buildSettingView(*setting)
-		return RenderAdminView(c, "settings_edit", fiber.Map{
+		return RenderAdminView(c, "admin/settings_edit.html", fiber.Map{
 			"Title":   "Edit Setting",
 			"Error":   message,
 			"Setting": view,
@@ -471,7 +471,7 @@ func (h *Handler) GetSettingNewHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return RenderAdminView(c, "settings_new", fiber.Map{
+	return RenderAdminView(c, "admin/settings_new.html", fiber.Map{
 		"Title":              "New Setting",
 		"OptionsParsed":      optionsParsed,
 		"DefaultOptionValue": defaultOptionValue,
@@ -515,7 +515,7 @@ func (h *Handler) PostCreateSettingHandler(c fiber.Ctx) error {
 			json.Unmarshal([]byte(s.Options), &optionsParsed)
 		}
 
-		return RenderAdminView(c, "settings_new", fiber.Map{
+		return RenderAdminView(c, "admin/settings_new.html", fiber.Map{
 			"Title":              "New Setting",
 			"Error":              err.Error(),
 			"Setting":            s,

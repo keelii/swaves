@@ -5,7 +5,7 @@ import "github.com/gofiber/fiber/v3"
 /* ---------- GET /admin/login ---------- */
 
 func (h *Handler) GetLoginHandler(c fiber.Ctx) error {
-	return RenderSUIView(c, "admin_login", fiber.Map{
+	return RenderSUIView(c, "sui/admin_login.html", fiber.Map{
 		"Title":     "Admin Login",
 		"ReturnUrl": c.Query("returnUrl"),
 	}, "base")
@@ -17,7 +17,7 @@ func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 	returnUrl := c.FormValue("returnUrl")
 	password := c.FormValue("password")
 	if password == "" {
-		return RenderSUIView(c, "admin_login", fiber.Map{
+		return RenderSUIView(c, "sui/admin_login.html", fiber.Map{
 			"Title":     "Admin Login",
 			"Error":     "password is empty",
 			"ReturnUrl": returnUrl,
@@ -25,7 +25,7 @@ func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 	}
 
 	if err := h.Service.CheckPassword(password); err != nil {
-		return RenderSUIView(c, "admin_login", fiber.Map{
+		return RenderSUIView(c, "sui/admin_login.html", fiber.Map{
 			"Title":     "Admin Login",
 			"Error":     "Invalid password",
 			"ReturnUrl": returnUrl,
@@ -38,7 +38,7 @@ func (h *Handler) PostLoginHandler(c fiber.Ctx) error {
 		return h.redirectAfterLogin(c)
 	}
 
-	return RenderSUIView(c, "admin_login", fiber.Map{
+	return RenderSUIView(c, "sui/admin_login.html", fiber.Map{
 		"Title":     "Admin Login",
 		"Error":     "Invalid Error",
 		"ReturnUrl": returnUrl,

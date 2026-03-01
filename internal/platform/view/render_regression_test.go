@@ -18,7 +18,7 @@ func TestRenderAdminCategoriesIndexWithMissingCounts(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/categories_index", map[string]any{
+	err := view.Render(&out, "admin/categories_index.html", map[string]any{
 		"Categories": []db.Category{
 			{
 				ID:          1,
@@ -49,7 +49,7 @@ func TestRenderAdminPostsIndexWithoutFilterNames(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/posts_index", map[string]any{
+	err := view.Render(&out, "admin/posts_index.html", map[string]any{
 		"Posts":                   []db.PostWithRelation{},
 		"Pager":                   types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 10},
 		"Kind":                    db.PostKindPost,
@@ -94,7 +94,7 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "site/post", map[string]any{
+	err := view.Render(&out, "site/post.html", map[string]any{
 		"Post":                   post,
 		"ReadUV":                 0,
 		"LikeCount":              0,
@@ -170,7 +170,7 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "site/post", map[string]any{
+	err := view.Render(&out, "site/post.html", map[string]any{
 		"Post":                   post,
 		"ReadUV":                 0,
 		"LikeCount":              0,
@@ -204,7 +204,7 @@ func TestRenderAdminAssetsIndexWithItems(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/assets_index", map[string]any{
+	err := view.Render(&out, "admin/assets_index.html", map[string]any{
 		"Items": []db.Asset{
 			{
 				ID:           11,
@@ -245,7 +245,7 @@ func TestRenderAdminImportWithoutFeedback(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/import", map[string]any{
+	err := view.Render(&out, "admin/import.html", map[string]any{
 		"ImportingItems": []admin.PreviewPostItem{},
 		"AllCategories":  []db.Category{},
 	})
@@ -264,7 +264,7 @@ func TestRenderAdminHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/http_error_logs_index", map[string]any{
+	err := view.Render(&out, "admin/http_error_logs_index.html", map[string]any{
 		"Logs": []db.HttpErrorLog{
 			{
 				ID:        1,
@@ -300,7 +300,7 @@ func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/redirects_new", map[string]any{
+	err := view.Render(&out, "admin/redirects_new.html", map[string]any{
 		"Redirect": db.Redirect{
 			From:    "/missing-path",
 			To:      "",
@@ -342,7 +342,7 @@ func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/redirects_new", map[string]any{
+	err := view.Render(&out, "admin/redirects_new.html", map[string]any{
 		"RouteName": "admin.redirects.create",
 		"Redirect": db.Redirect{
 			From:    "/missing-path",
@@ -387,7 +387,7 @@ func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/settings_all", map[string]any{
+	err := view.Render(&out, "admin/settings_all.html", map[string]any{
 		"SettingKinds":       []string{"site"},
 		"SettingKindLabels":  map[string]string{"site": "站点"},
 		"ActiveKind":         "site",
@@ -409,7 +409,7 @@ func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/monitor", map[string]any{
+	err := view.Render(&out, "admin/monitor.html", map[string]any{
 		"Granularities": []map[string]any{
 			{"Key": "1m", "Label": "1分钟"},
 		},
@@ -431,7 +431,7 @@ func TestRenderAdminPostsEditUsesAssetAPIPath(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/posts_edit", map[string]any{
+	err := view.Render(&out, "admin/posts_edit.html", map[string]any{
 		"Post": db.Post{
 			ID:             2,
 			Title:          "hello",
@@ -465,7 +465,7 @@ func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "site/home", map[string]any{
+	err := view.Render(&out, "site/home.html", map[string]any{
 		"Articles": []site.DisplayPost{
 			{
 				Post: db.Post{
@@ -496,7 +496,7 @@ func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "site/detail", map[string]any{
+	err := view.Render(&out, "site/detail.html", map[string]any{
 		"IsTag": true,
 		"Entity": site.DisplayItem{
 			ID:          7,
@@ -535,7 +535,7 @@ func TestRenderLucideIconWithoutSize(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "site/include/read_uv", map[string]any{"Count": 0})
+	err := view.Render(&out, "site/include/read_uv.html", map[string]any{"Count": 0})
 	if err != nil {
 		t.Fatalf("render lucide icon failed: %v", err)
 	}
@@ -551,7 +551,7 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "site/layout/layout", map[string]any{})
+	err := view.Render(&out, "site/layout/layout.html", map[string]any{})
 	if err != nil {
 		t.Fatalf("render site layout failed: %v", err)
 	}
@@ -577,7 +577,7 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/monitor", map[string]any{
+	err := view.Render(&out, "admin/monitor.html", map[string]any{
 		"Granularities": []map[string]any{
 			{"Key": "1m", "Label": "1分钟"},
 		},
@@ -625,7 +625,7 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/import", map[string]any{
+	err := view.Render(&out, "admin/import.html", map[string]any{
 		"ImportingItems": []admin.PreviewPostItem{},
 		"AllCategories": []db.Category{
 			{Name: "生活"},

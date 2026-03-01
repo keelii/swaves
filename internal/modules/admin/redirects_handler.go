@@ -21,7 +21,7 @@ func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "redirects_index", fiber.Map{
+	return RenderAdminView(c, "admin/redirects_index.html", fiber.Map{
 		"Title":     "Redirects",
 		"Redirects": redirects,
 		"Pager":     pager,
@@ -98,7 +98,7 @@ func (h *Handler) GetRedirectNewHandler(c fiber.Ctx) error {
 		Enabled: 1,
 	}
 
-	return RenderAdminView(c, "redirects_new", fiber.Map{
+	return RenderAdminView(c, "admin/redirects_new.html", fiber.Map{
 		"Title":                 "New Redirect",
 		"Redirect":              draft,
 		"RedirectTargetOptions": h.loadRedirectTargetOptions(),
@@ -128,7 +128,7 @@ func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
 			Status:  in.Status,
 			Enabled: in.Enabled,
 		}
-		return RenderAdminView(c, "redirects_new", fiber.Map{
+		return RenderAdminView(c, "admin/redirects_new.html", fiber.Map{
 			"Title":                 "New Redirect",
 			"Error":                 err.Error(),
 			"Redirect":              draft,
@@ -150,7 +150,7 @@ func (h *Handler) GetRedirectEditHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "redirects_edit", fiber.Map{
+	return RenderAdminView(c, "admin/redirects_edit.html", fiber.Map{
 		"Title":    "Edit Redirect",
 		"Redirect": redirect,
 	}, "")

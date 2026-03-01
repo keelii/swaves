@@ -791,6 +791,16 @@ a.ui-btn[disabled] {
   pointer-events: none;
 }
 
+.ui-dropdown.native-fallback .ui-dropdown-btn {
+  pointer-events: none;
+}
+
+.ui-dropdown.native-fallback .ui-dropdown-select {
+  z-index: 1;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .ui-btn.outline {
   color: var(--app-text-soft);
 }
@@ -989,7 +999,7 @@ a.ui-icon-btn[disabled] {
   line-height: 1.35;
 }
 
-input[type="checkbox"] {
+.ui-checkbox {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
@@ -1004,12 +1014,12 @@ input[type="checkbox"] {
   position: relative;
 }
 
-input[type="checkbox"]:checked {
+.ui-checkbox:checked {
   background-color: var(--ui-checkbox-checked-bg);
   border-color: var(--ui-checkbox-checked-bg);
 }
 
-input[type="checkbox"]:checked::after {
+.ui-checkbox:checked::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1024,21 +1034,21 @@ input[type="checkbox"]:checked::after {
   mask-repeat: no-repeat;
 }
 
-input[type="checkbox"]:focus-visible {
+.ui-checkbox:focus-visible {
   outline: 2px solid var(--app-focus-outline-color);
   outline-offset: 2px;
 }
 
-input[type="checkbox"]:not(:disabled) {
+.ui-checkbox:not(:disabled) {
   cursor: pointer;
 }
 
-input[type="checkbox"]:disabled {
+.ui-checkbox:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-input[type="radio"] {
+.ui-radio {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
@@ -1053,11 +1063,11 @@ input[type="radio"] {
   position: relative;
 }
 
-input[type="radio"]:checked {
+.ui-radio:checked {
   border-color: var(--ui-checkbox-checked-bg);
 }
 
-input[type="radio"]:checked::after {
+.ui-radio:checked::after {
   content: "";
   position: absolute;
   inset: 3px;
@@ -1065,21 +1075,21 @@ input[type="radio"]:checked::after {
   background-color: var(--ui-checkbox-checked-bg);
 }
 
-input[type="radio"]:focus-visible {
+.ui-radio:focus-visible {
   outline: 2px solid var(--app-focus-outline-color);
   outline-offset: 2px;
 }
 
-input[type="radio"]:not(:disabled) {
+.ui-radio:not(:disabled) {
   cursor: pointer;
 }
 
-input[type="radio"]:disabled {
+.ui-radio:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.ui-checkbox {
+.ui-checkbox-field {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1088,12 +1098,12 @@ input[type="radio"]:disabled {
   cursor: pointer;
 }
 
-.ui-checkbox-input:disabled + .ui-checkbox-label {
+.ui-checkbox:disabled + .ui-checkbox-label {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.ui-radio {
+.ui-radio-field {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1102,7 +1112,7 @@ input[type="radio"]:disabled {
   cursor: pointer;
 }
 
-.ui-radio-input:disabled + .ui-radio-label {
+.ui-radio:disabled + .ui-radio-label {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -1651,8 +1661,8 @@ input[type="radio"]:disabled {
 }
 
 .content-editor {
-  min-height: 420px;
-  padding: 12px 12px;
+  /*min-height: 420px;*/
+  /*padding: 12px 12px;*/
   border-radius: var(--app-radius-lg);
   outline: none;
   overflow: auto;

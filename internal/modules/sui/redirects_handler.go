@@ -21,7 +21,7 @@ func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderSUIView(c, "redirects_index", fiber.Map{
+	return RenderSUIView(c, "sui/redirects_index.html", fiber.Map{
 		"Title":     "Redirects",
 		"Redirects": redirects,
 		"Pager":     pager,
@@ -98,7 +98,7 @@ func (h *Handler) GetRedirectNewHandler(c fiber.Ctx) error {
 		Enabled: 1,
 	}
 
-	return RenderSUIView(c, "redirects_new", fiber.Map{
+	return RenderSUIView(c, "sui/redirects_new.html", fiber.Map{
 		"Title":                 "New Redirect",
 		"Redirect":              draft,
 		"RedirectTargetOptions": h.loadRedirectTargetOptions(),
@@ -128,7 +128,7 @@ func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
 			Status:  in.Status,
 			Enabled: in.Enabled,
 		}
-		return RenderSUIView(c, "redirects_new", fiber.Map{
+		return RenderSUIView(c, "sui/redirects_new.html", fiber.Map{
 			"Title":                 "New Redirect",
 			"Error":                 err.Error(),
 			"Redirect":              draft,
@@ -150,7 +150,7 @@ func (h *Handler) GetRedirectEditHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderSUIView(c, "redirects_edit", fiber.Map{
+	return RenderSUIView(c, "sui/redirects_edit.html", fiber.Map{
 		"Title":    "Edit Redirect",
 		"Redirect": redirect,
 	}, "")

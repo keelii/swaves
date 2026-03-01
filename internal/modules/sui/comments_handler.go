@@ -47,7 +47,7 @@ func (h *Handler) GetCommentListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderSUIView(c, "comments_index", fiber.Map{
+	return RenderSUIView(c, "sui/comments_index.html", fiber.Map{
 		"Title":        "评论管理",
 		"Comments":     comments,
 		"Pager":        pager,

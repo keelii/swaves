@@ -34,7 +34,7 @@ func (h *Handler) GetTrashHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderSUIView(c, "trash_index", fiber.Map{
+	return RenderSUIView(c, "sui/trash_index.html", fiber.Map{
 		"Title":     "Trash",
 		"Data":      data,
 		"ModelType": modelType,

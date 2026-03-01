@@ -16,7 +16,7 @@ func (h *Handler) GetHttpErrorLogListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderSUIView(c, "http_error_logs_index", fiber.Map{
+	return RenderSUIView(c, "sui/http_error_logs_index.html", fiber.Map{
 		"Title": "Http Error Logs",
 		"Logs":  logs,
 		"Pager": pager,

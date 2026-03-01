@@ -67,9 +67,6 @@ var dashboardUVRanges = []dashboardUVRangeConfig{
 func RenderSUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
 	_ = layout
 
-	if !strings.Contains(view, "/") {
-		view = "sui/" + view
-	}
 	if data == nil {
 		data = fiber.Map{}
 	}
@@ -171,14 +168,14 @@ func buildDashboardUVChart(model *db.DB, config dashboardUVRangeConfig, now time
 }
 
 func (h *Handler) TestRouter(c fiber.Ctx) error {
-	return RenderSUIView(c, "test_home", fiber.Map{
+	return RenderSUIView(c, "sui/test_home.html", fiber.Map{
 		"Title":       "Test",
 		"GetRouteUrl": c.GetRouteURL,
 	}, "")
 }
 
 func (h *Handler) GetHome(c fiber.Ctx) error {
-	return RenderSUIView(c, "admin_home", fiber.Map{
+	return RenderSUIView(c, "sui/admin_home.html", fiber.Map{
 		"Title": "工作台",
 	}, "")
 }

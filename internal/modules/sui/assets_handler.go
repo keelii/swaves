@@ -94,7 +94,7 @@ func (h *Handler) GetAssetListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderSUIView(c, "assets_index", fiber.Map{
+	return RenderSUIView(c, "sui/assets_index.html", fiber.Map{
 		"Title":                 "资源库",
 		"Items":                 items,
 		"Pager":                 pager,

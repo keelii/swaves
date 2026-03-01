@@ -199,7 +199,7 @@ func (h Handler) redirectNotFound(c fiber.Ctx) error {
 	returnURL = normalizeErrorReturnURL(returnURL)
 
 	c.Status(fiber.StatusNotFound)
-	return RenderUIView(c, "site/404", fiber.Map{
+	return RenderUIView(c, "site/404.html", fiber.Map{
 		"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
@@ -258,7 +258,7 @@ func (h Handler) GetDate(c fiber.Ctx) error {
 func (h Handler) GetNotFound(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusNotFound)
-	return RenderUIView(c, "site/404", fiber.Map{
+	return RenderUIView(c, "site/404.html", fiber.Map{
 		"Title":     fmt.Sprintf("404 Not Found [%s]", "GetNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
@@ -269,7 +269,7 @@ func (h Handler) GetNotFound(c fiber.Ctx) error {
 func (h Handler) GetError(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusInternalServerError)
-	return RenderUIView(c, "site/error", fiber.Map{
+	return RenderUIView(c, "site/error.html", fiber.Map{
 		"Title":     "Error",
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
@@ -282,7 +282,7 @@ func (h Handler) GetHome(c fiber.Ctx) error {
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
 	h.trackSiteUV(c)
 
-	return RenderUIView(c, "site/home", fiber.Map{
+	return RenderUIView(c, "site/home.html", fiber.Map{
 		"Articles": articles,
 		"Pages":    ListPages(h.Model),
 		"Pager":    pager,
@@ -309,7 +309,7 @@ func (h Handler) GetRaw(c fiber.Ctx) error {
 //
 //	post := getPostByIST(h.Model, matched["slug"])
 //
-//	return RenderUIView(c, "site/post", fiber.Map{
+//	return RenderUIView(c, "site/post.html", fiber.Map{
 //		"Post": post,
 //		//"Pages": ListPages(h.Model),
 //	}, "")
@@ -342,7 +342,7 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
 	readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
-	return RenderUIView(c, "site/post", fiber.Map{
+	return RenderUIView(c, "site/post.html", fiber.Map{
 		"Post":                   post,
 		"ReadUV":                 readUV,
 		"LikeCount":              likeCount,
@@ -436,7 +436,7 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 
 	readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
-	return RenderUIView(c, "site/post", fiber.Map{
+	return RenderUIView(c, "site/post.html", fiber.Map{
 		"Post":                   post,
 		"ReadUV":                 readUV,
 		"LikeCount":              likeCount,
@@ -475,7 +475,7 @@ func (h Handler) GetCategoryIndex(c fiber.Ctx) error {
 
 	pages := ListPages(h.Model)
 	h.trackSiteUV(c)
-	return RenderUIView(c, "site/list", fiber.Map{
+	return RenderUIView(c, "site/list.html", fiber.Map{
 		"Title":      "Categories",
 		"Pages":      pages,
 		"List":       categories,
@@ -490,7 +490,7 @@ func (h Handler) GetTagIndex(c fiber.Ctx) error {
 	}
 
 	h.trackSiteUV(c)
-	return RenderUIView(c, "site/list", fiber.Map{
+	return RenderUIView(c, "site/list.html", fiber.Map{
 		"Title": "Tags",
 		"Pages": ListPages(h.Model),
 		"List":  tags,
@@ -508,7 +508,7 @@ func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
 
-	return RenderUIView(c, "site/detail", fiber.Map{
+	return RenderUIView(c, "site/detail.html", fiber.Map{
 		"IsCategory": true,
 		"Entity":     category,
 		"List":       posts,
@@ -528,7 +528,7 @@ func (h Handler) GetTagDetail(c fiber.Ctx) error {
 
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
 
-	return RenderUIView(c, "site/detail", fiber.Map{
+	return RenderUIView(c, "site/detail.html", fiber.Map{
 		"IsTag":    true,
 		"Entity":   tag,
 		"List":     posts,
