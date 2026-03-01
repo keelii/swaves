@@ -1,5 +1,6 @@
 {% extends "sui/layout/layout.html" %}
 {% import "sui/include/ui.html" as sui %}
+{% import "dash/macro/ui.html" as ui %}
 
 {% block head_extra %}
 <meta name="robots" content="noindex, nofollow" />
@@ -16,7 +17,7 @@
 {% endblock %}
 
 {% block window_toolbar_main_center %}
-  {% if Title %}{{ sui.ToolbarTitle(Title) }}{% endif %}
+  {% if Title %}<div class="toolbar-text">{{ Title }}</div>{% endif %}
 {% endblock %}
 
 {% block nav_pane %}
@@ -24,14 +25,20 @@
 {% endblock %}
 
 {% block status_nav_left %}
-  {{ sui.LinkIcon("setting", UrlFor('admin.settings.all'), attrs='aria-label="全局设置" data-title="全局设置"') }}
+  <a href="{{ UrlFor('admin.settings.list') }}" class="ui-icon-btn" aria-label="设置" data-title="设置">
+    {{ LucideIcon("setting", 16) }}
+  </a>
 {% endblock %}
 
 {% block status_nav_right %}
   {% if IsLogin %}
-    {{ sui.LinkIcon("log-out", UrlFor('admin.logout'), attrs='aria-label="退出登录" data-title="退出登录"') }}
+    <a href="{{ UrlFor('admin.logout') }}" class="ui-icon-btn" aria-label="退出登录" data-title="退出登录">
+      {{ LucideIcon("log-out", 16) }}
+    </a>
   {% else %}
-    {{ sui.LinkIcon("log-in", UrlFor('admin.login.show'), attrs='aria-label="登录" data-title="登录"') }}
+    <a href="{{ UrlFor('admin.login.show') }}" class="ui-icon-btn" aria-label="登录" data-title="登录">
+      {{ LucideIcon("log-in", 16) }}
+    </a>
   {% endif %}
 {% endblock %}
 

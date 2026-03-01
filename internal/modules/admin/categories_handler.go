@@ -42,7 +42,7 @@ func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "admin/categories_index.html", fiber.Map{
+	return RenderAdminView(c, "dash/categories_index.html", fiber.Map{
 		"Title":      "Categories",
 		"Categories": categories,
 		"ParentMap":  parentMap,
@@ -61,7 +61,7 @@ func (h *Handler) GetCategoryTreeHandler(c fiber.Ctx) error {
 	//	return err
 	//}
 
-	return RenderAdminView(c, "admin/categories_tree.html", fiber.Map{
+	return RenderAdminView(c, "dash/categories_tree.html", fiber.Map{
 		"Title":           "Category Tree",
 		"Tree":            tree,
 		"Categories":      allCategories,
@@ -87,7 +87,7 @@ func (h *Handler) GetCategoryNewHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return RenderAdminView(c, "admin/categories_new.html", fiber.Map{
+	return RenderAdminView(c, "dash/categories_new.html", fiber.Map{
 		"Title":           "New Category",
 		"Categories":      all,
 		"CategoryOptions": BuildCategorySelectOptions(all),
@@ -119,7 +119,7 @@ func (h *Handler) PostCreateCategoryHandler(c fiber.Ctx) error {
 	slug := strings.TrimSpace(c.FormValue("slug"))
 	if !helper.IsSlug(slug) {
 		all, _ := GetAllCategoriesFlat(h.Model)
-		return RenderAdminView(c, "admin/categories_new.html", fiber.Map{
+		return RenderAdminView(c, "dash/categories_new.html", fiber.Map{
 			"Title":           "New Category",
 			"Error":           errSlugInvalid("013", slug).Error(),
 			"Categories":      all,
@@ -137,7 +137,7 @@ func (h *Handler) PostCreateCategoryHandler(c fiber.Ctx) error {
 	}
 
 	if err := CreateCategoryService(h.Model, in); err != nil {
-		return RenderAdminView(c, "admin/categories_new.html", fiber.Map{
+		return RenderAdminView(c, "dash/categories_new.html", fiber.Map{
 			"Title":           "New Category",
 			"Error":           err.Error(),
 			"Categories":      []db.Category{},
@@ -198,7 +198,7 @@ func (h *Handler) GetCategoryEditHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return RenderAdminView(c, "admin/categories_edit.html", fiber.Map{
+	return RenderAdminView(c, "dash/categories_edit.html", fiber.Map{
 		"Title":           "Edit Category",
 		"Category":        category,
 		"Categories":      availableCategories,
@@ -236,7 +236,7 @@ func (h *Handler) PostUpdateCategoryHandler(c fiber.Ctx) error {
 	if !helper.IsSlug(slug) {
 		category, _ := GetCategoryForEdit(h.Model, id)
 		all, _ := GetAllCategoriesFlat(h.Model)
-		return RenderAdminView(c, "admin/categories_edit.html", fiber.Map{
+		return RenderAdminView(c, "dash/categories_edit.html", fiber.Map{
 			"Title":           "Edit Category",
 			"Error":           errSlugInvalid("014", slug).Error(),
 			"Category":        category,
@@ -256,7 +256,7 @@ func (h *Handler) PostUpdateCategoryHandler(c fiber.Ctx) error {
 	if err := UpdateCategoryService(h.Model, id, in); err != nil {
 		category, _ := GetCategoryForEdit(h.Model, id)
 		all, _ := GetAllCategoriesFlat(h.Model)
-		return RenderAdminView(c, "admin/categories_edit.html", fiber.Map{
+		return RenderAdminView(c, "dash/categories_edit.html", fiber.Map{
 			"Title":           "Edit Category",
 			"Error":           err.Error(),
 			"Category":        category,

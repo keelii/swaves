@@ -1,20 +1,84 @@
 {% extends "dash/layout/layout.html" %}
+{% import "dash/macro/ui.html" as ui %}
+{% import "sui/include/ui.html" as sui %}
+
 {% block page_actions %}{% endblock %}
+
 {% block content %}
 <style>
+  .dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .dashboard-stat {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-panel-bg);
+    padding: 12px;
+    min-height: 84px;
+  }
+
   .dashboard-label {
-    font-size: var(--text-8);
+    font-size: 0.82rem;
+    color: var(--app-text-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   .dashboard-number {
-    font-size: var(--text-3);
+    margin-top: 8px;
+    font-size: 1.4rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .dashboard-chart-card,
+  .dashboard-rank-card {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-panel-bg);
+    padding: 12px;
+  }
+
+  .dashboard-rank-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .dashboard-rank-title {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
   }
 
   .dashboard-uv-total {
-    margin-top: var(--space-1);
-    font-size: var(--text-2);
-    font-weight: var(--font-bold);
+    margin-top: 6px;
+    font-size: 1.3rem;
+    font-weight: 700;
     line-height: 1.1;
+  }
+
+  .dashboard-uv-meta {
+    margin-top: 4px;
+    color: var(--app-text-soft);
+    font-size: 0.82rem;
+  }
+
+  .dashboard-uv-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+    align-items: start;
+  }
+
+  .dashboard-uv-chart {
+    position: relative;
   }
 
   .dashboard-uv-chart svg {
@@ -23,30 +87,26 @@
     display: block;
   }
 
-  .dashboard-uv-chart {
-    position: relative;
-  }
-
   .dashboard-uv-tooltip {
     position: absolute;
     top: 0;
     left: 0;
     z-index: 2;
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-small);
-    background: var(--card);
-    box-shadow: var(--shadow-small);
-    font-size: var(--text-8);
+    padding: 4px 8px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-panel-bg);
+    box-shadow: var(--app-shadow-sm);
+    font-size: 0.82rem;
     line-height: 1.35;
-    color: var(--foreground);
+    color: var(--app-text);
     pointer-events: none;
     white-space: nowrap;
     transform: translateX(-50%);
   }
 
   .dashboard-uv-chart svg line {
-    transition: stroke-width var(--transition-fast), stroke var(--transition-fast);
+    transition: stroke-width var(--app-transition-fast), stroke var(--app-transition-fast);
   }
 
   .dashboard-uv-chart svg line.is-active-tick {
@@ -54,90 +114,153 @@
     stroke: #0051c3;
   }
 
-  .col-tight { width: 2em; }
-  .col-value { width: 4em; }
+  .dashboard-index-col {
+    width: 36px;
+  }
+
+  .dashboard-value-col {
+    width: 64px;
+    text-align: right;
+  }
+
+  @media (max-width: 1280px) {
+    .dashboard-stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 960px) {
+    .dashboard-stats,
+    .dashboard-rank-grid,
+    .dashboard-uv-layout {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 
-<div class="row">
-  <div class="col-2 mb-2">
-    <div class="card">
-      <div class="dashboard-label">活跃用户（{% if ActiveUsersWindowLabel %}{{ ActiveUsersWindowLabel }}{% else %}30分钟{% endif %}）</div>
-      <div class="dashboard-number">{% if ActiveUsers %}{{ ActiveUsers }}{% else %}0{% endif %}</div>
+<div class="app-px app-pt dashboard-stats">
+  <section class="dashboard-stat">
+    <div class="dashboard-label">活跃用户（{% if ActiveUsersWindowLabel %}{{ ActiveUsersWindowLabel }}{% else %}30分钟{% endif %}）</div>
+    <div class="dashboard-number">{% if ActiveUsers %}{{ ActiveUsers }}{% else %}0{% endif %}</div>
+  </section>
+  <section class="dashboard-stat">
+    <div class="dashboard-label">总访问（UV）</div>
+    <div class="dashboard-number">{% if TotalUV %}{{ TotalUV }}{% else %}0{% endif %}</div>
+  </section>
+  <section class="dashboard-stat">
+    <div class="dashboard-label">总点赞</div>
+    <div class="dashboard-number">{% if TotalLikes %}{{ TotalLikes }}{% else %}0{% endif %}</div>
+  </section>
+  <section class="dashboard-stat">
+    <div class="dashboard-label">
+      <span>文章总数</span>
+      {{ sui.LinkIcon("plus", UrlFor('admin.posts.new'), attrs='aria-label="新建文章" data-title="新建文章"') }}
     </div>
-  </div>
-  <div class="col-2 mb-2">
-    <div class="card">
-      <div class="dashboard-label">总访问（UV）</div>
-      <div class="dashboard-number">{% if TotalUV %}{{ TotalUV }}{% else %}0{% endif %}</div>
+    <div class="dashboard-number">{% if PostCount %}{{ PostCount }}{% else %}0{% endif %}</div>
+  </section>
+  <section class="dashboard-stat">
+    <div class="dashboard-label">
+      <span>分类总数</span>
+      {{ sui.LinkIcon("plus", UrlFor('admin.categories.new'), attrs='aria-label="新建分类" data-title="新建分类"') }}
     </div>
-  </div>
-  <div class="col-2 mb-2">
-    <div class="card">
-      <div class="dashboard-label">总点赞</div>
-      <div class="dashboard-number">{% if TotalLikes %}{{ TotalLikes }}{% else %}0{% endif %}</div>
+    <div class="dashboard-number">{% if CategoryCount %}{{ CategoryCount }}{% else %}0{% endif %}</div>
+  </section>
+  <section class="dashboard-stat">
+    <div class="dashboard-label">
+      <span>标签总数</span>
+      {{ sui.LinkIcon("plus", UrlFor('admin.tags.new'), attrs='aria-label="新建标签" data-title="新建标签"') }}
     </div>
-  </div>
-  <div class="col-2 mb-2">
-    <div class="card">
-      <div class="dashboard-label salign">
-        <span>文章总数</span>
-        <a href="{{ UrlFor('admin.posts.new') }}">{{ LucideIcon("plus") }}</a>
-      </div>
-      <div class="dashboard-number">{% if PostCount %}{{ PostCount }}{% else %}0{% endif %}</div>
-    </div>
-  </div>
-  <div class="col-2 mb-2">
-    <div class="card">
-      <div class="dashboard-label salign">
-        <span>分类总数</span>
-        <a href="{{ UrlFor('admin.categories.new') }}">{{ LucideIcon("plus") }}</a>
-      </div>
-      <div class="dashboard-number">{% if CategoryCount %}{{ CategoryCount }}{% else %}0{% endif %}</div>
-    </div>
-  </div>
-  <div class="col-2 mb-2">
-    <div class="card">
-      <div class="dashboard-label salign">
-        <span>标签总数</span>
-        <a href="{{ UrlFor('admin.tags.new') }}">{{ LucideIcon("plus") }}</a>
-      </div>
-      <div class="dashboard-number">{% if TagCount %}{{ TagCount }}{% else %}0{% endif %}</div>
-    </div>
-  </div>
+    <div class="dashboard-number">{% if TagCount %}{{ TagCount }}{% else %}0{% endif %}</div>
+  </section>
 </div>
 
-<div class="row mt-4">
-  <div class="col-12">
-    <div class="card">
-      <ot-tabs>
-        <div role="tablist">
-            {% for tab in UVChartTabs %}
-              <button type="button" role="tab" aria-selected="{% if tab.Active %}true{% else %}false{% endif %}">{{ tab.Label }}</button>
-            {% endfor %}
-        </div>
+<div class="app-px" style="margin-top:12px;">
+  <section class="dashboard-chart-card">
+    {{ sui.TabsStart("UV 范围") }}
+      {% for tab in UVChartTabs %}
+        {{ sui.Tab(tab.Label, href=UrlFor('admin.home', uv_range=tab.Key), active=tab.Active) }}
+      {% endfor %}
+    {{ sui.TabsEnd() }}
 
-        {% for tab in UVChartTabs %}
-          <div role="tabpanel">
-            <div class="row">
-              <div class="col-2 vstack">
-                <div class="dashboard-label">唯一访客</div>
-                <div class="dashboard-uv-total">{% if tab.Total %}{{ tab.Total }}{% else %}0{% endif %}</div>
-                <div class="text-lighter">{{ tab.Label }}内访客</div>
-              </div>
-            <div class="col-10 dashboard-uv-chart" data-uv-chart>
-              {% if tab.SVG %}
-                {{ tab.SVG | safe }}
-                <div class="dashboard-uv-tooltip" data-uv-tooltip hidden></div>
-              {% else %}
-                <p class="text-lighter">暂无 UV 数据</p>
-              {% endif %}
-            </div>
-          </div>
-          </div>
-        {% endfor %}
-      </ot-tabs>
+    {% for tab in UVChartTabs %}
+      {% if tab.Active %}
+      <div class="dashboard-uv-layout">
+        <div>
+          <div class="dashboard-label">唯一访客</div>
+          <div class="dashboard-uv-total">{% if tab.Total %}{{ tab.Total }}{% else %}0{% endif %}</div>
+          <div class="dashboard-uv-meta">{{ tab.Label }}内访客</div>
+          <div class="dashboard-uv-meta">{{ tab.StartLabel }} - {{ tab.EndLabel }}</div>
+        </div>
+        <div class="dashboard-uv-chart" data-uv-chart>
+          {% if tab.SVG %}
+            {{ tab.SVG | safe }}
+            <div class="dashboard-uv-tooltip" data-uv-tooltip hidden></div>
+          {% else %}
+            <p class="dashboard-uv-meta">暂无 UV 数据</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </section>
+</div>
+
+<div class="app-px dashboard-rank-grid">
+  <section class="dashboard-rank-card">
+    <h3 class="dashboard-rank-title">文章/页面访问排行</h3>
+    <div class="data-table-wrap">
+      <table class="data-table" aria-label="文章页面访问排行">
+        <thead>
+        <tr>
+          <th class="dashboard-index-col">#</th>
+          <th>标题</th>
+          <th class="dashboard-value-col">UV</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if TopUVContents %}
+          {% for uvContent in TopUVContents %}{% set idx = loop.index0 %}{% set item = uvContent %}
+            <tr>
+              <td>{{ idx + 1 }}</td>
+              <td><a href="{{ GetPostUrl(item) }}" target="_blank" rel="noopener">{{ item.Title }}</a></td>
+              <td class="dashboard-value-col">{{ item.UV }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="3">暂无访问数据</td></tr>
+        {% endif %}
+        </tbody>
+      </table>
     </div>
-  </div>
+  </section>
+
+  <section class="dashboard-rank-card">
+    <h3 class="dashboard-rank-title">点赞排行</h3>
+    <div class="data-table-wrap">
+      <table class="data-table" aria-label="点赞排行">
+        <thead>
+        <tr>
+          <th class="dashboard-index-col">#</th>
+          <th>标题</th>
+          <th class="dashboard-value-col">点赞</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if TopLikedContents %}
+          {% for likedContent in TopLikedContents %}{% set idx = loop.index0 %}{% set item = likedContent %}
+            <tr>
+              <td>{{ idx + 1 }}</td>
+              <td>{{ item.Title }}</td>
+              <td class="dashboard-value-col">{{ item.Likes }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="3">暂无点赞数据</td></tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -284,67 +407,4 @@
     }
   })();
 </script>
-
-<div class="row mt-4">
-  <div class="col-6 mb-2">
-    <div class="card">
-      <strong>文章/页面访问排行</strong>
-      <table class="rank-table">
-        <thead>
-        <tr>
-          <th class="col-tight">#</th>
-          <th>标题</th>
-          <th class="text-right col-value">UV</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% if TopUVContents %}
-          {% for uvContent in TopUVContents %}{% set idx = loop.index0 %}{% set item = uvContent %}
-            <tr>
-              <td class="col-tight">{{ idx + 1 }}</td>
-              <td>
-                <a href="{{ GetPostUrl(item) }}" target="_blank" rel="noopener">{{ item.Title }}</a>
-              </td>
-              <td class="text-right col-value">{{ item.UV }}</td>
-            </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="3">暂无访问数据</td>
-          </tr>
-        {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <div class="col-6 mb-2">
-    <div class="card">
-      <strong>点赞排行</strong>
-      <table class="rank-table">
-        <thead>
-        <tr>
-          <th class="col-tight">#</th>
-          <th>标题</th>
-          <th class="text-right col-value">点赞</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% if TopLikedContents %}
-          {% for likedContent in TopLikedContents %}{% set idx = loop.index0 %}{% set item = likedContent %}
-            <tr>
-              <td class="col-tight">{{ idx + 1 }}</td>
-              <td>{{ item.Title }}</td>
-              <td class="text-right col-value">{{ item.Likes }}</td>
-            </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="3">暂无点赞数据</td>
-          </tr>
-        {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
 {% endblock %}

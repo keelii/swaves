@@ -29,7 +29,7 @@ func (h *Handler) GetTagListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "admin/tags_index.html", fiber.Map{
+	return RenderAdminView(c, "dash/tags_index.html", fiber.Map{
 		"Title":      "Tags",
 		"Tags":       tags,
 		"Pager":      pager,
@@ -38,7 +38,7 @@ func (h *Handler) GetTagListHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) GetTagNewHandler(c fiber.Ctx) error {
-	return RenderAdminView(c, "admin/tags_new.html", fiber.Map{
+	return RenderAdminView(c, "dash/tags_new.html", fiber.Map{
 		"Title": "New Tag",
 	}, "")
 }
@@ -46,7 +46,7 @@ func (h *Handler) GetTagNewHandler(c fiber.Ctx) error {
 func (h *Handler) PostCreateTagHandler(c fiber.Ctx) error {
 	slug := strings.TrimSpace(c.FormValue("slug"))
 	if !helper.IsSlug(slug) {
-		return RenderAdminView(c, "admin/tags_new.html", fiber.Map{
+		return RenderAdminView(c, "dash/tags_new.html", fiber.Map{
 			"Title": "New Tag",
 			"Error": errSlugInvalid("011", slug).Error(),
 		}, "")
@@ -74,7 +74,7 @@ func (h *Handler) GetTagEditHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "admin/tags_edit.html", fiber.Map{
+	return RenderAdminView(c, "dash/tags_edit.html", fiber.Map{
 		"Title": "Edit Tag",
 		"Tag":   tag,
 	}, "")
@@ -88,7 +88,7 @@ func (h *Handler) PostUpdateTagHandler(c fiber.Ctx) error {
 	slug := strings.TrimSpace(c.FormValue("slug"))
 	if !helper.IsSlug(slug) {
 		tag, _ := GetTagForEdit(h.Model, id)
-		return RenderAdminView(c, "admin/tags_edit.html", fiber.Map{
+		return RenderAdminView(c, "dash/tags_edit.html", fiber.Map{
 			"Title": "Edit Tag",
 			"Tag":   tag,
 			"Error": errSlugInvalid("012", slug).Error(),

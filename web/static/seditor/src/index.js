@@ -389,9 +389,201 @@ function buildPlugins(schema) {
   ].filter(Boolean);
 }
 
-function commandByName(schema, name) {
+function promptForHref(currentHref) {
+  if (typeof window === "undefined" || typeof window.prompt !== "function") {
+    return "";
+  }
+  var preset = currentHref ? String(currentHref) : "https://";
+  var value = window.prompt("输入链接地址", preset);
+  if (value == null) {
+    return "";
+  }
+  return String(value).trim();
+}
+
+function readFileAsDataURL(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() {
+      resolve(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.onerror = function() {
+      reject(reader.error || new Error("read file failed"));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function getImageUploadInput() {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  var id = "seditor-image-upload-input";
+  var input = document.getElementById(id);
+  if (input) {
+    return input;
+  }
+
+  input = document.createElement("input");
+  input.id = id;
+  input.type = "file";
+  input.accept = "image/*";
+  input.multiple = true;
+  input.style.display = "none";
+  document.body.appendChild(input);
+  return input;
+}
+
+function resolveImageAttrs(file, opts) {
+  if (opts && typeof opts.onImageUpload === "function") {
+    return Promise.resolve(opts.onImageUpload(file)).then(function(result) {
+      if (typeof result === "string") {
+        return { src: result, alt: file.name || "", title: null };
+      }
+      if (result && typeof result === "object") {
+        var src = result.src || result.url || "";
+        var alt = result.alt == null ? (file.name || "") : String(result.alt);
+        var title = result.title == null ? null : String(result.title);
+        return { src: String(src), alt: alt, title: title };
+      }
+      return null;
+    });
+  }
+
+  return readFileAsDataURL(file).then(function(dataURL) {
+    return { src: dataURL, alt: file.name || "", title: null };
+  });
+}
+
+function insertImageNode(view, schema, attrs) {
+  var image = schema.nodes.image;
+  if (!image || !attrs || !attrs.src) {
+    return false;
+  }
+  var node = image.create({
+    src: attrs.src,
+    alt: attrs.alt || "",
+    title: attrs.title == null ? null : attrs.title
+  });
+  var tr = view.state.tr.replaceSelectionWith(node).scrollIntoView();
+  view.dispatch(tr);
+  return true;
+}
+
+function isMarkActive(state, markType) {
+  if (!markType || !state || !state.selection) {
+    return false;
+  }
+  var selection = state.selection;
+  if (selection.empty) {
+    var stored = state.storedMarks;
+    if (stored && markType.isInSet(stored)) {
+      return true;
+    }
+    return markType.isInSet(selection.$from.marks()) != null;
+  }
+  return state.doc.rangeHasMark(selection.from, selection.to, markType);
+}
+
+function hasAncestorNodeType($pos, nodeType) {
+  if (!$pos || !nodeType) {
+    return false;
+  }
+  for (var depth = $pos.depth; depth > 0; depth -= 1) {
+    if ($pos.node(depth).type === nodeType) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isNodeTypeActive(state, nodeType) {
+  if (!state || !state.selection || !nodeType) {
+    return false;
+  }
+  var selection = state.selection;
+  return hasAncestorNodeType(selection.$from, nodeType) || hasAncestorNodeType(selection.$to, nodeType);
+}
+
+function getActiveLinkMark(state, linkMarkType) {
+  if (!state || !state.selection || !linkMarkType) {
+    return null;
+  }
+  var selection = state.selection;
+  if (!selection.empty) {
+    var found = null;
+    state.doc.nodesBetween(selection.from, selection.to, function(node) {
+      if (found || !node || !node.marks) {
+        return;
+      }
+      found = linkMarkType.isInSet(node.marks);
+    });
+    return found;
+  }
+  return linkMarkType.isInSet(selection.$from.marks()) || null;
+}
+
+function getLinkMarkRangeAtCursor(state, linkMarkType) {
+  if (!state || !state.selection || !state.selection.empty || !linkMarkType) {
+    return null;
+  }
+  var $from = state.selection.$from;
+  var parent = $from.parent;
+  var offset = $from.parentOffset;
+  var start = offset;
+  var end = offset;
+
+  var index = $from.index();
+  while (index > 0) {
+    var prev = parent.child(index - 1);
+    if (!linkMarkType.isInSet(prev.marks)) {
+      break;
+    }
+    start -= prev.nodeSize;
+    index -= 1;
+  }
+
+  index = $from.indexAfter();
+  while (index < parent.childCount) {
+    var next = parent.child(index);
+    if (!linkMarkType.isInSet(next.marks)) {
+      break;
+    }
+    end += next.nodeSize;
+    index += 1;
+  }
+
+  if (start === end) {
+    return null;
+  }
+  var base = $from.start();
+  return { from: base + start, to: base + end };
+}
+
+function isCommandActive(schema, name, state) {
+  var cmd = String(name || "").trim();
+  switch (cmd) {
+    case "bold":
+      return isMarkActive(state, schema.marks.strong);
+    case "italic":
+      return isMarkActive(state, schema.marks.em);
+    case "link":
+      return isMarkActive(state, schema.marks.link);
+    case "blockquote":
+      return isNodeTypeActive(state, schema.nodes.blockquote);
+    case "bullet_list":
+      return isNodeTypeActive(state, schema.nodes.bullet_list);
+    case "ordered_list":
+      return isNodeTypeActive(state, schema.nodes.ordered_list);
+    default:
+      return false;
+  }
+}
+
+function commandByName(schema, name, opts) {
   var strong = schema.marks.strong;
   var em = schema.marks.em;
+  var link = schema.marks.link;
   var blockquote = schema.nodes.blockquote;
 
   switch (String(name || "").trim()) {
@@ -431,6 +623,83 @@ function commandByName(schema, name) {
       return schema.nodes.bullet_list ? wrapInList(schema.nodes.bullet_list) : null;
     case "ordered_list":
       return schema.nodes.ordered_list ? wrapInList(schema.nodes.ordered_list) : null;
+    case "link":
+      if (!link) {
+        return null;
+      }
+      return function(state, dispatch, view) {
+        if (!view) {
+          return false;
+        }
+        var sel = state.selection;
+        var activeLink = getActiveLinkMark(state, link);
+        if (activeLink) {
+          if (!sel.empty) {
+            dispatch(state.tr.removeMark(sel.from, sel.to, link).scrollIntoView());
+            return true;
+          }
+          var range = getLinkMarkRangeAtCursor(state, link);
+          if (!range) {
+            return false;
+          }
+          dispatch(state.tr.removeMark(range.from, range.to, link).scrollIntoView());
+          return true;
+        }
+
+        var href = promptForHref(activeLink && activeLink.attrs ? activeLink.attrs.href : "");
+        if (!href) {
+          return false;
+        }
+        var mark = link.create({ href: href, title: null });
+        if (!sel.empty) {
+          dispatch(state.tr.addMark(sel.from, sel.to, mark).scrollIntoView());
+          return true;
+        }
+        var text = href;
+        var tr = state.tr.insertText(text, sel.from, sel.to);
+        tr.addMark(sel.from, sel.from + text.length, mark);
+        dispatch(tr.scrollIntoView());
+        return true;
+      };
+    case "image_upload":
+      return function(state, dispatch, view) {
+        if (!view) {
+          return false;
+        }
+        var input = getImageUploadInput();
+        if (!input) {
+          return false;
+        }
+
+        input.value = "";
+        input.onchange = function() {
+          var files = input.files ? Array.prototype.slice.call(input.files) : [];
+          if (files.length === 0) {
+            return;
+          }
+
+          var sequence = Promise.resolve();
+          files.forEach(function(file) {
+            sequence = sequence.then(function() {
+              return resolveImageAttrs(file, opts);
+            }).then(function(attrs) {
+              if (!attrs || !attrs.src) {
+                return;
+              }
+              insertImageNode(view, schema, attrs);
+            }).catch(function() {
+              // Keep image insertion best-effort and continue with remaining files.
+            });
+          });
+
+          sequence.then(function() {
+            view.focus();
+          });
+        };
+
+        input.click();
+        return true;
+      };
     case "undo":
       return undo;
     case "redo":
@@ -440,19 +709,32 @@ function commandByName(schema, name) {
   }
 }
 
-function bindCommandButtons(view, schema, root) {
+function bindCommandButtons(view, schema, root, opts) {
   if (!root || !root.querySelectorAll) {
-    return;
+    return { refresh: function() {} };
   }
 
+  var toggleCommands = {
+    bold: true,
+    italic: true,
+    link: true,
+    blockquote: true,
+    bullet_list: true,
+    ordered_list: true
+  };
+  var bindings = [];
   var els = root.querySelectorAll("[data-seditor-command]");
   for (var i = 0; i < els.length; i += 1) {
     (function() {
       var el = els[i];
       var name = el.getAttribute("data-seditor-command");
-      var command = commandByName(schema, name);
+      var command = commandByName(schema, name, opts);
       if (!command) {
         return;
+      }
+      bindings.push({ el: el, name: name });
+      if (toggleCommands[String(name || "").trim()]) {
+        el.setAttribute("aria-pressed", "false");
       }
       el.addEventListener("click", function(e) {
         e.preventDefault();
@@ -461,6 +743,22 @@ function bindCommandButtons(view, schema, root) {
       });
     })();
   }
+
+  function refresh() {
+    for (var bi = 0; bi < bindings.length; bi += 1) {
+      var binding = bindings[bi];
+      var commandName = String(binding.name || "").trim();
+      if (!toggleCommands[commandName]) {
+        continue;
+      }
+      var active = isCommandActive(schema, commandName, view.state);
+      binding.el.classList.toggle("selected", active);
+      binding.el.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+  }
+
+  refresh();
+  return { refresh: refresh };
 }
 
 export function init(options) {
@@ -470,7 +768,7 @@ export function init(options) {
     throw new Error("SEditor.init: mount element is required");
   }
 
-  ensureSeditorStyles();
+  // ensureSeditorStyles();
 
   mount.classList.add("seditor-root");
 
@@ -501,20 +799,28 @@ export function init(options) {
     return markdown;
   }
 
+  var commandControls = null;
+
   view = new EditorView(mount, {
     state: state,
     dispatchTransaction: function(tr) {
       var nextState = view.state.apply(tr);
       view.updateState(nextState);
       sync(nextState);
+      if (commandControls && typeof commandControls.refresh === "function") {
+        commandControls.refresh();
+      }
     }
   });
 
   if (opts.bindCommands !== false) {
-    bindCommandButtons(view, schema, opts.commandsRoot ? resolveElement(opts.commandsRoot) : document);
+    commandControls = bindCommandButtons(view, schema, opts.commandsRoot ? resolveElement(opts.commandsRoot) : document, opts);
   }
 
   sync(state);
+  if (commandControls && typeof commandControls.refresh === "function") {
+    commandControls.refresh();
+  }
 
   return {
     getMarkdown: function() {
@@ -525,6 +831,9 @@ export function init(options) {
       var nextState = EditorState.create({ schema: schema, doc: nextDoc, plugins: plugins });
       view.updateState(nextState);
       sync(nextState);
+      if (commandControls && typeof commandControls.refresh === "function") {
+        commandControls.refresh();
+      }
     },
     focus: function() {
       view.focus();

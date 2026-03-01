@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --format=iife --global-name=SEditor --outfile=dist/seditor.js --sourcemap --target=es2018",
+    "build": "esbuild src/index.js --bundle --format=iife --global-name=SEditor --outfile=dist/seditor.js --sourcemap --target=es2018 && npm run build:min",
     "build:min": "esbuild src/index.js --bundle --format=iife --global-name=SEditor --outfile=dist/seditor.min.js --minify --target=es2018"
   },
   "dependencies": {

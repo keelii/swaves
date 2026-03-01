@@ -147,6 +147,10 @@ a:visited {
   /*color: var(--app-brand-fg);*/
 }
 
+svg rect:focus {
+  outline: none;
+}
+
 /* ==================== 2) 组件样式（ui-*） ==================== */
 .ui-dialog-body {
   scrollbar-width: thin;
@@ -672,6 +676,12 @@ a.ui-icon-btn[disabled] {
 
 .ui-icon-btn.danger {
   color: var(--app-icon-btn-danger-fg);
+}
+
+.ui-icon-btn.selected {
+  color: var(--app-brand-fg);
+  background: var(--app-brand-bg);
+  box-shadow: inset 0 0 0 var(--app-border-width) var(--app-brand-border);
 }
 
 .ui-select {
@@ -1750,11 +1760,13 @@ a.ui-icon-btn[disabled] {
   text-align: center;
   border: none;
 }
-
+.input-title {
+  font-weight: bold;
+}
 .input-title, .input-slug {
-  opacity: 0.5;
   border: none;
   padding: var(--app-spacing);
+  background-color: transparent;
 }
 .input-title:focus-visible,
 .input-slug:focus-visible {
@@ -1788,4 +1800,19 @@ a.ui-icon-btn[disabled] {
   margin: 0 auto;
   padding: var(--app-spacing);
   box-sizing: border-box;
+}
+.ProseMirror>p:last-child {
+  margin-top: 0;
+}
+.ProseMirror p img {
+  max-width: 100%;
+}
+.ProseMirror blockquote>p:first-child {
+  margin-top: 0;
+}
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--app-focus-outline-color);
+}
+.ProseMirror:focus-visible {
+  outline: none;
 }

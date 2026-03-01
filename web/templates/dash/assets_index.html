@@ -1,4 +1,5 @@
 {% extends "dash/layout/layout.html" %}
+{% import "dash/macro/ui.html" as ui %}
 {% import "sui/include/ui.html" as sui %}
 {% block page_actions %}{% endblock %}
 {% block status_main_left %}
@@ -8,7 +9,27 @@
 {% block status_main_right %}
   {% set pagerKind = CurrentKind|default("image") %}
   {% set pagerHrefPrefix = UrlFor('admin.assets.list', kind=pagerKind) ~ ("&pageSize=" ~ Pager.PageSize) %}
-  {{ sui.Pager(Pager.Page, Pager.Num, href_prefix=pagerHrefPrefix) }}
+  <div class="ui-tags" aria-label="分页">
+    {% if Pager.HasPrev() %}
+      <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ Pager.PrevPage() }}">上一页</a>
+    {% else %}
+      <span class="ui-page-link" aria-disabled="true">上一页</span>
+    {% endif %}
+    {% for item in Pager.GetPageItems() %}
+      {% if item.Type == "ellipsis" %}
+        <span class="ui-page-ellipsis">…</span>
+      {% elif item.Current %}
+        <span class="ui-page-link" aria-current="page">{{ item.Page }}</span>
+      {% else %}
+        <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ item.Page }}">{{ item.Page }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if Pager.HasNext() %}
+      <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ Pager.NextPage() }}">下一页</a>
+    {% else %}
+      <span class="ui-page-link" aria-disabled="true">下一页</span>
+    {% endif %}
+  </div>
 {% endblock %}
 {% block content %}
 
@@ -23,24 +44,24 @@
   }
 
   .asset-upload-dropzone {
-    border: 2px dashed var(--border);
-    border-radius: var(--radius-medium);
-    background: var(--background);
+    border: 2px dashed var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-surface-muted-bg);
     min-height: 180px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
+    gap: var(--app-spacing);
     text-align: center;
     cursor: pointer;
-    padding: var(--space-4);
+    margin: var(--app-spacing);
     transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
   .asset-upload-dropzone.dragover {
-    border-color: var(--primary);
-    background: var(--muted);
+    border-color: var(--app-brand-border);
+    background: var(--app-color-info-bg);
   }
 
   .asset-upload-dropzone.is-uploading {
@@ -56,26 +77,26 @@
 
   .asset-upload-subtitle {
     margin: 0;
-    color: var(--muted-foreground);
+    color: var(--app-text-soft);
   }
 
   .asset-upload-status {
     margin: 0;
-    color: var(--muted-foreground);
+    color: var(--app-text-soft);
     font-size: 0.875rem;
   }
 
   .asset-upload-status.error {
-    color: #b42318;
+    color: var(--app-danger-fg);
   }
 
   .asset-upload-tip {
-    color: var(--muted-foreground);
-    margin: var(--space-2) 0 0;
+    color: var(--app-text-soft);
+    margin: calc(var(--app-spacing) * 0.5) 0 0;
   }
 
   .asset-upload-remark {
-    margin-top: var(--space-3);
+    margin-top: var(--app-spacing);
     width: min(560px, 100%);
   }
 
@@ -85,7 +106,7 @@
 
   .asset-row-actions {
     display: inline-flex;
-    gap: var(--space-2);
+    gap: calc(var(--app-spacing) * 0.5);
     align-items: center;
     flex-wrap: wrap;
   }
@@ -102,12 +123,12 @@
   .asset-batch-tools {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: calc(var(--app-spacing) * 0.5);
   }
 
   .asset-batch-count {
-    color: var(--muted-foreground);
-    font-size: var(--text-7);
+    color: var(--app-text-soft);
+    font-size: 0.82rem;
   }
 
   .asset-select-col {
@@ -154,7 +175,7 @@
       当前默认服务：{{ assetProviderLabelMap[defaultProvider] | default(defaultProvider) }}
       {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
     </p>
-    <input type="text" id="asset-upload-remark" class="asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
+    <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
   </div>
 </section>
 

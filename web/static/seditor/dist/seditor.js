@@ -19030,53 +19030,6 @@ var SEditor = (() => {
     }
     return null;
   }
-  function ensureSeditorStyles() {
-    if (typeof document === "undefined") {
-      return;
-    }
-    var id = "seditor-styles";
-    if (document.getElementById(id)) {
-      return;
-    }
-    var el = document.createElement("style");
-    el.id = id;
-    el.textContent = `
-.seditor-root .ProseMirror {
-  outline: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.seditor-root .ProseMirror p {
-  margin: 0;
-}
-
-.seditor-root .ProseMirror ul,
-.seditor-root .ProseMirror ol {
-  padding-left: 1.5em;
-}
-
-.seditor-raw-block {
-  white-space: pre;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  background: rgba(107, 114, 128, 0.08);
-  border: 1px solid rgba(107, 114, 128, 0.2);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin: 10px 0;
-}
-
-.seditor-raw-inline {
-  white-space: pre;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  background: rgba(107, 114, 128, 0.10);
-  border: 1px solid rgba(107, 114, 128, 0.22);
-  border-radius: 6px;
-  padding: 0 4px;
-}
-`;
-    document.head.appendChild(el);
-  }
   function buildSchema() {
     var rawInlineSpec = {
       inline: true,
@@ -19356,9 +19309,185 @@ var SEditor = (() => {
       keymap(baseKeymap)
     ].filter(Boolean);
   }
-  function commandByName(schema2, name) {
+  function promptForHref(currentHref) {
+    if (typeof window === "undefined" || typeof window.prompt !== "function") {
+      return "";
+    }
+    var preset = currentHref ? String(currentHref) : "https://";
+    var value = window.prompt("\u8F93\u5165\u94FE\u63A5\u5730\u5740", preset);
+    if (value == null) {
+      return "";
+    }
+    return String(value).trim();
+  }
+  function readFileAsDataURL(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function() {
+        resolve(typeof reader.result === "string" ? reader.result : "");
+      };
+      reader.onerror = function() {
+        reject(reader.error || new Error("read file failed"));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function getImageUploadInput() {
+    if (typeof document === "undefined") {
+      return null;
+    }
+    var id = "seditor-image-upload-input";
+    var input = document.getElementById(id);
+    if (input) {
+      return input;
+    }
+    input = document.createElement("input");
+    input.id = id;
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.style.display = "none";
+    document.body.appendChild(input);
+    return input;
+  }
+  function resolveImageAttrs(file, opts) {
+    if (opts && typeof opts.onImageUpload === "function") {
+      return Promise.resolve(opts.onImageUpload(file)).then(function(result) {
+        if (typeof result === "string") {
+          return { src: result, alt: file.name || "", title: null };
+        }
+        if (result && typeof result === "object") {
+          var src = result.src || result.url || "";
+          var alt = result.alt == null ? file.name || "" : String(result.alt);
+          var title = result.title == null ? null : String(result.title);
+          return { src: String(src), alt, title };
+        }
+        return null;
+      });
+    }
+    return readFileAsDataURL(file).then(function(dataURL) {
+      return { src: dataURL, alt: file.name || "", title: null };
+    });
+  }
+  function insertImageNode(view, schema2, attrs2) {
+    var image2 = schema2.nodes.image;
+    if (!image2 || !attrs2 || !attrs2.src) {
+      return false;
+    }
+    var node = image2.create({
+      src: attrs2.src,
+      alt: attrs2.alt || "",
+      title: attrs2.title == null ? null : attrs2.title
+    });
+    var tr = view.state.tr.replaceSelectionWith(node).scrollIntoView();
+    view.dispatch(tr);
+    return true;
+  }
+  function isMarkActive(state, markType) {
+    if (!markType || !state || !state.selection) {
+      return false;
+    }
+    var selection = state.selection;
+    if (selection.empty) {
+      var stored = state.storedMarks;
+      if (stored && markType.isInSet(stored)) {
+        return true;
+      }
+      return markType.isInSet(selection.$from.marks()) != null;
+    }
+    return state.doc.rangeHasMark(selection.from, selection.to, markType);
+  }
+  function hasAncestorNodeType($pos, nodeType) {
+    if (!$pos || !nodeType) {
+      return false;
+    }
+    for (var depth = $pos.depth; depth > 0; depth -= 1) {
+      if ($pos.node(depth).type === nodeType) {
+        return true;
+      }
+    }
+    return false;
+  }
+  function isNodeTypeActive(state, nodeType) {
+    if (!state || !state.selection || !nodeType) {
+      return false;
+    }
+    var selection = state.selection;
+    return hasAncestorNodeType(selection.$from, nodeType) || hasAncestorNodeType(selection.$to, nodeType);
+  }
+  function getActiveLinkMark(state, linkMarkType) {
+    if (!state || !state.selection || !linkMarkType) {
+      return null;
+    }
+    var selection = state.selection;
+    if (!selection.empty) {
+      var found2 = null;
+      state.doc.nodesBetween(selection.from, selection.to, function(node) {
+        if (found2 || !node || !node.marks) {
+          return;
+        }
+        found2 = linkMarkType.isInSet(node.marks);
+      });
+      return found2;
+    }
+    return linkMarkType.isInSet(selection.$from.marks()) || null;
+  }
+  function getLinkMarkRangeAtCursor(state, linkMarkType) {
+    if (!state || !state.selection || !state.selection.empty || !linkMarkType) {
+      return null;
+    }
+    var $from = state.selection.$from;
+    var parent = $from.parent;
+    var offset = $from.parentOffset;
+    var start = offset;
+    var end = offset;
+    var index = $from.index();
+    while (index > 0) {
+      var prev = parent.child(index - 1);
+      if (!linkMarkType.isInSet(prev.marks)) {
+        break;
+      }
+      start -= prev.nodeSize;
+      index -= 1;
+    }
+    index = $from.indexAfter();
+    while (index < parent.childCount) {
+      var next = parent.child(index);
+      if (!linkMarkType.isInSet(next.marks)) {
+        break;
+      }
+      end += next.nodeSize;
+      index += 1;
+    }
+    if (start === end) {
+      return null;
+    }
+    var base3 = $from.start();
+    return { from: base3 + start, to: base3 + end };
+  }
+  function isCommandActive(schema2, name, state) {
+    var cmd = String(name || "").trim();
+    switch (cmd) {
+      case "bold":
+        return isMarkActive(state, schema2.marks.strong);
+      case "italic":
+        return isMarkActive(state, schema2.marks.em);
+      case "link":
+        return isMarkActive(state, schema2.marks.link);
+      case "blockquote":
+        return isNodeTypeActive(state, schema2.nodes.blockquote);
+      case "bullet_list":
+        return isNodeTypeActive(state, schema2.nodes.bullet_list);
+      case "ordered_list":
+        return isNodeTypeActive(state, schema2.nodes.ordered_list);
+      default:
+        return false;
+    }
+  }
+  function commandByName(schema2, name, opts) {
     var strong = schema2.marks.strong;
     var em = schema2.marks.em;
+    var link2 = schema2.marks.link;
     var blockquote2 = schema2.nodes.blockquote;
     switch (String(name || "").trim()) {
       case "bold":
@@ -19397,6 +19526,77 @@ var SEditor = (() => {
         return schema2.nodes.bullet_list ? wrapInList(schema2.nodes.bullet_list) : null;
       case "ordered_list":
         return schema2.nodes.ordered_list ? wrapInList(schema2.nodes.ordered_list) : null;
+      case "link":
+        if (!link2) {
+          return null;
+        }
+        return function(state, dispatch, view) {
+          if (!view) {
+            return false;
+          }
+          var sel = state.selection;
+          var activeLink = getActiveLinkMark(state, link2);
+          if (activeLink) {
+            if (!sel.empty) {
+              dispatch(state.tr.removeMark(sel.from, sel.to, link2).scrollIntoView());
+              return true;
+            }
+            var range = getLinkMarkRangeAtCursor(state, link2);
+            if (!range) {
+              return false;
+            }
+            dispatch(state.tr.removeMark(range.from, range.to, link2).scrollIntoView());
+            return true;
+          }
+          var href = promptForHref(activeLink && activeLink.attrs ? activeLink.attrs.href : "");
+          if (!href) {
+            return false;
+          }
+          var mark = link2.create({ href, title: null });
+          if (!sel.empty) {
+            dispatch(state.tr.addMark(sel.from, sel.to, mark).scrollIntoView());
+            return true;
+          }
+          var text2 = href;
+          var tr = state.tr.insertText(text2, sel.from, sel.to);
+          tr.addMark(sel.from, sel.from + text2.length, mark);
+          dispatch(tr.scrollIntoView());
+          return true;
+        };
+      case "image_upload":
+        return function(state, dispatch, view) {
+          if (!view) {
+            return false;
+          }
+          var input = getImageUploadInput();
+          if (!input) {
+            return false;
+          }
+          input.value = "";
+          input.onchange = function() {
+            var files = input.files ? Array.prototype.slice.call(input.files) : [];
+            if (files.length === 0) {
+              return;
+            }
+            var sequence = Promise.resolve();
+            files.forEach(function(file) {
+              sequence = sequence.then(function() {
+                return resolveImageAttrs(file, opts);
+              }).then(function(attrs2) {
+                if (!attrs2 || !attrs2.src) {
+                  return;
+                }
+                insertImageNode(view, schema2, attrs2);
+              }).catch(function() {
+              });
+            });
+            sequence.then(function() {
+              view.focus();
+            });
+          };
+          input.click();
+          return true;
+        };
       case "undo":
         return undo;
       case "redo":
@@ -19405,18 +19605,32 @@ var SEditor = (() => {
         return null;
     }
   }
-  function bindCommandButtons(view, schema2, root) {
+  function bindCommandButtons(view, schema2, root, opts) {
     if (!root || !root.querySelectorAll) {
-      return;
+      return { refresh: function() {
+      } };
     }
+    var toggleCommands = {
+      bold: true,
+      italic: true,
+      link: true,
+      blockquote: true,
+      bullet_list: true,
+      ordered_list: true
+    };
+    var bindings = [];
     var els = root.querySelectorAll("[data-seditor-command]");
     for (var i = 0; i < els.length; i += 1) {
       (function() {
         var el = els[i];
         var name = el.getAttribute("data-seditor-command");
-        var command = commandByName(schema2, name);
+        var command = commandByName(schema2, name, opts);
         if (!command) {
           return;
+        }
+        bindings.push({ el, name });
+        if (toggleCommands[String(name || "").trim()]) {
+          el.setAttribute("aria-pressed", "false");
         }
         el.addEventListener("click", function(e) {
           e.preventDefault();
@@ -19425,6 +19639,20 @@ var SEditor = (() => {
         });
       })();
     }
+    function refresh() {
+      for (var bi = 0; bi < bindings.length; bi += 1) {
+        var binding = bindings[bi];
+        var commandName = String(binding.name || "").trim();
+        if (!toggleCommands[commandName]) {
+          continue;
+        }
+        var active = isCommandActive(schema2, commandName, view.state);
+        binding.el.classList.toggle("selected", active);
+        binding.el.setAttribute("aria-pressed", active ? "true" : "false");
+      }
+    }
+    refresh();
+    return { refresh };
   }
   function init(options) {
     var opts = options || {};
@@ -19432,7 +19660,6 @@ var SEditor = (() => {
     if (!mount) {
       throw new Error("SEditor.init: mount element is required");
     }
-    ensureSeditorStyles();
     mount.classList.add("seditor-root");
     var schema2 = buildSchema();
     var serializer = buildMarkdownSerializer(schema2);
@@ -19457,18 +19684,25 @@ var SEditor = (() => {
       }
       return markdown;
     }
+    var commandControls = null;
     view = new EditorView(mount, {
       state,
       dispatchTransaction: function(tr) {
         var nextState = view.state.apply(tr);
         view.updateState(nextState);
         sync(nextState);
+        if (commandControls && typeof commandControls.refresh === "function") {
+          commandControls.refresh();
+        }
       }
     });
     if (opts.bindCommands !== false) {
-      bindCommandButtons(view, schema2, opts.commandsRoot ? resolveElement(opts.commandsRoot) : document);
+      commandControls = bindCommandButtons(view, schema2, opts.commandsRoot ? resolveElement(opts.commandsRoot) : document, opts);
     }
     sync(state);
+    if (commandControls && typeof commandControls.refresh === "function") {
+      commandControls.refresh();
+    }
     return {
       getMarkdown: function() {
         return serializer.serialize(view.state.doc);
@@ -19478,6 +19712,9 @@ var SEditor = (() => {
         var nextState = EditorState.create({ schema: schema2, doc: nextDoc, plugins });
         view.updateState(nextState);
         sync(nextState);
+        if (commandControls && typeof commandControls.refresh === "function") {
+          commandControls.refresh();
+        }
       },
       focus: function() {
         view.focus();

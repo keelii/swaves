@@ -1,4 +1,5 @@
 {% extends "dash/layout/layout.html" %}
+{% import "dash/macro/ui.html" as ui %}
 {% import "sui/include/ui.html" as sui %}
 
 {% block window_toolbar_main_left %}
@@ -11,11 +12,102 @@
 {% endblock %}
 
 {% block window_toolbar_main_center %}
-  {{ sui.ToolbarTitle("编辑文章") }}
+  <div class="slug">
+    <input type="text" value="{{ Post.Slug }}" class="input-slug" disabled>
+  </div>
+{% endblock %}
+
+{% block window_toolbar_main_right %}
+  {% if Post and (Post.Status == "published") and (Post.PublishedAt > 0) %}
+    {{ sui.LinkButton("查看", "outline", href=GetPostUrl(Post), attrs='target="_blank" rel="noopener"') }}
+  {% else %}
+    {{ sui.Button("预览", "outline", attrs='type="button" disabled') }}
+  {% endif %}
+{% endblock %}
+
+{% block status_main_left %}
+  <label for="post-category-select">分类</label>
+  <select class="ui-select" id="post-category-select" name="categories" form="form" aria-label="分类选择">
+    <option value="">顶级分类</option>
+    {% for category in CategoryOptions %}
+      <option value="{{ category.ID }}"{% if Category.ID|default(0) == category.ID %} selected{% endif %}>{{ category.DisplayName|default(category.Name) }}</option>
+    {% endfor %}
+  </select>
+{% endblock %}
+
+{% block status_main_center %}
+  <div aria-label="Markdown 常用按钮">
+    {{ sui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}
+    {{ sui.IconAction("italic", "斜体", attrs='data-title="斜体" data-seditor-command="italic"') }}
+    {{ sui.IconAction("quote", "引用", attrs='data-title="引用" data-seditor-command="blockquote"') }}
+    {{ sui.IconAction("link", "链接", attrs='data-title="插入链接" data-seditor-command="link"') }}
+    {{ sui.IconAction("image", "图片上传", attrs='data-title="图片上传" data-seditor-command="image_upload"') }}
+    {{ sui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
+    {{ sui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
+  </div>
+{% endblock %}
+
+{% block status_main_right %}
+  <span id="post-editor-word-count">字数 0</span>
 {% endblock %}
 
 {% block content %}
-{% with Action = UrlFor('admin.posts.update', id=Post.ID), IsEdit = true %}
-  {% include "dash/include/forms/posts_form.html" %}
-{% endwith %}
+<div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
+  <div class="title">
+    <input type="text" name="title" value="{{ Post.Title }}" class="input-title" id="post-title" form="form" required>
+  </div>
+  <div class="content wysiwyg"></div>
+</div>
+
+<textarea id="post-content" name="content" form="form" hidden>{{ Post.Content }}</textarea>
+<input type="hidden" name="status" value="{{ Post.Status }}" form="form">
+<input type="hidden" name="comment_enabled" value="{% if Post.CommentEnabled == 1 %}1{% else %}0{% endif %}" form="form">
+<input type="hidden" name="kind" value="{{ Printf("%d", Post.Kind) }}" form="form">
+<input type="hidden" name="tags" value="{{ SelectedTagNames|default('') }}" form="form">
+<form id="form" method="post" action="{{ UrlFor('admin.posts.update', id=Post.ID) }}">
+  {{ _csrf_token() }}
+</form>
+
+<script src="/static/seditor/dist/seditor.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var titleInput = document.getElementById("post-title");
+    var textarea = document.getElementById("post-content");
+    var wordCount = document.getElementById("post-editor-word-count");
+
+    function updateWordCount() {
+      if (!wordCount) {
+        return;
+      }
+      var text = "";
+      if (titleInput) {
+        text += String(titleInput.value || "") + "\n";
+      }
+      if (textarea) {
+        text += String(textarea.value || "");
+      }
+      text = text.replace(/\s+/g, "").trim();
+      wordCount.textContent = "字数 " + text.length;
+    }
+
+    if (!window.SEditor || typeof window.SEditor.init !== "function") {
+      updateWordCount();
+      return;
+    }
+
+    window.__seditor = window.SEditor.init({
+      mount: ".content",
+      textarea: "#post-content"
+    });
+
+    if (titleInput) {
+      titleInput.addEventListener("input", updateWordCount);
+    }
+    if (textarea) {
+      textarea.addEventListener("input", updateWordCount);
+    }
+
+    updateWordCount();
+  });
+</script>
 {% endblock %}

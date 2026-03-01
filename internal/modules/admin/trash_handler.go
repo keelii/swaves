@@ -34,7 +34,7 @@ func (h *Handler) GetTrashHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return RenderAdminView(c, "admin/trash_index.html", fiber.Map{
+	return RenderAdminView(c, "dash/trash_index.html", fiber.Map{
 		"Title":     "Trash",
 		"Data":      data,
 		"ModelType": modelType,
