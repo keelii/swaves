@@ -40,6 +40,7 @@ func RegisterRouter(
 	adminGroup.Post("/login", handler.PostLoginHandler).Name("admin.login.submit")
 	adminGroup.Get("/logout", handler.GetLogoutHandler).Name("admin.logout")
 
+	adminGroup.Get("/records", handler.GetRecordListHandler).Name("admin.records.list")
 	adminGroup.Get("/posts", handler.GetPostListHandler).Name("admin.posts.list")
 	adminGroup.Get("/posts/new", handler.GetPostNewHandler).Name("admin.posts.new")
 	adminGroup.Post("/posts/new", handler.PostCreatePostHandler).Name("admin.posts.create")
@@ -92,6 +93,7 @@ func RegisterRouter(
 	adminGroup.Get("/settings", handler.GetSettingsHandler).Name("admin.settings.list")
 	adminGroup.Get("/settings/all", handler.GetSettingsAllHandler).Name("admin.settings.all")
 	adminGroup.Post("/settings/all", handler.PostUpdateSettingsAllHandler).Name("admin.settings.all.update")
+	adminGroup.Post("/api/settings/admin-nav-width", handler.PostUpdateAdminNavWidthAPIHandler).Name("admin.settings.api.nav_width.update")
 	adminGroup.Get("/settings/new", handler.GetSettingNewHandler).Name("admin.settings.new")
 	adminGroup.Post("/settings/new", handler.PostCreateSettingHandler).Name("admin.settings.create")
 	adminGroup.Get("/settings/:id/edit", handler.GetSettingEditHandler).Name("admin.settings.edit")

@@ -27,6 +27,12 @@ func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
 	return tagIDs
 }
 
+func (h *Handler) GetRecordListHandler(c fiber.Ctx) error {
+	return RenderAdminView(c, "dash/records_index.html", fiber.Map{
+		"Title": "Records",
+	}, "")
+}
+
 // Posts
 func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)

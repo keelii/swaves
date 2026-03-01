@@ -28,6 +28,11 @@ type SettingSubKindGroupView struct {
 	Settings []SettingView
 }
 
+const (
+	adminNavWidthMin = 150
+	adminNavWidthMax = 480
+)
+
 func normalizeSettingSubKind(raw string) string {
 	return strings.TrimSpace(raw)
 }
@@ -259,6 +264,53 @@ func (h *Handler) validateAssetSettingPayload(overrides map[string]string) error
 	}
 
 	return nil
+}
+
+func (h *Handler) PostUpdateAdminNavWidthAPIHandler(c fiber.Ctx) error {
+	rawValue := strings.TrimSpace(c.FormValue("value"))
+	if rawValue == "" {
+		rawValue = strings.TrimSpace(c.FormValue("width"))
+	}
+	if rawValue == "" {
+		logger.Warn("[settings] update admin_nav_width failed: empty value")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "导航栏宽度不能为空",
+		})
+	}
+
+	width, err := strconv.Atoi(rawValue)
+	if err != nil {
+		logger.Warn("[settings] update admin_nav_width failed: invalid value=%q err=%v", rawValue, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "导航栏宽度必须是整数",
+		})
+	}
+
+	if width < adminNavWidthMin || width > adminNavWidthMax {
+		logger.Warn("[settings] update admin_nav_width failed: out of range value=%d", width)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "导航栏宽度必须在 150 到 480 之间",
+		})
+	}
+
+	if err := UpdateSettingValueService(h.Model, "admin_nav_width", strconv.Itoa(width)); err != nil {
+		logger.Error("[settings] update admin_nav_width failed: value=%d err=%v", width, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":    false,
+			"error": "保存导航栏宽度失败，请稍后重试",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"ok": true,
+		"data": fiber.Map{
+			"code":  "admin_nav_width",
+			"value": width,
+		},
+	})
 }
 
 func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {

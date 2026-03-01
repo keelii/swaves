@@ -23,6 +23,14 @@
   </div>
   <div class="nav-section">
     <div class="nav-section-title">高级</div>
+    <a class="nav-item{% if UrlIs('admin.records.list') %} active{% endif %}" href="{{ UrlFor('admin.records.list') }}"{% if UrlIs('admin.records.list') %} aria-current="page"{% endif %}>
+      <span class="nav-item-icon">{{ LucideIcon("database", 16) }}</span>
+      <span class="nav-item-text">数据列表</span>
+    </a>
+    <a class="nav-item{% if UrlIs('admin.trash.list') %} active{% endif %}" href="{{ UrlFor('admin.trash.list') }}"{% if UrlIs('admin.trash.list') %} aria-current="page"{% endif %}>
+      <span class="nav-item-icon">{{ LucideIcon("trash", 16) }}</span>
+      <span class="nav-item-text">回收站</span>
+    </a>
     <a class="nav-item{% if UrlIs('admin.monitor') %} active{% endif %}" href="{{ UrlFor('admin.monitor') }}"{% if UrlIs('admin.monitor') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("activity", 16) }}</span>
       <span class="nav-item-text">性能监控</span>

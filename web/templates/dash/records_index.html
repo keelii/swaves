@@ -1,0 +1,110 @@
+{% extends "dash/layout/layout.html" %}
+{% import "dash/include/ui.html" as sui %}
+
+{% set query = Query|default({}) %}
+{% set activeTab = query["tab"]|default("content") %}
+{% if activeTab != "content" and activeTab != "site" and activeTab != "ops" and activeTab != "transfer" and activeTab != "dev" %}
+  {% set activeTab = "content" %}
+{% endif %}
+
+{% block page_actions %}{% endblock %}
+
+{% block content %}
+<style>
+  .records-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-spacing);
+  }
+
+  .records-panel {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-panel-bg);
+    padding: var(--app-spacing);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.75);
+  }
+
+  .records-panel-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .records-panel-desc {
+    margin: 0;
+    color: var(--app-text-soft);
+    font-size: 0.86rem;
+  }
+
+  .records-link-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--app-spacing) * 0.5);
+  }
+</style>
+
+<div class="records-page">
+  <div class="app-operation">
+    {{ sui.TabsStart("记录页导航") }}
+      {{ sui.Tab("内容数据", href=UrlFor('admin.records.list', tab='content'), active=(activeTab == "content")) }}
+      {{ sui.Tab("站点数据", href=UrlFor('admin.records.list', tab='site'), active=(activeTab == "site")) }}
+      {{ sui.Tab("任务维护", href=UrlFor('admin.records.list', tab='ops'), active=(activeTab == "ops")) }}
+      {{ sui.Tab("数据流转", href=UrlFor('admin.records.list', tab='transfer'), active=(activeTab == "transfer")) }}
+      {{ sui.Tab("开发调试", href=UrlFor('admin.records.list', tab='dev'), active=(activeTab == "dev")) }}
+    {{ sui.TabsEnd() }}
+  </div>
+
+  {% if activeTab == "content" %}
+    <section class="records-panel">
+      <h3 class="records-panel-title">内容数据表</h3>
+      <p class="records-panel-desc">收纳暂未进入左侧菜单的新 UI 页面。</p>
+      <div class="records-link-grid">
+        {{ sui.LinkButton("标签表", href=UrlFor('admin.tags.list')) }}
+        {{ sui.LinkButton("分类表", href=UrlFor('admin.categories.list')) }}
+        {{ sui.LinkButton("分类树表", href=UrlFor('admin.categories.tree')) }}
+        {{ sui.LinkButton("加密文章表", href=UrlFor('admin.encrypted_posts.list')) }}
+      </div>
+    </section>
+  {% elif activeTab == "site" %}
+    <section class="records-panel">
+      <h3 class="records-panel-title">站点数据表</h3>
+      <p class="records-panel-desc">与站点行为相关的数据管理入口。</p>
+      <div class="records-link-grid">
+        {{ sui.LinkButton("重定向表", href=UrlFor('admin.redirects.list')) }}
+        {{ sui.LinkButton("设置表", href=UrlFor('admin.settings.list')) }}
+        {{ sui.LinkButton("设置总览", href=UrlFor('admin.settings.all')) }}
+        {{ sui.LinkButton("请求日志表", href=UrlFor('admin.http_error_logs.list')) }}
+      </div>
+    </section>
+  {% elif activeTab == "ops" %}
+    <section class="records-panel">
+      <h3 class="records-panel-title">任务与维护</h3>
+      <p class="records-panel-desc">任务、回收等维护型数据入口。</p>
+      <div class="records-link-grid">
+        {{ sui.LinkButton("任务表", href=UrlFor('admin.tasks.list')) }}
+        {{ sui.LinkButton("回收站表", href=UrlFor('admin.trash.list')) }}
+      </div>
+    </section>
+  {% elif activeTab == "transfer" %}
+    <section class="records-panel">
+      <h3 class="records-panel-title">数据流转</h3>
+      <p class="records-panel-desc">导入和导出链路入口。</p>
+      <div class="records-link-grid">
+        {{ sui.LinkButton("导入", href=UrlFor('admin.import.show')) }}
+        {{ sui.LinkButton("导出", href=UrlFor('admin.export.show')) }}
+      </div>
+    </section>
+  {% else %}
+    <section class="records-panel">
+      <h3 class="records-panel-title">开发调试</h3>
+      <p class="records-panel-desc">仅用于开发环境自检与调试。</p>
+      <div class="records-link-grid">
+        {{ sui.LinkButton("UI 组件页", href=UrlFor('admin.dev.ui_components')) }}
+      </div>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

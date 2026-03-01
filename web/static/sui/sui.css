@@ -1613,6 +1613,18 @@ a.ui-icon-btn[disabled] {
   box-sizing: border-box;
 }
 
+.app-operation {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  padding: var(--app-spacing);
+}
+.app-operation .ui-tabs [data-role="toggle-multiselect"] {
+  margin-left: calc(calc(var(--app-spacing) * -1) + 4px);
+}
+
 /* ==================== 4) 页面级样式 ==================== */
 .content-editor {
   scrollbar-width: thin;
@@ -1655,14 +1667,14 @@ a.ui-icon-btn[disabled] {
   font-weight: 600;
   color: var(--app-text-soft);
   background: var(--app-table-head-bg);
-  padding: 10px 12px;
+  padding: 10px var(--app-spacing);
   border-top: var(--app-border-width) solid var(--app-border);
   border-bottom: var(--app-border-width) solid var(--app-border);
   white-space: nowrap;
 }
 
 .data-table tbody td {
-  padding: 10px 12px;
+  padding: 10px var(--app-spacing);
   border-bottom: var(--app-border-width) solid var(--app-border);
   vertical-align: middle;
   color: var(--app-text);
@@ -1800,6 +1812,16 @@ a.ui-icon-btn[disabled] {
   margin: 0 auto;
   padding: var(--app-spacing);
   box-sizing: border-box;
+}
+.ProseMirror pre code {
+  padding: 0;
+}
+.ProseMirror ul,
+.ProseMirror ol {
+  padding: 0;
+}
+.ProseMirror li p {
+  margin: 0;
 }
 .ProseMirror>p:last-child {
   margin-top: 0;
