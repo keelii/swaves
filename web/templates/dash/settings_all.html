@@ -1,108 +1,148 @@
 {% extends "dash/layout/layout.html" %}
-{% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
+
 {% block page_actions %}
-<button type="submit" form="form" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
+  {{ sui.Button("保存", "primary", attrs='type="submit" form="settings-all-form"') }}
 {% endblock %}
+
 {% block content %}
 <style>
-  [role="alert"] {
-    margin-bottom: var(--space-4)
-  }
-  [role="tablist"] a {
-    text-decoration: none;
-  }
-  ul.setting-post-shortcuts {
-    margin-bottom: 0;
-    padding-inline-start: var(--space-4);
-  }
-  .setting-post-shortcuts li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
   .settings-kind-tabs {
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--app-spacing);
   }
 
-  .settings-kind {
-    margin-bottom: 0;
+  .settings-shortcuts {
+  }
+
+  .settings-shortcuts > summary {
+  }
+
+  .settings-shortcut-list {
+    margin: calc(var(--app-spacing) * 0.75) 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.5);
+  }
+
+  .settings-shortcut-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-spacing);
+    flex-wrap: wrap;
+  }
+
+  .settings-shortcut-item code {
+    color: var(--app-text-soft);
   }
 
   .settings-kind-fields {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--app-spacing);
   }
 
-  fieldset.settings-options {
-    width: 630px;
-  }
-  .settings-item-label details {
-    width: 630px;
-  }
   .settings-sub-kind-group {
-    width: 630px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-panel-bg);
+    padding: var(--app-spacing);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.75);
+  }
+
+  .settings-sub-kind-title {
     margin: 0;
-    padding: var(--space-4);
-  }
-
-  .settings-sub-kind-group legend {
-    padding: 0 var(--space-2);
-  }
-
-  .settings-item-label {
-    /*display: block;*/
-    /*width: 40%;*/
-  }
-  .settings-item-label details {
-    margin-bottom: var(--space-4);
+    font-size: 0.9rem;
+    color: var(--app-text-soft);
   }
 
   .settings-item {
-    display: flex;
-    gap: var(--space-4);
-  }
-  .settings-item .settings-item-label {
-    /*width: 300px;*/
-  }
-  .settings-item-label input:not([type="radio"]),
-  .settings-item-label textarea,
-  .settings-item-label select {
-    width: 300px;
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(240px, 1fr);
+    gap: calc(var(--app-spacing) * 0.75);
+    align-items: start;
   }
 
-  .settings-item-desc {
-    color: var(--muted-foreground);
-    align-self: end;
-    margin-bottom: var(--space-1);
+  .settings-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.5);
+    min-width: 0;
   }
 
   .settings-item-header {
-    margin-bottom: var(--space-1);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--app-text);
+  }
+
+  .settings-item-control {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.5);
+  }
+
+  .settings-item-control .ui-input,
+  .settings-item-control .ui-textarea,
+  .settings-item-control .ui-select,
+  .settings-item-control .ui-input-prefix-group,
+  .settings-item-control .settings-range-wrap,
+  .settings-item-control .settings-options,
+  .settings-item-control .settings-secret-wrap {
+    width: min(680px, 100%);
+  }
+
+  .settings-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--app-spacing) * 0.5) calc(var(--app-spacing) * 0.75);
+  }
+
+  .settings-item-control .ui-input-prefix {
+    {#min-width: 52px;#}
+    text-align: center;
+  }
+
+  .settings-range-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--app-spacing) * 0.75);
+  }
+
+  .settings-range-wrap .range-value {
+    color: var(--app-text-soft);
+    min-width: 44px;
   }
 
   .settings-secret-wrap {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
-    width: 100%;
+    gap: calc(var(--app-spacing) * 0.5);
   }
 
-  .settings-secret-wrap input {
+  .settings-secret-wrap .ui-input {
     flex: 1 1 auto;
     min-width: 0;
   }
 
+  .settings-item-desc {
+    color: var(--app-text-soft);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    padding-top: 2px;
+  }
+
   @media (max-width: 960px) {
     .settings-item {
-      flex-direction: column;
-      gap: var(--space-2);
+      grid-template-columns: 1fr;
+      gap: calc(var(--app-spacing) * 0.5);
     }
 
     .settings-item-desc {
-      flex: 1 1 auto;
-      max-width: none;
-      width: 100%;
       padding-top: 0;
     }
   }
@@ -114,186 +154,200 @@
 {% set activeKindGroups = ActiveKindGroups|default([]) %}
 {% set contentRoutingKind = ContentRoutingKind %}
 
-{% if (settingKinds|length) > 0 %}
-<div class="settings-kind-tabs" role="tablist" aria-label="Settings Categories">
-  {% for kind in settingKinds %}
-  {% set label = settingKindLabels[kind] %}
-  <a role="tab" aria-selected="{% if activeKind == kind %}true{% else %}false{% endif %}" href="{{ UrlFor('admin.settings.all', kind=kind) }}">{% if label %}{{ label }}{% else %}{{ kind }}{% endif %}</a>
-  {% endfor %}
-</div>
+{% if Error %}
+  {{ sui.Alert(Error, kind="danger", title="保存失败", inline=true) }}
+{% endif %}
 
-<form id="form" method="post" action="{{ UrlFor('admin.settings.all.update', kind=activeKind) }}" class="settings-all-form">
-  {{ _csrf_token() }}
-  <section class="settings-kind">
+{% if (settingKinds|length) > 0 %}
+  <div class="settings-kind-tabs app-operation">
+    {{ sui.TabsStart("设置分类") }}
+      {% for kind in settingKinds %}
+        {% set label = settingKindLabels[kind]|default(kind) %}
+        {{ sui.Tab(label, href=UrlFor('admin.settings.all', kind=kind), active=(activeKind == kind)) }}
+      {% endfor %}
+    {{ sui.TabsEnd() }}
+  </div>
+
+  <div class="app-px">
+    <form id="settings-all-form" method="post" action="{{ UrlFor('admin.settings.all.update', kind=activeKind) }}" class="settings-all-form">
+      {{ _csrf_token() }}
+
       {% if activeKind == contentRoutingKind %}
-        <div class="settings-item-label">
-          <details>
-            <summary>快速设置?</summary>
-            <ul id="setting-shortcuts" class="setting-post-shortcuts unstyled">
-              <li>
-                <span><span class="settings-prefix-text"></span>/2006/01/02/hello-world</span>
-                <button class="outline" data-options='{"setting_post_url_prefix": "{datetime}", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
+        <div class="ui-tree app-pb">
+
+          <details class="ui-tree-item settings-shortcuts">
+            <summary class="ui-tree-summary">
+              <span class="ui-tree-caret" aria-hidden="true">{{ LucideIcon("chevron-right", 16) }}</span>
+              <span class="ui-tree-label">文章链接快速设置</span>
+            </summary>
+            <div class="ui-tree-children">
+
+            <ul id="setting-shortcuts" class="settings-shortcut-list">
+              <li class="settings-shortcut-item">
+                <code><span class="settings-prefix-text"></span>/2006/01/02/hello-world</code>
+                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "{datetime}", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
-              <li>
-                <span><span class="settings-prefix-text"></span>/archives/hello-world</span>
-                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
+              <li class="settings-shortcut-item">
+                <code><span class="settings-prefix-text"></span>/archives/hello-world</code>
+                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
-              <li>
-                <span><span class="settings-prefix-text"></span>/archives/1</span>
-                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ""}'>快速设置</button>
+              <li class="settings-shortcut-item">
+                <code><span class="settings-prefix-text"></span>/archives/1</code>
+                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ""}'>快速设置</button>
               </li>
-              <li>
-                <span><span class="settings-prefix-text"></span>/archives/1.html</span>
-                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ".html"}'>快速设置</button>
+              <li class="settings-shortcut-item">
+                <code><span class="settings-prefix-text"></span>/archives/1.html</code>
+                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ".html"}'>快速设置</button>
               </li>
-              <li>
-                <span><span class="settings-prefix-text"></span>/archives/hello-world.html</span>
-                <button class="outline" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ".html"}'>快速设置</button>
+              <li class="settings-shortcut-item">
+                <code><span class="settings-prefix-text"></span>/archives/hello-world.html</code>
+                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ".html"}'>快速设置</button>
               </li>
             </ul>
-            <script>
-              $(function() {
-                $("#setting-shortcuts button").on("click", function(e) {
-                  var options = $(this).data('options');
-                  console.log(options)
-                  for (var o in options) {
 
-                    var input = $('[name="' + o + '"]');
-                    if (input.length) {
-                      input.val(options[o]);
-                    } else {
-                      console.warn('未找到设置项：' + o);
-                    }
-                  }
-                  console.log(options)
-                  return false
-                })
-              })
-            </script>
+            </div>
           </details>
+
         </div>
       {% endif %}
-    <div class="settings-kind-fields">
-      {% for subGroup in activeKindGroups %}
-        {% if subGroup.Code %}
-        <fieldset class="settings-sub-kind-group" data-sub-kind="{{ subGroup.Code }}">
-          <legend>{{ subGroup.Label }}</legend>
-        {% endif %}
-        {% for settingView in subGroup.Settings %}
-            {% set setting = settingView.Setting %}
-            {% set code = setting.Code %}
-            {% set attrs = settingView.AttrsParsed %}
-            {% set settingType = setting.Type %}
-            {% set settingName = setting.Name %}
-            {% set settingValue = setting.Value %}
-            {% set settingPrefixValue = setting.PrefixValue %}
-            {% set settingDescription = setting.Description %}
-            {% set settingDefaultOptionValue = setting.DefaultOptionValue %}
-            {% set settingOptionsParsed = settingView.OptionsParsed %}
-            {% set settingCheckboxValues = settingView.CheckboxValues %}
-            <div class="settings-item">
-              {% if settingType == "radio" %}
-              <div class="settings-item-label" data-setting-code="{{ code }}" data-setting-name="{{ settingName }}">
-              {% else %}
-              <label class="settings-item-label" data-setting-code="{{ code }}" data-setting-name="{{ settingName }}">
-              {% endif %}
 
-                {% if settingType != "radio" %}
-                  <div class="settings-item-header">
-                    <span class="settings-item-title">{{ settingName }}</span>
-                  </div>
-                {% endif %}
+      <div class="settings-kind-fields">
+        {% for subGroup in activeKindGroups %}
+          <section class="settings-sub-kind-group"{% if subGroup.Code %} data-sub-kind="{{ subGroup.Code }}"{% endif %}>
+            {% if subGroup.Code %}
+              <h3 class="settings-sub-kind-title">{{ subGroup.Label }}</h3>
+            {% endif %}
 
-                {% if settingType == "text" %}
-                  <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                {% else %}{% if settingType == "prefix-field" %}
-                  {% set prefixSourceCode = "" %}
-                  {% if (code == "page_url_prefix") or (code == "rss_path") or (code == "post_url_prefix") or (code == "category_url_prefix") or (code == "tag_url_prefix") %}
-                    {% set prefixSourceCode = "base_path" %}
+            {% for settingView in subGroup.Settings %}
+              {% set setting = settingView.Setting %}
+              {% set code = setting.Code %}
+              {% set attrs = settingView.AttrsParsed %}
+              {% set settingType = setting.Type %}
+              {% set settingName = setting.Name %}
+              {% set settingValue = setting.Value %}
+              {% set settingPrefixValue = setting.PrefixValue %}
+              {% set settingDescription = setting.Description %}
+              {% set settingDefaultOptionValue = setting.DefaultOptionValue %}
+              {% set settingOptionsParsed = settingView.OptionsParsed %}
+              {% set settingCheckboxValues = settingView.CheckboxValues %}
+
+              <div class="settings-item" data-setting-code="{{ code }}" data-setting-name="{{ settingName }}">
+                <div class="settings-item-main">
+                  {% if settingType == "radio" %}
+                    <div class="settings-item-header">{{ settingName }}</div>
+                  {% else %}
+                    <label class="settings-item-header" for="setting_{{ code }}">{{ settingName }}</label>
                   {% endif %}
-                  <fieldset class="group settings-prefix-field" data-prefix-source-code="{{ prefixSourceCode }}" data-prefix-default="{{ settingPrefixValue }}">
-                    <legend data-prefix-legend>{{ settingPrefixValue }}</legend>
-                    <input autocomplete="off" type="text" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                  </fieldset>
-                {% else %}{% if settingType == "number" %}
-                  <input type="number" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                {% else %}{% if settingType == "date" %}
-                  <input type="date" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                {% else %}{% if settingType == "time" %}
-                  <input type="time" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                {% else %}{% if settingType == "datetime" %}
-                  <input type="datetime-local" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                {% else %}{% if settingType == "url" %}
-                  <input type="url" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                {% else %}{% if settingType == "range" %}
-                  <span class="settings-range-wrap">
-                    <input type="range" id="setting_{{ code }}_range" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
-                    <output class="range-value" for="setting_{{ code }}_range">{{ settingValue }}{% if code == "font_size" %} px{% endif %}</output>
-                  </span>
-                {% else %}{% if settingType == "password" %}
-                  <input type="password" name="setting_{{ code }}" placeholder="留空则保持当前值"{{ RenderAttrs(attrs) }}>
-                {% else %}{% if settingType == "secret" %}
-                  <span class="settings-secret-wrap">
-                    <input type="password" id="setting_{{ code }}_secret" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ RenderAttrs(attrs) }}>
-                    <button class="button outline settings-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
-                  </span>
-                {% else %}{% if settingType == "textarea" %}
-                  <textarea name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
-                {% else %}{% if settingType == "radio" %}
-                  {% set currentValue = (settingValue or settingDefaultOptionValue) %}
-                  <fieldset class="settings-options hstack">
-                    <legend>{{ settingName }}</legend>
-                    {% for radioOption in settingOptionsParsed %}
-                    <label class="settings-option hstack">
-                      <input type="radio" name="setting_{{ code }}" value="{{ radioOption.value }}" {% if currentValue == radioOption.value %}checked{% endif %}{{ RenderAttrs(attrs) }}>
-                      <span>{{ radioOption.label }}</span>
-                    </label>
-                    {% endfor %}
-                  </fieldset>
-                {% else %}{% if settingType == "checkbox" %}
-                  <div class="settings-options">
-                    {% for checkboxOption in settingOptionsParsed %}
-                      <label class="settings-option">
-                        <input type="checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}" {% if settingCheckboxValues[checkboxOption.value] %}checked{% endif %}{{ RenderAttrs(attrs) }}>
-                        <span>{{ checkboxOption.label }}</span>
-                      </label>
-                    {% endfor %}
+
+                  <div class="settings-item-control">
+                    {% if settingType == "text" %}
+                      <input id="setting_{{ code }}" autocomplete="off" type="text" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                    {% elif settingType == "prefix-field" %}
+                      {% set prefixSourceCode = "" %}
+                      {% if (code == "page_url_prefix") or (code == "rss_path") or (code == "post_url_prefix") or (code == "category_url_prefix") or (code == "tag_url_prefix") %}
+                        {% set prefixSourceCode = "base_path" %}
+                      {% endif %}
+                      {{ sui.Input(
+                        id="setting_" ~ code,
+                        name="setting_" ~ code,
+                        value=settingValue,
+                        attrs=(RenderAttrs(attrs) ~ ' data-prefix-source-code="' ~ prefixSourceCode ~ '" data-prefix-default="' ~ settingPrefixValue ~ '"'),
+                        prefix=settingPrefixValue
+                      ) }}
+                    {% elif settingType == "number" %}
+                      <input id="setting_{{ code }}" type="number" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                    {% elif settingType == "date" %}
+                      <input id="setting_{{ code }}" type="date" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                    {% elif settingType == "time" %}
+                      <input id="setting_{{ code }}" type="time" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                    {% elif settingType == "datetime" %}
+                      <input id="setting_{{ code }}" type="datetime-local" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                    {% elif settingType == "url" %}
+                      <input id="setting_{{ code }}" type="url" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                    {% elif settingType == "range" %}
+                      <span class="settings-range-wrap">
+                        <input id="setting_{{ code }}" type="range" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
+                        <output class="range-value" for="setting_{{ code }}">{{ settingValue }}{% if code == "font_size" %} px{% endif %}</output>
+                      </span>
+                    {% elif settingType == "password" %}
+                      <input id="setting_{{ code }}" type="password" class="ui-input" name="setting_{{ code }}" placeholder="留空则保持当前值"{{ RenderAttrs(attrs) }}>
+                    {% elif settingType == "secret" %}
+                      <span class="settings-secret-wrap">
+                        <input id="setting_{{ code }}_secret" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ RenderAttrs(attrs) }}>
+                        <button class="ui-btn outline settings-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
+                      </span>
+                    {% elif settingType == "textarea" %}
+                      <textarea id="setting_{{ code }}" class="ui-textarea" name="setting_{{ code }}" rows="4"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
+                    {% elif settingType == "radio" %}
+                      {% set currentValue = (settingValue or settingDefaultOptionValue) %}
+                      <fieldset class="settings-options">
+                        {% for radioOption in settingOptionsParsed %}
+                          <label class="ui-radio-field">
+                            <input type="radio" class="ui-radio" name="setting_{{ code }}" value="{{ radioOption.value }}"{% if currentValue == radioOption.value %} checked{% endif %}{{ RenderAttrs(attrs) }}>
+                            <span class="ui-radio-label">{{ radioOption.label }}</span>
+                          </label>
+                        {% endfor %}
+                      </fieldset>
+                    {% elif settingType == "checkbox" %}
+                      <div class="settings-options">
+                        {% for checkboxOption in settingOptionsParsed %}
+                          <label class="ui-checkbox-field">
+                            <input type="checkbox" class="ui-checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}"{% if settingCheckboxValues[checkboxOption.value] %} checked{% endif %}{{ RenderAttrs(attrs) }}>
+                            <span class="ui-checkbox-label">{{ checkboxOption.label }}</span>
+                          </label>
+                        {% endfor %}
+                      </div>
+                    {% elif settingType == "select" %}
+                      {% set currentValue = (settingValue or settingDefaultOptionValue) %}
+                      <select id="setting_{{ code }}" class="ui-select" name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>
+                        {% for selectOption in settingOptionsParsed %}
+                          <option value="{{ selectOption.value }}"{% if currentValue == selectOption.value %} selected{% endif %}>{{ selectOption.label }}</option>
+                        {% endfor %}
+                      </select>
+                    {% endif %}
                   </div>
-                {% else %}{% if settingType == "select" %}
-                  {% set currentValue = (settingValue or settingDefaultOptionValue) %}
-                  <select name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>
-                    {% for selectOption in settingOptionsParsed %}
-                      <option value="{{ selectOption.value }}" {% if currentValue == selectOption.value %}selected{% endif %}>{{ selectOption.label }}</option>
-                    {% endfor %}
-                  </select>
-                {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
-              {% if settingType == "radio" %}
+                </div>
+                <div class="settings-item-desc">{% if settingDescription %}{{ settingDescription }}{% else %}-{% endif %}</div>
               </div>
-              {% else %}
-              </label>
-              {% endif %}
-              <div class="settings-item-desc">{% if settingDescription %}{{ settingDescription }}{% else %}-{% endif %}</div>
-            </div>
+            {% endfor %}
+          </section>
         {% endfor %}
-        {% if subGroup.Code %}
-        </fieldset>
-        {% endif %}
-      {% endfor %}
-    </div>
-  </section>
-</form>
+      </div>
+    </form>
+  </div>
 {% else %}
-<div role="alert" data-variant="warning">暂无可编辑设置</div>
+  {{ sui.Alert("暂无可编辑设置", kind="warning", inline=true) }}
 {% endif %}
 
 <script>
 $(function() {
+  $('#setting-shortcuts button').on('click', function() {
+    var options = $(this).data('options');
+    for (var code in options) {
+      if (!Object.prototype.hasOwnProperty.call(options, code)) {
+        continue;
+      }
+      var input = $('[name="' + code + '"]');
+      if (input.length) {
+        input.val(options[code]);
+      }
+    }
+    return false;
+  });
+
   $('input[data-range-value]').each(function() {
-    var $in = $(this), $out = $in.next('.range-value');
-    if (!$out.length) return;
-    function update() { $out.text($in.val() + ($in.data('unit') || '')); }
-    $in.on('input change', update);
-    update();
+    var $input = $(this);
+    var $output = $input.siblings('.range-value');
+    if (!$output.length) {
+      return;
+    }
+
+    function updateRangeOutput() {
+      $output.text($input.val() + ($input.data('unit') || ''));
+    }
+
+    $input.on('input change', updateRangeOutput);
+    updateRangeOutput();
   });
 
   function normalizePrefixLiteral(raw) {
@@ -305,23 +359,34 @@ $(function() {
     return raw;
   }
 
+  function renderPrefixLiteral(raw) {
+    var normalized = normalizePrefixLiteral(raw);
+    if (normalized === '/') {
+      return '/';
+    }
+    return '/' + normalized + '/';
+  }
+
   function syncPrefixLegends() {
     var $baseInput = $('[data-setting-code="base_path"]').find('input,textarea,select').first();
     var basePrefix = normalizePrefixLiteral($baseInput.val());
 
     if (basePrefix !== '/') {
-      $('.settings-prefix-text').text("/" + basePrefix);
+      $('.settings-prefix-text').text('/' + basePrefix);
+    } else {
+      $('.settings-prefix-text').text('');
     }
-    $('.settings-prefix-field').each(function() {
-      var $group = $(this);
-      var sourceCode = String($group.attr('data-prefix-source-code') || '').trim();
-      var legendText = String($group.attr('data-prefix-default') || '').trim() || '/';
+
+    $('[data-prefix-default]').each(function() {
+      var $input = $(this);
+      var sourceCode = String($input.attr('data-prefix-source-code') || '').trim();
+      var prefixText = String($input.attr('data-prefix-default') || '').trim() || '/';
 
       if (sourceCode === 'base_path') {
-        legendText = basePrefix;
+        prefixText = basePrefix;
       }
 
-      $group.find('[data-prefix-legend]').text(legendText);
+      $input.closest('.ui-input-prefix-group').find('.ui-input-prefix').first().text(renderPrefixLiteral(prefixText));
     });
   }
 
@@ -329,8 +394,8 @@ $(function() {
   syncPrefixLegends();
 
   $(document).on('click', '.settings-secret-toggle', function() {
-    var $btn = $(this);
-    var targetID = ($btn.attr('data-target-id') || '').trim();
+    var $button = $(this);
+    var targetID = ($button.attr('data-target-id') || '').trim();
     if (!targetID) {
       return;
     }
@@ -343,10 +408,10 @@ $(function() {
     var isPassword = ($input.attr('type') || '').toLowerCase() === 'password';
     if (isPassword) {
       $input.attr('type', 'text');
-      $btn.text($btn.attr('data-hide-text') || '隐藏');
+      $button.text($button.attr('data-hide-text') || '隐藏');
     } else {
       $input.attr('type', 'password');
-      $btn.text($btn.attr('data-show-text') || '显示');
+      $button.text($button.attr('data-show-text') || '显示');
     }
   });
 });

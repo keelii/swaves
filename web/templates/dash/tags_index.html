@@ -1,51 +1,75 @@
 {% extends "dash/layout/layout.html" %}
-{% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
+
 {% block page_actions %}
-<a class="button" href="{{ UrlFor('admin.tags.new') }}">{{ ui.action_btn_content("plus", "新建标签") }}</a>
+  {{ sui.LinkButton("新建标签", "primary", href=UrlFor('admin.tags.new')) }}
 {% endblock %}
-{% block content %}
-<ot-tabs>
-  <div role="tablist" class="mb-4">
-    <a href="{{ UrlFor('admin.categories.list') }}" role="tab" aria-selected="false">分类</a>
-    <a href="{{ UrlFor('admin.tags.list') }}" role="tab" aria-selected="true">标签</a>
+
+{% block status_main_right %}
+  {% set pagerHrefPrefix = UrlFor('admin.tags.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  <div class="ui-tags" aria-label="分页">
+    {% if Pager.HasPrev() %}
+      <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ Pager.PrevPage() }}">上一页</a>
+    {% else %}
+      <span class="ui-page-link" aria-disabled="true">上一页</span>
+    {% endif %}
+    {% for item in Pager.GetPageItems() %}
+      {% if item.Type == "ellipsis" %}
+        <span class="ui-page-ellipsis">…</span>
+      {% elif item.Current %}
+        <span class="ui-page-link" aria-current="page">{{ item.Page }}</span>
+      {% else %}
+        <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ item.Page }}">{{ item.Page }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if Pager.HasNext() %}
+      <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ Pager.NextPage() }}">下一页</a>
+    {% else %}
+      <span class="ui-page-link" aria-disabled="true">下一页</span>
+    {% endif %}
   </div>
-</ot-tabs>
+{% endblock %}
 
-<table>
-  <thead>
-  <tr>
-    <th class="cell-4">ID</th>
-    <th>名称</th>
-    <th class="cell-12">URL标识</th>
-    <th>文章数量</th>
-    <th>创建时间</th>
-    <th>更新时间</th>
-    <th>操作</th>
-  </tr>
-  </thead>
+{% block content %}
+{% set ActiveRecordTab = "tags" %}
+{% include "dash/include/records_tabs.html" %}
 
-  <tbody>
-  {% for tag in Tags %}
-  <tr>
-    <td class="cell-4">{{ tag.ID }}</td>
-    <td>{{ tag.Name }}</td>
-    <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
-    <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
-    <td>{{ tag.CreatedAt | relativeTime }}</td>
-    <td>{{ tag.UpdatedAt | relativeTime }}</td>
-    {{ ui.table_row_actions("admin.tags.edit", "admin.tags.delete", tag.ID) }}
-  </tr>
-  {% else %}
-  {{ ui.table_empty(7, "暂无标签") }}
-  {% endfor %}
-  </tbody>
-
-  <tfoot>
-  <tr>
-    <td colspan="7">
-      {% with Pager = Pager %}{% include "dash/include/pagination.html" %}{% endwith %}
-    </td>
-  </tr>
-  </tfoot>
-</table>
+<div class="data-table-wrap">
+  <table class="data-table" aria-label="标签列表">
+    <thead>
+      <tr>
+        <th class="cell-4">ID</th>
+        <th>名称</th>
+        <th class="cell-12">URL 标识</th>
+        <th>文章数量</th>
+        <th>创建时间</th>
+        <th>更新时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for tag in Tags %}
+        <tr>
+          <td class="cell-4">{{ tag.ID }}</td>
+          <td>{{ tag.Name }}</td>
+          <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
+          <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
+          <td>{{ tag.CreatedAt | relativeTime }}</td>
+          <td>{{ tag.UpdatedAt | relativeTime }}</td>
+          <td>
+            <div class="cell-actions">
+              {{ sui.LinkIcon("square-pen", UrlFor('admin.tags.edit', id=tag.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+              <form method="post" action="{{ UrlFor('admin.tags.delete', id=tag.ID) }}">
+                {{ _csrf_token() }}
+                {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+              </form>
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7">暂无标签</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

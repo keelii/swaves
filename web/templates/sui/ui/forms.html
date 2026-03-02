@@ -66,6 +66,13 @@
       ) }}
 
       {{ sui.Field(
+        "Slug（Prefix）",
+        sui.Input(id="demo-slug-prefix", name="slug_prefix", placeholder="hello-world", prefix="/archives/"),
+        id="demo-slug-prefix",
+        help="通过 prefix 参数渲染固定前缀。"
+      ) }}
+
+      {{ sui.Field(
         "摘要",
         sui.Textarea(id="demo-summary", name="summary", placeholder="可选：用于列表展示…", rows=4),
         id="demo-summary"

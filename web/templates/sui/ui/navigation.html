@@ -62,5 +62,24 @@
         sui.TreeItem("权限", icon_name="link-2")
       )) }}
     {{ sui.TreeEnd() }}
+
+    <h4>Tree（无 Icon）</h4>
+    {{ sui.TreeStart("无图标分类树") }}
+      {{ sui.TreeItem(
+        "内容",
+        children=(
+          sui.TreeItem("文章", open=true, children=(
+            sui.TreeItem("草稿") ~
+            sui.TreeItem("已发布")
+          )) ~
+          sui.TreeItem("页面")
+        ),
+        open=true
+      ) }}
+      {{ sui.TreeItem("设置", children=(
+        sui.TreeItem("通用") ~
+        sui.TreeItem("权限")
+      )) }}
+    {{ sui.TreeEnd() }}
   </div>
 {% endblock %}

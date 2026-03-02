@@ -77,16 +77,7 @@ func buildSettingSubKindGroups(kind string, settings []SettingView) []SettingSub
 
 // Settings
 func (h *Handler) GetSettingsHandler(c fiber.Ctx) error {
-	// 获取所有 settings，以表格形式展示
-	settings, err := ListAllSettings(h.Model)
-	if err != nil {
-		return err
-	}
-
-	return RenderAdminView(c, "dash/settings_index.html", fiber.Map{
-		"Title":    "Settings",
-		"Settings": settings,
-	}, "")
+	return h.redirectToAdminRoute(c, "admin.settings.all", nil, nil)
 }
 
 func (h *Handler) GetSettingsAllHandler(c fiber.Ctx) error {
