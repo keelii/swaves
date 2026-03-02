@@ -2,6 +2,7 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
+{% set OperationTableID = "comments-table" %}
 {% block page_actions %}{% endblock %}
 
 {% block operation_left %}
@@ -48,7 +49,7 @@
 {% set status = (StatusFilter or "") %}
 
 <div class="data-table-wrap">
-<table class="data-table">
+<table id="comments-table" class="data-table" data-role="data-table">
   <thead>
   <tr>
     <th>{{ ui.table_th_id() }}</th>

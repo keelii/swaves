@@ -2,6 +2,7 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
+{% set OperationTableID = "categories-table" %}
 {% block page_actions %}
   {{ sui.LinkButton("新建分类", "primary", href=UrlFor('admin.categories.new')) }}
   {{ sui.LinkButton("分类树", href=UrlFor('admin.categories.tree')) }}
@@ -14,7 +15,7 @@
 
 {% block content %}
 <div class="data-table-wrap">
-  <table class="data-table" aria-label="分类列表">
+  <table id="categories-table" class="data-table" aria-label="分类列表" data-role="data-table">
     <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>

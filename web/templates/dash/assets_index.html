@@ -13,6 +13,7 @@
 {% set imageCount = kindCounts["image"] | default(0) %}
 {% set fileCount = kindCounts["file"] | default(0) %}
 {% set backupCount = kindCounts["backup"] | default(0) %}
+{% set OperationTableID = "assets-table" %}
 {% block page_actions %}{% endblock %}
 {% block status_main_left %}
   <span id="asset-selected-count" class="asset-batch-count">已选 0 项</span>
@@ -166,15 +167,6 @@
     font-size: 0.82rem;
   }
 
-  .asset-select-col {
-    width: 2rem;
-    text-align: center;
-  }
-
-  .asset-select-col input[type="checkbox"] {
-    vertical-align: sub;
-  }
-
   @media (max-width: 960px) {
     .asset-upload-dropzone {
       min-height: 150px;
@@ -185,12 +177,9 @@
 <div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
 
 <div class="data-table-wrap" data-role="multiselect-scope">
-<table class="data-table">
+<table id="assets-table" class="data-table" data-role="data-table">
   <thead>
     <tr>
-      <th class="asset-select-col">
-        <input type="checkbox" id="asset-select-all" class="ui-checkbox" aria-label="全选">
-      </th>
       <th>{{ ui.table_th_id() }}</th>
       <th>类型</th>
       <th>服务</th>
@@ -205,9 +194,6 @@
   <tbody>
     {% for assetItem in Items %}
       <tr data-asset-id="{{ assetItem.id }}">
-        <td class="asset-select-col">
-          <input type="checkbox" class="asset-select-item ui-checkbox" data-id="{{ assetItem.id }}" aria-label="选择资源 {{ assetItem.id }}">
-        </td>
         <td>{{ ui.table_td_id(assetItem.id) }}</td>
         <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
         <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
@@ -235,7 +221,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="10">暂无资源</td></tr>
+      <tr><td colspan="9">暂无资源</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -270,7 +256,7 @@ $(function() {
   var $fileInput = $('#asset-drop-input');
   var $uploadRemark = $('#asset-upload-remark');
   var $uploadStatus = $('#asset-upload-status');
-  var $selectAll = $('#asset-select-all');
+  var $assetTable = $('#assets-table');
   var $selectedCount = $('#asset-selected-count');
   var $batchDelete = $('#asset-batch-delete');
   var dialogAPI = window.AdminAppUI && window.AdminAppUI.dialog ? window.AdminAppUI.dialog : null;
@@ -289,8 +275,8 @@ $(function() {
 
   function selectedAssetIDs() {
     var ids = [];
-    $('.asset-select-item:checked').each(function() {
-      var id = Number($(this).attr('data-id') || '0');
+    $assetTable.find('tbody .cell-checkbox:checked').each(function() {
+      var id = Number($(this).closest('tr').attr('data-asset-id') || '0');
       if (id > 0) {
         ids.push(id);
       }
@@ -299,24 +285,15 @@ $(function() {
   }
 
   function updateBatchDeleteState() {
-    var $items = $('.asset-select-item');
+    var $items = $assetTable.find('tbody .cell-checkbox');
     var total = $items.length;
     var selected = $items.filter(':checked').length;
 
     $selectedCount.text('已选 ' + selected + ' 项');
     $batchDelete.prop('disabled', selected === 0);
-
     if (total === 0) {
-      $selectAll.prop('checked', false);
-      $selectAll.prop('indeterminate', false);
-      $selectAll.prop('disabled', true);
       $batchDelete.prop('disabled', true);
-      return;
     }
-
-    $selectAll.prop('disabled', false);
-    $selectAll.prop('checked', selected > 0 && selected === total);
-    $selectAll.prop('indeterminate', selected > 0 && selected < total);
   }
 
   function summarizeBatchDeleteResult(ret) {
@@ -731,13 +708,7 @@ $(function() {
     });
   });
 
-  $selectAll.on('change', function() {
-    var checked = $(this).is(':checked');
-    $('.asset-select-item').prop('checked', checked);
-    updateBatchDeleteState();
-  });
-
-  $(document).on('change', '.asset-select-item', function() {
+  $assetTable.on('change', '.cell-checkbox', function() {
     updateBatchDeleteState();
   });
 

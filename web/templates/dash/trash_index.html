@@ -1,6 +1,7 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
+{% set OperationTableID = "trash-table" %}
 {% block page_actions %}{% endblock %}
 
 {% set type = Query["type"] | default("posts") %}
@@ -20,7 +21,7 @@
 {% if ModelType == "posts" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table class="data-table" aria-label="已删除文章列表">
+    <table id="trash-table" class="data-table" aria-label="已删除文章列表" data-role="data-table">
       <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -64,7 +65,7 @@
 {% if ModelType == "encrypted-posts" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table class="data-table" aria-label="已删除加密文章列表">
+    <table id="trash-table" class="data-table" aria-label="已删除加密文章列表" data-role="data-table">
       <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -106,7 +107,7 @@
 {% if ModelType == "tags" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table class="data-table" aria-label="已删除标签列表">
+    <table id="trash-table" class="data-table" aria-label="已删除标签列表" data-role="data-table">
       <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -148,7 +149,7 @@
 {% if ModelType == "categories" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table class="data-table" aria-label="已删除分类列表">
+    <table id="trash-table" class="data-table" aria-label="已删除分类列表" data-role="data-table">
       <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -194,7 +195,7 @@
 {% if ModelType == "redirects" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table class="data-table" aria-label="已删除重定向列表">
+    <table id="trash-table" class="data-table" aria-label="已删除重定向列表" data-role="data-table">
       <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>

@@ -6,20 +6,6 @@
   {{ sui.LinkButton("新建文章", "primary", href=UrlFor('admin.posts.new')) }}
 {% endblock %}
 
-{% block status_main_left %}
-{#
-  <span>共 {{ Pager.Total }} 条</span>
-  <label for="posts-page-size">每页</label>
-  <select class="ui-select" id="posts-page-size" aria-label="每页条数">
-    <option value="5" {% if Pager.PageSize == 5 %}selected{% endif %}>5</option>
-    <option value="10" {% if Pager.PageSize == 10 %}selected{% endif %}>10</option>
-    <option value="20" {% if Pager.PageSize == 20 %}selected{% endif %}>20</option>
-    <option value="50" {% if Pager.PageSize == 50 %}selected{% endif %}>50</option>
-    <option value="100" {% if Pager.PageSize == 100 %}selected{% endif %}>100</option>
-  </select>
-#}
-{% endblock %}
-
 {% block status_main_right %}
   {% set pagerHrefPrefix = UrlFor('admin.posts.list') ~ "?kind=" ~ (KindQuery|default('0')) ~ ("&q=" ~ SearchQueryEscaped if SearchQueryEscaped else "") ~ ("&tag=" ~ FilterTagIDStr if FilterTagIDStr else "") ~ ("&category=" ~ FilterCategoryIDStr if FilterCategoryIDStr else "") ~ "&pageSize=" ~ Pager.PageSize %}
   <div class="ui-tags" aria-label="分页">

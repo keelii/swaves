@@ -2,6 +2,7 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
+{% set OperationTableID = "encrypted-posts-table" %}
 {% block page_actions %}
   {{ sui.LinkButton("新建加密文章", "primary", href=UrlFor('admin.encrypted_posts.new')) }}
 {% endblock %}
@@ -55,7 +56,7 @@
 
 {% block content %}
 <div class="data-table-wrap">
-  <table class="data-table" aria-label="加密文章列表">
+  <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table">
     <thead>
     <tr>
       <th>{{ ui.table_th_id() }}</th>

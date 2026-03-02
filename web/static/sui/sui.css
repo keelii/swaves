@@ -20,7 +20,7 @@
   --app-brand-bg: #F1F4FD;
   --app-nav-active-bg: #F7F7F7;
   --app-table-row-hover-bg: #FBFBFB;
-  --app-dialog-backdrop-bg: #A6A6A6;
+  --app-dialog-backdrop-bg: rgba(15, 23, 42, 0.38);
   --app-dialog-bg: #ffffff;
   --app-btn-primary-bg: var(--app-text);
   --app-btn-primary-border: var(--app-text);
@@ -85,7 +85,7 @@
   --app-brand-bg: #1A253B;
   --app-nav-active-bg: #192033;
   --app-table-row-hover-bg: #161E30;
-  --app-dialog-backdrop-bg: #070A13;
+  --app-dialog-backdrop-bg: rgba(3, 10, 19, 0.72);
   --app-dialog-bg: #151a24;
   --app-btn-primary-bg: #e4e8ee;
   --app-btn-primary-border: #e4e8ee;
@@ -1412,20 +1412,20 @@ a.ui-icon-btn[disabled] {
   padding-left: 0;
 }
 
-.app-window .app-main-toolbar .app-toolbar-slot {
+.app-toolbar-slot {
   min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--app-gap-5);
   padding-left: var(--app-spacing);
 }
-.app-window .app-main-toolbar .app-toolbar-slot > .ui-icon-btn {
+.app-toolbar-slot > .ui-icon-btn {
   padding: 0;
 }
 
-.app-window .app-main-toolbar .app-toolbar-slot.left,
-.app-window .app-main-toolbar .app-toolbar-slot.center,
-.app-window .app-main-toolbar .app-toolbar-slot.right {
+.app-toolbar-slot.left,
+.app-toolbar-slot.center,
+.app-toolbar-slot.right {
   flex: 1 1 0;
 }
 
@@ -1433,11 +1433,11 @@ a.ui-icon-btn[disabled] {
   display: none;
 }
 
-.app-window .app-main-toolbar .app-toolbar-slot.center {
+.app-toolbar-slot.center {
   justify-content: center;
 }
 
-.app-window .app-main-toolbar .app-toolbar-slot.right {
+.app-toolbar-slot.right {
   justify-content: flex-end;
 }
 
@@ -1827,6 +1827,8 @@ a.ui-icon-btn[disabled] {
   margin: 0 auto;
   box-sizing: border-box;
   position: relative;
+  border-top: 0!important;
+  border-bottom: 0!important;
 }
 .title::before {
   position: absolute;
@@ -1842,7 +1844,7 @@ a.ui-icon-btn[disabled] {
   flex-grow: 1;
 }
 .title, .ProseMirror {
-  border: 1px solid gray;
+  border: 1px solid var(--app-border);
 }
 .ProseMirror {
   height: 100%;
@@ -1850,6 +1852,7 @@ a.ui-icon-btn[disabled] {
   margin: 0 auto;
   padding: var(--app-spacing);
   box-sizing: border-box;
+  border-bottom: 0!important;
 }
 .ProseMirror pre code {
   padding: 0;

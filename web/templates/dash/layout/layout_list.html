@@ -102,7 +102,7 @@
           <div class="app-operation-left">
             <div class="app-flex">
               {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({
-              "data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
+              "data-role":"toggle-multiselect","data-target-table":(OperationTableID|default("posts-table")),"aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
               })) }}
               {% block operation_left %}{% endblock %}
             </div>
@@ -121,10 +121,15 @@
       <div class="status-grid cols-3">
         <div class="status-slot left">
           {% block status_main_left %}
-            {% if RouteName %}
-              <span>{{ RouteName }}</span>
+            {% if ShowMultiSelectStatus is defined and ShowMultiSelectStatus == false %}
+              {% if RouteName %}
+                <span>{{ RouteName }}</span>
+              {% else %}
+                {% block status_bar %}{% endblock %}
+              {% endif %}
             {% else %}
-              {% block status_bar %}{% endblock %}
+              <span data-role="multiselect-selected-count" data-target-table="{{ OperationTableID|default('posts-table') }}">已选择 0 项</span>
+              {{ sui.Button("批量删除", "outline", attrs=HtmlAttrs({"type":"button","data-role":"multiselect-batch-delete","data-target-table":(OperationTableID|default("posts-table")),"disabled":"disabled"})) }}
             {% endif %}
           {% endblock %}
         </div>
@@ -138,6 +143,18 @@
     </div>
   </main>
 </div>
+
+{{ sui.Dialog(
+  "multiselect-confirm-dialog",
+  "确认批量删除",
+  '<p id="multiselect-confirm-message"></p>',
+  actions=(
+    sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("确认", "primary", attrs='type="button" id="multiselect-confirm-ok"')
+  ),
+  open=false
+) }}
+
 <div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
 {% include "dash/include/layout_shared_scripts.html" %}
 {% endblock %}

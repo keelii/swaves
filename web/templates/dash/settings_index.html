@@ -1,12 +1,13 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
+{% set OperationTableID = "settings-table" %}
 {% block page_actions %}
 <a class="button" href="{{ UrlFor('admin.settings.new') }}">{{ ui.action_btn_content("plus", "新建设置") }}</a>
 <a class="button" href="{{ UrlFor('admin.settings.all') }}">{{ ui.action_btn_content("square-pen", "编辑全部") }}</a>
 {% endblock %}
 {% block content %}
 
-<table>
+<table id="settings-table" data-role="data-table">
   <thead>
   <tr>
     <th>{{ ui.table_th_id() }}</th>

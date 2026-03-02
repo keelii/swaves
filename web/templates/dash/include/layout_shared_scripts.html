@@ -441,6 +441,79 @@
       event.preventDefault();
     });
 
+    var multiselectConfirmDialog = document.getElementById('multiselect-confirm-dialog');
+    var multiselectConfirmMessage = document.getElementById('multiselect-confirm-message');
+    var multiselectConfirmOK = document.getElementById('multiselect-confirm-ok');
+    var multiselectConfirmResolver = null;
+
+    function resolveMultiselectConfirm(value) {
+      if (!multiselectConfirmResolver) {
+        return;
+      }
+      var resolve = multiselectConfirmResolver;
+      multiselectConfirmResolver = null;
+      resolve(!!value);
+    }
+
+    function isMultiselectConfirmOpen() {
+      if (!multiselectConfirmDialog) {
+        return false;
+      }
+      return !multiselectConfirmDialog.hasAttribute('hidden');
+    }
+
+    if (multiselectConfirmOK && !multiselectConfirmOK.hasAttribute('data-bind-confirm')) {
+      multiselectConfirmOK.setAttribute('data-bind-confirm', '1');
+      multiselectConfirmOK.addEventListener('click', function() {
+        resolveMultiselectConfirm(true);
+        closeDialog('multiselect-confirm-dialog');
+      });
+    }
+
+    if (multiselectConfirmDialog && !multiselectConfirmDialog.hasAttribute('data-bind-confirm')) {
+      multiselectConfirmDialog.setAttribute('data-bind-confirm', '1');
+      multiselectConfirmDialog.addEventListener('click', function(event) {
+        if (event.target === multiselectConfirmDialog) {
+          resolveMultiselectConfirm(false);
+        }
+      });
+
+      document.addEventListener('click', function(event) {
+        var cancelButton = event.target && event.target.closest
+          ? event.target.closest('#multiselect-confirm-dialog [data-role~="ui-dialog-close"], #multiselect-confirm-dialog [data-role~="ui-dialog-cancel"]')
+          : null;
+        if (cancelButton) {
+          resolveMultiselectConfirm(false);
+        }
+      });
+
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && isMultiselectConfirmOpen()) {
+          window.setTimeout(function() {
+            resolveMultiselectConfirm(false);
+          }, 0);
+        }
+      });
+    }
+
+    function askMultiselectConfirm(message) {
+      if (!multiselectConfirmDialog || !multiselectConfirmMessage) {
+        return Promise.resolve(window.confirm(message));
+      }
+
+      return new Promise(function(resolve) {
+        if (multiselectConfirmResolver) {
+          resolveMultiselectConfirm(false);
+        }
+        multiselectConfirmMessage.textContent = String(message || '');
+        if (!openDialog('multiselect-confirm-dialog')) {
+          resolve(false);
+          return;
+        }
+        multiselectConfirmResolver = resolve;
+      });
+    }
+
     function bindTableMultiselect(tableId) {
       if (!tableId) {
         return;
@@ -457,16 +530,45 @@
       }
 
       var toggle = document.querySelector('[data-role="toggle-multiselect"][data-target-table="' + tableId + '"]');
+      var statusCount = document.querySelector('[data-role="multiselect-selected-count"][data-target-table="' + tableId + '"]');
+      var batchDelete = document.querySelector('[data-role="multiselect-batch-delete"][data-target-table="' + tableId + '"]');
+
+      function selectedRowCheckboxes() {
+        return table.querySelectorAll('tbody .cell-checkbox:checked');
+      }
+
+      function getDeleteFormFromRow(row) {
+        if (!row) {
+          return null;
+        }
+        var actionForm = row.querySelector('.cell-actions form[action*="/delete"]');
+        if (actionForm) {
+          return actionForm;
+        }
+        return row.querySelector('form[action*="/delete"]');
+      }
+
+      function syncSelectionStatus() {
+        var checkedCount = selectedRowCheckboxes().length;
+        if (statusCount) {
+          statusCount.textContent = '已选择 ' + checkedCount + ' 项';
+        }
+        if (batchDelete) {
+          batchDelete.disabled = checkedCount === 0;
+        }
+      }
 
       function syncSelectAllState() {
         var head = table.querySelector('thead .cell-checkbox');
         if (!head) {
+          syncSelectionStatus();
           return;
         }
         var items = table.querySelectorAll('tbody .cell-checkbox');
         if (!items || items.length === 0) {
           head.checked = false;
           head.indeterminate = false;
+          syncSelectionStatus();
           return;
         }
         var checked = 0;
@@ -477,6 +579,7 @@
         });
         head.checked = checked === items.length;
         head.indeterminate = checked > 0 && checked < items.length;
+        syncSelectionStatus();
       }
 
       if (toggle) {
@@ -504,6 +607,77 @@
           syncSelectAllState();
         }
       });
+
+      if (batchDelete) {
+        batchDelete.addEventListener('click', function(event) {
+          event.preventDefault();
+          var selected = selectedRowCheckboxes();
+          if (!selected || selected.length === 0) {
+            syncSelectionStatus();
+            return;
+          }
+
+          askMultiselectConfirm('确认批量删除选中的 ' + selected.length + ' 项？').then(function(confirmed) {
+            if (!confirmed) {
+              return;
+            }
+
+            var rows = [];
+            selected.forEach(function(item) {
+              var row = item.closest('tr');
+              if (row) {
+                rows.push(row);
+              }
+            });
+
+            if (rows.length === 0) {
+              syncSelectionStatus();
+              return;
+            }
+
+            batchDelete.disabled = true;
+            var successCount = 0;
+            var failedCount = 0;
+            var chain = Promise.resolve();
+
+            rows.forEach(function(row) {
+              chain = chain.then(function() {
+                var form = getDeleteFormFromRow(row);
+                if (!form || !form.action) {
+                  failedCount += 1;
+                  return;
+                }
+
+                var method = String(form.getAttribute('method') || 'POST').toUpperCase();
+                var formData = new FormData(form);
+
+                var send = window.sfetch
+                  ? window.sfetch(form.action, { method: method, body: formData })
+                  : window.fetch(form.action, { method: method, body: formData, credentials: 'same-origin' });
+
+                return send.then(function(resp) {
+                  if (!resp || !resp.ok) {
+                    throw new Error('delete failed');
+                  }
+                  successCount += 1;
+                  row.remove();
+                }).catch(function() {
+                  failedCount += 1;
+                });
+              });
+            });
+
+            chain.finally(function() {
+              syncSelectAllState();
+              if (successCount > 0 || failedCount > 0) {
+                if (typeof notify === 'function') {
+                  notify('批量删除完成：成功 ' + successCount + '，失败 ' + failedCount + '。', '批量删除');
+                }
+              }
+            });
+          });
+        });
+      }
 
       syncSelectAllState();
     }
@@ -1289,6 +1463,15 @@
 
     initDropdownInteractionMode();
     initDropdownLabels();
-    bindTableMultiselect('posts-table');
+    var multiselectToggles = document.querySelectorAll('[data-role="toggle-multiselect"][data-target-table]');
+    var boundTableIDs = {};
+    multiselectToggles.forEach(function(toggle) {
+      var tableID = toggle.getAttribute('data-target-table');
+      if (!tableID || boundTableIDs[tableID]) {
+        return;
+      }
+      boundTableIDs[tableID] = true;
+      bindTableMultiselect(tableID);
+    });
   })();
 </script>

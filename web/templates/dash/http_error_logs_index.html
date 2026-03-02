@@ -1,9 +1,10 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
+{% set OperationTableID = "http-error-logs-table" %}
 {% block page_actions %}{% endblock %}
 {% block content %}
 
-<table>
+<table id="http-error-logs-table" data-role="data-table">
   <thead>
   <tr>
     <th>{{ ui.table_th_id() }}</th>
