@@ -3,6 +3,10 @@
 
 {% block page_actions %}{% endblock %}
 
+{% block operation_left %}
+{% include "dash/include/records_tabs.html" %}
+{% endblock %}
+
 {% block content %}
 <style>
   .records-note {
@@ -10,8 +14,6 @@
     font-size: 0.88rem;
   }
 </style>
-
-{% include "dash/include/records_tabs.html" %}
 
 <div class="records-note">
   选择上面的标签进入对应的列表页。

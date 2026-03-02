@@ -5,6 +5,10 @@
   --app-text: #2f3440;
   --app-text-soft: #6b7280;
   --app-spacing: 14px;
+  --app-gap-1: 6px;
+  --app-gap-2: 8px;
+  --app-gap-3: 10px;
+  --app-gap-4: 12px;
   --app-bg: #ffffff;
   --app-panel-bg: #ffffff;
   --app-surface-muted-bg: #F6F8F9;
@@ -231,7 +235,7 @@ svg rect:focus {
   z-index: 3500;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--app-gap-3);
   pointer-events: none;
 }
 
@@ -249,7 +253,7 @@ svg rect:focus {
   line-height: 1.35;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--app-gap-3);
 }
 
 .ui-toast .ui-toast-icon {
@@ -314,7 +318,7 @@ svg rect:focus {
 .ui-file-upload {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--app-gap-3);
 }
 
 .ui-file-dropzone {
@@ -344,7 +348,7 @@ svg rect:focus {
 .ui-file-dropzone-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--app-gap-2);
   color: var(--app-text-soft);
   font-size: 0.88rem;
 }
@@ -359,7 +363,7 @@ svg rect:focus {
 .ui-file-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--app-gap-1);
   font-size: 0.88rem;
 }
 
@@ -367,7 +371,7 @@ svg rect:focus {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--app-gap-4);
   padding: 8px 10px;
   border-radius: var(--app-radius);
   border: var(--app-border-width) solid var(--app-border);
@@ -391,7 +395,7 @@ svg rect:focus {
 .ui-tree {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--app-gap-1);
 }
 
 .ui-tree-item {
@@ -405,7 +409,7 @@ svg rect:focus {
   list-style: none;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   padding: 10px 12px;
   cursor: pointer;
   user-select: none;
@@ -455,7 +459,7 @@ svg rect:focus {
   padding: 0 12px 12px 34px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--app-gap-1);
 }
 
 
@@ -465,7 +469,7 @@ svg rect:focus {
   justify-content: center;
   height: 30px;
   padding: 0 10px;
-  gap: 6px;
+  gap: var(--app-gap-1);
   border-radius: var(--app-radius);
   border: var(--app-border-width) solid var(--app-border);
   background: transparent;
@@ -565,7 +569,7 @@ a.ui-btn[disabled] {
 }
 
 .ui-dropdown-btn {
-  gap: 8px;
+  gap: var(--app-gap-2);
   padding-right: 8px;
 }
 
@@ -713,7 +717,7 @@ a.ui-icon-btn[disabled] {
 .ui-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--app-gap-4);
   min-width: 0;
 }
 
@@ -721,14 +725,14 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--app-gap-1);
 }
 
 .ui-field-head {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
 }
 
 .ui-field-label {
@@ -942,7 +946,7 @@ a.ui-icon-btn[disabled] {
 .ui-checkbox-field {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   min-width: 0;
   user-select: none;
   cursor: pointer;
@@ -956,7 +960,7 @@ a.ui-icon-btn[disabled] {
 .ui-radio-field {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   min-width: 0;
   user-select: none;
   cursor: pointer;
@@ -986,7 +990,7 @@ a.ui-icon-btn[disabled] {
 .ui-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--app-gap-1);
 
   padding: 0 8px;
   border-radius: var(--app-radius-pill);
@@ -1090,14 +1094,14 @@ a.ui-icon-btn[disabled] {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   flex-wrap: wrap;
 }
 
 .ui-tags {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--app-gap-1);
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -1177,7 +1181,7 @@ a.ui-icon-btn[disabled] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--app-gap-4);
   padding: 6px 12px;
   border-bottom: var(--app-border-width) solid var(--app-border);
 }
@@ -1210,21 +1214,21 @@ a.ui-icon-btn[disabled] {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--app-gap-2);
 }
 
 
 .ui-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   flex-wrap: wrap;
 }
 
 .ui-tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--app-gap-1);
   height: 30px;
   padding: 0 12px;
   border-radius: var(--app-radius-pill);
@@ -1377,7 +1381,7 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   border-bottom: var(--app-toolbar-border-width) solid var(--app-border);
   overflow: visible;
   flex: 0 0 var(--app-toolbar-height);
@@ -1392,7 +1396,7 @@ a.ui-icon-btn[disabled] {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
 }
 
 .app-main-toolbar .left {
@@ -1411,7 +1415,7 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
 }
 
 .app-window .app-main-toolbar .app-toolbar-slot.left,
@@ -1461,7 +1465,7 @@ a.ui-icon-btn[disabled] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--app-gap-2);
   min-width: 0;
 }
 
@@ -1487,7 +1491,7 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--app-gap-2);
   align-items: center;
 }
 
@@ -1503,7 +1507,7 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1558,7 +1562,7 @@ a.ui-icon-btn[disabled] {
 .nav-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--app-gap-1);
   min-width: 0;
 }
 
@@ -1573,7 +1577,7 @@ a.ui-icon-btn[disabled] {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--app-gap-2);
   padding: 8px var(--app-spacing);
   color: var(--app-text);
   text-decoration: none;
@@ -1645,7 +1649,7 @@ a.ui-icon-btn[disabled] {
   display:flex;
   justify-content:space-between;
   align-items:center;
-  gap:12px;
+  gap: var(--app-gap-4);
   flex-wrap:wrap;
   padding: var(--app-spacing);
 }
@@ -1716,7 +1720,7 @@ a.ui-icon-btn[disabled] {
 .data-table .cell-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--app-gap-3);
   min-width: 0;
 }
 
@@ -1745,7 +1749,7 @@ a.ui-icon-btn[disabled] {
 .data-table .cell-actions {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--app-gap-3);
   justify-content: flex-end;
 }
 

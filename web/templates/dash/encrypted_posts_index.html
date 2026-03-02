@@ -45,15 +45,15 @@
   </div>
 {% endblock %}
 
-{% block content %}
-<div class="app-px">
+{% block operation_left %}
   {{ sui.TabsStart("内容类型") }}
     {{ sui.Tab("文章 (" ~ CountPost ~ ")", href=UrlFor('admin.posts.list') ~ "?kind=0") }}
     {{ sui.Tab("页面 (" ~ CountPage ~ ")", href=UrlFor('admin.posts.list') ~ "?kind=1") }}
     {{ sui.Tab("加密 (" ~ CountEncryptedPost ~ ")", href=UrlFor('admin.encrypted_posts.list'), active=true) }}
   {{ sui.TabsEnd() }}
-</div>
+{% endblock %}
 
+{% block content %}
 <div class="data-table-wrap">
   <table class="data-table" aria-label="加密文章列表">
     <thead>

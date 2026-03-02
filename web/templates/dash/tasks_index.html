@@ -6,10 +6,12 @@
   {{ sui.LinkButton("新建任务", "primary", href=UrlFor('admin.tasks.new')) }}
 {% endblock %}
 
-{% block content %}
+{% block operation_left %}
 {% set ActiveRecordTab = "tasks" %}
 {% include "dash/include/records_tabs.html" %}
+{% endblock %}
 
+{% block content %}
 <div class="data-table-wrap">
   <table class="data-table" aria-label="任务列表">
     <thead>

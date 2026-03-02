@@ -6,6 +6,11 @@
   {{ sui.LinkButton("新建重定向", "primary", href=UrlFor('admin.redirects.new')) }}
 {% endblock %}
 
+{% block operation_left %}
+  {% set ActiveRecordTab = "redirects" %}
+  {% include "dash/include/records_tabs.html" %}
+{% endblock %}
+
 {% block status_main_right %}
   {% set pagerHrefPrefix = UrlFor('admin.redirects.list') ~ "?pageSize=" ~ Pager.PageSize %}
   <div class="ui-tags" aria-label="分页">
@@ -32,9 +37,6 @@
 {% endblock %}
 
 {% block content %}
-{% set ActiveRecordTab = "redirects" %}
-{% include "dash/include/records_tabs.html" %}
-
 <div class="data-table-wrap">
   <table class="data-table" aria-label="重定向列表">
     <thead>

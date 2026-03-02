@@ -2,18 +2,20 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% block page_actions %}{% endblock %}
-{% block content %}
 
 {% set type = Query["type"] | default("posts") %}
-<div class="app-operation">
-  {{ sui.TabsStart("回收站类型") }}
-    {{ sui.Tab("文章", href=UrlFor('admin.trash.list', type='posts'), active=(type == "posts")) }}
-    {{ sui.Tab("加密文章", href=UrlFor('admin.trash.list', type='encrypted-posts'), active=(type == "encrypted-posts")) }}
-    {{ sui.Tab("标签", href=UrlFor('admin.trash.list', type='tags'), active=(type == "tags")) }}
-    {{ sui.Tab("分类", href=UrlFor('admin.trash.list', type='categories'), active=(type == "categories")) }}
-    {{ sui.Tab("重定向", href=UrlFor('admin.trash.list', type='redirects'), active=(type == "redirects")) }}
-  {{ sui.TabsEnd() }}
-</div>
+
+{% block operation_left %}
+{{ sui.TabsStart("回收站类型") }}
+  {{ sui.Tab("文章", href=UrlFor('admin.trash.list', type='posts'), active=(type == "posts")) }}
+  {{ sui.Tab("加密文章", href=UrlFor('admin.trash.list', type='encrypted-posts'), active=(type == "encrypted-posts")) }}
+  {{ sui.Tab("标签", href=UrlFor('admin.trash.list', type='tags'), active=(type == "tags")) }}
+  {{ sui.Tab("分类", href=UrlFor('admin.trash.list', type='categories'), active=(type == "categories")) }}
+  {{ sui.Tab("重定向", href=UrlFor('admin.trash.list', type='redirects'), active=(type == "redirects")) }}
+{{ sui.TabsEnd() }}
+{% endblock %}
+
+{% block content %}
 
 {% if ModelType == "posts" %}
   {% if Data %}

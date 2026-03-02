@@ -7,10 +7,12 @@
   {{ sui.LinkButton("分类树", href=UrlFor('admin.categories.tree')) }}
 {% endblock %}
 
-{% block content %}
+{% block operation_left %}
 {% set ActiveRecordTab = "categories" %}
 {% include "dash/include/records_tabs.html" %}
+{% endblock %}
 
+{% block content %}
 <div class="data-table-wrap">
   <table class="data-table" aria-label="分类列表">
     <thead>

@@ -1,6 +1,18 @@
 {% extends "dash/layout/layout.html" %}
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
+{% set defaultProviderReady = DefaultProviderReady|default(false) %}
+{% set defaultProviderError = DefaultProviderError %}
+{% set defaultProvider = DefaultProvider %}
+{% set assetProviderLabelMap = AssetProviderLabelMap|default({}) %}
+{% set assetKindLabelMap = AssetKindLabelMap|default({}) %}
+{% set kindCounts = KindCounts|default({}) %}
+{% set currentKind = CurrentKind|default("image") %}
+{% set query = Query|default({}) %}
+{% set pageSizeQuery = query["pageSize"] %}
+{% set imageCount = kindCounts["image"] | default(0) %}
+{% set fileCount = kindCounts["file"] | default(0) %}
+{% set backupCount = kindCounts["backup"] | default(0) %}
 {% block page_actions %}{% endblock %}
 {% block status_main_left %}
   <span id="asset-selected-count" class="asset-batch-count">已选 0 项</span>
@@ -31,6 +43,15 @@
     {% endif %}
   </div>
 {% endblock %}
+
+{% block operation_left %}
+  {{ sui.TabsStart("资源类型") }}
+    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('admin.assets.list', kind='image') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "image")) }}
+    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('admin.assets.list', kind='file') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "file")) }}
+    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('admin.assets.list', kind='backup') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "backup")) }}
+  {{ sui.TabsEnd() }}
+{% endblock %}
+
 {% block content %}
 
 <style>
@@ -146,18 +167,6 @@
   }
 </style>
 
-{% set defaultProviderReady = DefaultProviderReady|default(false) %}
-{% set defaultProviderError = DefaultProviderError %}
-{% set defaultProvider = DefaultProvider %}
-{% set assetProviderLabelMap = AssetProviderLabelMap|default({}) %}
-{% set assetKindLabelMap = AssetKindLabelMap|default({}) %}
-{% set kindCounts = KindCounts|default({}) %}
-{% set currentKind = CurrentKind|default("image") %}
-{% set query = Query|default({}) %}
-{% set pageSizeQuery = query["pageSize"] %}
-{% set imageCount = kindCounts["image"] | default(0) %}
-{% set fileCount = kindCounts["file"] | default(0) %}
-{% set backupCount = kindCounts["backup"] | default(0) %}
 <div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
 
 <section class="asset-upload">
@@ -177,14 +186,6 @@
     <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
   </div>
 </section>
-
-<div class="app-operation">
-  {{ sui.TabsStart("资源类型") }}
-    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('admin.assets.list', kind='image') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "image")) }}
-    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('admin.assets.list', kind='file') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "file")) }}
-    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('admin.assets.list', kind='backup') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "backup")) }}
-  {{ sui.TabsEnd() }}
-</div>
 
 <div class="data-table-wrap" data-role="multiselect-scope">
 <table class="data-table">

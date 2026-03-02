@@ -4,6 +4,16 @@
 
 {% block page_actions %}{% endblock %}
 
+{% block operation_left %}
+{% set status = (StatusFilter or "") %}
+{{ sui.TabsStart("评论状态") }}
+  {{ sui.Tab("全部", href=UrlFor('admin.comments.list'), active=(status == "")) }}
+  {{ sui.Tab("待审核", href=UrlFor('admin.comments.list', status='pending'), active=(status == "pending")) }}
+  {{ sui.Tab("已通过", href=UrlFor('admin.comments.list', status='approved'), active=(status == "approved")) }}
+  {{ sui.Tab("垃圾", href=UrlFor('admin.comments.list', status='spam'), active=(status == "spam")) }}
+{{ sui.TabsEnd() }}
+{% endblock %}
+
 {% block status_main_right %}
   {% set pagerBase = UrlFor('admin.comments.list') %}
   {% if StatusFilter %}
@@ -36,15 +46,6 @@
 
 {% block content %}
 {% set status = (StatusFilter or "") %}
-
-<div class="app-operation">
-  {{ sui.TabsStart("评论状态") }}
-    {{ sui.Tab("全部", href=UrlFor('admin.comments.list'), active=(status == "")) }}
-    {{ sui.Tab("待审核", href=UrlFor('admin.comments.list', status='pending'), active=(status == "pending")) }}
-    {{ sui.Tab("已通过", href=UrlFor('admin.comments.list', status='approved'), active=(status == "approved")) }}
-    {{ sui.Tab("垃圾", href=UrlFor('admin.comments.list', status='spam'), active=(status == "spam")) }}
-  {{ sui.TabsEnd() }}
-</div>
 
 <div class="data-table-wrap">
 <table class="data-table">
