@@ -9,6 +9,7 @@
   --app-gap-2: 8px;
   --app-gap-3: 10px;
   --app-gap-4: 12px;
+  --app-gap-5: 14px;
   --app-bg: #ffffff;
   --app-panel-bg: #ffffff;
   --app-surface-muted-bg: #F6F8F9;
@@ -1415,7 +1416,11 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--app-gap-2);
+  gap: var(--app-gap-5);
+  padding-left: var(--app-spacing);
+}
+.app-window .app-main-toolbar .app-toolbar-slot > .ui-icon-btn {
+  padding: 0;
 }
 
 .app-window .app-main-toolbar .app-toolbar-slot.left,

@@ -1,0 +1,143 @@
+{% extends "dash/layout/base.html" %}
+{% import "dash/include/ui.html" as sui %}
+
+{% block head_extra %}
+<meta name="robots" content="noindex, nofollow" />
+<script src="/static/admin/jquery-4.0.0.slim.min.js"></script>
+<script src="/static/admin/main.js"></script>
+{% endblock %}
+
+{% block body %}
+<div
+  class="app-window"
+  data-nav-width-current="{{ Settings('admin_nav_width')|default('240') }}"
+  data-nav-width-save-url="{{ UrlFor('admin.settings.api.nav_width.update') }}"
+  style="--app-pane-nav-width: {{ Settings('admin_nav_width')|default('240') }}px;"
+>
+  <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="150" data-nav-max-width="480">
+    <script>
+      (function() {
+        var appWindow = document.currentScript && document.currentScript.closest('.app-window');
+        if (!appWindow) {
+          return;
+        }
+        try {
+          if (window.localStorage.getItem('sui.layout_wide_mode') === '1') {
+            appWindow.classList.add('full-main');
+          }
+        } catch (error) {
+        }
+      })();
+    </script>
+    <div class="app-panel-toolbar">
+      {% block window_toolbar_left %}
+        {% include "dash/include/window_toolbar_left.html" %}
+      {% endblock %}
+    </div>
+    <div class="app-panel-body app-nav-body">
+      <div class="app-panel-inner">
+        {% block nav_pane %}
+          {% include "dash/include/nav.html" %}
+        {% endblock %}
+      </div>
+    </div>
+    <div class="status-bar nav-status-bar">
+      <div class="status-grid cols-3">
+        <div class="status-slot left">
+          {% block status_nav_left %}
+            <a href="{{ UrlFor('admin.settings.all') }}" class="ui-icon-btn" aria-label="设置" data-title="设置">
+              {{ LucideIcon("setting", 16) }}
+            </a>
+          {% endblock %}
+        </div>
+        <div class="status-slot center">
+          {% block status_nav_center %}
+            {% include "dash/include/theme_toggle.html" %}
+          {% endblock %}
+        </div>
+        <div class="status-slot right">
+          {% block status_nav_right %}
+            {% if IsLogin %}
+              <a href="{{ UrlFor('admin.logout') }}" class="ui-icon-btn" aria-label="退出登录" data-title="退出登录">
+                {{ LucideIcon("log-out", 16) }}
+              </a>
+            {% else %}
+              <a href="{{ UrlFor('admin.login.show') }}" class="ui-icon-btn" aria-label="登录" data-title="登录">
+                {{ LucideIcon("log-in", 16) }}
+              </a>
+            {% endif %}
+          {% endblock %}
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-panel-resizer" data-role="nav-resizer" role="separator" aria-orientation="vertical" aria-label="调整导航栏宽度" aria-valuenow="{{ Settings('admin_nav_width')|default('240') }}"></div>
+
+  <main class="app-panel app-main" aria-label="内容区">
+    <div class="app-panel-toolbar app-main-toolbar">
+      <div class="app-toolbar-slot left">
+        {{ sui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
+        {% block window_toolbar_main_left %}
+          {% block page_actions %}{% endblock %}
+        {% endblock %}
+      </div>
+      <div class="app-toolbar-slot center">
+        {% block window_toolbar_main_center %}
+          {% if Title %}<div class="toolbar-text">{{ Title }}</div>{% endif %}
+        {% endblock %}
+      </div>
+      <div class="app-toolbar-slot right">
+        {% block window_toolbar_main_right %}
+          {% block window_toolbar_right %}{% endblock %}
+        {% endblock %}
+      </div>
+    </div>
+    <div class="app-panel-body app-main-body">
+      <div class="app-panel-inner">
+        <div class="app-header">
+          {% block app_header %}{% endblock %}
+        </div>
+        <div class="app-operation">
+          <div class="app-operation-left">
+            <div class="app-flex">
+              {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({
+              "data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
+              })) }}
+              {% block operation_left %}{% endblock %}
+            </div>
+          </div>
+          <div class="app-operation-center">
+            {% block operation_center %}{% endblock %}
+          </div>
+          <div class="app-operation-right">
+            {% block operation_right %}{% endblock %}
+          </div>
+        </div>
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+    <div class="status-bar main-status-bar">
+      <div class="status-grid cols-3">
+        <div class="status-slot left">
+          {% block status_main_left %}
+            {% if RouteName %}
+              <span>{{ RouteName }}</span>
+            {% else %}
+              {% block status_bar %}{% endblock %}
+            {% endif %}
+          {% endblock %}
+        </div>
+        <div class="status-slot center">
+          {% block status_main_center %}{% endblock %}
+        </div>
+        <div class="status-slot right">
+          {% block status_main_right %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
+{% include "dash/include/layout_shared_scripts.html" %}
+{% endblock %}

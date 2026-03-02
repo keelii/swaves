@@ -52,15 +52,31 @@
   {{ sui.TabsEnd() }}
 {% endblock %}
 
-{% block content %}
+{% block app_header %}
+  <section class="asset-upload">
+    <input type="file" id="asset-drop-input" style="display:none;" multiple>
+    <div
+            id="asset-dropzone"
+            class="asset-upload-dropzone"
+            data-upload-ready="{% if defaultProviderReady %}1{% else %}0{% endif %}"
+            data-upload-error="{{ defaultProviderError }}"
+    >
+      <p class="asset-upload-title">拖拽文件到这里上传</p>
+      <p class="asset-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
+      <p class="asset-upload-status{% if not defaultProviderReady %} error{% endif %}" id="asset-upload-status">
+        当前默认服务：{{ assetProviderLabelMap[defaultProvider] | default(defaultProvider) }}
+        {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
+      </p>
+      <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
+    </div>
+  </section>
 
+{% endblock %}
+
+{% block content %}
 <style>
   .asset-upload {
-    /*margin-bottom: var(--space-4);*/
-    /*padding: var(--space-4);*/
-    /*border: 1px solid var(--border);*/
-    /*border-radius: var(--radius-medium);*/
-    /*background: var(--card);*/
+    margin: var(--app-spacing) var(--app-spacing) 0;
   }
 
   .asset-upload-dropzone {
@@ -75,7 +91,6 @@
     gap: var(--app-spacing);
     text-align: center;
     cursor: pointer;
-    margin: var(--app-spacing);
     transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
@@ -168,24 +183,6 @@
 </style>
 
 <div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
-
-<section class="asset-upload">
-  <input type="file" id="asset-drop-input" style="display:none;" multiple>
-  <div
-    id="asset-dropzone"
-    class="asset-upload-dropzone"
-    data-upload-ready="{% if defaultProviderReady %}1{% else %}0{% endif %}"
-    data-upload-error="{{ defaultProviderError }}"
-  >
-    <p class="asset-upload-title">拖拽文件到这里上传</p>
-    <p class="asset-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
-    <p class="asset-upload-status{% if not defaultProviderReady %} error{% endif %}" id="asset-upload-status">
-      当前默认服务：{{ assetProviderLabelMap[defaultProvider] | default(defaultProvider) }}
-      {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
-    </p>
-    <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
-  </div>
-</section>
 
 <div class="data-table-wrap" data-role="multiselect-scope">
 <table class="data-table">
