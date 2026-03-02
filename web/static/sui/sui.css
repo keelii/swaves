@@ -1750,7 +1750,7 @@ a.ui-icon-btn[disabled] {
   padding: 0 10px;
 }
 
-.data-table .cell-id-merge {
+.data-table .cell-td-id {
   white-space: nowrap;
   color: var(--app-text-soft);
   font-variant-numeric: tabular-nums;

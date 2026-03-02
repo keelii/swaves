@@ -132,3 +132,15 @@
        id="{{ id }}_hidden" />
 {% endif %}
 {% endmacro %}
+
+{% macro table_th_id(label="ID") %}
+  <span class="cell-id">{{ label }}</span>
+  <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="全选" />
+{% endmacro %}
+{% macro table_td_id(label="-") %}
+  <div class="cell-td-id">
+    <span class="cell-id">{{ label }}</span>
+    <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="选择文章" />
+  </div>
+{% endmacro %}
+

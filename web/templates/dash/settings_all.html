@@ -168,7 +168,7 @@
     {{ sui.TabsEnd() }}
   </div>
 
-  <div class="app-px">
+  <div class="app-mx">
     <form id="settings-all-form" method="post" action="{{ UrlFor('admin.settings.all.update', kind=activeKind) }}" class="settings-all-form">
       {{ _csrf_token() }}
 
@@ -181,30 +181,28 @@
               <span class="ui-tree-label">文章链接快速设置</span>
             </summary>
             <div class="ui-tree-children">
-
-            <ul id="setting-shortcuts" class="settings-shortcut-list">
-              <li class="settings-shortcut-item">
-                <code><span class="settings-prefix-text"></span>/2006/01/02/hello-world</code>
-                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "{datetime}", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
-              </li>
-              <li class="settings-shortcut-item">
-                <code><span class="settings-prefix-text"></span>/archives/hello-world</code>
-                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ""}'>快速设置</button>
-              </li>
-              <li class="settings-shortcut-item">
-                <code><span class="settings-prefix-text"></span>/archives/1</code>
-                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ""}'>快速设置</button>
-              </li>
-              <li class="settings-shortcut-item">
-                <code><span class="settings-prefix-text"></span>/archives/1.html</code>
-                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{id}", "setting_post_url_ext": ".html"}'>快速设置</button>
-              </li>
-              <li class="settings-shortcut-item">
-                <code><span class="settings-prefix-text"></span>/archives/hello-world.html</code>
-                <button class="ui-btn outline" type="button" data-options='{"setting_post_url_prefix": "archives", "setting_post_url_name": "{slug}", "setting_post_url_ext": ".html"}'>快速设置</button>
-              </li>
-            </ul>
-
+              <ul id="setting-shortcuts" class="settings-shortcut-list">
+                <li class="settings-shortcut-item">
+                  <code><span class="settings-prefix-text"></span>/2006/01/02/hello-world</code>
+                  {{ sui.Button("快速设置", attrs=HtmlAttrs({"type":"button","data-prefix":"{datetime}","data-name":"{slug}","data-ext":""})) }}
+                </li>
+                <li class="settings-shortcut-item">
+                  <code><span class="settings-prefix-text"></span>/archives/hello-world</code>
+                  {{ sui.Button("快速设置", attrs=HtmlAttrs({"type":"button","data-prefix":"archives","data-name":"{slug}","data-ext":""})) }}
+                </li>
+                <li class="settings-shortcut-item">
+                  <code><span class="settings-prefix-text"></span>/archives/1</code>
+                  {{ sui.Button("快速设置", attrs=HtmlAttrs({"type":"button","data-prefix":"archives","data-name":"{id}","data-ext":""})) }}
+                </li>
+                <li class="settings-shortcut-item">
+                  <code><span class="settings-prefix-text"></span>/archives/1.html</code>
+                  {{ sui.Button("快速设置", attrs=HtmlAttrs({"type":"button","data-prefix":"archives","data-name":"{id}","data-ext":".html"})) }}
+                </li>
+                <li class="settings-shortcut-item">
+                  <code><span class="settings-prefix-text"></span>/archives/hello-world.html</code>
+                  {{ sui.Button("快速设置", attrs=HtmlAttrs({"type":"button","data-prefix":"archives","data-name":"{slug}","data-ext":".html"})) }}
+                </li>
+              </ul>
             </div>
           </details>
 
@@ -213,10 +211,10 @@
 
       <div class="settings-kind-fields">
         {% for subGroup in activeKindGroups %}
-          <section class="settings-sub-kind-group"{% if subGroup.Code %} data-sub-kind="{{ subGroup.Code }}"{% endif %}>
-            {% if subGroup.Code %}
+          {% if subGroup.Code %}
+            <section class="settings-sub-kind-group" data-sub-kind="{{ subGroup.Code }}">
               <h3 class="settings-sub-kind-title">{{ subGroup.Label }}</h3>
-            {% endif %}
+          {% endif %}
 
             {% for settingView in subGroup.Settings %}
               {% set setting = settingView.Setting %}
@@ -310,7 +308,9 @@
                 <div class="settings-item-desc">{% if settingDescription %}{{ settingDescription }}{% else %}-{% endif %}</div>
               </div>
             {% endfor %}
-          </section>
+          {% if subGroup.Code %}
+            </section>
+          {% endif %}
         {% endfor %}
       </div>
     </form>
@@ -322,7 +322,12 @@
 <script>
 $(function() {
   $('#setting-shortcuts button').on('click', function() {
-    var options = $(this).data('options');
+    var $button = $(this);
+    var options = {
+      setting_post_url_prefix: String($button.attr('data-prefix') || ''),
+      setting_post_url_name: String($button.attr('data-name') || ''),
+      setting_post_url_ext: String($button.attr('data-ext') || ''),
+    };
     for (var code in options) {
       if (!Object.prototype.hasOwnProperty.call(options, code)) {
         continue;
@@ -332,6 +337,7 @@ $(function() {
         input.val(options[code]);
       }
     }
+    syncPrefixLegends();
     return false;
   });
 

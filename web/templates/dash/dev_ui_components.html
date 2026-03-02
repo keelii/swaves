@@ -170,9 +170,9 @@
   <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">与 include/admin/pagination 一致的布局示意。</p>
   <div class="inline-flex items-center gap-4">
     <span>共 100 条</span>
-    <a href="#">上一页</a>
+    <a href="#" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
     <span>1 / 10</span>
-    <a href="#">下一页</a>
+    <a href="#" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
   </div>
 </section>
 {% endblock %}
