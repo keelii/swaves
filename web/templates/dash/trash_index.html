@@ -1,4 +1,5 @@
 {% extends "dash/layout/layout.html" %}
+{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% block page_actions %}{% endblock %}
 {% block content %}
@@ -20,7 +21,7 @@
     <table class="data-table" aria-label="已删除文章列表">
       <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th>标题</th>
         <th>URL 标识</th>
         <th>状态</th>
@@ -31,7 +32,7 @@
       <tbody>
       {% for postItem in Data %}
       <tr>
-        <td class="cell-4">{{ postItem.ID }}</td>
+        <td>{{ ui.table_td_id(postItem.ID) }}</td>
         <td>{{ postItem.Title }}</td>
         <td>{{ postItem.Slug }}</td>
         <td>{{ postItem.Status }}</td>
@@ -64,7 +65,7 @@
     <table class="data-table" aria-label="已删除加密文章列表">
       <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th>标题</th>
         <th>URL 标识</th>
         <th>删除时间</th>
@@ -74,7 +75,7 @@
       <tbody>
       {% for encryptedPostItem in Data %}
       <tr>
-        <td class="cell-4">{{ encryptedPostItem.ID }}</td>
+        <td>{{ ui.table_td_id(encryptedPostItem.ID) }}</td>
         <td>{{ encryptedPostItem.Title }}</td>
         <td>{{ encryptedPostItem.Slug }}</td>
         <td>{% if encryptedPostItem.DeletedAt %}{{ encryptedPostItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
@@ -106,7 +107,7 @@
     <table class="data-table" aria-label="已删除标签列表">
       <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th>名称</th>
         <th>URL 标识</th>
         <th>删除时间</th>
@@ -116,7 +117,7 @@
       <tbody>
       {% for tagItem in Data %}
       <tr>
-        <td class="cell-4">{{ tagItem.ID }}</td>
+        <td>{{ ui.table_td_id(tagItem.ID) }}</td>
         <td>{{ tagItem.Name }}</td>
         <td>{{ tagItem.Slug }}</td>
         <td>{% if tagItem.DeletedAt %}{{ tagItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
@@ -148,7 +149,7 @@
     <table class="data-table" aria-label="已删除分类列表">
       <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th>名称</th>
         <th>URL 标识</th>
         <th>父级</th>
@@ -160,7 +161,7 @@
       <tbody>
       {% for categoryItem in Data %}
       <tr>
-        <td class="cell-4">{{ categoryItem.ID }}</td>
+        <td>{{ ui.table_td_id(categoryItem.ID) }}</td>
         <td>{{ categoryItem.Name }}</td>
         <td>{{ categoryItem.Slug }}</td>
         <td>{% if categoryItem.ParentID == 0 %}-{% else %}{{ categoryItem.ParentID }}{% endif %}</td>
@@ -194,7 +195,7 @@
     <table class="data-table" aria-label="已删除重定向列表">
       <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th>来源</th>
         <th>目标</th>
         <th>删除时间</th>
@@ -204,7 +205,7 @@
       <tbody>
       {% for redirectItem in Data %}
       <tr>
-        <td class="cell-4">{{ redirectItem.ID }}</td>
+        <td>{{ ui.table_td_id(redirectItem.ID) }}</td>
         <td>{{ redirectItem.From }}</td>
         <td>{{ redirectItem.To }}</td>
         <td>{% if redirectItem.DeletedAt %}{{ redirectItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>

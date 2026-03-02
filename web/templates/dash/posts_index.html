@@ -45,28 +45,28 @@
   </div>
 {% endblock %}
 
-{% block content %}
-{% set kind = (Kind or 0) %}
-{% set q = (SearchQueryEscaped or "") %}
-{% set tag = (FilterTagIDStr or "") %}
-{% set cat = (FilterCategoryIDStr or "") %}
-
-<div class="app-operation">
+{% block operation_left %}
+  {% set kind = (Kind or 0) %}
+  {% set q = (SearchQueryEscaped or "") %}
+  {% set tag = (FilterTagIDStr or "") %}
+  {% set cat = (FilterCategoryIDStr or "") %}
   {{ sui.TabsStart("内容类型") }}
-    {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({"data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"})) }}
     {{ sui.Tab("文章 " ~ CountPost, href=UrlFor('admin.posts.list') ~ "?kind=0" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 0)) }}
     {{ sui.Tab("页面 " ~ CountPage, href=UrlFor('admin.posts.list') ~ "?kind=1" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 1)) }}
     {{ sui.Tab("加密 " ~ CountEncryptedPost, href=UrlFor('admin.encrypted_posts.list')) }}
   {{ sui.TabsEnd() }}
+{% endblock %}
 
+{% block operation_right %}
   <form method="get" action="{{ UrlFor('admin.posts.list') }}" style="display:flex;align-items:center;gap:10px;">
     <input type="hidden" name="kind" value="{{ KindQuery|default('0') }}">
     {% if FilterTagIDStr %}<input type="hidden" name="tag" value="{{ FilterTagIDStr }}">{% endif %}
     {% if FilterCategoryIDStr %}<input type="hidden" name="category" value="{{ FilterCategoryIDStr }}">{% endif %}
     <input class="ui-input" type="search" name="q" value="{{ SearchQuery }}" placeholder="搜索标题、内容">
   </form>
-</div>
+{% endblock %}
 
+{% block content %}
 {% if FilterTagName or FilterCategoryName %}
 <div class="app-px" style="margin-top:10px;">
   <div class="ui-tags">

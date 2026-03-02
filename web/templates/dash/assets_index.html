@@ -193,7 +193,7 @@
       <th class="asset-select-col">
         <input type="checkbox" id="asset-select-all" class="ui-checkbox" aria-label="全选">
       </th>
-      <th class="cell-4">ID</th>
+      <th>{{ ui.table_th_id() }}</th>
       <th>类型</th>
       <th>服务</th>
       <th>文件名</th>
@@ -210,7 +210,7 @@
         <td class="asset-select-col">
           <input type="checkbox" class="asset-select-item ui-checkbox" data-id="{{ assetItem.id }}" aria-label="选择资源 {{ assetItem.id }}">
         </td>
-        <td class="cell-4">{{ assetItem.id }}</td>
+        <td>{{ ui.table_td_id(assetItem.id) }}</td>
         <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
         <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
         <td>{{ assetItem.original_name }}</td>

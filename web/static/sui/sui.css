@@ -1294,6 +1294,8 @@ a.ui-icon-btn[disabled] {
   background: color-mix(in srgb, var(--app-scrollbar-thumb), #ffffff 14%);
 }
 
+.app-flex { display: flex; gap: var(--app-spacing); }
+.app-items-center { align-items: center; }
 .app-padding { padding: var(--app-spacing); }
 .app-px { padding-left: var(--app-spacing); padding-right: var(--app-spacing); }
 .app-py { padding-top: var(--app-spacing); padding-bottom: var(--app-spacing); }
@@ -1647,8 +1649,9 @@ a.ui-icon-btn[disabled] {
   flex-wrap:wrap;
   padding: var(--app-spacing);
 }
-.app-operation .ui-tabs [data-role="toggle-multiselect"] {
-  margin-left: calc(calc(var(--app-spacing) * -1) + 4px);
+.app-operation [data-role="toggle-multiselect"] {
+  padding: 0;
+  /*margin-left: calc(calc(var(--app-spacing) * -1) + 4px);*/
 }
 
 /* ==================== 4) 页面级样式 ==================== */

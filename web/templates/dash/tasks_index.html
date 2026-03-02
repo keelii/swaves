@@ -1,4 +1,5 @@
 {% extends "dash/layout/layout.html" %}
+{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% block page_actions %}
@@ -13,7 +14,7 @@
   <table class="data-table" aria-label="任务列表">
     <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th class="cell-12">编码</th>
         <th>名称</th>
         <th>描述</th>
@@ -28,7 +29,7 @@
     <tbody>
       {% for task in Tasks %}
         <tr>
-          <td class="cell-4">{{ task.ID }}</td>
+          <td>{{ ui.table_td_id(task.ID) }}</td>
           <td>{{ task.Code }}</td>
           <td>{{ task.Name }}</td>
           <td>{% if task.Description %}{{ task.Description }}{% else %}-{% endif %}</td>

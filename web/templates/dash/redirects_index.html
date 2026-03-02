@@ -1,4 +1,5 @@
 {% extends "dash/layout/layout.html" %}
+{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% block page_actions %}
@@ -38,7 +39,7 @@
   <table class="data-table" aria-label="重定向列表">
     <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th>来源</th>
         <th>目标</th>
         <th>状态</th>
@@ -51,7 +52,7 @@
     <tbody>
       {% for redirect in Redirects %}
         <tr>
-          <td class="cell-4">{{ redirect.ID }}</td>
+          <td>{{ ui.table_td_id(redirect.ID) }}</td>
           <td>{{ redirect.From }}</td>
           <td>{{ redirect.To }}</td>
           <td>

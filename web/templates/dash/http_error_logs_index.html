@@ -6,7 +6,7 @@
 <table>
   <thead>
   <tr>
-    <th class="cell-4">ID</th>
+    <th>{{ ui.table_th_id() }}</th>
     <th>请求ID</th>
     <th>客户端IP</th>
     <th>方法</th>
@@ -23,7 +23,7 @@
   <tbody>
   {% for log in Logs %}
   <tr>
-    <td>{{ log.ID }}</td>
+    <td>{{ ui.table_td_id(log.ID) }}</td>
     <td>{{ log.ReqID }}</td>
     <td>{{ log.ClientIP }}</td>
     <td>{{ log.Method }}</td>

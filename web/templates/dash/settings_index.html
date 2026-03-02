@@ -9,7 +9,7 @@
 <table>
   <thead>
   <tr>
-    <th class="cell-4">ID</th>
+    <th>{{ ui.table_th_id() }}</th>
     <th>名称</th>
     <th>分类</th>
     <th>子分类</th>
@@ -26,7 +26,7 @@
   <tbody>
   {% for setting in Settings %}
   <tr>
-    <td class="cell-4">{{ setting.ID }}</td>
+    <td>{{ ui.table_td_id(setting.ID) }}</td>
     <td>{{ setting.Name }}</td>
     <td>{{ setting.Kind }}</td>
     <td>{% if setting.SubKind %}{{ setting.SubKind }}{% else %}-{% endif %}</td>

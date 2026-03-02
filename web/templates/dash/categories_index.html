@@ -1,4 +1,5 @@
 {% extends "dash/layout/layout.html" %}
+{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% block page_actions %}
@@ -14,7 +15,7 @@
   <table class="data-table" aria-label="分类列表">
     <thead>
       <tr>
-        <th class="cell-4">ID</th>
+        <th>{{ ui.table_th_id() }}</th>
         <th>名称</th>
         <th>URL 标识</th>
         <th>父级</th>
@@ -29,7 +30,7 @@
     <tbody>
       {% for category in Categories %}
         <tr>
-          <td class="cell-4">{{ category.ID }}</td>
+          <td>{{ ui.table_td_id(category.ID) }}</td>
           <td>{{ category.Name }}</td>
           <td>
             <a href="{{ GetCategoryUrl(category.Slug) }}" target="_blank" rel="noopener">{{ category.Slug }}</a>

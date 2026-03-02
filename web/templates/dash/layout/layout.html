@@ -95,6 +95,22 @@
     </div>
     <div class="app-panel-body app-main-body">
       <div class="app-panel-inner">
+        <div class="app-operation">
+          <div class="app-operation-left">
+            <div class="app-flex">
+              {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({
+              "data-role":"toggle-multiselect","data-target-table":"posts-table","aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
+              })) }}
+              {% block operation_left %}{% endblock %}
+            </div>
+          </div>
+          <div class="app-operation-center">
+            {% block operation_center %}{% endblock %}
+          </div>
+          <div class="app-operation-right">
+            {% block operation_right %}{% endblock %}
+          </div>
+        </div>
         {% block content %}{% endblock %}
       </div>
     </div>
