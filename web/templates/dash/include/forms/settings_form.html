@@ -1,3 +1,4 @@
+{% import "dash/include/ui.html" as sui %}
 {% set is_edit = IsEdit|default(false) %}
 {% set setting = Setting|default(none) %}
 
@@ -123,10 +124,10 @@
             <button class="outline" type="button" id="toggle_setting_secret_value">显示</button>
           </span>
         {% else %}{% if type_value == "prefix-field" %}
-          <fieldset class="group">
-            <legend>{% if prefix_value %}{{ prefix_value }}{% else %}前缀{% endif %}</legend>
-            <input type="text" name="value" value="{{ value_value }}"{{ RenderAttrs(attrs_parsed) }} placeholder="当前值">
-          </fieldset>
+          {{ sui.Fieldset(
+            (prefix_value if prefix_value else "前缀"),
+            sui.Input(name="value", value=value_value, placeholder="当前值", attrs=RenderAttrs(attrs_parsed))
+          ) }}
         {% else %}{% if type_value == "textarea" %}
           <textarea name="value"{{ RenderAttrs(attrs_parsed) }} placeholder="当前值">{{ value_value }}</textarea>
         {% else %}{% if type_value == "select" %}

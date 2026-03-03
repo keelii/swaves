@@ -1,50 +1,41 @@
+{% import "dash/include/ui.html" as sui %}
+{% set category = Category|default(none) %}
 {% set selected_parent_id = ParentID|default(0) %}
 {% set name_value = "" %}
 {% set slug_value = "" %}
 {% set description_value = "" %}
 {% set sort_value = 0 %}
 
-{% if Category %}
-  {% set selected_parent_id = Category.ParentID %}
-  {% set name_value = Category.Name %}
-  {% set slug_value = Category.Slug %}
-  {% set description_value = Category.Description %}
-  {% set sort_value = Category.Sort %}
+{% if category %}
+  {% set selected_parent_id = category.ParentID %}
+  {% set name_value = category.Name %}
+  {% set slug_value = category.Slug %}
+  {% set description_value = category.Description %}
+  {% set sort_value = category.Sort %}
 {% endif %}
 
 <form id="form" method="post" action="{{ Action }}">
   {{ _csrf_token() }}
-  <div class="row">
-    <div class="col-6">
-      <label data-field>
-        父分类
-        {% with Root = {"CategoryOptions": CategoryOptions}, SelectedID = selected_parent_id, SelectName = "parent_id", SelectID = "parent-id-select", EmptyOption = "顶级分类" %}{% include "dash/include/category_select.html" %}{% endwith %}
-        <small>（选择父分类，选择“顶级分类”表示无父级）</small>
-      </label>
+  <div class="app-px">
+    <div class="ui-form">
+      {% if Error %}
+        {{ sui.Alert(Error, kind="danger", title="保存失败") }}
+      {% endif %}
 
-      <label data-field>
-        名称
-        <input type="text" name="name" required value="{{ name_value }}" placeholder="分类名称">
-        <small>（显示名称）</small>
-      </label>
+      {% set parentControl %}
+        <select class="ui-select" id="parent-id-select" name="parent_id">
+          <option value="0">顶级分类</option>
+          {% for option in CategoryOptions %}
+            <option value="{{ option.ID }}"{% if selected_parent_id == option.ID %} selected{% endif %}>{{ option.DisplayName|default(option.Name) }}</option>
+          {% endfor %}
+        </select>
+      {% endset %}
+      {{ sui.Field("父分类", parentControl, id="parent-id-select", help="选择父分类，选择“顶级分类”表示无父级。") }}
 
-      <label data-field>
-        URL 标识
-        <input type="text" name="slug" required value="{{ slug_value }}" placeholder="url标识">
-        <small>（URL 标识，同级下需唯一）</small>
-      </label>
-
-      <label data-field>
-        Description
-        <textarea name="description" rows="3" cols="80" placeholder="可选描述信息">{{ description_value }}</textarea>
-        <small>（可选描述）</small>
-      </label>
-
-      <label data-field>
-        Sort
-        <input type="number" name="sort" value="{{ sort_value }}">
-        <small>（同级排序，越小越靠前）</small>
-      </label>
+      {{ sui.Field("名称", sui.Input(id="category-name", name="name", value=name_value, placeholder="分类名称", attrs="required"), id="category-name", required=true, help="显示名称。") }}
+      {{ sui.Field("URL 标识", sui.Input(id="category-slug", name="slug", value=slug_value, placeholder="url 标识", attrs="required"), id="category-slug", required=true, help="URL 标识，同级下需唯一。") }}
+      {{ sui.Field("描述", sui.Textarea(id="category-description", name="description", value=description_value, rows=3, placeholder="可选描述信息"), id="category-description", help="可选描述。") }}
+      {{ sui.Field("排序", sui.Input(id="category-sort", name="sort", type="number", value=sort_value), id="category-sort", help="同级排序，越小越靠前。") }}
     </div>
   </div>
 </form>

@@ -1,5 +1,13 @@
+{% import "dash/include/ui.html" as sui %}
+
+{% set tag = Tag|default({}) %}
 <form id="form" method="post" action="{{ Action }}">
   {{ _csrf_token() }}
-  {{ ui.form_field_text("名称", "name", Tag.Name|default(""), required=true, placeholder="标签名称") }}
-  {{ ui.form_field_text("URL 标识", "slug", Tag.Slug|default(""), required=true, placeholder="url标识") }}
+  <div class="ui-form">
+    {% if Error %}
+      {{ sui.Alert(Error, kind="danger", title="保存失败") }}
+    {% endif %}
+    {{ sui.Field("名称", sui.Input(id="tag-name", name="name", value=tag.Name|default(""), placeholder="标签名称", attrs="required"), id="tag-name", required=true) }}
+    {{ sui.Field("URL 标识", sui.Input(id="tag-slug", name="slug", value=tag.Slug|default(""), placeholder="url 标识", attrs="required"), id="tag-slug", required=true) }}
+  </div>
 </form>

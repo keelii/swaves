@@ -61,10 +61,10 @@
   }
 
   .settings-item {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(240px, 1fr);
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: nowrap;
     gap: calc(var(--app-spacing) * 0.75);
-    align-items: start;
   }
 
   .settings-item-main {
@@ -72,6 +72,7 @@
     flex-direction: column;
     gap: calc(var(--app-spacing) * 0.5);
     min-width: 0;
+    flex: 1 1 560px;
   }
 
   .settings-item-header {
@@ -130,6 +131,8 @@
   }
 
   .settings-item-desc {
+    flex: 0 1 320px;
+    min-width: 220px;
     color: var(--app-text-soft);
     font-size: 0.82rem;
     line-height: 1.45;
@@ -138,11 +141,14 @@
 
   @media (max-width: 960px) {
     .settings-item {
-      grid-template-columns: 1fr;
+      flex-direction: column;
+      align-items: stretch;
       gap: calc(var(--app-spacing) * 0.5);
     }
 
     .settings-item-desc {
+      flex: 1 1 auto;
+      min-width: 0;
       padding-top: 0;
     }
   }
@@ -277,14 +283,15 @@
                       <textarea id="setting_{{ code }}" class="ui-textarea" name="setting_{{ code }}" rows="4"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
                     {% elif settingType == "radio" %}
                       {% set currentValue = (settingValue or settingDefaultOptionValue) %}
-                      <fieldset class="settings-options">
+                      {% set radioOptions %}
                         {% for radioOption in settingOptionsParsed %}
                           <label class="ui-radio-field">
                             <input type="radio" class="ui-radio" name="setting_{{ code }}" value="{{ radioOption.value }}"{% if currentValue == radioOption.value %} checked{% endif %}{{ RenderAttrs(attrs) }}>
                             <span class="ui-radio-label">{{ radioOption.label }}</span>
                           </label>
                         {% endfor %}
-                      </fieldset>
+                      {% endset %}
+                      {{ sui.Fieldset(body=radioOptions, class_name="settings-options") }}
                     {% elif settingType == "checkbox" %}
                       <div class="settings-options">
                         {% for checkboxOption in settingOptionsParsed %}

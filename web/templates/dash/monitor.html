@@ -91,6 +91,11 @@
     display: block;
   }
 
+  .monitor-chart-body .monitor-chart-svg rect[data-index]:hover {
+    fill: var(--app-brand-border);
+    fill-opacity: 0.14;
+  }
+
   .monitor-error {
     margin-top: 12px;
     color: #d92d20;
@@ -113,7 +118,7 @@
   }
 </style>
 
-<div class="app-px app-pt monitor-toolbar">
+<div class="monitor-toolbar">
   <div class="ui-tags" aria-label="时间粒度" data-monitor-granularity-tabs>
     {% if monitorGranularities %}
       {% for item in monitorGranularities %}
@@ -132,7 +137,7 @@
   <div class="monitor-toolbar-meta">最近采样：<span data-latest-ts>-</span></div>
 </div>
 
-<div class="app-px monitor-summary">
+<div class="monitor-summary">
   <div class="monitor-card">
     <div class="monitor-card-label">应用 CPU</div>
     <div class="monitor-card-value" data-latest="pid_cpu">-</div>
@@ -165,10 +170,10 @@
   </div>
 </div>
 
-<div class="app-px monitor-chart-grid" data-monitor-charts>
+<div class="monitor-chart-grid" data-monitor-charts>
   <div class="monitor-card">正在加载图表...</div>
 </div>
-<div class="app-px monitor-error" data-monitor-error hidden></div>
+<div class="monitor-error" data-monitor-error hidden></div>
 
 <script>
   (function() {
@@ -302,8 +307,8 @@
 
       chartsEl.innerHTML = charts.map(function(chart) {
         var metric = chart && chart.metric ? chart.metric : {};
-        var title = String(metric.Label || '指标');
-        var unit = String(metric.Unit || '');
+        var title = String(metric.label || metric.Label || chart.title || '指标');
+        var unit = String(metric.unit || metric.Unit || chart.unit || '');
         var svg = chart && chart.svg ? String(chart.svg) : '<div class="monitor-card-sub">暂无图表</div>';
         return '<div class="monitor-chart-card">' +
           '<div class="monitor-chart-head">' +

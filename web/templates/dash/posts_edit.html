@@ -52,6 +52,11 @@
 {% endblock %}
 
 {% block content %}
+  <style>
+    .app-window .app-panel-detail {
+      padding: 0;
+    }
+  </style>
 <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
   <div class="title">
     <input type="text" name="title" value="{{ Post.Title }}" class="input-title" id="post-title" form="form" required>

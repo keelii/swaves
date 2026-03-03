@@ -1,20 +1,20 @@
+{% import "dash/include/ui.html" as sui %}
+{% set task = Task|default(none) %}
 {% set is_edit = IsEdit|default(false) %}
 {% set enabled_checked = true %}
-{% set toggle_id = "task_enabled_new" %}
 {% set task_kind = 0 %}
 {% set task_name = "" %}
 {% set task_code = "" %}
 {% set schedule_value = "@daily" %}
 {% set description_value = "" %}
 
-{% if Task %}
-  {% set enabled_checked = Task.Enabled == 1 %}
-  {% set toggle_id = Printf("task_enabled_%d", Task.ID) %}
-  {% set task_kind = Task.Kind %}
-  {% set task_name = Task.Name %}
-  {% set task_code = Task.Code %}
-  {% set schedule_value = Task.Schedule %}
-  {% set description_value = Task.Description %}
+{% if task %}
+  {% set enabled_checked = task.Enabled == 1 %}
+  {% set task_kind = task.Kind %}
+  {% set task_name = task.Name %}
+  {% set task_code = task.Code %}
+  {% set schedule_value = task.Schedule %}
+  {% set description_value = task.Description %}
 {% endif %}
 
 {% set selected_preset = "__custom__" %}
@@ -26,68 +26,49 @@
 
 <form id="form" method="post" action="{{ Action }}">
   {{ _csrf_token() }}
-  <div class="row">
-    <div class="col-6">
-      <label data-field>
-        是否启用
-        {{ ui.toggle(toggle_id, "enabled", checked=enabled_checked, data_labels="禁用,启用", data_on_value="1", data_off_value="0") }}
-      </label>
 
-      <fieldset>
-        <legend>任务类型</legend>
-        <label>
-          <input type="radio" name="kind" value="0"{% if task_kind == 0 %} checked{% endif %}>
-          内部任务（不生成运行记录）
-        </label>
-        <label>
-          <input type="radio" name="kind" value="1"{% if task_kind == 1 %} checked{% endif %}>
-          用户任务（生成运行记录）
-        </label>
-        <p>
-          <small>内部任务执行时不写入任务运行记录表（TaskRun）</small>
-        </p>
-      </fieldset>
+  <div class="ui-form">
+    {% if Error %}
+      {{ sui.Alert(Error, kind="danger", title="保存失败") }}
+    {% endif %}
 
-      <label data-field>
-        任务名称
-        <input type="text" name="name" required value="{{ task_name }}" placeholder="任务名称">
-      </label>
+    {{ sui.Checkbox(id="task-enabled", name="enabled", label="启用任务", checked=enabled_checked, attrs='value="1"') }}
 
-      <label data-field>
-        任务编码
-        {% if is_edit %}
-          <input type="text" value="{{ task_code }}" disabled>
-          <input type="hidden" name="code" value="{{ task_code }}">
-        {% else %}
-          <input type="text" name="code" required value="{{ task_code }}" placeholder="task_code">
-          <small>用于在代码中识别此任务，必须唯一</small>
-        {% endif %}
-      </label>
+    {% set kindControl %}
+      <div class="ui-tags">
+        {{ sui.Radio(id="task-kind-internal", name="kind", value="0", label="内部任务（不生成运行记录）", checked=(task_kind == 0)) }}
+        {{ sui.Radio(id="task-kind-user", name="kind", value="1", label="用户任务（生成运行记录）", checked=(task_kind == 1)) }}
+      </div>
+    {% endset %}
+    {{ sui.Field("任务类型", kindControl, label_tag="div", help="内部任务执行时不写入任务运行记录表（TaskRun）。") }}
 
-      <label data-field>
-        执行频率
-        <select id="schedule-preset">
-          <option value="@hourly"{% if selected_preset == "@hourly" %} selected{% endif %}>每小时</option>
-          <option value="@daily"{% if selected_preset == "@daily" %} selected{% endif %}>每天</option>
-          <option value="@weekly"{% if selected_preset == "@weekly" %} selected{% endif %}>每周</option>
-          <option value="@monthly"{% if selected_preset == "@monthly" %} selected{% endif %}>每月</option>
-          <option value="@yearly"{% if selected_preset == "@yearly" %} selected{% endif %}>每年</option>
-          <option value="__custom__"{% if selected_preset == "__custom__" %} selected{% endif %}>自定义</option>
-        </select>
-        <small>选择任务执行频率，或切换为自定义 Cron 表达式。</small>
-      </label>
+    {{ sui.Field("任务名称", sui.Input(id="task-name", name="name", value=task_name, placeholder="任务名称", attrs="required"), id="task-name", required=true) }}
 
-      <label data-field id="schedule-custom-wrap" hidden>
-        自定义 Cron 表达式
-        <input type="text" id="schedule-custom" placeholder="例如: 0 */5 * * *" value="{{ custom_schedule }}">
-      </label>
-      <input type="hidden" name="schedule" id="schedule-value" value="{{ schedule_value }}">
+    {% if is_edit %}
+      {{ sui.Field("任务编码", sui.Input(id="task-code-display", value=task_code, attrs="disabled"), id="task-code-display", help="编辑时任务编码不可修改。") }}
+      <input type="hidden" name="code" value="{{ task_code }}">
+    {% else %}
+      {{ sui.Field("任务编码", sui.Input(id="task-code", name="code", value=task_code, placeholder="task_code", attrs="required"), id="task-code", required=true, help="用于在代码中识别此任务，必须唯一。") }}
+    {% endif %}
 
-      <label data-field>
-        任务描述
-        <textarea name="description" rows="3" cols="60" placeholder="任务描述">{{ description_value }}</textarea>
-      </label>
+    {% set schedulePresetControl %}
+      <select class="ui-select" id="schedule-preset">
+        <option value="@hourly"{% if selected_preset == "@hourly" %} selected{% endif %}>每小时</option>
+        <option value="@daily"{% if selected_preset == "@daily" %} selected{% endif %}>每天</option>
+        <option value="@weekly"{% if selected_preset == "@weekly" %} selected{% endif %}>每周</option>
+        <option value="@monthly"{% if selected_preset == "@monthly" %} selected{% endif %}>每月</option>
+        <option value="@yearly"{% if selected_preset == "@yearly" %} selected{% endif %}>每年</option>
+        <option value="__custom__"{% if selected_preset == "__custom__" %} selected{% endif %}>自定义</option>
+      </select>
+    {% endset %}
+    {{ sui.Field("执行频率", schedulePresetControl, id="schedule-preset", help="选择任务执行频率，或切换为自定义 Cron 表达式。") }}
+
+    <div id="schedule-custom-wrap" hidden>
+      {{ sui.Field("自定义 Cron 表达式", sui.Input(id="schedule-custom", value=custom_schedule, placeholder="例如: 0 */5 * * *"), id="schedule-custom") }}
     </div>
+    <input type="hidden" name="schedule" id="schedule-value" value="{{ schedule_value }}">
+
+    {{ sui.Field("任务描述", sui.Textarea(id="task-description", name="description", value=description_value, rows=3, placeholder="任务描述"), id="task-description") }}
   </div>
 </form>
 

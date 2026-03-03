@@ -100,6 +100,15 @@
 </label>
 {% endmacro %}
 
+{% macro Fieldset(legend="", body="", class_name="", attrs="") %}
+<fieldset class="ui-fieldset{% if class_name %} {{ class_name }}{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>
+  {% if legend %}
+    <legend class="ui-fieldset-legend">{{ legend }}</legend>
+  {% endif %}
+  <div class="ui-fieldset-content">{{ body | safe }}</div>
+</fieldset>
+{% endmacro %}
+
 {% macro FileUpload(id="", name="", label="上传文件", accept="", multiple=false, help="", attrs="") %}
 <div class="ui-file-upload" data-role="ui-file-upload">
   <div class="ui-file-dropzone" data-role="ui-file-dropzone" tabindex="0" data-title="拖拽文件到这里，或点击选择">
