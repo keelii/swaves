@@ -26,8 +26,8 @@
 {% endblock %}
 
 {% block status_main_left %}
-  <label for="post-category-select">分类</label>
-  <select class="ui-select" id="post-category-select" name="categories" form="form" aria-label="分类选择">
+{#  <label for="post-category-select">分类</label>#}
+  <select class="ui-select mini noborder" style="width:6.8em" id="post-category-select" name="categories" form="form" aria-label="分类选择">
     <option value="">顶级分类</option>
     {% for category in CategoryOptions %}
       <option value="{{ category.ID }}"{% if Category.ID|default(0) == category.ID %} selected{% endif %}>{{ category.DisplayName|default(category.Name) }}</option>

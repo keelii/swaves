@@ -32,7 +32,7 @@
       {% if children|length > 0 %}
         <ul class="categories-subtree">
             {% for node in children %}
-                {{ macro_category_item(node.Category, node.Children, root) }}
+                {{ macro_category_item(node.Category, node.children, root) }}
             {% endfor %}
         </ul>
       {% endif %}
@@ -130,7 +130,7 @@
   <ul class="categories-tree">
     {% set rootData = {"CategoryOptions": CategoryOptions} %}
     {% for node in Tree %}
-        {{ macro_category_item(node.Category, node.Children, rootData) }}
+        {{ macro_category_item(node.Category, node.children, rootData) }}
     {% endfor %}
   </ul>
 {% else %}

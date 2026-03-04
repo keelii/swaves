@@ -53,6 +53,7 @@
   --app-color-danger-border: #EBBFBF;
   --app-color-danger-bg: #F9EDED;
   --ui-select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --ui-select-caret-mini: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
   --ui-checkbox-checked-bg: var(--app-text);
   --ui-checkbox-checked-fg: #ffffff;
   --app-tooltip-bg: #1D2537;
@@ -118,6 +119,7 @@
   --app-color-danger-bg: #2A1828;
   --app-table-head-bg: #161E30;
   --ui-select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f99aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --ui-select-caret-mini: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f99aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
   --ui-checkbox-checked-bg: #e4e8ee;
   --ui-checkbox-checked-fg: #151a24;
   --app-tooltip-bg: #030718;
@@ -706,8 +708,17 @@ a.ui-icon-btn[disabled] {
   color: var(--app-text);
   cursor: pointer;
 }
-.ui-select.noborder {
-  border: none;
+.noborder {
+  border: none!important;
+}
+
+.ui-select.mini {
+  padding: 4px 28px 4px 8px;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  background-image: var(--ui-select-caret-mini);
+  background-position: right 6px center;
+  background-size: 14px 14px;
 }
 
 .ui-select:focus-visible {
@@ -1662,7 +1673,7 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 var(--app-spacing);
   border-top: var(--app-status-border-width) solid var(--app-border);
   background: var(--app-panel-bg);
   color: var(--app-text-soft);
