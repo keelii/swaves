@@ -1,8 +1,8 @@
 {% extends "dash/layout/layout_detail.html" %}
-{% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
 {% block page_actions %}
-<a class="button" href="#" onclick="document.querySelector('form').requestSubmit(); return false;">{{ ui.action_btn_content("plus", "导入") }}</a>
-<a class="button" href="{{ UrlFor('admin.posts.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
+  {{ sui.Button("导入", "primary", attrs='type="submit" form="form"') }}
+  {{ sui.LinkButton("返回", "outline", href=UrlFor('admin.posts.list')) }}
 {% endblock %}
 {% block content %}
 <style>
@@ -18,31 +18,31 @@
   }
 
   .import-upload {
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--app-gap-2);
   }
   .import-item-content {
     max-width: 30em;
   }
 
   .import-dropzone {
-    border: 2px dashed var(--border);
-    border-radius: var(--radius-medium);
-    background: var(--background);
+    border: 2px dashed var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-panel-bg);
     min-height: 140px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
+    gap: var(--app-gap-2);
     text-align: center;
     cursor: pointer;
-    padding: var(--space-4);
+    padding: var(--app-spacing);
     transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
   .import-dropzone.dragover {
-    border-color: var(--primary);
-    background: var(--muted);
+    border-color: var(--app-brand-border);
+    background: var(--app-surface-muted-bg);
   }
 
   .import-dropzone.is-disabled {
@@ -58,32 +58,32 @@
 
   .import-drop-subtitle {
     margin: 0;
-    color: var(--muted-foreground);
+    color: var(--app-text-soft);
   }
 
   .import-drop-status {
     margin: 0;
-    color: var(--muted-foreground);
+    color: var(--app-text-soft);
     font-size: 0.875rem;
   }
 
   .import-edit-panel {
-    margin-top: var(--space-5);
+    margin-top: var(--app-gap-4);
   }
 
   .import-edit-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
+    gap: var(--app-gap-2);
+    margin-bottom: var(--app-gap-3);
     flex-wrap: wrap;
   }
 
   .import-edit-table th,
   .import-edit-table td {
     vertical-align: top;
-    font-size: var(--text-7);
+    font-size: 0.82rem;
   }
 
   .import-edit-table td {
@@ -93,7 +93,7 @@
   .import-field-stack {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--app-gap-1);
   }
 </style>
 
@@ -237,9 +237,9 @@
     </div>
   </div>
   <div class="hstack">
-    <button type="button" class="button" id="import-confirm-btn">确认导入</button>
-    <button type="button" class="button secondary" id="import-cancel-btn">取消导入</button>
-    <button type="button" class="button outline" id="toggle-import-status-btn">切换发布状态</button>
+    {{ sui.Button("确认导入", "primary", attrs='type="button" id="import-confirm-btn"') }}
+    {{ sui.Button("取消导入", "secondary", attrs='type="button" id="import-cancel-btn"') }}
+    {{ sui.Button("切换发布状态", "outline", attrs='type="button" id="toggle-import-status-btn"') }}
   </div>
 
   <table class="import-edit-table">
@@ -267,16 +267,16 @@
   {% with Item = {"PostID": 0, "Filename": "", "Title": "", "Slug": "", "Content": "", "ContentPreview": "-", "Status": "draft", "Kind": "0", "CreatedAt": "", "CreatedAtUnix": 0, "Tags": "", "Category": "", "Categories": ""} %}{% include "dash/include/import_edit_row.html" %}{% endwith %}
 </template>
 
-<dialog id="import-cancel-dialog">
-  <header>
-    <h4>确认取消导入</h4>
-  </header>
-  <p>将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？</p>
-  <footer class="hstack justify-content-end">
-    <button type="button" class="button outline" commandfor="import-cancel-dialog" command="close">继续编辑</button>
-    <button type="button" class="button" id="import-cancel-confirm-btn">确认取消导入</button>
-  </footer>
-</dialog>
+{{ sui.Dialog(
+  "import-cancel-dialog",
+  "确认取消导入",
+  '<p>将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？</p>',
+  actions=(
+    sui.Button("继续编辑", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("确认取消导入", "primary", attrs='type="button" id="import-cancel-confirm-btn"')
+  ),
+  open=false
+) }}
 
 <script>
 $(function() {
@@ -297,7 +297,6 @@ $(function() {
   var $editRows = $('#import-edit-rows');
   var $confirmBtn = $('#import-confirm-btn');
   var $cancelBtn = $('#import-cancel-btn');
-  var $cancelDialog = $('#import-cancel-dialog');
   var $cancelConfirmBtn = $('#import-cancel-confirm-btn');
   var $rowTemplate = $('#import-edit-row-template');
   var parseConcurrency = 50;
@@ -306,6 +305,32 @@ $(function() {
   var isParsing = false;
   var isConfirming = false;
   var isCancelling = false;
+
+  function getDialogAPI() {
+    return window.AdminAppUI && window.AdminAppUI.dialog ? window.AdminAppUI.dialog : null;
+  }
+
+  function openImportDialog(id, opener) {
+    var dialogAPI = getDialogAPI();
+    if (dialogAPI && typeof dialogAPI.open === 'function') {
+      return dialogAPI.open(id, opener);
+    }
+    if (typeof openDialog === 'function') {
+      return openDialog('#' + id);
+    }
+    return false;
+  }
+
+  function closeImportDialog(id) {
+    var dialogAPI = getDialogAPI();
+    if (dialogAPI && typeof dialogAPI.close === 'function') {
+      return dialogAPI.close(id);
+    }
+    if (typeof closeDialog === 'function') {
+      return closeDialog('#' + id);
+    }
+    return false;
+  }
 
   function show(sel, disp) { $(sel).css('display', disp || 'inline'); }
   function hide(sel) { $(sel).css('display', 'none'); }
@@ -845,7 +870,7 @@ $(function() {
       if (!isParsing && !isConfirming) {
         $dropzone.removeClass('is-disabled');
       }
-      closeDialog($cancelDialog);
+      closeImportDialog('import-cancel-dialog');
     }
   }
 
@@ -854,7 +879,7 @@ $(function() {
       return;
     }
 
-      if (!openDialog($cancelDialog)) {
+      if (!openImportDialog('import-cancel-dialog', this)) {
       if (!window.confirm('将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？')) {
         return;
       }

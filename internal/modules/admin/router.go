@@ -47,6 +47,7 @@ func RegisterRouter(
 	adminGroup.Get("/posts/:id/edit", handler.GetPostEditHandler).Name("admin.posts.edit")
 	adminGroup.Post("/posts/:id/edit", handler.PostUpdatePostHandler).Name("admin.posts.update")
 	adminGroup.Post("/posts/:id/delete", handler.PostDeletePostHandler).Name("admin.posts.delete")
+	adminGroup.Post("/api/posts/batch-delete", handler.PostPostBatchDeleteAPIHandler).Name("admin.posts.api.batch_delete")
 
 	adminGroup.Get("/assets", handler.GetAssetListHandler).Name("admin.assets.list")
 	adminGroup.Get("/api/assets", handler.GetAssetListAPIHandler).Name("admin.assets.api.list")
@@ -59,6 +60,7 @@ func RegisterRouter(
 	adminGroup.Post("/comments/:id/pending", handler.PostPendingCommentHandler).Name("admin.comments.pending")
 	adminGroup.Post("/comments/:id/spam", handler.PostSpamCommentHandler).Name("admin.comments.spam")
 	adminGroup.Post("/comments/:id/delete", handler.PostDeleteCommentHandler).Name("admin.comments.delete")
+	adminGroup.Post("/api/comments/batch-delete", handler.PostCommentBatchDeleteAPIHandler).Name("admin.comments.api.batch_delete")
 
 	adminGroup.Get("/tags", handler.GetTagListHandler).Name("admin.tags.list")
 	adminGroup.Get("/tags/new", handler.GetTagNewHandler).Name("admin.tags.new")
@@ -66,6 +68,7 @@ func RegisterRouter(
 	adminGroup.Get("/tags/:id/edit", handler.GetTagEditHandler).Name("admin.tags.edit")
 	adminGroup.Post("/tags/:id/edit", handler.PostUpdateTagHandler).Name("admin.tags.update")
 	adminGroup.Post("/tags/:id/delete", handler.PostDeleteTagHandler).Name("admin.tags.delete")
+	adminGroup.Post("/api/tags/batch-delete", handler.PostTagBatchDeleteAPIHandler).Name("admin.tags.api.batch_delete")
 
 	adminGroup.Get("/categories", handler.GetCategoryListHandler).Name("admin.categories.list")
 	adminGroup.Get("/categories/tree", handler.GetCategoryTreeHandler).Name("admin.categories.tree")
@@ -75,6 +78,7 @@ func RegisterRouter(
 	adminGroup.Get("/categories/:id/edit", handler.GetCategoryEditHandler).Name("admin.categories.edit")
 	adminGroup.Post("/categories/:id/edit", handler.PostUpdateCategoryHandler).Name("admin.categories.update")
 	adminGroup.Post("/categories/:id/delete", handler.PostDeleteCategoryHandler).Name("admin.categories.delete")
+	adminGroup.Post("/api/categories/batch-delete", handler.PostCategoryBatchDeleteAPIHandler).Name("admin.categories.api.batch_delete")
 
 	adminGroup.Get("/redirects", handler.GetRedirectListHandler).Name("admin.redirects.list")
 	adminGroup.Get("/redirects/new", handler.GetRedirectNewHandler).Name("admin.redirects.new")
@@ -82,6 +86,7 @@ func RegisterRouter(
 	adminGroup.Get("/redirects/:id/edit", handler.GetRedirectEditHandler).Name("admin.redirects.edit")
 	adminGroup.Post("/redirects/:id/edit", handler.PostUpdateRedirectHandler).Name("admin.redirects.update")
 	adminGroup.Post("/redirects/:id/delete", handler.PostDeleteRedirectHandler).Name("admin.redirects.delete")
+	adminGroup.Post("/api/redirects/batch-delete", handler.PostRedirectBatchDeleteAPIHandler).Name("admin.redirects.api.batch_delete")
 
 	adminGroup.Get("/encrypted-posts", handler.GetEncryptedPostListHandler).Name("admin.encrypted_posts.list")
 	adminGroup.Get("/encrypted-posts/new", handler.GetEncryptedPostNewHandler).Name("admin.encrypted_posts.new")
@@ -89,6 +94,7 @@ func RegisterRouter(
 	adminGroup.Get("/encrypted-posts/:id/edit", handler.GetEncryptedPostEditHandler).Name("admin.encrypted_posts.edit")
 	adminGroup.Post("/encrypted-posts/:id/edit", handler.PostUpdateEncryptedPostHandler).Name("admin.encrypted_posts.update")
 	adminGroup.Post("/encrypted-posts/:id/delete", handler.PostDeleteEncryptedPostHandler).Name("admin.encrypted_posts.delete")
+	adminGroup.Post("/api/encrypted-posts/batch-delete", handler.PostEncryptedPostBatchDeleteAPIHandler).Name("admin.encrypted_posts.api.batch_delete")
 
 	adminGroup.Get("/settings", handler.GetSettingsHandler).Name("admin.settings.list")
 	adminGroup.Get("/settings/all", handler.GetSettingsAllHandler).Name("admin.settings.all")
@@ -99,6 +105,7 @@ func RegisterRouter(
 	adminGroup.Get("/settings/:id/edit", handler.GetSettingEditHandler).Name("admin.settings.edit")
 	adminGroup.Post("/settings/:id/edit", handler.PostUpdateSettingHandler).Name("admin.settings.update")
 	adminGroup.Post("/settings/:id/delete", handler.PostDeleteSettingHandler).Name("admin.settings.delete")
+	adminGroup.Post("/api/settings/batch-delete", handler.PostSettingBatchDeleteAPIHandler).Name("admin.settings.api.batch_delete")
 
 	adminGroup.Get("/trash", handler.GetTrashHandler).Name("admin.trash.list")
 	adminGroup.Post("/trash/posts/:id/restore", handler.PostRestorePostHandler).Name("admin.trash.posts.restore")
@@ -111,9 +118,11 @@ func RegisterRouter(
 	adminGroup.Post("/trash/categories/:id/delete", handler.PostHardDeleteCategoryHandler).Name("admin.trash.categories.delete")
 	adminGroup.Post("/trash/redirects/:id/restore", handler.PostRestoreRedirectHandler).Name("admin.trash.redirects.restore")
 	adminGroup.Post("/trash/redirects/:id/delete", handler.PostHardDeleteRedirectHandler).Name("admin.trash.redirects.delete")
+	adminGroup.Post("/api/trash/:type/batch-delete", handler.PostTrashBatchDeleteAPIHandler).Name("admin.trash.api.batch_delete")
 
 	adminGroup.Get("/http-error-logs", handler.GetHttpErrorLogListHandler).Name("admin.http_error_logs.list")
 	adminGroup.Post("/http-error-logs/:id/delete", handler.PostDeleteHttpErrorLogHandler).Name("admin.http_error_logs.delete")
+	adminGroup.Post("/api/http-error-logs/batch-delete", handler.PostHttpErrorLogBatchDeleteAPIHandler).Name("admin.http_error_logs.api.batch_delete")
 
 	adminGroup.Get("/tasks", handler.GetTaskListHandler).Name("admin.tasks.list")
 	adminGroup.Get("/tasks/new", handler.GetTaskNewHandler).Name("admin.tasks.new")
@@ -121,6 +130,7 @@ func RegisterRouter(
 	adminGroup.Get("/tasks/:id/edit", handler.GetTaskEditHandler).Name("admin.tasks.edit")
 	adminGroup.Post("/tasks/:id/edit", handler.PostUpdateTaskHandler).Name("admin.tasks.update")
 	adminGroup.Post("/tasks/:id/delete", handler.PostDeleteTaskHandler).Name("admin.tasks.delete")
+	adminGroup.Post("/api/tasks/batch-delete", handler.PostTaskBatchDeleteAPIHandler).Name("admin.tasks.api.batch_delete")
 	adminGroup.Post("/tasks/:code/trigger", handler.PostTriggerTaskHandler).Name("admin.tasks.trigger")
 	adminGroup.Get("/tasks/:code/runs", handler.GetTaskRunListHandler).Name("admin.tasks.runs")
 

@@ -1,48 +1,48 @@
 {% extends "dash/layout/layout_detail.html" %}
-{% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
 {% block page_actions %}
-<a class="button" href="{{ UrlFor('admin.posts.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
+  {{ sui.LinkButton("返回", "outline", href=UrlFor('admin.posts.list')) }}
 {% endblock %}
 {% block content %}
 <style>
   .export-page {
     display: grid;
-    gap: var(--space-4);
+    gap: var(--app-gap-4);
   }
 
   .export-title {
     margin: 0;
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--app-gap-2);
   }
 
   .export-desc {
-    margin-top: var(--space-3);
-    color: var(--muted-foreground);
+    margin-top: var(--app-gap-3);
+    color: var(--app-text-soft);
   }
 
   .export-actions {
-    margin-top: var(--space-4);
+    margin-top: var(--app-gap-3);
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--app-gap-3);
     flex-wrap: wrap;
   }
 
   .export-tip {
-    font-size: var(--text-8);
-    color: var(--muted-foreground);
+    font-size: 0.82rem;
+    color: var(--app-text-soft);
   }
 
   .export-list {
-    margin: var(--space-3) 0 0 0;
-    padding-left: var(--space-5);
+    margin: var(--app-gap-2) 0 0 0;
+    padding-left: var(--app-gap-4);
   }
 
   .export-list li {
-    margin-bottom: var(--space-2);
-    color: var(--muted-foreground);
+    margin-bottom: var(--app-gap-2);
+    color: var(--app-text-soft);
   }
 
   .export-list li:last-child {
@@ -54,13 +54,13 @@
   <div class="card">
     <h3 class="export-title">
       数据库导出
-      <span class="badge outline">SQLite</span>
+      <span class="ui-pill">SQLite</span>
     </h3>
     <p class="export-desc">
       导出当前数据库为 SQLite 文件，可用于备份、迁移或离线归档。
     </p>
     <div class="export-actions">
-      <a href="{{ UrlFor('admin.export.download') }}" class="button">导出数据库</a>
+      {{ sui.LinkButton("导出数据库", "primary", href=UrlFor('admin.export.download')) }}
       <span class="export-tip">文件将保存到浏览器默认下载目录，文件名包含时间戳。</span>
     </div>
   </div>

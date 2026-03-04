@@ -39,7 +39,7 @@
 
 {% block content %}
 <div class="data-table-wrap">
-  <table id="tags-table" class="data-table" aria-label="标签列表" data-role="data-table">
+  <table id="tags-table" class="data-table" aria-label="标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.tags.api.batch_delete') }}">
     <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -53,7 +53,7 @@
     </thead>
     <tbody>
       {% for tag in Tags %}
-        <tr>
+        <tr data-batch-delete-id="{{ tag.ID }}">
           <td>{{ ui.table_td_id(tag.ID) }}</td>
           <td>{{ tag.Name }}</td>
           <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>

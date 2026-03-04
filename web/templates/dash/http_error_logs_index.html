@@ -1,64 +1,64 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "http-error-logs-table" %}
+
 {% block page_actions %}{% endblock %}
+
 {% block content %}
-
-<table id="http-error-logs-table" data-role="data-table">
-  <thead>
-  <tr>
-    <th>{{ ui.table_th_id() }}</th>
-    <th>请求ID</th>
-    <th>客户端IP</th>
-    <th>方法</th>
-    <th>路径</th>
-    <th>状态</th>
-    <th>用户代理</th>
-    <th>查询参数</th>
-    <th>请求体</th>
-    <th>创建时间</th>
-    <th>操作</th>
-  </tr>
-  </thead>
-
-  <tbody>
-  {% for log in Logs %}
-  <tr>
-    <td>{{ ui.table_td_id(log.ID) }}</td>
-    <td>{{ log.ReqID }}</td>
-    <td>{{ log.ClientIP }}</td>
-    <td>{{ log.Method }}</td>
-    <td>{{ log.Path }}</td>
-    <td>{{ log.Status }}</td>
-    <td>{% if log.UserAgent %}{{ LongText(log.UserAgent, 30, 1) }}{% else %}-{% endif %}</td>
-    <td>{% if log.QueryParams %}{{ log.QueryParams }}{% else %}-{% endif %}</td>
-    <td>{% if log.BodyParams %}
-      {{ LongText(log.BodyParams, 30, 1) }}
-      {% else %}-{% endif %}</td>
-    <td>{{ log.CreatedAt | formatTime }}</td>
-    <td>
-      <div class="row-actions">
-        {% if (log.Method == "GET") and (log.Status == 404) %}
-          {{ ui.action_icon_link(UrlFor('admin.redirects.new', from=log.Path), "添加重定向到", "arrow-right") }}
-        {% endif %}
-        <form id="form" method="post" action="{{ UrlFor('admin.http_error_logs.delete', id=log.ID) }}">
-          {{ _csrf_token() }}
-          {{ ui.action_icon_button("删除", "trash-2", type="submit", danger=true) }}
-        </form>
-      </div>
-    </td>
-  </tr>
-  {% else %}
-  {{ ui.table_empty(11, "暂无日志") }}
-  {% endfor %}
-  </tbody>
-
-  <tfoot>
-  <tr>
-    <td colspan="11">
-      {% with Pager = Pager %}{% include "dash/include/pagination.html" %}{% endwith %}
-    </td>
-  </tr>
-  </tfoot>
-</table>
+<div class="data-table-wrap">
+  <table id="http-error-logs-table" class="data-table" data-role="data-table" aria-label="HTTP 错误日志" data-batch-delete-url="{{ UrlFor('admin.http_error_logs.api.batch_delete') }}">
+    <thead>
+      <tr>
+        <th>{{ ui.table_th_id() }}</th>
+        <th>请求ID</th>
+        <th>客户端IP</th>
+        <th>方法</th>
+        <th>路径</th>
+        <th>状态</th>
+        <th>用户代理</th>
+        <th>查询参数</th>
+        <th>请求体</th>
+        <th>创建时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in Logs %}
+      <tr data-batch-delete-id="{{ log.ID }}">
+        <td>{{ ui.table_td_id(log.ID) }}</td>
+        <td>{{ log.ReqID }}</td>
+        <td>{{ log.ClientIP }}</td>
+        <td>{{ log.Method }}</td>
+        <td>{{ log.Path }}</td>
+        <td>{{ log.Status }}</td>
+        <td>{% if log.UserAgent %}{{ LongText(log.UserAgent, 30, 1) }}{% else %}-{% endif %}</td>
+        <td>{% if log.QueryParams %}{{ log.QueryParams }}{% else %}-{% endif %}</td>
+        <td>{% if log.BodyParams %}{{ LongText(log.BodyParams, 30, 1) }}{% else %}-{% endif %}</td>
+        <td>{{ log.CreatedAt | formatTime }}</td>
+        <td>
+          <div class="cell-actions">
+            {% if (log.Method == "GET") and (log.Status == 404) %}
+              {{ sui.LinkIcon("arrow-right", UrlFor('admin.redirects.new', from=log.Path), attrs='aria-label="添加重定向到" data-title="添加重定向到"') }}
+            {% endif %}
+            <form method="post" action="{{ UrlFor('admin.http_error_logs.delete', id=log.ID) }}">
+              {{ _csrf_token() }}
+              {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+        <tr><td colspan="11">暂无日志</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="11">
+          {% with Pager = Pager %}{% include "dash/include/pagination.html" %}{% endwith %}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
 {% endblock %}

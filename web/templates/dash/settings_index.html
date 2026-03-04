@@ -1,54 +1,64 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "settings-table" %}
+
 {% block page_actions %}
-<a class="button" href="{{ UrlFor('admin.settings.new') }}">{{ ui.action_btn_content("plus", "新建设置") }}</a>
-<a class="button" href="{{ UrlFor('admin.settings.all') }}">{{ ui.action_btn_content("square-pen", "编辑全部") }}</a>
+  {{ sui.LinkButton("新建设置", "primary", href=UrlFor('admin.settings.new')) }}
+  {{ sui.LinkButton("编辑全部", "outline", href=UrlFor('admin.settings.all')) }}
 {% endblock %}
+
 {% block content %}
-
-<table id="settings-table" data-role="data-table">
-  <thead>
-  <tr>
-    <th>{{ ui.table_th_id() }}</th>
-    <th>名称</th>
-    <th>分类</th>
-    <th>子分类</th>
-    <th>编码</th>
-    <th>类型</th>
-    <th>值</th>
-    <th>需重启</th>
-    <th>创建时间</th>
-    <th>更新时间</th>
-    <th>操作</th>
-  </tr>
-  </thead>
-
-  <tbody>
-  {% for setting in Settings %}
-  <tr>
-    <td>{{ ui.table_td_id(setting.ID) }}</td>
-    <td>{{ setting.Name }}</td>
-    <td>{{ setting.Kind }}</td>
-    <td>{% if setting.SubKind %}{{ setting.SubKind }}{% else %}-{% endif %}</td>
-    <td>{{ setting.Code }}</td>
-    <td>{{ setting.Type }}</td>
-    <td>
-      {% if (setting.Type == "password") or (setting.Type == "secret") %}
-        <span>••••••</span>
+<div class="data-table-wrap">
+  <table id="settings-table" class="data-table" aria-label="设置列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.settings.api.batch_delete') }}">
+    <thead>
+      <tr>
+        <th>{{ ui.table_th_id() }}</th>
+        <th>名称</th>
+        <th>分类</th>
+        <th>子分类</th>
+        <th>编码</th>
+        <th>类型</th>
+        <th>值</th>
+        <th>需重启</th>
+        <th>创建时间</th>
+        <th>更新时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for setting in Settings %}
+      <tr data-batch-delete-id="{{ setting.ID }}">
+        <td>{{ ui.table_td_id(setting.ID) }}</td>
+        <td>{{ setting.Name }}</td>
+        <td>{{ setting.Kind }}</td>
+        <td>{% if setting.SubKind %}{{ setting.SubKind }}{% else %}-{% endif %}</td>
+        <td>{{ setting.Code }}</td>
+        <td>{{ setting.Type }}</td>
+        <td>
+          {% if (setting.Type == "password") or (setting.Type == "secret") %}
+            <span>******</span>
+          {% else %}
+            {{ setting.Value }}
+          {% endif %}
+        </td>
+        <td>{% if setting.Reload == 1 %}是{% else %}—{% endif %}</td>
+        <td>{{ setting.CreatedAt | relativeTime }}</td>
+        <td>{{ setting.UpdatedAt | relativeTime }}</td>
+        <td>
+          <div class="cell-actions">
+            {{ sui.LinkIcon("square-pen", UrlFor('admin.settings.edit', id=setting.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+            <form method="post" action="{{ UrlFor('admin.settings.delete', id=setting.ID) }}">
+              {{ _csrf_token() }}
+              {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+            </form>
+          </div>
+        </td>
+      </tr>
       {% else %}
-        {{ setting.Value }}
-      {% endif %}
-    </td>
-    <td>{% if setting.Reload == 1 %}是{% else %}—{% endif %}</td>
-    <td>{{ setting.CreatedAt | relativeTime }}</td>
-    <td>{{ setting.UpdatedAt | relativeTime }}</td>
-    {{ ui.table_row_actions("admin.settings.edit", "admin.settings.delete", setting.ID) }}
-  </tr>
-  {% else %}
-  {{ ui.table_empty(11, "暂无设置项") }}
-  {% endfor %}
-  </tbody>
-
-</table>
+        <tr><td colspan="11">暂无设置项</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

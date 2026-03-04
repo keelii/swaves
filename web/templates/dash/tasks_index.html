@@ -14,7 +14,7 @@
 
 {% block content %}
 <div class="data-table-wrap">
-  <table id="tasks-table" class="data-table" aria-label="任务列表" data-role="data-table">
+  <table id="tasks-table" class="data-table" aria-label="任务列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.tasks.api.batch_delete') }}">
     <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -31,7 +31,7 @@
     </thead>
     <tbody>
       {% for task in Tasks %}
-        <tr>
+        <tr{% if task.Kind != 0 %} data-batch-delete-id="{{ task.ID }}"{% endif %}>
           <td>{{ ui.table_td_id(task.ID) }}</td>
           <td>{{ task.Code }}</td>
           <td>{{ task.Name }}</td>

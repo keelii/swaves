@@ -67,7 +67,7 @@
 {% endif %}
 
 <div class="data-table-wrap" data-role="multiselect-scope">
-  <table id="posts-table" class="data-table" aria-label="文章列表" data-role="data-table">
+  <table id="posts-table" class="data-table" aria-label="文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.posts.api.batch_delete') }}">
     <thead>
     <tr>
       <th>{{ ui.table_th_id() }}</th>
@@ -83,7 +83,7 @@
 
     <tbody>
     {% for postWithRelation in Posts %}
-    <tr>
+    <tr data-batch-delete-id="{{ postWithRelation.Post.ID }}">
       <td>{{ ui.table_td_id(postWithRelation.Post.ID) }}</td>
       <td>
         {% set postTitle = postWithRelation.Post.Title %}

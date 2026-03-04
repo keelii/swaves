@@ -57,195 +57,326 @@
   {"value": "textarea", "label": "多行文本"}
 ] %}
 
+<style>
+  .settings-inline-control {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-gap-2);
+    width: min(680px, 100%);
+  }
+
+  .settings-inline-control .ui-input,
+  .settings-inline-control .ui-textarea,
+  .settings-inline-control .ui-select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .settings-range-control {
+    align-items: center;
+  }
+
+  .settings-range-output {
+    min-width: 48px;
+    color: var(--app-text-soft);
+    font-size: 0.82rem;
+  }
+</style>
+
 <form id="form" method="post" action="{{ Action }}">
   {{ _csrf_token() }}
-  {{ ui.form_field_text("分类", "kind", kind_value, required=true, placeholder="例如: system, url, integration, default", help="（例如：system、url、integration、default）") }}
-  {{ ui.form_field_text("子分类", "sub_kind", sub_kind_value, placeholder="例如: general, see, imagekit, s3", help="（可选，分类下的子分类 code）") }}
-  {{ ui.form_field_text("名称", "name", name_value, required=true, placeholder="人类可读的名称", help="（用于界面展示的人类可读名称）") }}
-  {{ ui.form_field_text("编码", "code", code_value, required=true, placeholder="例如: site_name, admin_password", help="（唯一键，例如：site_name、admin_password）") }}
-
-  <p>
-    <label>
-      <select name="type" required{% if is_edit %} disabled{% endif %}>
-        {% for option in setting_type_options %}
-          <option value="{{ option.value }}"{% if type_value == option.value %} selected{% endif %}>{{ option.label }}</option>
-        {% endfor %}
-      </select>
-      {% if is_edit %}<input type="hidden" name="type" value="{{ type_value }}">{% endif %}
-      类型
-      {% if is_edit %}
-        <small>（创建后不可修改）</small>
+  <div class="app-px">
+    <div class="ui-form">
+      {% if Error %}
+        {{ sui.Alert(Error, kind="danger", title="保存失败") }}
       {% endif %}
-    </label>
-  </p>
 
-  {{ ui.form_field_textarea("选项（JSON）", "options", options_value, rows=3, cols=80, placeholder="[{\"label\": \"选项1\", \"value\": \"value1\"}, {\"label\": \"选项2\", \"value\": \"value2\"}]", help="（单选/复选/下拉类型必填，格式为 {label, value} 的 JSON 数组）") }}
-  {{ ui.form_field_textarea("属性（JSON）", "attrs", attrs_value, rows=3, cols=80, placeholder="{\"min\": 0, \"max\": 100, \"step\": 1}", help="（可选 HTML 属性，JSON 对象）") }}
+      {{ sui.Field("分类", sui.Input(id="setting-kind", name="kind", value=kind_value, placeholder="例如：system、content_routing", attrs="required"), id="setting-kind", required=true, help="设置分类 code。") }}
+      {{ sui.Field("子分类", sui.Input(id="setting-sub-kind", name="sub_kind", value=sub_kind_value, placeholder="例如：general"), id="setting-sub-kind", help="可选，分类下的子分类 code。") }}
+      {{ sui.Field("名称", sui.Input(id="setting-name", name="name", value=name_value, placeholder="人类可读名称", attrs="required"), id="setting-name", required=true, help="用于界面展示。") }}
+      {{ sui.Field("编码", sui.Input(id="setting-code", name="code", value=code_value, placeholder="例如：site_name", attrs="required"), id="setting-code", required=true, help="唯一键，建议使用 snake_case。") }}
 
-  <p>
-    <label>
-      默认选项值<br>
-      <div id="default_option_value_container">
-        {% if (options_parsed|length) > 0 %}
-          <select name="default_option_value" id="default_option_value">
-            <option value="">顶级分类</option>
-            {% for option in options_parsed %}
-              <option value="{{ option.value }}"{% if default_option_value == option.value %} selected{% endif %}>{{ option.label }}</option>
-            {% endfor %}
-          </select>
-          {% if is_edit %}
-            <small>（从上方选项中选择默认值）</small>
-          {% else %}
-            <small>（从上方选项中选择默认值；选项变更后会自动更新）</small>
-          {% endif %}
-        {% else %}
-          <input type="text" name="default_option_value" id="default_option_value" value="{{ default_option_value }}" placeholder="默认值">
-          {% if is_edit %}
-            <small>（当配置下拉/单选/复选时使用）</small>
-          {% else %}
-            <small>（当配置下拉/单选/复选时使用；不需要可留空，填写上方选项后会显示下拉）</small>
-          {% endif %}
+      {% set typeControl %}
+        <select class="ui-select" id="setting-type" name="type" required{% if is_edit %} disabled{% endif %}>
+          {% for option in setting_type_options %}
+            <option value="{{ option.value }}"{% if type_value == option.value %} selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+        {% if is_edit %}
+          <input type="hidden" name="type" value="{{ type_value }}">
         {% endif %}
-      </div>
-    </label>
-  </p>
+      {% endset %}
+      {{ sui.Field("类型", typeControl, id="setting-type", required=true, help=("创建后不可修改。" if is_edit else "选择设置值的输入类型。")) }}
 
-  {{ ui.form_field_text("前缀值", "prefix_value", prefix_value, placeholder="如：/、blog（前缀字段类型使用）", help="（可选，前缀字段类型使用）") }}
+      {{ sui.Field("选项（JSON）", sui.Textarea(id="setting-options", name="options", value=options_value, rows=4, placeholder='[{"label":"选项1","value":"value1"}]'), id="setting-options", help="radio/checkbox/select 类型建议填写，格式为 JSON 数组。") }}
+      {{ sui.Field("属性（JSON）", sui.Textarea(id="setting-attrs", name="attrs", value=attrs_value, rows=3, placeholder='{"min":0,"max":100,"step":1}'), id="setting-attrs", help="可选 HTML 属性，格式为 JSON 对象。") }}
 
-  <p>
-    <label>
-      值<br>
-      {% if is_edit %}
-        {% if type_value == "password" %}
-          <input type="password" name="value" placeholder="留空则保持当前值"{{ RenderAttrs(attrs_parsed) }}>
-        {% else %}{% if type_value == "secret" %}
-          <span class="hstack">
-            <input type="password" id="setting_secret_value" name="value" value="{{ value_value }}" placeholder="当前值" autocomplete="off"{{ RenderAttrs(attrs_parsed) }} style="flex:1;">
-            <button class="outline" type="button" id="toggle_setting_secret_value">显示</button>
-          </span>
-        {% else %}{% if type_value == "prefix-field" %}
-          {{ sui.Fieldset(
-            (prefix_value if prefix_value else "前缀"),
-            sui.Input(name="value", value=value_value, placeholder="当前值", attrs=RenderAttrs(attrs_parsed))
-          ) }}
-        {% else %}{% if type_value == "textarea" %}
-          <textarea name="value"{{ RenderAttrs(attrs_parsed) }} placeholder="当前值">{{ value_value }}</textarea>
-        {% else %}{% if type_value == "select" %}
+      {% set defaultOptionControl %}
+        <div id="default-option-value-container" data-current-value="{{ default_option_value }}">
           {% if (options_parsed|length) > 0 %}
-            <select name="value"{{ RenderAttrs(attrs_parsed) }}>
-              {% for valueOption in options_parsed %}
-                <option value="{{ valueOption.value }}"{% if value_value == valueOption.value %} selected{% endif %}>{{ valueOption.label }}</option>
+            <select class="ui-select" id="default_option_value" name="default_option_value">
+              <option value="">不设置</option>
+              {% for option in options_parsed %}
+                <option value="{{ option.value }}"{% if default_option_value == option.value %} selected{% endif %}>{{ option.label }}</option>
               {% endfor %}
             </select>
           {% else %}
-            <input type="text" name="value" value="{{ value_value }}"{{ RenderAttrs(attrs_parsed) }} placeholder="当前值">
-            <small style="color: orange;">警告：选项解析失败，请检查选项 JSON 格式。</small>
+            {{ sui.Input(id="default_option_value", name="default_option_value", value=default_option_value, placeholder="默认值（可选）") }}
           {% endif %}
-        {% else %}{% if type_value == "range" %}
-          <input type="range" name="value" value="{{ value_value }}"{{ RenderAttrs(attrs_parsed) }}>
-        {% else %}
-          <input type="text" name="value" value="{{ value_value }}"{{ RenderAttrs(attrs_parsed) }} placeholder="当前值">
-        {% endif %}{% endif %}{% endif %}{% endif %}{% endif %}{% endif %}
-      {% else %}
-        <span class="hstack">
-          <input id="setting_new_value" type="text" name="value" value="{{ value_value }}" placeholder="初始值" style="flex:1;">
-          <button class="outline" type="button" id="toggle_setting_new_value" style="display:none;">显示</button>
-        </span>
-      {% endif %}
-      <small>{% if is_edit %}（当前值）{% else %}（初始值，设置创建时写入）{% endif %}</small>
-    </label>
-  </p>
+        </div>
+      {% endset %}
+      {{ sui.Field("默认选项值", defaultOptionControl, label_tag="div", help="当类型为 radio/checkbox/select 时可设置默认值。") }}
 
-  {{ ui.form_field_textarea("描述", "description", description_value, rows=2, cols=80, placeholder="帮助文本，显示在管理界面中", help="（显示在管理界面的帮助说明）") }}
-  {{ ui.form_field_number("排序", "sort", sort_value, help="（分类内排序，越小越靠前）") }}
-  {{ ui.form_field_checkbox("修改后需重启生效", "reload", checked=reload_checked, value="1") }}
+      {{ sui.Field("前缀值", sui.Input(id="setting-prefix-value", name="prefix_value", value=prefix_value, placeholder="例如：/ 或 archives"), id="setting-prefix-value", help="prefix-field 类型会使用该前缀。") }}
+
+      {% if is_edit %}
+        {% if type_value == "password" %}
+          {% set valueControl %}
+            {{ sui.Input(id="setting-password-value", name="value", type="password", placeholder="留空则保持当前值", attrs=RenderAttrs(attrs_parsed)) }}
+          {% endset %}
+          {{ sui.Field("值", valueControl, id="setting-password-value", help="留空时不更新当前密码。") }}
+        {% elif type_value == "secret" %}
+          {% set valueControl %}
+            <div class="settings-inline-control">
+              <input id="setting-secret-value" type="password" class="ui-input" name="value" value="{{ value_value }}" autocomplete="off"{{ RenderAttrs(attrs_parsed) }}>
+              {{ sui.Button("显示", "outline", attrs='type="button" id="setting-secret-toggle"') }}
+            </div>
+          {% endset %}
+          {{ sui.Field("值", valueControl, id="setting-secret-value", help="可点击显示/隐藏当前密钥。") }}
+        {% elif type_value == "textarea" %}
+          {{ sui.Field("值", sui.Textarea(id="setting-value", name="value", value=value_value, rows=6, attrs=RenderAttrs(attrs_parsed)), id="setting-value") }}
+        {% elif type_value == "prefix-field" %}
+          {{ sui.Field("值", sui.Input(id="setting-value", name="value", value=value_value, placeholder="当前值", attrs=RenderAttrs(attrs_parsed), prefix=(prefix_value if prefix_value else "前缀")), id="setting-value") }}
+        {% elif type_value == "range" %}
+          {% set valueControl %}
+            <div class="settings-inline-control settings-range-control">
+              <input id="setting-range-value" type="range" class="ui-input" name="value" value="{{ value_value }}"{{ RenderAttrs(attrs_parsed) }} data-role="setting-range-input">
+              <output id="setting-range-output" class="settings-range-output">{{ value_value }}</output>
+            </div>
+          {% endset %}
+          {{ sui.Field("值", valueControl, id="setting-range-value") }}
+        {% elif (type_value == "select" or type_value == "radio") and (options_parsed|length) > 0 %}
+          {% set valueControl %}
+            <select class="ui-select" id="setting-value" name="value"{{ RenderAttrs(attrs_parsed) }}>
+              {% for option in options_parsed %}
+                <option value="{{ option.value }}"{% if value_value == option.value %} selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          {% endset %}
+          {{ sui.Field("值", valueControl, id="setting-value") }}
+        {% elif type_value == "date" %}
+          {{ sui.Field("值", sui.Input(id="setting-value", name="value", type="date", value=value_value, attrs=RenderAttrs(attrs_parsed)), id="setting-value") }}
+        {% elif type_value == "time" %}
+          {{ sui.Field("值", sui.Input(id="setting-value", name="value", type="time", value=value_value, attrs=RenderAttrs(attrs_parsed)), id="setting-value") }}
+        {% elif type_value == "datetime" %}
+          {{ sui.Field("值", sui.Input(id="setting-value", name="value", type="datetime-local", value=value_value, attrs=RenderAttrs(attrs_parsed)), id="setting-value") }}
+        {% elif type_value == "url" %}
+          {{ sui.Field("值", sui.Input(id="setting-value", name="value", type="url", value=value_value, attrs=RenderAttrs(attrs_parsed)), id="setting-value") }}
+        {% elif type_value == "number" %}
+          {{ sui.Field("值", sui.Input(id="setting-value", name="value", type="number", value=value_value, attrs=RenderAttrs(attrs_parsed)), id="setting-value") }}
+        {% else %}
+          {{ sui.Field("值", sui.Input(id="setting-value", name="value", value=value_value, placeholder="当前值", attrs=RenderAttrs(attrs_parsed)), id="setting-value") }}
+        {% endif %}
+      {% else %}
+        {% set valueControl %}
+          <div class="settings-inline-control">
+            {{ sui.Input(id="setting-new-value", name="value", value=value_value, placeholder="初始值") }}
+            {{ sui.Button("显示", "outline", attrs='type="button" id="setting-new-value-toggle" hidden') }}
+          </div>
+        {% endset %}
+        {{ sui.Field("值", valueControl, id="setting-new-value", help="创建时写入的初始值。") }}
+      {% endif %}
+
+      {{ sui.Field("描述", sui.Textarea(id="setting-description", name="description", value=description_value, rows=3, placeholder="帮助文本"), id="setting-description", help="显示在管理界面的说明。") }}
+      {{ sui.Field("排序", sui.Input(id="setting-sort", name="sort", type="number", value=sort_value), id="setting-sort", help="分类内排序，越小越靠前。") }}
+
+      {% set reloadControl %}
+        {{ sui.Checkbox(id="setting-reload", name="reload", label="修改后需重启生效", checked=reload_checked, attrs='value="1"') }}
+      {% endset %}
+      {{ sui.Field("生效方式", reloadControl, label_tag="div") }}
+    </div>
+  </div>
 </form>
 
-{% if is_edit %}
 <script>
-$(function() {
-  $('#toggle_setting_secret_value').on('click', function() {
-    var $btn = $(this);
-    var $input = $('#setting_secret_value');
-    if (!$input.length) {
+(function() {
+  var optionsInput = document.getElementById('setting-options');
+  var defaultContainer = document.getElementById('default-option-value-container');
+  var typeSelect = document.getElementById('setting-type');
+  var newValueInput = document.getElementById('setting-new-value');
+  var newValueToggle = document.getElementById('setting-new-value-toggle');
+  var rangeInput = document.querySelector('[data-role="setting-range-input"]');
+  var rangeOutput = document.getElementById('setting-range-output');
+
+  function bindMaskToggle(buttonID, inputID) {
+    var button = document.getElementById(buttonID);
+    var input = document.getElementById(inputID);
+    if (!button || !input) {
       return;
     }
+    button.addEventListener('click', function() {
+      var isPassword = String(input.getAttribute('type') || '').toLowerCase() === 'password';
+      input.setAttribute('type', isPassword ? 'text' : 'password');
+      button.textContent = isPassword ? '隐藏' : '显示';
+    });
+  }
 
-    var isPassword = ($input.attr('type') || '').toLowerCase() === 'password';
-    if (isPassword) {
-      $input.attr('type', 'text');
-      $btn.text('隐藏');
-    } else {
-      $input.attr('type', 'password');
-      $btn.text('显示');
-    }
-  });
-});
-</script>
-{% else %}
-<script>
-$(function() {
-  var $type = $('select[name="type"]');
-  var $valueInput = $('#setting_new_value');
-  var $toggleValue = $('#toggle_setting_new_value');
-  var $opt = $('textarea[name="options"]'), $cont = $('#default_option_value_container');
-
-  function updateDefaultOptionValue() {
-    if (!$opt.length || !$cont.length) {
-      return;
+  function parseOptionItems(raw) {
+    var text = String(raw || '').trim();
+    if (!text) {
+      return [];
     }
 
-    var currentVal = $('#default_option_value').val() || '';
-    var text = $opt.val().trim();
+    var parsed;
     try {
-      if (text) {
-        var opts = JSON.parse(text);
-        if (Array.isArray(opts) && opts.length > 0) {
-          var html = '<select name="default_option_value" id="default_option_value"><option value="">顶级分类</option>';
-          opts.forEach(function(o) {
-            var v = o.value || '', l = o.label || v;
-            html += '<option value="' + v + '"' + (v === currentVal ? ' selected' : '') + '>' + l + '</option>';
-          });
-          html += '</select><small>（从上方选项中选择默认值）</small>';
-          $cont.html(html);
-          return;
-        }
+      parsed = JSON.parse(text);
+    } catch (error) {
+      return [];
+    }
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    var seen = {};
+    var result = [];
+    parsed.forEach(function(item) {
+      if (!item || typeof item !== 'object') {
+        return;
       }
-    } catch (e) {}
-
-    $cont.html('<input type="text" name="default_option_value" id="default_option_value" value="' + (currentVal || '') + '"><small>（默认值；填写合法的选项 JSON 后可显示下拉）</small>');
+      var value = String(item.value == null ? '' : item.value).trim();
+      if (!value || seen[value]) {
+        return;
+      }
+      seen[value] = true;
+      var label = String(item.label == null ? value : item.label).trim();
+      if (!label) {
+        label = value;
+      }
+      result.push({
+        value: value,
+        label: label,
+      });
+    });
+    return result;
   }
 
-  if ($opt.length && $cont.length) {
-    $opt.on('input', updateDefaultOptionValue);
-    if ($opt.val().trim()) {
-      updateDefaultOptionValue();
+  function readDefaultOptionCurrent() {
+    if (!defaultContainer) {
+      return '';
+    }
+    var field = defaultContainer.querySelector('[name="default_option_value"]');
+    if (field) {
+      return String(field.value || '');
+    }
+    return String(defaultContainer.getAttribute('data-current-value') || '');
+  }
+
+  function renderDefaultOptionControl() {
+    if (!optionsInput || !defaultContainer) {
+      return;
+    }
+
+    var current = readDefaultOptionCurrent();
+    defaultContainer.setAttribute('data-current-value', current);
+
+    var options = parseOptionItems(optionsInput.value);
+    defaultContainer.innerHTML = '';
+
+    if (options.length === 0) {
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'ui-input';
+      input.id = 'default_option_value';
+      input.name = 'default_option_value';
+      input.placeholder = '默认值（可选）';
+      input.value = current;
+      defaultContainer.appendChild(input);
+      return;
+    }
+
+    var select = document.createElement('select');
+    select.className = 'ui-select';
+    select.id = 'default_option_value';
+    select.name = 'default_option_value';
+
+    var emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = '不设置';
+    select.appendChild(emptyOption);
+
+    options.forEach(function(item) {
+      var option = document.createElement('option');
+      option.value = item.value;
+      option.textContent = item.label;
+      if (item.value === current) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    defaultContainer.appendChild(select);
+  }
+
+  function resolveValueInputType(settingType) {
+    switch (settingType) {
+      case 'number':
+        return 'number';
+      case 'date':
+        return 'date';
+      case 'time':
+        return 'time';
+      case 'datetime':
+        return 'datetime-local';
+      case 'url':
+        return 'url';
+      default:
+        return 'text';
     }
   }
 
-  function syncValueMask() {
-    var currentType = ($type.val() || '').toLowerCase();
+  function syncNewValueInputByType() {
+    if (!typeSelect || !newValueInput) {
+      return;
+    }
+
+    var currentType = String(typeSelect.value || '').toLowerCase();
     var shouldMask = currentType === 'password' || currentType === 'secret';
-    $valueInput.attr('type', shouldMask ? 'password' : 'text');
-    $toggleValue.toggle(shouldMask);
-    if (!shouldMask) {
-      $toggleValue.text('显示');
+    var inputType = shouldMask ? 'password' : resolveValueInputType(currentType);
+    newValueInput.setAttribute('type', inputType);
+
+    if (!newValueToggle) {
+      return;
+    }
+
+    if (shouldMask) {
+      newValueToggle.hidden = false;
+    } else {
+      newValueToggle.hidden = true;
+      newValueToggle.textContent = '显示';
     }
   }
 
-  $type.on('change', syncValueMask);
-  $toggleValue.on('click', function() {
-    var isPassword = ($valueInput.attr('type') || '').toLowerCase() === 'password';
-    if (isPassword) {
-      $valueInput.attr('type', 'text');
-      $toggleValue.text('隐藏');
-    } else {
-      $valueInput.attr('type', 'password');
-      $toggleValue.text('显示');
-    }
-  });
+  if (optionsInput && defaultContainer) {
+    optionsInput.addEventListener('input', renderDefaultOptionControl);
+    optionsInput.addEventListener('change', renderDefaultOptionControl);
+    renderDefaultOptionControl();
+  }
 
-  syncValueMask();
-});
+  if (typeSelect && newValueInput) {
+    typeSelect.addEventListener('change', syncNewValueInputByType);
+    syncNewValueInputByType();
+  }
+
+  if (rangeInput && rangeOutput) {
+    var syncRangeOutput = function() {
+      rangeOutput.textContent = String(rangeInput.value || '');
+    };
+    rangeInput.addEventListener('input', syncRangeOutput);
+    syncRangeOutput();
+  }
+
+  bindMaskToggle('setting-secret-toggle', 'setting-secret-value');
+  bindMaskToggle('setting-new-value-toggle', 'setting-new-value');
+})();
 </script>
-{% endif %}

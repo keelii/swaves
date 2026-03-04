@@ -1286,6 +1286,13 @@ func GetTaskForEdit(dbx *db.DB, id int64) (*db.Task, error) {
 }
 
 func DeleteTaskService(dbx *db.DB, id int64) error {
+	task, err := db.GetTaskByID(dbx, id)
+	if err != nil {
+		return err
+	}
+	if task.Kind == db.TaskInternal {
+		return errors.New("internal task cannot be deleted")
+	}
 	return db.SoftDeleteTask(dbx, id)
 }
 

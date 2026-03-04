@@ -165,7 +165,7 @@
 {% endif %}
 
 {% if (settingKinds|length) > 0 %}
-  <div class="settings-kind-tabs app-operation">
+  <div class="settings-kind-tabs">
     {{ sui.TabsStart("设置分类") }}
       {% for kind in settingKinds %}
         {% set label = settingKindLabels[kind]|default(kind) %}

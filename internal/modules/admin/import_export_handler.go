@@ -156,7 +156,7 @@ func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 	importingItems, err := ListImportingPreviewItemsService(h.Model)
 	if err != nil {
 		logger.Error("list importing items failed: %v", err)
-		return RenderAdminView(c, "admin/import.html", fiber.Map{
+		return RenderAdminView(c, "dash/import.html", fiber.Map{
 			"Title":          "Import Markdown",
 			"ImportingItems": []PreviewPostItem{},
 			"AllCategories":  []db.Category{},
@@ -174,7 +174,7 @@ func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return RenderAdminView(c, "admin/import.html", fiber.Map{
+	return RenderAdminView(c, "dash/import.html", fiber.Map{
 		"Title":          "Import Markdown",
 		"ImportingItems": importingItems,
 		"AllCategories":  allCategories,
@@ -356,7 +356,7 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 		}
 		c.Status(statusCode)
 		logger.Warn("import multipart parse failed: status=%d method=%s path=%s ip=%s err=%v", statusCode, c.Method(), c.Path(), c.IP(), err)
-		return RenderAdminView(c, "admin/import.html", fiber.Map{
+		return RenderAdminView(c, "dash/import.html", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "Failed to parse form: " + err.Error(),
 		}, "")
@@ -364,7 +364,7 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 
 	files := form.File["files"]
 	if len(files) == 0 {
-		return RenderAdminView(c, "admin/import.html", fiber.Map{
+		return RenderAdminView(c, "dash/import.html", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "Please select at least one file to import",
 		}, "")
@@ -421,7 +421,7 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 	for _, fileHeader := range files {
 		src, err := fileHeader.Open()
 		if err != nil {
-			return RenderAdminView(c, "admin/import.html", fiber.Map{
+			return RenderAdminView(c, "dash/import.html", fiber.Map{
 				"Title": "Import Markdown",
 				"Error": "Failed to open file " + fileHeader.Filename + ": " + err.Error(),
 			}, "")
@@ -430,7 +430,7 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 		content, err := io.ReadAll(src)
 		src.Close()
 		if err != nil {
-			return RenderAdminView(c, "admin/import.html", fiber.Map{
+			return RenderAdminView(c, "dash/import.html", fiber.Map{
 				"Title": "Import Markdown",
 				"Error": "Failed to read file " + fileHeader.Filename + ": " + err.Error(),
 			}, "")
@@ -528,20 +528,20 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 
 	items, parseErr := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField, categorySource, categoryField, tagSource, tagField)
 	if parseErr != nil && len(items) == 0 {
-		return RenderAdminView(c, "admin/import.html", fiber.Map{
+		return RenderAdminView(c, "dash/import.html", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": parseErr.Error(),
 		}, "")
 	}
 	if len(items) == 0 {
-		return RenderAdminView(c, "admin/import.html", fiber.Map{
+		return RenderAdminView(c, "dash/import.html", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "No items to import",
 		}, "")
 	}
 
 	if err := ImportPreviewService(h.Model, items); err != nil {
-		return RenderAdminView(c, "admin/import.html", fiber.Map{
+		return RenderAdminView(c, "dash/import.html", fiber.Map{
 			"Title": "Import Markdown",
 			"Error": err.Error(),
 		}, "")
@@ -552,21 +552,21 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 		success += " (with warning: " + parseErr.Error() + ")"
 	}
 
-	return RenderAdminView(c, "admin/import.html", fiber.Map{
+	return RenderAdminView(c, "dash/import.html", fiber.Map{
 		"Title":   "Import Markdown",
 		"Success": success,
 	}, "")
 }
 
 func (h *Handler) GetDevUIComponentsHandler(c fiber.Ctx) error {
-	return RenderAdminView(c, "admin/dev_ui_components.html", fiber.Map{
+	return RenderAdminView(c, "dash/dev_ui_components.html", fiber.Map{
 		"Title": "UI组件",
 	}, "")
 }
 
 // Export
 func (h *Handler) GetExportHandler(c fiber.Ctx) error {
-	return RenderAdminView(c, "admin/export.html", fiber.Map{
+	return RenderAdminView(c, "dash/export.html", fiber.Map{
 		"Title": "导出数据库",
 	}, "")
 }
@@ -580,7 +580,7 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 创建临时目录
 	tmpDir, err := os.MkdirTemp(os.TempDir(), name+"-")
 	if err != nil {
-		return RenderAdminView(c, "admin/export.html", fiber.Map{
+		return RenderAdminView(c, "dash/export.html", fiber.Map{
 			"Title": "导出数据库",
 			"Error": "Failed to create export directory: " + err.Error(),
 		}, "")
@@ -595,7 +595,7 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	result, err := db.ExportSQLiteWithHash(h.Model, tmpDir)
 	if err != nil {
 		cleanupTmpDir()
-		return RenderAdminView(c, "admin/export.html", fiber.Map{
+		return RenderAdminView(c, "dash/export.html", fiber.Map{
 			"Title": "导出数据库",
 			"Error": "Failed to export database: " + err.Error(),
 		}, "")
@@ -609,7 +609,7 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 发送文件
 	if err := c.SendFile(result.File); err != nil {
 		cleanupTmpDir()
-		return RenderAdminView(c, "admin/export.html", fiber.Map{
+		return RenderAdminView(c, "dash/export.html", fiber.Map{
 			"Title": "导出数据库",
 			"Error": "Failed to send file: " + err.Error(),
 		}, "")

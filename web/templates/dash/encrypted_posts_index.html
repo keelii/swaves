@@ -56,9 +56,9 @@
 
 {% block content %}
 <div class="data-table-wrap">
-  <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table">
+  <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.encrypted_posts.api.batch_delete') }}">
     <thead>
-    <tr>
+    <tr data-batch-delete-id="{{ post.ID }}">
       <th>{{ ui.table_th_id() }}</th>
       <th>标题</th>
       <th>URL 标识</th>
