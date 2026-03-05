@@ -4,13 +4,15 @@ import (
 	"strconv"
 	"swaves/internal/platform/db"
 	job "swaves/internal/platform/jobs"
+	"swaves/internal/platform/middleware"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 // Tasks
 func (h *Handler) GetTaskListHandler(c fiber.Ctx) error {
-	tasks, err := ListTasksService(h.Model)
+	pager := middleware.GetPagination(c)
+	tasks, err := ListTasksService(h.Model, &pager)
 	if err != nil {
 		return err
 	}
@@ -18,6 +20,7 @@ func (h *Handler) GetTaskListHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "dash/tasks_index.html", fiber.Map{
 		"Title": "Tasks",
 		"Tasks": tasks,
+		"Pager": pager,
 	}, "")
 }
 

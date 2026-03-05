@@ -961,8 +961,25 @@ type UpdateCategoryInput struct {
 	Sort        int64
 }
 
-func ListCategoriesService(dbx *db.DB) ([]db.Category, error) {
-	return db.ListCategories(dbx, false)
+func ListCategoriesService(dbx *db.DB, pager *types.Pagination) ([]db.Category, error) {
+	if pager == nil {
+		return db.ListCategories(dbx, false)
+	}
+
+	total, err := db.CountCategories(dbx)
+	if err != nil {
+		return nil, err
+	}
+
+	offset := (pager.Page - 1) * pager.PageSize
+	res, err := db.ListCategoriesPaged(dbx, false, pager.PageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	return res, nil
 }
 
 func GetAllCategoriesFlat(dbx *db.DB) ([]db.Category, error) {
@@ -1277,8 +1294,25 @@ func UpdateTaskService(dbx *db.DB, id int64, in UpdateTaskInput) error {
 	return db.UpdateTask(dbx, task)
 }
 
-func ListTasksService(dbx *db.DB) ([]db.Task, error) {
-	return db.ListTasks(dbx)
+func ListTasksService(dbx *db.DB, pager *types.Pagination) ([]db.Task, error) {
+	if pager == nil {
+		return db.ListTasks(dbx)
+	}
+
+	total, err := db.CountTasks(dbx)
+	if err != nil {
+		return nil, err
+	}
+
+	offset := (pager.Page - 1) * pager.PageSize
+	res, err := db.ListTasksPaged(dbx, pager.PageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	return res, nil
 }
 
 func GetTaskForEdit(dbx *db.DB, id int64) (*db.Task, error) {

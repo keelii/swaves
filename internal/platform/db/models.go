@@ -4074,28 +4074,43 @@ func GetTaskByCode(db *DB, code string) (*Task, error) {
 	return &t, nil
 }
 
-func ListTasks(db *DB) ([]Task, error) {
+func ListTasksPaged(db *DB, limit, offset int) ([]Task, error) {
+	if limit < 0 {
+		limit = 0
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	results, err := Read(db, specTasks, ReadOptions{
 		SelectFields: "id, code, name, description, schedule, enabled, kind, last_run_at, last_status, created_at, updated_at, deleted_at",
 		WhereClause:  "",
 		OrderBy:      "",
 		WhereArgs:    nil,
-		Limit:        0,
+		Limit:        limit,
+		Offset:       offset,
 	}, func(rows *sql.Rows) (interface{}, error) {
 		t, err := scanTask(rows)
 		if err != nil {
-			return nil, WrapInternalErr("ListTasks.Scan", err)
+			return nil, WrapInternalErr("ListTasksPaged.Scan", err)
 		}
 		return t, nil
 	})
 	if err != nil {
-		return nil, WrapInternalErr("ListTasks", err)
+		return nil, WrapInternalErr("ListTasksPaged", err)
 	}
 	res := make([]Task, len(results))
 	for i, v := range results {
 		res[i] = v.(Task)
 	}
 	return res, nil
+}
+
+func ListTasks(db *DB) ([]Task, error) {
+	return ListTasksPaged(db, 0, 0)
+}
+
+func CountTasks(db *DB) (int, error) {
+	return Count(db, specTasks, "", nil)
 }
 
 func UpdateTask(db *DB, task *Task) error {
@@ -4390,22 +4405,30 @@ func CreateCategory(db *DB, c *Category) (int64, error) {
 	return id, nil
 }
 
-func ListCategories(db *DB, withPostCount bool) ([]Category, error) {
+func ListCategoriesPaged(db *DB, withPostCount bool, limit, offset int) ([]Category, error) {
+	if limit < 0 {
+		limit = 0
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	results, err := Read(db, specCategories, ReadOptions{
 		SelectFields: "id, parent_id, name, slug, description, sort, created_at, updated_at, deleted_at",
 		WhereClause:  "",
 		OrderBy:      "sort ASC, id ASC",
 		WhereArgs:    nil,
-		Limit:        0,
+		Limit:        limit,
+		Offset:       offset,
 	}, func(rows *sql.Rows) (interface{}, error) {
 		c, err := scanCategory(rows)
 		if err != nil {
-			return nil, WrapInternalErr("ListCategories.Scan", err)
+			return nil, WrapInternalErr("ListCategoriesPaged.Scan", err)
 		}
 		return c, nil
 	})
 	if err != nil {
-		return nil, WrapInternalErr("ListCategories", err)
+		return nil, WrapInternalErr("ListCategoriesPaged", err)
 	}
 	res := make([]Category, len(results))
 	for i, v := range results {
@@ -4427,6 +4450,10 @@ func ListCategories(db *DB, withPostCount bool) ([]Category, error) {
 		}
 	}
 	return res, nil
+}
+
+func ListCategories(db *DB, withPostCount bool) ([]Category, error) {
+	return ListCategoriesPaged(db, withPostCount, 0, 0)
 }
 
 func UpdateCategory(db *DB, c *Category) error {

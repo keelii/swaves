@@ -1458,6 +1458,106 @@ func TestTaskAndTaskRunLifecycle(t *testing.T) {
 	}
 }
 
+func TestListTasksPaged(t *testing.T) {
+	db := openTestDB(t)
+
+	baseTotal, err := CountTasks(db)
+	if err != nil {
+		t.Fatalf("CountTasks baseline failed: %v", err)
+	}
+
+	createdTaskIDs := make([]int64, 0, 3)
+	for i := 0; i < 3; i++ {
+		task := &Task{
+			Code:        uniqueValue("paged-task"),
+			Name:        "paged-task",
+			Description: "desc",
+			Schedule:    "@every 1m",
+			Enabled:     1,
+			Kind:        TaskUser,
+		}
+		if _, err := CreateTask(db, task); err != nil {
+			t.Fatalf("CreateTask #%d failed: %v", i, err)
+		}
+		createdTaskIDs = append(createdTaskIDs, task.ID)
+	}
+
+	if err := SoftDeleteTask(db, createdTaskIDs[1]); err != nil {
+		t.Fatalf("SoftDeleteTask failed: %v", err)
+	}
+
+	total, err := CountTasks(db)
+	if err != nil {
+		t.Fatalf("CountTasks failed: %v", err)
+	}
+	if total != baseTotal+2 {
+		t.Fatalf("unexpected total tasks: got=%d want=%d", total, baseTotal+2)
+	}
+
+	page1, err := ListTasksPaged(db, 1, 0)
+	if err != nil {
+		t.Fatalf("ListTasksPaged page1 failed: %v", err)
+	}
+	if len(page1) != 1 {
+		t.Fatalf("expected page1 len=1, got=%d", len(page1))
+	}
+
+	page2, err := ListTasksPaged(db, 1, 1)
+	if err != nil {
+		t.Fatalf("ListTasksPaged page2 failed: %v", err)
+	}
+	if len(page2) != 1 {
+		t.Fatalf("expected page2 len=1, got=%d", len(page2))
+	}
+	if page1[0].ID == page2[0].ID {
+		t.Fatalf("expected different rows for different offsets, got same id=%d", page1[0].ID)
+	}
+}
+
+func TestListCategoriesPaged(t *testing.T) {
+	db := openTestDB(t)
+
+	baseTotal, err := CountCategories(db)
+	if err != nil {
+		t.Fatalf("CountCategories baseline failed: %v", err)
+	}
+
+	c1 := &Category{ParentID: 0, Name: uniqueValue("cat-a"), Slug: uniqueValue("cat-a"), Sort: 101}
+	c2 := &Category{ParentID: 0, Name: uniqueValue("cat-b"), Slug: uniqueValue("cat-b"), Sort: 102}
+	c3 := &Category{ParentID: 0, Name: uniqueValue("cat-c"), Slug: uniqueValue("cat-c"), Sort: 103}
+	if _, err := CreateCategory(db, c1); err != nil {
+		t.Fatalf("CreateCategory c1 failed: %v", err)
+	}
+	if _, err := CreateCategory(db, c2); err != nil {
+		t.Fatalf("CreateCategory c2 failed: %v", err)
+	}
+	if _, err := CreateCategory(db, c3); err != nil {
+		t.Fatalf("CreateCategory c3 failed: %v", err)
+	}
+	if err := SoftDeleteCategory(db, c2.ID); err != nil {
+		t.Fatalf("SoftDeleteCategory c2 failed: %v", err)
+	}
+
+	total, err := CountCategories(db)
+	if err != nil {
+		t.Fatalf("CountCategories failed: %v", err)
+	}
+	if total != baseTotal+2 {
+		t.Fatalf("unexpected total categories: got=%d want=%d", total, baseTotal+2)
+	}
+
+	page, err := ListCategoriesPaged(db, false, 2, baseTotal)
+	if err != nil {
+		t.Fatalf("ListCategoriesPaged failed: %v", err)
+	}
+	if len(page) != 2 {
+		t.Fatalf("expected paged categories len=2, got=%d", len(page))
+	}
+	if page[0].ID != c1.ID || page[1].ID != c3.ID {
+		t.Fatalf("unexpected paged categories order: got [%d,%d], want [%d,%d]", page[0].ID, page[1].ID, c1.ID, c3.ID)
+	}
+}
+
 func TestGetPostBySlugWithRelation(t *testing.T) {
 	db := openTestDB(t)
 	p := mustCreatePost(t, db, "published", PostKindPost, 0)

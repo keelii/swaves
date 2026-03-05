@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/helper"
 
 	"github.com/gofiber/fiber/v3"
@@ -11,14 +12,20 @@ import (
 
 // Categories
 func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
-	categories, err := ListCategoriesService(h.Model)
+	pager := middleware.GetPagination(c)
+	categories, err := ListCategoriesService(h.Model, &pager)
+	if err != nil {
+		return err
+	}
+
+	allCategories, err := GetAllCategoriesFlat(h.Model)
 	if err != nil {
 		return err
 	}
 
 	// 创建分类ID到名称的映射，方便显示父分类名称
 	categoryMap := make(map[int64]string)
-	for _, cat := range categories {
+	for _, cat := range allCategories {
 		categoryMap[cat.ID] = cat.Name
 	}
 
@@ -46,6 +53,7 @@ func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
 		"Title":      "Categories",
 		"Categories": categories,
 		"ParentMap":  parentMap,
+		"Pager":      pager,
 		"PostCounts": postCounts,
 	}, "")
 }
