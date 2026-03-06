@@ -9,6 +9,7 @@ import (
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/helper"
 	"time"
@@ -198,4 +199,21 @@ func DeleteExpiredEncryptedPostsJob(reg *Registry) (*string, error) {
 	}
 
 	return nil, nil
+}
+
+// ClearExpiredNotificationsJob 清理过期通知（updated_at < now-retention_days）
+func ClearExpiredNotificationsJob(reg *Registry) (*string, error) {
+	if reg == nil || reg.DB == nil {
+		return nil, errors.New("reg.DB is nil")
+	}
+
+	nowTime := time.Now()
+	cutoffUnix := notify.ExpiredBeforeUnix(nowTime)
+	deletedCount, err := db.DeleteExpiredNotifications(reg.DB, cutoffUnix)
+	if err != nil {
+		return nil, err
+	}
+
+	retentionDays := notify.NotificationRetentionDays()
+	return jobMessage(fmt.Sprintf("清理通知完成：deleted=%d retention_days=%d cutoff=%d", deletedCount, retentionDays, cutoffUnix)), nil
 }

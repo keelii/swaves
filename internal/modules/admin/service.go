@@ -1349,6 +1349,43 @@ func CreatePendingRunService(dbx *db.DB, taskCode string) error {
 	return err
 }
 
+func ListNotificationsService(dbx *db.DB, receiver string, pager *types.Pagination) ([]db.Notification, error) {
+	if pager == nil {
+		return db.ListNotifications(dbx, receiver, 20, 0)
+	}
+
+	total, err := db.CountNotifications(dbx, receiver)
+	if err != nil {
+		return nil, err
+	}
+
+	offset := (pager.Page - 1) * pager.PageSize
+	items, err := db.ListNotifications(dbx, receiver, pager.PageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	pager.Total = total
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	return items, nil
+}
+
+func CountUnreadNotificationsService(dbx *db.DB, receiver string) (int, error) {
+	return db.CountUnreadNotifications(dbx, receiver)
+}
+
+func MarkNotificationReadService(dbx *db.DB, id int64, receiver string) error {
+	return db.MarkNotificationRead(dbx, id, receiver)
+}
+
+func MarkAllNotificationsReadService(dbx *db.DB, receiver string) (int64, error) {
+	return db.MarkAllNotificationsRead(dbx, receiver)
+}
+
+func DeleteNotificationService(dbx *db.DB, id int64, receiver string) error {
+	return db.DeleteNotification(dbx, id, receiver)
+}
+
 // Import/Export
 type SlugSource int
 

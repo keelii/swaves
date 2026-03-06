@@ -1,0 +1,91 @@
+{% extends "dash/layout/layout_list.html" %}
+{% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
+
+{% set OperationTableID = "notifications-table" %}
+
+{% block page_actions %}
+  {{ sui.Button("全部已读", "outline", attrs='type="button" data-role="notification-mark-all-read"' ~ (' disabled' if UnreadCount <= 0 else '')) }}
+{% endblock %}
+
+{% block status_main_right %}
+  {% set pagerHrefPrefix = UrlFor('admin.notifications.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  <div class="ui-tags" aria-label="分页">
+    {% if Pager.HasPrev() %}
+      <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}&page={{ Pager.PrevPage() }}" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
+    {% else %}
+      <span class="ui-icon-btn" aria-label="上一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</span>
+    {% endif %}
+    {% for item in Pager.GetPageItems() %}
+      {% if item.Type == "ellipsis" %}
+        <span class="ui-page-ellipsis">…</span>
+      {% elif item.Current %}
+        <span class="ui-page-link" aria-current="page">{{ item.Page }}</span>
+      {% else %}
+        <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ item.Page }}">{{ item.Page }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if Pager.HasNext() %}
+      <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}&page={{ Pager.NextPage() }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
+    {% else %}
+      <span class="ui-icon-btn" aria-label="下一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</span>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="data-table-wrap">
+  <table id="notifications-table" class="data-table" aria-label="通知列表" data-role="data-table">
+    <thead>
+      <tr>
+        <th>{{ ui.table_th_id() }}</th>
+        <th>类型</th>
+        <th>标题</th>
+        <th>内容</th>
+        <th>聚合次数</th>
+        <th>状态</th>
+        <th>更新时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in Notifications %}
+        {% set isUnread = item.ReadAt == none %}
+        <tr data-notification-row data-notification-id="{{ item.ID }}" data-notification-read="{{ 0 if isUnread else 1 }}">
+          <td>{{ ui.table_td_id(item.ID) }}</td>
+          <td>
+            {% if item.EventType == "post_like" %}
+              <span class="ui-badge">点赞</span>
+            {% elif item.EventType == "comment" %}
+              <span class="ui-badge">留言</span>
+            {% elif item.EventType == "task_result" %}
+              <span class="ui-badge">任务</span>
+            {% else %}
+              <span class="ui-badge">{{ item.EventType }}</span>
+            {% endif %}
+          </td>
+          <td>{{ item.Title }}</td>
+          <td>{{ item.Body }}</td>
+          <td>{{ item.AggregateCount }}</td>
+          <td>
+            <span data-role="notification-status">
+              {% if isUnread %}
+                <span class="ui-badge danger">未读</span>
+              {% else %}
+                <span class="ui-badge draft">已读</span>
+              {% endif %}
+            </span>
+          </td>
+          <td>{{ item.UpdatedAt | relativeTime }}</td>
+          <td data-role="notification-actions">
+            {{ sui.IconAction("square-check", "标记已读", attrs='data-role="notification-mark-read" data-id="' ~ item.ID ~ '" data-title="标记已读"' ~ (' hidden' if not isUnread else '')) }}
+            {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-role="notification-delete" data-id="' ~ item.ID ~ '" data-title="删除"' ~ (' hidden' if isUnread else '')) }}
+          </td>
+        </tr>
+      {% else %}
+        <tr data-role="notification-empty-row"><td colspan="8">暂无通知</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

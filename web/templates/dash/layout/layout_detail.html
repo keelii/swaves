@@ -8,10 +8,17 @@
 {% endblock %}
 
 {% block body %}
+<script>
+  window.cfg = window.cfg || {};
+  window.cfg.navWidthSaveURL = {{ UrlFor('admin.settings.api.nav_width.update') | tojson }};
+  window.cfg.notificationsUnreadURL = {{ UrlFor('admin.notifications.api.unread_count') | tojson }};
+  window.cfg.notificationsReadURL = {{ UrlFor('admin.notifications.api.read') | tojson }};
+  window.cfg.notificationsReadAllURL = {{ UrlFor('admin.notifications.api.read_all') | tojson }};
+  window.cfg.notificationsDeleteURL = {{ UrlFor('admin.notifications.api.delete') | tojson }};
+</script>
 <div
   class="app-window"
   data-nav-width-current="{{ Settings('admin_nav_width')|default('240') }}"
-  data-nav-width-save-url="{{ UrlFor('admin.settings.api.nav_width.update') }}"
   style="--app-pane-nav-width: {{ Settings('admin_nav_width')|default('240') }}px;"
 >
   <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="150" data-nav-max-width="480">

@@ -20,6 +20,12 @@
       <span class="nav-item-icon">{{ LucideIcon("messages-square", 16) }}</span>
       <span class="nav-item-text">评论管理</span>
     </a>
+    <a class="nav-item{% if UrlIs('admin.notifications.list') %} active{% endif %}" href="{{ UrlFor('admin.notifications.list') }}"{% if UrlIs('admin.notifications.list') %} aria-current="page"{% endif %}>
+      <span class="nav-item-icon" data-role="nav-notification-icon-bell">{{ LucideIcon("bell", 16) }}</span>
+      <span class="nav-item-icon" data-role="nav-notification-icon-bell-dot" hidden>{{ LucideIcon("bell-dot", 16) }}</span>
+      <span class="nav-item-text">通知中心</span>
+      <span class="nav-item-badge" data-role="nav-notification-badge" hidden>0</span>
+    </a>
   </div>
   <div class="nav-section">
     <div class="nav-section-title">高级</div>

@@ -2,8 +2,10 @@ package job
 
 import (
 	"fmt"
+	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/types"
 	"sync"
@@ -72,9 +74,23 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 		Func: DeleteExpiredEncryptedPostsJob,
 	})
 
+	RegisterJob("clear_notifications", JobItem{
+		Kind: db.TaskInternal,
+		Func: ClearExpiredNotificationsJob,
+	})
+
 	RegisterJob("remote_backup_data", JobItem{
 		Kind: db.TaskUser,
 		Func: PushSystemDataJob,
+	})
+
+	ensureBuiltinTask(gStore.Model, db.Task{
+		Code:        "clear_notifications",
+		Name:        "清理过期通知",
+		Description: "按消息通知设置中的保留天数清理过期通知",
+		Schedule:    "@daily",
+		Enabled:     1,
+		Kind:        db.TaskInternal,
 	})
 
 	ensureBuiltinTask(gStore.Model, db.Task{
@@ -132,6 +148,7 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		if updateErr := db.UpdateTaskStatus(dbx, t.Code, "error", startAt.Unix()); updateErr != nil {
 			logger.Error("[task] update task status failed code=%s status=error: %v", t.Code, updateErr)
 		}
+		notifyTaskResult(dbx, t, "error", err.Error())
 		if t.Kind == db.TaskUser {
 			if _, createErr := db.CreateTaskRun(dbx, &db.TaskRun{
 				TaskCode:   t.Code,
@@ -169,6 +186,12 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		logger.Error("[task] update task status failed code=%s status=%s: %v", t.Code, status, updateErr)
 	}
 
+	notifyMessage := ret
+	if err != nil {
+		notifyMessage = err.Error()
+	}
+	notifyTaskResult(dbx, t, status, notifyMessage)
+
 	if t.Kind == db.TaskInternal {
 		return
 	}
@@ -189,6 +212,21 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	if _, createErr := db.CreateTaskRun(dbx, taskRun); createErr != nil {
 		logger.Error("[task] create task run failed code=%s status=%s: %v", t.Code, status, createErr)
 		return
+	}
+}
+
+func notifyTaskResult(dbx *db.DB, task db.Task, status string, message string) {
+	normalizedStatus := strings.ToLower(strings.TrimSpace(status))
+	if normalizedStatus == "success" {
+		if !notify.IsTaskSuccessNotificationEnabled() {
+			return
+		}
+	} else if normalizedStatus != "error" {
+		return
+	}
+
+	if err := notify.CreateTaskResultNotification(dbx, task, normalizedStatus, message, time.Now().Unix()); err != nil {
+		logger.Error("[notify] create task notification failed: code=%s status=%s err=%v", task.Code, normalizedStatus, err)
 	}
 }
 

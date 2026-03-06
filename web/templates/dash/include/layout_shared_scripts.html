@@ -1,13 +1,20 @@
 <script>
   (function() {
     var appWindow = document.querySelector('.app-window');
+    var cfg = window.cfg || {};
     var fullMainStorageKey = 'sui.layout_wide_mode';
     var navResizer = document.querySelector('[data-role="nav-resizer"]');
     var navPanel = document.querySelector('.app-nav');
-    var navWidthSaveURL = String(appWindow && appWindow.getAttribute('data-nav-width-save-url') || '').trim();
+    var navWidthSaveURL = String(cfg.navWidthSaveURL || appWindow && appWindow.getAttribute('data-nav-width-save-url') || '').trim();
     var navWidthPersisting = false;
     var navWidthQueued = null;
     var navWidthLastSaved = parsePixels(appWindow && appWindow.getAttribute('data-nav-width-current'));
+    var notificationsUnreadURL = String(cfg.notificationsUnreadURL || appWindow && appWindow.getAttribute('data-notifications-unread-url') || '').trim();
+    var notificationsReadURL = String(cfg.notificationsReadURL || appWindow && appWindow.getAttribute('data-notifications-read-url') || '').trim();
+    var notificationsReadAllURL = String(cfg.notificationsReadAllURL || appWindow && appWindow.getAttribute('data-notifications-read-all-url') || '').trim();
+    var notificationsDeleteURL = String(cfg.notificationsDeleteURL || appWindow && appWindow.getAttribute('data-notifications-delete-url') || '').trim();
+    var notificationsPollingTimer = null;
+    var notificationsPollingIntervalMs = 20000;
 
     if (!appWindow) {
       return;
@@ -395,9 +402,170 @@
       syncThemeToggleButtons();
     }
 
+    function getNotificationBadges() {
+      return document.querySelectorAll('[data-role="nav-notification-badge"]');
+    }
+
+    function setNotificationNavIconState(hasUnread) {
+      var bellIcons = document.querySelectorAll('[data-role="nav-notification-icon-bell"]');
+      bellIcons.forEach(function(icon) {
+        if (!icon) {
+          return;
+        }
+        if (hasUnread) {
+          icon.setAttribute('hidden', '');
+        } else {
+          icon.removeAttribute('hidden');
+        }
+      });
+
+      var bellDotIcons = document.querySelectorAll('[data-role="nav-notification-icon-bell-dot"]');
+      bellDotIcons.forEach(function(icon) {
+        if (!icon) {
+          return;
+        }
+        if (hasUnread) {
+          icon.removeAttribute('hidden');
+        } else {
+          icon.setAttribute('hidden', '');
+        }
+      });
+    }
+
+    function setNotificationUnreadCount(unreadCount) {
+      var count = parseInt(unreadCount, 10);
+      if (isNaN(count) || count < 0) {
+        count = 0;
+      }
+      var hasUnread = count > 0;
+      getNotificationBadges().forEach(function(badge) {
+        if (!badge) {
+          return;
+        }
+        if (count <= 0) {
+          badge.textContent = '';
+          badge.setAttribute('hidden', '');
+          return;
+        }
+        badge.textContent = String(count);
+        badge.removeAttribute('hidden');
+      });
+      setNotificationNavIconState(hasUnread);
+
+      var markAllButton = document.querySelector('[data-role="notification-mark-all-read"]');
+      if (markAllButton) {
+        markAllButton.disabled = count <= 0;
+      }
+    }
+
+    function refreshNotificationUnreadCount() {
+      if (!notificationsUnreadURL || typeof window.sfetchJSON !== 'function') {
+        return Promise.resolve();
+      }
+      return window.sfetchJSON(notificationsUnreadURL, {
+        method: 'GET',
+      }).then(function(result) {
+        if (!result || !result.ok || !result.body || result.body.ok !== true) {
+          return;
+        }
+        var data = result.body.data || {};
+        setNotificationUnreadCount(data.unread_count);
+      }).catch(function(error) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('load notification unread count failed', error);
+        }
+      });
+    }
+
+    function setNotificationRowActions(row, isRead) {
+      if (!row) {
+        return;
+      }
+
+      var actionCell = row.querySelector('[data-role="notification-actions"]');
+      if (!actionCell) {
+        return;
+      }
+
+      var markReadButton = actionCell.querySelector('[data-role="notification-mark-read"]');
+      if (markReadButton) {
+        if (isRead) {
+          markReadButton.setAttribute('hidden', '');
+        } else {
+          markReadButton.removeAttribute('hidden');
+        }
+        markReadButton.disabled = false;
+      }
+
+      var deleteButton = actionCell.querySelector('[data-role="notification-delete"]');
+      if (deleteButton) {
+        if (isRead && notificationsDeleteURL) {
+          deleteButton.removeAttribute('hidden');
+        } else {
+          deleteButton.setAttribute('hidden', '');
+        }
+        deleteButton.disabled = false;
+      }
+    }
+
+    function markNotificationRowRead(row) {
+      if (!row) {
+        return;
+      }
+      row.setAttribute('data-notification-read', '1');
+
+      var statusWrap = row.querySelector('[data-role="notification-status"]');
+      if (statusWrap) {
+        statusWrap.innerHTML = '<span class="ui-badge draft">已读</span>';
+      }
+      setNotificationRowActions(row, true);
+    }
+
+    function ensureNotificationEmptyState() {
+      var tableBody = document.querySelector('#notifications-table tbody');
+      if (!tableBody) {
+        return;
+      }
+
+      var rows = tableBody.querySelectorAll('[data-notification-row]');
+      var emptyRow = tableBody.querySelector('[data-role="notification-empty-row"]');
+      if (rows.length > 0) {
+        if (emptyRow) {
+          emptyRow.remove();
+        }
+        return;
+      }
+
+      if (emptyRow) {
+        return;
+      }
+
+      emptyRow = document.createElement('tr');
+      emptyRow.setAttribute('data-role', 'notification-empty-row');
+      var cell = document.createElement('td');
+      cell.setAttribute('colspan', '8');
+      cell.textContent = '暂无通知';
+      emptyRow.appendChild(cell);
+      tableBody.appendChild(emptyRow);
+    }
+
+    function startNotificationPolling() {
+      refreshNotificationUnreadCount();
+      if (!notificationsUnreadURL || typeof window.sfetchJSON !== 'function') {
+        return;
+      }
+      if (notificationsPollingTimer) {
+        window.clearInterval(notificationsPollingTimer);
+      }
+      notificationsPollingTimer = window.setInterval(function() {
+        refreshNotificationUnreadCount();
+      }, notificationsPollingIntervalMs);
+    }
+
     initNavWidth();
     applyFullMain(loadFullMainState());
     initTheme();
+    startNotificationPolling();
 
     document.addEventListener('click', function(event) {
       var button = event.target.closest('[data-role="toggle-full-main"]');
@@ -416,6 +584,120 @@
         applyThemeMode(nextMode);
         saveThemeState(nextMode);
         syncThemeToggleButtons();
+        event.preventDefault();
+        return;
+      }
+
+      var markReadButton = event.target.closest('[data-role="notification-mark-read"]');
+      if (markReadButton) {
+        if (!notificationsReadURL || typeof window.sfetchJSON !== 'function') {
+          return;
+        }
+        var id = parseInt(markReadButton.getAttribute('data-id'), 10);
+        if (isNaN(id) || id <= 0) {
+          return;
+        }
+        var body = JSON.stringify({ id: id });
+        markReadButton.disabled = true;
+        window.sfetchJSON(notificationsReadURL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: body,
+        }).then(function(result) {
+          if (!result || !result.ok || !result.body || result.body.ok !== true) {
+            markReadButton.disabled = false;
+            return;
+          }
+          var row = markReadButton.closest('[data-notification-row]');
+          markNotificationRowRead(row);
+          var unreadCount = result.body.data ? result.body.data.unread_count : null;
+          if (unreadCount !== null && unreadCount !== undefined) {
+            setNotificationUnreadCount(unreadCount);
+          } else {
+            refreshNotificationUnreadCount();
+          }
+        }).catch(function(error) {
+          markReadButton.disabled = false;
+          if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('mark notification read failed', error);
+          }
+        });
+        event.preventDefault();
+        return;
+      }
+
+      var markAllButton = event.target.closest('[data-role="notification-mark-all-read"]');
+      if (markAllButton) {
+        if (!notificationsReadAllURL || typeof window.sfetchJSON !== 'function' || markAllButton.disabled) {
+          return;
+        }
+        markAllButton.disabled = true;
+        window.sfetchJSON(notificationsReadAllURL, {
+          method: 'POST',
+        }).then(function(result) {
+          if (!result || !result.ok || !result.body || result.body.ok !== true) {
+            markAllButton.disabled = false;
+            return;
+          }
+          var rows = document.querySelectorAll('[data-notification-row][data-notification-read="0"]');
+          rows.forEach(function(row) {
+            markNotificationRowRead(row);
+          });
+          var unreadCount = result.body.data ? result.body.data.unread_count : 0;
+          setNotificationUnreadCount(unreadCount);
+        }).catch(function(error) {
+          markAllButton.disabled = false;
+          if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('mark all notifications read failed', error);
+          }
+        });
+        event.preventDefault();
+        return;
+      }
+
+      var deleteButton = event.target.closest('[data-role="notification-delete"]');
+      if (deleteButton) {
+        if (!notificationsDeleteURL || typeof window.sfetchJSON !== 'function') {
+          return;
+        }
+        var deleteID = parseInt(deleteButton.getAttribute('data-id'), 10);
+        if (isNaN(deleteID) || deleteID <= 0) {
+          return;
+        }
+
+        deleteButton.disabled = true;
+        window.sfetchJSON(notificationsDeleteURL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: deleteID }),
+        }).then(function(result) {
+          if (!result || !result.ok || !result.body || result.body.ok !== true) {
+            deleteButton.disabled = false;
+            return;
+          }
+
+          var row = deleteButton.closest('[data-notification-row]');
+          if (row) {
+            row.remove();
+            ensureNotificationEmptyState();
+          }
+
+          var unreadCount = result.body.data ? result.body.data.unread_count : null;
+          if (unreadCount !== null && unreadCount !== undefined) {
+            setNotificationUnreadCount(unreadCount);
+          } else {
+            refreshNotificationUnreadCount();
+          }
+        }).catch(function(error) {
+          deleteButton.disabled = false;
+          if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('delete notification failed', error);
+          }
+        });
         event.preventDefault();
         return;
       }

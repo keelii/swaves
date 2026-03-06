@@ -62,6 +62,13 @@ func RegisterRouter(
 	adminGroup.Post("/comments/:id/delete", handler.PostDeleteCommentHandler).Name("admin.comments.delete")
 	adminGroup.Post("/api/comments/batch-delete", handler.PostCommentBatchDeleteAPIHandler).Name("admin.comments.api.batch_delete")
 
+	adminGroup.Get("/notifications", handler.GetNotificationListHandler).Name("admin.notifications.list")
+	adminGroup.Get("/api/notifications", handler.GetNotificationListAPIHandler).Name("admin.notifications.api.list")
+	adminGroup.Get("/api/notifications/unread_count", handler.GetNotificationUnreadCountAPIHandler).Name("admin.notifications.api.unread_count")
+	adminGroup.Post("/api/notifications/read", handler.PostNotificationReadAPIHandler).Name("admin.notifications.api.read")
+	adminGroup.Post("/api/notifications/read_all", handler.PostNotificationReadAllAPIHandler).Name("admin.notifications.api.read_all")
+	adminGroup.Post("/api/notifications/delete", handler.PostNotificationDeleteAPIHandler).Name("admin.notifications.api.delete")
+
 	adminGroup.Get("/tags", handler.GetTagListHandler).Name("admin.tags.list")
 	adminGroup.Get("/tags/new", handler.GetTagNewHandler).Name("admin.tags.new")
 	adminGroup.Post("/tags/new", handler.PostCreateTagHandler).Name("admin.tags.create")

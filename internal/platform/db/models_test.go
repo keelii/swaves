@@ -30,6 +30,14 @@ func uniqueValue(prefix string) string {
 	return fmt.Sprintf("%s_%s", prefix, strings.ReplaceAll(uuid.NewString(), "-", ""))
 }
 
+type errScanner struct {
+	err error
+}
+
+func (s errScanner) Scan(_ ...interface{}) error {
+	return s.err
+}
+
 func mustCreatePost(t *testing.T, db *DB, status string, kind PostKind, publishedAt int64) *Post {
 	t.Helper()
 	slug := uniqueValue("post")
@@ -1555,6 +1563,451 @@ func TestListCategoriesPaged(t *testing.T) {
 	}
 	if page[0].ID != c1.ID || page[1].ID != c3.ID {
 		t.Fatalf("unexpected paged categories order: got [%d,%d], want [%d,%d]", page[0].ID, page[1].ID, c1.ID, c3.ID)
+	}
+}
+
+func TestNotificationCreateValidationAndDefaults(t *testing.T) {
+	db := openTestDB(t)
+
+	if _, err := CreateNotification(db, nil); err == nil {
+		t.Fatal("expected nil notification error")
+	}
+
+	if _, err := CreateNotification(db, &Notification{
+		Title: "missing event",
+	}); err == nil {
+		t.Fatal("expected missing event_type error")
+	}
+
+	if _, err := CreateNotification(db, &Notification{
+		EventType: NotificationEventComment,
+	}); err == nil {
+		t.Fatal("expected missing title error")
+	}
+
+	item := &Notification{
+		EventType:      NotificationEventComment,
+		Level:          "unexpected_level",
+		Title:          "  新留言  ",
+		Body:           "  内容  ",
+		AggregateCount: 0,
+	}
+	if _, err := CreateNotification(db, item); err != nil {
+		t.Fatalf("CreateNotification failed: %v", err)
+	}
+	if item.ID <= 0 {
+		t.Fatalf("invalid id: %+v", item)
+	}
+	if item.Receiver != NotificationReceiverAdmin {
+		t.Fatalf("receiver should fallback to admin, got %q", item.Receiver)
+	}
+	if item.Level != NotificationLevelInfo {
+		t.Fatalf("level should fallback to info, got %q", item.Level)
+	}
+	if item.AggregateCount != 1 {
+		t.Fatalf("aggregate_count should fallback to 1, got %d", item.AggregateCount)
+	}
+	if item.CreatedAt <= 0 || item.UpdatedAt <= 0 {
+		t.Fatalf("timestamps should be set: %+v", item)
+	}
+}
+
+func TestNotificationListReadAndUnreadFlow(t *testing.T) {
+	db := openTestDB(t)
+	nowUnix := time.Now().Unix()
+	receiver := NotificationReceiverAdmin
+
+	unreadA := &Notification{
+		Receiver:       receiver,
+		EventType:      NotificationEventComment,
+		Level:          NotificationLevelInfo,
+		Title:          "未读 A",
+		Body:           "a",
+		AggregateCount: 1,
+		CreatedAt:      nowUnix - 30,
+		UpdatedAt:      nowUnix - 30,
+	}
+	readAt := nowUnix - 20
+	readB := &Notification{
+		Receiver:       receiver,
+		EventType:      NotificationEventTaskResult,
+		Level:          NotificationLevelWarning,
+		Title:          "已读 B",
+		Body:           "b",
+		AggregateCount: 1,
+		ReadAt:         &readAt,
+		CreatedAt:      nowUnix - 20,
+		UpdatedAt:      nowUnix - 20,
+	}
+	unreadC := &Notification{
+		Receiver:       receiver,
+		EventType:      NotificationEventPostLike,
+		Level:          NotificationLevelInfo,
+		Title:          "未读 C",
+		Body:           "c",
+		AggregateCount: 1,
+		CreatedAt:      nowUnix - 10,
+		UpdatedAt:      nowUnix - 10,
+	}
+	if _, err := CreateNotification(db, unreadA); err != nil {
+		t.Fatalf("CreateNotification unreadA failed: %v", err)
+	}
+	if _, err := CreateNotification(db, readB); err != nil {
+		t.Fatalf("CreateNotification readB failed: %v", err)
+	}
+	if _, err := CreateNotification(db, unreadC); err != nil {
+		t.Fatalf("CreateNotification unreadC failed: %v", err)
+	}
+
+	total, err := CountNotifications(db, receiver)
+	if err != nil {
+		t.Fatalf("CountNotifications failed: %v", err)
+	}
+	if total != 3 {
+		t.Fatalf("expected total=3, got %d", total)
+	}
+
+	unreadCount, err := CountUnreadNotifications(db, receiver)
+	if err != nil {
+		t.Fatalf("CountUnreadNotifications failed: %v", err)
+	}
+	if unreadCount != 2 {
+		t.Fatalf("expected unread=2, got %d", unreadCount)
+	}
+
+	list, err := ListNotifications(db, receiver, 20, 0)
+	if err != nil {
+		t.Fatalf("ListNotifications failed: %v", err)
+	}
+	if len(list) != 3 {
+		t.Fatalf("expected list len=3, got %d", len(list))
+	}
+	if list[0].ID != unreadC.ID || list[1].ID != unreadA.ID || list[2].ID != readB.ID {
+		t.Fatalf("unexpected list order ids=%d,%d,%d", list[0].ID, list[1].ID, list[2].ID)
+	}
+
+	paged, err := ListNotifications(db, receiver, 1, 1)
+	if err != nil {
+		t.Fatalf("ListNotifications paged failed: %v", err)
+	}
+	if len(paged) != 1 || paged[0].ID != unreadA.ID {
+		t.Fatalf("unexpected paged list: %+v", paged)
+	}
+
+	if err := MarkNotificationRead(db, 0, receiver); err == nil {
+		t.Fatal("expected invalid id error")
+	}
+	if err := MarkNotificationRead(db, 999999, receiver); !IsErrNotFound(err) {
+		t.Fatalf("expected not found on unknown id, got %v", err)
+	}
+	if err := DeleteNotification(db, unreadC.ID, receiver); !IsErrNotFound(err) {
+		t.Fatalf("expected unread notification cannot be deleted directly, got %v", err)
+	}
+
+	if err := MarkNotificationRead(db, unreadA.ID, receiver); err != nil {
+		t.Fatalf("MarkNotificationRead failed: %v", err)
+	}
+
+	unreadCount, err = CountUnreadNotifications(db, receiver)
+	if err != nil {
+		t.Fatalf("CountUnreadNotifications after mark read failed: %v", err)
+	}
+	if unreadCount != 1 {
+		t.Fatalf("expected unread=1 after mark read, got %d", unreadCount)
+	}
+
+	updated, err := MarkAllNotificationsRead(db, receiver)
+	if err != nil {
+		t.Fatalf("MarkAllNotificationsRead failed: %v", err)
+	}
+	if updated != 1 {
+		t.Fatalf("expected updated=1, got %d", updated)
+	}
+
+	unreadCount, err = CountUnreadNotifications(db, receiver)
+	if err != nil {
+		t.Fatalf("CountUnreadNotifications after mark all failed: %v", err)
+	}
+	if unreadCount != 0 {
+		t.Fatalf("expected unread=0 after mark all, got %d", unreadCount)
+	}
+
+	if err := DeleteNotification(db, 0, receiver); err == nil {
+		t.Fatal("expected invalid id error on delete")
+	}
+	if err := DeleteNotification(db, 999999, receiver); !IsErrNotFound(err) {
+		t.Fatalf("expected not found on delete unknown id, got %v", err)
+	}
+	if err := DeleteNotification(db, readB.ID, receiver); err != nil {
+		t.Fatalf("DeleteNotification failed: %v", err)
+	}
+
+	total, err = CountNotifications(db, receiver)
+	if err != nil {
+		t.Fatalf("CountNotifications after delete failed: %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("expected total=2 after delete, got %d", total)
+	}
+
+	unreadCount, err = CountUnreadNotifications(db, receiver)
+	if err != nil {
+		t.Fatalf("CountUnreadNotifications after delete failed: %v", err)
+	}
+	if unreadCount != 0 {
+		t.Fatalf("expected unread=0 after delete, got %d", unreadCount)
+	}
+}
+
+func TestNotificationAggregateAndDeleteExpired(t *testing.T) {
+	db := openTestDB(t)
+	nowUnix := time.Now().Unix()
+	receiver := NotificationReceiverAdmin
+
+	if _, err := CreateOrBumpNotificationByAggregateKey(db, nil); err == nil {
+		t.Fatal("expected nil notification error")
+	}
+	if _, err := CreateOrBumpNotificationByAggregateKey(db, &Notification{
+		Receiver:     receiver,
+		Title:        "missing event",
+		AggregateKey: "k",
+	}); err == nil {
+		t.Fatal("expected missing event_type error")
+	}
+	if _, err := CreateOrBumpNotificationByAggregateKey(db, &Notification{
+		Receiver:     receiver,
+		EventType:    NotificationEventPostLike,
+		AggregateKey: "k",
+	}); err == nil {
+		t.Fatal("expected missing title error")
+	}
+
+	if _, err := CreateOrBumpNotificationByAggregateKey(db, &Notification{
+		Receiver:  receiver,
+		EventType: NotificationEventPostLike,
+		Title:     "empty key",
+	}); err == nil {
+		t.Fatal("expected aggregate_key required error")
+	}
+
+	key := "like:post:1:bucket:100"
+	first := &Notification{
+		Receiver:     receiver,
+		EventType:    NotificationEventPostLike,
+		Level:        NotificationLevelInfo,
+		Title:        "点赞 +1",
+		Body:         "body-1",
+		AggregateKey: key,
+		CreatedAt:    nowUnix - 40,
+		UpdatedAt:    nowUnix - 40,
+	}
+	firstID, err := CreateOrBumpNotificationByAggregateKey(db, first)
+	if err != nil {
+		t.Fatalf("CreateOrBump first failed: %v", err)
+	}
+	if firstID <= 0 {
+		t.Fatalf("invalid first id=%d", firstID)
+	}
+	if first.AggregateCount != 1 {
+		t.Fatalf("expected first aggregate_count=1, got %d", first.AggregateCount)
+	}
+
+	if err := MarkNotificationRead(db, firstID, receiver); err != nil {
+		t.Fatalf("MarkNotificationRead first failed: %v", err)
+	}
+
+	second := &Notification{
+		Receiver:     receiver,
+		EventType:    NotificationEventPostLike,
+		Level:        NotificationLevelInfo,
+		Title:        "点赞 +2",
+		Body:         "body-2",
+		AggregateKey: key,
+		CreatedAt:    nowUnix - 10,
+		UpdatedAt:    nowUnix - 10,
+	}
+	secondID, err := CreateOrBumpNotificationByAggregateKey(db, second)
+	if err != nil {
+		t.Fatalf("CreateOrBump second failed: %v", err)
+	}
+	if secondID != firstID {
+		t.Fatalf("expected same id for aggregate bump, got first=%d second=%d", firstID, secondID)
+	}
+	if second.AggregateCount != 2 {
+		t.Fatalf("expected aggregate_count=2 after bump, got %d", second.AggregateCount)
+	}
+	if second.ReadAt != nil {
+		t.Fatalf("expected read_at reset to nil after bump, got %v", *second.ReadAt)
+	}
+	if second.Body != "body-2" {
+		t.Fatalf("expected body updated to latest, got %q", second.Body)
+	}
+
+	edge := &Notification{
+		Receiver:     receiver,
+		EventType:    NotificationEventPostLike,
+		Level:        NotificationLevelInfo,
+		Title:        "edge",
+		Body:         "edge",
+		AggregateKey: "like:post:2:bucket:100",
+		CreatedAt:    nowUnix,
+		UpdatedAt:    nowUnix - 100,
+	}
+	if _, err := CreateOrBumpNotificationByAggregateKey(db, edge); err != nil {
+		t.Fatalf("CreateOrBump edge failed: %v", err)
+	}
+	if edge.UpdatedAt != edge.CreatedAt {
+		t.Fatalf("expected updated_at adjusted to created_at when smaller, got created=%d updated=%d", edge.CreatedAt, edge.UpdatedAt)
+	}
+
+	if deleted, err := DeleteExpiredNotifications(db, 0); err != nil || deleted != 0 {
+		t.Fatalf("DeleteExpiredNotifications(0) expected 0,nil got deleted=%d err=%v", deleted, err)
+	}
+
+	old := &Notification{
+		Receiver:  receiver,
+		EventType: NotificationEventComment,
+		Title:     "old",
+		Body:      "old",
+		CreatedAt: nowUnix - 1000,
+		UpdatedAt: nowUnix - 1000,
+	}
+	newItem := &Notification{
+		Receiver:  receiver,
+		EventType: NotificationEventComment,
+		Title:     "new",
+		Body:      "new",
+		CreatedAt: nowUnix - 1,
+		UpdatedAt: nowUnix - 1,
+	}
+	if _, err := CreateNotification(db, old); err != nil {
+		t.Fatalf("CreateNotification old failed: %v", err)
+	}
+	if _, err := CreateNotification(db, newItem); err != nil {
+		t.Fatalf("CreateNotification new failed: %v", err)
+	}
+
+	deleted, err := DeleteExpiredNotifications(db, nowUnix-100)
+	if err != nil {
+		t.Fatalf("DeleteExpiredNotifications failed: %v", err)
+	}
+	if deleted < 1 {
+		t.Fatalf("expected at least one deleted row, got %d", deleted)
+	}
+}
+
+func TestNotificationHelperBranches(t *testing.T) {
+	if got := normalizeNotificationReceiver(""); got != NotificationReceiverAdmin {
+		t.Fatalf("normalizeNotificationReceiver empty = %q, want %q", got, NotificationReceiverAdmin)
+	}
+	if got := normalizeNotificationReceiver("  someone  "); got != "someone" {
+		t.Fatalf("normalizeNotificationReceiver trim failed: %q", got)
+	}
+	if got := normalizeNotificationLevel("warning"); got != NotificationLevelWarning {
+		t.Fatalf("normalizeNotificationLevel warning = %q", got)
+	}
+	if got := normalizeNotificationLevel("error"); got != NotificationLevelError {
+		t.Fatalf("normalizeNotificationLevel error = %q", got)
+	}
+	if got := normalizeNotificationLevel("unknown"); got != NotificationLevelInfo {
+		t.Fatalf("normalizeNotificationLevel default = %q", got)
+	}
+
+	_, err := scanNotification(errScanner{err: errors.New("scan failed")})
+	if err == nil {
+		t.Fatal("scanNotification should return scanner error")
+	}
+}
+
+func TestNotificationErrorPathsWithClosedDB(t *testing.T) {
+	db := openTestDB(t)
+	if err := db.Close(); err != nil {
+		t.Fatalf("close db failed: %v", err)
+	}
+
+	valid := &Notification{
+		Receiver:  NotificationReceiverAdmin,
+		EventType: NotificationEventComment,
+		Title:     "x",
+		Body:      "y",
+	}
+	if _, err := CreateNotification(db, valid); err == nil {
+		t.Fatal("CreateNotification on closed DB should fail")
+	}
+	if _, err := CountNotifications(db, NotificationReceiverAdmin); err == nil {
+		t.Fatal("CountNotifications on closed DB should fail")
+	}
+	if _, err := ListNotifications(db, NotificationReceiverAdmin, 10, 0); err == nil {
+		t.Fatal("ListNotifications on closed DB should fail")
+	}
+	if _, err := CountUnreadNotifications(db, NotificationReceiverAdmin); err == nil {
+		t.Fatal("CountUnreadNotifications on closed DB should fail")
+	}
+	if err := MarkNotificationRead(db, 1, NotificationReceiverAdmin); err == nil {
+		t.Fatal("MarkNotificationRead on closed DB should fail")
+	}
+	if _, err := MarkAllNotificationsRead(db, NotificationReceiverAdmin); err == nil {
+		t.Fatal("MarkAllNotificationsRead on closed DB should fail")
+	}
+	if err := DeleteNotification(db, 1, NotificationReceiverAdmin); err == nil {
+		t.Fatal("DeleteNotification on closed DB should fail")
+	}
+	if _, err := CreateOrBumpNotificationByAggregateKey(db, &Notification{
+		Receiver:     NotificationReceiverAdmin,
+		EventType:    NotificationEventPostLike,
+		Title:        "x",
+		Body:         "y",
+		AggregateKey: "k",
+	}); err == nil {
+		t.Fatal("CreateOrBumpNotificationByAggregateKey on closed DB should fail")
+	}
+	if _, err := DeleteExpiredNotifications(db, time.Now().Unix()); err == nil {
+		t.Fatal("DeleteExpiredNotifications on closed DB should fail")
+	}
+}
+
+func TestNotificationListLimitOffsetNormalization(t *testing.T) {
+	db := openTestDB(t)
+	nowUnix := time.Now().Unix()
+
+	for i := 0; i < 3; i++ {
+		item := &Notification{
+			EventType: NotificationEventComment,
+			Title:     fmt.Sprintf("item-%d", i),
+			Body:      "body",
+			CreatedAt: nowUnix + int64(i),
+			UpdatedAt: nowUnix + int64(i),
+		}
+		if _, err := CreateNotification(db, item); err != nil {
+			t.Fatalf("CreateNotification #%d failed: %v", i, err)
+		}
+	}
+
+	list, err := ListNotifications(db, NotificationReceiverAdmin, -1, -10)
+	if err != nil {
+		t.Fatalf("ListNotifications normalized negative limit/offset failed: %v", err)
+	}
+	if len(list) != 3 {
+		t.Fatalf("expected len=3 for default limit, got %d", len(list))
+	}
+
+	list, err = ListNotifications(db, NotificationReceiverAdmin, 1000, 1)
+	if err != nil {
+		t.Fatalf("ListNotifications normalized large limit failed: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("expected len=2 for offset=1, got %d", len(list))
+	}
+
+	if _, err := db.Exec(
+		`INSERT INTO `+string(TableNotifications)+` (receiver, event_type, level, title, body, aggregate_key, aggregate_count, read_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		NotificationReceiverAdmin, NotificationEventComment, NotificationLevelInfo, "bad", "bad", "", "not-an-int", nil, nowUnix+10, nowUnix+10,
+	); err != nil {
+		t.Fatalf("insert malformed notification failed: %v", err)
+	}
+	if _, err := ListNotifications(db, NotificationReceiverAdmin, 20, 0); err == nil {
+		t.Fatal("ListNotifications should fail when aggregate_count has invalid type")
 	}
 }
 

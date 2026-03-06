@@ -29,6 +29,7 @@ const (
 	TableUVUnique       TableName = TableUniqueVisitors
 	TableLikes          TableName = "t_likes"
 	TableAssets         TableName = "t_assets"
+	TableNotifications  TableName = "t_notifications"
 )
 
 const InitialSQL = `
@@ -194,6 +195,8 @@ const InitialSQL = `
 	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
 		('clear_encrypted_posts', '清理过期加密文章', '定时清理加密文章', '@every 1m', 1, 1, strftime('%s','now'), strftime('%s','now'));
 	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
+		('clear_notifications', '清理过期通知', '按保留天数清理过期通知', '@daily', 1, 0, strftime('%s','now'), strftime('%s','now'));
+	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
 		('remote_backup_data', '远程备份数据', '备份数据库到远程', '@daily', 1, 1, strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (
@@ -300,6 +303,30 @@ const InitialSQL = `
 
 	CREATE INDEX IF NOT EXISTS idx_assets_provider_created
 	ON ` + TableAssets + ` (provider, created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS ` + TableNotifications + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		receiver TEXT NOT NULL DEFAULT 'admin',
+		event_type TEXT NOT NULL,
+		level TEXT NOT NULL DEFAULT 'info',
+		title TEXT NOT NULL,
+		body TEXT NOT NULL DEFAULT '',
+		aggregate_key TEXT NOT NULL DEFAULT '',
+		aggregate_count INTEGER NOT NULL DEFAULT 1,
+		read_at INTEGER,
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_notifications_receiver_read_updated
+	ON ` + TableNotifications + ` (receiver, read_at, updated_at DESC, id DESC);
+
+	CREATE INDEX IF NOT EXISTS idx_notifications_receiver_event_updated
+	ON ` + TableNotifications + ` (receiver, event_type, updated_at DESC, id DESC);
+
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_receiver_aggregate_key
+	ON ` + TableNotifications + ` (receiver, aggregate_key)
+	WHERE aggregate_key <> '';
 `
 const InternalLang = `[
 	  {"label": "简体中文（中国大陆）", "value": "zh-CN"},
@@ -411,6 +438,7 @@ const (
 	SettingKindBackupSync         = "backup_sync"
 	SettingKindThirdPartyServices = "third_party_services"
 	SettingKindAdminSecurity      = "admin_security"
+	SettingKindNotifications      = "notifications"
 	SettingKindUIExperience       = "ui_experience"
 )
 
@@ -429,6 +457,7 @@ var settingKindOrder = []string{
 	SettingKindBackupSync,
 	SettingKindThirdPartyServices,
 	SettingKindAdminSecurity,
+	SettingKindNotifications,
 	SettingKindUIExperience,
 }
 
@@ -452,6 +481,7 @@ var SettingKindLabels = map[string]string{
 	SettingKindBackupSync:         "备份与同步",
 	SettingKindThirdPartyServices: "第三方服务",
 	SettingKindAdminSecurity:      "后台安全",
+	SettingKindNotifications:      "消息通知",
 	SettingKindUIExperience:       "界面体验",
 }
 
@@ -506,6 +536,12 @@ var DefaultSettings = []Setting{
 	{Sort: 10, Kind: SettingKindAdminSecurity, Name: "管理后台路径", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: config.UrlPrefixValidatorJSON},
 	{Sort: 11, Kind: SettingKindAdminSecurity, Name: "管理后台密码", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
 	{Sort: 12, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindAsset, Name: "资源默认服务", Code: "asset_default_provider", Type: "select", Value: "see", Description: "资源上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
+	{Sort: 10, Kind: SettingKindNotifications, Name: "文章点赞通知", Code: "notify_enable_post_like", Type: "radio", Value: "1", DefaultOptionValue: "1", Description: "文章收到点赞时发送通知（按时间窗口聚合）", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
+	{Sort: 11, Kind: SettingKindNotifications, Name: "用户留言通知", Code: "notify_enable_comment", Type: "radio", Value: "1", DefaultOptionValue: "1", Description: "有新留言时发送通知", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
+	{Sort: 12, Kind: SettingKindNotifications, Name: "任务成功通知", Code: "notify_enable_task_success", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "任务成功时发送通知", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
+	{Sort: 13, Kind: SettingKindNotifications, Name: "任务失败通知", Code: "notify_enable_task_error", Type: "radio", Value: "1", DefaultOptionValue: "1", Description: "任务失败时发送通知", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
+	{Sort: 14, Kind: SettingKindNotifications, Name: "点赞聚合窗口 (min)", Code: "notify_like_aggregate_window_min", Type: "number", Value: "30", DefaultOptionValue: "30", Description: "同一文章在窗口内的点赞聚合到一条通知", Attrs: `{"min": 1, "max": 1440}`},
+	{Sort: 15, Kind: SettingKindNotifications, Name: "通知保留天数", Code: "notify_retention_days", Type: "number", Value: "30", DefaultOptionValue: "30", Description: "超过保留天数的通知将被定时清理", Attrs: `{"min": 1, "max": 3650}`},
 	{Sort: 10, Kind: SettingKindUIExperience, Name: "文字大小", Code: "font_size", Type: "number", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 	{Sort: 11, Kind: SettingKindUIExperience, Name: "界面模式", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},

@@ -41,7 +41,11 @@
   --app-badge-success-bg: #E4F8EC;
   --app-badge-draft-fg: var(--app-text-soft);
   --app-badge-draft-bg: #EDEEF0;
-  --app-scrollbar-track: #F1F1F2;
+  --app-nav-badge-fg: var(--app-brand-fg);
+  --app-nav-badge-bg: var(--app-brand-bg);
+  --app-nav-badge-border: var(--app-brand-border);
+  /*--app-scrollbar-track: #F1F1F2;*/
+  --app-scrollbar-track: transparent;
   --app-scrollbar-thumb: #CFD1D4;
   --app-color-neutral-bg: #F6F7F7;
   --app-color-info-border: #C6D3F5;
@@ -106,6 +110,9 @@
   --app-badge-success-bg: #123633;
   --app-badge-draft-fg: #cbd5e1;
   --app-badge-draft-bg: #1F283B;
+  --app-nav-badge-fg: var(--app-brand-fg);
+  --app-nav-badge-bg: var(--app-brand-bg);
+  --app-nav-badge-border: var(--app-brand-border);
   --app-scrollbar-track: #1D2537;
   --app-scrollbar-thumb: #3A4150;
   --app-color-neutral-bg: #1A2235;
@@ -644,6 +651,10 @@ a.ui-btn[disabled] {
   cursor: pointer;
   user-select: none;
   text-decoration: none;
+}
+
+.ui-icon-btn[hidden] {
+  display: none !important;
 }
 
 .ui-icon-btn:focus-visible {
@@ -1646,6 +1657,10 @@ a.ui-icon-btn[disabled] {
   flex: 0 0 auto;
 }
 
+.nav-item-icon[hidden] {
+  display: none !important;
+}
+
 .nav-item.active .nav-item-icon {
   color: var(--app-text);
 }
@@ -1655,6 +1670,26 @@ a.ui-icon-btn[disabled] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.nav-item-badge {
+  min-width: 14px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--app-nav-badge-fg);
+  background: var(--app-nav-badge-bg);
+  border: var(--app-border-width) solid var(--app-nav-badge-border);
+}
+
+.nav-item-badge[hidden] {
+  display: none !important;
 }
 
 .nav-foot {

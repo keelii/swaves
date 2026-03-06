@@ -10,12 +10,14 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
 	"swaves/internal/shared/webutil"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -212,15 +214,12 @@ func (h Handler) redirectError(c fiber.Ctx) error {
 	return webutil.RedirectTo(c, buildSiteErrorRedirectPath(c, targetPath), fiber.StatusFound)
 }
 
-func (h Handler) ensureLikePostExists(postID int64) error {
+func (h Handler) ensureLikePostExists(postID int64) (db.Post, error) {
 	post, err := db.GetPostByID(h.Model, postID)
 	if err != nil {
-		return err
+		return db.Post{}, err
 	}
-	if post.Status != "published" || post.PublishedAt <= 0 {
-		return db.ErrNotFound("PostEntityLike.Post")
-	}
-	return nil
+	return post, nil
 }
 
 func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
@@ -546,7 +545,8 @@ func (h Handler) PostEntityLike(c fiber.Ctx) error {
 		return h.redirectError(c)
 	}
 
-	if err = h.ensureLikePostExists(postID); err != nil {
+	post, err := h.ensureLikePostExists(postID)
+	if err != nil {
 		if db.IsErrNotFound(err) {
 			if shouldReturnLikeJSON(c) {
 				return fiber.ErrNotFound
@@ -595,6 +595,12 @@ func (h Handler) PostEntityLike(c fiber.Ctx) error {
 		return h.redirectError(c)
 	}
 
+	if nextStatus == db.LikeStatusActive && notify.IsPostLikeNotificationEnabled() {
+		if notifyErr := notify.CreatePostLikeNotification(h.Model, post, likeCount, time.Now().Unix()); notifyErr != nil {
+			logger.Error("[notify] create like notification failed: post_id=%d err=%v", postID, notifyErr)
+		}
+	}
+
 	if shouldReturnLikeJSON(c) {
 		return c.JSON(fiber.Map{
 			"liked":     nextStatus == db.LikeStatusActive,
@@ -610,7 +616,8 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 	if err != nil || postID <= 0 {
 		return h.redirectError(c)
 	}
-	if err = h.ensureLikePostExists(postID); err != nil {
+	post, err := h.ensureLikePostExists(postID)
+	if err != nil {
 		if db.IsErrNotFound(err) {
 			return h.redirectNotFound(c)
 		}
@@ -689,6 +696,12 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 	}
 	if _, err = db.CreateComment(h.Model, comment); err != nil {
 		return h.redirectError(c)
+	}
+
+	if notify.IsCommentNotificationEnabled() {
+		if notifyErr := notify.CreateCommentNotification(h.Model, post, *comment, time.Now().Unix()); notifyErr != nil {
+			logger.Error("[notify] create comment notification failed: post_id=%d comment_id=%d err=%v", postID, comment.ID, notifyErr)
+		}
 	}
 
 	saveCommentFormDefaults(c, commentFormDefaults{

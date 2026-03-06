@@ -197,6 +197,12 @@ var (
 		HasCreatedAt: true,
 		HasUpdatedAt: true,
 	}
+	specNotifications = TableSpec{
+		Name:         TableNotifications,
+		HasDeletedAt: false,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
 )
 
 // ============================================================================
@@ -749,6 +755,30 @@ func scanTaskRun(scanner sqlScanner) (TaskRun, error) {
 		return TaskRun{}, err
 	}
 	return r, nil
+}
+
+func scanNotification(scanner sqlScanner) (Notification, error) {
+	var n Notification
+	var readAt sql.NullInt64
+	if err := scanner.Scan(
+		&n.ID,
+		&n.Receiver,
+		&n.EventType,
+		&n.Level,
+		&n.Title,
+		&n.Body,
+		&n.AggregateKey,
+		&n.AggregateCount,
+		&readAt,
+		&n.CreatedAt,
+		&n.UpdatedAt,
+	); err != nil {
+		return Notification{}, err
+	}
+	if readAt.Valid {
+		n.ReadAt = &readAt.Int64
+	}
+	return n, nil
 }
 
 type UVEntityType int
@@ -3968,6 +3998,269 @@ func buildAssetWhereClause(kind, provider string) (string, []interface{}) {
 		return "", args
 	}
 	return strings.Join(conditions, " AND "), args
+}
+
+const (
+	NotificationReceiverAdmin = "admin"
+
+	NotificationLevelInfo    = "info"
+	NotificationLevelWarning = "warning"
+	NotificationLevelError   = "error"
+
+	NotificationEventPostLike   = "post_like"
+	NotificationEventComment    = "comment"
+	NotificationEventTaskResult = "task_result"
+)
+
+type Notification struct {
+	ID             int64
+	Receiver       string
+	EventType      string
+	Level          string
+	Title          string
+	Body           string
+	AggregateKey   string
+	AggregateCount int
+	ReadAt         *int64
+	CreatedAt      int64
+	UpdatedAt      int64
+}
+
+func normalizeNotificationReceiver(receiver string) string {
+	receiver = strings.TrimSpace(receiver)
+	if receiver == "" {
+		return NotificationReceiverAdmin
+	}
+	return receiver
+}
+
+func normalizeNotificationLevel(level string) string {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case NotificationLevelWarning:
+		return NotificationLevelWarning
+	case NotificationLevelError:
+		return NotificationLevelError
+	default:
+		return NotificationLevelInfo
+	}
+}
+
+func normalizeNotificationData(n *Notification) error {
+	if n == nil {
+		return errors.New("notification is nil")
+	}
+
+	n.Receiver = normalizeNotificationReceiver(n.Receiver)
+	n.EventType = strings.TrimSpace(n.EventType)
+	n.Level = normalizeNotificationLevel(n.Level)
+	n.Title = strings.TrimSpace(n.Title)
+	n.Body = strings.TrimSpace(n.Body)
+	n.AggregateKey = strings.TrimSpace(n.AggregateKey)
+
+	if n.EventType == "" {
+		return errors.New("event_type is required")
+	}
+	if n.Title == "" {
+		return errors.New("title is required")
+	}
+	if n.AggregateCount <= 0 {
+		n.AggregateCount = 1
+	}
+	return nil
+}
+
+func CreateNotification(db *DB, n *Notification) (int64, error) {
+	if err := normalizeNotificationData(n); err != nil {
+		return 0, WrapInternalErr("CreateNotification", err)
+	}
+
+	if n.ReadAt != nil {
+		readAt := *n.ReadAt
+		n.ReadAt = &readAt
+	}
+	nowUnix := now()
+	if n.CreatedAt <= 0 {
+		n.CreatedAt = nowUnix
+	}
+	if n.UpdatedAt <= 0 {
+		n.UpdatedAt = n.CreatedAt
+	}
+
+	id, err := Create(db, specNotifications, map[string]interface{}{
+		"receiver":        n.Receiver,
+		"event_type":      n.EventType,
+		"level":           n.Level,
+		"title":           n.Title,
+		"body":            n.Body,
+		"aggregate_key":   n.AggregateKey,
+		"aggregate_count": n.AggregateCount,
+		"read_at":         n.ReadAt,
+		"created_at":      n.CreatedAt,
+		"updated_at":      n.UpdatedAt,
+	})
+	if err != nil {
+		return 0, WrapInternalErr("CreateNotification", err)
+	}
+	n.ID = id
+	return id, nil
+}
+
+func CountNotifications(db *DB, receiver string) (int, error) {
+	return Count(db, specNotifications, "receiver = ?", []interface{}{normalizeNotificationReceiver(receiver)})
+}
+
+func ListNotifications(db *DB, receiver string, limit, offset int) ([]Notification, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	results, err := Read(db, specNotifications, ReadOptions{
+		SelectFields: "id, receiver, event_type, level, title, body, aggregate_key, aggregate_count, read_at, created_at, updated_at",
+		WhereClause:  "receiver = ?",
+		OrderBy:      "CASE WHEN read_at IS NULL THEN 0 ELSE 1 END ASC, updated_at DESC, id DESC",
+		WhereArgs:    []interface{}{normalizeNotificationReceiver(receiver)},
+		Limit:        limit,
+		Offset:       offset,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		n, scanErr := scanNotification(rows)
+		if scanErr != nil {
+			return nil, WrapInternalErr("ListNotifications.Scan", scanErr)
+		}
+		return n, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("ListNotifications", err)
+	}
+
+	items := make([]Notification, len(results))
+	for i, result := range results {
+		items[i] = result.(Notification)
+	}
+	return items, nil
+}
+
+func CountUnreadNotifications(db *DB, receiver string) (int, error) {
+	return Count(db, specNotifications, "receiver = ? AND read_at IS NULL", []interface{}{normalizeNotificationReceiver(receiver)})
+}
+
+func MarkNotificationRead(db *DB, id int64, receiver string) error {
+	if id <= 0 {
+		return errors.New("id is invalid")
+	}
+	receiver = normalizeNotificationReceiver(receiver)
+	nowUnix := now()
+	res, err := db.Exec(
+		`UPDATE `+string(TableNotifications)+`
+		SET read_at = COALESCE(read_at, ?),
+		    updated_at = ?
+		WHERE id = ? AND receiver = ?`,
+		nowUnix, nowUnix, id, receiver,
+	)
+	if err != nil {
+		return WrapInternalErr("MarkNotificationRead", err)
+	}
+
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound("MarkNotificationRead")
+	}
+	return nil
+}
+
+func MarkAllNotificationsRead(db *DB, receiver string) (int64, error) {
+	receiver = normalizeNotificationReceiver(receiver)
+	nowUnix := now()
+	res, err := db.Exec(
+		`UPDATE `+string(TableNotifications)+`
+		SET read_at = COALESCE(read_at, ?),
+		    updated_at = ?
+		WHERE receiver = ? AND read_at IS NULL`,
+		nowUnix, nowUnix, receiver,
+	)
+	if err != nil {
+		return 0, WrapInternalErr("MarkAllNotificationsRead", err)
+	}
+	affected, _ := res.RowsAffected()
+	return affected, nil
+}
+
+func DeleteNotification(db *DB, id int64, receiver string) error {
+	if id <= 0 {
+		return errors.New("id is invalid")
+	}
+	receiver = normalizeNotificationReceiver(receiver)
+	res, err := db.Exec(
+		`DELETE FROM `+string(TableNotifications)+` WHERE id = ? AND receiver = ? AND read_at IS NOT NULL`,
+		id, receiver,
+	)
+	if err != nil {
+		return WrapInternalErr("DeleteNotification", err)
+	}
+	affected, rowsErr := res.RowsAffected()
+	if rowsErr != nil {
+		return WrapInternalErr("DeleteNotification.RowsAffected", rowsErr)
+	}
+	if affected == 0 {
+		return ErrNotFound("DeleteNotification")
+	}
+	return nil
+}
+
+func CreateOrBumpNotificationByAggregateKey(db *DB, n *Notification) (int64, error) {
+	if err := normalizeNotificationData(n); err != nil {
+		return 0, WrapInternalErr("CreateOrBumpNotificationByAggregateKey", err)
+	}
+	if n.AggregateKey == "" {
+		return 0, WrapInternalErr("CreateOrBumpNotificationByAggregateKey", errors.New("aggregate_key is required"))
+	}
+
+	nowUnix := now()
+	if n.CreatedAt <= 0 {
+		n.CreatedAt = nowUnix
+	}
+	if n.UpdatedAt <= 0 {
+		n.UpdatedAt = nowUnix
+	}
+	if n.UpdatedAt < n.CreatedAt {
+		n.UpdatedAt = n.CreatedAt
+	}
+
+	if err := db.QueryRow(
+		`INSERT INTO `+string(TableNotifications)+`
+		(receiver, event_type, level, title, body, aggregate_key, aggregate_count, read_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?)
+		ON CONFLICT(receiver, aggregate_key) WHERE aggregate_key <> ''
+		DO UPDATE SET
+			title = excluded.title,
+			body = excluded.body,
+			aggregate_count = `+string(TableNotifications)+`.aggregate_count + 1,
+			read_at = NULL,
+			updated_at = excluded.updated_at
+		RETURNING id, aggregate_count, created_at, updated_at`,
+		n.Receiver, n.EventType, n.Level, n.Title, n.Body, n.AggregateKey, n.CreatedAt, n.UpdatedAt,
+	).Scan(&n.ID, &n.AggregateCount, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		return 0, WrapInternalErr("CreateOrBumpNotificationByAggregateKey.Upsert", err)
+	}
+	n.ReadAt = nil
+	return n.ID, nil
+}
+
+func DeleteExpiredNotifications(db *DB, beforeUnix int64) (int64, error) {
+	if beforeUnix <= 0 {
+		return 0, nil
+	}
+	res, err := db.Exec(`DELETE FROM `+string(TableNotifications)+` WHERE updated_at < ?`, beforeUnix)
+	if err != nil {
+		return 0, WrapInternalErr("DeleteExpiredNotifications", err)
+	}
+	affected, _ := res.RowsAffected()
+	return affected, nil
 }
 
 // TaskKind 任务类型，与 job.JobKind 枚举值复用；JobInternal(0) 执行时不生成 TaskRun
