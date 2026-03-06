@@ -4,6 +4,8 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/types"
+
+	"github.com/gofiber/fiber/v3"
 )
 
 type Handler struct {
@@ -24,4 +26,9 @@ func NewHandler(
 		Service: adminService,
 		Monitor: monitorStore,
 	}
+}
+
+func (h *Handler) RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
+	_ = h
+	return RenderAdminView(c, view, data, layout)
 }

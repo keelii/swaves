@@ -1,7 +1,9 @@
 package admin
 
 import (
+	"strings"
 	"swaves/internal/platform/config"
+	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/share"
@@ -23,6 +25,20 @@ func RegisterRouter(
 	adminGroup := app.Group(share.GetAdminUrl())
 	adminGroup.Use(middleware.AdminCSRF(gStore.Session))
 	adminGroup.Use(middleware.RequireAdmin(gStore.Session, share.BuildAdminPath("/login")))
+	adminAPIPathPrefix := share.BuildAdminPath("/api/")
+	adminGroup.Use(func(c fiber.Ctx) error {
+		if strings.HasPrefix(c.Path(), adminAPIPathPrefix) {
+			return c.Next()
+		}
+		unreadCount, err := CountUnreadNotificationsService(handler.Model, adminNotificationReceiver)
+		if err != nil {
+			logger.Warn("[notify] preload unread count failed: path=%s err=%v", c.Path(), err)
+			c.Locals("AdminNotificationUnreadCount", 0)
+			return c.Next()
+		}
+		c.Locals("AdminNotificationUnreadCount", unreadCount)
+		return c.Next()
+	})
 
 	if config.IsDevelopment {
 		adminGroup.Get("/test", handler.TestRouter).Name("admin.test")

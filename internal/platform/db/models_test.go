@@ -1666,6 +1666,20 @@ func TestNotificationListReadAndUnreadFlow(t *testing.T) {
 	if total != 3 {
 		t.Fatalf("expected total=3, got %d", total)
 	}
+	commentTotal, err := CountNotificationsByEventType(db, receiver, NotificationEventComment)
+	if err != nil {
+		t.Fatalf("CountNotificationsByEventType(comment) failed: %v", err)
+	}
+	if commentTotal != 1 {
+		t.Fatalf("expected comment total=1, got %d", commentTotal)
+	}
+	invalidFilterTotal, err := CountNotificationsByEventType(db, receiver, "invalid-event")
+	if err != nil {
+		t.Fatalf("CountNotificationsByEventType(invalid) failed: %v", err)
+	}
+	if invalidFilterTotal != total {
+		t.Fatalf("invalid event type should fallback to all, got=%d want=%d", invalidFilterTotal, total)
+	}
 
 	unreadCount, err := CountUnreadNotifications(db, receiver)
 	if err != nil {
@@ -1684,6 +1698,20 @@ func TestNotificationListReadAndUnreadFlow(t *testing.T) {
 	}
 	if list[0].ID != unreadC.ID || list[1].ID != unreadA.ID || list[2].ID != readB.ID {
 		t.Fatalf("unexpected list order ids=%d,%d,%d", list[0].ID, list[1].ID, list[2].ID)
+	}
+	commentList, err := ListNotificationsByEventType(db, receiver, NotificationEventComment, 20, 0)
+	if err != nil {
+		t.Fatalf("ListNotificationsByEventType(comment) failed: %v", err)
+	}
+	if len(commentList) != 1 || commentList[0].ID != unreadA.ID {
+		t.Fatalf("unexpected comment list result: %+v", commentList)
+	}
+	invalidFilterList, err := ListNotificationsByEventType(db, receiver, "invalid-event", 20, 0)
+	if err != nil {
+		t.Fatalf("ListNotificationsByEventType(invalid) failed: %v", err)
+	}
+	if len(invalidFilterList) != len(list) {
+		t.Fatalf("invalid event type should fallback to all list, got=%d want=%d", len(invalidFilterList), len(list))
 	}
 
 	paged, err := ListNotifications(db, receiver, 1, 1)
@@ -1937,8 +1965,14 @@ func TestNotificationErrorPathsWithClosedDB(t *testing.T) {
 	if _, err := CountNotifications(db, NotificationReceiverAdmin); err == nil {
 		t.Fatal("CountNotifications on closed DB should fail")
 	}
+	if _, err := CountNotificationsByEventType(db, NotificationReceiverAdmin, NotificationEventComment); err == nil {
+		t.Fatal("CountNotificationsByEventType on closed DB should fail")
+	}
 	if _, err := ListNotifications(db, NotificationReceiverAdmin, 10, 0); err == nil {
 		t.Fatal("ListNotifications on closed DB should fail")
+	}
+	if _, err := ListNotificationsByEventType(db, NotificationReceiverAdmin, NotificationEventComment, 10, 0); err == nil {
+		t.Fatal("ListNotificationsByEventType on closed DB should fail")
 	}
 	if _, err := CountUnreadNotifications(db, NotificationReceiverAdmin); err == nil {
 		t.Fatal("CountUnreadNotifications on closed DB should fail")

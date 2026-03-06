@@ -1349,18 +1349,18 @@ func CreatePendingRunService(dbx *db.DB, taskCode string) error {
 	return err
 }
 
-func ListNotificationsService(dbx *db.DB, receiver string, pager *types.Pagination) ([]db.Notification, error) {
+func ListNotificationsService(dbx *db.DB, receiver string, eventType string, pager *types.Pagination) ([]db.Notification, error) {
 	if pager == nil {
-		return db.ListNotifications(dbx, receiver, 20, 0)
+		return db.ListNotificationsByEventType(dbx, receiver, eventType, 20, 0)
 	}
 
-	total, err := db.CountNotifications(dbx, receiver)
+	total, err := db.CountNotificationsByEventType(dbx, receiver, eventType)
 	if err != nil {
 		return nil, err
 	}
 
 	offset := (pager.Page - 1) * pager.PageSize
-	items, err := db.ListNotifications(dbx, receiver, pager.PageSize, offset)
+	items, err := db.ListNotificationsByEventType(dbx, receiver, eventType, pager.PageSize, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -1372,6 +1372,10 @@ func ListNotificationsService(dbx *db.DB, receiver string, pager *types.Paginati
 
 func CountUnreadNotificationsService(dbx *db.DB, receiver string) (int, error) {
 	return db.CountUnreadNotifications(dbx, receiver)
+}
+
+func CountNotificationsByEventTypeService(dbx *db.DB, receiver string, eventType string) (int, error) {
+	return db.CountNotificationsByEventType(dbx, receiver, eventType)
 }
 
 func MarkNotificationReadService(dbx *db.DB, id int64, receiver string) error {

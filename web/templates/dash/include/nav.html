@@ -1,4 +1,6 @@
 <nav class="nav-menu" aria-label="管理菜单">
+  {% set navNotificationUnreadCount = NotificationUnreadCount|default(0) %}
+  {% set navHasNotificationUnread = navNotificationUnreadCount > 0 %}
   <div class="nav-section">
     <div class="nav-section-title">概览</div>
     <a class="nav-item{% if UrlIs('admin.home') %} active{% endif %}" href="{{ UrlFor('admin.home') }}"{% if UrlIs('admin.monitor') %} aria-current="page"{% endif %}>
@@ -21,10 +23,10 @@
       <span class="nav-item-text">评论管理</span>
     </a>
     <a class="nav-item{% if UrlIs('admin.notifications.list') %} active{% endif %}" href="{{ UrlFor('admin.notifications.list') }}"{% if UrlIs('admin.notifications.list') %} aria-current="page"{% endif %}>
-      <span class="nav-item-icon" data-role="nav-notification-icon-bell">{{ LucideIcon("bell", 16) }}</span>
-      <span class="nav-item-icon" data-role="nav-notification-icon-bell-dot" hidden>{{ LucideIcon("bell-dot", 16) }}</span>
+      <span class="nav-item-icon" data-role="nav-notification-icon-bell"{% if navHasNotificationUnread %} hidden{% endif %}>{{ LucideIcon("bell", 16) }}</span>
+      <span class="nav-item-icon" data-role="nav-notification-icon-bell-dot"{% if not navHasNotificationUnread %} hidden{% endif %}>{{ LucideIcon("bell-dot", 16) }}</span>
       <span class="nav-item-text">通知中心</span>
-      <span class="nav-item-badge" data-role="nav-notification-badge" hidden>0</span>
+      <span class="nav-item-badge" data-role="nav-notification-badge"{% if not navHasNotificationUnread %} hidden{% endif %}>{{ navNotificationUnreadCount if navHasNotificationUnread else "" }}</span>
     </a>
   </div>
   <div class="nav-section">

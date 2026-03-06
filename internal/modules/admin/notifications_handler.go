@@ -11,6 +11,52 @@ import (
 
 const adminNotificationReceiver = db.NotificationReceiverAdmin
 
+const (
+	adminNotificationEventAll        = ""
+	adminNotificationEventPostLike   = db.NotificationEventPostLike
+	adminNotificationEventComment    = db.NotificationEventComment
+	adminNotificationEventTaskResult = db.NotificationEventTaskResult
+)
+
+func normalizeNotificationEventTypeFilter(raw string) string {
+	switch strings.TrimSpace(raw) {
+	case adminNotificationEventPostLike:
+		return adminNotificationEventPostLike
+	case adminNotificationEventComment:
+		return adminNotificationEventComment
+	case adminNotificationEventTaskResult:
+		return adminNotificationEventTaskResult
+	default:
+		return adminNotificationEventAll
+	}
+}
+
+func getNotificationTabCounts(dbx *db.DB, receiver string) (map[string]int, error) {
+	totalCount, err := CountNotificationsByEventTypeService(dbx, receiver, adminNotificationEventAll)
+	if err != nil {
+		return nil, err
+	}
+	postLikeCount, err := CountNotificationsByEventTypeService(dbx, receiver, adminNotificationEventPostLike)
+	if err != nil {
+		return nil, err
+	}
+	commentCount, err := CountNotificationsByEventTypeService(dbx, receiver, adminNotificationEventComment)
+	if err != nil {
+		return nil, err
+	}
+	taskResultCount, err := CountNotificationsByEventTypeService(dbx, receiver, adminNotificationEventTaskResult)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]int{
+		"all":         totalCount,
+		"post_like":   postLikeCount,
+		"comment":     commentCount,
+		"task_result": taskResultCount,
+	}, nil
+}
+
 type notificationReadRequest struct {
 	ID int64 `json:"id"`
 }
@@ -33,8 +79,9 @@ func parseNotificationID(c fiber.Ctx) (int64, error) {
 }
 
 func (h *Handler) GetNotificationListHandler(c fiber.Ctx) error {
+	eventType := normalizeNotificationEventTypeFilter(c.Query("event_type"))
 	pager := middleware.GetPagination(c)
-	notifications, err := ListNotificationsService(h.Model, adminNotificationReceiver, &pager)
+	notifications, err := ListNotificationsService(h.Model, adminNotificationReceiver, eventType, &pager)
 	if err != nil {
 		return err
 	}
@@ -42,18 +89,25 @@ func (h *Handler) GetNotificationListHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	tabCounts, err := getNotificationTabCounts(h.Model, adminNotificationReceiver)
+	if err != nil {
+		return err
+	}
 
-	return RenderAdminView(c, "dash/notifications_index.html", fiber.Map{
-		"Title":         "通知中心",
-		"Notifications": notifications,
-		"UnreadCount":   unreadCount,
-		"Pager":         pager,
+	return h.RenderAdminView(c, "dash/notifications_index.html", fiber.Map{
+		"Title":                 "通知中心",
+		"Notifications":         notifications,
+		"UnreadCount":           unreadCount,
+		"NotificationEventType": eventType,
+		"NotificationTabCounts": tabCounts,
+		"Pager":                 pager,
 	}, "")
 }
 
 func (h *Handler) GetNotificationListAPIHandler(c fiber.Ctx) error {
+	eventType := normalizeNotificationEventTypeFilter(c.Query("event_type"))
 	pager := middleware.GetPagination(c)
-	notifications, err := ListNotificationsService(h.Model, adminNotificationReceiver, &pager)
+	notifications, err := ListNotificationsService(h.Model, adminNotificationReceiver, eventType, &pager)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
@@ -78,6 +132,7 @@ func (h *Handler) GetNotificationListAPIHandler(c fiber.Ctx) error {
 				"total":     pager.Total,
 				"num":       pager.Num,
 			},
+			"event_type":   eventType,
 			"unread_count": unreadCount,
 		},
 	})

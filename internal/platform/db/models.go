@@ -4034,6 +4034,19 @@ func normalizeNotificationReceiver(receiver string) string {
 	return receiver
 }
 
+func normalizeNotificationEventType(eventType string) string {
+	switch strings.TrimSpace(eventType) {
+	case NotificationEventPostLike:
+		return NotificationEventPostLike
+	case NotificationEventComment:
+		return NotificationEventComment
+	case NotificationEventTaskResult:
+		return NotificationEventTaskResult
+	default:
+		return ""
+	}
+}
+
 func normalizeNotificationLevel(level string) string {
 	switch strings.ToLower(strings.TrimSpace(level)) {
 	case NotificationLevelWarning:
@@ -4106,10 +4119,23 @@ func CreateNotification(db *DB, n *Notification) (int64, error) {
 }
 
 func CountNotifications(db *DB, receiver string) (int, error) {
-	return Count(db, specNotifications, "receiver = ?", []interface{}{normalizeNotificationReceiver(receiver)})
+	return CountNotificationsByEventType(db, receiver, "")
+}
+
+func CountNotificationsByEventType(db *DB, receiver string, eventType string) (int, error) {
+	receiver = normalizeNotificationReceiver(receiver)
+	eventType = normalizeNotificationEventType(eventType)
+	if eventType == "" {
+		return Count(db, specNotifications, "receiver = ?", []interface{}{receiver})
+	}
+	return Count(db, specNotifications, "receiver = ? AND event_type = ?", []interface{}{receiver, eventType})
 }
 
 func ListNotifications(db *DB, receiver string, limit, offset int) ([]Notification, error) {
+	return ListNotificationsByEventType(db, receiver, "", limit, offset)
+}
+
+func ListNotificationsByEventType(db *DB, receiver string, eventType string, limit, offset int) ([]Notification, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -4119,12 +4145,21 @@ func ListNotifications(db *DB, receiver string, limit, offset int) ([]Notificati
 	if offset < 0 {
 		offset = 0
 	}
+	receiver = normalizeNotificationReceiver(receiver)
+	eventType = normalizeNotificationEventType(eventType)
+
+	whereClause := "receiver = ?"
+	whereArgs := []interface{}{receiver}
+	if eventType != "" {
+		whereClause += " AND event_type = ?"
+		whereArgs = append(whereArgs, eventType)
+	}
 
 	results, err := Read(db, specNotifications, ReadOptions{
 		SelectFields: "id, receiver, event_type, level, title, body, aggregate_key, aggregate_count, read_at, created_at, updated_at",
-		WhereClause:  "receiver = ?",
+		WhereClause:  whereClause,
 		OrderBy:      "CASE WHEN read_at IS NULL THEN 0 ELSE 1 END ASC, updated_at DESC, id DESC",
-		WhereArgs:    []interface{}{normalizeNotificationReceiver(receiver)},
+		WhereArgs:    whereArgs,
 		Limit:        limit,
 		Offset:       offset,
 	}, func(rows *sql.Rows) (interface{}, error) {

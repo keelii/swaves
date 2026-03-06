@@ -79,6 +79,7 @@ func RenderAdminView(c fiber.Ctx, view string, data fiber.Map, layout string) er
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 	data["_csrf_token_value"] = fiber.Locals[string](c, "CsrfToken")
+	data["NotificationUnreadCount"] = fiber.Locals[int](c, "AdminNotificationUnreadCount")
 
 	return c.Render(view, data)
 }
