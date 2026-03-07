@@ -14,4 +14,8 @@
   {% endif %}
   {{ sui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
   {{ sui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
+  {{ sui.IconAction("between-horizontal-start", "添加行", attrs='data-title="添加行" data-seditor-command="table_add_row" data-seditor-visible-when="table" data-icon-rotate="180" hidden') }}
+  {{ sui.IconAction("between-vertical-start", "添加列", attrs='data-title="添加列" data-seditor-command="table_add_column" data-seditor-visible-when="table" hidden') }}
+  {{ sui.IconAction("list-x", "删除行", attrs='data-title="删除行" data-seditor-command="table_delete_row" data-seditor-visible-when="table" hidden') }}
+  {{ sui.IconAction("list-x", "删除列", attrs='data-title="删除列" data-seditor-command="table_delete_column" data-seditor-visible-when="table" data-icon-rotate="ccw-90" hidden') }}
 </div>

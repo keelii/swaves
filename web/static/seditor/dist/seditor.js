@@ -19030,53 +19030,6 @@ var SEditor = (() => {
     }
     return null;
   }
-  function ensureSeditorStyles() {
-    if (typeof document === "undefined") {
-      return;
-    }
-    var id = "seditor-styles";
-    if (document.getElementById(id)) {
-      return;
-    }
-    var el = document.createElement("style");
-    el.id = id;
-    el.textContent = `
-.seditor-root .ProseMirror {
-  outline: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.seditor-root .ProseMirror p {
-  margin: 0;
-}
-
-.seditor-root .ProseMirror ul,
-.seditor-root .ProseMirror ol {
-  padding-left: 1.5em;
-}
-
-.seditor-raw-block {
-  white-space: pre;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  background: rgba(107, 114, 128, 0.08);
-  border: 1px solid rgba(107, 114, 128, 0.2);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin: 10px 0;
-}
-
-.seditor-raw-inline {
-  white-space: pre;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  background: rgba(107, 114, 128, 0.10);
-  border: 1px solid rgba(107, 114, 128, 0.22);
-  border-radius: 6px;
-  padding: 0 4px;
-}
-`;
-    document.head.appendChild(el);
-  }
   function ensurePlaceholderStyles() {
     if (typeof document === "undefined") {
       return;
@@ -19099,6 +19052,36 @@ var SEditor = (() => {
     document.head.appendChild(el);
   }
   function buildSchema() {
+    var tableSpec = {
+      group: "block",
+      content: "table_row+",
+      isolating: true,
+      parseDOM: [{ tag: "table" }],
+      toDOM: function() {
+        return ["table", ["tbody", 0]];
+      }
+    };
+    var tableRowSpec = {
+      content: "(table_header | table_cell)+",
+      parseDOM: [{ tag: "tr" }],
+      toDOM: function() {
+        return ["tr", 0];
+      }
+    };
+    var tableHeaderSpec = {
+      content: "inline*",
+      parseDOM: [{ tag: "th" }],
+      toDOM: function() {
+        return ["th", 0];
+      }
+    };
+    var tableCellSpec = {
+      content: "inline*",
+      parseDOM: [{ tag: "td" }],
+      toDOM: function() {
+        return ["td", 0];
+      }
+    };
     var rawInlineSpec = {
       inline: true,
       group: "inline",
@@ -19121,6 +19104,18 @@ var SEditor = (() => {
       }
     };
     var nodes = schema.spec.nodes;
+    if (!nodes.get("table")) {
+      nodes = nodes.addToEnd("table", tableSpec);
+    }
+    if (!nodes.get("table_row")) {
+      nodes = nodes.addToEnd("table_row", tableRowSpec);
+    }
+    if (!nodes.get("table_header")) {
+      nodes = nodes.addToEnd("table_header", tableHeaderSpec);
+    }
+    if (!nodes.get("table_cell")) {
+      nodes = nodes.addToEnd("table_cell", tableCellSpec);
+    }
     if (!nodes.get("raw_inline")) {
       nodes = nodes.addToEnd("raw_inline", rawInlineSpec);
     }
@@ -19132,8 +19127,83 @@ var SEditor = (() => {
       marks: schema.spec.marks
     });
   }
+  function buildMarkdownParser(schema2) {
+    var tableTokens = {
+      table: { block: "table" },
+      thead: { ignore: true },
+      tbody: { ignore: true },
+      tfoot: { ignore: true },
+      tr: { block: "table_row" },
+      th: { block: "table_header" },
+      td: { block: "table_cell" }
+    };
+    var tokens = Object.assign({}, defaultMarkdownParser.tokens, tableTokens);
+    var tokenizer = new lib_default("default", {
+      html: false,
+      linkify: false,
+      typographer: false
+    });
+    var parser = new MarkdownParser(schema2, tokenizer, tokens);
+    parser.tokenHandlers.softbreak = function(state) {
+      state.addText("\n");
+    };
+    return parser;
+  }
+  function escapeTableCellContent(raw) {
+    return String(raw == null ? "" : raw).replace(/\r\n?/g, "\n").replace(/\n+/g, "<br>").replace(/\|/g, "\\|").trim();
+  }
+  function serializeTableCell(state, cell) {
+    var tempState = new MarkdownSerializerState(state.nodes, state.marks, state.options);
+    tempState.renderInline(cell, true);
+    return escapeTableCellContent(tempState.out);
+  }
   function buildMarkdownSerializer(schema2) {
     var nodes = Object.assign({}, defaultMarkdownSerializer.nodes);
+    nodes.table = function(state, node) {
+      state.ensureNewLine();
+      var rows = [];
+      node.forEach(function(row) {
+        rows.push(row);
+      });
+      if (rows.length === 0) {
+        state.write("|  |");
+        state.write("\n| --- |");
+        state.closeBlock(node);
+        return;
+      }
+      var rowValues = rows.map(function(row) {
+        var values = [];
+        row.forEach(function(cell) {
+          values.push(serializeTableCell(state, cell));
+        });
+        return values;
+      });
+      var colCount = 0;
+      for (var i = 0; i < rowValues.length; i += 1) {
+        if (rowValues[i].length > colCount) {
+          colCount = rowValues[i].length;
+        }
+      }
+      if (colCount < 1) {
+        colCount = 1;
+      }
+      for (var rowIndex = 0; rowIndex < rowValues.length; rowIndex += 1) {
+        while (rowValues[rowIndex].length < colCount) {
+          rowValues[rowIndex].push("");
+        }
+      }
+      var headerRow = rowValues[0];
+      var delimiterRow = [];
+      for (var colIndex = 0; colIndex < colCount; colIndex += 1) {
+        delimiterRow.push("---");
+      }
+      state.write("| " + headerRow.join(" | ") + " |");
+      state.write("\n| " + delimiterRow.join(" | ") + " |");
+      for (var bodyIndex = 1; bodyIndex < rowValues.length; bodyIndex += 1) {
+        state.write("\n| " + rowValues[bodyIndex].join(" | ") + " |");
+      }
+      state.closeBlock(node);
+    };
     nodes.raw_inline = function(state, node) {
       state.text(node.textContent, false);
     };
@@ -19203,7 +19273,7 @@ var SEditor = (() => {
     if (!input) {
       return [{ kind: "text", text: "" }];
     }
-    var pattern = /\[\^[^\]]+\]|\$(?!\$)[^\n]+?\$(?!\$)/g;
+    var pattern = /\[\^[^\]]+\]|\$\$[^\n]+?\$\$|\$(?!\$)[^\n]+?\$(?!\$)/g;
     var out = [];
     var last = 0;
     var match2;
@@ -19218,6 +19288,137 @@ var SEditor = (() => {
       out.push({ kind: "text", text: input.slice(last) });
     }
     return out.length ? out : [{ kind: "text", text: input }];
+  }
+  function protectRawInlinePlaceholders(text2) {
+    var input = String(text2 == null ? "" : text2);
+    if (!input) {
+      return { text: "", placeholders: [] };
+    }
+    var pattern = /\[\^[^\]]+\]|\$\$[^\n]+?\$\$|\$(?!\$)[^\n]+?\$(?!\$)/g;
+    var placeholders = [];
+    var out = "";
+    var last = 0;
+    var match2;
+    while (match2 = pattern.exec(input)) {
+      out += input.slice(last, match2.index);
+      var token = "\uE000SEDITOR_RAW_INLINE_" + placeholders.length + "\uE001";
+      placeholders.push({ token, raw: match2[0] });
+      out += token;
+      last = match2.index + match2[0].length;
+    }
+    out += input.slice(last);
+    return { text: out, placeholders };
+  }
+  function escapeRegExp(text2) {
+    return String(text2 == null ? "" : text2).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  function replaceRawInlinePlaceholdersInDoc(schema2, doc3, placeholders) {
+    if (!placeholders || placeholders.length < 1) {
+      return doc3;
+    }
+    var byToken = {};
+    var parts = [];
+    for (var i = 0; i < placeholders.length; i += 1) {
+      var item = placeholders[i];
+      if (!item || !item.token) {
+        continue;
+      }
+      byToken[item.token] = item.raw || "";
+      parts.push(escapeRegExp(item.token));
+    }
+    if (parts.length < 1) {
+      return doc3;
+    }
+    var tokenPattern = new RegExp(parts.join("|"), "g");
+    function splitTextByToken(text2, marks) {
+      tokenPattern.lastIndex = 0;
+      var out = [];
+      var last = 0;
+      var match2;
+      while (match2 = tokenPattern.exec(text2)) {
+        if (match2.index > last) {
+          var beforeText = { type: "text", text: text2.slice(last, match2.index) };
+          if (marks) {
+            beforeText.marks = marks;
+          }
+          out.push(beforeText);
+        }
+        var raw = byToken[match2[0]];
+        if (raw) {
+          out.push({ type: "raw_inline", content: [{ type: "text", text: raw }] });
+        } else {
+          var tokenText = { type: "text", text: match2[0] };
+          if (marks) {
+            tokenText.marks = marks;
+          }
+          out.push(tokenText);
+        }
+        last = match2.index + match2[0].length;
+      }
+      if (last < text2.length) {
+        var tailText = { type: "text", text: text2.slice(last) };
+        if (marks) {
+          tailText.marks = marks;
+        }
+        out.push(tailText);
+      }
+      if (out.length < 1) {
+        var original = { type: "text", text: text2 };
+        if (marks) {
+          original.marks = marks;
+        }
+        out.push(original);
+      }
+      return out;
+    }
+    function walk(nodeJSON) {
+      if (!nodeJSON || typeof nodeJSON !== "object") {
+        return nodeJSON;
+      }
+      if (nodeJSON.type === "raw_block" || nodeJSON.type === "raw_inline" || nodeJSON.type === "code_block") {
+        return nodeJSON;
+      }
+      if (nodeJSON.content && Array.isArray(nodeJSON.content)) {
+        nodeJSON.content = nodeJSON.content.map(walk);
+      }
+      if (nodeJSON.type === "text" && typeof nodeJSON.text === "string") {
+        if (nodeJSON.marks && Array.isArray(nodeJSON.marks)) {
+          for (var mi = 0; mi < nodeJSON.marks.length; mi += 1) {
+            if (nodeJSON.marks[mi] && nodeJSON.marks[mi].type === "code") {
+              return nodeJSON;
+            }
+          }
+        }
+        return splitTextByToken(nodeJSON.text, nodeJSON.marks);
+      }
+      return nodeJSON;
+    }
+    function flatten(nodeJSON) {
+      if (Array.isArray(nodeJSON)) {
+        var out = [];
+        for (var i2 = 0; i2 < nodeJSON.length; i2 += 1) {
+          var flat = flatten(nodeJSON[i2]);
+          for (var j = 0; j < flat.length; j += 1) {
+            out.push(flat[j]);
+          }
+        }
+        return out;
+      }
+      if (nodeJSON && nodeJSON.content && Array.isArray(nodeJSON.content)) {
+        var nextContent = [];
+        for (var k = 0; k < nodeJSON.content.length; k += 1) {
+          var next = flatten(nodeJSON.content[k]);
+          for (var m = 0; m < next.length; m += 1) {
+            nextContent.push(next[m]);
+          }
+        }
+        nodeJSON.content = nextContent;
+      }
+      return [nodeJSON];
+    }
+    var walked = walk(doc3.toJSON());
+    var flattened = flatten(walked)[0];
+    return schema2.nodeFromJSON(flattened);
   }
   function replaceRawInlineInDoc(schema2, doc3) {
     var json = doc3.toJSON();
@@ -19291,7 +19492,7 @@ var SEditor = (() => {
     var flattened = flatten(walked)[0];
     return schema2.nodeFromJSON(flattened);
   }
-  function parseMarkdown(schema2, markdown) {
+  function parseMarkdown(schema2, parser, markdown) {
     var segments = splitIntoRawBlockSegments(markdown);
     var blocks = [];
     for (var idx = 0; idx < segments.length; idx += 1) {
@@ -19302,8 +19503,10 @@ var SEditor = (() => {
         blocks.push(schema2.nodes.raw_block.create(null, rawContent));
         continue;
       }
-      var parsed = defaultMarkdownParser.parse(seg.text || "");
+      var protectedMarkdown = protectRawInlinePlaceholders(seg.text || "");
+      var parsed = parser.parse(protectedMarkdown.text || "");
       var converted = schema2.nodeFromJSON(parsed.toJSON());
+      converted = replaceRawInlinePlaceholdersInDoc(schema2, converted, protectedMarkdown.placeholders);
       converted.content.forEach(function(child) {
         blocks.push(child);
       });
@@ -19511,6 +19714,229 @@ var SEditor = (() => {
     var selection = state.selection;
     return hasAncestorNodeType(selection.$from, nodeType) || hasAncestorNodeType(selection.$to, nodeType);
   }
+  function getTableContext(state) {
+    if (!state || !state.selection || !state.selection.$from) {
+      return null;
+    }
+    var $from = state.selection.$from;
+    var tableDepth = -1;
+    var rowDepth = -1;
+    var cellDepth = -1;
+    for (var depth = $from.depth; depth >= 0; depth -= 1) {
+      var node = $from.node(depth);
+      var nodeName = node && node.type ? node.type.name : "";
+      if (cellDepth < 0 && (nodeName === "table_cell" || nodeName === "table_header")) {
+        cellDepth = depth;
+      }
+      if (rowDepth < 0 && nodeName === "table_row") {
+        rowDepth = depth;
+      }
+      if (nodeName === "table") {
+        tableDepth = depth;
+        break;
+      }
+    }
+    if (tableDepth < 0 || rowDepth < 0 || cellDepth < 0) {
+      return null;
+    }
+    var tableNode = $from.node(tableDepth);
+    var rowNode = $from.node(rowDepth);
+    var rowIndex = $from.index(tableDepth);
+    var colIndex = $from.index(rowDepth);
+    if (!tableNode || rowIndex < 0 || rowIndex >= tableNode.childCount) {
+      return null;
+    }
+    if (!rowNode || colIndex < 0 || colIndex >= rowNode.childCount) {
+      return null;
+    }
+    return {
+      tableNode,
+      tablePos: $from.before(tableDepth),
+      rowIndex,
+      colIndex
+    };
+  }
+  function cloneNodeJSON(node) {
+    return JSON.parse(JSON.stringify(node.toJSON()));
+  }
+  function getMaxTableColumns(tableJSON) {
+    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    var maxCount = 0;
+    for (var i = 0; i < rows.length; i += 1) {
+      var cells = rows[i] && Array.isArray(rows[i].content) ? rows[i].content : [];
+      if (cells.length > maxCount) {
+        maxCount = cells.length;
+      }
+    }
+    return maxCount;
+  }
+  function createEmptyCellJSON(typeName) {
+    return {
+      type: typeName || "table_cell",
+      content: []
+    };
+  }
+  function getTableCellContentOffset(tableNode, rowIndex, colIndex) {
+    var offset = 1;
+    for (var row = 0; row < rowIndex; row += 1) {
+      offset += tableNode.child(row).nodeSize;
+    }
+    var rowNode = tableNode.child(rowIndex);
+    offset += 1;
+    for (var col = 0; col < colIndex; col += 1) {
+      offset += rowNode.child(col).nodeSize;
+    }
+    offset += 1;
+    return offset;
+  }
+  function normalizeTargetCell(newTableNode, rowIndex, colIndex) {
+    var targetRow = rowIndex;
+    if (targetRow < 0) {
+      targetRow = 0;
+    }
+    if (targetRow >= newTableNode.childCount) {
+      targetRow = newTableNode.childCount - 1;
+    }
+    var targetRowNode = newTableNode.child(targetRow);
+    var targetCol = colIndex;
+    if (targetCol < 0) {
+      targetCol = 0;
+    }
+    if (targetCol >= targetRowNode.childCount) {
+      targetCol = targetRowNode.childCount - 1;
+    }
+    return { row: targetRow, col: targetCol };
+  }
+  function applyTableMutation(state, dispatch, mutate) {
+    var context = getTableContext(state);
+    if (!context || typeof mutate !== "function") {
+      return false;
+    }
+    var tableJSON = cloneNodeJSON(context.tableNode);
+    var result = mutate(tableJSON, context);
+    if (!result || result.ok !== true) {
+      return false;
+    }
+    var newTableNode;
+    try {
+      newTableNode = state.schema.nodeFromJSON(tableJSON);
+    } catch (error2) {
+      return false;
+    }
+    if (!newTableNode || newTableNode.childCount < 1) {
+      return false;
+    }
+    var target = normalizeTargetCell(
+      newTableNode,
+      Number.isInteger(result.targetRow) ? result.targetRow : context.rowIndex,
+      Number.isInteger(result.targetCol) ? result.targetCol : context.colIndex
+    );
+    if (!dispatch) {
+      return true;
+    }
+    var tr = state.tr.replaceWith(
+      context.tablePos,
+      context.tablePos + context.tableNode.nodeSize,
+      newTableNode
+    );
+    var cursorPos = context.tablePos + getTableCellContentOffset(newTableNode, target.row, target.col);
+    tr = tr.setSelection(Selection.near(tr.doc.resolve(cursorPos))).scrollIntoView();
+    dispatch(tr);
+    return true;
+  }
+  function mutateTableAddRow(tableJSON, context) {
+    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    if (rows.length < 1 || context.rowIndex < 0 || context.rowIndex >= rows.length) {
+      return { ok: false };
+    }
+    var baseRow = rows[context.rowIndex] || {};
+    var baseCells = Array.isArray(baseRow.content) ? baseRow.content : [];
+    var colCount = baseCells.length || getMaxTableColumns(tableJSON);
+    if (colCount < 1) {
+      colCount = 1;
+    }
+    var newRowCells = [];
+    for (var col = 0; col < colCount; col += 1) {
+      newRowCells.push(createEmptyCellJSON("table_cell"));
+    }
+    var insertIndex = context.rowIndex + 1;
+    rows.splice(insertIndex, 0, {
+      type: "table_row",
+      content: newRowCells
+    });
+    return {
+      ok: true,
+      targetRow: insertIndex,
+      targetCol: Math.min(context.colIndex, colCount - 1)
+    };
+  }
+  function mutateTableAddColumn(tableJSON, context) {
+    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    if (rows.length < 1) {
+      return { ok: false };
+    }
+    var targetCol = context.colIndex + 1;
+    for (var row = 0; row < rows.length; row += 1) {
+      var rowJSON = rows[row];
+      if (!rowJSON || !Array.isArray(rowJSON.content)) {
+        rowJSON.content = [];
+      }
+      var cells = rowJSON.content;
+      var sampleCell = cells[Math.min(context.colIndex, Math.max(0, cells.length - 1))];
+      var cellType = sampleCell && sampleCell.type ? sampleCell.type : row === 0 ? "table_header" : "table_cell";
+      var insertAt = Math.min(targetCol, cells.length);
+      cells.splice(insertAt, 0, createEmptyCellJSON(cellType));
+    }
+    return {
+      ok: true,
+      targetRow: context.rowIndex,
+      targetCol
+    };
+  }
+  function mutateTableDeleteRow(tableJSON, context) {
+    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    if (rows.length <= 1 || context.rowIndex < 0 || context.rowIndex >= rows.length) {
+      return { ok: false };
+    }
+    rows.splice(context.rowIndex, 1);
+    var targetRow = context.rowIndex;
+    if (targetRow >= rows.length) {
+      targetRow = rows.length - 1;
+    }
+    var targetCells = rows[targetRow] && Array.isArray(rows[targetRow].content) ? rows[targetRow].content : [];
+    var targetCol = Math.min(context.colIndex, Math.max(0, targetCells.length - 1));
+    return {
+      ok: true,
+      targetRow,
+      targetCol
+    };
+  }
+  function mutateTableDeleteColumn(tableJSON, context) {
+    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    if (rows.length < 1) {
+      return { ok: false };
+    }
+    var minCols = Infinity;
+    for (var row = 0; row < rows.length; row += 1) {
+      var cells = rows[row] && Array.isArray(rows[row].content) ? rows[row].content : [];
+      if (cells.length < minCols) {
+        minCols = cells.length;
+      }
+    }
+    if (!Number.isFinite(minCols) || minCols <= 1) {
+      return { ok: false };
+    }
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+      var rowCells = rows[rowIndex] && Array.isArray(rows[rowIndex].content) ? rows[rowIndex].content : [];
+      var removeAt = Math.min(context.colIndex, rowCells.length - 1);
+      rowCells.splice(removeAt, 1);
+    }
+    return {
+      ok: true,
+      targetRow: context.rowIndex,
+      targetCol: Math.min(context.colIndex, minCols - 2)
+    };
+  }
   function getActiveLinkMark(state, linkMarkType) {
     if (!state || !state.selection || !linkMarkType) {
       return null;
@@ -19622,6 +20048,22 @@ var SEditor = (() => {
         return schema2.nodes.bullet_list ? wrapInList(schema2.nodes.bullet_list) : null;
       case "ordered_list":
         return schema2.nodes.ordered_list ? wrapInList(schema2.nodes.ordered_list) : null;
+      case "table_add_row":
+        return function(state, dispatch) {
+          return applyTableMutation(state, dispatch, mutateTableAddRow);
+        };
+      case "table_add_column":
+        return function(state, dispatch) {
+          return applyTableMutation(state, dispatch, mutateTableAddColumn);
+        };
+      case "table_delete_row":
+        return function(state, dispatch) {
+          return applyTableMutation(state, dispatch, mutateTableDeleteRow);
+        };
+      case "table_delete_column":
+        return function(state, dispatch) {
+          return applyTableMutation(state, dispatch, mutateTableDeleteColumn);
+        };
       case "link":
         if (!link2) {
           return null;
@@ -19714,6 +20156,12 @@ var SEditor = (() => {
       bullet_list: true,
       ordered_list: true
     };
+    var tableCommands = {
+      table_add_row: true,
+      table_add_column: true,
+      table_delete_row: true,
+      table_delete_column: true
+    };
     var bindings = [];
     var els = root.querySelectorAll("[data-seditor-command]");
     for (var i = 0; i < els.length; i += 1) {
@@ -19724,22 +20172,38 @@ var SEditor = (() => {
         if (!command) {
           return;
         }
-        bindings.push({ el, name });
+        var visibleWhen = String(el.getAttribute("data-seditor-visible-when") || "").trim();
+        bindings.push({ el, name, command, visibleWhen });
         if (toggleCommands[String(name || "").trim()]) {
           el.setAttribute("aria-pressed", "false");
         }
         el.addEventListener("click", function(e) {
           e.preventDefault();
+          if (el.disabled || el.hidden) {
+            return;
+          }
           view.focus();
           command(view.state, view.dispatch, view);
         });
       })();
     }
     function refresh() {
+      var inTable = !!getTableContext(view.state);
       for (var bi = 0; bi < bindings.length; bi += 1) {
         var binding = bindings[bi];
         var commandName = String(binding.name || "").trim();
+        if (binding.visibleWhen === "table") {
+          binding.el.hidden = !inTable;
+          if (!inTable) {
+            binding.el.disabled = true;
+            continue;
+          }
+        }
         if (!toggleCommands[commandName]) {
+          if (tableCommands[commandName]) {
+            var enabled = binding.command(view.state, null, view);
+            binding.el.disabled = !enabled;
+          }
           continue;
         }
         var active = isCommandActive(schema2, commandName, view.state);
@@ -19756,12 +20220,12 @@ var SEditor = (() => {
     if (!mount) {
       throw new Error("SEditor.init: mount element is required");
     }
-    ensureSeditorStyles();
     mount.classList.add("seditor-root");
     if (typeof opts.placeholder === "string" && opts.placeholder.trim()) {
       ensurePlaceholderStyles();
     }
     var schema2 = buildSchema();
+    var markdownParser = buildMarkdownParser(schema2);
     var serializer = buildMarkdownSerializer(schema2);
     var plugins = buildPlugins(schema2, opts);
     var textarea = resolveElement(opts.textarea);
@@ -19771,7 +20235,7 @@ var SEditor = (() => {
     } else if (textarea && typeof textarea.value === "string") {
       initialMarkdown = textarea.value;
     }
-    var doc3 = parseMarkdown(schema2, initialMarkdown);
+    var doc3 = parseMarkdown(schema2, markdownParser, initialMarkdown);
     var state = EditorState.create({ schema: schema2, doc: doc3, plugins });
     var view = null;
     function sync(nextState) {
@@ -19808,7 +20272,7 @@ var SEditor = (() => {
         return serializer.serialize(view.state.doc);
       },
       setMarkdown: function(markdown) {
-        var nextDoc = parseMarkdown(schema2, String(markdown || ""));
+        var nextDoc = parseMarkdown(schema2, markdownParser, String(markdown || ""));
         var nextState = EditorState.create({ schema: schema2, doc: nextDoc, plugins });
         view.updateState(nextState);
         sync(nextState);

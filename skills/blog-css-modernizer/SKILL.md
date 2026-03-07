@@ -1,6 +1,6 @@
 ---
 name: blog-css-modernizer
-description: 博客前台与管理后台 CSS 设计与实现专家。Use when users ask to redesign, polish, or implement styles/components in this repo: (1) site frontend based on `web/static/site/tufte-css/tufte.css`, with custom styles in `web/static/site/style.css`, template files under `web/templates/site`, and Lucide icons via `web/templates/lucide_icon.html`; (2) admin backend based on Oat CSS under `web/static/admin/oat`, aligned with Oat theme tokens, with custom styles in `web/static/admin/style.css`.
+description: 博客前台与管理后台 CSS 设计与实现专家。Use when users ask to redesign, polish, or implement styles/components in this repo: (1) site frontend based on `web/static/site/tufte-css/tufte.css`, with custom styles in `web/static/site/style.css`, template files under `web/templates/site`, and Lucide icons via `web/templates/lucide_icon.html`; (2) admin backend based on Oat CSS under `web/static/dash/oat`, aligned with Oat theme tokens, with custom styles in `web/static/dash/style.css`.
 ---
 
 # Blog CSS Modernizer
@@ -12,7 +12,7 @@ description: 博客前台与管理后台 CSS 设计与实现专家。Use when us
 先根据目标文件和页面路径选择分区：
 
 - 前台博客：`web/templates/site/*`、`web/static/site/*`
-- 管理后台：`web/templates/dash/*`、`web/static/sui/*`、`web/static/admin/*`
+- 管理后台：`web/templates/dash/*`、`web/static/sui/*`、`web/static/dash/*`
 
 若同时涉及两端，分开实现并分别说明影响范围。
 
@@ -32,11 +32,11 @@ description: 博客前台与管理后台 CSS 设计与实现专家。Use when us
 
 在后台任务中执行以下规则：
 
-- 以 Oat CSS 作为基础框架（`web/static/admin/oat/oat.min.css` 及其组件样式）
+- 以 Oat CSS 作为基础框架（`web/static/dash/oat/oat.min.css` 及其组件样式）
 - 保持组件外观和交互与 Oat 对齐，不做明显背离的视觉风格
-- 将自定义样式写入 `web/static/admin/style.css`
+- 将自定义样式写入 `web/static/dash/style.css`
 - 优先复用 Oat 变量与设计 token
-- 颜色、间距、边框半径、阴影等规范值优先读取 `web/static/admin/oat/css/01-theme.css`（若项目改为 `00-theme.css`，以项目实际路径为准）
+- 颜色、间距、边框半径、阴影等规范值优先读取 `web/static/dash/oat/css/01-theme.css`（若项目改为 `00-theme.css`，以项目实际路径为准）
 - 控制选择器优先级，优先局部增量覆盖，避免全局污染
 
 ## 4) 通用实现规则

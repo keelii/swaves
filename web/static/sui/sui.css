@@ -712,6 +712,14 @@ a.ui-btn[disabled] {
   text-decoration: none;
 }
 
+.ui-icon-btn[data-icon-rotate="ccw-90"] > svg {
+  transform: rotate(-90deg);
+}
+
+.ui-icon-btn[data-icon-rotate="180"] > svg {
+  transform: rotate(180deg);
+}
+
 .ui-icon-btn[hidden] {
   display: none !important;
 }
@@ -1959,10 +1967,41 @@ a.ui-icon-btn[disabled] {
   border-top: 0!important;
   border-bottom: 0!important;
 }
+.content-editor h1,
+.content-editor h2,
+.content-editor h3,
+.content-editor h4,
+.content-editor h5,
+.content-editor h6 {
+  font-size: inherit;
+  position: relative;
+  margin-bottom: 1.07692em;
+  margin-top: 1.07692em;
+}
+.content-editor h1::before { content: "H1"; }
+.content-editor h2::before { content: "H2"; }
+.content-editor h3::before { content: "H3"; }
+.content-editor h4::before { content: "H4"; }
+.content-editor h5::before { content: "H5"; }
+.content-editor h6::before { content: "H6"; }
+.content-editor h1::before,
+.content-editor h2::before,
+.content-editor h3::before,
+.content-editor h4::before,
+.content-editor h5::before,
+.content-editor h6::before{
+  font-weight: normal;
+  position: absolute;
+  display: block;
+  height: 20px;
+  left: calc(-30px - var(--app-spacing));
+  /*top: var(--app-spacing);*/
+  color: #999;
+}
+
 .content-editor .title::before {
   position: absolute;
   display: block;
-  width: 20px;
   height: 20px;
   left: -30px;
   top: var(--app-spacing);
@@ -1998,6 +2037,9 @@ a.ui-icon-btn[disabled] {
   margin-top: 0;
 }
 .content-editor .ProseMirror p img {
+  max-width: 100%;
+}
+.content-editor .ProseMirror table img {
   max-width: 100%;
 }
 .content-editor .ProseMirror blockquote>p:first-child {

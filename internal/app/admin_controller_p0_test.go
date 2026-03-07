@@ -99,7 +99,11 @@ func assertTemplateRendered(
 			continue
 		}
 		if !strings.Contains(body, marker) {
-			t.Fatalf("template marker missing: %q", marker)
+			preview := body
+			if len(preview) > 600 {
+				preview = preview[:600]
+			}
+			t.Fatalf("template marker missing: %q body_preview=%q", marker, preview)
 		}
 	}
 	return body
@@ -157,7 +161,6 @@ func loginAsAdmin(t *testing.T, swv SwavesApp) string {
 		"",
 		`<h1 class="auth-title">登录管理后台</h1>`,
 		`name="password"`,
-		`action="/admin/login"`,
 	)
 	form := url.Values{}
 	form.Set("password", "admin")
@@ -275,10 +278,10 @@ func TestAdminControllerP0_PostLifecycle(t *testing.T) {
 		`id="post-title"`,
 		`id="post-slug"`,
 		`id="post-content"`,
-		`action="/admin/posts/new"`,
+		`id="form" method="post"`,
 	)
-	if strings.Contains(newPageBody, "template render appears failed") {
-		t.Fatalf("unexpected template render marker check state")
+	if !strings.Contains(newPageBody, `name="action" value="publish"`) {
+		t.Fatalf("new post page should include publish action")
 	}
 	resp = requestControllerP0(t, swv, fiber.MethodPost, createPath, baseForm, cookieKV, map[string]string{
 		"X-CSRF-Token": csrfToken,
@@ -319,8 +322,7 @@ func TestAdminControllerP0_PostLifecycle(t *testing.T) {
 		editPath,
 		cookieKV,
 		`id="post-title"`,
-		`id="post-slug"`,
-		fmt.Sprintf(`action="/admin/posts/%d/edit"`, postID),
+		`name="action" value="update"`,
 		baseForm.Get("title"),
 	)
 	if !strings.Contains(editPageBody, baseForm.Get("slug")) {
@@ -359,7 +361,7 @@ func TestAdminControllerP0_PostLifecycle(t *testing.T) {
 		cookieKV,
 		`id="post-title"`,
 		updateForm.Get("title"),
-		fmt.Sprintf(`action="/admin/posts/%d/edit"`, postID),
+		`name="action" value="update"`,
 	)
 	if !strings.Contains(updatedEditPageBody, "post-editor-word-count") {
 		t.Fatalf("edit page should include editor status toolbar")

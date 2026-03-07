@@ -7,8 +7,8 @@
 - Shared icon component: `web/templates/lucide_icon.html`
 - Site custom style entry: `web/static/site/style.css`
 - Site typography baseline: `web/static/site/tufte-css/tufte.css`
-- Admin custom style entry: `web/static/admin/style.css`
-- Oat UI foundation: `web/static/admin/oat/css/00-base.css`, `web/static/admin/oat/css/01-theme.css`
+- Admin custom style entry: `web/static/dash/style.css`
+- Oat UI foundation: `web/static/dash/oat/css/00-base.css`, `web/static/dash/oat/css/01-theme.css`
 
 ## B) Site baseline extraction checklist
 
@@ -43,7 +43,7 @@ Prefer this order:
 
 1. Reuse Oat classes/components before creating custom class names
 2. Keep spacing, radius, border, and color decisions aligned to Oat theme tokens
-3. Put custom admin overrides in `web/static/admin/style.css` only
+3. Put custom admin overrides in `web/static/dash/style.css` only
 4. Avoid broad resets or selectors that can break Oat defaults
 5. Keep hover/focus/active feedback aligned with Oat behavior
 

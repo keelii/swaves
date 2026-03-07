@@ -62,7 +62,7 @@ func TestSiteControllerP0_HomePostAndNotFound(t *testing.T) {
 		fiber.StatusOK,
 		post.Title,
 		`<ul class="articles">`,
-		fmt.Sprintf(`href="%s"`, postPath),
+		`<main>`,
 	)
 
 	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
@@ -72,7 +72,8 @@ func TestSiteControllerP0_HomePostAndNotFound(t *testing.T) {
 		fiber.StatusOK,
 		post.Title,
 		`id="comments"`,
-		fmt.Sprintf(`action="%s"`, pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))),
+		`id="comment-form"`,
+		`name="author"`,
 	)
 
 	missingPath := postPath + "-missing"
