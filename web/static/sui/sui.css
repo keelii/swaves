@@ -1853,7 +1853,7 @@ a.ui-icon-btn[disabled] {
   display: inline-block;
 }
 
-.data-table tbody tr:hover td {
+.data-table tbody tr:hover td:not(.cell-empty) {
   background: var(--app-table-row-hover-bg);
 }
 
