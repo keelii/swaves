@@ -23,7 +23,7 @@
   <div class="data-table-wrap">
     <table id="trash-table" class="data-table" aria-label="已删除文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.trash.api.batch_delete', type='posts') }}">
       <thead>
-      <tr data-batch-delete-id="{{ postItem.ID }}">
+      <tr>
         <th>{{ ui.table_th_id() }}</th>
         <th>标题</th>
         <th>URL 标识</th>
@@ -34,7 +34,7 @@
       </thead>
       <tbody>
       {% for postItem in Data %}
-      <tr>
+      <tr data-batch-delete-id="{{ postItem.ID }}">
         <td>{{ ui.table_td_id(postItem.ID) }}</td>
         <td>{{ postItem.Title }}</td>
         <td>{{ postItem.Slug }}</td>
@@ -58,9 +58,7 @@
     </table>
   </div>
   {% else %}
-    <div class="app-px">
-      {{ sui.EmptyState("暂无已删除文章", "", "trash-2") }}
-    </div>
+    {{ sui.EmptyState("暂无已删除文章", "", "trash-2") }}
   {% endif %}
 {% endif %}
 
@@ -69,7 +67,7 @@
   <div class="data-table-wrap">
     <table id="trash-table" class="data-table" aria-label="已删除加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.trash.api.batch_delete', type='encrypted-posts') }}">
       <thead>
-      <tr data-batch-delete-id="{{ encryptedPostItem.ID }}">
+      <tr>
         <th>{{ ui.table_th_id() }}</th>
         <th>标题</th>
         <th>URL 标识</th>
@@ -79,7 +77,7 @@
       </thead>
       <tbody>
       {% for encryptedPostItem in Data %}
-      <tr>
+      <tr data-batch-delete-id="{{ encryptedPostItem.ID }}">
         <td>{{ ui.table_td_id(encryptedPostItem.ID) }}</td>
         <td>{{ encryptedPostItem.Title }}</td>
         <td>{{ encryptedPostItem.Slug }}</td>
@@ -111,7 +109,7 @@
   <div class="data-table-wrap">
     <table id="trash-table" class="data-table" aria-label="已删除标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.trash.api.batch_delete', type='tags') }}">
       <thead>
-      <tr data-batch-delete-id="{{ tagItem.ID }}">
+      <tr>
         <th>{{ ui.table_th_id() }}</th>
         <th>名称</th>
         <th>URL 标识</th>
@@ -121,7 +119,7 @@
       </thead>
       <tbody>
       {% for tagItem in Data %}
-      <tr>
+      <tr data-batch-delete-id="{{ tagItem.ID }}">
         <td>{{ ui.table_td_id(tagItem.ID) }}</td>
         <td>{{ tagItem.Name }}</td>
         <td>{{ tagItem.Slug }}</td>
@@ -153,7 +151,7 @@
   <div class="data-table-wrap">
     <table id="trash-table" class="data-table" aria-label="已删除分类列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.trash.api.batch_delete', type='categories') }}">
       <thead>
-      <tr data-batch-delete-id="{{ categoryItem.ID }}">
+      <tr>
         <th>{{ ui.table_th_id() }}</th>
         <th>名称</th>
         <th>URL 标识</th>
@@ -165,7 +163,7 @@
       </thead>
       <tbody>
       {% for categoryItem in Data %}
-      <tr>
+      <tr data-batch-delete-id="{{ categoryItem.ID }}">
         <td>{{ ui.table_td_id(categoryItem.ID) }}</td>
         <td>{{ categoryItem.Name }}</td>
         <td>{{ categoryItem.Slug }}</td>
@@ -199,7 +197,7 @@
   <div class="data-table-wrap">
     <table id="trash-table" class="data-table" aria-label="已删除重定向列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.trash.api.batch_delete', type='redirects') }}">
       <thead>
-      <tr data-batch-delete-id="{{ redirectItem.ID }}">
+      <tr>
         <th>{{ ui.table_th_id() }}</th>
         <th>来源</th>
         <th>目标</th>
@@ -209,7 +207,7 @@
       </thead>
       <tbody>
       {% for redirectItem in Data %}
-      <tr>
+      <tr data-batch-delete-id="{{ redirectItem.ID }}">
         <td>{{ ui.table_td_id(redirectItem.ID) }}</td>
         <td>{{ redirectItem.From }}</td>
         <td>{{ redirectItem.To }}</td>

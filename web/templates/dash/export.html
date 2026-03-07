@@ -1,8 +1,6 @@
 {% extends "dash/layout/layout_detail.html" %}
 {% import "dash/include/ui.html" as sui %}
-{% block page_actions %}
-  {{ sui.LinkButton("返回", "outline", href=UrlFor('admin.posts.list')) }}
-{% endblock %}
+{% block page_actions %}{% endblock %}
 {% block content %}
 <style>
   .export-page {

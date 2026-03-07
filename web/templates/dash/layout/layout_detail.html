@@ -1,6 +1,10 @@
 {% extends "dash/layout/base.html" %}
 {% import "dash/include/ui.html" as sui %}
 
+{% block head_extra %}
+  <script src="/static/seditor/dist/seditor.min.js"></script>
+{% endblock %}
+
 {% block body %}
 <div
   class="app-window"

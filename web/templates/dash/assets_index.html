@@ -22,27 +22,7 @@
 {% block status_main_right %}
   {% set pagerKind = CurrentKind|default("image") %}
   {% set pagerHrefPrefix = UrlFor('admin.assets.list', kind=pagerKind) ~ ("&pageSize=" ~ Pager.PageSize) %}
-  <div class="ui-tags" aria-label="分页">
-    {% if Pager.HasPrev() %}
-      <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}&page={{ Pager.PrevPage() }}" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
-    {% else %}
-      <span class="ui-icon-btn" aria-label="上一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</span>
-    {% endif %}
-    {% for item in Pager.GetPageItems() %}
-      {% if item.Type == "ellipsis" %}
-        <span class="ui-page-ellipsis">…</span>
-      {% elif item.Current %}
-        <span class="ui-page-link" aria-current="page">{{ item.Page }}</span>
-      {% else %}
-        <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ item.Page }}">{{ item.Page }}</a>
-      {% endif %}
-    {% endfor %}
-    {% if Pager.HasNext() %}
-      <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}&page={{ Pager.NextPage() }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
-    {% else %}
-      <span class="ui-icon-btn" aria-label="下一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</span>
-    {% endif %}
-  </div>
+  {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block operation_left %}

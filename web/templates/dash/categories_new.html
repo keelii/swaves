@@ -2,7 +2,9 @@
 {% import "dash/include/ui.html" as sui %}
 {% block page_actions %}
 {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
-{{ sui.LinkButton("返回", "outline", href=UrlFor('admin.categories.list')) }}
+{% endblock %}
+{% block window_toolbar_main_right %}
+{{ sui.LinkButton("列表", "outline", href=UrlFor('admin.categories.list')) }}
 {% endblock %}
 {% block content %}
 {% with Action = UrlFor('admin.categories.create') %}{% include "dash/include/forms/categories_form.html" %}{% endwith %}

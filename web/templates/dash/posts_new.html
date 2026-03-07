@@ -2,13 +2,17 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
+{% block head_extra %}
+  <script src="/static/seditor/dist/seditor.min.js"></script>
+{% endblock %}
+
 {% block window_toolbar_main_left %}
   {{ sui.Button("保存", "outline", attrs='type="submit" form="form" name="action" value="save"') }}
 {% endblock %}
 
 {% block window_toolbar_main_center %}
   <div class="slug">
-    <input type="text" name="slug" value="{{ DraftSlug|default('') }}" class="input-slug" form="form" placeholder="文章 slug" required>
+    <input type="text" name="slug" id="post-slug" value="{{ DraftSlug|default('') }}" class="input-slug" form="form" placeholder="文章 slug" required>
   </div>
 {% endblock %}
 
@@ -24,13 +28,7 @@
 {% endblock %}
 
 {% block status_main_center %}
-  <div aria-label="Markdown 常用按钮">
-    {{ sui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}
-    {{ sui.IconAction("italic", "斜体", attrs='data-title="斜体" data-seditor-command="italic"') }}
-    {{ sui.IconAction("quote", "引用", attrs='data-title="引用" data-seditor-command="blockquote"') }}
-    {{ sui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
-    {{ sui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
-  </div>
+  {% include "dash/include/post_status_toolbar_actions.html" %}
 {% endblock %}
 
 {% block status_main_right %}
@@ -46,7 +44,9 @@
   StatusValue = "",
   CommentEnabledValue = "1",
   KindValue = "0",
-  TagsValue = SelectedTagNames|default('')
+  TagsValue = SelectedTagNames|default(''),
+  AutoSyncSlug = true,
+  SlugAPIURL = UrlFor('api.slug')
 %}
   {% include "dash/include/post_editor_content.html" %}
 {% endwith %}

@@ -2,6 +2,10 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
+{% block head_extra %}
+  <script src="/static/seditor/dist/seditor.min.js"></script>
+{% endblock %}
+
 {% block window_toolbar_main_left %}
   {% if Post and (Post.PublishedAt > 0) %}
     {{ sui.Button("更新", "primary", attrs='type="submit" form="form" name="action" value="update"') }}
@@ -32,15 +36,9 @@
 {% endblock %}
 
 {% block status_main_center %}
-  <div aria-label="Markdown 常用按钮">
-    {{ sui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}
-    {{ sui.IconAction("italic", "斜体", attrs='data-title="斜体" data-seditor-command="italic"') }}
-    {{ sui.IconAction("quote", "引用", attrs='data-title="引用" data-seditor-command="blockquote"') }}
-    {{ sui.IconAction("link", "链接", attrs='data-title="插入链接" data-seditor-command="link"') }}
-    {{ sui.IconAction("image", "图片上传", attrs='data-title="图片上传" data-seditor-command="image_upload"') }}
-    {{ sui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
-    {{ sui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
-  </div>
+  {% with ShowLinkAction = true, ShowImageAction = true %}
+    {% include "dash/include/post_status_toolbar_actions.html" %}
+  {% endwith %}
 {% endblock %}
 
 {% block status_main_right %}
@@ -56,7 +54,9 @@
   StatusValue = Post.Status,
   CommentEnabledValue = Printf("%d", Post.CommentEnabled),
   KindValue = Printf("%d", Post.Kind),
-  TagsValue = SelectedTagNames|default('')
+  TagsValue = SelectedTagNames|default(''),
+  AutoSyncSlug = false,
+  SlugAPIURL = ""
 %}
   {% include "dash/include/post_editor_content.html" %}
 {% endwith %}

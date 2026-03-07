@@ -1,0 +1,17 @@
+{% import "dash/include/ui.html" as sui %}
+{% set showLinkAction = ShowLinkAction|default(false) %}
+{% set showImageAction = ShowImageAction|default(false) %}
+
+<div aria-label="Markdown 常用按钮">
+  {{ sui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}
+  {{ sui.IconAction("italic", "斜体", attrs='data-title="斜体" data-seditor-command="italic"') }}
+  {{ sui.IconAction("quote", "引用", attrs='data-title="引用" data-seditor-command="blockquote"') }}
+  {% if showLinkAction %}
+    {{ sui.IconAction("link", "链接", attrs='data-title="插入链接" data-seditor-command="link"') }}
+  {% endif %}
+  {% if showImageAction %}
+    {{ sui.IconAction("image", "图片上传", attrs='data-title="图片上传" data-seditor-command="image_upload"') }}
+  {% endif %}
+  {{ sui.IconAction("list", "无序列表", attrs='data-title="无序列表" data-seditor-command="bullet_list"') }}
+  {{ sui.IconAction("list-tree", "有序列表", attrs='data-title="有序列表" data-seditor-command="ordered_list"') }}
+</div>

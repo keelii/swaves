@@ -13,7 +13,7 @@
 {% endblock %}
 {% block window_toolbar_main_center %}
   <div class="slug">
-    <input type="text" name="" value="文章 slug" class="input-slug" form="form" />
+    <input type="text" name="slug" id="post-slug" value="" class="input-slug" form="form" placeholder="文章 slug" />
   </div>
 {% endblock %}
 {% block window_toolbar_main_right %}
@@ -85,6 +85,10 @@
       var titleInput = document.getElementById("post-title");
       var textarea = document.getElementById("post-content");
       var wordCount = document.getElementById("post-editor-word-count");
+      var slugInput = document.getElementById("post-slug");
+      var slugAPIURL = {{ UrlFor('api.slug') | tojson }};
+      var slugSyncTimer = null;
+      var slugSyncSeq = 0;
 
       function updateWordCount(nextMarkdown) {
         if (!wordCount) {
@@ -103,6 +107,47 @@
         wordCount.textContent = "字数 " + text.length;
       }
 
+      function syncSlugFromTitle() {
+        if (!titleInput || !slugInput || !slugAPIURL) {
+          return;
+        }
+        var name = String(titleInput.value || "").trim();
+        if (!name) {
+          slugInput.value = "";
+          return;
+        }
+
+        var seq = ++slugSyncSeq;
+        var requestURL = new URL(slugAPIURL, window.location.origin);
+        requestURL.searchParams.set("name", name);
+        fetch(requestURL.toString(), {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { "Accept": "application/json" }
+        }).then(function(response) {
+          if (!response.ok) {
+            return null;
+          }
+          return response.json();
+        }).then(function(json) {
+          if (seq !== slugSyncSeq) {
+            return;
+          }
+          if (json && json.data) {
+            slugInput.value = String(json.data);
+          }
+        }).catch(function() {
+          // Slug sync is best-effort; ignore fetch errors.
+        });
+      }
+
+      function scheduleSlugSync() {
+        if (slugSyncTimer) {
+          window.clearTimeout(slugSyncTimer);
+        }
+        slugSyncTimer = window.setTimeout(syncSlugFromTitle, 160);
+      }
+
       if (!window.SEditor || typeof window.SEditor.init !== "function") {
         updateWordCount();
         return;
@@ -119,11 +164,13 @@
 
       if (titleInput) {
         titleInput.addEventListener("input", updateWordCount);
+        titleInput.addEventListener("input", scheduleSlugSync);
       }
       if (textarea) {
         textarea.addEventListener("input", updateWordCount);
       }
       updateWordCount();
+      syncSlugFromTitle();
     });
   </script>
 {% endblock %}

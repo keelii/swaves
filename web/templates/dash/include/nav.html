@@ -35,6 +35,11 @@
       <span class="nav-item-icon">{{ LucideIcon("database", 16) }}</span>
       <span class="nav-item-text">数据列表</span>
     </a>
+    {% set importExportActive = UrlIs('admin.import.show') or UrlIs('admin.import.submit') or UrlIs('admin.export.show') or UrlIs('admin.export.download') %}
+    <a class="nav-item{% if importExportActive %} active{% endif %}" href="{{ UrlFor('admin.import.show') }}"{% if importExportActive %} aria-current="page"{% endif %}>
+      <span class="nav-item-icon">{{ LucideIcon("import", 16) }}</span>
+      <span class="nav-item-text">导入导出</span>
+    </a>
     <a class="nav-item{% if UrlIs('admin.trash.list') %} active{% endif %}" href="{{ UrlFor('admin.trash.list') }}"{% if UrlIs('admin.trash.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("trash", 16) }}</span>
       <span class="nav-item-text">回收站</span>

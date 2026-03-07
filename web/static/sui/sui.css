@@ -1882,9 +1882,6 @@ a.ui-icon-btn[disabled] {
   text-align: center;
   border: none;
 }
-.content-editor .input-title {
-  font-weight: bold;
-}
 .content-editor .input-title,
 .app-main-toolbar .input-slug {
   border: none;
