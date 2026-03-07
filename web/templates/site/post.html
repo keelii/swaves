@@ -33,22 +33,36 @@
   <hr>
   <div class="post-info">
     <div class="post-catgory-tag">
-      {% if postCategory %}
-        {{ category_item(postCategory, label=true, sep="：") }}
-      {% endif %}
-      {% if postCategory and postTags %}<br>{% endif %}
-      {% if postTags %}
-        {{ tag_list(postTags, label=true, sep="：") }}
-      {% endif %}
+      <div>
+        {% if postCategory %}
+          {{ category_item(postCategory, label=true, sep="：") }}
+        {% else %}
+          <span>分类：无</span>
+        {% endif %}
+      </div>
+      <div>
+        {% if postTags %}
+          {{ tag_list(postTags, label=true, sep="：") }}
+        {% else %}
+          <span>标签：无</span>
+        {% endif %}
+      </div>
     </div>
     <div class="post-nav">
-      {% if displayPost.Prev %}
-        <span>上一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev">{{ displayPost.Prev.Title }}</a></span>
-      {% endif %}
-      {% if displayPost.Prev and displayPost.Next %}<br>{% endif %}
-      {% if displayPost.Next %}
-        <span>下一篇：<a href="{{ displayPost.Next.PermLink }}" class="next">{{ displayPost.Next.Title }}</a></span>
-      {% endif %}
+      <div>
+        {% if displayPost.Next %}
+          <span>上一篇：<a href="{{ displayPost.Next.PermLink }}" class="next">{{ displayPost.Next.Title }}</a></span>
+        {% else %}
+          <span>上一篇：无</span>
+        {% endif %}
+      </div>
+      <div>
+        {% if displayPost.Prev %}
+          <span>下一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev">{{ displayPost.Prev.Title }}</a></span>
+        {% else %}
+          <span>下一篇：无</span>
+        {% endif %}
+      </div>
     </div>
   </div>
   <hr>
