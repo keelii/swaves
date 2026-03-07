@@ -19054,11 +19054,25 @@ var SEditor = (() => {
   function buildSchema() {
     var tableSpec = {
       group: "block",
-      content: "table_row+",
+      content: "(table_head | table_body)+",
       isolating: true,
       parseDOM: [{ tag: "table" }],
       toDOM: function() {
-        return ["table", ["tbody", 0]];
+        return ["table", 0];
+      }
+    };
+    var tableHeadSpec = {
+      content: "table_row+",
+      parseDOM: [{ tag: "thead" }],
+      toDOM: function() {
+        return ["thead", 0];
+      }
+    };
+    var tableBodySpec = {
+      content: "table_row+",
+      parseDOM: [{ tag: "tbody" }],
+      toDOM: function() {
+        return ["tbody", 0];
       }
     };
     var tableRowSpec = {
@@ -19107,6 +19121,12 @@ var SEditor = (() => {
     if (!nodes.get("table")) {
       nodes = nodes.addToEnd("table", tableSpec);
     }
+    if (!nodes.get("table_head")) {
+      nodes = nodes.addToEnd("table_head", tableHeadSpec);
+    }
+    if (!nodes.get("table_body")) {
+      nodes = nodes.addToEnd("table_body", tableBodySpec);
+    }
     if (!nodes.get("table_row")) {
       nodes = nodes.addToEnd("table_row", tableRowSpec);
     }
@@ -19130,9 +19150,9 @@ var SEditor = (() => {
   function buildMarkdownParser(schema2) {
     var tableTokens = {
       table: { block: "table" },
-      thead: { ignore: true },
-      tbody: { ignore: true },
-      tfoot: { ignore: true },
+      thead: { block: "table_head" },
+      tbody: { block: "table_body" },
+      tfoot: { block: "table_body" },
       tr: { block: "table_row" },
       th: { block: "table_header" },
       td: { block: "table_cell" }
@@ -19152,6 +19172,9 @@ var SEditor = (() => {
   function escapeTableCellContent(raw) {
     return String(raw == null ? "" : raw).replace(/\r\n?/g, "\n").replace(/\n+/g, "<br>").replace(/\|/g, "\\|").trim();
   }
+  function escapeMarkdownLabelText(raw) {
+    return String(raw == null ? "" : raw).replace(/\r\n?/g, " ").replace(/\\/g, "\\\\").replace(/\[/g, "\\[").replace(/\]/g, "\\]");
+  }
   function serializeTableCell(state, cell) {
     var tempState = new MarkdownSerializerState(state.nodes, state.marks, state.options);
     tempState.renderInline(cell, true);
@@ -19162,8 +19185,17 @@ var SEditor = (() => {
     nodes.table = function(state, node) {
       state.ensureNewLine();
       var rows = [];
-      node.forEach(function(row) {
-        rows.push(row);
+      node.forEach(function(child) {
+        var childName = child && child.type ? child.type.name : "";
+        if (childName === "table_head" || childName === "table_body") {
+          child.forEach(function(row) {
+            rows.push(row);
+          });
+          return;
+        }
+        if (childName === "table_row") {
+          rows.push(child);
+        }
       });
       if (rows.length === 0) {
         state.write("|  |");
@@ -19203,6 +19235,12 @@ var SEditor = (() => {
         state.write("\n| " + rowValues[bodyIndex].join(" | ") + " |");
       }
       state.closeBlock(node);
+    };
+    nodes.image = function(state, node) {
+      var alt = escapeMarkdownLabelText(node.attrs && node.attrs.alt ? node.attrs.alt : "");
+      var src = String(node.attrs && node.attrs.src ? node.attrs.src : "").replace(/[\(\)]/g, "\\$&");
+      var title = node.attrs && node.attrs.title ? ' "' + String(node.attrs.title).replace(/"/g, '\\"') + '"' : "";
+      state.write("![" + alt + "](" + src + title + ")");
     };
     nodes.raw_inline = function(state, node) {
       state.text(node.textContent, false);
@@ -19682,6 +19720,71 @@ var SEditor = (() => {
     view.dispatch(tr);
     return true;
   }
+  function createEmptyTableCellNode(cellType) {
+    if (!cellType) {
+      return null;
+    }
+    if (typeof cellType.createAndFill === "function") {
+      var filled = cellType.createAndFill();
+      if (filled) {
+        return filled;
+      }
+    }
+    return cellType.create();
+  }
+  function createTableRowNode(schema2, colCount, isHeader) {
+    var rowType = schema2.nodes.table_row;
+    var headerCellType = schema2.nodes.table_header;
+    var bodyCellType = schema2.nodes.table_cell;
+    if (!rowType || !headerCellType || !bodyCellType) {
+      return null;
+    }
+    var cells = [];
+    var cellType = isHeader ? headerCellType : bodyCellType;
+    for (var col = 0; col < colCount; col += 1) {
+      var cell = createEmptyTableCellNode(cellType);
+      if (!cell) {
+        return null;
+      }
+      cells.push(cell);
+    }
+    return rowType.create(null, cells);
+  }
+  function insertDefaultTableNode(view, schema2) {
+    var tableType = schema2.nodes.table;
+    var tableHeadType = schema2.nodes.table_head;
+    var tableBodyType = schema2.nodes.table_body;
+    if (!tableType) {
+      return false;
+    }
+    var headerRow = createTableRowNode(schema2, 3, true);
+    var bodyRow = createTableRowNode(schema2, 3, false);
+    if (!headerRow || !bodyRow) {
+      return false;
+    }
+    var tableChildren = [];
+    if (tableHeadType && tableBodyType) {
+      tableChildren.push(tableHeadType.create(null, [headerRow]));
+      tableChildren.push(tableBodyType.create(null, [bodyRow]));
+    } else {
+      tableChildren.push(headerRow);
+      tableChildren.push(bodyRow);
+    }
+    var tableNode;
+    try {
+      tableNode = tableType.create(null, tableChildren);
+    } catch (error2) {
+      return false;
+    }
+    var insertPos = view.state.selection.from;
+    var tr = view.state.tr.replaceSelectionWith(tableNode);
+    var mappedInsertPos = tr.mapping.map(insertPos, -1);
+    var target = normalizeTargetCell(tableNode, 1, 0);
+    var cursorPos = mappedInsertPos + getTableCellContentOffset(tableNode, target.row, target.col);
+    tr = tr.setSelection(Selection.near(tr.doc.resolve(cursorPos))).scrollIntoView();
+    view.dispatch(tr);
+    return true;
+  }
   function isMarkActive(state, markType) {
     if (!markType || !state || !state.selection) {
       return false;
@@ -19714,6 +19817,110 @@ var SEditor = (() => {
     var selection = state.selection;
     return hasAncestorNodeType(selection.$from, nodeType) || hasAncestorNodeType(selection.$to, nodeType);
   }
+  function getTableRowsFromNode(tableNode) {
+    var rows = [];
+    if (!tableNode || typeof tableNode.childCount !== "number") {
+      return rows;
+    }
+    var offset = 1;
+    var headCount = 0;
+    var bodyCount = 0;
+    for (var childIndex = 0; childIndex < tableNode.childCount; childIndex += 1) {
+      var child = tableNode.child(childIndex);
+      if (!child || !child.type) {
+        continue;
+      }
+      var childName = child.type.name;
+      if (childName === "table_head" || childName === "table_body") {
+        var sectionType = childName;
+        var sectionOffset = offset + 1;
+        for (var sectionRowIndex = 0; sectionRowIndex < child.childCount; sectionRowIndex += 1) {
+          var rowNode = child.child(sectionRowIndex);
+          rows.push({
+            rowNode,
+            sectionType,
+            rowIndexInSection: sectionRowIndex,
+            startOffset: sectionOffset
+          });
+          sectionOffset += rowNode.nodeSize;
+        }
+        if (sectionType === "table_head") {
+          headCount += child.childCount;
+        } else {
+          bodyCount += child.childCount;
+        }
+        offset += child.nodeSize;
+        continue;
+      }
+      if (childName === "table_row") {
+        var fallbackSectionType = headCount === 0 ? "table_head" : "table_body";
+        var fallbackRowIndex = fallbackSectionType === "table_head" ? headCount : bodyCount;
+        rows.push({
+          rowNode: child,
+          sectionType: fallbackSectionType,
+          rowIndexInSection: fallbackRowIndex,
+          startOffset: offset
+        });
+        if (fallbackSectionType === "table_head") {
+          headCount += 1;
+        } else {
+          bodyCount += 1;
+        }
+        offset += child.nodeSize;
+        continue;
+      }
+      offset += child.nodeSize;
+    }
+    return rows;
+  }
+  function getTableRowsFromJSON(tableJSON) {
+    var rows = [];
+    var content = tableJSON && Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    var headCount = 0;
+    var bodyCount = 0;
+    for (var index = 0; index < content.length; index += 1) {
+      var child = content[index];
+      if (!child || typeof child !== "object") {
+        continue;
+      }
+      if (child.type === "table_head" || child.type === "table_body") {
+        var sectionType = child.type;
+        var sectionRows = Array.isArray(child.content) ? child.content : [];
+        for (var rowIndex = 0; rowIndex < sectionRows.length; rowIndex += 1) {
+          var row = sectionRows[rowIndex];
+          if (!row || typeof row !== "object" || row.type !== "table_row") {
+            continue;
+          }
+          rows.push({
+            row,
+            sectionType,
+            rowIndexInSection: rowIndex
+          });
+        }
+        if (sectionType === "table_head") {
+          headCount += sectionRows.length;
+        } else {
+          bodyCount += sectionRows.length;
+        }
+        continue;
+      }
+      if (child.type === "table_row") {
+        var fallbackSectionType = headCount === 0 ? "table_head" : "table_body";
+        var fallbackRowIndex = fallbackSectionType === "table_head" ? headCount : bodyCount;
+        rows.push({
+          row: child,
+          sectionType: fallbackSectionType,
+          rowIndexInSection: fallbackRowIndex
+        });
+        if (fallbackSectionType === "table_head") {
+          headCount += 1;
+        } else {
+          bodyCount += 1;
+        }
+      }
+    }
+    return rows;
+  }
   function getTableContext(state) {
     if (!state || !state.selection || !state.selection.$from) {
       return null;
@@ -19740,30 +19947,80 @@ var SEditor = (() => {
       return null;
     }
     var tableNode = $from.node(tableDepth);
-    var rowNode = $from.node(rowDepth);
-    var rowIndex = $from.index(tableDepth);
-    var colIndex = $from.index(rowDepth);
-    if (!tableNode || rowIndex < 0 || rowIndex >= tableNode.childCount) {
+    var tablePos = $from.before(tableDepth);
+    var rowStartOffset = $from.before(rowDepth) - tablePos;
+    var rows = getTableRowsFromNode(tableNode);
+    if (rows.length < 1) {
       return null;
     }
-    if (!rowNode || colIndex < 0 || colIndex >= rowNode.childCount) {
+    var rowIndex = -1;
+    for (var i = 0; i < rows.length; i += 1) {
+      if (rows[i].startOffset === rowStartOffset) {
+        rowIndex = i;
+        break;
+      }
+    }
+    if (rowIndex < 0) {
+      var relativePos = $from.pos - tablePos;
+      for (var j = 0; j < rows.length; j += 1) {
+        var start = rows[j].startOffset;
+        var end = start + rows[j].rowNode.nodeSize;
+        if (relativePos >= start && relativePos < end) {
+          rowIndex = j;
+          break;
+        }
+      }
+    }
+    if (rowIndex < 0) {
       return null;
+    }
+    var rowMeta = rows[rowIndex];
+    var colIndex = $from.index(rowDepth);
+    if (!rowMeta.rowNode || rowMeta.rowNode.childCount < 1) {
+      colIndex = 0;
+    } else if (colIndex < 0) {
+      colIndex = 0;
+    } else if (colIndex >= rowMeta.rowNode.childCount) {
+      colIndex = rowMeta.rowNode.childCount - 1;
     }
     return {
       tableNode,
-      tablePos: $from.before(tableDepth),
+      tablePos,
       rowIndex,
+      rowIndexInSection: rowMeta.rowIndexInSection,
+      sectionType: rowMeta.sectionType,
       colIndex
     };
   }
   function cloneNodeJSON(node) {
     return JSON.parse(JSON.stringify(node.toJSON()));
   }
+  function getNormalizedTableRows(sections) {
+    var rows = [];
+    var headRows = sections && Array.isArray(sections.headRows) ? sections.headRows : [];
+    var bodyRows = sections && Array.isArray(sections.bodyRows) ? sections.bodyRows : [];
+    for (var i = 0; i < headRows.length; i += 1) {
+      rows.push({
+        row: headRows[i],
+        sectionType: "table_head",
+        rowIndexInSection: i
+      });
+    }
+    for (var j = 0; j < bodyRows.length; j += 1) {
+      rows.push({
+        row: bodyRows[j],
+        sectionType: "table_body",
+        rowIndexInSection: j
+      });
+    }
+    return rows;
+  }
   function getMaxTableColumns(tableJSON) {
-    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    var rows = getTableRowsFromJSON(tableJSON);
     var maxCount = 0;
     for (var i = 0; i < rows.length; i += 1) {
-      var cells = rows[i] && Array.isArray(rows[i].content) ? rows[i].content : [];
+      var row = rows[i].row;
+      var cells = row && Array.isArray(row.content) ? row.content : [];
       if (cells.length > maxCount) {
         maxCount = cells.length;
       }
@@ -19776,34 +20033,129 @@ var SEditor = (() => {
       content: []
     };
   }
-  function getTableCellContentOffset(tableNode, rowIndex, colIndex) {
-    var offset = 1;
-    for (var row = 0; row < rowIndex; row += 1) {
-      offset += tableNode.child(row).nodeSize;
+  function ensureRowCells(rowJSON, cellType) {
+    if (!rowJSON || typeof rowJSON !== "object") {
+      return;
     }
-    var rowNode = tableNode.child(rowIndex);
-    offset += 1;
-    for (var col = 0; col < colIndex; col += 1) {
+    if (!Array.isArray(rowJSON.content)) {
+      rowJSON.content = [];
+    }
+    if (rowJSON.content.length < 1) {
+      rowJSON.content.push(createEmptyCellJSON(cellType));
+    }
+    for (var cellIndex = 0; cellIndex < rowJSON.content.length; cellIndex += 1) {
+      var cell = rowJSON.content[cellIndex];
+      if (!cell || typeof cell !== "object") {
+        rowJSON.content[cellIndex] = createEmptyCellJSON(cellType);
+        continue;
+      }
+      cell.type = cellType;
+      if (!Array.isArray(cell.content)) {
+        cell.content = [];
+      }
+    }
+  }
+  function normalizeTableJSONSections(tableJSON) {
+    var rows = getTableRowsFromJSON(tableJSON);
+    var headRows = [];
+    var bodyRows = [];
+    for (var i = 0; i < rows.length; i += 1) {
+      var rowMeta = rows[i];
+      if (!rowMeta.row) {
+        continue;
+      }
+      if (rowMeta.sectionType === "table_head") {
+        ensureRowCells(rowMeta.row, "table_header");
+        headRows.push(rowMeta.row);
+      } else {
+        ensureRowCells(rowMeta.row, "table_cell");
+        bodyRows.push(rowMeta.row);
+      }
+    }
+    if (headRows.length < 1) {
+      if (bodyRows.length > 0) {
+        var promoted = bodyRows.shift();
+        ensureRowCells(promoted, "table_header");
+        headRows.push(promoted);
+      } else {
+        headRows.push({
+          type: "table_row",
+          content: [createEmptyCellJSON("table_header")]
+        });
+      }
+    }
+    return {
+      headRows,
+      bodyRows
+    };
+  }
+  function setTableJSONSections(tableJSON, sections) {
+    var nextContent = [{
+      type: "table_head",
+      content: sections.headRows
+    }];
+    if (sections.bodyRows.length > 0) {
+      nextContent.push({
+        type: "table_body",
+        content: sections.bodyRows
+      });
+    }
+    tableJSON.content = nextContent;
+  }
+  function getTableCellContentOffset(tableNode, rowIndex, colIndex) {
+    var rows = getTableRowsFromNode(tableNode);
+    if (rows.length < 1) {
+      return 1;
+    }
+    var targetRow = rowIndex;
+    if (targetRow < 0) {
+      targetRow = 0;
+    }
+    if (targetRow >= rows.length) {
+      targetRow = rows.length - 1;
+    }
+    var rowMeta = rows[targetRow];
+    var rowNode = rowMeta.rowNode;
+    if (!rowNode || rowNode.childCount < 1) {
+      return rowMeta.startOffset + 1;
+    }
+    var targetCol = colIndex;
+    if (targetCol < 0) {
+      targetCol = 0;
+    }
+    if (targetCol >= rowNode.childCount) {
+      targetCol = rowNode.childCount - 1;
+    }
+    var offset = rowMeta.startOffset + 1;
+    for (var col = 0; col < targetCol; col += 1) {
       offset += rowNode.child(col).nodeSize;
     }
     offset += 1;
     return offset;
   }
   function normalizeTargetCell(newTableNode, rowIndex, colIndex) {
+    var rows = getTableRowsFromNode(newTableNode);
+    if (rows.length < 1) {
+      return { row: 0, col: 0 };
+    }
     var targetRow = rowIndex;
     if (targetRow < 0) {
       targetRow = 0;
     }
-    if (targetRow >= newTableNode.childCount) {
-      targetRow = newTableNode.childCount - 1;
+    if (targetRow >= rows.length) {
+      targetRow = rows.length - 1;
     }
-    var targetRowNode = newTableNode.child(targetRow);
+    var rowNode = rows[targetRow].rowNode;
     var targetCol = colIndex;
-    if (targetCol < 0) {
+    if (!rowNode || rowNode.childCount < 1) {
       targetCol = 0;
-    }
-    if (targetCol >= targetRowNode.childCount) {
-      targetCol = targetRowNode.childCount - 1;
+    } else {
+      if (targetCol < 0) {
+        targetCol = 0;
+      }
+      if (targetCol >= rowNode.childCount) {
+        targetCol = rowNode.childCount - 1;
+      }
     }
     return { row: targetRow, col: targetCol };
   }
@@ -19845,11 +20197,13 @@ var SEditor = (() => {
     return true;
   }
   function mutateTableAddRow(tableJSON, context) {
-    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    var sections = normalizeTableJSONSections(tableJSON);
+    var rows = getNormalizedTableRows(sections);
     if (rows.length < 1 || context.rowIndex < 0 || context.rowIndex >= rows.length) {
       return { ok: false };
     }
-    var baseRow = rows[context.rowIndex] || {};
+    var currentRow = rows[context.rowIndex];
+    var baseRow = currentRow.row || {};
     var baseCells = Array.isArray(baseRow.content) ? baseRow.content : [];
     var colCount = baseCells.length || getMaxTableColumns(tableJSON);
     if (colCount < 1) {
@@ -19859,34 +20213,47 @@ var SEditor = (() => {
     for (var col = 0; col < colCount; col += 1) {
       newRowCells.push(createEmptyCellJSON("table_cell"));
     }
-    var insertIndex = context.rowIndex + 1;
-    rows.splice(insertIndex, 0, {
+    var newRow = {
       type: "table_row",
       content: newRowCells
-    });
+    };
+    var targetRow = context.rowIndex + 1;
+    if (currentRow.sectionType === "table_head") {
+      sections.bodyRows.splice(0, 0, newRow);
+      targetRow = sections.headRows.length;
+    } else {
+      var bodyInsertIndex = currentRow.rowIndexInSection + 1;
+      sections.bodyRows.splice(bodyInsertIndex, 0, newRow);
+      targetRow = sections.headRows.length + bodyInsertIndex;
+    }
+    setTableJSONSections(tableJSON, sections);
     return {
       ok: true,
-      targetRow: insertIndex,
+      targetRow,
       targetCol: Math.min(context.colIndex, colCount - 1)
     };
   }
   function mutateTableAddColumn(tableJSON, context) {
-    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    var sections = normalizeTableJSONSections(tableJSON);
+    var rows = getNormalizedTableRows(sections);
     if (rows.length < 1) {
       return { ok: false };
     }
     var targetCol = context.colIndex + 1;
-    for (var row = 0; row < rows.length; row += 1) {
-      var rowJSON = rows[row];
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+      var rowMeta = rows[rowIndex];
+      var rowJSON = rowMeta.row;
       if (!rowJSON || !Array.isArray(rowJSON.content)) {
         rowJSON.content = [];
       }
       var cells = rowJSON.content;
       var sampleCell = cells[Math.min(context.colIndex, Math.max(0, cells.length - 1))];
-      var cellType = sampleCell && sampleCell.type ? sampleCell.type : row === 0 ? "table_header" : "table_cell";
+      var fallbackType = rowMeta.sectionType === "table_head" ? "table_header" : "table_cell";
+      var cellType = sampleCell && sampleCell.type ? sampleCell.type : fallbackType;
       var insertAt = Math.min(targetCol, cells.length);
       cells.splice(insertAt, 0, createEmptyCellJSON(cellType));
     }
+    setTableJSONSections(tableJSON, sections);
     return {
       ok: true,
       targetRow: context.rowIndex,
@@ -19894,16 +20261,44 @@ var SEditor = (() => {
     };
   }
   function mutateTableDeleteRow(tableJSON, context) {
-    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    var sections = normalizeTableJSONSections(tableJSON);
+    var rows = getNormalizedTableRows(sections);
     if (rows.length <= 1 || context.rowIndex < 0 || context.rowIndex >= rows.length) {
       return { ok: false };
     }
-    rows.splice(context.rowIndex, 1);
-    var targetRow = context.rowIndex;
-    if (targetRow >= rows.length) {
-      targetRow = rows.length - 1;
+    var rowMeta = rows[context.rowIndex];
+    if (!rowMeta) {
+      return { ok: false };
     }
-    var targetCells = rows[targetRow] && Array.isArray(rows[targetRow].content) ? rows[targetRow].content : [];
+    if (rowMeta.sectionType === "table_head") {
+      if (sections.headRows.length > 1) {
+        sections.headRows.splice(rowMeta.rowIndexInSection, 1);
+      } else if (sections.bodyRows.length > 0) {
+        var promoted = sections.bodyRows.shift();
+        ensureRowCells(promoted, "table_header");
+        sections.headRows[0] = promoted;
+      } else {
+        return { ok: false };
+      }
+    } else {
+      sections.bodyRows.splice(rowMeta.rowIndexInSection, 1);
+    }
+    if (sections.headRows.length < 1) {
+      if (sections.bodyRows.length < 1) {
+        return { ok: false };
+      }
+      var fallbackHead = sections.bodyRows.shift();
+      ensureRowCells(fallbackHead, "table_header");
+      sections.headRows.push(fallbackHead);
+    }
+    setTableJSONSections(tableJSON, sections);
+    var nextRows = getNormalizedTableRows(sections);
+    var targetRow = context.rowIndex;
+    if (targetRow >= nextRows.length) {
+      targetRow = nextRows.length - 1;
+    }
+    var targetRowNode = nextRows[targetRow] ? nextRows[targetRow].row : null;
+    var targetCells = targetRowNode && Array.isArray(targetRowNode.content) ? targetRowNode.content : [];
     var targetCol = Math.min(context.colIndex, Math.max(0, targetCells.length - 1));
     return {
       ok: true,
@@ -19912,29 +20307,46 @@ var SEditor = (() => {
     };
   }
   function mutateTableDeleteColumn(tableJSON, context) {
-    var rows = Array.isArray(tableJSON.content) ? tableJSON.content : [];
+    var sections = normalizeTableJSONSections(tableJSON);
+    var rows = getNormalizedTableRows(sections);
     if (rows.length < 1) {
       return { ok: false };
     }
-    var minCols = Infinity;
+    var maxCols = 0;
     for (var row = 0; row < rows.length; row += 1) {
-      var cells = rows[row] && Array.isArray(rows[row].content) ? rows[row].content : [];
-      if (cells.length < minCols) {
-        minCols = cells.length;
+      var cells = rows[row].row && Array.isArray(rows[row].row.content) ? rows[row].row.content : [];
+      if (cells.length > maxCols) {
+        maxCols = cells.length;
       }
     }
-    if (!Number.isFinite(minCols) || minCols <= 1) {
+    if (maxCols <= 1) {
       return { ok: false };
     }
     for (var rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
-      var rowCells = rows[rowIndex] && Array.isArray(rows[rowIndex].content) ? rows[rowIndex].content : [];
+      var rowMeta = rows[rowIndex];
+      var rowCells = rowMeta.row && Array.isArray(rowMeta.row.content) ? rowMeta.row.content : [];
+      if (rowCells.length < 1) {
+        rowMeta.row.content = [createEmptyCellJSON(rowMeta.sectionType === "table_head" ? "table_header" : "table_cell")];
+        continue;
+      }
       var removeAt = Math.min(context.colIndex, rowCells.length - 1);
       rowCells.splice(removeAt, 1);
+      if (rowCells.length < 1) {
+        rowCells.push(createEmptyCellJSON(rowMeta.sectionType === "table_head" ? "table_header" : "table_cell"));
+      }
+    }
+    setTableJSONSections(tableJSON, sections);
+    var targetCol = context.colIndex;
+    if (targetCol >= maxCols - 1) {
+      targetCol = maxCols - 2;
+    }
+    if (targetCol < 0) {
+      targetCol = 0;
     }
     return {
       ok: true,
       targetRow: context.rowIndex,
-      targetCol: Math.min(context.colIndex, minCols - 2)
+      targetCol
     };
   }
   function getActiveLinkMark(state, linkMarkType) {
@@ -20048,6 +20460,19 @@ var SEditor = (() => {
         return schema2.nodes.bullet_list ? wrapInList(schema2.nodes.bullet_list) : null;
       case "ordered_list":
         return schema2.nodes.ordered_list ? wrapInList(schema2.nodes.ordered_list) : null;
+      case "table_insert":
+        return function(state, dispatch, view) {
+          if (!schema2.nodes.table || !schema2.nodes.table_row || !schema2.nodes.table_header || !schema2.nodes.table_cell) {
+            return false;
+          }
+          if (!dispatch) {
+            return true;
+          }
+          if (!view) {
+            return false;
+          }
+          return insertDefaultTableNode(view, schema2);
+        };
       case "table_add_row":
         return function(state, dispatch) {
           return applyTableMutation(state, dispatch, mutateTableAddRow);

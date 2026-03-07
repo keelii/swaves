@@ -2023,6 +2023,10 @@ a.ui-icon-btn[disabled] {
   box-sizing: border-box;
   border-bottom: 0!important;
 }
+.content-editor .ProseMirror table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
 .content-editor .ProseMirror pre code {
   padding: 0;
 }
