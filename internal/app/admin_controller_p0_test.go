@@ -65,6 +65,46 @@ func requestControllerP0(
 	return resp
 }
 
+func readResponseBody(t *testing.T, resp *http.Response) string {
+	t.Helper()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read response body failed: %v", err)
+	}
+	return string(body)
+}
+
+func assertTemplateRendered(
+	t *testing.T,
+	resp *http.Response,
+	wantStatus int,
+	markers ...string,
+) string {
+	t.Helper()
+
+	if resp.StatusCode != wantStatus {
+		t.Fatalf("unexpected status: got=%d want=%d", resp.StatusCode, wantStatus)
+	}
+
+	body := readResponseBody(t, resp)
+	if strings.TrimSpace(body) == "" {
+		t.Fatalf("template response body should not be empty")
+	}
+	if strings.Contains(body, "Internal Server Error") {
+		t.Fatalf("template render appears failed, body includes internal error")
+	}
+	for _, marker := range markers {
+		if marker == "" {
+			continue
+		}
+		if !strings.Contains(body, marker) {
+			t.Fatalf("template marker missing: %q", marker)
+		}
+	}
+	return body
+}
+
 func responseCookieKV(resp *http.Response) string {
 	setCookie := strings.TrimSpace(resp.Header.Get("Set-Cookie"))
 	if setCookie == "" {
@@ -89,27 +129,36 @@ func extractCSRFToken(body []byte) string {
 	return strings.TrimSpace(matches[1])
 }
 
-func fetchCSRFToken(t *testing.T, swv SwavesApp, path string, cookieKV string) (string, string) {
+func fetchCSRFToken(t *testing.T, swv SwavesApp, path string, cookieKV string, markers ...string) (string, string, string) {
 	t.Helper()
 
 	resp := requestControllerP0(t, swv, fiber.MethodGet, path, nil, cookieKV, nil)
-	if resp.StatusCode != fiber.StatusOK {
-		t.Fatalf("unexpected csrf page status: path=%s status=%d", path, resp.StatusCode)
+	baseMarkers := []string{
+		`name="_csrf_token"`,
 	}
+	baseMarkers = append(baseMarkers, markers...)
+	bodyText := assertTemplateRendered(t, resp, fiber.StatusOK, baseMarkers...)
 	cookieKV = mergeCookieKV(cookieKV, resp)
 
-	body, _ := io.ReadAll(resp.Body)
-	token := extractCSRFToken(body)
+	token := extractCSRFToken([]byte(bodyText))
 	if token == "" {
 		t.Fatalf("csrf token missing: path=%s", path)
 	}
-	return token, cookieKV
+	return token, cookieKV, bodyText
 }
 
 func loginAsAdmin(t *testing.T, swv SwavesApp) string {
 	t.Helper()
 
-	csrfToken, cookieKV := fetchCSRFToken(t, swv, "/admin/login", "")
+	csrfToken, cookieKV, _ := fetchCSRFToken(
+		t,
+		swv,
+		"/admin/login",
+		"",
+		`<h1 class="auth-title">登录管理后台</h1>`,
+		`name="password"`,
+		`action="/admin/login"`,
+	)
 	form := url.Values{}
 	form.Set("password", "admin")
 	form.Set("_csrf_token", csrfToken)
@@ -144,7 +193,14 @@ func TestAdminControllerP0_LoginReturnURLValidation(t *testing.T) {
 		swv := newControllerP0TestApp(t)
 		defer swv.Shutdown()
 
-		csrfToken, cookieKV := fetchCSRFToken(t, swv, "/admin/login", "")
+		csrfToken, cookieKV, _ := fetchCSRFToken(
+			t,
+			swv,
+			"/admin/login",
+			"",
+			`<h1 class="auth-title">登录管理后台</h1>`,
+			`name="password"`,
+		)
 		form := url.Values{}
 		form.Set("password", "admin")
 		form.Set("returnUrl", "/admin/posts")
@@ -164,7 +220,14 @@ func TestAdminControllerP0_LoginReturnURLValidation(t *testing.T) {
 		swv := newControllerP0TestApp(t)
 		defer swv.Shutdown()
 
-		csrfToken, cookieKV := fetchCSRFToken(t, swv, "/admin/login", "")
+		csrfToken, cookieKV, _ := fetchCSRFToken(
+			t,
+			swv,
+			"/admin/login",
+			"",
+			`<h1 class="auth-title">登录管理后台</h1>`,
+			`name="password"`,
+		)
 		form := url.Values{}
 		form.Set("password", "admin")
 		form.Set("returnUrl", "//evil.test/phish")
@@ -204,7 +267,19 @@ func TestAdminControllerP0_PostLifecycle(t *testing.T) {
 		t.Fatalf("expected create post forbidden without csrf, got %d", resp.StatusCode)
 	}
 
-	csrfToken, cookieKV := fetchCSRFToken(t, swv, createPath, cookieKV)
+	csrfToken, cookieKV, newPageBody := fetchCSRFToken(
+		t,
+		swv,
+		createPath,
+		cookieKV,
+		`id="post-title"`,
+		`id="post-slug"`,
+		`id="post-content"`,
+		`action="/admin/posts/new"`,
+	)
+	if strings.Contains(newPageBody, "template render appears failed") {
+		t.Fatalf("unexpected template render marker check state")
+	}
 	resp = requestControllerP0(t, swv, fiber.MethodPost, createPath, baseForm, cookieKV, map[string]string{
 		"X-CSRF-Token": csrfToken,
 	})
@@ -238,7 +313,19 @@ func TestAdminControllerP0_PostLifecycle(t *testing.T) {
 	}
 
 	editPath := fmt.Sprintf("/admin/posts/%d/edit", postID)
-	csrfToken, cookieKV = fetchCSRFToken(t, swv, editPath, cookieKV)
+	csrfToken, cookieKV, editPageBody := fetchCSRFToken(
+		t,
+		swv,
+		editPath,
+		cookieKV,
+		`id="post-title"`,
+		`id="post-slug"`,
+		fmt.Sprintf(`action="/admin/posts/%d/edit"`, postID),
+		baseForm.Get("title"),
+	)
+	if !strings.Contains(editPageBody, baseForm.Get("slug")) {
+		t.Fatalf("edit page should include post slug")
+	}
 	updateForm := url.Values{}
 	updateForm.Set("title", "P0 Controller Post Updated")
 	updateForm.Set("content", "controller p0 test content updated")
@@ -265,7 +352,18 @@ func TestAdminControllerP0_PostLifecycle(t *testing.T) {
 		t.Fatalf("updated post status = %q, want published", updatedPost.Status)
 	}
 
-	csrfToken, cookieKV = fetchCSRFToken(t, swv, editPath, cookieKV)
+	csrfToken, cookieKV, updatedEditPageBody := fetchCSRFToken(
+		t,
+		swv,
+		editPath,
+		cookieKV,
+		`id="post-title"`,
+		updateForm.Get("title"),
+		fmt.Sprintf(`action="/admin/posts/%d/edit"`, postID),
+	)
+	if !strings.Contains(updatedEditPageBody, "post-editor-word-count") {
+		t.Fatalf("edit page should include editor status toolbar")
+	}
 	deletePath := fmt.Sprintf("/admin/posts/%d/delete", postID)
 	resp = requestControllerP0(t, swv, fiber.MethodPost, deletePath, url.Values{}, cookieKV, map[string]string{
 		"X-CSRF-Token": csrfToken,

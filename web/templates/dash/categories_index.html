@@ -51,7 +51,10 @@
                 {{ ParentMap[category.ID] | default(category.ParentID) }}
               {% endif %}
             </td>
-            <td>{% if category.Description %}{{ category.Description }}{% else %}-{% endif %}</td>
+            <td>
+              <div class="cell-s-content">
+                {% if category.Description %}{{ category.Description }}{% else %}-{% endif %}</td>
+              </div>
             <td>{{ category.Sort }}</td>
             <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
             <td>{{ category.CreatedAt | relativeTime }}</td>

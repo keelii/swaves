@@ -55,29 +55,35 @@ func TestSiteControllerP0_HomePostAndNotFound(t *testing.T) {
 	homePath := share.GetBasePath()
 
 	homeResp := requestControllerP0(t, swv, fiber.MethodGet, homePath, nil, "", nil)
-	if homeResp.StatusCode != fiber.StatusOK {
-		t.Fatalf("unexpected home status: %d", homeResp.StatusCode)
-	}
-	homeBody, _ := io.ReadAll(homeResp.Body)
-	if !strings.Contains(string(homeBody), post.Title) {
-		t.Fatalf("home page should contain post title: %q", post.Title)
-	}
-
 	postPath := share.GetPostUrl(post)
+	assertTemplateRendered(
+		t,
+		homeResp,
+		fiber.StatusOK,
+		post.Title,
+		`<ul class="articles">`,
+		fmt.Sprintf(`href="%s"`, postPath),
+	)
+
 	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
-	if postResp.StatusCode != fiber.StatusOK {
-		t.Fatalf("unexpected post detail status: path=%s status=%d", postPath, postResp.StatusCode)
-	}
-	postBody, _ := io.ReadAll(postResp.Body)
-	if !strings.Contains(string(postBody), post.Title) {
-		t.Fatalf("post detail page should contain post title: %q", post.Title)
-	}
+	assertTemplateRendered(
+		t,
+		postResp,
+		fiber.StatusOK,
+		post.Title,
+		`id="comments"`,
+		fmt.Sprintf(`action="%s"`, pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))),
+	)
 
 	missingPath := postPath + "-missing"
 	missingResp := requestControllerP0(t, swv, fiber.MethodGet, missingPath, nil, "", nil)
-	if missingResp.StatusCode != fiber.StatusNotFound {
-		t.Fatalf("unexpected missing post status: path=%s status=%d", missingPath, missingResp.StatusCode)
-	}
+	assertTemplateRendered(
+		t,
+		missingResp,
+		fiber.StatusNotFound,
+		"页面找不到",
+		"返回首页",
+	)
 }
 
 func TestSiteControllerP0_LikeActionJSONToggle(t *testing.T) {
@@ -153,6 +159,25 @@ func TestSiteControllerP0_CommentActionCreatesPending(t *testing.T) {
 	if !strings.Contains(location, "#comments") {
 		t.Fatalf("comment redirect should include comments anchor, got location=%q", location)
 	}
+	rememberCookie := strings.TrimSpace(commentResp.Header.Get("Set-Cookie"))
+	if !strings.Contains(rememberCookie, "swv_commenter=") {
+		t.Fatalf("comment response should set remember cookie, got=%q", rememberCookie)
+	}
+
+	feedbackPath := location
+	if idx := strings.Index(feedbackPath, "#"); idx >= 0 {
+		feedbackPath = feedbackPath[:idx]
+	}
+	feedbackResp := requestControllerP0(t, swv, fiber.MethodGet, feedbackPath, nil, responseCookieKV(commentResp), nil)
+	assertTemplateRendered(
+		t,
+		feedbackResp,
+		fiber.StatusOK,
+		"评论已提交，等待审核。",
+		`id="comment-form"`,
+		`value="site-p0-user"`,
+		`value="site-p0@example.com"`,
+	)
 
 	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
 	if err != nil {
