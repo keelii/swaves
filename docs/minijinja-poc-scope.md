@@ -3,7 +3,7 @@
 ## In scope
 
 - All site templates.
-- All admin templates.
+- All admin dash templates.
 - Introduce a renderer adapter contract aligned with `Req/Auth/Site`.
 - Keep existing business handlers unchanged as much as possible.
 - Keep legacy layout/embed composition behavior for compatibility.

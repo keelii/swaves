@@ -8,15 +8,8 @@ import (
 
 func RegisterRouter(
 	app *fiber.App,
-	gStore *store.GlobalStore,
+	_ *store.GlobalStore,
 ) {
-	//monitorStore := NewMonitorStore()
-	//handler := NewHandler(
-	//	gStore,
-	//	NewService(gStore.Model),
-	//	monitorStore,
-	//)
-
 	suiGroup := app.Group("/sui")
 
 	suiGroup.Get("/", func(c fiber.Ctx) error {
