@@ -18,13 +18,9 @@
 {% endblock %}
 
 {% block status_main_left %}
-  <label for="post-category-select">分类</label>
-  <select class="ui-select" id="post-category-select" name="categories" form="form" aria-label="分类选择">
-    <option value="">顶级分类</option>
-    {% for category in CategoryOptions %}
-      <option value="{{ category.ID }}"{% if DraftCategoryID|default(0) == category.ID %} selected{% endif %}>{{ category.DisplayName|default(category.Name) }}</option>
-    {% endfor %}
-  </select>
+  {% with SelectedCategoryID = DraftCategoryID|default(0), CategoryOptions = CategoryOptions %}
+    {% include "dash/include/post_category.html" %}
+  {% endwith %}
 {% endblock %}
 
 {% block status_main_center %}
@@ -42,61 +38,16 @@
 {% endblock %}
 
 {% block content %}
-<div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
-  <div class="title">
-    <input type="text" name="title" value="{{ DraftTitle|default('') }}" class="input-title" id="post-title" form="form" required>
-  </div>
-  <div class="content wysiwyg"></div>
-</div>
-
-<textarea id="post-content" name="content" form="form" hidden>{{ DraftContent|default('') }}</textarea>
-<input type="hidden" name="comment_enabled" value="1" form="form">
-<input type="hidden" name="kind" value="0" form="form">
-<input type="hidden" name="tags" value="{{ SelectedTagNames|default('') }}" form="form">
-<form id="form" method="post" action="{{ UrlFor('admin.posts.create') }}">
-  {{ _csrf_token() }}
-</form>
-
-<script src="/static/seditor/dist/seditor.min.js"></script>
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    var titleInput = document.getElementById("post-title");
-    var textarea = document.getElementById("post-content");
-    var wordCount = document.getElementById("post-editor-word-count");
-
-    function updateWordCount() {
-      if (!wordCount) {
-        return;
-      }
-      var text = "";
-      if (titleInput) {
-        text += String(titleInput.value || "") + "\n";
-      }
-      if (textarea) {
-        text += String(textarea.value || "");
-      }
-      text = text.replace(/\s+/g, "").trim();
-      wordCount.textContent = "字数 " + text.length;
-    }
-
-    if (!window.SEditor || typeof window.SEditor.init !== "function") {
-      updateWordCount();
-      return;
-    }
-
-    window.__seditor = window.SEditor.init({
-      mount: ".content",
-      textarea: "#post-content"
-    });
-
-    if (titleInput) {
-      titleInput.addEventListener("input", updateWordCount);
-    }
-    if (textarea) {
-      textarea.addEventListener("input", updateWordCount);
-    }
-
-    updateWordCount();
-  });
-</script>
+{% with
+  FormAction = UrlFor('admin.posts.create'),
+  TitleValue = DraftTitle|default(''),
+  TitlePlaceholder = "标题",
+  ContentValue = DraftContent|default(''),
+  StatusValue = "",
+  CommentEnabledValue = "1",
+  KindValue = "0",
+  TagsValue = SelectedTagNames|default('')
+%}
+  {% include "dash/include/post_editor_content.html" %}
+{% endwith %}
 {% endblock %}

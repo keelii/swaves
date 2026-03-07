@@ -35,10 +35,20 @@ Mount an editor:
 <script>
   window.SEditor.init({
     mount: ".content-editor",
-    textarea: "#post-content"
+    textarea: "#post-content",
+    placeholder: "开始输入 Markdown…"
   });
 </script>
 ```
+
+## Options
+
+- `mount` (required): mount element or selector.
+- `textarea` (optional): hidden textarea selector/element for markdown sync.
+- `initialMarkdown` (optional): initial markdown string.
+- `placeholder` (optional): placeholder text shown when document is empty.
+- `onChange(markdown)` (optional): change callback.
+- `commandsRoot` (optional): root element for command button binding.
 
 ## Toolbar bindings
 

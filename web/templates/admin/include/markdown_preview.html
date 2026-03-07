@@ -297,10 +297,6 @@ $(function() {
   var $pickerLoadMore = $('#asset-picker-load-more');
   var markdownAPIURL = {{ UrlFor('api.markdown') | tojson }};
   var assetAPIURL = {{ UrlFor('admin.assets.api.list') | tojson }};
-  if (!assetAPIURL) {
-    var adminBaseURL = {{ GetAdminUrl() | tojson }};
-    assetAPIURL = (String(adminBaseURL || '').replace(/\/+$/, '') || '/admin') + '/api/assets';
-  }
   var splitInstance = null;
   var pickerPage = 1;
   var pickerPageSize = 24;

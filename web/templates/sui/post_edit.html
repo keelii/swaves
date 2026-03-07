@@ -51,7 +51,7 @@
   </div>
 {% endblock %}
 {% block status_main_right %}
-  <span>字数 0</span>
+  <span id="post-editor-word-count">字数 0</span>
 {% endblock %}
 
 {% block nav_pane %}
@@ -73,7 +73,7 @@
   </style>
   <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
     <div class="title">
-      <input type="text" name="title" class="input-title" id="">
+      <input type="text" name="title" class="input-title" id="post-title">
     </div>
     <div class="content wysiwyg"></div>
   </div>
@@ -82,14 +82,48 @@
   <script src="/static/seditor/dist/seditor.min.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function() {
+      var titleInput = document.getElementById("post-title");
+      var textarea = document.getElementById("post-content");
+      var wordCount = document.getElementById("post-editor-word-count");
+
+      function updateWordCount(nextMarkdown) {
+        if (!wordCount) {
+          return;
+        }
+        var text = "";
+        if (titleInput) {
+          text += String(titleInput.value || "") + "\n";
+        }
+        if (typeof nextMarkdown === "string") {
+          text += nextMarkdown;
+        } else if (textarea) {
+          text += String(textarea.value || "");
+        }
+        text = text.replace(/\s+/g, "").trim();
+        wordCount.textContent = "字数 " + text.length;
+      }
+
       if (!window.SEditor || typeof window.SEditor.init !== "function") {
+        updateWordCount();
         return;
       }
 
       window.__seditor = window.SEditor.init({
         mount: ".content",
-        textarea: "#post-content"
+        textarea: "#post-content",
+        placeholder: "输入正文内容（支持 Markdown）",
+        onChange: function(markdown) {
+          updateWordCount(markdown);
+        }
       });
+
+      if (titleInput) {
+        titleInput.addEventListener("input", updateWordCount);
+      }
+      if (textarea) {
+        textarea.addEventListener("input", updateWordCount);
+      }
+      updateWordCount();
     });
   </script>
 {% endblock %}

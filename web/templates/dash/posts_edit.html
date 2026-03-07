@@ -26,13 +26,9 @@
 {% endblock %}
 
 {% block status_main_left %}
-{#  <label for="post-category-select">分类</label>#}
-  <select class="ui-select mini noborder" style="width:6.8em" id="post-category-select" name="categories" form="form" aria-label="分类选择">
-    <option value="">顶级分类</option>
-    {% for category in CategoryOptions %}
-      <option value="{{ category.ID }}"{% if Category.ID|default(0) == category.ID %} selected{% endif %}>{{ category.DisplayName|default(category.Name) }}</option>
-    {% endfor %}
-  </select>
+  {% with SelectedCategoryID = Category.ID|default(0), CategoryOptions = CategoryOptions %}
+    {% include "dash/include/post_category.html" %}
+  {% endwith %}
 {% endblock %}
 
 {% block status_main_center %}
@@ -52,67 +48,16 @@
 {% endblock %}
 
 {% block content %}
-  <style>
-    .app-window .app-panel-detail {
-      padding: 0;
-    }
-  </style>
-<div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
-  <div class="title">
-    <input type="text" name="title" value="{{ Post.Title }}" class="input-title" id="post-title" form="form" required>
-  </div>
-  <div class="content wysiwyg"></div>
-</div>
-
-<textarea id="post-content" name="content" form="form" hidden>{{ Post.Content }}</textarea>
-<input type="hidden" name="status" value="{{ Post.Status }}" form="form">
-<input type="hidden" name="comment_enabled" value="{% if Post.CommentEnabled == 1 %}1{% else %}0{% endif %}" form="form">
-<input type="hidden" name="kind" value="{{ Printf("%d", Post.Kind) }}" form="form">
-<input type="hidden" name="tags" value="{{ SelectedTagNames|default('') }}" form="form">
-<form id="form" method="post" action="{{ UrlFor('admin.posts.update', id=Post.ID) }}">
-  {{ _csrf_token() }}
-</form>
-
-<script src="/static/seditor/dist/seditor.min.js"></script>
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    var titleInput = document.getElementById("post-title");
-    var textarea = document.getElementById("post-content");
-    var wordCount = document.getElementById("post-editor-word-count");
-
-    function updateWordCount() {
-      if (!wordCount) {
-        return;
-      }
-      var text = "";
-      if (titleInput) {
-        text += String(titleInput.value || "") + "\n";
-      }
-      if (textarea) {
-        text += String(textarea.value || "");
-      }
-      text = text.replace(/\s+/g, "").trim();
-      wordCount.textContent = "字数 " + text.length;
-    }
-
-    if (!window.SEditor || typeof window.SEditor.init !== "function") {
-      updateWordCount();
-      return;
-    }
-
-    window.__seditor = window.SEditor.init({
-      mount: ".content",
-      textarea: "#post-content"
-    });
-
-    if (titleInput) {
-      titleInput.addEventListener("input", updateWordCount);
-    }
-    if (textarea) {
-      textarea.addEventListener("input", updateWordCount);
-    }
-
-    updateWordCount();
-  });
-</script>
+{% with
+  FormAction = UrlFor('admin.posts.update', id=Post.ID),
+  TitleValue = Post.Title,
+  TitlePlaceholder = "",
+  ContentValue = Post.Content,
+  StatusValue = Post.Status,
+  CommentEnabledValue = Printf("%d", Post.CommentEnabled),
+  KindValue = Printf("%d", Post.Kind),
+  TagsValue = SelectedTagNames|default('')
+%}
+  {% include "dash/include/post_editor_content.html" %}
+{% endwith %}
 {% endblock %}

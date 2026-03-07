@@ -1,5 +1,5 @@
-import { EditorState } from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
+import { EditorState, Plugin } from "prosemirror-state";
+import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 import { keymap } from "prosemirror-keymap";
 import { baseKeymap, lift, toggleMark, wrapIn } from "prosemirror-commands";
 import { history, redo, undo } from "prosemirror-history";
@@ -71,6 +71,29 @@ function ensureSeditorStyles() {
   border: 1px solid rgba(107, 114, 128, 0.22);
   border-radius: 6px;
   padding: 0 4px;
+}
+`;
+  document.head.appendChild(el);
+}
+
+function ensurePlaceholderStyles() {
+  if (typeof document === "undefined") {
+    return;
+  }
+  var id = "seditor-placeholder-styles";
+  if (document.getElementById(id)) {
+    return;
+  }
+
+  var el = document.createElement("style");
+  el.id = id;
+  el.textContent = `
+.seditor-root .ProseMirror .seditor-placeholder-block::before {
+  content: attr(data-placeholder);
+  color: var(--app-text-soft, #9ca3af);
+  pointer-events: none;
+  float: left;
+  height: 0;
 }
 `;
   document.head.appendChild(el);
@@ -319,8 +342,37 @@ function parseMarkdown(schema, markdown) {
   return replaceRawInlineInDoc(schema, doc);
 }
 
-function buildPlugins(schema) {
+function createPlaceholderPlugin(schema, placeholder) {
+  var text = String(placeholder == null ? "" : placeholder).trim();
+  if (!text) {
+    return null;
+  }
+
+  return new Plugin({
+    props: {
+      decorations: function(state) {
+        var doc = state.doc;
+        if (doc.childCount !== 1) {
+          return null;
+        }
+        var first = doc.firstChild;
+        if (!first || !first.isTextblock || first.content.size !== 0) {
+          return null;
+        }
+        var deco = Decoration.node(0, first.nodeSize, {
+          "data-placeholder": text,
+          class: "seditor-placeholder-block"
+        });
+        return DecorationSet.create(doc, [deco]);
+      }
+    }
+  });
+}
+
+function buildPlugins(schema, options) {
+  var opts = options || {};
   var listItem = schema.nodes.list_item;
+  var placeholderPlugin = createPlaceholderPlugin(schema, opts.placeholder);
 
   var headingRule = null;
   if (schema.nodes.heading && schema.nodes.paragraph) {
@@ -373,6 +425,7 @@ function buildPlugins(schema) {
   }
 
   return [
+    placeholderPlugin,
     inputRuleList.length ? inputRules({ rules: inputRuleList }) : null,
     history(),
     keymap({
@@ -768,13 +821,16 @@ export function init(options) {
     throw new Error("SEditor.init: mount element is required");
   }
 
-  // ensureSeditorStyles();
+  ensureSeditorStyles();
 
   mount.classList.add("seditor-root");
+  if (typeof opts.placeholder === "string" && opts.placeholder.trim()) {
+    ensurePlaceholderStyles();
+  }
 
   var schema = buildSchema();
   var serializer = buildMarkdownSerializer(schema);
-  var plugins = buildPlugins(schema);
+  var plugins = buildPlugins(schema, opts);
 
   var textarea = resolveElement(opts.textarea);
   var initialMarkdown = "";

@@ -108,12 +108,18 @@ function notify(message, title, options) {
   return false;
 }
 
-function getCSRFMetaValue(name) {
-  var el = document.querySelector('meta[name="' + name + '"]');
-  if (!el) {
+function getCSRFToken() {
+  if (typeof window !== "undefined" && window._csrf_token_value != null) {
+    var raw = String(window._csrf_token_value || "").trim();
+    if (raw) {
+      return raw;
+    }
+  }
+  var input = document.querySelector('input[name="_csrf_token"]');
+  if (!input) {
     return "";
   }
-  return String(el.getAttribute("content") || "").trim();
+  return String(input.value || "").trim();
 }
 
 function shouldCSRF(method) {
@@ -223,7 +229,7 @@ function installSFetch() {
     };
 
     if (!disableCSRF && shouldCSRF(method) && sameOrigin) {
-      var token = getCSRFMetaValue("csrf-token");
+      var token = getCSRFToken();
       if (token) {
         var csrfHeaders = ensureHeaders();
         if (!csrfHeaders.has("X-CSRF-Token")) {

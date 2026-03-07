@@ -11,7 +11,7 @@ import (
 	"swaves/internal/shared/types"
 )
 
-func TestRenderAdminCategoriesIndexWithMissingCounts(t *testing.T) {
+func TestRenderDashCategoriesIndexWithMissingCounts(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -43,7 +43,7 @@ func TestRenderAdminCategoriesIndexWithMissingCounts(t *testing.T) {
 	}
 }
 
-func TestRenderAdminPostsIndexWithoutFilterNames(t *testing.T) {
+func TestRenderDashPostsIndexWithoutFilterNames(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -198,7 +198,7 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 	}
 }
 
-func TestRenderAdminAssetsIndexWithItems(t *testing.T) {
+func TestRenderDashAssetsIndexWithItems(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -239,7 +239,7 @@ func TestRenderAdminAssetsIndexWithItems(t *testing.T) {
 	}
 }
 
-func TestRenderAdminImportWithoutFeedback(t *testing.T) {
+func TestRenderDashImportWithoutFeedback(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -258,7 +258,7 @@ func TestRenderAdminImportWithoutFeedback(t *testing.T) {
 	}
 }
 
-func TestRenderAdminHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
+func TestRenderDashHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -294,7 +294,7 @@ func TestRenderAdminHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
 	}
 }
 
-func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
+func TestRenderDashRedirectsNewShowsTargetPicker(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -333,7 +333,7 @@ func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
 	}
 }
 
-func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
+func TestRenderDashRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -355,11 +355,11 @@ func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 
 	rendered := out.String()
 	if !strings.Contains(rendered, `type="submit" form="form"`) {
-		t.Fatalf("expected save action button for admin.redirects.create route")
+		t.Fatalf("expected save action button for configured create route")
 	}
 }
 
-func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {
+func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -400,7 +400,7 @@ func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {
 	}
 }
 
-func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
+func TestRenderDashMonitorWithMapGranularities(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -419,6 +419,10 @@ func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
 	}
 	if out.Len() == 0 {
 		t.Fatalf("expected non-empty render output")
+	}
+	rendered := out.String()
+	if !strings.Contains(rendered, "function bindChartTooltips()") {
+		t.Fatalf("expected monitor page to include chart tooltip binding logic")
 	}
 }
 

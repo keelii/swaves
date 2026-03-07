@@ -16,26 +16,24 @@
 
 <form id="form" method="post" action="{{ Action }}">
   {{ _csrf_token() }}
-  <div class="app-px">
-    <div class="ui-form">
-      {% if Error %}
-        {{ sui.Alert(Error, kind="danger", title="保存失败") }}
-      {% endif %}
+  <div class="ui-form">
+    {% if Error %}
+      {{ sui.Alert(Error, kind="danger", title="保存失败") }}
+    {% endif %}
 
-      {% set parentControl %}
-        <select class="ui-select" id="parent-id-select" name="parent_id">
-          <option value="0">顶级分类</option>
-          {% for option in CategoryOptions %}
-            <option value="{{ option.ID }}"{% if selected_parent_id == option.ID %} selected{% endif %}>{{ option.DisplayName|default(option.Name) }}</option>
-          {% endfor %}
-        </select>
-      {% endset %}
-      {{ sui.Field("父分类", parentControl, id="parent-id-select", help="选择父分类，选择“顶级分类”表示无父级。") }}
+    {% set parentControl %}
+      <select class="ui-select" id="parent-id-select" name="parent_id">
+        <option value="0">顶级分类</option>
+        {% for option in CategoryOptions %}
+          <option value="{{ option.ID }}"{% if selected_parent_id == option.ID %} selected{% endif %}>{{ option.DisplayName|default(option.Name) }}</option>
+        {% endfor %}
+      </select>
+    {% endset %}
+    {{ sui.Field("父分类", parentControl, id="parent-id-select", help="选择父分类，选择“顶级分类”表示无父级。") }}
 
-      {{ sui.Field("名称", sui.Input(id="category-name", name="name", value=name_value, placeholder="分类名称", attrs="required"), id="category-name", required=true, help="显示名称。") }}
-      {{ sui.Field("URL 标识", sui.Input(id="category-slug", name="slug", value=slug_value, placeholder="url 标识", attrs="required"), id="category-slug", required=true, help="URL 标识，同级下需唯一。") }}
-      {{ sui.Field("描述", sui.Textarea(id="category-description", name="description", value=description_value, rows=3, placeholder="可选描述信息"), id="category-description", help="可选描述。") }}
-      {{ sui.Field("排序", sui.Input(id="category-sort", name="sort", type="number", value=sort_value), id="category-sort", help="同级排序，越小越靠前。") }}
-    </div>
+    {{ sui.Field("名称", sui.Input(id="category-name", name="name", value=name_value, placeholder="分类名称", attrs="required"), id="category-name", required=true, help="显示名称。") }}
+    {{ sui.Field("URL 标识", sui.Input(id="category-slug", name="slug", value=slug_value, placeholder="url 标识", attrs="required"), id="category-slug", required=true, help="URL 标识，同级下需唯一。") }}
+    {{ sui.Field("描述", sui.Textarea(id="category-description", name="description", value=description_value, rows=3, placeholder="可选描述信息"), id="category-description", help="可选描述。") }}
+    {{ sui.Field("排序", sui.Input(id="category-sort", name="sort", type="number", value=sort_value), id="category-sort", help="同级排序，越小越靠前。") }}
   </div>
 </form>

@@ -3,7 +3,7 @@
   {% set navHasNotificationUnread = navNotificationUnreadCount > 0 %}
   <div class="nav-section">
     <div class="nav-section-title">概览</div>
-    <a class="nav-item{% if UrlIs('admin.home') %} active{% endif %}" href="{{ UrlFor('admin.home') }}"{% if UrlIs('admin.monitor') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('admin.home') %} active{% endif %}" href="{{ UrlFor('admin.home') }}"{% if UrlIs('admin.home') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("layout-dashboard", 16) }}</span>
       <span class="nav-item-text">总览</span>
     </a>
@@ -14,11 +14,11 @@
       <span class="nav-item-icon">{{ LucideIcon("list", 16) }}</span>
       <span class="nav-item-text">文章列表</span>
     </a>
-    <a class="nav-item{% if UrlIs('admin.assets.list') %} active{% endif %}" href="{{ UrlFor('admin.assets.list') }}"{% if UrlIs('admin.posts.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('admin.assets.list') %} active{% endif %}" href="{{ UrlFor('admin.assets.list') }}"{% if UrlIs('admin.assets.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("image", 16) }}</span>
       <span class="nav-item-text">资源库</span>
     </a>
-    <a class="nav-item{% if UrlIs('admin.comments.list') %} active{% endif %}" href="{{ UrlFor('admin.comments.list') }}"{% if UrlIs('admin.posts.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('admin.comments.list') %} active{% endif %}" href="{{ UrlFor('admin.comments.list') }}"{% if UrlIs('admin.comments.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("messages-square", 16) }}</span>
       <span class="nav-item-text">评论管理</span>
     </a>
