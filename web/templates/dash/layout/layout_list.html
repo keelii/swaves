@@ -1,21 +1,7 @@
 {% extends "dash/layout/base.html" %}
 {% import "dash/include/ui.html" as sui %}
 
-{% block head_extra %}
-<meta name="robots" content="noindex, nofollow" />
-<script src="/static/admin/jquery-4.0.0.slim.min.js"></script>
-<script src="/static/admin/main.js"></script>
-{% endblock %}
-
 {% block body %}
-<script>
-  window.cfg = window.cfg || {};
-  window.cfg.navWidthSaveURL = {{ UrlFor('admin.settings.api.nav_width.update') | tojson }};
-  window.cfg.notificationsUnreadURL = {{ UrlFor('admin.notifications.api.unread_count') | tojson }};
-  window.cfg.notificationsReadURL = {{ UrlFor('admin.notifications.api.read') | tojson }};
-  window.cfg.notificationsReadAllURL = {{ UrlFor('admin.notifications.api.read_all') | tojson }};
-  window.cfg.notificationsDeleteURL = {{ UrlFor('admin.notifications.api.delete') | tojson }};
-</script>
 <div
   class="app-window"
   data-nav-width-current="{{ Settings('admin_nav_width')|default('240') }}"

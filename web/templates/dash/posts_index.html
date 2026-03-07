@@ -44,12 +44,7 @@
 {% endblock %}
 
 {% block operation_right %}
-  <form method="get" action="{{ UrlFor('admin.posts.list') }}" style="display:flex;align-items:center;gap:10px;">
-    <input type="hidden" name="kind" value="{{ KindQuery|default('0') }}">
-    {% if FilterTagIDStr %}<input type="hidden" name="tag" value="{{ FilterTagIDStr }}">{% endif %}
-    {% if FilterCategoryIDStr %}<input type="hidden" name="category" value="{{ FilterCategoryIDStr }}">{% endif %}
-    <input class="ui-input" type="search" name="q" value="{{ SearchQuery }}" placeholder="搜索标题、内容">
-  </form>
+  {% include "dash/include/post_search.html" %}
 {% endblock %}
 
 {% block content %}

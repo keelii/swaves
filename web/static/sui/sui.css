@@ -1436,17 +1436,16 @@ a.ui-icon-btn[disabled] {
 
 .app-window .app-main-toolbar {
   width: 100%;
+  padding: 0 var(--app-spacing);
   display: flex;
   align-items: center;
   gap: var(--app-gap-2);
 }
 
 .app-main-toolbar .left {
-  padding-left: var(--app-spacing);
 }
 
 .app-main-toolbar .right {
-  padding-right: var(--app-spacing);
 }
 
 .full-main .app-main-toolbar .left {
@@ -1458,7 +1457,6 @@ a.ui-icon-btn[disabled] {
   display: flex;
   align-items: center;
   gap: var(--app-gap-5);
-  padding-left: var(--app-spacing);
 }
 .app-toolbar-slot > .ui-icon-btn {
   padding: 0;

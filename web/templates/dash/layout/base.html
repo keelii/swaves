@@ -10,9 +10,21 @@
   </style>
 
   <link rel="stylesheet" href="/static/sui/sui.css">
+  <meta name="robots" content="noindex, nofollow" />
+  <script src="/static/admin/jquery-4.0.0.slim.min.js"></script>
+  <script src="/static/admin/main.js"></script>
+  <script>
+    window.cfg = window.cfg || {};
+    window.cfg.navWidthSaveURL = {{ UrlFor('admin.settings.api.nav_width.update') | tojson }};
+    window.cfg.notificationsUnreadURL = {{ UrlFor('admin.notifications.api.unread_count') | tojson }};
+    window.cfg.notificationsReadURL = {{ UrlFor('admin.notifications.api.read') | tojson }};
+    window.cfg.notificationsReadAllURL = {{ UrlFor('admin.notifications.api.read_all') | tojson }};
+    window.cfg.notificationsDeleteURL = {{ UrlFor('admin.notifications.api.delete') | tojson }};
+  </script>
   {% block head_extra %}{% endblock %}
 </head>
 <body{% if Settings("mode") == "dark" %} data-theme="dark"{% endif %}>
+
 {% block body %}
   {% block content %}{% endblock %}
 {% endblock %}
