@@ -1,8 +1,0 @@
-{% extends "admin/layout/layout.html" %}
-{% block page_actions %}
-<button type="submit" form="form" class="button">{{ ui.action_btn_content("square-pen", "保存") }}</button>
-<a class="button" href="{{ UrlFor('admin.redirects.list') }}">{{ ui.action_btn_content("arrow-left", "返回") }}</a>
-{% endblock %}
-{% block content %}
-{% with Action = UrlFor('admin.redirects.update', id=Redirect.ID), Redirect = Redirect %}{% include "admin/include/forms/redirects_form.html" %}{% endwith %}
-{% endblock %}

@@ -12,7 +12,7 @@ description: 博客前台与管理后台 CSS 设计与实现专家。Use when us
 先根据目标文件和页面路径选择分区：
 
 - 前台博客：`web/templates/site/*`、`web/static/site/*`
-- 管理后台：`web/templates/admin/*`、`web/static/admin/*`
+- 管理后台：`web/templates/dash/*`、`web/static/sui/*`、`web/static/admin/*`
 
 若同时涉及两端，分开实现并分别说明影响范围。
 
