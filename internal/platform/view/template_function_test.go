@@ -39,7 +39,7 @@ func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
 	}
 }
 
-func TestGlobalMacroNamespaceAvailableAcrossExtendsAndInclude(t *testing.T) {
+func TestMacroImportAvailableAcrossExtendsAndInclude(t *testing.T) {
 	tempDir := t.TempDir()
 	mustWriteTemplate := func(relativeName string, source string) {
 		templatePath := filepath.Join(tempDir, relativeName)
@@ -51,11 +51,11 @@ func TestGlobalMacroNamespaceAvailableAcrossExtendsAndInclude(t *testing.T) {
 		}
 	}
 
-	mustWriteTemplate("admin/macro/ui.html", `{% macro hi(label) %}{{ label }}{% endmacro %}`)
-	mustWriteTemplate("admin/layout/base.html", `{% block body %}{% endblock %}`)
-	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base.html" %}{% block body %}{% include "admin/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
-	mustWriteTemplate("admin/include/actions.html", `{{ ui.hi("A") }}`)
-	mustWriteTemplate("page.html", `{% extends "admin/layout/layout.html" %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
+	mustWriteTemplate("dash/layout/base.html", `{% block body %}{% endblock %}`)
+	mustWriteTemplate("dash/include/ui.html", `{% macro hi(label) %}{{ label }}{% endmacro %}`)
+	mustWriteTemplate("dash/layout/layout.html", `{% extends "dash/layout/base.html" %}{% import "dash/include/ui.html" as ui %}{% block body %}{% include "dash/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplate("dash/include/actions.html", `{% import "dash/include/ui.html" as ui %}{{ ui.hi("A") }}`)
+	mustWriteTemplate("page.html", `{% extends "dash/layout/layout.html" %}{% import "dash/include/ui.html" as ui %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
 
 	view := newMiniJinjaView(tempDir, false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
@@ -86,10 +86,10 @@ func TestExtendsAndIncludeSupportRootPathsWithoutLeadingSlash(t *testing.T) {
 		}
 	}
 
-	mustWriteTemplate("admin/layout/base.html", `{% block body %}{% endblock %}`)
-	mustWriteTemplate("admin/include/actions.html", `A`)
-	mustWriteTemplate("admin/layout/layout.html", `{% extends "admin/layout/base.html" %}{% block body %}{% include "admin/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
-	mustWriteTemplate("admin/categories_index.html", `{% extends "admin/layout/layout.html" %}{% block content %}B{% endblock %}`)
+	mustWriteTemplate("dash/layout/base.html", `{% block body %}{% endblock %}`)
+	mustWriteTemplate("dash/include/actions.html", `A`)
+	mustWriteTemplate("dash/layout/layout.html", `{% extends "dash/layout/base.html" %}{% block body %}{% include "dash/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplate("dash/categories_index.html", `{% extends "dash/layout/layout.html" %}{% block content %}B{% endblock %}`)
 
 	view := newMiniJinjaView(tempDir, false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
@@ -100,7 +100,7 @@ func TestExtendsAndIncludeSupportRootPathsWithoutLeadingSlash(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "admin/categories_index.html", map[string]any{}); err != nil {
+	if err := view.Render(&out, "dash/categories_index.html", map[string]any{}); err != nil {
 		t.Fatalf("render template failed: %v", err)
 	}
 	if got := out.String(); got != "AB" {
@@ -120,8 +120,8 @@ func TestIncludeSupportsExplicitRelativeSubPath(t *testing.T) {
 		}
 	}
 
-	mustWriteTemplate("admin/page.html", `{% include "./include/item.html" %}`)
-	mustWriteTemplate("admin/include/item.html", `ok`)
+	mustWriteTemplate("dash/page.html", `{% include "./include/item.html" %}`)
+	mustWriteTemplate("dash/include/item.html", `ok`)
 
 	view := newMiniJinjaView(tempDir, false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
@@ -132,7 +132,7 @@ func TestIncludeSupportsExplicitRelativeSubPath(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := view.Render(&out, "admin/page.html", map[string]any{}); err != nil {
+	if err := view.Render(&out, "dash/page.html", map[string]any{}); err != nil {
 		t.Fatalf("render template failed: %v", err)
 	}
 	if got := out.String(); got != "ok" {

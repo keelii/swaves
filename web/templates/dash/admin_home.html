@@ -16,8 +16,7 @@
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-lg);
     background: var(--app-panel-bg);
-    padding: 12px;
-    min-height: 84px;
+    padding: var(--app-spacing);
   }
 
   .dashboard-label {
@@ -48,7 +47,6 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    margin-top: 12px;
   }
 
   .dashboard-rank-title {
@@ -138,7 +136,7 @@
   }
 </style>
 
-<div class="app-px app-pt dashboard-stats">
+<div class="app-mb dashboard-stats">
   <section class="dashboard-stat">
     <div class="dashboard-label">活跃用户（{% if ActiveUsersWindowLabel %}{{ ActiveUsersWindowLabel }}{% else %}30分钟{% endif %}）</div>
     <div class="dashboard-number">{% if ActiveUsers %}{{ ActiveUsers }}{% else %}0{% endif %}</div>
@@ -174,7 +172,7 @@
   </section>
 </div>
 
-<div class="app-px" style="margin-top:12px;">
+<div class="app-mb">
   <section class="dashboard-chart-card">
     {{ sui.TabsStart("UV 范围") }}
       {% for tab in UVChartTabs %}
@@ -205,7 +203,7 @@
   </section>
 </div>
 
-<div class="app-px dashboard-rank-grid">
+<div class="dashboard-rank-grid">
   <section class="dashboard-rank-card">
     <h3 class="dashboard-rank-title">文章/页面访问排行</h3>
     <div class="data-table-wrap">

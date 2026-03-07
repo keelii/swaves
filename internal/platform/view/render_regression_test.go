@@ -18,7 +18,7 @@ func TestRenderAdminCategoriesIndexWithMissingCounts(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/categories_index.html", map[string]any{
+	err := view.Render(&out, "dash/categories_index.html", map[string]any{
 		"Categories": []db.Category{
 			{
 				ID:          1,
@@ -33,6 +33,7 @@ func TestRenderAdminCategoriesIndexWithMissingCounts(t *testing.T) {
 		},
 		"ParentMap":  map[int64]string{},
 		"PostCounts": map[int64]int{},
+		"Pager":      types.Pagination{Page: 1, Num: 1, Total: 1, PageSize: 10},
 	})
 	if err != nil {
 		t.Fatalf("render categories index failed: %v", err)
@@ -49,7 +50,7 @@ func TestRenderAdminPostsIndexWithoutFilterNames(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/posts_index.html", map[string]any{
+	err := view.Render(&out, "dash/posts_index.html", map[string]any{
 		"Posts":                   []db.PostWithRelation{},
 		"Pager":                   types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 10},
 		"Kind":                    db.PostKindPost,
@@ -204,7 +205,7 @@ func TestRenderAdminAssetsIndexWithItems(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/assets_index.html", map[string]any{
+	err := view.Render(&out, "dash/assets_index.html", map[string]any{
 		"Items": []db.Asset{
 			{
 				ID:           11,
@@ -245,7 +246,7 @@ func TestRenderAdminImportWithoutFeedback(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/import.html", map[string]any{
+	err := view.Render(&out, "dash/import.html", map[string]any{
 		"ImportingItems": []admin.PreviewPostItem{},
 		"AllCategories":  []db.Category{},
 	})
@@ -264,7 +265,7 @@ func TestRenderAdminHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/http_error_logs_index.html", map[string]any{
+	err := view.Render(&out, "dash/http_error_logs_index.html", map[string]any{
 		"Logs": []db.HttpErrorLog{
 			{
 				ID:        1,
@@ -300,7 +301,7 @@ func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/redirects_new.html", map[string]any{
+	err := view.Render(&out, "dash/redirects_new.html", map[string]any{
 		"Redirect": db.Redirect{
 			From:    "/missing-path",
 			To:      "",
@@ -327,11 +328,8 @@ func TestRenderAdminRedirectsNewShowsTargetPicker(t *testing.T) {
 	if !strings.Contains(rendered, "Hello World") {
 		t.Fatalf("expected target option title in redirects_new")
 	}
-	if !strings.Contains(rendered, "redirect_target_picker_choose") {
+	if !strings.Contains(rendered, "redirect-target-picker-choose") {
 		t.Fatalf("expected target picker choose button in redirects_new")
-	}
-	if !strings.Contains(rendered, "lucide-archive-icon") {
-		t.Fatalf("expected archive icon for redirects target picker trigger")
 	}
 }
 
@@ -342,7 +340,7 @@ func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/redirects_new.html", map[string]any{
+	err := view.Render(&out, "dash/redirects_new.html", map[string]any{
 		"RouteName": "admin.redirects.create",
 		"Redirect": db.Redirect{
 			From:    "/missing-path",
@@ -356,7 +354,7 @@ func TestRenderAdminRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 	}
 
 	rendered := out.String()
-	if !strings.Contains(rendered, "document.querySelector('form').submit()") {
+	if !strings.Contains(rendered, `type="submit" form="form"`) {
 		t.Fatalf("expected save action button for admin.redirects.create route")
 	}
 }
@@ -387,7 +385,7 @@ func TestRenderAdminSettingsAllWithSettingView(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/settings_all.html", map[string]any{
+	err := view.Render(&out, "dash/settings_all.html", map[string]any{
 		"SettingKinds":       []string{"site"},
 		"SettingKindLabels":  map[string]string{"site": "站点"},
 		"ActiveKind":         "site",
@@ -409,7 +407,7 @@ func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/monitor.html", map[string]any{
+	err := view.Render(&out, "dash/monitor.html", map[string]any{
 		"Granularities": []map[string]any{
 			{"Key": "1m", "Label": "1分钟"},
 		},
@@ -424,14 +422,14 @@ func TestRenderAdminMonitorWithMapGranularities(t *testing.T) {
 	}
 }
 
-func TestRenderAdminPostsEditUsesAssetAPIPath(t *testing.T) {
+func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/posts_edit.html", map[string]any{
+	err := view.Render(&out, "dash/posts_edit.html", map[string]any{
 		"Post": db.Post{
 			ID:             2,
 			Title:          "hello",
@@ -450,11 +448,11 @@ func TestRenderAdminPostsEditUsesAssetAPIPath(t *testing.T) {
 	}
 
 	rendered := out.String()
-	if !strings.Contains(rendered, "/api/assets") {
-		t.Fatalf("expected rendered output to contain asset api path")
+	if !strings.Contains(rendered, `class="content wysiwyg"`) {
+		t.Fatalf("expected rendered output to contain editor mount container")
 	}
-	if strings.Contains(rendered, "admin/posts/2/&") {
-		t.Fatalf("unexpected malformed asset request base in rendered output")
+	if !strings.Contains(rendered, `/static/seditor/dist/seditor.min.js`) {
+		t.Fatalf("expected rendered output to contain seditor script include")
 	}
 }
 
@@ -577,7 +575,7 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/monitor.html", map[string]any{
+	err := view.Render(&out, "dash/monitor.html", map[string]any{
 		"Granularities": []map[string]any{
 			{"Key": "1m", "Label": "1分钟"},
 		},
@@ -591,13 +589,10 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 	if strings.Contains(rendered, "var monitorAPIURL = '&#x2f;") {
 		t.Fatalf("expected monitor js api url not to be html escaped")
 	}
-	if strings.Contains(rendered, "buildURL('&#x2f;") {
-		t.Fatalf("expected monitor js base url not to be html escaped")
-	}
 	if !strings.Contains(rendered, `var monitorAPIURL = "/admin/api/monitor";`) {
 		t.Fatalf("expected monitor api url in output, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `buildURL("/admin/monitor", {`) {
+	if !strings.Contains(rendered, `var monitorPageURL = "/admin/monitor";`) {
 		t.Fatalf("expected monitor base url in output, got: %s", rendered)
 	}
 }
@@ -625,7 +620,7 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := view.Render(&out, "admin/import.html", map[string]any{
+	err := view.Render(&out, "dash/import.html", map[string]any{
 		"ImportingItems": []admin.PreviewPostItem{},
 		"AllCategories": []db.Category{
 			{Name: "生活"},
