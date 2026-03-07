@@ -206,58 +206,58 @@
 <div class="dashboard-rank-grid">
   <section class="dashboard-rank-card">
     <h3 class="dashboard-rank-title">文章/页面访问排行</h3>
-    <div class="data-table-wrap">
-      <table class="data-table" aria-label="文章页面访问排行">
-        <thead>
-        <tr>
-          <th class="dashboard-index-col">#</th>
-          <th>标题</th>
-          <th class="dashboard-value-col">UV</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% if TopUVContents %}
-          {% for uvContent in TopUVContents %}{% set idx = loop.index0 %}{% set item = uvContent %}
-            <tr>
-              <td>{{ idx + 1 }}</td>
-              <td><a href="{{ GetPostUrl(item) }}" target="_blank" rel="noopener">{{ item.Title }}</a></td>
-              <td class="dashboard-value-col">{{ item.UV }}</td>
-            </tr>
-          {% endfor %}
-        {% else %}
-          <tr><td colspan="3">暂无访问数据</td></tr>
-        {% endif %}
-        </tbody>
-      </table>
-    </div>
+    {% if TopUVContents %}
+      <div class="data-table-wrap">
+        <table class="data-table" aria-label="文章页面访问排行">
+          <thead>
+          <tr>
+            <th class="dashboard-index-col">#</th>
+            <th>标题</th>
+            <th class="dashboard-value-col">UV</th>
+          </tr>
+          </thead>
+          <tbody>
+            {% for uvContent in TopUVContents %}{% set idx = loop.index0 %}{% set item = uvContent %}
+              <tr>
+                <td>{{ idx + 1 }}</td>
+                <td><a href="{{ GetPostUrl(item) }}" target="_blank" rel="noopener">{{ item.Title }}</a></td>
+                <td class="dashboard-value-col">{{ item.UV }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {{ sui.EmptyState("暂无访问数据") }}
+    {% endif %}
   </section>
 
   <section class="dashboard-rank-card">
     <h3 class="dashboard-rank-title">点赞排行</h3>
-    <div class="data-table-wrap">
-      <table class="data-table" aria-label="点赞排行">
-        <thead>
-        <tr>
-          <th class="dashboard-index-col">#</th>
-          <th>标题</th>
-          <th class="dashboard-value-col">点赞</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% if TopLikedContents %}
-          {% for likedContent in TopLikedContents %}{% set idx = loop.index0 %}{% set item = likedContent %}
-            <tr>
-              <td>{{ idx + 1 }}</td>
-              <td>{{ item.Title }}</td>
-              <td class="dashboard-value-col">{{ item.Likes }}</td>
-            </tr>
-          {% endfor %}
-        {% else %}
-          <tr><td colspan="3">暂无点赞数据</td></tr>
-        {% endif %}
-        </tbody>
-      </table>
-    </div>
+    {% if TopLikedContents %}
+      <div class="data-table-wrap">
+        <table class="data-table" aria-label="点赞排行">
+          <thead>
+          <tr>
+            <th class="dashboard-index-col">#</th>
+            <th>标题</th>
+            <th class="dashboard-value-col">点赞</th>
+          </tr>
+          </thead>
+          <tbody>
+            {% for likedContent in TopLikedContents %}{% set idx = loop.index0 %}{% set item = likedContent %}
+              <tr>
+                <td>{{ idx + 1 }}</td>
+                <td>{{ item.Title }}</td>
+                <td class="dashboard-value-col">{{ item.Likes }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {{ sui.EmptyState("暂无点赞数据") }}
+    {% endif %}
   </section>
 </div>
 

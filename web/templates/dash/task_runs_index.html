@@ -12,6 +12,7 @@
 </div>
 
 <div class="data-table-wrap">
+{% if Runs|length > 0 %}
   <table id="task-runs-table" class="data-table" aria-label="任务执行记录" data-role="data-table">
     <thead>
       <tr>
@@ -51,10 +52,11 @@
         <td>{{ run.FinishedAt | formatTime }}</td>
         <td>{{ run.CreatedAt | formatTime }}</td>
       </tr>
-      {% else %}
-        <tr><td colspan="8">暂无执行记录</td></tr>
       {% endfor %}
     </tbody>
   </table>
+{% else %}
+  {{ sui.EmptyState("暂无执行记录") }}
+{% endif %}
 </div>
 {% endblock %}

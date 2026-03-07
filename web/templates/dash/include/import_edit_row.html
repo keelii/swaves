@@ -29,8 +29,10 @@
     </div>
   </td>
   <td>
-    <textarea class="ui-textarea" data-field="content" hidden>{{ Item.Content }}</textarea>
-    <div class="import-item-content">{% if Item.ContentPreview %}{{ Item.ContentPreview }}{% else %}-{% endif %}</div>
+    <div class="cell-s-content">
+      <textarea class="ui-textarea" data-field="content" hidden>{{ Item.Content }}</textarea>
+      <div class="import-item-content">{% if Item.ContentPreview %}{{ Item.ContentPreview }}{% else %}-{% endif %}</div>
+    </div>
   </td>
   <td data-import-edit-status data-state="pending">待确认</td>
 </tr>

@@ -31,7 +31,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="data-table-wrap">
+<div id="notifications-empty-state"{% if Notifications|length > 0 %} hidden{% endif %}>{{ sui.EmptyState("暂无通知") }}</div>
+<div id="notifications-table-wrap" class="data-table-wrap"{% if not (Notifications|length > 0) %} hidden{% endif %}>
   <table id="notifications-table" class="data-table" aria-label="通知列表" data-role="data-table">
     <thead>
       <tr>
@@ -62,7 +63,11 @@
             {% endif %}
           </td>
           <td>{{ item.Title }}</td>
-          <td>{{ item.Body }}</td>
+          <td>
+            <div class="cell-content">
+              {{ item.Body }}
+            </div>
+          </td>
           <td>{{ item.AggregateCount }}</td>
           <td>
             <span data-role="notification-status">
@@ -79,8 +84,6 @@
             {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-role="notification-delete" data-id="' ~ item.ID ~ '" data-title="删除"' ~ (' hidden' if isUnread else '')) }}
           </td>
         </tr>
-      {% else %}
-        <tr data-role="notification-empty-row"><td colspan="8">暂无通知</td></tr>
       {% endfor %}
     </tbody>
   </table>

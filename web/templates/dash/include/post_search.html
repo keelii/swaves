@@ -8,13 +8,33 @@
   <input type="hidden" name="kind" value="{{ KindQuery|default("0") }}">
   {% if FilterTagIDStr %}<input type="hidden" name="tag" value="{{ FilterTagIDStr }}">{% endif %}
   {% if FilterCategoryIDStr %}<input type="hidden" name="category" value="{{ FilterCategoryIDStr }}">{% endif %}
-  <input class="ui-input" type="search" name="q" value="{{ SearchQuery }}" placeholder="搜索标题、内容" id="posts-search-input">
+  <input class="ui-input post-search" type="search" name="q" value="{{ SearchQuery }}"{% if SearchQuery %} autofocus{% endif %} placeholder="搜索标题、内容" id="posts-search-input">
 </form>
 <script>
 (function(){
   var form = document.getElementById('posts-search-form');
   var input = document.getElementById('posts-search-input');
   if (!form || !input) return;
+
+  function focusSearchToEnd() {
+    if (!input.value) {
+      return;
+    }
+    window.requestAnimationFrame(function() {
+      try {
+        input.focus({ preventScroll: true });
+      } catch (error) {
+        input.focus();
+      }
+      var end = input.value.length;
+      if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(end, end);
+      }
+    });
+  }
+
+  focusSearchToEnd();
+
   input.addEventListener('input', function(e){
     if (e instanceof InputEvent) {
       // console.log("yes")

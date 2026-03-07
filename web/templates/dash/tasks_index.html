@@ -18,72 +18,74 @@
 {% endblock %}
 
 {% block content %}
-<div class="data-table-wrap">
-  <table id="tasks-table" class="data-table" aria-label="任务列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.tasks.api.batch_delete') }}">
-    <thead>
-      <tr>
-        <th>{{ ui.table_th_id() }}</th>
-        <th class="cell-12">编码</th>
-        <th>名称</th>
-        <th>描述</th>
-        <th>调度</th>
-        <th class="cell-6">状态</th>
-        <th>执行记录</th>
-        <th class="cell-6">最后状态</th>
-        <th>最后执行时间</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for task in Tasks %}
-        <tr{% if task.Kind != 0 %} data-batch-delete-id="{{ task.ID }}"{% endif %}>
-          <td>{{ ui.table_td_id(task.ID) }}</td>
-          <td>{{ task.Code }}</td>
-          <td>{{ task.Name }}</td>
-          <td>{% if task.Description %}{{ task.Description }}{% else %}-{% endif %}</td>
-          <td>{{ task.Schedule }}</td>
-          <td>
-            {% if task.Enabled == 1 %}
-              <span class="ui-badge success">启用</span>
-            {% else %}
-              <span class="ui-badge draft">停用</span>
-            {% endif %}
-          </td>
-          <td><a href="{{ UrlFor('admin.tasks.runs', code=task.Code) }}">执行记录</a></td>
-          <td>
-            {% if task.LastStatus == "success" %}
-              <span class="ui-badge success">成功</span>
-            {% elif task.LastStatus == "error" %}
-              <span class="ui-badge danger">失败</span>
-            {% elif task.LastStatus == "pending" %}
-              <span class="ui-badge draft">待执行</span>
-            {% elif task.LastStatus %}
-              <span class="ui-badge">{{ task.LastStatus }}</span>
-            {% else %}
-              -
-            {% endif %}
-          </td>
-          <td>{% if task.LastRunAt %}{{ task.LastRunAt | formatTime }}{% else %}-{% endif %}</td>
-          <td>
-            <div class="cell-actions">
-              {{ sui.LinkIcon("square-pen", UrlFor('admin.tasks.edit', id=task.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-              <form method="post" action="{{ UrlFor('admin.tasks.trigger', code=task.Code) }}">
-                {{ _csrf_token() }}
-                {{ sui.IconAction("play", "执行", attrs='data-title="执行" onclick="this.form.submit()"') }}
-              </form>
-              {% if task.Kind != 0 %}
-                <form method="post" action="{{ UrlFor('admin.tasks.delete', id=task.ID) }}">
-                  {{ _csrf_token() }}
-                  {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
-                </form>
-              {% endif %}
-            </div>
-          </td>
+{% if Tasks|length > 0 %}
+  <div class="data-table-wrap">
+    <table id="tasks-table" class="data-table" aria-label="任务列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.tasks.api.batch_delete') }}">
+      <thead>
+        <tr>
+          <th>{{ ui.table_th_id() }}</th>
+          <th class="cell-12">编码</th>
+          <th>名称</th>
+          <th>描述</th>
+          <th>调度</th>
+          <th class="cell-6">状态</th>
+          <th>执行记录</th>
+          <th class="cell-6">最后状态</th>
+          <th>最后执行时间</th>
+          <th>操作</th>
         </tr>
-      {% else %}
-        <tr><td colspan="10">暂无任务</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+      </thead>
+      <tbody>
+        {% for task in Tasks %}
+          <tr{% if task.Kind != 0 %} data-batch-delete-id="{{ task.ID }}"{% endif %}>
+            <td>{{ ui.table_td_id(task.ID) }}</td>
+            <td>{{ task.Code }}</td>
+            <td>{{ task.Name }}</td>
+            <td>{% if task.Description %}{{ task.Description }}{% else %}-{% endif %}</td>
+            <td>{{ task.Schedule }}</td>
+            <td>
+              {% if task.Enabled == 1 %}
+                <span class="ui-badge success">启用</span>
+              {% else %}
+                <span class="ui-badge draft">停用</span>
+              {% endif %}
+            </td>
+            <td><a href="{{ UrlFor('admin.tasks.runs', code=task.Code) }}">执行记录</a></td>
+            <td>
+              {% if task.LastStatus == "success" %}
+                <span class="ui-badge success">成功</span>
+              {% elif task.LastStatus == "error" %}
+                <span class="ui-badge danger">失败</span>
+              {% elif task.LastStatus == "pending" %}
+                <span class="ui-badge draft">待执行</span>
+              {% elif task.LastStatus %}
+                <span class="ui-badge">{{ task.LastStatus }}</span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>{% if task.LastRunAt %}{{ task.LastRunAt | formatTime }}{% else %}-{% endif %}</td>
+            <td>
+              <div class="cell-actions">
+                {{ sui.LinkIcon("square-pen", UrlFor('admin.tasks.edit', id=task.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+                <form method="post" action="{{ UrlFor('admin.tasks.trigger', code=task.Code) }}">
+                  {{ _csrf_token() }}
+                  {{ sui.IconAction("play", "执行", attrs='data-title="执行" onclick="this.form.submit()"') }}
+                </form>
+                {% if task.Kind != 0 %}
+                  <form method="post" action="{{ UrlFor('admin.tasks.delete', id=task.ID) }}">
+                    {{ _csrf_token() }}
+                    {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  {{ sui.EmptyState("暂无任务") }}
+{% endif %}
 {% endblock %}

@@ -29,6 +29,7 @@
 {% set status = (StatusFilter or "") %}
 
 <div class="data-table-wrap">
+{% if Comments|length > 0 %}
 <table id="comments-table" class="data-table" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.comments.api.batch_delete') }}">
   <thead>
   <tr>
@@ -106,10 +107,11 @@
         </div>
       </td>
     </tr>
-  {% else %}
-    <tr><td colspan="7">暂无评论</td></tr>
   {% endfor %}
   </tbody>
 </table>
+{% else %}
+  {{ sui.EmptyState("暂无评论") }}
+{% endif %}
 </div>
 {% endblock %}

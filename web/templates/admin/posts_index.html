@@ -79,8 +79,12 @@
     <td>
         {% if postWithRelation.Post.Status == "published" %}
           <span class="badge success">已发布</span>
-        {% else %}
+        {% elif postWithRelation.Post.Status == "importing" %}
+          <span class="badge">导入中</span>
+        {% elif postWithRelation.Post.Status == "draft" %}
           <span class="badge secondary">草稿</span>
+        {% else %}
+          <span class="badge">{{ postWithRelation.Post.Status }}</span>
         {% endif %}
     </td>
     <td>

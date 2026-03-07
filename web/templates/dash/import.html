@@ -1,7 +1,20 @@
 {% extends "dash/layout/layout_detail.html" %}
 {% import "dash/include/ui.html" as sui %}
+{% set importingItems = ImportingItems|default([]) %}
+{% set importingTotal = ImportingTotal|default(importingItems|length) %}
+{% set pager = Pager|default({"Page": 1, "PageSize": 20, "Num": 1, "Total": importingTotal}) %}
 {% block page_actions %}
   {{ sui.Button("导入", "primary", attrs='type="submit" form="form"') }}
+{% endblock %}
+{% block status_main_center %}
+  {% if importingTotal > 0 %}
+    <span>待确认 {{ importingTotal }} 条</span>
+  {% endif %}
+{% endblock %}
+{% block status_main_right %}
+  {% if pager.Num > 1 %}
+    {{ sui.Pager(current=pager.Page, total=pager.Num, href_prefix=UrlFor('admin.import.show') ~ "?pageSize=" ~ pager.PageSize) }}
+  {% endif %}
 {% endblock %}
 {% block content %}
 <style>
@@ -22,15 +35,15 @@
     gap: var(--app-gap-4);
   }
 
-  .import-config-fields {
-    display: grid;
-    gap: var(--app-gap-3);
+  .import-config-grid > .ui-field {
+    flex: 0 1 calc((100% - var(--app-gap-4)) / 2);
+    min-width: 0;
   }
 
   .import-control-stack {
     display: grid;
     gap: var(--app-gap-2);
-    max-width: 28rem;
+    width: 100%;
   }
 
   .import-control-stack .ui-input {
@@ -41,17 +54,9 @@
     min-width: 0;
   }
 
-  .import-help-title {
-    margin: 0 0 var(--app-gap-2);
-    color: var(--app-text-soft);
-  }
-
   .import-help-pre {
     margin: 0;
-    padding: var(--app-gap-3);
-    border: var(--app-border-width) solid var(--app-border);
-    border-radius: var(--app-radius);
-    background: var(--app-surface-muted-bg);
+    padding: var(--app-gap-3) 0 0;
     color: var(--app-text-soft);
     font-size: 0.88rem;
     line-height: 1.5;
@@ -161,12 +166,16 @@
       flex-direction: column;
       gap: var(--app-gap-3);
     }
+
+    .import-config-grid > .ui-field {
+      flex-basis: 100%;
+      width: 100%;
+    }
   }
 </style>
 
 {% set errorMessage = Error %}
 {% set successMessage = Success %}
-{% set importingItems = ImportingItems|default([]) %}
 {% set allCategories = AllCategories|default([]) %}
 
 <div class="import-page">
@@ -188,143 +197,143 @@
       <p id="import-drop-status" class="import-drop-status">当前未选择文件</p>
     </div>
   </section>
+  <div class="app-mb import-config-help">
+    {% set frontmatterExample %}
+    <pre class="import-help-pre">---
+title: 文章标题
+slug: /article-slug
+date: 2011-05-12T02:20:04.000Z
+status: draft
+categories:
+  - category1 # 仅第一个标签会关联到文章
+  - category2 # 其余标签仅创建不关联，只创建
+tags:
+  - tag1
+  - tag2
+---
+
+文章内容...</pre>
+    {% endset %}
+    {{ sui.Details("Markdown 文件应包含前置信息（frontmatter），例如", frontmatterExample) }}
+  </div>
+
   <div class="import-config-grid">
-    <div class="import-config-fields">
-      <div class="ui-field">
-        <label class="ui-field-label" for="import-title-source">标题来源</label>
-        <div class="import-control-stack">
-          <select id="import-title-source" class="ui-input ui-select-input" name="title_source" required>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：title）</option>
-            <option value="filename">文件名</option>
-            <option value="markdown">Markdown 标题</option>
-          </select>
-          <input class="ui-input" type="text" name="title_field" id="title_field_container" value="title" placeholder="title" style="display: none;">
-        </div>
-      </div>
-
-      <div class="ui-field" id="title_level_container" style="display: none;">
-        <label class="ui-field-label" for="import-title-level">标题级别</label>
-        <div class="import-control-stack">
-          <select id="import-title-level" class="ui-input ui-select-input" name="title_level">
-            <option value="1" selected>H1（# 一级标题）</option>
-            <option value="2">H2（## 二级标题）</option>
-            <option value="3">H3（### 三级标题）</option>
-          </select>
-          <div class="ui-field-help">从 Markdown 中提取标题时使用的级别。</div>
-        </div>
-      </div>
-
-      <div class="ui-field">
-        <label class="ui-field-label" for="import-slug-source">URL 标识来源</label>
-        <div class="import-control-stack">
-          <select id="import-slug-source" class="ui-input ui-select-input" name="slug_source" required>
-            <option value="filename" selected>文件名</option>
-            <option value="frontmatter">前置信息字段（Frontmatter，默认：slug）</option>
-            <option value="title">由标题自动生成</option>
-          </select>
-          <input class="ui-input" type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
-        </div>
-      </div>
-
-      <div class="ui-field">
-        <label class="ui-field-label" for="import-created-source">创建时间来源</label>
-        <div class="import-control-stack">
-          <select id="import-created-source" class="ui-input ui-select-input" name="created_source" required>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：date）</option>
-            <option value="filetime">文件时间（当前时间）</option>
-          </select>
-          <input class="ui-input" type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
-        </div>
-      </div>
-
-      <div class="ui-field">
-        <label class="ui-field-label" for="import-status-source">状态来源</label>
-        <div class="import-control-stack">
-          <select id="import-status-source" class="ui-input ui-select-input" name="status_source" required>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：draft）</option>
-            <option value="alldraft">全部草稿</option>
-            <option value="allpublished">全部发布</option>
-          </select>
-          <input class="ui-input" type="text" name="status_field" id="status_field_container" value="draft" placeholder="draft">
-        </div>
-      </div>
-
-      <div class="ui-field">
-        <label class="ui-field-label" for="import-category-source">分类来源</label>
-        <div class="import-control-stack">
-          <select id="import-category-source" class="ui-input ui-select-input" name="category_source" required>
-            <option value="none">不设置（留空）</option>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：categories）</option>
-            <option value="autocreate">自动创建默认分类</option>
-          </select>
-          <input class="ui-input" type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
-        </div>
-      </div>
-
-      <div class="ui-field">
-        <label class="ui-field-label" for="import-tag-source">标签来源</label>
-        <div class="import-control-stack">
-          <select id="import-tag-source" class="ui-input ui-select-input" name="tag_source" required>
-            <option value="none">不设置（留空）</option>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：tags）</option>
-            <option value="autocreate">自动创建默认标签</option>
-          </select>
-          <input class="ui-input" type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
-        </div>
+    <div class="ui-field">
+      <label class="ui-field-label" for="import-title-source">标题来源</label>
+      <div class="import-control-stack">
+        <select id="import-title-source" class="ui-input ui-select-input" name="title_source" required>
+          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：title）</option>
+          <option value="filename">文件名</option>
+          <option value="markdown">Markdown 标题</option>
+        </select>
+        <input class="ui-input" type="text" name="title_field" id="title_field_container" value="title" placeholder="title" style="display: none;">
       </div>
     </div>
-  </div>
-  <div class="import-config-help">
-    <p class="import-help-title">Markdown 文件应包含前置信息（frontmatter），例如：</p>
-    <pre class="import-help-pre">---
-  title: 文章标题
-  slug: /article-slug
-  date: 2011-05-12T02:20:04.000Z
-  status: draft
-  categories:
-    - category1 # 仅第一个标签会关联到文章
-    - category2 # 其余标签仅创建不关联，只创建
-  tags:
-    - tag1
-    - tag2
-  ---
 
-  文章内容...</pre>
+    <div class="ui-field" id="title_level_container" style="display: none;">
+      <label class="ui-field-label" for="import-title-level">标题级别</label>
+      <div class="import-control-stack">
+        <select id="import-title-level" class="ui-input ui-select-input" name="title_level">
+          <option value="1" selected>H1（# 一级标题）</option>
+          <option value="2">H2（## 二级标题）</option>
+          <option value="3">H3（### 三级标题）</option>
+        </select>
+        <div class="ui-field-help">从 Markdown 中提取标题时使用的级别。</div>
+      </div>
+    </div>
+
+    <div class="ui-field">
+      <label class="ui-field-label" for="import-slug-source">URL 标识来源</label>
+      <div class="import-control-stack">
+        <select id="import-slug-source" class="ui-input ui-select-input" name="slug_source" required>
+          <option value="filename" selected>文件名</option>
+          <option value="frontmatter">前置信息字段（Frontmatter，默认：slug）</option>
+          <option value="title">由标题自动生成</option>
+        </select>
+        <input class="ui-input" type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
+      </div>
+    </div>
+
+    <div class="ui-field">
+      <label class="ui-field-label" for="import-created-source">创建时间来源</label>
+      <div class="import-control-stack">
+        <select id="import-created-source" class="ui-input ui-select-input" name="created_source" required>
+          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：date）</option>
+          <option value="filetime">文件时间（当前时间）</option>
+        </select>
+        <input class="ui-input" type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
+      </div>
+    </div>
+
+    <div class="ui-field">
+      <label class="ui-field-label" for="import-status-source">状态来源</label>
+      <div class="import-control-stack">
+        <select id="import-status-source" class="ui-input ui-select-input" name="status_source" required>
+          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：draft）</option>
+          <option value="alldraft">全部草稿</option>
+          <option value="allpublished">全部发布</option>
+        </select>
+        <input class="ui-input" type="text" name="status_field" id="status_field_container" value="draft" placeholder="draft">
+      </div>
+    </div>
+
+    <div class="ui-field">
+      <label class="ui-field-label" for="import-category-source">分类来源</label>
+      <div class="import-control-stack">
+        <select id="import-category-source" class="ui-input ui-select-input" name="category_source" required>
+          <option value="none">不设置（留空）</option>
+          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：categories）</option>
+          <option value="autocreate">自动创建默认分类</option>
+        </select>
+        <input class="ui-input" type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
+      </div>
+    </div>
+
+    <div class="ui-field">
+      <label class="ui-field-label" for="import-tag-source">标签来源</label>
+      <div class="import-control-stack">
+        <select id="import-tag-source" class="ui-input ui-select-input" name="tag_source" required>
+          <option value="none">不设置（留空）</option>
+          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：tags）</option>
+          <option value="autocreate">自动创建默认标签</option>
+        </select>
+        <input class="ui-input" type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
+      </div>
+    </div>
   </div>
 </form>
 </div>
 
-<div id="import-edit-panel" class="import-edit-panel card"{% if not (importingItems|length) > 0 %} hidden{% endif %}>
+<div id="import-edit-panel" class="import-edit-panel card"{% if importingTotal <= 0 %} hidden{% endif %}>
   <div class="import-edit-actions">
-    <div id="import-edit-summary" class="w-100" role="alert" data-variant="{% if (importingItems|length) > 0 %}warning{% else %}success{% endif %}">
-      {% if (importingItems|length) > 0 %}待确认 {{ (importingItems|length) }} 条导入记录{% else %}暂无待确认导入记录{% endif %}
-    </div>
+    {{ sui.Alert(("待确认 " ~ importingTotal ~ " 条导入记录") if importingTotal > 0 else "暂无待确认导入记录", kind=("warning" if importingTotal > 0 else "success"), inline=true, attrs='id="import-edit-summary"') }}
   </div>
-  <div class="hstack">
+  <div class="app-mb hstack">
     {{ sui.Button("确认导入", "primary", attrs='type="button" id="import-confirm-btn"') }}
     {{ sui.Button("取消导入", "secondary", attrs='type="button" id="import-cancel-btn"') }}
     {{ sui.Button("切换发布状态", "outline", attrs='type="button" id="toggle-import-status-btn"') }}
   </div>
 
-  <table class="import-edit-table">
-    <thead>
-    <tr>
-      <th>标题/URL标识</th>
-      <th>发布状态</th>
-      <th>类型</th>
-      <th>标签/分类</th>
-      <th class="cell-20">内容（前 200 字）</th>
-      <th class="cell-6">确认状态</th>
-    </tr>
-    </thead>
-    <tbody id="import-edit-rows">
-    {% for importingItem in importingItems %}
-      {% with Item = importingItem %}{% include "dash/include/import_edit_row.html" %}{% endwith %}
-    {% else %}
-      <tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  <div id="import-edit-table-wrap"{% if not (importingItems|length > 0) %} hidden{% endif %}>
+    <table class="import-edit-table data-table">
+      <thead>
+      <tr>
+        <th>标题/URL标识</th>
+        <th>发布状态</th>
+        <th>类型</th>
+        <th>标签/分类</th>
+        <th>内容（前 200 字）</th>
+        <th class="cell-6">确认状态</th>
+      </tr>
+      </thead>
+      <tbody id="import-edit-rows">
+      {% for importingItem in importingItems %}
+        {% with Item = importingItem %}{% include "dash/include/import_edit_row.html" %}{% endwith %}
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div id="import-edit-empty-state"{% if importingItems|length > 0 %} hidden{% endif %}>{{ sui.EmptyState("暂无待确认导入记录") }}</div>
 </div>
 </div>
 
@@ -348,7 +357,6 @@ $(function() {
   var parseItemURL = {{ UrlFor('admin.import.parse_item') | tojson }};
   var confirmItemURL = {{ UrlFor('admin.import.confirm_item') | tojson }};
   var cancelItemURL = {{ UrlFor('admin.import.cancel') | tojson }};
-  var postListURL = {{ UrlFor('admin.posts.list') | tojson }};
   var baseCategoryOptions = [{% for category in allCategories %}
     {{ category.Name | tojson }},{% endfor %}
   ];
@@ -359,6 +367,9 @@ $(function() {
   var $dropStatus = $('#import-drop-status');
   var $editPanel = $('#import-edit-panel');
   var $editSummary = $('#import-edit-summary');
+  var $editSummaryBody = $editSummary.find('.ui-alert-body');
+  var $editTableWrap = $('#import-edit-table-wrap');
+  var $editEmptyState = $('#import-edit-empty-state');
   var $editRows = $('#import-edit-rows');
   var $confirmBtn = $('#import-confirm-btn');
   var $cancelBtn = $('#import-cancel-btn');
@@ -366,10 +377,21 @@ $(function() {
   var $rowTemplate = $('#import-edit-row-template');
   var parseConcurrency = 50;
   var confirmConcurrency = 50;
+  var importingTotalCount = Number({{ importingTotal|default(0) }}) || 0;
   var selectedFiles = [];
   var isParsing = false;
   var isConfirming = false;
   var isCancelling = false;
+
+  function buildImportPageURL(page) {
+    var nextPage = Number(page || 1);
+    if (!Number.isFinite(nextPage) || nextPage < 1) {
+      nextPage = 1;
+    }
+    var url = new URL(window.location.href);
+    url.searchParams.set('page', String(nextPage));
+    return url.pathname + url.search;
+  }
 
   function getDialogAPI() {
     return window.AdminAppUI && window.AdminAppUI.dialog ? window.AdminAppUI.dialog : null;
@@ -636,13 +658,31 @@ $(function() {
     });
   }
 
-  function setEditSummary(text, variant) {
-    $editSummary.text(text);
-    if (variant) {
-      $editSummary.attr('data-variant', variant);
-      return;
+  function normalizeSummaryKind(variant) {
+    var key = String(variant || '').trim().toLowerCase();
+    if (key === 'success') {
+      return 'success';
     }
-    $editSummary.attr('data-variant', 'warning');
+    if (key === 'danger' || key === 'error') {
+      return 'danger';
+    }
+    if (key === 'info') {
+      return 'info';
+    }
+    return 'warning';
+  }
+
+  function setEditSummary(text, variant) {
+    var kind = normalizeSummaryKind(variant);
+    var message = String(text || '');
+
+    if ($editSummaryBody.length) {
+      $editSummaryBody.text(message);
+    } else {
+      $editSummary.text(message);
+    }
+
+    $editSummary.removeClass('info success warning danger').addClass(kind);
   }
 
   function formatFailedDetails(items, maxItems) {
@@ -675,29 +715,35 @@ $(function() {
     }
   }
 
-  function ensureEditEmptyRow() {
-    if ($editRows.find('tr[data-import-item-row]').length > 0) {
-      return;
-    }
-    if ($editRows.find('#import-edit-empty-row').length > 0) {
-      return;
-    }
-    $editRows.append('<tr id="import-edit-empty-row"><td colspan="6">暂无待确认导入记录</td></tr>');
+  function syncEditEmptyState() {
+    var hasRows = $editRows.find('tr[data-import-item-row]').length > 0;
+    $editTableWrap.prop('hidden', !hasRows);
+    $editEmptyState.prop('hidden', hasRows);
   }
 
   function syncEditSummaryByRows(defaultVariant) {
-    var count = $editRows.find('tr[data-import-item-row]').length;
-    if (count === 0) {
+    var pageCount = $editRows.find('tr[data-import-item-row]').length;
+    if (importingTotalCount <= 0) {
       setEditSummary('暂无待确认导入记录', 'success');
-      ensureEditEmptyRow();
+      syncEditEmptyState();
       return;
     }
-    setEditSummary('待确认 ' + count + ' 条导入记录', defaultVariant || 'warning');
+    if (pageCount === 0) {
+      syncEditEmptyState();
+      setEditSummary('待确认 ' + importingTotalCount + ' 条导入记录（当前页暂无记录）', defaultVariant || 'warning');
+      return;
+    }
+    syncEditEmptyState();
+    setEditSummary('待确认 ' + importingTotalCount + ' 条导入记录', defaultVariant || 'warning');
   }
 
   function clearImportingRows() {
+    importingTotalCount = 0;
     $editRows.find('tr[data-import-item-row]').remove();
-    ensureEditEmptyRow();
+    syncEditEmptyState();
+    if (!$editPanel.prop('hidden')) {
+      $editPanel.prop('hidden', true);
+    }
   }
 
   function appendImportEditRow(rawItem) {
@@ -707,7 +753,6 @@ $(function() {
     }
 
     ensureEditPanelVisible();
-    $editRows.find('#import-edit-empty-row').remove();
 
     var $newRow = createImportRow(item);
     if (!$newRow || !$newRow.length) {
@@ -719,6 +764,7 @@ $(function() {
       $existing.replaceWith($newRow);
     } else {
       $editRows.append($newRow);
+      importingTotalCount += 1;
     }
 
     initCategorySelect($newRow);
@@ -924,6 +970,8 @@ $(function() {
       clearImportingRows();
       setEditSummary('已取消导入，删除 ' + deletedCount + ' 条临时记录。', 'success');
       notify('已取消导入，删除 ' + deletedCount + ' 条临时记录。', '', { variant: 'success' });
+      goTo(buildImportPageURL(1));
+      return;
     } catch (err) {
       var requestErrMsg = (err && err.message) ? err.message : '请求失败';
       setEditSummary('取消导入失败：' + requestErrMsg, 'error');
@@ -994,6 +1042,7 @@ $(function() {
         if (ret.ok && result && result.ok) {
           successCount++;
           $row.remove();
+          importingTotalCount = Math.max(0, importingTotalCount - 1);
         } else {
           failCount++;
           var errMsg = (result && result.error) ? result.error : ('HTTP ' + ret.status);
@@ -1018,7 +1067,7 @@ $(function() {
     }
 
     if (failCount === 0) {
-      goTo(postListURL);
+      goTo(window.location.href);
       return;
     }
 
@@ -1070,9 +1119,6 @@ $(function() {
 
         if (ret.ok && result && result.ok) {
           successCount++;
-          if (result.item) {
-            appendImportEditRow(result.item);
-          }
         } else {
           failCount++;
           var errMsg = (result && result.error) ? result.error : ('HTTP ' + ret.status);
@@ -1097,8 +1143,7 @@ $(function() {
     }
 
     if (successCount > 0 && failCount === 0) {
-      setEditSummary('导入完成，成功 ' + successCount + ' 条。请在表格中检查并点击「确认导入」。', 'warning');
-      syncEditSummaryByRows('warning');
+      goTo(buildImportPageURL(1));
       return;
     }
     if (successCount > 0) {
@@ -1107,7 +1152,8 @@ $(function() {
       if (detail) {
         msg += '失败详情：' + detail;
       }
-      setEditSummary(msg, 'error');
+      setEditSummary(msg + ' 即将刷新导入列表。', 'error');
+      goTo(buildImportPageURL(1));
       return;
     }
 

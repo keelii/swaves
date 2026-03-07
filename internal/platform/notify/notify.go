@@ -15,6 +15,7 @@ const (
 	settingEnableTaskError    = "notify_enable_task_error"
 	settingLikeAggregateMin   = "notify_like_aggregate_window_min"
 	settingRetentionDays      = "notify_retention_days"
+	taskNotifyMessageMaxLen   = 1024
 	defaultLikeAggregateMin   = 30
 	defaultNotificationRetain = 30
 )
@@ -112,8 +113,8 @@ func CreateTaskResultNotification(dbx *db.DB, task db.Task, status string, messa
 	}
 
 	trimmedMessage := strings.TrimSpace(message)
-	if len(trimmedMessage) > 180 {
-		trimmedMessage = trimmedMessage[:180] + "…"
+	if len(trimmedMessage) > taskNotifyMessageMaxLen {
+		trimmedMessage = trimmedMessage[:taskNotifyMessageMaxLen] + "…"
 	}
 
 	level := db.NotificationLevelInfo

@@ -165,6 +165,21 @@
 {% endif %}
 {% endmacro %}
 
+{% macro Details(label, body="", open=false, icon_name="", attrs="") %}
+<details class="ui-details"{% if open %} open{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
+  <summary class="ui-details-summary">
+    <span class="ui-details-caret" aria-hidden="true">{{ LucideIcon("chevron-right", 16) }}</span>
+    {% if icon_name %}
+      <span class="ui-details-icon" aria-hidden="true">{{ LucideIcon(icon_name, 16) }}</span>
+    {% endif %}
+    <span class="ui-details-label">{{ label }}</span>
+  </summary>
+  <div class="ui-details-content">
+    {{ body | safe }}
+  </div>
+</details>
+{% endmacro %}
+
 {% macro Field(label, control, id="", help="", error="", required=false, label_tag="label", attrs="") %}
 <div class="ui-field{% if error %} has-error{% endif %}"{% if attrs %} {{ attrs | safe }}{% endif %}>
   <div class="ui-field-head">

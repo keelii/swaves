@@ -2082,13 +2082,45 @@ func ImportMarkdownService(dbx *db.DB, in ImportMarkdownInput) error {
 	return nil
 }
 
-func ListImportingPreviewItemsService(dbx *db.DB) ([]PreviewPostItem, error) {
-	rows, err := dbx.Query(`
+func ListImportingPreviewItemsService(dbx *db.DB, pager *types.Pagination) ([]PreviewPostItem, error) {
+	queryLimit := 0
+	queryOffset := 0
+
+	if pager != nil {
+		row := dbx.QueryRow(`
+			SELECT COUNT(1)
+			FROM `+string(db.TablePosts)+`
+			WHERE status = ? AND deleted_at IS NULL
+		`, importingPostStatus)
+		if err := row.Scan(&pager.Total); err != nil {
+			return nil, err
+		}
+		if pager.PageSize > 0 {
+			pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+			if pager.Page <= 0 {
+				pager.Page = 1
+			}
+			if pager.Num > 0 && pager.Page > pager.Num {
+				pager.Page = pager.Num
+			}
+			queryLimit = pager.PageSize
+			queryOffset = (pager.Page - 1) * pager.PageSize
+		}
+	}
+
+	querySQL := `
 		SELECT id, title, slug, content, kind, created_at, published_at
-		FROM `+string(db.TablePosts)+`
+		FROM ` + string(db.TablePosts) + `
 		WHERE status = ? AND deleted_at IS NULL
 		ORDER BY created_at DESC, id DESC
-	`, importingPostStatus)
+	`
+	queryArgs := []interface{}{importingPostStatus}
+	if queryLimit > 0 {
+		querySQL += " LIMIT ? OFFSET ?"
+		queryArgs = append(queryArgs, queryLimit, queryOffset)
+	}
+
+	rows, err := dbx.Query(querySQL, queryArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -2147,7 +2179,7 @@ func ListImportingPreviewItemsService(dbx *db.DB) ([]PreviewPostItem, error) {
 	}
 
 	for i := range items {
-		items[i].Index = i
+		items[i].Index = queryOffset + i
 	}
 
 	return items, nil

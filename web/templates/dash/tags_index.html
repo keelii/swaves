@@ -18,42 +18,44 @@
 {% endblock %}
 
 {% block content %}
-<div class="data-table-wrap">
-  <table id="tags-table" class="data-table" aria-label="标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.tags.api.batch_delete') }}">
-    <thead>
-      <tr>
-        <th>{{ ui.table_th_id() }}</th>
-        <th>名称</th>
-        <th class="cell-12">URL 标识</th>
-        <th>文章数量</th>
-        <th>创建时间</th>
-        <th>更新时间</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for tag in Tags %}
-        <tr data-batch-delete-id="{{ tag.ID }}">
-          <td>{{ ui.table_td_id(tag.ID) }}</td>
-          <td>{{ tag.Name }}</td>
-          <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
-          <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
-          <td>{{ tag.CreatedAt | relativeTime }}</td>
-          <td>{{ tag.UpdatedAt | relativeTime }}</td>
-          <td>
-            <div class="cell-actions">
-              {{ sui.LinkIcon("square-pen", UrlFor('admin.tags.edit', id=tag.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-              <form method="post" action="{{ UrlFor('admin.tags.delete', id=tag.ID) }}">
-                {{ _csrf_token() }}
-                {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
-              </form>
-            </div>
-          </td>
+{% if Tags|length > 0 %}
+  <div class="data-table-wrap">
+    <table id="tags-table" class="data-table" aria-label="标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.tags.api.batch_delete') }}">
+      <thead>
+        <tr>
+          <th>{{ ui.table_th_id() }}</th>
+          <th>名称</th>
+          <th class="cell-12">URL 标识</th>
+          <th>文章数量</th>
+          <th>创建时间</th>
+          <th>更新时间</th>
+          <th>操作</th>
         </tr>
-      {% else %}
-        <tr><td colspan="7">暂无标签</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+      </thead>
+      <tbody>
+        {% for tag in Tags %}
+          <tr data-batch-delete-id="{{ tag.ID }}">
+            <td>{{ ui.table_td_id(tag.ID) }}</td>
+            <td>{{ tag.Name }}</td>
+            <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
+            <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
+            <td>{{ tag.CreatedAt | relativeTime }}</td>
+            <td>{{ tag.UpdatedAt | relativeTime }}</td>
+            <td>
+              <div class="cell-actions">
+                {{ sui.LinkIcon("square-pen", UrlFor('admin.tags.edit', id=tag.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+                <form method="post" action="{{ UrlFor('admin.tags.delete', id=tag.ID) }}">
+                  {{ _csrf_token() }}
+                  {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  {{ sui.EmptyState("暂无标签") }}
+{% endif %}
 {% endblock %}

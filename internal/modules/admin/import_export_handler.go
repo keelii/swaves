@@ -10,6 +10,7 @@ import (
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/middleware"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -153,12 +154,15 @@ func readImportParseOptions(c fiber.Ctx) importParseOptions {
 }
 
 func (h *Handler) GetImportHandler(c fiber.Ctx) error {
-	importingItems, err := ListImportingPreviewItemsService(h.Model)
+	pager := middleware.GetPagination(c)
+	importingItems, err := ListImportingPreviewItemsService(h.Model, &pager)
 	if err != nil {
 		logger.Error("list importing items failed: %v", err)
 		return RenderAdminView(c, "dash/import.html", fiber.Map{
 			"Title":          "Import Markdown",
 			"ImportingItems": []PreviewPostItem{},
+			"ImportingTotal": 0,
+			"Pager":          pager,
 			"AllCategories":  []db.Category{},
 			"Error":          "Load importing items failed: " + err.Error(),
 		}, "")
@@ -177,6 +181,8 @@ func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 	return RenderAdminView(c, "dash/import.html", fiber.Map{
 		"Title":          "Import Markdown",
 		"ImportingItems": importingItems,
+		"ImportingTotal": pager.Total,
+		"Pager":          pager,
 		"AllCategories":  allCategories,
 	}, "")
 }

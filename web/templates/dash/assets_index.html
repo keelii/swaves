@@ -156,56 +156,58 @@
 
 <div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
 
-<div class="data-table-wrap" data-role="multiselect-scope">
-<table id="assets-table" class="data-table" data-role="data-table">
-  <thead>
-    <tr>
-      <th>{{ ui.table_th_id() }}</th>
-      <th>类型</th>
-      <th>服务</th>
-      <th>文件名</th>
-      <th>备注</th>
-      <th>链接</th>
-      <th class="cell-6">大小</th>
-      <th class="cell-12">创建时间</th>
-      <th class="cell-9">操作</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for assetItem in Items %}
-      <tr data-asset-id="{{ assetItem.id }}">
-        <td>{{ ui.table_td_id(assetItem.id) }}</td>
-        <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
-        <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
-        <td>{{ assetItem.original_name }}</td>
-        <td>{% if assetItem.remark %}{{ assetItem.remark }}{% else %}-{% endif %}</td>
-        <td>
-          {% if assetItem.file_url %}
-            <a href="{{ assetItem.file_url }}" target="_blank" rel="noopener" class="asset-cell-url" title="{{ assetItem.file_url }}">{{ assetItem.file_url }}</a>
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>{{ assetItem.size_bytes | humanSize }}</td>
-        <td>{{ assetItem.created_at | formatTime }}</td>
-        <td class="cell-6">
-          <div class="row-actions asset-row-actions">
-            {% if assetItem.file_url %}
-              {{ sui.IconAction("link-2", "复制图片链接", "asset-copy-url", attrs=HtmlAttrs({"data-url": assetItem.file_url, "data-title": "复制图片链接"})) }}
-              {% if assetItem.kind == "image" %}
-                {{ sui.IconAction("link-2", "复制 Markdown 代码", "asset-copy-markdown", attrs=HtmlAttrs({"data-url": assetItem.file_url, "data-name": assetItem.original_name, "data-title": "复制 Markdown 代码"})) }}
-              {% endif %}
-            {% endif %}
-            {{ sui.IconAction("trash-2", "删除", "asset-delete", attrs=HtmlAttrs({"data-id": assetItem.id, "data-title": "删除"})) }}
-          </div>
-        </td>
+{% if Items|length > 0 %}
+  <div class="data-table-wrap" data-role="multiselect-scope">
+  <table id="assets-table" class="data-table" data-role="data-table">
+    <thead>
+      <tr>
+        <th>{{ ui.table_th_id() }}</th>
+        <th>类型</th>
+        <th>服务</th>
+        <th>文件名</th>
+        <th>备注</th>
+        <th>链接</th>
+        <th class="cell-6">大小</th>
+        <th class="cell-12">创建时间</th>
+        <th class="cell-9">操作</th>
       </tr>
-    {% else %}
-      <tr><td colspan="9">暂无资源</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
+    </thead>
+    <tbody>
+      {% for assetItem in Items %}
+        <tr data-asset-id="{{ assetItem.id }}">
+          <td>{{ ui.table_td_id(assetItem.id) }}</td>
+          <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
+          <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
+          <td>{{ assetItem.original_name }}</td>
+          <td>{% if assetItem.remark %}{{ assetItem.remark }}{% else %}-{% endif %}</td>
+          <td>
+            {% if assetItem.file_url %}
+              <a href="{{ assetItem.file_url }}" target="_blank" rel="noopener" class="asset-cell-url" title="{{ assetItem.file_url }}">{{ assetItem.file_url }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>{{ assetItem.size_bytes | humanSize }}</td>
+          <td>{{ assetItem.created_at | formatTime }}</td>
+          <td class="cell-6">
+            <div class="row-actions asset-row-actions">
+              {% if assetItem.file_url %}
+                {{ sui.IconAction("link-2", "复制图片链接", "asset-copy-url", attrs=HtmlAttrs({"data-url": assetItem.file_url, "data-title": "复制图片链接"})) }}
+                {% if assetItem.kind == "image" %}
+                  {{ sui.IconAction("link-2", "复制 Markdown 代码", "asset-copy-markdown", attrs=HtmlAttrs({"data-url": assetItem.file_url, "data-name": assetItem.original_name, "data-title": "复制 Markdown 代码"})) }}
+                {% endif %}
+              {% endif %}
+              {{ sui.IconAction("trash-2", "删除", "asset-delete", attrs=HtmlAttrs({"data-id": assetItem.id, "data-title": "删除"})) }}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% else %}
+  {{ sui.EmptyState("暂无资源") }}
+{% endif %}
 
 {{ sui.Dialog(
   "asset-alert-dialog",

@@ -522,31 +522,16 @@
     }
 
     function ensureNotificationEmptyState() {
-      var tableBody = document.querySelector('#notifications-table tbody');
-      if (!tableBody) {
+      var tableWrap = document.getElementById('notifications-table-wrap');
+      var emptyState = document.getElementById('notifications-empty-state');
+      if (!tableWrap || !emptyState) {
         return;
       }
 
-      var rows = tableBody.querySelectorAll('[data-notification-row]');
-      var emptyRow = tableBody.querySelector('[data-role="notification-empty-row"]');
-      if (rows.length > 0) {
-        if (emptyRow) {
-          emptyRow.remove();
-        }
-        return;
-      }
-
-      if (emptyRow) {
-        return;
-      }
-
-      emptyRow = document.createElement('tr');
-      emptyRow.setAttribute('data-role', 'notification-empty-row');
-      var cell = document.createElement('td');
-      cell.setAttribute('colspan', '8');
-      cell.textContent = '暂无通知';
-      emptyRow.appendChild(cell);
-      tableBody.appendChild(emptyRow);
+      var rows = tableWrap.querySelectorAll('[data-notification-row]');
+      var hasRows = rows.length > 0;
+      tableWrap.hidden = !hasRows;
+      emptyState.hidden = hasRows;
     }
 
     function startNotificationPolling() {
@@ -566,6 +551,7 @@
     applyFullMain(loadFullMainState());
     initTheme();
     startNotificationPolling();
+    ensureNotificationEmptyState();
 
     document.addEventListener('click', function(event) {
       var button = event.target.closest('[data-role="toggle-full-main"]');

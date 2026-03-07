@@ -545,6 +545,6 @@ var DefaultSettings = []Setting{
 	{Sort: 10, Kind: SettingKindUIExperience, Name: "文字大小", Code: "font_size", Type: "number", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 	{Sort: 11, Kind: SettingKindUIExperience, Name: "界面模式", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
 	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
-	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin nav width", Code: "admin_nav_width", Type: "number", Value: "150", DefaultOptionValue: "150", Description: "Admin UI nav width", Attrs: `{"min": 180, "max": 480, "step": 5}`},
+	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin nav width", Code: "admin_nav_width", Type: "number", Value: "150", DefaultOptionValue: "150", Description: "Admin UI nav width", Attrs: `{"min": 150, "max": 480, "step": 5}`},
 	{Sort: 13, Kind: SettingKindUIExperience, Name: "分页器每页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
 }

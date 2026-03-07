@@ -35,43 +35,45 @@
 {% endblock %}
 
 {% block content %}
-<div class="data-table-wrap">
-  <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.encrypted_posts.api.batch_delete') }}">
-    <thead>
-    <tr>
-      <th>{{ ui.table_th_id() }}</th>
-      <th>标题</th>
-      <th>URL 标识</th>
-      <th>过期时间</th>
-      <th>更新时间</th>
-      <th>操作</th>
-    </tr>
-    </thead>
+{% if Posts|length > 0 %}
+  <div class="data-table-wrap">
+    <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.encrypted_posts.api.batch_delete') }}">
+      <thead>
+      <tr>
+        <th>{{ ui.table_th_id() }}</th>
+        <th>标题</th>
+        <th>URL 标识</th>
+        <th>过期时间</th>
+        <th>更新时间</th>
+        <th>操作</th>
+      </tr>
+      </thead>
 
-    <tbody>
-    {% for post in Posts %}
-    <tr>
-      <td>{{ ui.table_td_id(post.ID) }}</td>
-      <td>{{ post.Title }}</td>
-      <td>{{ post.Slug }}</td>
-      <td>{% if post.ExpiresAt %}{{ post.ExpiresAt | formatTime }}{% else %}永不过期{% endif %}</td>
-      <td>{{ post.UpdatedAt | relativeTime }}</td>
-      <td>
-        <div class="cell-actions">
-          {{ sui.LinkIcon("square-pen", UrlFor('admin.encrypted_posts.edit', id=post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-          <form method="post" action="{{ UrlFor('admin.encrypted_posts.delete', id=post.ID) }}">
-            {{ _csrf_token() }}
-            {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
-          </form>
-        </div>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="6">暂无加密文章</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</div>
+      <tbody>
+      {% for post in Posts %}
+      <tr>
+        <td>{{ ui.table_td_id(post.ID) }}</td>
+        <td>{{ post.Title }}</td>
+        <td>{{ post.Slug }}</td>
+        <td>{% if post.ExpiresAt %}{{ post.ExpiresAt | formatTime }}{% else %}永不过期{% endif %}</td>
+        <td>{{ post.UpdatedAt | relativeTime }}</td>
+        <td>
+          <div class="cell-actions">
+            {{ sui.LinkIcon("square-pen", UrlFor('admin.encrypted_posts.edit', id=post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+            <form method="post" action="{{ UrlFor('admin.encrypted_posts.delete', id=post.ID) }}">
+              {{ _csrf_token() }}
+              {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  {{ sui.EmptyState("暂无加密文章") }}
+{% endif %}
 
 <script>
 (function() {
