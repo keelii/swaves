@@ -32,11 +32,6 @@ type FiberView struct {
 	mu            sync.Mutex
 }
 
-const (
-	globalUINamespace    = "ui"
-	adminUIMacroTemplate = "/admin/macro/ui.html"
-)
-
 var (
 	errFiberViewNil = errors.New("fiber view engine is nil")
 )
@@ -141,26 +136,6 @@ func (v *FiberView) Load() error {
 	}
 
 	v.env.ClearTemplates()
-	macroTemplateName, err := normalizeTemplateName(adminUIMacroTemplate)
-	if err != nil {
-		return err
-	}
-	macroTemplate, err := v.env.GetTemplate(macroTemplateName)
-	if err != nil {
-		var templateErr *minijinja.Error
-		if !errors.As(err, &templateErr) || templateErr.Kind != minijinja.ErrTemplateNotFound {
-			return fmt.Errorf("load macro template %q failed: %w", macroTemplateName, err)
-		}
-	} else {
-		state, err := macroTemplate.EvalToState(nil)
-		if err != nil {
-			return fmt.Errorf("evaluate macro template %q failed: %w", macroTemplateName, err)
-		}
-		exports := state.Exports()
-		if len(exports) > 0 {
-			v.env.AddGlobal(globalUINamespace, value.FromMap(exports))
-		}
-	}
 	for _, name := range templateNames {
 		if _, err := v.env.GetTemplate(name); err != nil {
 			return fmt.Errorf("load template %q failed: %w", name, err)
@@ -180,26 +155,6 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 
 	if v.clearOnRender {
 		v.env.ClearTemplates()
-	}
-	macroTemplateName, err := normalizeTemplateName(adminUIMacroTemplate)
-	if err != nil {
-		return err
-	}
-	macroTemplate, err := v.env.GetTemplate(macroTemplateName)
-	if err != nil {
-		var templateErr *minijinja.Error
-		if !errors.As(err, &templateErr) || templateErr.Kind != minijinja.ErrTemplateNotFound {
-			return fmt.Errorf("load macro template %q failed: %w", macroTemplateName, err)
-		}
-	} else {
-		state, err := macroTemplate.EvalToState(nil)
-		if err != nil {
-			return fmt.Errorf("evaluate macro template %q failed: %w", macroTemplateName, err)
-		}
-		exports := state.Exports()
-		if len(exports) > 0 {
-			v.env.AddGlobal(globalUINamespace, value.FromMap(exports))
-		}
 	}
 
 	templateName, err := normalizeTemplateName(name)

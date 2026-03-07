@@ -58,7 +58,9 @@
     </table>
   </div>
   {% else %}
-  {{ sui.EmptyState("暂无已删除文章", "删除后的文章会显示在这里。", "trash-2") }}
+    <div class="app-px">
+      {{ sui.EmptyState("暂无已删除文章", "", "trash-2") }}
+    </div>
   {% endif %}
 {% endif %}
 
