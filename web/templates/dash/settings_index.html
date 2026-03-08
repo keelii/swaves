@@ -4,14 +4,14 @@
 {% set OperationTableID = "settings-table" %}
 
 {% block page_actions %}
-  {{ sui.LinkButton("新建设置", "primary", href=UrlFor('admin.settings.new')) }}
-  {{ sui.LinkButton("编辑全部", "outline", href=UrlFor('admin.settings.all')) }}
+  {{ sui.LinkButton("新建设置", "primary", href=UrlFor('dash.settings.new')) }}
+  {{ sui.LinkButton("编辑全部", "outline", href=UrlFor('dash.settings.all')) }}
 {% endblock %}
 
 {% block content %}
 {% if Settings|length > 0 %}
   <div class="data-table-wrap">
-    <table id="settings-table" class="data-table" aria-label="设置列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.settings.api.batch_delete') }}">
+    <table id="settings-table" class="data-table" aria-label="设置列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.settings.api.batch_delete') }}">
       <thead>
         <tr>
           <th>{{ ui.table_th_id() }}</th>
@@ -48,8 +48,8 @@
           <td>{{ setting.UpdatedAt | relativeTime }}</td>
           <td>
             <div class="cell-actions">
-              {{ sui.LinkIcon("square-pen", UrlFor('admin.settings.edit', id=setting.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-              <form method="post" action="{{ UrlFor('admin.settings.delete', id=setting.ID) }}">
+              {{ sui.LinkIcon("square-pen", UrlFor('dash.settings.edit', id=setting.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+              <form method="post" action="{{ UrlFor('dash.settings.delete', id=setting.ID) }}">
                 {{ _csrf_token() }}
                 {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
               </form>

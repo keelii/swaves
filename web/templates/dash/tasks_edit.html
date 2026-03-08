@@ -4,8 +4,8 @@
 {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-{{ sui.LinkButton("新建", "outline", href=UrlFor('admin.tasks.new')) }}
+{{ sui.LinkButton("新建", "outline", href=UrlFor('dash.tasks.new')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('admin.tasks.update', id=Task.ID), Task = Task, IsEdit = true %}{% include "dash/include/forms/tasks_form.html" %}{% endwith %}
+{% with Action = UrlFor('dash.tasks.update', id=Task.ID), Task = Task, IsEdit = true %}{% include "dash/include/forms/tasks_form.html" %}{% endwith %}
 {% endblock %}

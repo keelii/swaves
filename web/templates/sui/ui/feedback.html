@@ -68,11 +68,11 @@
     <h3>Toast</h3>
     <p class="toolbar-text">Toast 适合用于异步提示（上传/导入/后台任务反馈）。</p>
     <div class="ui-tags" aria-label="Toast 示例按钮">
-      {{ sui.Button("Info", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "info", title: "提示", message: "这是一条 info toast", duration: 2200})\'') }}
-      {{ sui.Button("Success", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "success", title: "成功", message: "保存成功", duration: 2200})\'') }}
-      {{ sui.Button("Warning", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "warning", title: "注意", message: "请检查输入内容", duration: 2600})\'') }}
-      {{ sui.Button("Danger", "outline", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "danger", title: "失败", message: "操作失败，请重试", duration: 2800})\'') }}
-      {{ sui.Button("不自动关闭", "secondary", attrs='onclick=\'window.AdminAppUI.toast.show({kind: "info", title: "需要手动关闭", message: "duration=0 表示不会自动关闭", duration: 0})\'') }}
+      {{ sui.Button("Info", "outline", attrs='onclick=\'window.DashAppUI.toast.show({kind: "info", title: "提示", message: "这是一条 info toast", duration: 2200})\'') }}
+      {{ sui.Button("Success", "outline", attrs='onclick=\'window.DashAppUI.toast.show({kind: "success", title: "成功", message: "保存成功", duration: 2200})\'') }}
+      {{ sui.Button("Warning", "outline", attrs='onclick=\'window.DashAppUI.toast.show({kind: "warning", title: "注意", message: "请检查输入内容", duration: 2600})\'') }}
+      {{ sui.Button("Danger", "outline", attrs='onclick=\'window.DashAppUI.toast.show({kind: "danger", title: "失败", message: "操作失败，请重试", duration: 2800})\'') }}
+      {{ sui.Button("不自动关闭", "secondary", attrs='onclick=\'window.DashAppUI.toast.show({kind: "info", title: "需要手动关闭", message: "duration=0 表示不会自动关闭", duration: 0})\'') }}
     </div>
 
     <h3>Empty State</h3>

@@ -13,7 +13,7 @@ func RegisterRouter(
 	suiGroup := app.Group("/sui")
 
 	suiGroup.Get("/", func(c fiber.Ctx) error {
-		return RenderSUIView(c, "sui/admin_home.html", fiber.Map{}, "")
+		return RenderSUIView(c, "sui/dash_home.html", fiber.Map{}, "")
 	}).Name("sui.home")
 	suiGroup.Get("/post_edit", func(c fiber.Ctx) error {
 		return RenderSUIView(c, "sui/post_edit.html", fiber.Map{}, "")

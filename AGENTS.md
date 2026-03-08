@@ -20,7 +20,7 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 1) Route and URL discipline:
 - Separate route paths from content prefixes.
 - Use named routes and `UrlFor` for internal links/redirects.
-- Do not hardcode admin paths.
+- Do not hardcode dash paths.
 
 2) Template discipline:
 - MiniJinja only, `.html` only.
@@ -50,14 +50,14 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 ## Current Project Decisions (From Active Thread)
 
 ### SUI migration scope
-- Current admin->sui migration is frontend UI only; do not implement backend logic in this phase.
+- Current dash->sui migration is frontend UI only; do not implement backend logic in this phase.
 - For modules/pages, prioritize component-layer parity; reuse existing generic components (for example data list/table list pages) instead of rebuilding per-module list pages.
-- If a module is not implemented in old admin, it can be skipped for now.
+- If a module is not implemented in old dash, it can be skipped for now.
 
 ### SEditor (ProseMirror) v1 scope
 - `web/static/seditor/` is a standalone editor workspace and only exports one public init API.
 - Bundle editor with esbuild into a single JS artifact for integration.
-- Initial integration target is `/admin_app/post_edit`.
+- Initial integration target is `/dash_app/post_edit`.
 - v1 supports minimal markdown WYSIWYG: bold, italic, heading (`###` style), blockquote, ordered/unordered list.
 - v1 explicitly does not add rendered support for footnote/formula; these stay raw text behavior.
 - `raw_block` is editable in WYSIWYG mode using `<pre contenteditable>` style behavior, without preview rendering.

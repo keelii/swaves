@@ -31,7 +31,7 @@ It does not define business logic.
 ### 4) Route and link generation
 
 - Internal links and redirects in templates MUST use `url_for`.
-- Hardcoded admin paths MUST NOT be introduced.
+- Hardcoded dash paths MUST NOT be introduced.
 
 ### 5) Composition style
 
@@ -89,7 +89,7 @@ It does not define business logic.
 
 ## MUST NOT
 
-- MUST NOT introduce new hardcoded admin URL strings in templates.
+- MUST NOT introduce new hardcoded dash URL strings in templates.
 - MUST NOT mix template role responsibilities in one file.
 - MUST NOT silently depend on hidden context injection.
 - MUST NOT add migration logic into unrelated initialization flow.

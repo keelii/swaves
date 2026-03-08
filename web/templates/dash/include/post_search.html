@@ -4,7 +4,7 @@
     line-height: initial;
   }
 </style>
-<form method="get" action="{{ UrlFor('admin.posts.list') }}" class="posts-search-form" id="posts-search-form">
+<form method="get" action="{{ UrlFor('dash.posts.list') }}" class="posts-search-form" id="posts-search-form">
   <input type="hidden" name="kind" value="{{ KindQuery|default("0") }}">
   {% if FilterTagIDStr %}<input type="hidden" name="tag" value="{{ FilterTagIDStr }}">{% endif %}
   {% if FilterCategoryIDStr %}<input type="hidden" name="category" value="{{ FilterCategoryIDStr }}">{% endif %}

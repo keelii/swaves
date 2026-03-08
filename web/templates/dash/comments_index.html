@@ -8,15 +8,15 @@
 {% block operation_left %}
 {% set status = (StatusFilter or "") %}
 {{ sui.TabsStart("评论状态") }}
-  {{ sui.Tab("全部", href=UrlFor('admin.comments.list'), active=(status == "")) }}
-  {{ sui.Tab("待审核", href=UrlFor('admin.comments.list', status='pending'), active=(status == "pending")) }}
-  {{ sui.Tab("已通过", href=UrlFor('admin.comments.list', status='approved'), active=(status == "approved")) }}
-  {{ sui.Tab("垃圾", href=UrlFor('admin.comments.list', status='spam'), active=(status == "spam")) }}
+  {{ sui.Tab("全部", href=UrlFor('dash.comments.list'), active=(status == "")) }}
+  {{ sui.Tab("待审核", href=UrlFor('dash.comments.list', status='pending'), active=(status == "pending")) }}
+  {{ sui.Tab("已通过", href=UrlFor('dash.comments.list', status='approved'), active=(status == "approved")) }}
+  {{ sui.Tab("垃圾", href=UrlFor('dash.comments.list', status='spam'), active=(status == "spam")) }}
 {{ sui.TabsEnd() }}
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerBase = UrlFor('admin.comments.list') %}
+  {% set pagerBase = UrlFor('dash.comments.list') %}
   {% if StatusFilter %}
     {% set pagerBase = pagerBase ~ "?status=" ~ StatusFilter %}
   {% endif %}
@@ -30,7 +30,7 @@
 
 <div class="data-table-wrap">
 {% if Comments|length > 0 %}
-<table id="comments-table" class="data-table" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.comments.api.batch_delete') }}">
+<table id="comments-table" class="data-table" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.comments.api.batch_delete') }}">
   <thead>
   <tr>
     <th>{{ ui.table_th_id() }}</th>
@@ -79,27 +79,27 @@
       <td>
         <div class="cell-actions">
           {% if comment.Status != "approved" %}
-            <form method="post" action="{{ UrlFor('admin.comments.approve', id=comment.ID) }}">
+            <form method="post" action="{{ UrlFor('dash.comments.approve', id=comment.ID) }}">
               {{ _csrf_token() }}
               <input type="hidden" name="status_filter" value="{{ status }}">
               {{ sui.Button("通过", "outline", attrs='type="submit"') }}
             </form>
           {% endif %}
           {% if comment.Status != "pending" %}
-            <form method="post" action="{{ UrlFor('admin.comments.pending', id=comment.ID) }}">
+            <form method="post" action="{{ UrlFor('dash.comments.pending', id=comment.ID) }}">
               {{ _csrf_token() }}
               <input type="hidden" name="status_filter" value="{{ status }}">
               {{ sui.Button("待审", "outline", attrs='type="submit"') }}
             </form>
           {% endif %}
           {% if comment.Status != "spam" %}
-            <form method="post" action="{{ UrlFor('admin.comments.spam', id=comment.ID) }}">
+            <form method="post" action="{{ UrlFor('dash.comments.spam', id=comment.ID) }}">
               {{ _csrf_token() }}
               <input type="hidden" name="status_filter" value="{{ status }}">
               {{ sui.Button("垃圾", "outline", attrs='type="submit"') }}
             </form>
           {% endif %}
-          <form method="post" action="{{ UrlFor('admin.comments.delete', id=comment.ID) }}">
+          <form method="post" action="{{ UrlFor('dash.comments.delete', id=comment.ID) }}">
             {{ _csrf_token() }}
             <input type="hidden" name="status_filter" value="{{ status }}">
             {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}

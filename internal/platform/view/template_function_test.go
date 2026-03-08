@@ -202,7 +202,7 @@ func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(
 		filepath.Join(tempDir, "page.html"),
-		[]byte(`{% if UrlIs("admin.posts.edit") %}active{% else %}inactive{% endif %}|{% if UrlIs("admin.home") %}home{% else %}not-home{% endif %}`),
+		[]byte(`{% if UrlIs("dash.posts.edit") %}active{% else %}inactive{% endif %}|{% if UrlIs("dash.home") %}home{% else %}not-home{% endif %}`),
 		0o644,
 	); err != nil {
 		t.Fatalf("write page template failed: %v", err)
@@ -218,7 +218,7 @@ func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
-		"RouteName": "admin.posts.edit",
+		"RouteName": "dash.posts.edit",
 	}); err != nil {
 		t.Fatalf("render page failed: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestUrlIsRejectsMultipleArguments(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(
 		filepath.Join(tempDir, "page.html"),
-		[]byte(`{% if UrlIs("admin.posts.list", "admin.posts.edit") %}active{% else %}inactive{% endif %}`),
+		[]byte(`{% if UrlIs("dash.posts.list", "dash.posts.edit") %}active{% else %}inactive{% endif %}`),
 		0o644,
 	); err != nil {
 		t.Fatalf("write page template failed: %v", err)
@@ -247,7 +247,7 @@ func TestUrlIsRejectsMultipleArguments(t *testing.T) {
 
 	var out bytes.Buffer
 	err := view.Render(&out, "page.html", map[string]any{
-		"RouteName": "admin.posts.edit",
+		"RouteName": "dash.posts.edit",
 	})
 	if err == nil {
 		t.Fatal("expected render error when UrlIs receives multiple arguments")
@@ -259,7 +259,7 @@ func TestUrlIsRejectsMultipleArguments(t *testing.T) {
 
 func TestURLForSupportsKeywordArguments(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('admin.posts.edit', id=PostID, tab='comments') }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('dash.posts.edit', id=PostID, tab='comments') }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
@@ -284,7 +284,7 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 	if got := out.String(); got != "ok" {
 		t.Fatalf("unexpected render output: %q", got)
 	}
-	if capturedName != "admin.posts.edit" {
+	if capturedName != "dash.posts.edit" {
 		t.Fatalf("captured route name = %q", capturedName)
 	}
 	if capturedParams["id"] != "12" || capturedParams["tab"] != "comments" {
@@ -297,7 +297,7 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 
 func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('admin.posts.edit', {"id": "1", "tab": "draft"}, id=PostID, tab='comments') }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('dash.posts.edit', {"id": "1", "tab": "draft"}, id=PostID, tab='comments') }}`), 0o644); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 

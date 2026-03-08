@@ -1668,7 +1668,7 @@ func CountPostComments(db *DB, postID int64, status CommentStatus) (int, error) 
 	return Count(db, specComments, whereClause, whereArgs)
 }
 
-func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Comment, int, error) {
+func ListCommentsForDash(db *DB, status CommentStatus, limit, offset int) ([]Comment, int, error) {
 	whereClause := "c.deleted_at IS NULL"
 	whereArgs := make([]interface{}, 0, 2)
 	if status != "" {
@@ -1679,7 +1679,7 @@ func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Co
 	totalSQL := `SELECT COUNT(*) FROM ` + string(TableComments) + ` c WHERE ` + whereClause
 	var total int
 	if err := db.QueryRow(totalSQL, whereArgs...).Scan(&total); err != nil {
-		return nil, 0, WrapInternalErr("ListCommentsForAdmin.Count", err)
+		return nil, 0, WrapInternalErr("ListCommentsForDash.Count", err)
 	}
 
 	query := `
@@ -1699,7 +1699,7 @@ func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Co
 
 	rows, err := db.Query(query, listArgs...)
 	if err != nil {
-		return nil, 0, WrapInternalErr("ListCommentsForAdmin.Query", err)
+		return nil, 0, WrapInternalErr("ListCommentsForDash.Query", err)
 	}
 	defer rows.Close()
 
@@ -1731,7 +1731,7 @@ func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Co
 			&item.PostSlug,
 			&item.ParentAuthor,
 		); scanErr != nil {
-			return nil, 0, WrapInternalErr("ListCommentsForAdmin.Scan", scanErr)
+			return nil, 0, WrapInternalErr("ListCommentsForDash.Scan", scanErr)
 		}
 		if deletedAt.Valid {
 			item.DeletedAt = &deletedAt.Int64
@@ -1739,7 +1739,7 @@ func ListCommentsForAdmin(db *DB, status CommentStatus, limit, offset int) ([]Co
 		items = append(items, item)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, 0, WrapInternalErr("ListCommentsForAdmin.Rows", err)
+		return nil, 0, WrapInternalErr("ListCommentsForDash.Rows", err)
 	}
 
 	return items, total, nil
@@ -3575,7 +3575,6 @@ func UpdateSetting(db *DB, s *Setting) error {
 }
 
 func UpdateSettingByCode(db *DB, code string, value string) error {
-	// 获取原有设置
 	setting, err := GetSettingByCode(db, code)
 	if err != nil {
 		return err
@@ -3620,7 +3619,7 @@ func DeleteSetting(db *DB, id int64) error {
 
 // CheckPassword 检查管理员密码
 func CheckPassword(db *DB, raw string) error {
-	setting, err := GetSettingByCode(db, "admin_password")
+	setting, err := GetSettingByCode(db, "dash_password")
 	if err != nil {
 		return err
 	}
@@ -4001,7 +4000,7 @@ func buildAssetWhereClause(kind, provider string) (string, []interface{}) {
 }
 
 const (
-	NotificationReceiverAdmin = "admin"
+	NotificationReceiverDash = "dash"
 
 	NotificationLevelInfo    = "info"
 	NotificationLevelWarning = "warning"
@@ -4029,7 +4028,7 @@ type Notification struct {
 func normalizeNotificationReceiver(receiver string) string {
 	receiver = strings.TrimSpace(receiver)
 	if receiver == "" {
-		return NotificationReceiverAdmin
+		return NotificationReceiverDash
 	}
 	return receiver
 }

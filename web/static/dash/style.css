@@ -1,7 +1,7 @@
 :root {
     --menu-width: 200px;
-    --admin-primary-hover: color-mix(in srgb, var(--primary) 85%, black);
-    --admin-primary-soft: color-mix(in srgb, var(--primary) 12%, transparent);
+    --dash-primary-hover: color-mix(in srgb, var(--primary) 85%, black);
+    --dash-primary-soft: color-mix(in srgb, var(--primary) 12%, transparent);
     --toggle-size: 16px;
     --toggle-padding: 2px;
 
@@ -42,7 +42,7 @@ input {
 }
 
 [data-theme="dark"] {
-    --admin-primary-soft: color-mix(in srgb, var(--primary) 20%, transparent);
+    --dash-primary-soft: color-mix(in srgb, var(--primary) 20%, transparent);
 }
 body {
     height: 100vh;
@@ -98,7 +98,7 @@ svg {
 }
 
 
-.admin-container {
+.dash-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -300,13 +300,13 @@ div.menu-item {
   font-weight: 500;
 }
 .menu-item:hover {
-    background: var(--admin-primary-soft);
+    background: var(--dash-primary-soft);
     color: var(--primary);
 }
 
 .submenu-item.active,
 .menu-item.active {
-    background: var(--admin-primary-soft);
+    background: var(--dash-primary-soft);
     color: var(--primary);
     border-right: 3px solid var(--primary);
 }
@@ -400,13 +400,13 @@ div.menu-item {
 }
 
 .submenu-item:hover {
-    background: var(--admin-primary-soft);
+    background: var(--dash-primary-soft);
     color: var(--primary);
 }
 
 .submenu-item.active {
     color: var(--primary);
-    background: var(--admin-primary-soft);
+    background: var(--dash-primary-soft);
 }
 
 /* 主内容区域 */
@@ -567,7 +567,7 @@ input[type="range"] {
 }
 .tab-item:hover {
   color: var(--primary);
-  background: var(--admin-primary-soft);
+  background: var(--dash-primary-soft);
 }
 .tab-item.active {
   color: var(--primary);

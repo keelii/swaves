@@ -261,34 +261,38 @@ func GetRSSRoute() string {
 	return routePath(rssPathValue())
 }
 
-func GetAdminUrl() string {
-	return routePath(normalizedPathSettingValue("admin_path"))
+func GetDashUrl() string {
+	base := normalizedPathSettingValue("dash_path")
+	if strings.TrimSpace(base) == "" {
+		base = "/dash"
+	}
+	return routePath(base)
 }
 
-func BuildAdminPath(path string) string {
+func BuildDashPath(path string) string {
 	path = strings.TrimSpace(path)
-	basePath := GetAdminUrl()
+	basePath := GetDashUrl()
 	if path == "" || path == "/" {
 		return basePath
 	}
-	if strings.HasPrefix(path, "/admin") {
-		path = strings.TrimPrefix(path, "/admin")
+	if strings.HasPrefix(path, "/dash") {
+		path = strings.TrimPrefix(path, "/dash")
 	}
 	return pathutil.JoinAbsolute(basePath, path)
 }
 
-func CanonicalAdminPath(path string) string {
+func CanonicalDashPath(path string) string {
 	path = strings.TrimSpace(path)
-	basePath := GetAdminUrl()
+	basePath := GetDashUrl()
 	if basePath == "/" {
 		return path
 	}
 	if path == basePath {
-		return "/admin"
+		return "/dash"
 	}
 	if strings.HasPrefix(path, basePath+"/") {
 		suffix := strings.TrimPrefix(path, basePath)
-		return pathutil.JoinAbsolute("/admin", suffix)
+		return pathutil.JoinAbsolute("/dash", suffix)
 	}
 	return path
 }
@@ -309,12 +313,12 @@ func GetPostRoute() string {
 	return routePath(postPrefixValue())
 }
 
-func GetAdminPostUrl(post db.Post) string {
-	return prefixedPath(GetAdminUrl(), GetPostUrl(post))
+func GetDashPostUrl(post db.Post) string {
+	return prefixedPath(GetDashUrl(), GetPostUrl(post))
 }
 
-func GetAdminEditPostUrl(post db.Post) string {
-	return prefixedPath(GetAdminUrl(), "posts", strconv.FormatInt(post.ID, 10), "edit")
+func GetDashEditPostUrl(post db.Post) string {
+	return prefixedPath(GetDashUrl(), "posts", strconv.FormatInt(post.ID, 10), "edit")
 }
 
 func GetAuthorGravatarUrl(size int) string {

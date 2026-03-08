@@ -13,7 +13,7 @@
 {% endblock %}
 {% block status_main_right %}
   {% if pager.Num > 1 %}
-    {{ sui.Pager(current=pager.Page, total=pager.Num, href_prefix=UrlFor('admin.import.show') ~ "?pageSize=" ~ pager.PageSize) }}
+    {{ sui.Pager(current=pager.Page, total=pager.Num, href_prefix=UrlFor('dash.import.show') ~ "?pageSize=" ~ pager.PageSize) }}
   {% endif %}
 {% endblock %}
 {% block content %}
@@ -137,7 +137,20 @@
   }
 
   .import-edit-table td {
-    min-width: 160px;
+    min-width: 140px;
+  }
+
+  .import-edit-table th.cell-action,
+  .import-edit-table td[data-import-edit-action],
+  .import-edit-table th.cell-status,
+  .import-edit-table td[data-import-edit-status] {
+    min-width: 104px;
+    width: 104px;
+  }
+
+  .import-edit-table td[data-import-edit-action] .ui-btn {
+    width: 100%;
+    white-space: nowrap;
   }
 
   .import-field-stack {
@@ -187,7 +200,7 @@
 {% endif %}
 
 <div class="card import-config-card">
-<form id="form" method="post" action="{{ UrlFor('admin.import.submit') }}" enctype="multipart/form-data">
+<form id="form" method="post" action="{{ UrlFor('dash.import.submit') }}" enctype="multipart/form-data">
   {{ _csrf_token() }}
   <section class="app-mb import-upload">
     <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
@@ -306,7 +319,7 @@ tags:
 
 <div id="import-edit-panel" class="import-edit-panel card"{% if importingTotal <= 0 %} hidden{% endif %}>
   <div class="import-edit-actions">
-    {{ sui.Alert(("待确认 " ~ importingTotal ~ " 条导入记录") if importingTotal > 0 else "暂无待确认导入记录", kind=("warning" if importingTotal > 0 else "success"), inline=true, attrs='id="import-edit-summary"') }}
+    {{ sui.Alert(("待确认 " ~ importingTotal ~ " 条导入记录") if importingTotal > 0 else "暂无待确认导入记录", kind=("warning" if importingTotal > 0 else "success"), attrs='id="import-edit-summary"') }}
   </div>
   <div class="app-mb hstack">
     {{ sui.Button("确认导入", "primary", attrs='type="button" id="import-confirm-btn"') }}
@@ -323,7 +336,8 @@ tags:
         <th>类型</th>
         <th>标签/分类</th>
         <th>内容（前 200 字）</th>
-        <th class="cell-6">确认状态</th>
+        <th class="cell-action">操作</th>
+        <th class="cell-status">确认状态</th>
       </tr>
       </thead>
       <tbody id="import-edit-rows">
@@ -354,9 +368,10 @@ tags:
 
 <script>
 $(function() {
-  var parseItemURL = {{ UrlFor('admin.import.parse_item') | tojson }};
-  var confirmItemURL = {{ UrlFor('admin.import.confirm_item') | tojson }};
-  var cancelItemURL = {{ UrlFor('admin.import.cancel') | tojson }};
+  var parseItemURL = {{ UrlFor('dash.import.parse_item') | tojson }};
+  var saveItemURL = {{ UrlFor('dash.import.save_item') | tojson }};
+  var confirmAllURL = {{ UrlFor('dash.import.confirm_all') | tojson }};
+  var cancelItemURL = {{ UrlFor('dash.import.cancel') | tojson }};
   var baseCategoryOptions = [{% for category in allCategories %}
     {{ category.Name | tojson }},{% endfor %}
   ];
@@ -376,7 +391,7 @@ $(function() {
   var $cancelConfirmBtn = $('#import-cancel-confirm-btn');
   var $rowTemplate = $('#import-edit-row-template');
   var parseConcurrency = 50;
-  var confirmConcurrency = 50;
+  var activeSaveRequests = 0;
   var importingTotalCount = Number({{ importingTotal|default(0) }}) || 0;
   var selectedFiles = [];
   var isParsing = false;
@@ -394,7 +409,7 @@ $(function() {
   }
 
   function getDialogAPI() {
-    return window.AdminAppUI && window.AdminAppUI.dialog ? window.AdminAppUI.dialog : null;
+    return window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
   }
 
   function openImportDialog(id, opener) {
@@ -709,6 +724,39 @@ $(function() {
     $cell.text(text);
   }
 
+  function applySavedItemToRow($row, rawItem) {
+    var item = normalizeItem(rawItem);
+    if (!item.post_id) {
+      return;
+    }
+
+    $row.attr('data-post-id', item.post_id);
+    $row.find('[data-field="post_id"]').val(item.post_id);
+    $row.find('[data-field="filename"]').val(item.filename);
+    $row.find('[data-field="created_at_unix"]').val(item.created_at_unix);
+    $row.find('[data-field="title"]').val(item.title);
+    $row.find('[data-field="slug"]').val(item.slug);
+    $row.find('[data-field="created_at"]').val(item.created_at);
+    $row.find('[data-field="tags"]').val(item.tags);
+    $row.find('[data-field="categories"]').val(item.categories);
+    $row.find('[data-field="content"]').val(item.content);
+
+    var statusName = 'import_status_' + item.post_id;
+    var statusValue = item.status === 'published' ? 'published' : 'draft';
+    $row.find('[data-field="status"]').attr('name', statusName).prop('checked', false);
+    $row.find('[data-field="status"][value="' + statusValue + '"]').prop('checked', true);
+
+    var kindName = 'import_kind_' + item.post_id;
+    var kindValue = item.kind === '1' ? '1' : '0';
+    $row.find('[data-field="kind"]').attr('name', kindName).prop('checked', false);
+    $row.find('[data-field="kind"][value="' + kindValue + '"]').prop('checked', true);
+
+    var $categorySelect = $row.find('select[data-field="category"]');
+    $categorySelect.attr('data-selected', item.category);
+    $categorySelect.attr('data-categories', item.categories);
+    initCategorySelect($row);
+  }
+
   function ensureEditPanelVisible() {
     if ($editPanel.prop('hidden')) {
       $editPanel.prop('hidden', false);
@@ -839,6 +887,16 @@ $(function() {
     return params;
   }
 
+  function markRowAsDirty($row) {
+    if (!$row || !$row.length) {
+      return;
+    }
+    if (String($row.find('[data-import-edit-status]').attr('data-state') || '') === 'running') {
+      return;
+    }
+    setRowStatus($row, 'pending', '已修改，待保存');
+  }
+
   $('select[name="title_source"]').on('change', function() {
     var v = $(this).val();
     if (v === 'frontmatter') { show('#title_field_container'); hide('#title_level_container'); }
@@ -933,6 +991,64 @@ $(function() {
     });
   });
 
+  $editRows.on(
+    'input.import change.import',
+    '[data-field="title"], [data-field="slug"], [data-field="created_at"], [data-field="tags"], [data-field="categories"], [data-field="content"], [data-field="category"], [data-field="status"], [data-field="kind"]',
+    function() {
+      var $row = $(this).closest('tr[data-import-item-row]');
+      markRowAsDirty($row);
+    }
+  );
+
+  $editRows.on('click', '[data-import-row-save-btn]', async function() {
+    if (isParsing || isConfirming || isCancelling) {
+      return;
+    }
+
+    var $btn = $(this);
+    var $row = $btn.closest('tr[data-import-item-row]');
+    if (!$row.length || $btn.prop('disabled')) {
+      return;
+    }
+
+    activeSaveRequests += 1;
+    setRowStatus($row, 'running', '保存中...');
+
+    var payload = buildConfirmPayload($row);
+    var $rowControls = $row.find('input, select, button, textarea');
+    $rowControls.prop('disabled', true);
+
+    try {
+      var ret = await sfetchJSON(saveItemURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
+        body: payload.toString()
+      });
+      var result = ret.body;
+      if (!ret.ok || !result || !result.ok) {
+        var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
+        setRowStatus($row, 'error', '保存失败: ' + errorMessage);
+        notify('保存失败：' + errorMessage, '', { variant: 'danger' });
+        return;
+      }
+
+      if (result.item) {
+        applySavedItemToRow($row, result.item);
+      }
+      setRowStatus($row, 'saved', '已保存（待确认）');
+      setEditSummary('单行保存成功，可继续编辑或直接确认导入全部记录。', 'warning');
+    } catch (err) {
+      var requestErrMsg = (err && err.message) ? err.message : '请求失败';
+      setRowStatus($row, 'error', '保存失败: ' + requestErrMsg);
+      notify('保存失败：' + requestErrMsg, '', { variant: 'danger' });
+    } finally {
+      activeSaveRequests = Math.max(0, activeSaveRequests - 1);
+      $rowControls.prop('disabled', false);
+    }
+  });
+
   async function executeCancelImporting() {
     if (isParsing || isConfirming || isCancelling) {
       return;
@@ -992,7 +1108,7 @@ $(function() {
       return;
     }
 
-      if (!openImportDialog('import-cancel-dialog', this)) {
+    if (!openImportDialog('import-cancel-dialog', this)) {
       if (!window.confirm('将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？')) {
         return;
       }
@@ -1009,8 +1125,12 @@ $(function() {
       return;
     }
 
-    var rowElements = $editRows.find('tr[data-import-item-row]').toArray();
-    if (rowElements.length === 0) {
+    if (activeSaveRequests > 0) {
+      setEditSummary('有记录正在保存，请稍后再试。', 'warning');
+      return;
+    }
+
+    if (importingTotalCount <= 0) {
       setEditSummary('暂无待确认导入记录', 'success');
       return;
     }
@@ -1020,60 +1140,68 @@ $(function() {
     var $inputs = $editPanel.find('input, select, button, textarea');
     $inputs.prop('disabled', true);
 
-    var successCount = 0;
-    var failCount = 0;
-    var completedCount = 0;
-
-    await runWithConcurrency(rowElements, confirmConcurrency, async function(rowElement) {
-      var $row = $(rowElement);
-      var payload = buildConfirmPayload($row);
-      setRowStatus($row, 'running', '确认中...');
-
-      try {
-        var ret = await sfetchJSON(confirmItemURL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-          },
-          body: payload.toString()
-        });
-        var result = ret.body;
-
-        if (ret.ok && result && result.ok) {
-          successCount++;
-          $row.remove();
-          importingTotalCount = Math.max(0, importingTotalCount - 1);
-        } else {
-          failCount++;
-          var errMsg = (result && result.error) ? result.error : ('HTTP ' + ret.status);
-          setRowStatus($row, 'error', '失败: ' + errMsg);
-        }
-      } catch (err) {
-        failCount++;
-        setRowStatus($row, 'error', '失败: ' + (err && err.message ? err.message : '请求失败'));
+    try {
+      setEditSummary('正在确认导入全部待确认记录...', 'warning');
+      var ret = await sfetchJSON(confirmAllURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
+        body: ''
+      });
+      var result = ret.body;
+      if (!ret.ok || !result || !result.ok) {
+        var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
+        setEditSummary('确认导入失败：' + errorMessage, 'error');
+        notify('确认导入失败：' + errorMessage, '', { variant: 'danger' });
+        return;
       }
 
-      completedCount++;
-      setEditSummary(
-        '确认进度 ' + completedCount + '/' + rowElements.length + '，成功 ' + successCount + '，失败 ' + failCount,
-        failCount > 0 ? 'error' : 'warning'
-      );
-    });
+      var total = Number(result.total || 0);
+      if (!Number.isFinite(total) || total < 0) {
+        total = 0;
+      }
+      var successCount = Number(result.success || 0);
+      if (!Number.isFinite(successCount) || successCount < 0) {
+        successCount = 0;
+      }
+      var failCount = Number(result.fail || 0);
+      if (!Number.isFinite(failCount) || failCount < 0) {
+        failCount = 0;
+      }
 
-    $inputs.prop('disabled', false);
-    isConfirming = false;
-    if (!isParsing && !isCancelling) {
-      $dropzone.removeClass('is-disabled');
-    }
+      if (total === 0) {
+        setEditSummary('暂无待确认导入记录', 'success');
+        return;
+      }
 
-    if (failCount === 0) {
-      goTo(window.location.href);
+      if (failCount === 0) {
+        var doneMessage = '确认完成：共 ' + total + ' 条，成功导入 ' + successCount + ' 条。';
+        setEditSummary(doneMessage, 'success');
+        notify(doneMessage, '', { variant: 'success' });
+        goTo(buildImportPageURL(1));
+        return;
+      }
+
+      var failDetail = formatFailedDetails(result.errors || [], 2);
+      var failMessage = '确认完成：成功 ' + successCount + ' 条，失败 ' + failCount + ' 条。';
+      if (failDetail) {
+        failMessage += ' 失败详情：' + failDetail;
+      }
+      setEditSummary(failMessage, 'error');
+      notify(failMessage, '', { variant: 'danger' });
+      goTo(buildImportPageURL(1));
       return;
-    }
-
-    setEditSummary('确认完成：成功 ' + successCount + '，失败 ' + failCount + '。失败项可继续修改后重试。', 'error');
-    if ($editRows.find('tr[data-import-item-row]').length === 0) {
-      syncEditSummaryByRows('error');
+    } catch (err) {
+      var requestErrMsg = (err && err.message) ? err.message : '请求失败';
+      setEditSummary('确认导入失败：' + requestErrMsg, 'error');
+      notify('确认导入失败：' + requestErrMsg, '', { variant: 'danger' });
+    } finally {
+      $inputs.prop('disabled', false);
+      isConfirming = false;
+      if (!isParsing && !isCancelling) {
+        $dropzone.removeClass('is-disabled');
+      }
     }
   });
 

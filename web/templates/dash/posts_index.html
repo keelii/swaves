@@ -3,11 +3,11 @@
 {% import "dash/include/ui.html" as sui %}
 
 {% block page_actions %}
-  {{ sui.LinkButton("新建文章", "primary", href=UrlFor('admin.posts.new')) }}
+  {{ sui.LinkButton("新建文章", "primary", href=UrlFor('dash.posts.new')) }}
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('admin.posts.list') ~ "?kind=" ~ (KindQuery|default('0')) ~ ("&q=" ~ SearchQueryEscaped if SearchQueryEscaped else "") ~ ("&tag=" ~ FilterTagIDStr if FilterTagIDStr else "") ~ ("&category=" ~ FilterCategoryIDStr if FilterCategoryIDStr else "") ~ "&pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.posts.list') ~ "?kind=" ~ (KindQuery|default('0')) ~ ("&q=" ~ SearchQueryEscaped if SearchQueryEscaped else "") ~ ("&tag=" ~ FilterTagIDStr if FilterTagIDStr else "") ~ ("&category=" ~ FilterCategoryIDStr if FilterCategoryIDStr else "") ~ "&pageSize=" ~ Pager.PageSize %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
@@ -17,9 +17,9 @@
   {% set tag = (FilterTagIDStr or "") %}
   {% set cat = (FilterCategoryIDStr or "") %}
   {{ sui.TabsStart("内容类型") }}
-    {{ sui.Tab("文章 " ~ CountPost, href=UrlFor('admin.posts.list') ~ "?kind=0" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 0)) }}
-    {{ sui.Tab("页面 " ~ CountPage, href=UrlFor('admin.posts.list') ~ "?kind=1" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 1)) }}
-    {{ sui.Tab("加密 " ~ CountEncryptedPost, href=UrlFor('admin.encrypted_posts.list')) }}
+    {{ sui.Tab("文章 " ~ CountPost, href=UrlFor('dash.posts.list') ~ "?kind=0" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 0)) }}
+    {{ sui.Tab("页面 " ~ CountPage, href=UrlFor('dash.posts.list') ~ "?kind=1" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 1)) }}
+    {{ sui.Tab("加密 " ~ CountEncryptedPost, href=UrlFor('dash.encrypted_posts.list')) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
@@ -49,7 +49,7 @@
 {% block content %}
 {% if Posts|length > 0 %}
   <div class="data-table-wrap" data-role="multiselect-scope">
-    <table id="posts-table" class="data-table" aria-label="文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.posts.api.batch_delete') }}">
+    <table id="posts-table" class="data-table" aria-label="文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.posts.api.batch_delete') }}">
       <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -80,14 +80,14 @@
         </td>
         <td class="cell-tags">
           {% if postWithRelation.Tags %}
-            {% for item in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ UrlFor('admin.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ item.ID }}">{{ item.Name }}</a>{% endfor %}
+            {% for item in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ UrlFor('dash.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ item.ID }}">{{ item.Name }}</a>{% endfor %}
           {% else %}
             -
           {% endif %}
         </td>
         <td class="cell-cat">
           {% if postWithRelation.Category %}
-            <a href="{{ UrlFor('admin.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
+            <a href="{{ UrlFor('dash.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
           {% else %}
             -
           {% endif %}
@@ -107,8 +107,8 @@
         <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
         <td>
           <div class="cell-actions">
-            {{ sui.LinkIcon("square-pen", UrlFor('admin.posts.edit', id=postWithRelation.Post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-            <form method="post" action="{{ UrlFor('admin.posts.delete', id=postWithRelation.Post.ID) }}">
+            {{ sui.LinkIcon("square-pen", UrlFor('dash.posts.edit', id=postWithRelation.Post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+            <form method="post" action="{{ UrlFor('dash.posts.delete', id=postWithRelation.Post.ID) }}">
               {{ _csrf_token() }}
               {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
             </form>

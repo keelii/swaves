@@ -84,7 +84,7 @@
       }
       tooltipEl = document.createElement('div');
       tooltipEl.className = 'ui-tooltip';
-      tooltipEl.id = 'admin-app-tooltip';
+      tooltipEl.id = 'dash-app-tooltip';
       tooltipEl.setAttribute('role', 'tooltip');
       tooltipEl.setAttribute('aria-hidden', 'true');
       tooltipEl.setAttribute('data-placement', 'top');
@@ -1410,14 +1410,14 @@
       return true;
     }
 
-    window.AdminAppUI = window.AdminAppUI || {};
-    window.AdminAppUI.dialog = {
+    window.DashAppUI = window.DashAppUI || {};
+    window.DashAppUI.dialog = {
       open: openDialog,
       close: closeDialog,
       closeTop: closeTopDialog,
     };
 
-    window.AdminAppUI.toast = (function() {
+    window.DashAppUI.toast = (function() {
       var autoCloseQueue = [];
       var autoCloseTimer = null;
 
@@ -1816,7 +1816,7 @@
       }
       var listEl = root.querySelector('[data-role="ui-file-list"]');
       renderFileList(listEl, files);
-      window.AdminAppUI.toast.show({
+      window.DashAppUI.toast.show({
         kind: 'info',
         title: '拖拽已读取',
         message: '浏览器可能不允许直接写入 input.files；此处仅展示文件列表（示例）。',

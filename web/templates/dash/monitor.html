@@ -198,8 +198,8 @@
 
 <script>
   (function() {
-    var monitorAPIURL = {{ UrlFor('admin.monitor.data') | tojson }};
-    var monitorPageURL = {{ UrlFor('admin.monitor') | tojson }};
+    var monitorAPIURL = {{ UrlFor('dash.monitor.data') | tojson }};
+    var monitorPageURL = {{ UrlFor('dash.monitor') | tojson }};
 
     var searchParams = new URLSearchParams(window.location.search || '');
     var activeGranularity = searchParams.get('granularity') || '1m';

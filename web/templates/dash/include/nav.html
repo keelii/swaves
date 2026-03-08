@@ -3,26 +3,26 @@
   {% set navHasNotificationUnread = navNotificationUnreadCount > 0 %}
   <div class="nav-section">
     <div class="nav-section-title">概览</div>
-    <a class="nav-item{% if UrlIs('admin.home') %} active{% endif %}" href="{{ UrlFor('admin.home') }}"{% if UrlIs('admin.home') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.home') %} active{% endif %}" href="{{ UrlFor('dash.home') }}"{% if UrlIs('dash.home') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("layout-dashboard", 16) }}</span>
       <span class="nav-item-text">总览</span>
     </a>
   </div>
   <div class="nav-section">
     <div class="nav-section-title">内容</div>
-    <a class="nav-item{% if UrlIs('admin.posts.list') %} active{% endif %}" href="{{ UrlFor('admin.posts.list') }}"{% if UrlIs('admin.posts.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.posts.list') %} active{% endif %}" href="{{ UrlFor('dash.posts.list') }}"{% if UrlIs('dash.posts.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("list", 16) }}</span>
       <span class="nav-item-text">文章列表</span>
     </a>
-    <a class="nav-item{% if UrlIs('admin.assets.list') %} active{% endif %}" href="{{ UrlFor('admin.assets.list') }}"{% if UrlIs('admin.assets.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.assets.list') %} active{% endif %}" href="{{ UrlFor('dash.assets.list') }}"{% if UrlIs('dash.assets.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("image", 16) }}</span>
       <span class="nav-item-text">资源库</span>
     </a>
-    <a class="nav-item{% if UrlIs('admin.comments.list') %} active{% endif %}" href="{{ UrlFor('admin.comments.list') }}"{% if UrlIs('admin.comments.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.comments.list') %} active{% endif %}" href="{{ UrlFor('dash.comments.list') }}"{% if UrlIs('dash.comments.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("messages-square", 16) }}</span>
       <span class="nav-item-text">评论管理</span>
     </a>
-    <a class="nav-item{% if UrlIs('admin.notifications.list') %} active{% endif %}" href="{{ UrlFor('admin.notifications.list') }}"{% if UrlIs('admin.notifications.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.notifications.list') %} active{% endif %}" href="{{ UrlFor('dash.notifications.list') }}"{% if UrlIs('dash.notifications.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon" data-role="nav-notification-icon-bell"{% if navHasNotificationUnread %} hidden{% endif %}>{{ LucideIcon("bell", 16) }}</span>
       <span class="nav-item-icon" data-role="nav-notification-icon-bell-dot"{% if not navHasNotificationUnread %} hidden{% endif %}>{{ LucideIcon("bell-dot", 16) }}</span>
       <span class="nav-item-text">通知中心</span>
@@ -31,20 +31,20 @@
   </div>
   <div class="nav-section">
     <div class="nav-section-title">高级</div>
-    <a class="nav-item{% if UrlIs('admin.categories.list') %} active{% endif %}" href="{{ UrlFor('admin.categories.list') }}"{% if UrlIs('admin.categories.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.categories.list') %} active{% endif %}" href="{{ UrlFor('dash.categories.list') }}"{% if UrlIs('dash.categories.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("database", 16) }}</span>
       <span class="nav-item-text">数据列表</span>
     </a>
-    {% set importExportActive = UrlIs('admin.import.show') or UrlIs('admin.import.submit') or UrlIs('admin.export.show') or UrlIs('admin.export.download') %}
-    <a class="nav-item{% if importExportActive %} active{% endif %}" href="{{ UrlFor('admin.import.show') }}"{% if importExportActive %} aria-current="page"{% endif %}>
+    {% set importExportActive = UrlIs('dash.import.show') or UrlIs('dash.import.submit') or UrlIs('dash.export.show') or UrlIs('dash.export.download') %}
+    <a class="nav-item{% if importExportActive %} active{% endif %}" href="{{ UrlFor('dash.import.show') }}"{% if importExportActive %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("import", 16) }}</span>
       <span class="nav-item-text">导入导出</span>
     </a>
-    <a class="nav-item{% if UrlIs('admin.trash.list') %} active{% endif %}" href="{{ UrlFor('admin.trash.list') }}"{% if UrlIs('admin.trash.list') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.trash.list') %} active{% endif %}" href="{{ UrlFor('dash.trash.list') }}"{% if UrlIs('dash.trash.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("trash", 16) }}</span>
       <span class="nav-item-text">回收站</span>
     </a>
-    <a class="nav-item{% if UrlIs('admin.monitor') %} active{% endif %}" href="{{ UrlFor('admin.monitor') }}"{% if UrlIs('admin.monitor') %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if UrlIs('dash.monitor') %} active{% endif %}" href="{{ UrlFor('dash.monitor') }}"{% if UrlIs('dash.monitor') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("activity", 16) }}</span>
       <span class="nav-item-text">性能监控</span>
     </a>

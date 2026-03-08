@@ -4,8 +4,8 @@
 {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-{{ sui.LinkButton("列表", "outline", href=UrlFor('admin.redirects.list')) }}
+{{ sui.LinkButton("列表", "outline", href=UrlFor('dash.redirects.list')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('admin.redirects.create') %}{% include "dash/include/forms/redirects_form.html" %}{% endwith %}
+{% with Action = UrlFor('dash.redirects.create') %}{% include "dash/include/forms/redirects_form.html" %}{% endwith %}
 {% endblock %}

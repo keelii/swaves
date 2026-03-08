@@ -83,7 +83,7 @@ func isSkipVisitorIDPath(path string) bool {
 		return true
 	}
 
-	prefixes := []string{share.GetAdminUrl(), "/api", "/static"}
+	prefixes := []string{share.GetDashUrl(), "/api", "/static"}
 	for _, prefix := range prefixes {
 		if prefix == "/" {
 			continue

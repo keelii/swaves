@@ -2,8 +2,8 @@
 {% set recordTab = ActiveRecordTab|default("") %}
 
 {{ sui.TabsStart("记录列表导航") }}
-  {{ sui.Tab("分类列表", href=UrlFor('admin.categories.list'), active=(recordTab == "categories")) }}
-  {{ sui.Tab("标签列表", href=UrlFor('admin.tags.list'), active=(recordTab == "tags")) }}
-  {{ sui.Tab("任务列表", href=UrlFor('admin.tasks.list'), active=(recordTab == "tasks")) }}
-  {{ sui.Tab("重定向列表", href=UrlFor('admin.redirects.list'), active=(recordTab == "redirects")) }}
+  {{ sui.Tab("分类列表", href=UrlFor('dash.categories.list'), active=(recordTab == "categories")) }}
+  {{ sui.Tab("标签列表", href=UrlFor('dash.tags.list'), active=(recordTab == "tags")) }}
+  {{ sui.Tab("任务列表", href=UrlFor('dash.tasks.list'), active=(recordTab == "tasks")) }}
+  {{ sui.Tab("重定向列表", href=UrlFor('dash.redirects.list'), active=(recordTab == "redirects")) }}
 {{ sui.TabsEnd() }}

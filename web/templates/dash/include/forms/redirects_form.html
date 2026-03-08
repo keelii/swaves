@@ -74,7 +74,7 @@
     var $search = $('#redirect-target-picker-search');
     var $toInput = $('#redirect-to-path');
     var $rows = $('#redirect-target-picker-body').find('[data-target-row]');
-    var dialogAPI = window.AdminAppUI && window.AdminAppUI.dialog ? window.AdminAppUI.dialog : null;
+    var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
 
     function openPickerDialog() {
       if (dialogAPI && typeof dialogAPI.open === 'function') {

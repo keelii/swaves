@@ -21,15 +21,15 @@
 {% endblock %}
 {% block status_main_right %}
   {% set pagerKind = CurrentKind|default("image") %}
-  {% set pagerHrefPrefix = UrlFor('admin.assets.list', kind=pagerKind) ~ ("&pageSize=" ~ Pager.PageSize) %}
+  {% set pagerHrefPrefix = UrlFor('dash.assets.list', kind=pagerKind) ~ ("&pageSize=" ~ Pager.PageSize) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block operation_left %}
   {{ sui.TabsStart("资源类型") }}
-    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('admin.assets.list', kind='image') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "image")) }}
-    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('admin.assets.list', kind='file') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "file")) }}
-    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('admin.assets.list', kind='backup') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "backup")) }}
+    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('dash.assets.list', kind='image') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "image")) }}
+    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('dash.assets.list', kind='file') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "file")) }}
+    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('dash.assets.list', kind='backup') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "backup")) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
@@ -232,8 +232,8 @@
 
 <script>
 $(function() {
-  var assetAPIBase = {{ UrlFor('admin.assets.api.list') | tojson }};
-  var assetBatchDeleteAPI = {{ UrlFor('admin.assets.api.batch_delete') | tojson }};
+  var assetAPIBase = {{ UrlFor('dash.assets.api.list') | tojson }};
+  var assetBatchDeleteAPI = {{ UrlFor('dash.assets.api.batch_delete') | tojson }};
   var $dropzone = $('#asset-dropzone');
   var $fileInput = $('#asset-drop-input');
   var $uploadRemark = $('#asset-upload-remark');
@@ -241,7 +241,7 @@ $(function() {
   var $assetTable = $('#assets-table');
   var $selectedCount = $('#asset-selected-count');
   var $batchDelete = $('#asset-batch-delete');
-  var dialogAPI = window.AdminAppUI && window.AdminAppUI.dialog ? window.AdminAppUI.dialog : null;
+  var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
   var $alertDialog = $('#asset-alert-dialog');
   var $alertMessage = $('#asset-alert-message');
   var $confirmDialog = $('#asset-confirm-dialog');

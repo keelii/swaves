@@ -166,8 +166,8 @@ func commentCaptchaSecret() string {
 	if secret := strings.TrimSpace(settings["comment_captcha_secret"]); secret != "" {
 		return secret
 	}
-	if adminPasswordHash := strings.TrimSpace(settings["admin_password"]); adminPasswordHash != "" {
-		return adminPasswordHash
+	if dashPasswordHash := strings.TrimSpace(settings["dash_password"]); dashPasswordHash != "" {
+		return dashPasswordHash
 	}
 	if siteURL := strings.TrimSpace(settings["site_url"]); siteURL != "" {
 		return siteURL

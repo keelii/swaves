@@ -13,15 +13,15 @@
 
 {% block operation_left %}
   {{ sui.TabsStart("通知类型") }}
-    {{ sui.Tab("全部 " ~ (notificationTabCounts["all"]|default(0)), href=UrlFor('admin.notifications.list') ~ ("?pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "")) }}
-    {{ sui.Tab("点赞 " ~ (notificationTabCounts["post_like"]|default(0)), href=UrlFor('admin.notifications.list') ~ "?event_type=post_like" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "post_like")) }}
-    {{ sui.Tab("留言 " ~ (notificationTabCounts["comment"]|default(0)), href=UrlFor('admin.notifications.list') ~ "?event_type=comment" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "comment")) }}
-    {{ sui.Tab("任务 " ~ (notificationTabCounts["task_result"]|default(0)), href=UrlFor('admin.notifications.list') ~ "?event_type=task_result" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "task_result")) }}
+    {{ sui.Tab("全部 " ~ (notificationTabCounts["all"]|default(0)), href=UrlFor('dash.notifications.list') ~ ("?pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "")) }}
+    {{ sui.Tab("点赞 " ~ (notificationTabCounts["post_like"]|default(0)), href=UrlFor('dash.notifications.list') ~ "?event_type=post_like" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "post_like")) }}
+    {{ sui.Tab("留言 " ~ (notificationTabCounts["comment"]|default(0)), href=UrlFor('dash.notifications.list') ~ "?event_type=comment" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "comment")) }}
+    {{ sui.Tab("任务 " ~ (notificationTabCounts["task_result"]|default(0)), href=UrlFor('dash.notifications.list') ~ "?event_type=task_result" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "task_result")) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerBase = UrlFor('admin.notifications.list') %}
+  {% set pagerBase = UrlFor('dash.notifications.list') %}
   {% if currentEventType %}
     {% set pagerBase = pagerBase ~ "?event_type=" ~ currentEventType %}
   {% endif %}

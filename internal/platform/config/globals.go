@@ -2,13 +2,13 @@ package config
 
 import "time"
 
-const LoginAdminName = "admin"
+const LoginDashName = "dash"
 
 const LoginCookieName = "swv_login"
 
 const LoginSessionExpire = time.Hour * 24 * 365
 
-const LoginRoutePath = "/admin/login"
+const LoginRoutePath = "/dash/login"
 
 const GlobalSettingKey = "settings"
 

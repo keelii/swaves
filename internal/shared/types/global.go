@@ -60,7 +60,7 @@ func (s *SessionStore) SaveSession(c fiber.Ctx) bool {
 		return false
 	}
 
-	sess.Set(config.LoginAdminName, true)
+	sess.Set(config.LoginDashName, true)
 	sess.SetIdleTimeout(config.LoginSessionExpire)
 
 	if err = sess.Save(); err != nil {
@@ -95,9 +95,7 @@ func (s *SessionStore) IsLogin(c fiber.Ctx) bool {
 		return false
 	}
 	defer sess.Release()
-	isLogin := sess.Get(config.LoginAdminName)
-	//logger.Error("isLogin:", isLogin)
-	return isLogin == true
+	return sess.Get(config.LoginDashName) == true
 }
 
 type AppConfig struct {

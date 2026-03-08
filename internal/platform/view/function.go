@@ -280,11 +280,11 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		}
 		return value.FromString(share.GetRSSUrl()), nil
 	})
-	env.AddFunction("GetAdminUrl", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+	env.AddFunction("GetDashUrl", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetAdminUrl does not support keyword arguments")
+			return value.Undefined(), errors.New("GetDashUrl does not support keyword arguments")
 		}
-		return value.FromString(share.GetAdminUrl()), nil
+		return value.FromString(share.GetDashUrl()), nil
 	})
 	env.AddFunction("GetTagUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {

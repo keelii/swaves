@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-{% with Action = UrlFor('admin.settings.update', id=Setting.ID), IsEdit = true %}
+{% with Action = UrlFor('dash.settings.update', id=Setting.ID), IsEdit = true %}
   {% include "dash/include/forms/settings_form.html" %}
 {% endwith %}
 {% endblock %}

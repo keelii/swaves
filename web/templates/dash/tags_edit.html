@@ -4,10 +4,10 @@
 {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-{{ sui.LinkButton("新建", "outline", href=UrlFor('admin.tags.new')) }}
+{{ sui.LinkButton("新建", "outline", href=UrlFor('dash.tags.new')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('admin.tags.update', id=Tag.ID), Tag = Tag %}
+{% with Action = UrlFor('dash.tags.update', id=Tag.ID), Tag = Tag %}
   {% include "dash/include/forms/tags_form.html" %}
 {% endwith %}
 {% endblock %}

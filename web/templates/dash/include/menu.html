@@ -1,6 +1,6 @@
 <ul class="menu-list unstyled">
-  <li class="menu-item{% if UrlIs("admin.home") %} active{% endif %}">
-    <a href="{{ UrlFor('admin.home') }}" class="menu-text">工作台</a>
+  <li class="menu-item{% if UrlIs("dash.home") %} active{% endif %}">
+    <a href="{{ UrlFor('dash.home') }}" class="menu-text">工作台</a>
   </li>
   <li>
     <div class="menu-item expanded" onclick="toggleSubmenu(this)">
@@ -10,23 +10,23 @@
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.posts.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.posts.list') }}">文章列表</a>
+      <li class="submenu-item{% if UrlIs("dash.posts.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.posts.list') }}">文章列表</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.assets.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.assets.list', kind='image') }}">资源库</a>
+      <li class="submenu-item{% if UrlIs("dash.assets.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.assets.list', kind='image') }}">资源库</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.comments.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.comments.list') }}">评论管理</a>
+      <li class="submenu-item{% if UrlIs("dash.comments.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.comments.list') }}">评论管理</a>
       </li>
-{#      <li class="submenu-item{% if UrlIs("admin.encrypted_posts.list") %} active{% endif %}">#}
-{#        <a href="{{ UrlFor('admin.encrypted_posts.list') }}">加密文章列表</a>#}
+{#      <li class="submenu-item{% if UrlIs("dash.encrypted_posts.list") %} active{% endif %}">#}
+{#        <a href="{{ UrlFor('dash.encrypted_posts.list') }}">加密文章列表</a>#}
 {#      </li>#}
-      <li class="submenu-item{% if UrlIs("admin.categories.tree") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.categories.tree') }}">树形分类</a>
+      <li class="submenu-item{% if UrlIs("dash.categories.tree") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.categories.tree') }}">树形分类</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.categories.list") or UrlIs("admin.tags.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.categories.list') }}">分类/标签</a>
+      <li class="submenu-item{% if UrlIs("dash.categories.list") or UrlIs("dash.tags.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.categories.list') }}">分类/标签</a>
       </li>
     </ul>
   </li>
@@ -38,8 +38,8 @@
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.tasks.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.tasks.list') }}">任务列表</a>
+      <li class="submenu-item{% if UrlIs("dash.tasks.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.tasks.list') }}">任务列表</a>
       </li>
     </ul>
   </li>
@@ -51,11 +51,11 @@
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.import.show") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.import.show') }}">导入</a>
+      <li class="submenu-item{% if UrlIs("dash.import.show") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.import.show') }}">导入</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.export.show") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.export.show') }}">导出</a>
+      <li class="submenu-item{% if UrlIs("dash.export.show") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.export.show') }}">导出</a>
       </li>
     </ul>
   </li>
@@ -67,14 +67,14 @@
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.settings.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.settings.list') }}">设置列表</a>
+      <li class="submenu-item{% if UrlIs("dash.settings.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.settings.list') }}">设置列表</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.redirects.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.redirects.list') }}">重定向管理</a>
+      <li class="submenu-item{% if UrlIs("dash.redirects.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.redirects.list') }}">重定向管理</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.http_error_logs.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.http_error_logs.list') }}">请求日志</a>
+      <li class="submenu-item{% if UrlIs("dash.http_error_logs.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.http_error_logs.list') }}">请求日志</a>
       </li>
     </ul>
   </li>
@@ -86,11 +86,11 @@
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.trash.list") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.trash.list') }}">回收站</a>
+      <li class="submenu-item{% if UrlIs("dash.trash.list") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.trash.list') }}">回收站</a>
       </li>
-      <li class="submenu-item{% if UrlIs("admin.monitor") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.monitor') }}">性能监控</a>
+      <li class="submenu-item{% if UrlIs("dash.monitor") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.monitor') }}">性能监控</a>
       </li>
     </ul>
   </li>
@@ -102,8 +102,8 @@
       </span>
     </div>
     <ul class="submenu-list unstyled show">
-      <li class="submenu-item{% if UrlIs("admin.dev.ui_components") %} active{% endif %}">
-        <a href="{{ UrlFor('admin.dev.ui_components') }}">UI组件</a>
+      <li class="submenu-item{% if UrlIs("dash.dev.ui_components") %} active{% endif %}">
+        <a href="{{ UrlFor('dash.dev.ui_components') }}">UI组件</a>
       </li>
     </ul>
   </li>

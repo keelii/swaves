@@ -37,7 +37,7 @@
 
 {% block content %}
 {% with
-  FormAction = UrlFor('admin.posts.create'),
+  FormAction = UrlFor('dash.posts.create'),
   TitleValue = DraftTitle|default(''),
   TitlePlaceholder = "标题",
   ContentValue = DraftContent|default(''),

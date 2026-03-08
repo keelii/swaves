@@ -12,7 +12,7 @@ const (
 	TableOpDelete TableOp = "delete"
 )
 const (
-	TableSessions       TableName = "t_admin_sessions"
+	TableSessions       TableName = "t_dash_sessions"
 	TablePosts          TableName = "t_posts"
 	TableComments       TableName = "t_comments"
 	TableEncryptedPosts TableName = "t_encrypted_posts"
@@ -306,7 +306,7 @@ const InitialSQL = `
 
 	CREATE TABLE IF NOT EXISTS ` + TableNotifications + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		receiver TEXT NOT NULL DEFAULT 'admin',
+		receiver TEXT NOT NULL DEFAULT 'dash',
 		event_type TEXT NOT NULL,
 		level TEXT NOT NULL DEFAULT 'info',
 		title TEXT NOT NULL,
@@ -437,7 +437,7 @@ const (
 	SettingKindContentRouting     = "content_routing"
 	SettingKindBackupSync         = "backup_sync"
 	SettingKindThirdPartyServices = "third_party_services"
-	SettingKindAdminSecurity      = "admin_security"
+	SettingKindDashSecurity       = "dash_security"
 	SettingKindNotifications      = "notifications"
 	SettingKindUIExperience       = "ui_experience"
 )
@@ -456,7 +456,7 @@ var settingKindOrder = []string{
 	SettingKindContentRouting,
 	SettingKindBackupSync,
 	SettingKindThirdPartyServices,
-	SettingKindAdminSecurity,
+	SettingKindDashSecurity,
 	SettingKindNotifications,
 	SettingKindUIExperience,
 }
@@ -468,7 +468,7 @@ var settingSubKindOrder = map[string][]string{
 		SettingSubKindImageKit,
 		SettingSubKindS3,
 	},
-	SettingKindAdminSecurity: {
+	SettingKindDashSecurity: {
 		SettingSubKindAsset,
 		SettingSubKindGeneral,
 	},
@@ -480,7 +480,7 @@ var SettingKindLabels = map[string]string{
 	SettingKindContentRouting:     "内容与路由",
 	SettingKindBackupSync:         "备份与同步",
 	SettingKindThirdPartyServices: "第三方服务",
-	SettingKindAdminSecurity:      "后台安全",
+	SettingKindDashSecurity:       "后台安全",
 	SettingKindNotifications:      "消息通知",
 	SettingKindUIExperience:       "界面体验",
 }
@@ -492,7 +492,7 @@ var SettingSubKindLabels = map[string]map[string]string{
 		SettingSubKindS3:       "Amazon S3",
 		SettingSubKindGeneral:  "通用",
 	},
-	SettingKindAdminSecurity: {
+	SettingKindDashSecurity: {
 		SettingSubKindGeneral: "通用",
 		SettingSubKindAsset:   "资源",
 	},
@@ -533,9 +533,9 @@ var DefaultSettings = []Setting{
 	{Sort: 15, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit-endpoint", Code: "asset_imagekit_endpoint", Type: "url", Value: "https://upload.imagekit.io/api/v1", Description: "ImageKit 上传 API Endpoint"},
 	{Sort: 16, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit Private Key", Code: "asset_imagekit_private_key", Type: "secret", Value: config.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
 	{Sort: 17, Kind: SettingKindThirdPartyServices, Name: "Google analytics ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google analytics ID"},
-	{Sort: 10, Kind: SettingKindAdminSecurity, Name: "管理后台路径", Code: "admin_path", Type: "text", Value: "/admin", Description: "管理后台地址", Attrs: config.UrlPrefixValidatorJSON},
-	{Sort: 11, Kind: SettingKindAdminSecurity, Name: "管理后台密码", Code: "admin_password", Type: "password", Value: "admin", Description: "管理员密码", Attrs: `{"minlength": 6}`},
-	{Sort: 12, Kind: SettingKindAdminSecurity, SubKind: SettingSubKindAsset, Name: "资源默认服务", Code: "asset_default_provider", Type: "select", Value: "see", Description: "资源上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
+	{Sort: 10, Kind: SettingKindDashSecurity, Name: "管理后台路径", Code: "dash_path", Type: "text", Value: "/dash", Description: "管理后台地址", Attrs: config.UrlPrefixValidatorJSON},
+	{Sort: 11, Kind: SettingKindDashSecurity, Name: "管理后台密码", Code: "dash_password", Type: "password", Value: "dash", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+	{Sort: 12, Kind: SettingKindDashSecurity, SubKind: SettingSubKindAsset, Name: "资源默认服务", Code: "asset_default_provider", Type: "select", Value: "see", Description: "资源上传默认服务商", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
 	{Sort: 10, Kind: SettingKindNotifications, Name: "文章点赞通知", Code: "notify_enable_post_like", Type: "radio", Value: "1", DefaultOptionValue: "1", Description: "文章收到点赞时发送通知（按时间窗口聚合）", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 11, Kind: SettingKindNotifications, Name: "用户留言通知", Code: "notify_enable_comment", Type: "radio", Value: "1", DefaultOptionValue: "1", Description: "有新留言时发送通知", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 12, Kind: SettingKindNotifications, Name: "任务成功通知", Code: "notify_enable_task_success", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "任务成功时发送通知", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
@@ -544,7 +544,7 @@ var DefaultSettings = []Setting{
 	{Sort: 15, Kind: SettingKindNotifications, Name: "通知保留天数", Code: "notify_retention_days", Type: "number", Value: "30", DefaultOptionValue: "30", Description: "超过保留天数的通知将被定时清理", Attrs: `{"min": 1, "max": 3650}`},
 	{Sort: 10, Kind: SettingKindUIExperience, Name: "文字大小", Code: "font_size", Type: "number", Value: "14", Description: "UI font size", Attrs: `{"min": 12, "max": 20, "step": 2}`},
 	{Sort: 11, Kind: SettingKindUIExperience, Name: "界面模式", Code: "mode", Type: "radio", Value: "light", Description: "UI mode", DefaultOptionValue: "light", Options: `[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}]`},
-	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin main width", Code: "admin_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Admin UI main width"},
-	{Sort: 12, Kind: SettingKindUIExperience, Name: "Admin nav width", Code: "admin_nav_width", Type: "number", Value: "150", DefaultOptionValue: "150", Description: "Admin UI nav width", Attrs: `{"min": 150, "max": 480, "step": 5}`},
+	{Sort: 12, Kind: SettingKindUIExperience, Name: "Dash main width", Code: "dash_main_width", Type: "number", Value: "950", DefaultOptionValue: "950", Description: "Dash UI main width"},
+	{Sort: 12, Kind: SettingKindUIExperience, Name: "Dash nav width", Code: "dash_nav_width", Type: "number", Value: "150", DefaultOptionValue: "150", Description: "Dash UI nav width", Attrs: `{"min": 150, "max": 480, "step": 5}`},
 	{Sort: 13, Kind: SettingKindUIExperience, Name: "分页器每页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
 }

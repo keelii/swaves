@@ -220,7 +220,7 @@
 {% endmacro %}
 
 {% macro EmptyState(title, message="", icon_name="", actions="", attrs="") %}
-<div class="ui-empty-state app-mx" role="status"{% if attrs %} {{ attrs | safe }}{% endif %}>
+<div class="ui-empty-state" role="status"{% if attrs %} {{ attrs | safe }}{% endif %}>
   {% if icon_name %}
     <div class="ui-empty-icon" aria-hidden="true">{{ LucideIcon(icon_name, 20) }}</div>
   {% endif %}

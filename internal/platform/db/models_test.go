@@ -900,8 +900,8 @@ func TestSettingsLifecycleAndPassword(t *testing.T) {
 		t.Fatalf("updated hash compare failed: %v", err)
 	}
 
-	if err := UpdateSettingByCode(db, "admin_password", "secret-123"); err != nil {
-		t.Fatalf("UpdateSettingByCode admin_password failed: %v", err)
+	if err := UpdateSettingByCode(db, "dash_password", "secret-123"); err != nil {
+		t.Fatalf("UpdateSettingByCode dash_password failed: %v", err)
 	}
 	if err := CheckPassword(db, "secret-123"); err != nil {
 		t.Fatalf("CheckPassword should pass: %v", err)
@@ -916,6 +916,12 @@ func TestSettingsLifecycleAndPassword(t *testing.T) {
 	}
 	if _, ok := m[code]; !ok {
 		t.Fatalf("custom setting %s not found in map", code)
+	}
+	if strings.TrimSpace(m["dash_password"]) == "" {
+		t.Fatalf("dash_password should exist in settings map")
+	}
+	if strings.TrimSpace(m["dash_path"]) == "" {
+		t.Fatalf("dash_path should exist in settings map")
 	}
 
 	if err := DeleteSetting(db, s.ID); err != nil {
@@ -1598,8 +1604,8 @@ func TestNotificationCreateValidationAndDefaults(t *testing.T) {
 	if item.ID <= 0 {
 		t.Fatalf("invalid id: %+v", item)
 	}
-	if item.Receiver != NotificationReceiverAdmin {
-		t.Fatalf("receiver should fallback to admin, got %q", item.Receiver)
+	if item.Receiver != NotificationReceiverDash {
+		t.Fatalf("receiver should fallback to dash, got %q", item.Receiver)
 	}
 	if item.Level != NotificationLevelInfo {
 		t.Fatalf("level should fallback to info, got %q", item.Level)
@@ -1615,7 +1621,7 @@ func TestNotificationCreateValidationAndDefaults(t *testing.T) {
 func TestNotificationListReadAndUnreadFlow(t *testing.T) {
 	db := openTestDB(t)
 	nowUnix := time.Now().Unix()
-	receiver := NotificationReceiverAdmin
+	receiver := NotificationReceiverDash
 
 	unreadA := &Notification{
 		Receiver:       receiver,
@@ -1790,7 +1796,7 @@ func TestNotificationListReadAndUnreadFlow(t *testing.T) {
 func TestNotificationAggregateAndDeleteExpired(t *testing.T) {
 	db := openTestDB(t)
 	nowUnix := time.Now().Unix()
-	receiver := NotificationReceiverAdmin
+	receiver := NotificationReceiverDash
 
 	if _, err := CreateOrBumpNotificationByAggregateKey(db, nil); err == nil {
 		t.Fatal("expected nil notification error")
@@ -1925,8 +1931,8 @@ func TestNotificationAggregateAndDeleteExpired(t *testing.T) {
 }
 
 func TestNotificationHelperBranches(t *testing.T) {
-	if got := normalizeNotificationReceiver(""); got != NotificationReceiverAdmin {
-		t.Fatalf("normalizeNotificationReceiver empty = %q, want %q", got, NotificationReceiverAdmin)
+	if got := normalizeNotificationReceiver(""); got != NotificationReceiverDash {
+		t.Fatalf("normalizeNotificationReceiver empty = %q, want %q", got, NotificationReceiverDash)
 	}
 	if got := normalizeNotificationReceiver("  someone  "); got != "someone" {
 		t.Fatalf("normalizeNotificationReceiver trim failed: %q", got)
@@ -1954,7 +1960,7 @@ func TestNotificationErrorPathsWithClosedDB(t *testing.T) {
 	}
 
 	valid := &Notification{
-		Receiver:  NotificationReceiverAdmin,
+		Receiver:  NotificationReceiverDash,
 		EventType: NotificationEventComment,
 		Title:     "x",
 		Body:      "y",
@@ -1962,32 +1968,32 @@ func TestNotificationErrorPathsWithClosedDB(t *testing.T) {
 	if _, err := CreateNotification(db, valid); err == nil {
 		t.Fatal("CreateNotification on closed DB should fail")
 	}
-	if _, err := CountNotifications(db, NotificationReceiverAdmin); err == nil {
+	if _, err := CountNotifications(db, NotificationReceiverDash); err == nil {
 		t.Fatal("CountNotifications on closed DB should fail")
 	}
-	if _, err := CountNotificationsByEventType(db, NotificationReceiverAdmin, NotificationEventComment); err == nil {
+	if _, err := CountNotificationsByEventType(db, NotificationReceiverDash, NotificationEventComment); err == nil {
 		t.Fatal("CountNotificationsByEventType on closed DB should fail")
 	}
-	if _, err := ListNotifications(db, NotificationReceiverAdmin, 10, 0); err == nil {
+	if _, err := ListNotifications(db, NotificationReceiverDash, 10, 0); err == nil {
 		t.Fatal("ListNotifications on closed DB should fail")
 	}
-	if _, err := ListNotificationsByEventType(db, NotificationReceiverAdmin, NotificationEventComment, 10, 0); err == nil {
+	if _, err := ListNotificationsByEventType(db, NotificationReceiverDash, NotificationEventComment, 10, 0); err == nil {
 		t.Fatal("ListNotificationsByEventType on closed DB should fail")
 	}
-	if _, err := CountUnreadNotifications(db, NotificationReceiverAdmin); err == nil {
+	if _, err := CountUnreadNotifications(db, NotificationReceiverDash); err == nil {
 		t.Fatal("CountUnreadNotifications on closed DB should fail")
 	}
-	if err := MarkNotificationRead(db, 1, NotificationReceiverAdmin); err == nil {
+	if err := MarkNotificationRead(db, 1, NotificationReceiverDash); err == nil {
 		t.Fatal("MarkNotificationRead on closed DB should fail")
 	}
-	if _, err := MarkAllNotificationsRead(db, NotificationReceiverAdmin); err == nil {
+	if _, err := MarkAllNotificationsRead(db, NotificationReceiverDash); err == nil {
 		t.Fatal("MarkAllNotificationsRead on closed DB should fail")
 	}
-	if err := DeleteNotification(db, 1, NotificationReceiverAdmin); err == nil {
+	if err := DeleteNotification(db, 1, NotificationReceiverDash); err == nil {
 		t.Fatal("DeleteNotification on closed DB should fail")
 	}
 	if _, err := CreateOrBumpNotificationByAggregateKey(db, &Notification{
-		Receiver:     NotificationReceiverAdmin,
+		Receiver:     NotificationReceiverDash,
 		EventType:    NotificationEventPostLike,
 		Title:        "x",
 		Body:         "y",
@@ -2017,7 +2023,7 @@ func TestNotificationListLimitOffsetNormalization(t *testing.T) {
 		}
 	}
 
-	list, err := ListNotifications(db, NotificationReceiverAdmin, -1, -10)
+	list, err := ListNotifications(db, NotificationReceiverDash, -1, -10)
 	if err != nil {
 		t.Fatalf("ListNotifications normalized negative limit/offset failed: %v", err)
 	}
@@ -2025,7 +2031,7 @@ func TestNotificationListLimitOffsetNormalization(t *testing.T) {
 		t.Fatalf("expected len=3 for default limit, got %d", len(list))
 	}
 
-	list, err = ListNotifications(db, NotificationReceiverAdmin, 1000, 1)
+	list, err = ListNotifications(db, NotificationReceiverDash, 1000, 1)
 	if err != nil {
 		t.Fatalf("ListNotifications normalized large limit failed: %v", err)
 	}
@@ -2036,11 +2042,11 @@ func TestNotificationListLimitOffsetNormalization(t *testing.T) {
 	if _, err := db.Exec(
 		`INSERT INTO `+string(TableNotifications)+` (receiver, event_type, level, title, body, aggregate_key, aggregate_count, read_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		NotificationReceiverAdmin, NotificationEventComment, NotificationLevelInfo, "bad", "bad", "", "not-an-int", nil, nowUnix+10, nowUnix+10,
+		NotificationReceiverDash, NotificationEventComment, NotificationLevelInfo, "bad", "bad", "", "not-an-int", nil, nowUnix+10, nowUnix+10,
 	); err != nil {
 		t.Fatalf("insert malformed notification failed: %v", err)
 	}
-	if _, err := ListNotifications(db, NotificationReceiverAdmin, 20, 0); err == nil {
+	if _, err := ListNotifications(db, NotificationReceiverDash, 20, 0); err == nil {
 		t.Fatal("ListNotifications should fail when aggregate_count has invalid type")
 	}
 }

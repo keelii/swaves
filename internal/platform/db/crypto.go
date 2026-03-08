@@ -21,7 +21,7 @@ const (
 // 返回: 32 字节的 AES-256 密钥
 func getEncryptionKey() [32]byte {
 	// 使用系统密钥生成 32 字节的 AES-256 密钥
-	// 可以从 settings 表中读取 admin_password 的哈希值作为密钥的一部分
+	// 可以从 settings 表中读取 dash_password 的哈希值作为密钥的一部分
 	// 这里使用固定密钥，确保所有 EncryptedPost 使用相同的密钥
 	return sha256.Sum256([]byte(DefaultEncryptedPostKey))
 }

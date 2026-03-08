@@ -4,7 +4,7 @@
 
 {% set OperationTableID = "tags-table" %}
 {% block page_actions %}
-  {{ sui.LinkButton("新建标签", "primary", href=UrlFor('admin.tags.new')) }}
+  {{ sui.LinkButton("新建标签", "primary", href=UrlFor('dash.tags.new')) }}
 {% endblock %}
 
 {% block operation_left %}
@@ -13,14 +13,14 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('admin.tags.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.tags.list') ~ "?pageSize=" ~ Pager.PageSize %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block content %}
 {% if Tags|length > 0 %}
   <div class="data-table-wrap">
-    <table id="tags-table" class="data-table" aria-label="标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.tags.api.batch_delete') }}">
+    <table id="tags-table" class="data-table" aria-label="标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.tags.api.batch_delete') }}">
       <thead>
         <tr>
           <th>{{ ui.table_th_id() }}</th>
@@ -38,13 +38,13 @@
             <td>{{ ui.table_td_id(tag.ID) }}</td>
             <td>{{ tag.Name }}</td>
             <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
-            <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
+            <td><a href="{{ UrlFor('dash.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
             <td>{{ tag.CreatedAt | relativeTime }}</td>
             <td>{{ tag.UpdatedAt | relativeTime }}</td>
             <td>
               <div class="cell-actions">
-                {{ sui.LinkIcon("square-pen", UrlFor('admin.tags.edit', id=tag.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-                <form method="post" action="{{ UrlFor('admin.tags.delete', id=tag.ID) }}">
+                {{ sui.LinkIcon("square-pen", UrlFor('dash.tags.edit', id=tag.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+                <form method="post" action="{{ UrlFor('dash.tags.delete', id=tag.ID) }}">
                   {{ _csrf_token() }}
                   {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
                 </form>

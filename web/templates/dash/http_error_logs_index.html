@@ -8,7 +8,7 @@
 {% block content %}
 {% if Logs|length > 0 %}
   <div class="data-table-wrap">
-    <table id="http-error-logs-table" class="data-table" data-role="data-table" aria-label="HTTP 错误日志" data-batch-delete-url="{{ UrlFor('admin.http_error_logs.api.batch_delete') }}">
+    <table id="http-error-logs-table" class="data-table" data-role="data-table" aria-label="HTTP 错误日志" data-batch-delete-url="{{ UrlFor('dash.http_error_logs.api.batch_delete') }}">
       <thead>
         <tr>
           <th>{{ ui.table_th_id() }}</th>
@@ -40,9 +40,9 @@
           <td>
             <div class="cell-actions">
               {% if (log.Method == "GET") and (log.Status == 404) %}
-                {{ sui.LinkIcon("arrow-right", UrlFor('admin.redirects.new', from=log.Path), attrs='aria-label="添加重定向到" data-title="添加重定向到"') }}
+                {{ sui.LinkIcon("arrow-right", UrlFor('dash.redirects.new', from=log.Path), attrs='aria-label="添加重定向到" data-title="添加重定向到"') }}
               {% endif %}
-              <form method="post" action="{{ UrlFor('admin.http_error_logs.delete', id=log.ID) }}">
+              <form method="post" action="{{ UrlFor('dash.http_error_logs.delete', id=log.ID) }}">
                 {{ _csrf_token() }}
                 {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
               </form>

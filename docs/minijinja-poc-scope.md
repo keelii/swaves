@@ -3,7 +3,7 @@
 ## In scope
 
 - All site templates.
-- All admin dash templates.
+- All dash dash templates.
 - Introduce a renderer adapter contract aligned with `Req/Auth/Site`.
 - Keep existing business handlers unchanged as much as possible.
 - Keep legacy layout/embed composition behavior for compatibility.
@@ -19,10 +19,10 @@
 
 ## Success criteria
 
-- Site and admin pages render with equivalent behavior.
+- Site and dash pages render with equivalent behavior.
 - Context access contract is stable (`Req/Auth/Site`).
 - Template compatibility conventions (`template(...)`, macro recursion) are validated.
-- No regression in core navigation, pagination, and admin workflows.
+- No regression in core navigation, pagination, and dash workflows.
 - Development hot reload works without app restart.
 
 ## Exit criteria

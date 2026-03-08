@@ -4,8 +4,8 @@
 
 {% set OperationTableID = "categories-table" %}
 {% block page_actions %}
-  {{ sui.LinkButton("新建分类", "primary", href=UrlFor('admin.categories.new')) }}
-  {{ sui.LinkButton("分类树", href=UrlFor('admin.categories.tree')) }}
+  {{ sui.LinkButton("新建分类", "primary", href=UrlFor('dash.categories.new')) }}
+  {{ sui.LinkButton("分类树", href=UrlFor('dash.categories.tree')) }}
 {% endblock %}
 
 {% block operation_left %}
@@ -14,14 +14,14 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('admin.categories.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.categories.list') ~ "?pageSize=" ~ Pager.PageSize %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block content %}
 {% if Categories|length > 0 %}
   <div class="data-table-wrap">
-    <table id="categories-table" class="data-table" aria-label="分类列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.categories.api.batch_delete') }}">
+    <table id="categories-table" class="data-table" aria-label="分类列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.categories.api.batch_delete') }}">
       <thead>
         <tr>
           <th>{{ ui.table_th_id() }}</th>
@@ -56,13 +56,13 @@
                 {% if category.Description %}{{ category.Description }}{% else %}-{% endif %}</td>
               </div>
             <td>{{ category.Sort }}</td>
-            <td><a href="{{ UrlFor('admin.posts.list') }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
+            <td><a href="{{ UrlFor('dash.posts.list') }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
             <td>{{ category.CreatedAt | relativeTime }}</td>
             <td>{{ category.UpdatedAt | relativeTime }}</td>
             <td>
               <div class="cell-actions">
-                {{ sui.LinkIcon("square-pen", UrlFor('admin.categories.edit', id=category.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-                <form method="post" action="{{ UrlFor('admin.categories.delete', id=category.ID) }}">
+                {{ sui.LinkIcon("square-pen", UrlFor('dash.categories.edit', id=category.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+                <form method="post" action="{{ UrlFor('dash.categories.delete', id=category.ID) }}">
                   {{ _csrf_token() }}
                   {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
                 </form>

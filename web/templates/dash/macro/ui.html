@@ -104,7 +104,7 @@
 {% macro tag_item(label, remove_href="", tag=none, kind_query="", search_query_escaped="", filter_category_id_str="") %}
 <span class="badge secondary">
   {% if tag and kind_query %}
-  <a href="{{ UrlFor('admin.posts.list') }}?kind={{ kind_query }}{% if search_query_escaped %}&q={{ search_query_escaped }}{% endif %}{% if filter_category_id_str %}&category={{ filter_category_id_str }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>
+  <a href="{{ UrlFor('dash.posts.list') }}?kind={{ kind_query }}{% if search_query_escaped %}&q={{ search_query_escaped }}{% endif %}{% if filter_category_id_str %}&category={{ filter_category_id_str }}{% endif %}&tag={{ tag.ID }}">{{ tag.Name }}</a>
   {% else %}
   {{ label }}
   {% endif %}

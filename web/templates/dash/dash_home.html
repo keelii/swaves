@@ -16,8 +16,7 @@
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-lg);
     background: var(--app-panel-bg);
-    padding: 12px;
-    min-height: 84px;
+    padding: var(--app-spacing);
   }
 
   .dashboard-label {
@@ -48,7 +47,6 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    margin-top: 12px;
   }
 
   .dashboard-rank-title {
@@ -138,7 +136,7 @@
   }
 </style>
 
-<div class="app-px app-pt dashboard-stats">
+<div class="app-mb dashboard-stats">
   <section class="dashboard-stat">
     <div class="dashboard-label">活跃用户（{% if ActiveUsersWindowLabel %}{{ ActiveUsersWindowLabel }}{% else %}30分钟{% endif %}）</div>
     <div class="dashboard-number">{% if ActiveUsers %}{{ ActiveUsers }}{% else %}0{% endif %}</div>
@@ -154,31 +152,31 @@
   <section class="dashboard-stat">
     <div class="dashboard-label">
       <span>文章总数</span>
-      {{ sui.LinkIcon("plus", UrlFor('admin.posts.new'), attrs='aria-label="新建文章" data-title="新建文章"') }}
+      {{ sui.LinkIcon("plus", UrlFor('dash.posts.new'), attrs='aria-label="新建文章" data-title="新建文章"') }}
     </div>
     <div class="dashboard-number">{% if PostCount %}{{ PostCount }}{% else %}0{% endif %}</div>
   </section>
   <section class="dashboard-stat">
     <div class="dashboard-label">
       <span>分类总数</span>
-      {{ sui.LinkIcon("plus", UrlFor('admin.categories.new'), attrs='aria-label="新建分类" data-title="新建分类"') }}
+      {{ sui.LinkIcon("plus", UrlFor('dash.categories.new'), attrs='aria-label="新建分类" data-title="新建分类"') }}
     </div>
     <div class="dashboard-number">{% if CategoryCount %}{{ CategoryCount }}{% else %}0{% endif %}</div>
   </section>
   <section class="dashboard-stat">
     <div class="dashboard-label">
       <span>标签总数</span>
-      {{ sui.LinkIcon("plus", UrlFor('admin.tags.new'), attrs='aria-label="新建标签" data-title="新建标签"') }}
+      {{ sui.LinkIcon("plus", UrlFor('dash.tags.new'), attrs='aria-label="新建标签" data-title="新建标签"') }}
     </div>
     <div class="dashboard-number">{% if TagCount %}{{ TagCount }}{% else %}0{% endif %}</div>
   </section>
 </div>
 
-<div class="app-px" style="margin-top:12px;">
+<div class="app-mb">
   <section class="dashboard-chart-card">
     {{ sui.TabsStart("UV 范围") }}
       {% for tab in UVChartTabs %}
-        {{ sui.Tab(tab.Label, href=UrlFor('admin.home', uv_range=tab.Key), active=tab.Active) }}
+        {{ sui.Tab(tab.Label, href=UrlFor('dash.home', uv_range=tab.Key), active=tab.Active) }}
       {% endfor %}
     {{ sui.TabsEnd() }}
 
@@ -205,7 +203,7 @@
   </section>
 </div>
 
-<div class="app-px dashboard-rank-grid">
+<div class="dashboard-rank-grid">
   <section class="dashboard-rank-card">
     <h3 class="dashboard-rank-title">文章/页面访问排行</h3>
     {% if TopUVContents %}

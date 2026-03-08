@@ -4,8 +4,8 @@
 {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-{{ sui.LinkButton("列表", "outline", href=UrlFor('admin.categories.list')) }}
+{{ sui.LinkButton("列表", "outline", href=UrlFor('dash.categories.list')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('admin.categories.create') %}{% include "dash/include/forms/categories_form.html" %}{% endwith %}
+{% with Action = UrlFor('dash.categories.create') %}{% include "dash/include/forms/categories_form.html" %}{% endwith %}
 {% endblock %}

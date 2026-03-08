@@ -15,11 +15,11 @@
   <script src="/static/dash/main.js"></script>
   <script>
     window.cfg = window.cfg || {};
-    window.cfg.navWidthSaveURL = {{ UrlFor('admin.settings.api.nav_width.update') | tojson }};
-    window.cfg.notificationsUnreadURL = {{ UrlFor('admin.notifications.api.unread_count') | tojson }};
-    window.cfg.notificationsReadURL = {{ UrlFor('admin.notifications.api.read') | tojson }};
-    window.cfg.notificationsReadAllURL = {{ UrlFor('admin.notifications.api.read_all') | tojson }};
-    window.cfg.notificationsDeleteURL = {{ UrlFor('admin.notifications.api.delete') | tojson }};
+    window.cfg.navWidthSaveURL = {{ UrlFor('dash.settings.api.nav_width.update') | tojson }};
+    window.cfg.notificationsUnreadURL = {{ UrlFor('dash.notifications.api.unread_count') | tojson }};
+    window.cfg.notificationsReadURL = {{ UrlFor('dash.notifications.api.read') | tojson }};
+    window.cfg.notificationsReadAllURL = {{ UrlFor('dash.notifications.api.read_all') | tojson }};
+    window.cfg.notificationsDeleteURL = {{ UrlFor('dash.notifications.api.delete') | tojson }};
   </script>
   {% block head_extra %}{% endblock %}
 </head>

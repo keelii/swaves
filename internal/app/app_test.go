@@ -26,8 +26,8 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	defer swv.Shutdown()
 
 	form := url.Values{}
-	form.Set("password", "admin")
-	loginPageReq := httptest.NewRequest("GET", "/admin/login", nil)
+	form.Set("password", "dash")
+	loginPageReq := httptest.NewRequest("GET", "/dash/login", nil)
 	loginPageResp, err := swv.App.Test(loginPageReq)
 	if err != nil {
 		t.Fatalf("login page request failed: %v", err)
@@ -52,7 +52,7 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	}
 	form.Set("_csrf_token", strings.TrimSpace(matches[1]))
 
-	loginReq := httptest.NewRequest("POST", "/admin/login", strings.NewReader(form.Encode()))
+	loginReq := httptest.NewRequest("POST", "/dash/login", strings.NewReader(form.Encode()))
 	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	loginReq.Header.Set("Cookie", cookieKV)
 
@@ -73,7 +73,7 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 		t.Fatalf("expected valid session cookie")
 	}
 
-	importPageReq := httptest.NewRequest("GET", "/admin/import", nil)
+	importPageReq := httptest.NewRequest("GET", "/dash/import", nil)
 	importPageReq.Header.Set("Cookie", cookieKV)
 	importPageResp, err := swv.App.Test(importPageReq)
 	if err != nil {
@@ -108,7 +108,7 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 		t.Fatalf("close multipart writer failed: %v", err)
 	}
 
-	postReq := httptest.NewRequest("POST", "/admin/import/parse-item", &body)
+	postReq := httptest.NewRequest("POST", "/dash/import/parse-item", &body)
 	postReq.Header.Set("Content-Type", writer.FormDataContentType())
 	postReq.Header.Set("Cookie", cookieKV)
 	postReq.Header.Set("X-CSRF-Token", csrfToken)
@@ -117,16 +117,16 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 		t.Fatalf("post parse-item request failed: %v", err)
 	}
 	if postResp.StatusCode == fiber.StatusNotFound {
-		t.Fatalf("expected post /admin/import/parse-item route to exist")
+		t.Fatalf("expected post /dash/import/parse-item route to exist")
 	}
 
-	getReq := httptest.NewRequest("GET", "/admin/import/parse-item", nil)
+	getReq := httptest.NewRequest("GET", "/dash/import/parse-item", nil)
 	getReq.Header.Set("Cookie", cookieKV)
 	getResp, err := swv.App.Test(getReq)
 	if err != nil {
 		t.Fatalf("get parse-item request failed: %v", err)
 	}
 	if getResp.StatusCode != fiber.StatusMethodNotAllowed {
-		t.Fatalf("unexpected get /admin/import/parse-item status: %d", getResp.StatusCode)
+		t.Fatalf("unexpected get /dash/import/parse-item status: %d", getResp.StatusCode)
 	}
 }

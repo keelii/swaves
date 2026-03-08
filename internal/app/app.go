@@ -3,8 +3,8 @@ package app
 import (
 	"os"
 	"path/filepath"
-	"swaves/internal/modules/admin"
 	"swaves/internal/modules/api"
+	dash "swaves/internal/modules/dash"
 	"swaves/internal/modules/site"
 	"swaves/internal/modules/sui"
 	"swaves/internal/platform/config"
@@ -33,7 +33,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	globalStore := store.NewGlobalStore(db.Open(db.Options{
 		DSN:          appCfg.SqliteFile,
 		EnableSQLLog: appCfg.EnableSQLLog,
-	}), admin.NewSessionStore())
+	}), dash.NewSessionStore())
 
 	store.InitSettings(globalStore)
 	templateRoot := resolveProjectPath("web/templates")
@@ -66,7 +66,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 
 	app.Use("/static", static.New(resolveProjectPath("web/static")))
 
-	app.Use(middleware.AdminViewContext(globalStore.Session))
+	app.Use(middleware.DashViewContext(globalStore.Session))
 	app.Use(middleware.GlobalSettings(config.GlobalSettingKey))
 	app.Use(middleware.PaginationMiddleware())
 	app.Use(requestid.New(requestid.Config{
@@ -78,7 +78,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	app.Use(recover.New())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 
-	admin.RegisterRouter(app, globalStore)
+	dash.RegisterRouter(app, globalStore)
 	sui.RegisterRouter(app, globalStore)
 	site.RegisterRouter(app, globalStore)
 	api.RegisterRouter(app)

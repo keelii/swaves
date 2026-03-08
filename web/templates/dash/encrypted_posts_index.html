@@ -4,7 +4,7 @@
 
 {% set OperationTableID = "encrypted-posts-table" %}
 {% block page_actions %}
-  {{ sui.LinkButton("新建加密文章", "primary", href=UrlFor('admin.encrypted_posts.new')) }}
+  {{ sui.LinkButton("新建加密文章", "primary", href=UrlFor('dash.encrypted_posts.new')) }}
 {% endblock %}
 
 {% block status_main_left %}
@@ -22,22 +22,22 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('admin.encrypted_posts.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.encrypted_posts.list') ~ "?pageSize=" ~ Pager.PageSize %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block operation_left %}
   {{ sui.TabsStart("内容类型") }}
-    {{ sui.Tab("文章 (" ~ CountPost ~ ")", href=UrlFor('admin.posts.list') ~ "?kind=0") }}
-    {{ sui.Tab("页面 (" ~ CountPage ~ ")", href=UrlFor('admin.posts.list') ~ "?kind=1") }}
-    {{ sui.Tab("加密 (" ~ CountEncryptedPost ~ ")", href=UrlFor('admin.encrypted_posts.list'), active=true) }}
+    {{ sui.Tab("文章 (" ~ CountPost ~ ")", href=UrlFor('dash.posts.list') ~ "?kind=0") }}
+    {{ sui.Tab("页面 (" ~ CountPage ~ ")", href=UrlFor('dash.posts.list') ~ "?kind=1") }}
+    {{ sui.Tab("加密 (" ~ CountEncryptedPost ~ ")", href=UrlFor('dash.encrypted_posts.list'), active=true) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
 {% block content %}
 {% if Posts|length > 0 %}
   <div class="data-table-wrap">
-    <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('admin.encrypted_posts.api.batch_delete') }}">
+    <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.encrypted_posts.api.batch_delete') }}">
       <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -59,8 +59,8 @@
         <td>{{ post.UpdatedAt | relativeTime }}</td>
         <td>
           <div class="cell-actions">
-            {{ sui.LinkIcon("square-pen", UrlFor('admin.encrypted_posts.edit', id=post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-            <form method="post" action="{{ UrlFor('admin.encrypted_posts.delete', id=post.ID) }}">
+            {{ sui.LinkIcon("square-pen", UrlFor('dash.encrypted_posts.edit', id=post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+            <form method="post" action="{{ UrlFor('dash.encrypted_posts.delete', id=post.ID) }}">
               {{ _csrf_token() }}
               {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
             </form>

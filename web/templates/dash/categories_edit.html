@@ -4,10 +4,10 @@
 {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
 {% endblock %}
 {% block window_toolbar_main_right %}
-{{ sui.LinkButton("新建", "outline", href=UrlFor('admin.categories.new')) }}
+{{ sui.LinkButton("新建", "outline", href=UrlFor('dash.categories.new')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('admin.categories.update', id=Category.ID), Category = Category %}
+{% with Action = UrlFor('dash.categories.update', id=Category.ID), Category = Category %}
   {% include "dash/include/forms/categories_form.html" %}
 {% endwith %}
 {% endblock %}

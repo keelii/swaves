@@ -72,7 +72,7 @@ func CreatePostLikeNotification(dbx *db.DB, post db.Post, likeCount int, nowUnix
 	}
 
 	n := &db.Notification{
-		Receiver:     db.NotificationReceiverAdmin,
+		Receiver:     db.NotificationReceiverDash,
 		EventType:    db.NotificationEventPostLike,
 		Level:        db.NotificationLevelInfo,
 		Title:        title,
@@ -90,7 +90,7 @@ func CreateCommentNotification(dbx *db.DB, post db.Post, comment db.Comment, now
 	body := fmt.Sprintf("《%s》收到来自 %s 的留言。", normalizePostTitle(post), normalizeCommentAuthor(comment.Author))
 
 	n := &db.Notification{
-		Receiver:     db.NotificationReceiverAdmin,
+		Receiver:     db.NotificationReceiverDash,
 		EventType:    db.NotificationEventComment,
 		Level:        db.NotificationLevelInfo,
 		Title:        title,
@@ -130,7 +130,7 @@ func CreateTaskResultNotification(dbx *db.DB, task db.Task, status string, messa
 	}
 
 	n := &db.Notification{
-		Receiver:  db.NotificationReceiverAdmin,
+		Receiver:  db.NotificationReceiverDash,
 		EventType: db.NotificationEventTaskResult,
 		Level:     level,
 		Title:     title,

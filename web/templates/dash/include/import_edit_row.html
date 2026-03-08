@@ -34,5 +34,8 @@
       <div class="import-item-content">{% if Item.ContentPreview %}{{ Item.ContentPreview }}{% else %}-{% endif %}</div>
     </div>
   </td>
+  <td data-import-edit-action>
+    {{ sui.Button("保存", "outline", attrs='type="button" data-import-row-save-btn') }}
+  </td>
   <td data-import-edit-status data-state="pending">待确认</td>
 </tr>

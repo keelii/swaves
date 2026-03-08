@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"swaves/internal/modules/admin"
+	dash "swaves/internal/modules/dash"
 	"swaves/internal/modules/site"
 	"swaves/internal/platform/db"
 	"swaves/internal/shared/types"
@@ -247,7 +247,7 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 
 	var out bytes.Buffer
 	err := view.Render(&out, "dash/import.html", map[string]any{
-		"ImportingItems": []admin.PreviewPostItem{},
+		"ImportingItems": []dash.PreviewPostItem{},
 		"AllCategories":  []db.Category{},
 	})
 	if err != nil {
@@ -341,7 +341,7 @@ func TestRenderDashRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 
 	var out bytes.Buffer
 	err := view.Render(&out, "dash/redirects_new.html", map[string]any{
-		"RouteName": "admin.redirects.create",
+		"RouteName": "dash.redirects.create",
 		"Redirect": db.Redirect{
 			From:    "/missing-path",
 			To:      "",
@@ -365,11 +365,11 @@ func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 		t.Fatalf("load templates failed: %v", err)
 	}
 
-	groups := []admin.SettingSubKindGroupView{
+	groups := []dash.SettingSubKindGroupView{
 		{
 			Code:  "",
 			Label: "",
-			Settings: []admin.SettingView{
+			Settings: []dash.SettingView{
 				{
 					Setting: db.Setting{
 						Kind:  "site",
@@ -566,10 +566,10 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 	view := newMiniJinjaView(testTemplateRoot(), false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
 		switch name {
-		case "admin.monitor.data":
-			return "/admin/api/monitor"
-		case "admin.monitor":
-			return "/admin/monitor"
+		case "dash.monitor.data":
+			return "/dash/api/monitor"
+		case "dash.monitor":
+			return "/dash/monitor"
 		default:
 			return "/"
 		}
@@ -593,10 +593,10 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 	if strings.Contains(rendered, "var monitorAPIURL = '&#x2f;") {
 		t.Fatalf("expected monitor js api url not to be html escaped")
 	}
-	if !strings.Contains(rendered, `var monitorAPIURL = "/admin/api/monitor";`) {
+	if !strings.Contains(rendered, `var monitorAPIURL = "/dash/api/monitor";`) {
 		t.Fatalf("expected monitor api url in output, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `var monitorPageURL = "/admin/monitor";`) {
+	if !strings.Contains(rendered, `var monitorPageURL = "/dash/monitor";`) {
 		t.Fatalf("expected monitor base url in output, got: %s", rendered)
 	}
 }
@@ -605,16 +605,16 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 	view := newMiniJinjaView(testTemplateRoot(), false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
 		switch name {
-		case "admin.import.submit":
-			return "/admin/import"
-		case "admin.import.parse_item":
-			return "/admin/import/parse-item"
-		case "admin.import.confirm_item":
-			return "/admin/import/confirm-item"
-		case "admin.import.cancel":
-			return "/admin/import/cancel"
-		case "admin.posts.list":
-			return "/admin/posts"
+		case "dash.import.submit":
+			return "/dash/import"
+		case "dash.import.parse_item":
+			return "/dash/import/parse-item"
+		case "dash.import.confirm_item":
+			return "/dash/import/confirm-item"
+		case "dash.import.cancel":
+			return "/dash/import/cancel"
+		case "dash.posts.list":
+			return "/dash/posts"
 		default:
 			return "/"
 		}
@@ -625,7 +625,7 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 
 	var out bytes.Buffer
 	err := view.Render(&out, "dash/import.html", map[string]any{
-		"ImportingItems": []admin.PreviewPostItem{},
+		"ImportingItems": []dash.PreviewPostItem{},
 		"AllCategories": []db.Category{
 			{Name: "生活"},
 			{Name: "文娱"},
@@ -636,13 +636,13 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 	}
 
 	rendered := out.String()
-	if strings.Contains(rendered, "var parseItemURL = '&#x2f;admin&#x2f;import&#x2f;parse-item';") {
+	if strings.Contains(rendered, "var parseItemURL = '&#x2f;dash&#x2f;import&#x2f;parse-item';") {
 		t.Fatalf("expected parse-item url in js not to be html escaped")
 	}
 	if strings.Contains(rendered, "&quot;生活&quot;") {
 		t.Fatalf("expected category options in js not to be html escaped")
 	}
-	if !strings.Contains(rendered, `var parseItemURL = "/admin/import/parse-item";`) {
+	if !strings.Contains(rendered, `var parseItemURL = "/dash/import/parse-item";`) {
 		t.Fatalf("expected parse-item url in output, got: %s", rendered)
 	}
 	if !strings.Contains(rendered, `"生活"`) {

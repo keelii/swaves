@@ -198,7 +198,7 @@ func TestBuildPostURL(t *testing.T) {
 	}
 }
 
-func TestBuildAdminPath(t *testing.T) {
+func TestBuildDashPath(t *testing.T) {
 	tests := []struct {
 		name     string
 		settings map[string]string
@@ -206,35 +206,35 @@ func TestBuildAdminPath(t *testing.T) {
 		want     string
 	}{
 		{
-			name: "default admin path root",
+			name: "default dash path root",
 			settings: map[string]string{
-				"admin_path": "/admin",
+				"dash_path": "/dash",
 			},
 			path: "",
-			want: "/admin",
+			want: "/dash",
 		},
 		{
-			name: "custom admin path with canonical input",
+			name: "custom dash path with canonical input",
 			settings: map[string]string{
-				"admin_path": "/admin/dashboard",
+				"dash_path": "/dash/dashboard",
 			},
-			path: "/admin/posts",
-			want: "/admin/dashboard/posts",
+			path: "/dash/posts",
+			want: "/dash/dashboard/posts",
 		},
 		{
-			name: "custom admin path with direct suffix",
+			name: "custom dash path with direct suffix",
 			settings: map[string]string{
-				"admin_path": "/admin/dashboard",
+				"dash_path": "/dash/dashboard",
 			},
 			path: "/posts",
-			want: "/admin/dashboard/posts",
+			want: "/dash/dashboard/posts",
 		},
 		{
-			name: "quoted admin path should be normalized",
+			name: "quoted dash path should be normalized",
 			settings: map[string]string{
-				"admin_path": "\"/console\"",
+				"dash_path": "\"/console\"",
 			},
-			path: "/admin/settings/all",
+			path: "/dash/settings/all",
 			want: "/console/settings/all",
 		},
 	}
@@ -251,14 +251,14 @@ func TestBuildAdminPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store.Settings.Store(tt.settings)
-			if got := BuildAdminPath(tt.path); got != tt.want {
-				t.Fatalf("BuildAdminPath(%q) = %q, want %q", tt.path, got, tt.want)
+			if got := BuildDashPath(tt.path); got != tt.want {
+				t.Fatalf("BuildDashPath(%q) = %q, want %q", tt.path, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestCanonicalAdminPath(t *testing.T) {
+func TestCanonicalDashPath(t *testing.T) {
 	tests := []struct {
 		name     string
 		settings map[string]string
@@ -266,36 +266,36 @@ func TestCanonicalAdminPath(t *testing.T) {
 		want     string
 	}{
 		{
-			name: "canonicalize custom admin root",
+			name: "canonicalize custom dash root",
 			settings: map[string]string{
-				"admin_path": "/admin/dashboard",
+				"dash_path": "/dash/dashboard",
 			},
-			path: "/admin/dashboard",
-			want: "/admin",
+			path: "/dash/dashboard",
+			want: "/dash",
 		},
 		{
-			name: "canonicalize custom admin child route",
+			name: "canonicalize custom dash child route",
 			settings: map[string]string{
-				"admin_path": "/admin/dashboard",
+				"dash_path": "/dash/dashboard",
 			},
-			path: "/admin/dashboard/posts",
-			want: "/admin/posts",
+			path: "/dash/dashboard/posts",
+			want: "/dash/posts",
 		},
 		{
 			name: "already canonical route keeps original",
 			settings: map[string]string{
-				"admin_path": "/admin/dashboard",
+				"dash_path": "/dash/dashboard",
 			},
-			path: "/admin/settings/all",
-			want: "/admin/settings/all",
+			path: "/dash/settings/all",
+			want: "/dash/settings/all",
 		},
 		{
-			name: "root admin path keeps original route",
+			name: "root dash path keeps original route",
 			settings: map[string]string{
-				"admin_path": "/",
+				"dash_path": "/",
 			},
-			path: "/admin/posts",
-			want: "/admin/posts",
+			path: "/dash/posts",
+			want: "/dash/posts",
 		},
 	}
 
@@ -311,8 +311,8 @@ func TestCanonicalAdminPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store.Settings.Store(tt.settings)
-			if got := CanonicalAdminPath(tt.path); got != tt.want {
-				t.Fatalf("CanonicalAdminPath(%q) = %q, want %q", tt.path, got, tt.want)
+			if got := CanonicalDashPath(tt.path); got != tt.want {
+				t.Fatalf("CanonicalDashPath(%q) = %q, want %q", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -320,13 +320,13 @@ func TestCanonicalAdminPath(t *testing.T) {
 
 func TestURLFor(t *testing.T) {
 	SetURLForResolver(func(name string, params map[string]string, query map[string]string) (string, error) {
-		if name != "admin.posts.edit" {
+		if name != "dash.posts.edit" {
 			return "", fmt.Errorf("unexpected route name: %s", name)
 		}
 		if params["id"] == "" {
 			return "", fmt.Errorf("missing id param")
 		}
-		path := "/admin/posts/" + params["id"] + "/edit"
+		path := "/dash/posts/" + params["id"] + "/edit"
 		if query["tab"] != "" {
 			path += "?tab=" + query["tab"]
 		}
@@ -337,11 +337,11 @@ func TestURLFor(t *testing.T) {
 	})
 
 	got := URLFor(
-		"admin.posts.edit",
+		"dash.posts.edit",
 		map[string]string{"id": "123"},
 		map[string]string{"tab": "comments"},
 	)
-	want := "/admin/posts/123/edit?tab=comments"
+	want := "/dash/posts/123/edit?tab=comments"
 	if got != want {
 		t.Fatalf("URLFor() = %q, want %q", got, want)
 	}
@@ -349,7 +349,7 @@ func TestURLFor(t *testing.T) {
 
 func TestURLForWithoutResolver(t *testing.T) {
 	SetURLForResolver(nil)
-	got := URLFor("admin.posts.edit", map[string]string{"id": "1"}, nil)
+	got := URLFor("dash.posts.edit", map[string]string{"id": "1"}, nil)
 	if got != "" {
 		t.Fatalf("URLFor() = %q, want empty string when resolver not set", got)
 	}
@@ -366,19 +366,19 @@ func TestURLForStoreIsolation(t *testing.T) {
 		return "/b/" + name, nil
 	})
 
-	if got := storeA.URLFor("admin.home", nil, nil); got != "/a/admin.home" {
-		t.Fatalf("storeA.URLFor() = %q, want %q", got, "/a/admin.home")
+	if got := storeA.URLFor("dash.home", nil, nil); got != "/a/dash.home" {
+		t.Fatalf("storeA.URLFor() = %q, want %q", got, "/a/dash.home")
 	}
-	if got := storeB.URLFor("admin.home", nil, nil); got != "/b/admin.home" {
-		t.Fatalf("storeB.URLFor() = %q, want %q", got, "/b/admin.home")
+	if got := storeB.URLFor("dash.home", nil, nil); got != "/b/dash.home" {
+		t.Fatalf("storeB.URLFor() = %q, want %q", got, "/b/dash.home")
 	}
 
 	storeA.SetResolver(nil)
 
-	if got := storeA.URLFor("admin.home", nil, nil); got != "" {
+	if got := storeA.URLFor("dash.home", nil, nil); got != "" {
 		t.Fatalf("storeA.URLFor() after nil resolver = %q, want empty string", got)
 	}
-	if got := storeB.URLFor("admin.home", nil, nil); got != "/b/admin.home" {
-		t.Fatalf("storeB.URLFor() affected by storeA change = %q, want %q", got, "/b/admin.home")
+	if got := storeB.URLFor("dash.home", nil, nil); got != "/b/dash.home" {
+		t.Fatalf("storeB.URLFor() affected by storeA change = %q, want %q", got, "/b/dash.home")
 	}
 }

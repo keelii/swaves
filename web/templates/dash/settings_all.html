@@ -169,13 +169,13 @@
     {{ sui.TabsStart("设置分类") }}
       {% for kind in settingKinds %}
         {% set label = settingKindLabels[kind]|default(kind) %}
-        {{ sui.Tab(label, href=UrlFor('admin.settings.all', kind=kind), active=(activeKind == kind)) }}
+        {{ sui.Tab(label, href=UrlFor('dash.settings.all', kind=kind), active=(activeKind == kind)) }}
       {% endfor %}
     {{ sui.TabsEnd() }}
   </div>
 
   <div class="app-mx">
-    <form id="settings-all-form" method="post" action="{{ UrlFor('admin.settings.all.update', kind=activeKind) }}" class="settings-all-form">
+    <form id="settings-all-form" method="post" action="{{ UrlFor('dash.settings.all.update', kind=activeKind) }}" class="settings-all-form">
       {{ _csrf_token() }}
 
       {% if activeKind == contentRoutingKind %}
