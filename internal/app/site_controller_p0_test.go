@@ -37,6 +37,37 @@ func createPublishedSitePost(t *testing.T, swv SwavesApp, title string) db.Post 
 	return *post
 }
 
+func createApprovedSiteComment(
+	t *testing.T,
+	swv SwavesApp,
+	postID int64,
+	parentID int64,
+	author string,
+	content string,
+	createdAt int64,
+) int64 {
+	t.Helper()
+
+	item := &db.Comment{
+		PostID:      postID,
+		ParentID:    parentID,
+		Author:      author,
+		AuthorEmail: fmt.Sprintf("%s@example.com", author),
+		AuthorIP:    "127.0.0.1",
+		VisitorID:   fmt.Sprintf("site-p0-%s-%d", author, createdAt),
+		Content:     content,
+		Status:      db.CommentStatusApproved,
+		Type:        "comment",
+		CreatedAt:   createdAt,
+		UpdatedAt:   createdAt,
+	}
+	id, err := db.CreateComment(swv.Store.Model, item)
+	if err != nil {
+		t.Fatalf("create approved comment failed: %v", err)
+	}
+	return id
+}
+
 func decodeLikeActionResponse(t *testing.T, body []byte) likeActionResponse {
 	t.Helper()
 
@@ -251,4 +282,50 @@ func TestSiteControllerP0_CommentActionDuplicateShowsFeedback(t *testing.T) {
 		"请勿重复提交相同评论内容。",
 		`id="comment-form"`,
 	)
+}
+
+func TestSiteControllerP0_PostCommentsPaginationByRootThread(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	post := createPublishedSitePost(t, swv, "Site P0 Comment Pagination Post")
+	rootAID := createApprovedSiteComment(t, swv, post.ID, 0, "root-a", "root comment a", 1)
+	childAID := createApprovedSiteComment(t, swv, post.ID, rootAID, "child-a", "child comment a", 2)
+	rootBID := createApprovedSiteComment(t, swv, post.ID, 0, "root-b", "root comment b", 3)
+	rootCID := createApprovedSiteComment(t, swv, post.ID, 0, "root-c", "root comment c", 4)
+
+	postPath := share.GetPostUrl(post)
+	page1Path := fmt.Sprintf("%s?page=1&pageSize=2", postPath)
+	page1Resp := requestControllerP0(t, swv, fiber.MethodGet, page1Path, nil, "", nil)
+	page1Body := assertTemplateRendered(
+		t,
+		page1Resp,
+		fiber.StatusOK,
+		fmt.Sprintf("comment-%d", rootAID),
+		fmt.Sprintf("comment-%d", childAID),
+		fmt.Sprintf("comment-%d", rootBID),
+		`?page=2&pageSize=2#comments`,
+	)
+	if strings.Contains(page1Body, fmt.Sprintf("comment-%d", rootCID)) {
+		t.Fatalf("page 1 should not include root comment c: id=%d", rootCID)
+	}
+
+	page2Path := fmt.Sprintf("%s?page=2&pageSize=2", postPath)
+	page2Resp := requestControllerP0(t, swv, fiber.MethodGet, page2Path, nil, "", nil)
+	page2Body := assertTemplateRendered(
+		t,
+		page2Resp,
+		fiber.StatusOK,
+		fmt.Sprintf("comment-%d", rootCID),
+		`?page=1&pageSize=2#comments`,
+	)
+	if strings.Contains(page2Body, fmt.Sprintf("comment-%d", rootAID)) {
+		t.Fatalf("page 2 should not include root comment a: id=%d", rootAID)
+	}
+	if strings.Contains(page2Body, fmt.Sprintf("comment-%d", rootBID)) {
+		t.Fatalf("page 2 should not include root comment b: id=%d", rootBID)
+	}
+	if strings.Contains(page2Body, fmt.Sprintf("comment-%d", childAID)) {
+		t.Fatalf("page 2 should not include child of root comment a: id=%d", childAID)
+	}
 }

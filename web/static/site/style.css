@@ -161,6 +161,9 @@ article table thead th {
 .comment-list {
   padding: 0;
 }
+.comment-pagination {
+  margin: 0.75em 0 1em;
+}
 .comment-list .comment-children {
 }
 .comment-item {

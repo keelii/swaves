@@ -97,6 +97,11 @@
       {% else %}
         <p class="comment-empty"><small>暂无评论，欢迎抢沙发。</small></p>
       {% endif %}
+      {% if CommentPager and CommentPager.Num > 1 %}
+        {% with Pager = CommentPager %}
+          {% include "site/include/comment_pagination.html" %}
+        {% endwith %}
+      {% endif %}
 
       {% if CommentFeedback == "approved" %}
 {#        <p class="comment-feedback"><small>评论已发布。</small></p>#}

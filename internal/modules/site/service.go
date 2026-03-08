@@ -3,6 +3,7 @@ package site
 import (
 	"net/url"
 	"sort"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/shared/md"
@@ -130,7 +131,7 @@ func toDisplayPostWithRelation(dbx *db.DB, p db.PostWithRelation) *DisplayPostWi
 	}
 }
 
-func ListApprovedCommentsTree(dbx *db.DB, postID int64) []*DisplayComment {
+func ListApprovedCommentsTree(dbx *db.DB, postID int64, pager *types.Pagination) []*DisplayComment {
 	comments, err := db.ListApprovedPostComments(dbx, postID)
 	if err != nil {
 		logger.Error("list approved comments failed: post_id=%d err=%v", postID, err)
@@ -160,6 +161,42 @@ func ListApprovedCommentsTree(dbx *db.DB, postID int64) []*DisplayComment {
 			}
 		}
 		roots = append(roots, node)
+	}
+
+	if pager != nil {
+		if pager.Page < 1 {
+			pager.Page = config.DefaultPage
+		}
+		if pager.PageSize < 1 {
+			pager.PageSize = config.DefaultPageSize
+		}
+
+		pager.Total = len(roots)
+		pager.Num = 0
+		if pager.Total > 0 {
+			pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+		}
+
+		if pager.Num == 0 {
+			pager.Page = config.DefaultPage
+			return []*DisplayComment{}
+		}
+		if pager.Page > pager.Num {
+			pager.Page = pager.Num
+		}
+
+		start := (pager.Page - 1) * pager.PageSize
+		end := start + pager.PageSize
+		if start < 0 {
+			start = 0
+		}
+		if start >= len(roots) {
+			return []*DisplayComment{}
+		}
+		if end > len(roots) {
+			end = len(roots)
+		}
+		return roots[start:end]
 	}
 
 	return roots

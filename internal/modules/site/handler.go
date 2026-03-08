@@ -341,7 +341,7 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 	}
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
-	readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
+	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
 	return RenderUIView(c, "site/post.html", fiber.Map{
 		"Post":                   post,
@@ -350,6 +350,7 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 		"Liked":                  liked,
 		"Comments":               comments,
 		"CommentCount":           commentCount,
+		"CommentPager":           commentPager,
 		"CommentFeedback":        commentFeedback,
 		"CommentForm":            commentForm,
 		"CommentCaptchaRequired": captchaRequired,
@@ -390,10 +391,11 @@ func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRe
 	return post, nil
 }
 
-func (h Handler) funcName(c fiber.Ctx, post *DisplayPostWithRelation) (int, int, bool, []*DisplayComment, int, string, commentFormDefaults, bool, commentCaptchaChallenge) {
+func (h Handler) funcName(c fiber.Ctx, post *DisplayPostWithRelation) (int, int, bool, []*DisplayComment, int, types.Pagination, string, commentFormDefaults, bool, commentCaptchaChallenge) {
 	readUV := h.getEntityUVCount(db.UVEntityPost, post.Post.ID)
 	likeCount, liked := h.getPostLikeState(c, post.Post.ID)
-	comments := ListApprovedCommentsTree(h.Model, post.Post.ID)
+	commentPager := middleware.GetPagination(c)
+	comments := ListApprovedCommentsTree(h.Model, post.Post.ID, &commentPager)
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
 	commentForm := readCommentFormDefaults(c)
@@ -403,7 +405,7 @@ func (h Handler) funcName(c fiber.Ctx, post *DisplayPostWithRelation) (int, int,
 	if captchaRequired {
 		commentCaptcha = buildCommentCaptchaChallenge(visitorID)
 	}
-	return readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha
+	return readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha
 }
 func (h Handler) GetPostByPage(c fiber.Ctx) error {
 	ist, _ := h.getIST(c)
@@ -435,7 +437,7 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 		return h.redirectNotFound(c)
 	}
 
-	readUV, likeCount, liked, comments, commentCount, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
+	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
 	return RenderUIView(c, "site/post.html", fiber.Map{
 		"Post":                   post,
@@ -444,6 +446,7 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 		"Liked":                  liked,
 		"Comments":               comments,
 		"CommentCount":           commentCount,
+		"CommentPager":           commentPager,
 		"CommentFeedback":        commentFeedback,
 		"CommentForm":            commentForm,
 		"CommentCaptchaRequired": captchaRequired,
