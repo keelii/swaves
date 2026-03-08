@@ -206,7 +206,9 @@
   </table>
   </div>
 {% else %}
-  {{ sui.EmptyState("暂无资源") }}
+  <div class="app-px">
+    {{ sui.EmptyState("暂无资源") }}
+  </div>
 {% endif %}
 
 {{ sui.Dialog(
@@ -729,6 +731,10 @@ $(function() {
   });
 
   updateBatchDeleteState();
+
+  $uploadRemark.on("click", function() {
+    return false;
+  })
 });
 </script>
 {% endblock %}

@@ -74,6 +74,7 @@
   --app-toolbar-height: 40px;
   --app-status-height: 40px;
   --app-pane-nav-width: 240px;
+  --app-article-width: 50em;
   --app-toc-width: 300px;
   --app-toolbar-border-width: 1px;
   --app-status-border-width: 1px;
@@ -2056,7 +2057,7 @@ a.ui-icon-btn[disabled] {
 }
 .content-editor .title {
   align-items: stretch;
-  width: min(50em, 100%);
+  width: var(--app-article-width);
   margin: 0 auto;
   position: relative;
   border-top: 0!important;
@@ -2105,19 +2106,54 @@ a.ui-icon-btn[disabled] {
 }
 .content-editor .content {
   flex-grow: 1;
+  display: flex;
+  width: var(--app-article-width);
+  margin: 0 auto;
+}
+.content-editor .wysiwyg {
+  flex: 1 1 auto;
+
+  /*min-height: 0;*/
+  /*display: flex;*/
+  /*width: 100%;*/
+}
+.post-editor-workspace.source-mode .content-editor .wysiwyg {
+  display: none;
 }
 .content-editor .title,
-.content-editor .ProseMirror {
+.content-editor .ProseMirror,
+.content-editor .source-editor {
   border: 1px solid var(--app-border);
 }
 .content-editor .ProseMirror {
+  flex: 1 1 auto;
   height: 100%;
-  width: min(50em, 100%);
+  width: var(--app-article-width);
   margin: 0 auto;
   padding: var(--app-spacing);
   box-sizing: border-box;
   border-top: 0!important;
   border-bottom: 0!important;
+}
+.content-editor .source-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: var(--app-article-width);
+  margin: 0 auto;
+  padding: var(--app-spacing);
+  box-sizing: border-box;
+  border-top: 0!important;
+  border-bottom: 0!important;
+  background: var(--app-panel-bg);
+  color: var(--app-text);
+  font: inherit;
+  line-height: 1.5;
+  resize: none;
+  overflow: auto;
+}
+.content-editor .source-editor:focus-visible {
+  outline: none;
 }
 .content-editor .ProseMirror>*:first-child {
   margin-top: 0;

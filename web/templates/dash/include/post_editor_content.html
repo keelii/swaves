@@ -10,7 +10,8 @@
     <div class="title header">
       <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
     </div>
-    <div class="content wysiwyg"></div>
+    <div class="content wysiwyg" data-role="post-editor-wysiwyg"></div>
+    <textarea id="post-content" name="content" class="source-editor" data-role="post-editor-source" form="form" hidden>{{ ContentValue }}</textarea>
   </div>
   <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane"{% if not InitialTOCHTML %} hidden{% endif %} aria-hidden="{% if InitialTOCHTML %}false{% else %}true{% endif %}">
     <div class="post-toc">
@@ -20,7 +21,6 @@
   </aside>
 </div>
 
-<textarea id="post-content" name="content" form="form" hidden>{{ ContentValue }}</textarea>
 {% if StatusValue is not none and StatusValue != "" %}
 <input type="hidden" name="status" value="{{ StatusValue }}" form="form">
 {% endif %}
@@ -40,7 +40,9 @@
     var workspace = document.querySelector('[data-role="post-editor-workspace"]');
     var tocPane = document.querySelector('[data-role="post-editor-toc-pane"]');
     var tocBody = document.querySelector('[data-role="post-editor-toc-body"]');
+    var wysiwygMount = document.querySelector('[data-role="post-editor-wysiwyg"]');
     var tocToggleButton = document.querySelector('[data-role="toggle-post-toc"]');
+    var sourceToggleButton = document.querySelector('[data-role="toggle-post-source"]');
     var autoSyncSlug = {% if AutoSyncSlug %}true{% else %}false{% endif %};
     var slugAPIURL = {{ SlugAPIURL | tojson }};
     var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
@@ -55,6 +57,8 @@
     var tocOpenPersisting = false;
     var tocOpenQueued = null;
     var tocOpenLastSaved = tocPreferredOpen ? "1" : "0";
+    var sourceMode = false;
+    var sourceModeEnabled = false;
     var headingIDRunePattern = null;
     try {
       headingIDRunePattern = new RegExp("^[\\p{L}\\p{N}]$", "u");
@@ -255,6 +259,81 @@
       wordCount.textContent = "字数 " + text.length;
     }
 
+    function refreshSourceToggleButton() {
+      if (!sourceToggleButton) {
+        return;
+      }
+      sourceToggleButton.hidden = !sourceModeEnabled;
+      sourceToggleButton.classList.toggle("selected", sourceMode);
+      sourceToggleButton.setAttribute("aria-pressed", sourceMode ? "true" : "false");
+      sourceToggleButton.setAttribute("data-title", sourceMode ? "切换可视化编辑" : "切换源码编辑");
+    }
+
+    function refreshTOCToggleButton() {
+      if (!tocToggleButton) {
+        return;
+      }
+      tocToggleButton.hidden = !tocAvailable || sourceMode;
+      if (sourceMode) {
+        tocToggleButton.setAttribute("aria-pressed", "false");
+      }
+    }
+
+    function syncTextareaFromEditor() {
+      if (!textarea || !window.__seditor || typeof window.__seditor.getMarkdown !== "function") {
+        return;
+      }
+      try {
+        textarea.value = String(window.__seditor.getMarkdown() || "");
+      } catch (error) {
+        // Ignore sync failures and keep previous textarea value.
+      }
+    }
+
+    function syncEditorFromTextarea() {
+      if (!textarea || !window.__seditor || typeof window.__seditor.setMarkdown !== "function") {
+        return;
+      }
+      window.__seditor.setMarkdown(String(textarea.value || ""));
+    }
+
+    function setSourceMode(nextSourceMode, options) {
+      if (!workspace || !textarea || !sourceModeEnabled) {
+        return;
+      }
+
+      var nextMode = !!nextSourceMode;
+      var force = !!(options && options.force);
+      if (!force && nextMode === sourceMode) {
+        return;
+      }
+
+      sourceMode = nextMode;
+      workspace.classList.toggle("source-mode", sourceMode);
+      textarea.hidden = !sourceMode;
+
+      if (sourceMode) {
+        syncTextareaFromEditor();
+        applyTOCOpenState(false, false);
+        updateWordCount(textarea.value);
+        scheduleTOCSync(textarea.value);
+        if (!options || options.focus !== false) {
+          textarea.focus();
+        }
+      } else {
+        syncEditorFromTextarea();
+        syncTOCHeadingMapping();
+        updateWordCount(textarea.value);
+        scheduleTOCSync(textarea.value);
+        if (!options || options.focus !== false) {
+          focusEditorRoot();
+        }
+      }
+
+      refreshSourceToggleButton();
+      refreshTOCToggleButton();
+    }
+
     function syncSlugFromTitle() {
       if (!autoSyncSlug || !titleInput || !slugInput || !slugAPIURL) {
         return;
@@ -367,9 +446,7 @@
 
     function setTOCAvailable(available) {
       tocAvailable = !!available;
-      if (tocToggleButton) {
-        tocToggleButton.hidden = !tocAvailable;
-      }
+      refreshTOCToggleButton();
       if (!tocAvailable) {
         applyTOCOpenState(false, false);
         if (tocPane) {
@@ -474,6 +551,15 @@
         applyTOCOpenState(nextOpen, true);
       });
     }
+    if (sourceToggleButton) {
+      sourceToggleButton.addEventListener("click", function(event) {
+        event.preventDefault();
+        if (!sourceModeEnabled) {
+          return;
+        }
+        setSourceMode(!sourceMode, { focus: true });
+      });
+    }
 
     if (tocBody) {
       tocBody.addEventListener("click", function(event) {
@@ -484,6 +570,9 @@
         var link = target.closest('a[href^="#"]');
         if (link) {
           event.preventDefault();
+          if (sourceMode) {
+            return;
+          }
           scrollToTOCLinkTarget(link);
         }
       });
@@ -498,13 +587,25 @@
       }
     });
 
-    if (!window.SEditor || typeof window.SEditor.init !== "function") {
+    if (!window.SEditor || typeof window.SEditor.init !== "function" || !wysiwygMount) {
+      sourceModeEnabled = false;
+      sourceMode = true;
+      if (workspace) {
+        workspace.classList.add("source-mode");
+      }
+      if (textarea) {
+        textarea.hidden = false;
+      }
+      refreshSourceToggleButton();
+      refreshTOCToggleButton();
       updateWordCount();
       return;
     }
 
+    sourceModeEnabled = true;
+    refreshSourceToggleButton();
     window.__seditor = window.SEditor.init({
-      mount: ".content",
+      mount: '[data-role="post-editor-wysiwyg"]',
       textarea: "#post-content",
       placeholder: "输入内容",
       onChange: function(markdown) {
@@ -524,6 +625,7 @@
       });
     }
 
+    setSourceMode(false, { focus: false, force: true });
     updateWordCount();
     syncSlugFromTitle();
   });

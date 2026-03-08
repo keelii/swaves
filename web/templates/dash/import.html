@@ -56,7 +56,6 @@
 
   .import-help-pre {
     margin: 0;
-    padding: var(--app-gap-3) 0 0;
     color: var(--app-text-soft);
     font-size: 0.88rem;
     line-height: 1.5;
@@ -212,6 +211,7 @@
   </section>
   <div class="app-mb import-config-help">
     {% set frontmatterExample %}
+    <div class="ui-alert info app-mb">
     <pre class="import-help-pre">---
 title: 文章标题
 slug: /article-slug
@@ -225,94 +225,96 @@ tags:
   - tag2
 ---
 
-文章内容...</pre>
+markdown 文章内容...</pre>
+    </div>
+
+    <div class="import-config-grid">
+      <div class="ui-field">
+        <label class="ui-field-label" for="import-title-source">标题来源</label>
+        <div class="import-control-stack">
+          <select id="import-title-source" class="ui-input ui-select-input" name="title_source" required>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：title）</option>
+            <option value="filename">文件名</option>
+            <option value="markdown">Markdown 标题</option>
+          </select>
+          <input class="ui-input" type="text" name="title_field" id="title_field_container" value="title" placeholder="title" style="display: none;">
+        </div>
+      </div>
+
+      <div class="ui-field" id="title_level_container" style="display: none;">
+        <label class="ui-field-label" for="import-title-level">标题级别</label>
+        <div class="import-control-stack">
+          <select id="import-title-level" class="ui-input ui-select-input" name="title_level">
+            <option value="1" selected>H1（# 一级标题）</option>
+            <option value="2">H2（## 二级标题）</option>
+            <option value="3">H3（### 三级标题）</option>
+          </select>
+          <div class="ui-field-help">从 Markdown 中提取标题时使用的级别。</div>
+        </div>
+      </div>
+
+      <div class="ui-field">
+        <label class="ui-field-label" for="import-slug-source">URL 标识来源</label>
+        <div class="import-control-stack">
+          <select id="import-slug-source" class="ui-input ui-select-input" name="slug_source" required>
+            <option value="filename" selected>文件名</option>
+            <option value="frontmatter">前置信息字段（Frontmatter，默认：slug）</option>
+            <option value="title">由标题自动生成</option>
+          </select>
+          <input class="ui-input" type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
+        </div>
+      </div>
+
+      <div class="ui-field">
+        <label class="ui-field-label" for="import-created-source">创建时间来源</label>
+        <div class="import-control-stack">
+          <select id="import-created-source" class="ui-input ui-select-input" name="created_source" required>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：date）</option>
+            <option value="filetime">文件时间（当前时间）</option>
+          </select>
+          <input class="ui-input" type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
+        </div>
+      </div>
+
+      <div class="ui-field">
+        <label class="ui-field-label" for="import-status-source">状态来源</label>
+        <div class="import-control-stack">
+          <select id="import-status-source" class="ui-input ui-select-input" name="status_source" required>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：draft）</option>
+            <option value="alldraft">全部草稿</option>
+            <option value="allpublished">全部发布</option>
+          </select>
+          <input class="ui-input" type="text" name="status_field" id="status_field_container" value="draft" placeholder="draft">
+        </div>
+      </div>
+
+      <div class="ui-field">
+        <label class="ui-field-label" for="import-category-source">分类来源</label>
+        <div class="import-control-stack">
+          <select id="import-category-source" class="ui-input ui-select-input" name="category_source" required>
+            <option value="none">不设置（留空）</option>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：categories）</option>
+            <option value="autocreate">自动创建默认分类</option>
+          </select>
+          <input class="ui-input" type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
+        </div>
+      </div>
+
+      <div class="ui-field">
+        <label class="ui-field-label" for="import-tag-source">标签来源</label>
+        <div class="import-control-stack">
+          <select id="import-tag-source" class="ui-input ui-select-input" name="tag_source" required>
+            <option value="none">不设置（留空）</option>
+            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：tags）</option>
+            <option value="autocreate">自动创建默认标签</option>
+          </select>
+          <input class="ui-input" type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
+        </div>
+      </div>
+    </div>
+
     {% endset %}
-    {{ sui.Details("Markdown 文件应包含前置信息（frontmatter），例如", frontmatterExample) }}
-  </div>
-
-  <div class="import-config-grid">
-    <div class="ui-field">
-      <label class="ui-field-label" for="import-title-source">标题来源</label>
-      <div class="import-control-stack">
-        <select id="import-title-source" class="ui-input ui-select-input" name="title_source" required>
-          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：title）</option>
-          <option value="filename">文件名</option>
-          <option value="markdown">Markdown 标题</option>
-        </select>
-        <input class="ui-input" type="text" name="title_field" id="title_field_container" value="title" placeholder="title" style="display: none;">
-      </div>
-    </div>
-
-    <div class="ui-field" id="title_level_container" style="display: none;">
-      <label class="ui-field-label" for="import-title-level">标题级别</label>
-      <div class="import-control-stack">
-        <select id="import-title-level" class="ui-input ui-select-input" name="title_level">
-          <option value="1" selected>H1（# 一级标题）</option>
-          <option value="2">H2（## 二级标题）</option>
-          <option value="3">H3（### 三级标题）</option>
-        </select>
-        <div class="ui-field-help">从 Markdown 中提取标题时使用的级别。</div>
-      </div>
-    </div>
-
-    <div class="ui-field">
-      <label class="ui-field-label" for="import-slug-source">URL 标识来源</label>
-      <div class="import-control-stack">
-        <select id="import-slug-source" class="ui-input ui-select-input" name="slug_source" required>
-          <option value="filename" selected>文件名</option>
-          <option value="frontmatter">前置信息字段（Frontmatter，默认：slug）</option>
-          <option value="title">由标题自动生成</option>
-        </select>
-        <input class="ui-input" type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
-      </div>
-    </div>
-
-    <div class="ui-field">
-      <label class="ui-field-label" for="import-created-source">创建时间来源</label>
-      <div class="import-control-stack">
-        <select id="import-created-source" class="ui-input ui-select-input" name="created_source" required>
-          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：date）</option>
-          <option value="filetime">文件时间（当前时间）</option>
-        </select>
-        <input class="ui-input" type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
-      </div>
-    </div>
-
-    <div class="ui-field">
-      <label class="ui-field-label" for="import-status-source">状态来源</label>
-      <div class="import-control-stack">
-        <select id="import-status-source" class="ui-input ui-select-input" name="status_source" required>
-          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：draft）</option>
-          <option value="alldraft">全部草稿</option>
-          <option value="allpublished">全部发布</option>
-        </select>
-        <input class="ui-input" type="text" name="status_field" id="status_field_container" value="draft" placeholder="draft">
-      </div>
-    </div>
-
-    <div class="ui-field">
-      <label class="ui-field-label" for="import-category-source">分类来源</label>
-      <div class="import-control-stack">
-        <select id="import-category-source" class="ui-input ui-select-input" name="category_source" required>
-          <option value="none">不设置（留空）</option>
-          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：categories）</option>
-          <option value="autocreate">自动创建默认分类</option>
-        </select>
-        <input class="ui-input" type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
-      </div>
-    </div>
-
-    <div class="ui-field">
-      <label class="ui-field-label" for="import-tag-source">标签来源</label>
-      <div class="import-control-stack">
-        <select id="import-tag-source" class="ui-input ui-select-input" name="tag_source" required>
-          <option value="none">不设置（留空）</option>
-          <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：tags）</option>
-          <option value="autocreate">自动创建默认标签</option>
-        </select>
-        <input class="ui-input" type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
-      </div>
-    </div>
+    {{ sui.Details("Markdown 文件可以包含元信息（frontmatter），例如", frontmatterExample) }}
   </div>
 </form>
 </div>
