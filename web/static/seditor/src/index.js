@@ -276,6 +276,10 @@ function buildMarkdownSerializer(schema) {
     var title = node.attrs && node.attrs.title ? ' "' + String(node.attrs.title).replace(/"/g, '\\"') + '"' : "";
     state.write("![" + alt + "](" + src + title + ")");
   };
+  nodes.hard_break = function(state) {
+    // Keep single-line markdown breaks as plain "\n" to avoid adding trailing backslashes.
+    state.write("\n");
+  };
   nodes.raw_inline = function(state, node) {
     // Important: raw content must not be escaped.
     state.text(node.textContent, false);

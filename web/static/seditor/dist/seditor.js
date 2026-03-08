@@ -19246,6 +19246,9 @@ var SEditor = (() => {
       var title = node.attrs && node.attrs.title ? ' "' + String(node.attrs.title).replace(/"/g, '\\"') + '"' : "";
       state.write("![" + alt + "](" + src + title + ")");
     };
+    nodes.hard_break = function(state) {
+      state.write("\n");
+    };
     nodes.raw_inline = function(state, node) {
       state.text(node.textContent, false);
     };
