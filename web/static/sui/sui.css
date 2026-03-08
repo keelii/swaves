@@ -1944,7 +1944,7 @@ a.ui-icon-btn[disabled] {
   position: relative;
   min-height: 0;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   align-items: stretch;
 }
@@ -1963,36 +1963,12 @@ a.ui-icon-btn[disabled] {
   border-left: var(--app-border-width) solid var(--app-border);
   background: var(--app-surface-muted-bg);
   display: none;
-  overflow: visible;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .post-editor-workspace.toc-open .post-editor-toc-pane {
-  display: block;
-}
-
-.post-editor-toc-sticky {
-  position: sticky;
-  top: 0;
-  height: calc(
-    100vh
-    - var(--app-toolbar-height)
-    - var(--app-status-height)
-    - var(--app-toolbar-border-width)
-    - var(--app-status-border-width)
-    - (var(--app-spacing) * 2)
-  );
-  max-height: calc(
-    100vh
-    - var(--app-toolbar-height)
-    - var(--app-status-height)
-    - var(--app-toolbar-border-width)
-    - var(--app-status-border-width)
-    - (var(--app-spacing) * 2)
-  );
-  min-height: 0;
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 .post-editor-toc-head {
