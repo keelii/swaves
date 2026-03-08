@@ -279,6 +279,14 @@
       }
     }
 
+    function resizeSourceTextarea() {
+      if (!textarea || textarea.hidden) {
+        return;
+      }
+      textarea.style.height = "auto";
+      textarea.style.height = String(textarea.scrollHeight || 0) + "px";
+    }
+
     function syncTextareaFromEditor() {
       if (!textarea || !window.__seditor || typeof window.__seditor.getMarkdown !== "function") {
         return;
@@ -314,6 +322,7 @@
 
       if (sourceMode) {
         syncTextareaFromEditor();
+        resizeSourceTextarea();
         applyTOCOpenState(false, false);
         updateWordCount(textarea.value);
         scheduleTOCSync(textarea.value);
@@ -595,6 +604,7 @@
       }
       if (textarea) {
         textarea.hidden = false;
+        resizeSourceTextarea();
       }
       refreshSourceToggleButton();
       refreshTOCToggleButton();
@@ -621,6 +631,7 @@
     if (textarea) {
       textarea.addEventListener("input", updateWordCount);
       textarea.addEventListener("input", function() {
+        resizeSourceTextarea();
         scheduleTOCSync();
       });
     }

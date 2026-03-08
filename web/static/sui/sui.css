@@ -2136,9 +2136,9 @@ a.ui-icon-btn[disabled] {
   border-bottom: 0!important;
 }
 .content-editor .source-editor {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
+  flex: 0 0 auto;
+  min-height: 100%;
+  height: auto;
   width: var(--app-article-width);
   margin: 0 auto;
   padding: var(--app-spacing);
@@ -2150,7 +2150,7 @@ a.ui-icon-btn[disabled] {
   font: inherit;
   line-height: 1.5;
   resize: none;
-  overflow: auto;
+  overflow: hidden;
 }
 .content-editor .source-editor:focus-visible {
   outline: none;
