@@ -122,7 +122,7 @@
       for (var i = 0; i < headings.length; i += 1) {
         var headingNode = headings[i];
         var anchorID = buildHeadingAnchorID(headingNode.textContent || "");
-        var entry = { index: i, id: anchorID, node: headingNode };
+        var entry = { index: i, id: anchorID };
         headingEntries.push(entry);
         if (!headingMap[anchorID]) {
           headingMap[anchorID] = [];
@@ -131,7 +131,6 @@
       }
 
       var anchorHitCount = {};
-      var assignedHeadingIDs = {};
       for (var linkIndex = 0; linkIndex < links.length; linkIndex += 1) {
         var link = links[linkIndex];
         var anchor = normalizeTOCAnchor(link.getAttribute("href"));
@@ -148,22 +147,9 @@
 
         if (targetEntry) {
           link.setAttribute("data-heading-index", String(targetEntry.index));
-          var resolvedID = anchor || targetEntry.id;
-          if (resolvedID) {
-            targetEntry.node.id = resolvedID;
-            assignedHeadingIDs[targetEntry.index] = true;
-          }
         } else {
           link.removeAttribute("data-heading-index");
         }
-      }
-
-      for (var entryIndex = 0; entryIndex < headingEntries.length; entryIndex += 1) {
-        var headingEntry = headingEntries[entryIndex];
-        if (assignedHeadingIDs[headingEntry.index]) {
-          continue;
-        }
-        headingEntry.node.id = headingEntry.id;
       }
     }
 
@@ -313,8 +299,8 @@
       if (workspace) {
         workspace.classList.toggle("toc-open", nextOpen);
       }
-      if (tocPane) {
-        tocPane.hidden = !nextOpen;
+      if (tocPane && tocPane.setAttribute) {
+        tocPane.setAttribute("aria-hidden", nextOpen ? "false" : "true");
       }
       if (tocToggleButton) {
         tocToggleButton.setAttribute("aria-pressed", nextOpen ? "true" : "false");
@@ -332,7 +318,13 @@
       }
       if (!tocAvailable) {
         applyTOCOpenState(false, false);
+        if (tocPane) {
+          tocPane.hidden = true;
+        }
         return;
+      }
+      if (tocPane) {
+        tocPane.hidden = false;
       }
       applyTOCOpenState(tocPreferredOpen, false);
     }
@@ -428,6 +420,15 @@
         }
       });
     }
+
+    document.addEventListener("keydown", function(event) {
+      if (!tocAvailable || !workspace || !workspace.classList || !workspace.classList.contains("toc-open")) {
+        return;
+      }
+      if (event.key === "Escape") {
+        applyTOCOpenState(false, true);
+      }
+    });
 
     if (!window.SEditor || typeof window.SEditor.init !== "function") {
       updateWordCount();

@@ -651,10 +651,74 @@ function createPlaceholderPlugin(schema, placeholder) {
   });
 }
 
+function buildHeadingIDRunePattern() {
+  try {
+    return new RegExp("^[\\p{L}\\p{N}]$", "u");
+  } catch (error) {
+    return null;
+  }
+}
+
+function isHeadingIDRune(char, headingIDRunePattern) {
+  if (!char) {
+    return false;
+  }
+  if (char === "-") {
+    return true;
+  }
+  if ((char >= "0" && char <= "9") || (char >= "A" && char <= "Z") || (char >= "a" && char <= "z")) {
+    return true;
+  }
+  return !!(headingIDRunePattern && headingIDRunePattern.test(char));
+}
+
+function buildHeadingAnchorID(text, headingIDRunePattern) {
+  var source = String(text == null ? "" : text).trim().replace(/ /g, "-");
+  var out = "";
+  for (var i = 0; i < source.length; i += 1) {
+    var char = source.charAt(i);
+    if (isHeadingIDRune(char, headingIDRunePattern)) {
+      out += char;
+    }
+  }
+  return out || "heading";
+}
+
+function createHeadingIDSyncPlugin(schema) {
+  if (!schema.nodes.heading) {
+    return null;
+  }
+
+  var headingIDRunePattern = buildHeadingIDRunePattern();
+  return new Plugin({
+    props: {
+      decorations: function(state) {
+        var headingType = schema.nodes.heading;
+        var decorations = [];
+        state.doc.descendants(function(node, pos) {
+          if (node.type === headingType) {
+            decorations.push(
+              Decoration.node(pos, pos + node.nodeSize, {
+                id: buildHeadingAnchorID(node.textContent || "", headingIDRunePattern)
+              })
+            );
+          }
+          return true;
+        });
+        if (!decorations.length) {
+          return null;
+        }
+        return DecorationSet.create(state.doc, decorations);
+      }
+    }
+  });
+}
+
 function buildPlugins(schema, options) {
   var opts = options || {};
   var listItem = schema.nodes.list_item;
   var placeholderPlugin = createPlaceholderPlugin(schema, opts.placeholder);
+  var headingIDSyncPlugin = createHeadingIDSyncPlugin(schema);
 
   var headingRule = null;
   if (schema.nodes.heading && schema.nodes.paragraph) {
@@ -708,6 +772,7 @@ function buildPlugins(schema, options) {
 
   return [
     placeholderPlugin,
+    headingIDSyncPlugin,
     inputRuleList.length ? inputRules({ rules: inputRuleList }) : null,
     history(),
     keymap({

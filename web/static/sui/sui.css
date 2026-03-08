@@ -1801,27 +1801,32 @@ a.ui-icon-btn[disabled] {
 }
 
 /* ==================== 4) 页面级样式 ==================== */
-.content-editor {
+.content-editor,
+.post-editor-toc-body {
   scrollbar-width: thin;
   scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
 }
 
-.content-editor::-webkit-scrollbar {
+.content-editor::-webkit-scrollbar,
+.post-editor-toc-body::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-.content-editor::-webkit-scrollbar-track {
+.content-editor::-webkit-scrollbar-track,
+.post-editor-toc-body::-webkit-scrollbar-track {
   background: var(--app-scrollbar-track);
 }
 
-.content-editor::-webkit-scrollbar-thumb {
+.content-editor::-webkit-scrollbar-thumb,
+.post-editor-toc-body::-webkit-scrollbar-thumb {
   background: var(--app-scrollbar-thumb);
   border-radius: var(--app-radius-pill);
   border: 3px solid var(--app-scrollbar-track);
 }
 
-.content-editor::-webkit-scrollbar-thumb:hover {
+.content-editor::-webkit-scrollbar-thumb:hover,
+.post-editor-toc-body::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--app-scrollbar-thumb), #ffffff 14%);
 }
 
@@ -1936,33 +1941,42 @@ a.ui-icon-btn[disabled] {
 }
 
 .post-editor-workspace {
-  display: flex;
-  align-items: stretch;
-  gap: var(--app-gap-3);
+  position: relative;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 .post-editor-workspace .content-editor {
-  flex: 1 1 auto;
+  height: 100%;
   min-width: 0;
 }
 
-.post-editor-workspace:not(.toc-open) .post-editor-toc-pane {
-  display: none;
-}
-
 .post-editor-toc-pane {
-  flex: 0 0 280px;
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(360px, calc(100% - 48px));
   min-width: 220px;
   max-width: 360px;
-  /*border: var(--app-border-width) solid var(--app-border);*/
   border-left: var(--app-border-width) solid var(--app-border);
-  /*border-radius: var(--app-radius);*/
   background: var(--app-surface-muted-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform: translateX(100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 180ms ease, opacity 140ms ease, visibility 0s linear 180ms;
+  z-index: 30;
+}
+
+.post-editor-workspace.toc-open .post-editor-toc-pane {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform 180ms ease, opacity 140ms ease;
 }
 
 .post-editor-toc-head {

@@ -19580,10 +19580,69 @@ var SEditor = (() => {
       }
     });
   }
+  function buildHeadingIDRunePattern() {
+    try {
+      return new RegExp("^[\\p{L}\\p{N}]$", "u");
+    } catch (error2) {
+      return null;
+    }
+  }
+  function isHeadingIDRune(char, headingIDRunePattern) {
+    if (!char) {
+      return false;
+    }
+    if (char === "-") {
+      return true;
+    }
+    if (char >= "0" && char <= "9" || char >= "A" && char <= "Z" || char >= "a" && char <= "z") {
+      return true;
+    }
+    return !!(headingIDRunePattern && headingIDRunePattern.test(char));
+  }
+  function buildHeadingAnchorID(text2, headingIDRunePattern) {
+    var source = String(text2 == null ? "" : text2).trim().replace(/ /g, "-");
+    var out = "";
+    for (var i = 0; i < source.length; i += 1) {
+      var char = source.charAt(i);
+      if (isHeadingIDRune(char, headingIDRunePattern)) {
+        out += char;
+      }
+    }
+    return out || "heading";
+  }
+  function createHeadingIDSyncPlugin(schema2) {
+    if (!schema2.nodes.heading) {
+      return null;
+    }
+    var headingIDRunePattern = buildHeadingIDRunePattern();
+    return new Plugin({
+      props: {
+        decorations: function(state) {
+          var headingType = schema2.nodes.heading;
+          var decorations = [];
+          state.doc.descendants(function(node, pos) {
+            if (node.type === headingType) {
+              decorations.push(
+                Decoration.node(pos, pos + node.nodeSize, {
+                  id: buildHeadingAnchorID(node.textContent || "", headingIDRunePattern)
+                })
+              );
+            }
+            return true;
+          });
+          if (!decorations.length) {
+            return null;
+          }
+          return DecorationSet.create(state.doc, decorations);
+        }
+      }
+    });
+  }
   function buildPlugins(schema2, options) {
     var opts = options || {};
     var listItem = schema2.nodes.list_item;
     var placeholderPlugin = createPlaceholderPlugin(schema2, opts.placeholder);
+    var headingIDSyncPlugin = createHeadingIDSyncPlugin(schema2);
     var headingRule = null;
     if (schema2.nodes.heading && schema2.nodes.paragraph) {
       headingRule = new InputRule(/^(#{1,6})\s$/, function(state, match2, start, end) {
@@ -19631,6 +19690,7 @@ var SEditor = (() => {
     }
     return [
       placeholderPlugin,
+      headingIDSyncPlugin,
       inputRuleList.length ? inputRules({ rules: inputRuleList }) : null,
       history(),
       keymap({
