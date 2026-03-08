@@ -6,7 +6,7 @@
       <input type="hidden" data-field="created_at_unix" value="{{ Item.CreatedAtUnix }}">
       <input class="ui-input" type="text" data-field="title" value="{{ Item.Title }}" required>
       <input class="ui-input" type="text" data-field="slug" value="{{ Item.Slug }}" required>
-      <input class="ui-input" type="text" data-field="created_at" value="{{ Item.CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS（可选）">
+      <input class="ui-input" type="datetime-local" data-field="created_at" value="{{ Item.CreatedAt }}" placeholder="YYYY-MM-DD HH:MM:SS（可选）">
     </div>
   </td>
   <td>
@@ -35,7 +35,6 @@
     </div>
   </td>
   <td data-import-edit-action>
-    {{ sui.Button("保存", "outline", attrs='type="button" data-import-row-save-btn') }}
+    {{ sui.IconButton("save", "保存", attrs='type="button" data-title="保存" data-import-row-save-btn') }}
   </td>
-  <td data-import-edit-status data-state="pending">待确认</td>
 </tr>

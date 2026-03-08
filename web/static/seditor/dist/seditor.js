@@ -19165,6 +19165,10 @@ var SEditor = (() => {
     });
     var parser = new MarkdownParser(schema2, tokenizer, tokens);
     parser.tokenHandlers.softbreak = function(state) {
+      if (schema2.nodes.hard_break) {
+        state.addNode(schema2.nodes.hard_break);
+        return;
+      }
       state.addText("\n");
     };
     return parser;

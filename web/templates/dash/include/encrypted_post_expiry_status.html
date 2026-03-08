@@ -1,0 +1,101 @@
+{% set expiresAtUnix = ExpiresAtUnix|default(0) %}
+{% set hasExpiry = expiresAtUnix > 0 %}
+<style>
+  .encrypted-expiry-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-gap-2);
+    min-width: 0;
+  }
+
+  .encrypted-expiry-status-label {
+    color: var(--app-text-soft);
+    white-space: nowrap;
+  }
+
+  .encrypted-expiry-status .ui-select {
+    min-width: 8.5em;
+  }
+
+  .encrypted-expiry-custom-input {
+    width: 15.5em;
+    max-width: 38vw;
+  }
+
+  @media (max-width: 900px) {
+    .encrypted-expiry-custom-input {
+      width: 12.5em;
+      max-width: 46vw;
+    }
+  }
+</style>
+<div class="encrypted-expiry-status">
+  <span class="encrypted-expiry-status-label">过期时间</span>
+  <select class="ui-select mini noborder" id="encrypted-expiry-option" name="expires_at_option" form="form" aria-label="过期时间选项">
+    <option value="none"{% if not hasExpiry %} selected{% endif %}>永不过期</option>
+    <option value="1min">1 分钟</option>
+    <option value="5min">5 分钟</option>
+    <option value="1hour">1 小时</option>
+    <option value="1day">1 天</option>
+    <option value="custom"{% if hasExpiry %} selected{% endif %}>自定义</option>
+  </select>
+  <input
+    class="ui-input encrypted-expiry-custom-input"
+    type="datetime-local"
+    id="encrypted-expiry-custom"
+    name="expires_at_custom"
+    form="form"
+    data-initial-unix="{{ expiresAtUnix }}"
+    hidden
+  >
+</div>
+<script>
+  (function() {
+    function toDatetimeLocal(unixSeconds) {
+      var parsed = Number(unixSeconds || 0);
+      if (!isFinite(parsed) || parsed <= 0) {
+        return "";
+      }
+      var date = new Date(parsed * 1000);
+      if (!isFinite(date.getTime())) {
+        return "";
+      }
+      function pad(num) {
+        return String(num).padStart(2, "0");
+      }
+      return [
+        date.getFullYear(),
+        "-",
+        pad(date.getMonth() + 1),
+        "-",
+        pad(date.getDate()),
+        "T",
+        pad(date.getHours()),
+        ":",
+        pad(date.getMinutes())
+      ].join("");
+    }
+
+    var optionInput = document.getElementById("encrypted-expiry-option");
+    var customInput = document.getElementById("encrypted-expiry-custom");
+    if (!optionInput || !customInput) {
+      return;
+    }
+
+    function syncCustomVisibility() {
+      if (String(optionInput.value || "") === "custom") {
+        if (!customInput.value) {
+          var initialUnix = customInput.getAttribute("data-initial-unix");
+          customInput.value = toDatetimeLocal(initialUnix);
+        }
+        customInput.hidden = false;
+        return;
+      }
+      customInput.hidden = true;
+      customInput.value = "";
+    }
+
+    optionInput.addEventListener("change", syncCustomVisibility);
+    syncCustomVisibility();
+  })();
+</script>

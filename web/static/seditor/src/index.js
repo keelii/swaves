@@ -176,6 +176,10 @@ function buildMarkdownParser(schema) {
   });
   var parser = new MarkdownParser(schema, tokenizer, tokens);
   parser.tokenHandlers.softbreak = function(state) {
+    if (schema.nodes.hard_break) {
+      state.addNode(schema.nodes.hard_break);
+      return;
+    }
     state.addText("\n");
   };
   return parser;

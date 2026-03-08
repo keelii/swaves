@@ -1,0 +1,43 @@
+{% set PasswordPlaceholder = PasswordPlaceholder|default("可选密码（仅用于他人访问）") %}
+{% set PasswordHelp = PasswordHelp|default("仅用于访客访问，不影响后台登录") %}
+{% set SlugValue = SlugValue|default("") %}
+{% set ShowSlug = ShowSlug|default(false) %}
+<style>
+  .encrypted-editor-meta {
+    margin-bottom: var(--app-gap-3);
+    display: grid;
+    gap: var(--app-gap-2);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .encrypted-editor-meta .ui-field {
+    margin: 0;
+  }
+
+  @media (max-width: 980px) {
+    .encrypted-editor-meta {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+<div class="encrypted-editor-meta">
+  <div class="ui-field">
+    <div class="ui-field-head">
+      <label class="ui-field-label" for="encrypted-password">访问密码</label>
+    </div>
+    <div class="ui-field-control">
+      <input class="ui-input" id="encrypted-password" type="password" name="password" form="form" placeholder="{{ PasswordPlaceholder }}">
+    </div>
+    <div class="ui-field-help">{{ PasswordHelp }}</div>
+  </div>
+  {% if ShowSlug %}
+  <div class="ui-field">
+    <div class="ui-field-head">
+      <span class="ui-field-label">文章 URL 标识</span>
+    </div>
+    <div class="ui-field-control">
+      <input class="ui-input" type="text" value="{{ SlugValue }}" disabled>
+    </div>
+  </div>
+  {% endif %}
+</div>

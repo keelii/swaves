@@ -393,3 +393,57 @@ func TestDashControllerP0_PostLifecycle(t *testing.T) {
 		t.Fatalf("expected deleted post id=%d to appear in trash list", postID)
 	}
 }
+
+func TestDashControllerP0_EncryptedPostEditorPages(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+
+	_, cookieKV, newPageBody := fetchCSRFToken(
+		t,
+		swv,
+		"/dash/encrypted-posts/new",
+		cookieKV,
+		`id="post-title"`,
+		`id="post-content"`,
+		`id="encrypted-password"`,
+		`id="encrypted-expiry-option"`,
+		`id="post-editor-word-count"`,
+	)
+	if !strings.Contains(newPageBody, `data-seditor-command="bold"`) {
+		t.Fatalf("encrypted new page should include seditor toolbar actions")
+	}
+
+	expiresAt := time.Now().Add(2 * time.Hour).Unix()
+	encryptedPost := &db.EncryptedPost{
+		Title:     fmt.Sprintf("encrypted-p0-%d", time.Now().UnixNano()),
+		Content:   "secret content",
+		Password:  "123456",
+		ExpiresAt: &expiresAt,
+	}
+	postID, err := db.CreateEncryptedPost(swv.Store.Model, encryptedPost)
+	if err != nil {
+		t.Fatalf("create encrypted post failed: %v", err)
+	}
+
+	editPath := fmt.Sprintf("/dash/encrypted-posts/%d/edit", postID)
+	_, cookieKV, editPageBody := fetchCSRFToken(
+		t,
+		swv,
+		editPath,
+		cookieKV,
+		`id="post-title"`,
+		`id="post-content"`,
+		`id="encrypted-password"`,
+		`id="encrypted-expiry-option"`,
+		`id="encrypted-expiry-custom"`,
+		`id="post-editor-word-count"`,
+	)
+	if !strings.Contains(editPageBody, encryptedPost.Slug) {
+		t.Fatalf("encrypted edit page should include slug display")
+	}
+	if !strings.Contains(editPageBody, `value="custom" selected`) {
+		t.Fatalf("encrypted edit page should preselect custom expiry for existing expires_at")
+	}
+}

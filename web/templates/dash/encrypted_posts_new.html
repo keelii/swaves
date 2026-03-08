@@ -1,6 +1,9 @@
 {% extends "dash/layout/layout_detail.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
+
+{% block head_extra %}
+  <script src="/static/seditor/dist/seditor.min.js"></script>
+{% endblock %}
 
 {% block window_toolbar_main_left %}
   {{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
@@ -10,6 +13,44 @@
   {{ sui.ToolbarTitle("新建加密文章") }}
 {% endblock %}
 
+{% block status_main_left %}
+  {% with ExpiresAtUnix = 0 %}
+    {% include "dash/include/encrypted_post_expiry_status.html" %}
+  {% endwith %}
+{% endblock %}
+
+{% block status_main_center %}
+  {% with ShowLinkAction = true, ShowImageAction = false %}
+    {% include "dash/include/post_status_toolbar_actions.html" %}
+  {% endwith %}
+{% endblock %}
+
+{% block status_main_right %}
+  <span id="post-editor-word-count">字数 0</span>
+{% endblock %}
+
 {% block content %}
-{% with Action = UrlFor('dash.encrypted_posts.create') %}{% include "dash/include/forms/encrypted_posts_form.html" %}{% endwith %}
+{% with
+  PasswordPlaceholder = "可选密码（仅用于他人访问）",
+  PasswordHelp = "仅用于访客访问，不影响后台登录",
+  ShowSlug = false,
+  SlugValue = ""
+%}
+  {% include "dash/include/encrypted_post_editor_meta.html" %}
+{% endwith %}
+
+{% with
+  FormAction = UrlFor('dash.encrypted_posts.create'),
+  TitleValue = "",
+  TitlePlaceholder = "加密文章标题",
+  ContentValue = "",
+  StatusValue = "",
+  CommentEnabledValue = "1",
+  KindValue = "0",
+  TagsValue = "",
+  AutoSyncSlug = false,
+  SlugAPIURL = ""
+%}
+  {% include "dash/include/post_editor_content.html" %}
+{% endwith %}
 {% endblock %}

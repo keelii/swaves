@@ -337,12 +337,13 @@ tags:
         <th>标签/分类</th>
         <th>内容（前 200 字）</th>
         <th class="cell-action">操作</th>
-        <th class="cell-status">确认状态</th>
       </tr>
       </thead>
       <tbody id="import-edit-rows">
       {% for importingItem in importingItems %}
-        {% with Item = importingItem %}{% include "dash/include/import_edit_row.html" %}{% endwith %}
+        {% with Item = importingItem %}
+          {% include "dash/include/import_edit_row.html" %}
+        {% endwith %}
       {% endfor %}
       </tbody>
     </table>
