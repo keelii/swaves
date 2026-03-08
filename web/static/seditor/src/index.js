@@ -725,6 +725,9 @@ function createHeadingIDSyncPlugin(schema) {
 function buildPlugins(schema, options) {
   var opts = options || {};
   var listItem = schema.nodes.list_item;
+  var splitListItemCommand = listItem ? splitListItem(listItem) : null;
+  var sinkListItemCommand = listItem ? sinkListItem(listItem) : null;
+  var liftListItemCommand = listItem ? liftListItem(listItem) : null;
   var placeholderPlugin = createPlaceholderPlugin(schema, opts.placeholder);
   var headingIDSyncPlugin = createHeadingIDSyncPlugin(schema);
 
@@ -790,9 +793,25 @@ function buildPlugins(schema, options) {
       "Mod-b": toggleMark(schema.marks.strong),
       "Mod-i": toggleMark(schema.marks.em),
       Backspace: deleteSingleCellTableOnBackspace,
-      Enter: listItem ? splitListItem(listItem) : undefined,
-      Tab: listItem ? sinkListItem(listItem) : undefined,
-      "Shift-Tab": listItem ? liftListItem(listItem) : undefined
+      Enter: splitListItemCommand || undefined,
+      Tab: function(state, dispatch, view) {
+        if (moveTableCellSelection(state, dispatch, 1)) {
+          return true;
+        }
+        if (!sinkListItemCommand) {
+          return false;
+        }
+        return sinkListItemCommand(state, dispatch, view);
+      },
+      "Shift-Tab": function(state, dispatch, view) {
+        if (moveTableCellSelection(state, dispatch, -1)) {
+          return true;
+        }
+        if (!liftListItemCommand) {
+          return false;
+        }
+        return liftListItemCommand(state, dispatch, view);
+      }
     }),
     keymap(baseKeymap)
   ].filter(Boolean);
@@ -1216,6 +1235,70 @@ function deleteSingleCellTableOnBackspace(state, dispatch) {
   var tr = state.tr.delete(context.tablePos, context.tablePos + context.tableNode.nodeSize);
   var selectionPos = Math.min(context.tablePos, tr.doc.content.size);
   tr = tr.setSelection(Selection.near(tr.doc.resolve(selectionPos), -1)).scrollIntoView();
+  dispatch(tr);
+  return true;
+}
+
+function moveTableCellSelection(state, dispatch, direction) {
+  if (!state || !state.selection || !state.selection.empty) {
+    return false;
+  }
+
+  var context = getTableContext(state);
+  if (!context || !context.tableNode) {
+    return false;
+  }
+
+  var rows = getTableRowsFromNode(context.tableNode);
+  if (rows.length < 1 || context.rowIndex < 0 || context.rowIndex >= rows.length) {
+    return true;
+  }
+
+  var step = direction < 0 ? -1 : 1;
+  var targetRow = context.rowIndex;
+  var targetCol = context.colIndex + step;
+
+  if (step > 0) {
+    var currentRowNode = rows[targetRow].rowNode;
+    var currentColCount = currentRowNode && currentRowNode.childCount ? currentRowNode.childCount : 0;
+    if (targetCol >= currentColCount) {
+      targetRow += 1;
+      while (targetRow < rows.length) {
+        var nextRowNode = rows[targetRow].rowNode;
+        if (nextRowNode && nextRowNode.childCount > 0) {
+          break;
+        }
+        targetRow += 1;
+      }
+      if (targetRow >= rows.length) {
+        return true;
+      }
+      targetCol = 0;
+    }
+  } else {
+    if (targetCol < 0) {
+      targetRow -= 1;
+      while (targetRow >= 0) {
+        var prevRowNode = rows[targetRow].rowNode;
+        if (prevRowNode && prevRowNode.childCount > 0) {
+          break;
+        }
+        targetRow -= 1;
+      }
+      if (targetRow < 0) {
+        return true;
+      }
+      var targetRowNode = rows[targetRow].rowNode;
+      targetCol = targetRowNode.childCount - 1;
+    }
+  }
+
+  var target = normalizeTargetCell(context.tableNode, targetRow, targetCol);
+  var cursorPos = context.tablePos + getTableCellContentOffset(context.tableNode, target.row, target.col);
+  if (!dispatch) {
+    return true;
+  }
+  var tr = state.tr.setSelection(Selection.near(state.doc.resolve(cursorPos))).scrollIntoView();
   dispatch(tr);
   return true;
 }
@@ -1907,7 +1990,7 @@ function bindCommandButtons(view, schema, root, opts) {
       var binding = bindings[bi];
       var commandName = String(binding.name || "").trim();
       if (binding.visibleWhen === "table") {
-        binding.el.hidden = !inTable;
+        binding.el.hidden = false;
         if (!inTable) {
           binding.el.disabled = true;
           continue;
