@@ -1,15 +1,35 @@
 <div class="post-editor-workspace" data-role="post-editor-workspace">
   <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
-    <div class="title">
+    <div class="title header">
       <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
     </div>
     <div class="content wysiwyg"></div>
   </div>
   <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane" hidden>
-    <div class="post-editor-toc-head">目录</div>
+    <div class="post-editor-toc-head header">目录</div>
     <div class="post-editor-toc-body" data-role="post-editor-toc-body"></div>
   </aside>
 </div>
+
+<script>
+  (function() {
+    var tocStorageKey = "sui.post_editor_toc_open";
+    var tocPreferredOpen = false;
+    try {
+      tocPreferredOpen = window.localStorage.getItem(tocStorageKey) === "1";
+    } catch (error) {
+      tocPreferredOpen = false;
+    }
+    window.__suiPostEditorTOCPreferredOpen = tocPreferredOpen;
+    if (!tocPreferredOpen) {
+      return;
+    }
+    var workspace = document.querySelector('[data-role="post-editor-workspace"]');
+    if (workspace && workspace.classList) {
+      workspace.classList.add("toc-open");
+    }
+  })();
+</script>
 
 <textarea id="post-content" name="content" form="form" hidden>{{ ContentValue }}</textarea>
 {% if StatusValue is not none and StatusValue != "" %}
@@ -42,7 +62,9 @@
     var tocLatestMarkdown = "";
     var tocAvailable = false;
     var tocStorageKey = "sui.post_editor_toc_open";
-    var tocPreferredOpen = false;
+    var tocPreferredOpen = typeof window.__suiPostEditorTOCPreferredOpen === "boolean"
+      ? window.__suiPostEditorTOCPreferredOpen
+      : false;
     var headingIDRunePattern = null;
     try {
       headingIDRunePattern = new RegExp("^[\\p{L}\\p{N}]$", "u");
@@ -279,14 +301,6 @@
       });
     }
 
-    function loadTOCOpenState() {
-      try {
-        return window.localStorage.getItem(tocStorageKey) === "1";
-      } catch (error) {
-        return false;
-      }
-    }
-
     function saveTOCOpenState(open) {
       try {
         window.localStorage.setItem(tocStorageKey, open ? "1" : "0");
@@ -396,7 +410,6 @@
     }
 
     if (tocToggleButton) {
-      tocPreferredOpen = loadTOCOpenState();
       tocToggleButton.addEventListener("click", function(event) {
         event.preventDefault();
         if (!tocAvailable) {

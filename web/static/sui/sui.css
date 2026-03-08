@@ -1945,48 +1945,37 @@ a.ui-icon-btn[disabled] {
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  display: flex;
+  align-items: stretch;
 }
 
 .post-editor-workspace .content-editor {
+  flex: 1 1 auto;
   height: 100%;
   min-width: 0;
 }
 
 .post-editor-toc-pane {
-  position: absolute;
-  inset: 0 0 0 auto;
-  width: min(360px, calc(100% - 48px));
-  min-width: 220px;
-  max-width: 360px;
+  position: relative;
+  flex: 0 0 clamp(220px, 28vw, 360px);
+  width: clamp(220px, 28vw, 360px);
+  min-height: 0;
   border-left: var(--app-border-width) solid var(--app-border);
   background: var(--app-surface-muted-bg);
-  display: flex;
+  display: none;
   flex-direction: column;
   overflow: hidden;
-  transform: translateX(100%);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: transform 180ms ease, opacity 140ms ease, visibility 0s linear 180ms;
-  z-index: 30;
 }
 
 .post-editor-workspace.toc-open .post-editor-toc-pane {
-  transform: translateX(0);
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transition: transform 180ms ease, opacity 140ms ease;
+  display: flex;
 }
 
 .post-editor-toc-head {
-  height: 38px;
-  line-height: 38px;
-  padding: 0 12px;
   border-bottom: var(--app-border-width) solid var(--app-border);
   color: var(--app-text);
-  font-size: 0.86rem;
   font-weight: 600;
+  box-sizing: border-box;
 }
 
 .post-editor-toc-body ol {
@@ -2022,6 +2011,10 @@ a.ui-icon-btn[disabled] {
 .app-main-toolbar .slug {
   display: flex;
 }
+.content-editor .title input {
+  padding: 0;
+  margin: 0;
+}
 .content-editor .title input,
 .app-main-toolbar .slug input {
   font-size: inherit;
@@ -2036,17 +2029,21 @@ a.ui-icon-btn[disabled] {
 .content-editor .input-title,
 .app-main-toolbar .input-slug {
   border: none;
-  padding: var(--app-spacing);
   background-color: transparent;
 }
 .content-editor .input-title:focus-visible,
 .app-main-toolbar .input-slug:focus-visible {
   outline: none;
 }
-.content-editor .title {
-  width: 50em;
-  margin: 0 auto;
+.post-editor-workspace .header {
   box-sizing: border-box;
+  line-height: 16px;
+  font-size: 16px;
+  padding: var(--app-spacing);
+}
+.content-editor .title {
+  width: min(50em, 100%);
+  margin: 0 auto;
   position: relative;
   border-top: 0!important;
   border-bottom: 0!important;
@@ -2101,7 +2098,7 @@ a.ui-icon-btn[disabled] {
 }
 .content-editor .ProseMirror {
   height: 100%;
-  width: 50em;
+  width: min(50em, 100%);
   margin: 0 auto;
   padding: var(--app-spacing);
   box-sizing: border-box;
