@@ -15,7 +15,7 @@
   <script src="/static/dash/main.js"></script>
   <script>
     window.cfg = window.cfg || {};
-    window.cfg.navWidthSaveURL = {{ UrlFor('dash.settings.api.nav_width.update') | tojson }};
+    window.cfg.uiStateSaveURL = {{ UrlFor('dash.settings.api.ui_state.update') | tojson }};
     window.cfg.notificationsUnreadURL = {{ UrlFor('dash.notifications.api.unread_count') | tojson }};
     window.cfg.notificationsReadURL = {{ UrlFor('dash.notifications.api.read') | tojson }};
     window.cfg.notificationsReadAllURL = {{ UrlFor('dash.notifications.api.read_all') | tojson }};

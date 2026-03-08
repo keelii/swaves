@@ -31,6 +31,7 @@ type SettingSubKindGroupView struct {
 const (
 	dashNavWidthMin          = 150
 	dashNavWidthMax          = 480
+	settingCodeDashNavWidth  = "dash_nav_width"
 	settingCodeDashFullMain  = "dash_full_main_open"
 	settingCodeDashEditorTOC = "dash_post_editor_toc_open"
 	settingCodeDashEditorSrc = "dash_post_editor_source_mode"
@@ -260,19 +261,44 @@ func (h *Handler) validateAssetSettingPayload(overrides map[string]string) error
 	return nil
 }
 
-func (h *Handler) PostUpdateDashNavWidthAPIHandler(c fiber.Ctx) error {
-	rawValue := strings.TrimSpace(c.FormValue("value"))
-	if rawValue == "" {
-		rawValue = strings.TrimSpace(c.FormValue("width"))
-	}
-	if rawValue == "" {
-		logger.Warn("[settings] update dash_nav_width failed: empty value")
+func (h *Handler) PostUpdateDashUISettingAPIHandler(c fiber.Ctx) error {
+	code := strings.TrimSpace(c.FormValue("code"))
+	if code == "" {
+		logger.Warn("[settings] update dash ui setting failed: empty code")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
-			"error": "导航栏宽度不能为空",
+			"error": "设置编码不能为空",
 		})
 	}
 
+	rawValue := strings.TrimSpace(c.FormValue("value"))
+	if rawValue == "" {
+		logger.Warn("[settings] update dash ui setting failed: empty value code=%s", code)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "设置值不能为空",
+		})
+	}
+
+	switch code {
+	case settingCodeDashNavWidth:
+		return h.postUpdateDashNavWidthSettingAPIHandler(c, rawValue)
+	case settingCodeDashFullMain:
+		return h.postUpdateBoolSettingAPIHandler(c, code, "菜单展开状态", rawValue)
+	case settingCodeDashEditorTOC:
+		return h.postUpdateBoolSettingAPIHandler(c, code, "目录展开状态", rawValue)
+	case settingCodeDashEditorSrc:
+		return h.postUpdateBoolSettingAPIHandler(c, code, "源码模式状态", rawValue)
+	default:
+		logger.Warn("[settings] update dash ui setting failed: unsupported code=%s", code)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "不支持的设置项",
+		})
+	}
+}
+
+func (h *Handler) postUpdateDashNavWidthSettingAPIHandler(c fiber.Ctx, rawValue string) error {
 	width, err := strconv.Atoi(rawValue)
 	if err != nil {
 		logger.Warn("[settings] update dash_nav_width failed: invalid value=%q err=%v", rawValue, err)
@@ -290,7 +316,7 @@ func (h *Handler) PostUpdateDashNavWidthAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	if err := UpdateSettingValueService(h.Model, "dash_nav_width", strconv.Itoa(width)); err != nil {
+	if err := UpdateSettingValueService(h.Model, settingCodeDashNavWidth, strconv.Itoa(width)); err != nil {
 		logger.Error("[settings] update dash_nav_width failed: value=%d err=%v", width, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
@@ -301,7 +327,7 @@ func (h *Handler) PostUpdateDashNavWidthAPIHandler(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"ok": true,
 		"data": fiber.Map{
-			"code":  "dash_nav_width",
+			"code":  settingCodeDashNavWidth,
 			"value": width,
 		},
 	})
@@ -319,19 +345,7 @@ func normalizeBoolSettingValue(raw string) (string, bool) {
 	}
 }
 
-func (h *Handler) postUpdateBoolSettingAPIHandler(c fiber.Ctx, code string, name string) error {
-	rawValue := strings.TrimSpace(c.FormValue("value"))
-	if rawValue == "" {
-		rawValue = strings.TrimSpace(c.FormValue("enabled"))
-	}
-	if rawValue == "" {
-		logger.Warn("[settings] update %s failed: empty value", code)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"ok":    false,
-			"error": name + "不能为空",
-		})
-	}
-
+func (h *Handler) postUpdateBoolSettingAPIHandler(c fiber.Ctx, code string, name string, rawValue string) error {
 	value, ok := normalizeBoolSettingValue(rawValue)
 	if !ok {
 		logger.Warn("[settings] update %s failed: invalid value=%q", code, rawValue)
@@ -356,18 +370,6 @@ func (h *Handler) postUpdateBoolSettingAPIHandler(c fiber.Ctx, code string, name
 			"value": value,
 		},
 	})
-}
-
-func (h *Handler) PostUpdateDashFullMainAPIHandler(c fiber.Ctx) error {
-	return h.postUpdateBoolSettingAPIHandler(c, settingCodeDashFullMain, "菜单展开状态")
-}
-
-func (h *Handler) PostUpdateDashPostEditorTOCOpenAPIHandler(c fiber.Ctx) error {
-	return h.postUpdateBoolSettingAPIHandler(c, settingCodeDashEditorTOC, "目录展开状态")
-}
-
-func (h *Handler) PostUpdateDashPostEditorSourceModeAPIHandler(c fiber.Ctx) error {
-	return h.postUpdateBoolSettingAPIHandler(c, settingCodeDashEditorSrc, "源码模式状态")
 }
 
 func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {

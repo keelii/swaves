@@ -20822,6 +20822,7 @@ var SEditor = (() => {
       throw new Error("SEditor.init: mount element is required");
     }
     mount.classList.add("seditor-root");
+    mount.innerHTML = "";
     if (typeof opts.placeholder === "string" && opts.placeholder.trim()) {
       ensurePlaceholderStyles();
     }

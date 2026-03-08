@@ -48,8 +48,7 @@
     var autoSyncSlug = {% if AutoSyncSlug %}true{% else %}false{% endif %};
     var slugAPIURL = {{ SlugAPIURL | tojson }};
     var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
-    var tocOpenSaveURL = {{ UrlFor('dash.settings.api.post_editor_toc_open.update') | tojson }};
-    var sourceModeSaveURL = {{ UrlFor('dash.settings.api.post_editor_source_mode.update') | tojson }};
+    var uiStateSaveURL = {{ UrlFor('dash.settings.api.ui_state.update') | tojson }};
     var slugSyncTimer = null;
     var slugSyncSeq = 0;
     var tocSyncTimer = null;
@@ -291,8 +290,18 @@
       if (!textarea || textarea.hidden) {
         return;
       }
-      textarea.style.height = "auto";
-      textarea.style.height = String(textarea.scrollHeight || 0) + "px";
+      // Measure from a collapsed height to avoid stale layout values.
+      textarea.style.height = "0px";
+
+      var nextHeight = textarea.scrollHeight || 0;
+      if (window.getComputedStyle) {
+        var style = window.getComputedStyle(textarea);
+        if (style && style.boxSizing === "border-box") {
+          nextHeight += (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+        }
+      }
+
+      textarea.style.height = String(Math.ceil(nextHeight)) + "px";
     }
 
     function syncTextareaFromEditor() {
@@ -313,8 +322,24 @@
       window.__seditor.setMarkdown(String(textarea.value || ""));
     }
 
+    function postUIStateSetting(code, value) {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
+        return null;
+      }
+      var body = new URLSearchParams();
+      body.set("code", code);
+      body.set("value", String(value));
+      return window.sfetchJSON(uiStateSaveURL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+        },
+        body: body.toString()
+      });
+    }
+
     function queueSaveSourceMode(nextSourceMode) {
-      if (!sourceModeSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
         return;
       }
       var value = nextSourceMode ? "1" : "0";
@@ -331,7 +356,7 @@
       if (sourceModePersisting || sourceModeQueued === null) {
         return;
       }
-      if (!sourceModeSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
         sourceModeQueued = null;
         return;
       }
@@ -340,16 +365,7 @@
       sourceModeQueued = null;
       sourceModePersisting = true;
 
-      var body = new URLSearchParams();
-      body.set("value", value);
-
-      window.sfetchJSON(sourceModeSaveURL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-        },
-        body: body.toString()
-      }).then(function(result) {
+      postUIStateSetting("dash_post_editor_source_mode", value).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : "unknown error";
           if (window.console && typeof window.console.warn === "function") {
@@ -450,7 +466,7 @@
     }
 
     function queueSaveTOCOpenState(open) {
-      if (!tocOpenSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
         return;
       }
       var value = open ? "1" : "0";
@@ -467,7 +483,7 @@
       if (tocOpenPersisting || tocOpenQueued === null) {
         return;
       }
-      if (!tocOpenSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
         tocOpenQueued = null;
         return;
       }
@@ -476,16 +492,7 @@
       tocOpenQueued = null;
       tocOpenPersisting = true;
 
-      var body = new URLSearchParams();
-      body.set("value", value);
-
-      window.sfetchJSON(tocOpenSaveURL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-        },
-        body: body.toString()
-      }).then(function(result) {
+      postUIStateSetting("dash_post_editor_toc_open", value).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : "unknown error";
           if (window.console && typeof window.console.warn === "function") {

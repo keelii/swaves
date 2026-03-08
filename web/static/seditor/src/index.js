@@ -2021,6 +2021,7 @@ export function init(options) {
   }
 
   mount.classList.add("seditor-root");
+  mount.innerHTML = ""
   if (typeof opts.placeholder === "string" && opts.placeholder.trim()) {
     ensurePlaceholderStyles();
   }

@@ -4,11 +4,10 @@
     var cfg = window.cfg || {};
     var navResizer = document.querySelector('[data-role="nav-resizer"]');
     var navPanel = document.querySelector('.app-nav');
-    var fullMainSaveURL = {{ UrlFor('dash.settings.api.full_main.update') | tojson }};
+    var uiStateSaveURL = String(cfg.uiStateSaveURL || cfg.navWidthSaveURL || appWindow && appWindow.getAttribute('data-ui-state-save-url') || '').trim();
     var fullMainPersisting = false;
     var fullMainQueued = null;
     var fullMainLastSaved = appWindow && appWindow.classList.contains('full-main') ? '1' : '0';
-    var navWidthSaveURL = String(cfg.navWidthSaveURL || appWindow && appWindow.getAttribute('data-nav-width-save-url') || '').trim();
     var navWidthPersisting = false;
     var navWidthQueued = null;
     var navWidthLastSaved = parsePixels(appWindow && appWindow.getAttribute('data-nav-width-current'));
@@ -33,6 +32,22 @@
         return null;
       }
       return parsed;
+    }
+
+    function postUIStateSetting(code, value) {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
+        return null;
+      }
+      var body = new URLSearchParams();
+      body.set('code', code);
+      body.set('value', String(value));
+      return window.sfetchJSON(uiStateSaveURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+        body: body.toString(),
+      });
     }
 
     function getNavWidthMinMax() {
@@ -221,7 +236,7 @@
     }
 
     function queueSaveNavWidth(width) {
-      if (!navWidthSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
         return;
       }
       if (navWidthLastSaved !== null && width === navWidthLastSaved) {
@@ -237,7 +252,7 @@
       if (navWidthPersisting || navWidthQueued === null) {
         return;
       }
-      if (!navWidthSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
         navWidthQueued = null;
         return;
       }
@@ -246,16 +261,7 @@
       navWidthQueued = null;
       navWidthPersisting = true;
 
-      var body = new URLSearchParams();
-      body.set('value', String(width));
-
-      window.sfetchJSON(navWidthSaveURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        },
-        body: body.toString(),
-      }).then(function(result) {
+      postUIStateSetting('dash_nav_width', width).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
           if (window.console && typeof window.console.warn === 'function') {
@@ -321,7 +327,7 @@
     }
 
     function queueSaveFullMainState(enabled) {
-      if (!fullMainSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
         return;
       }
       var value = enabled ? '1' : '0';
@@ -338,7 +344,7 @@
       if (fullMainPersisting || fullMainQueued === null) {
         return;
       }
-      if (!fullMainSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
         fullMainQueued = null;
         return;
       }
@@ -347,16 +353,7 @@
       fullMainQueued = null;
       fullMainPersisting = true;
 
-      var body = new URLSearchParams();
-      body.set('value', value);
-
-      window.sfetchJSON(fullMainSaveURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        },
-        body: body.toString(),
-      }).then(function(result) {
+      postUIStateSetting('dash_full_main_open', value).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
           if (window.console && typeof window.console.warn === 'function') {
