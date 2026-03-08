@@ -47,6 +47,8 @@
   /*--app-scrollbar-track: #F1F1F2;*/
   --app-scrollbar-track: transparent;
   --app-scrollbar-thumb: #CFD1D4;
+  --app-scrollbar-size: 10px;
+  --app-scrollbar-border-size: 3px;
   --app-color-neutral-bg: #F6F7F7;
   --app-color-info-border: #C6D3F5;
   --app-color-info-bg: #EDF1FC;
@@ -166,32 +168,73 @@ svg rect:focus {
   outline: none;
 }
 
-/* ==================== 2) 组件样式（ui-*） ==================== */
-.ui-dialog-body {
+/* SUI 统一滚动条样式（通过局部变量可覆盖轨道/滑块色） */
+:where(
+  .ui-dialog-body,
+  .app-window .app-panel-body,
+  .content-editor,
+  .post-editor-toc-body,
+  .markdown-editor-wrap .toc .toc-list,
+  .sidebar-menu,
+  .content-area
+) {
   scrollbar-width: thin;
-  scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
+  scrollbar-color: var(--app-scrollbar-thumb-local, var(--app-scrollbar-thumb))
+    var(--app-scrollbar-track-local, var(--app-scrollbar-track));
 }
 
-.ui-dialog-body::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+:where(
+  .ui-dialog-body,
+  .app-window .app-panel-body,
+  .content-editor,
+  .post-editor-toc-body,
+  .markdown-editor-wrap .toc .toc-list,
+  .sidebar-menu,
+  .content-area
+)::-webkit-scrollbar {
+  width: var(--app-scrollbar-size);
+  height: var(--app-scrollbar-size);
 }
 
-.ui-dialog-body::-webkit-scrollbar-track {
-  background: var(--app-scrollbar-track);
+:where(
+  .ui-dialog-body,
+  .app-window .app-panel-body,
+  .content-editor,
+  .post-editor-toc-body,
+  .markdown-editor-wrap .toc .toc-list,
+  .sidebar-menu,
+  .content-area
+)::-webkit-scrollbar-track {
+  background: var(--app-scrollbar-track-local, var(--app-scrollbar-track));
 }
 
-.ui-dialog-body::-webkit-scrollbar-thumb {
-  background: var(--app-scrollbar-thumb);
+:where(
+  .ui-dialog-body,
+  .app-window .app-panel-body,
+  .content-editor,
+  .post-editor-toc-body,
+  .markdown-editor-wrap .toc .toc-list,
+  .sidebar-menu,
+  .content-area
+)::-webkit-scrollbar-thumb {
+  background: var(--app-scrollbar-thumb-local, var(--app-scrollbar-thumb));
   border-radius: var(--app-radius-pill);
-  border: 3px solid var(--app-scrollbar-track);
+  border: var(--app-scrollbar-border-size) solid var(--app-scrollbar-track-local, var(--app-scrollbar-track));
 }
 
-.ui-dialog-body::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--app-scrollbar-thumb), #ffffff 14%);
+:where(
+  .ui-dialog-body,
+  .app-window .app-panel-body,
+  .content-editor,
+  .post-editor-toc-body,
+  .markdown-editor-wrap .toc .toc-list,
+  .sidebar-menu,
+  .content-area
+)::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--app-scrollbar-thumb-local, var(--app-scrollbar-thumb)), #ffffff 14%);
 }
 
-
+/* ==================== 2) 组件样式（ui-*） ==================== */
 .ui-tooltip {
   position: fixed;
   inset-inline-start: 0;
@@ -1387,30 +1430,6 @@ a.ui-icon-btn[disabled] {
 
 
 /* ==================== 3) 框架布局样式（app-, status-, nav-, toolbar-） ==================== */
-.app-window .app-panel-body {
-  scrollbar-width: thin;
-  scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
-}
-
-.app-window .app-panel-body::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.app-window .app-panel-body::-webkit-scrollbar-track {
-  background: var(--app-scrollbar-track);
-}
-
-.app-window .app-panel-body::-webkit-scrollbar-thumb {
-  background: var(--app-scrollbar-thumb);
-  border-radius: var(--app-radius-pill);
-  border: 3px solid var(--app-scrollbar-track);
-}
-
-.app-window .app-panel-body::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--app-scrollbar-thumb), #ffffff 14%);
-}
-
 .app-flex { display: flex; gap: var(--app-spacing); }
 .app-items-center { align-items: center; }
 .app-padding { padding: var(--app-spacing); }
@@ -1808,36 +1827,6 @@ a.ui-icon-btn[disabled] {
 }
 
 /* ==================== 4) 页面级样式 ==================== */
-.content-editor,
-.post-editor-toc-body {
-  scrollbar-width: thin;
-  scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
-}
-
-.content-editor::-webkit-scrollbar,
-.post-editor-toc-body::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.content-editor::-webkit-scrollbar-track,
-.post-editor-toc-body::-webkit-scrollbar-track {
-  background: var(--app-scrollbar-track);
-}
-
-.content-editor::-webkit-scrollbar-thumb,
-.post-editor-toc-body::-webkit-scrollbar-thumb {
-  background: var(--app-scrollbar-thumb);
-  border-radius: var(--app-radius-pill);
-  border: 3px solid var(--app-scrollbar-track);
-}
-
-.content-editor::-webkit-scrollbar-thumb:hover,
-.post-editor-toc-body::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--app-scrollbar-thumb), #ffffff 14%);
-}
-
-
 .data-table-wrap {
   overflow: visible;
   background: transparent;
@@ -1979,10 +1968,6 @@ a.ui-icon-btn[disabled] {
   display: flex;
 }
 
-.post-editor-toc-preboot-open .post-editor-workspace.has-initial-toc .post-editor-toc-pane {
-  display: flex;
-}
-
 .post-editor-toc-head {
   border-bottom: var(--app-border-width) solid var(--app-border);
   color: var(--app-text);
@@ -1995,6 +1980,7 @@ a.ui-icon-btn[disabled] {
 }
 .post-editor-toc-body {
   /*flex: 1 1 auto;*/
+  --app-scrollbar-track-local: var(--app-surface-muted-bg);
   min-height: 0;
   padding: var(--app-spacing);
   font-size: 0.86rem;
@@ -2002,20 +1988,11 @@ a.ui-icon-btn[disabled] {
   overflow-y: scroll;
   height: calc(100vh - var(--app-toolbar-height) - var(--app-status-height) - 16px - var(--app-spacing) * 4);
   /*background: var(--app-surface-muted-bg);*/
-  /*scrollbar-color: var(--app-scrollbar-thumb) var(--app-surface-muted-bg);*/
 }
 .post-toc {
   position: fixed;
   background: var(--app-surface-muted-bg);
   height: calc(100vh - var(--app-toolbar-height) - var(--app-status-height));
-}
-
-.post-editor-toc-body::-webkit-scrollbar-track {
-  background: var(--app-surface-muted-bg);
-}
-
-.post-editor-toc-body::-webkit-scrollbar-thumb {
-  border-color: var(--app-surface-muted-bg);
 }
 
 .post-editor-toc-body .toc-title,
@@ -2127,7 +2104,7 @@ a.ui-icon-btn[disabled] {
   color: #999;
 }
 .content-editor .content {
-  /*flex-grow: 1;*/
+  flex-grow: 1;
 }
 .content-editor .title,
 .content-editor .ProseMirror {

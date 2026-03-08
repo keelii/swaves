@@ -1,66 +1,24 @@
 {% set InitialTOCHTML = TOCHTML|default('')|trim %}
+{% set InitialTOCPreferredOpen = Settings('dash_post_editor_toc_open') == '1' %}
 
-<script>
-  (function() {
-    var tocStorageKey = "sui.post_editor_toc_open";
-    var tocPreferredOpen = false;
-    try {
-      tocPreferredOpen = window.localStorage.getItem(tocStorageKey) === "1";
-    } catch (error) {
-      tocPreferredOpen = false;
-    }
-    window.__suiPostEditorTOCPreferredOpen = tocPreferredOpen;
-    if (tocPreferredOpen && document.documentElement && document.documentElement.classList) {
-      document.documentElement.classList.add("post-editor-toc-preboot-open");
-    }
-  })();
-</script>
-
-<div class="post-editor-workspace{% if InitialTOCHTML %} has-initial-toc{% endif %}" data-role="post-editor-workspace">
+<div
+  class="post-editor-workspace{% if InitialTOCHTML and InitialTOCPreferredOpen %} toc-open{% endif %}"
+  data-role="post-editor-workspace"
+  data-toc-preferred-open="{% if InitialTOCPreferredOpen %}1{% else %}0{% endif %}"
+>
   <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
     <div class="title header">
       <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
     </div>
     <div class="content wysiwyg"></div>
   </div>
-  <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane" hidden>
+  <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane"{% if not InitialTOCHTML %} hidden{% endif %} aria-hidden="{% if InitialTOCHTML %}false{% else %}true{% endif %}">
     <div class="post-toc">
       <div class="post-editor-toc-head header">目录</div>
       <div class="post-editor-toc-body" data-role="post-editor-toc-body">{{ InitialTOCHTML|safe }}</div>
     </div>
   </aside>
 </div>
-
-<script>
-  (function() {
-    var tocStorageKey = "sui.post_editor_toc_open";
-    var tocPreferredOpen = typeof window.__suiPostEditorTOCPreferredOpen === "boolean"
-      ? window.__suiPostEditorTOCPreferredOpen
-      : false;
-    if (!tocPreferredOpen) {
-      try {
-        tocPreferredOpen = window.localStorage.getItem(tocStorageKey) === "1";
-      } catch (error) {
-        tocPreferredOpen = false;
-      }
-      window.__suiPostEditorTOCPreferredOpen = tocPreferredOpen;
-    }
-    var tocBody = document.querySelector('[data-role="post-editor-toc-body"]');
-    var tocPane = document.querySelector('[data-role="post-editor-toc-pane"]');
-    var hasInitialTOC = !!(tocBody && String(tocBody.innerHTML || "").trim());
-    if (tocPane) {
-      tocPane.hidden = !hasInitialTOC;
-      tocPane.setAttribute("aria-hidden", hasInitialTOC ? "false" : "true");
-    }
-    var workspace = document.querySelector('[data-role="post-editor-workspace"]');
-    if (tocPreferredOpen && hasInitialTOC && workspace && workspace.classList) {
-      workspace.classList.add("toc-open");
-    }
-    if (document.documentElement && document.documentElement.classList) {
-      document.documentElement.classList.remove("post-editor-toc-preboot-open");
-    }
-  })();
-</script>
 
 <textarea id="post-content" name="content" form="form" hidden>{{ ContentValue }}</textarea>
 {% if StatusValue is not none and StatusValue != "" %}
@@ -86,16 +44,17 @@
     var autoSyncSlug = {% if AutoSyncSlug %}true{% else %}false{% endif %};
     var slugAPIURL = {{ SlugAPIURL | tojson }};
     var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
+    var tocOpenSaveURL = {{ UrlFor('dash.settings.api.post_editor_toc_open.update') | tojson }};
     var slugSyncTimer = null;
     var slugSyncSeq = 0;
     var tocSyncTimer = null;
     var tocSyncSeq = 0;
     var tocLatestMarkdown = "";
     var tocAvailable = false;
-    var tocStorageKey = "sui.post_editor_toc_open";
-    var tocPreferredOpen = typeof window.__suiPostEditorTOCPreferredOpen === "boolean"
-      ? window.__suiPostEditorTOCPreferredOpen
-      : false;
+    var tocPreferredOpen = !!(workspace && workspace.getAttribute("data-toc-preferred-open") === "1");
+    var tocOpenPersisting = false;
+    var tocOpenQueued = null;
+    var tocOpenLastSaved = tocPreferredOpen ? "1" : "0";
     var headingIDRunePattern = null;
     try {
       headingIDRunePattern = new RegExp("^[\\p{L}\\p{N}]$", "u");
@@ -332,11 +291,61 @@
       });
     }
 
-    function saveTOCOpenState(open) {
-      try {
-        window.localStorage.setItem(tocStorageKey, open ? "1" : "0");
-      } catch (error) {
+    function queueSaveTOCOpenState(open) {
+      if (!tocOpenSaveURL || typeof window.sfetchJSON !== "function") {
+        return;
       }
+      var value = open ? "1" : "0";
+      if (tocOpenLastSaved === value && !tocOpenPersisting) {
+        return;
+      }
+      tocOpenQueued = value;
+      if (!tocOpenPersisting) {
+        flushSaveTOCOpenState();
+      }
+    }
+
+    function flushSaveTOCOpenState() {
+      if (tocOpenPersisting || tocOpenQueued === null) {
+        return;
+      }
+      if (!tocOpenSaveURL || typeof window.sfetchJSON !== "function") {
+        tocOpenQueued = null;
+        return;
+      }
+
+      var value = tocOpenQueued;
+      tocOpenQueued = null;
+      tocOpenPersisting = true;
+
+      var body = new URLSearchParams();
+      body.set("value", value);
+
+      window.sfetchJSON(tocOpenSaveURL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+        },
+        body: body.toString()
+      }).then(function(result) {
+        if (!result.ok || !result.body || result.body.ok !== true) {
+          var message = result && result.body && result.body.error ? result.body.error : "unknown error";
+          if (window.console && typeof window.console.warn === "function") {
+            window.console.warn("save toc open state failed: value=" + value + " message=" + message);
+          }
+          return;
+        }
+        tocOpenLastSaved = value;
+      }).catch(function(error) {
+        if (window.console && typeof window.console.warn === "function") {
+          window.console.warn("save toc open state request failed", error);
+        }
+      }).then(function() {
+        tocOpenPersisting = false;
+        if (tocOpenQueued !== null && tocOpenQueued !== value) {
+          flushSaveTOCOpenState();
+        }
+      });
     }
 
     function applyTOCOpenState(open, persist) {
@@ -352,7 +361,7 @@
       }
       if (persist) {
         tocPreferredOpen = nextOpen;
-        saveTOCOpenState(nextOpen);
+        queueSaveTOCOpenState(nextOpen);
       }
     }
 

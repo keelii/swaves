@@ -2,9 +2,12 @@
   (function() {
     var appWindow = document.querySelector('.app-window');
     var cfg = window.cfg || {};
-    var fullMainStorageKey = 'sui.layout_wide_mode';
     var navResizer = document.querySelector('[data-role="nav-resizer"]');
     var navPanel = document.querySelector('.app-nav');
+    var fullMainSaveURL = {{ UrlFor('dash.settings.api.full_main.update') | tojson }};
+    var fullMainPersisting = false;
+    var fullMainQueued = null;
+    var fullMainLastSaved = appWindow && appWindow.classList.contains('full-main') ? '1' : '0';
     var navWidthSaveURL = String(cfg.navWidthSaveURL || appWindow && appWindow.getAttribute('data-nav-width-save-url') || '').trim();
     var navWidthPersisting = false;
     var navWidthQueued = null;
@@ -317,25 +320,61 @@
       }
     }
 
-    function loadFullMainState() {
-      try {
-        return window.localStorage.getItem(fullMainStorageKey) === '1';
-      } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('read full-main state failed', error);
-        }
-        return false;
+    function queueSaveFullMainState(enabled) {
+      if (!fullMainSaveURL || typeof window.sfetchJSON !== 'function') {
+        return;
+      }
+      var value = enabled ? '1' : '0';
+      if (fullMainLastSaved === value && !fullMainPersisting) {
+        return;
+      }
+      fullMainQueued = value;
+      if (!fullMainPersisting) {
+        flushSaveFullMainState();
       }
     }
 
-    function saveFullMainState(enabled) {
-      try {
-        window.localStorage.setItem(fullMainStorageKey, enabled ? '1' : '0');
-      } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save full-main state failed', error);
-        }
+    function flushSaveFullMainState() {
+      if (fullMainPersisting || fullMainQueued === null) {
+        return;
       }
+      if (!fullMainSaveURL || typeof window.sfetchJSON !== 'function') {
+        fullMainQueued = null;
+        return;
+      }
+
+      var value = fullMainQueued;
+      fullMainQueued = null;
+      fullMainPersisting = true;
+
+      var body = new URLSearchParams();
+      body.set('value', value);
+
+      window.sfetchJSON(fullMainSaveURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+        body: body.toString(),
+      }).then(function(result) {
+        if (!result.ok || !result.body || result.body.ok !== true) {
+          var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
+          if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('save full-main state failed: value=' + value + ' message=' + message);
+          }
+          return;
+        }
+        fullMainLastSaved = value;
+      }).catch(function(error) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('save full-main state request failed', error);
+        }
+      }).then(function() {
+        fullMainPersisting = false;
+        if (fullMainQueued !== null && fullMainQueued !== value) {
+          flushSaveFullMainState();
+        }
+      });
     }
 
     var themeStorageKey = 'sui.demo_theme_mode';
@@ -548,7 +587,7 @@
     }
 
     initNavWidth();
-    applyFullMain(loadFullMainState());
+    applyFullMain(appWindow.classList.contains('full-main'));
     initTheme();
     startNotificationPolling();
     ensureNotificationEmptyState();
@@ -560,7 +599,7 @@
       }
       var nextState = !appWindow.classList.contains('full-main');
       applyFullMain(nextState);
-      saveFullMainState(nextState);
+      queueSaveFullMainState(nextState);
     });
 
     document.addEventListener('click', function(event) {

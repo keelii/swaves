@@ -432,23 +432,6 @@ div.menu-item {
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
-/* 滚动条样式 */
-.sidebar-menu::-webkit-scrollbar,
-.content-area::-webkit-scrollbar {
-    width: 6px;
-}
-
-.sidebar-menu::-webkit-scrollbar-thumb,
-.content-area::-webkit-scrollbar-thumb {
-    background: #bfbfbf;
-    border-radius: 3px;
-}
-
-.sidebar-menu::-webkit-scrollbar-thumb:hover,
-.content-area::-webkit-scrollbar-thumb:hover {
-    background: #999;
-}
-
 .nav-actions {
     padding-left: 16px;
 }

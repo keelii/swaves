@@ -29,8 +29,10 @@ type SettingSubKindGroupView struct {
 }
 
 const (
-	dashNavWidthMin = 150
-	dashNavWidthMax = 480
+	dashNavWidthMin          = 150
+	dashNavWidthMax          = 480
+	settingCodeDashFullMain  = "dash_full_main_open"
+	settingCodeDashEditorTOC = "dash_post_editor_toc_open"
 )
 
 func normalizeSettingSubKind(raw string) string {
@@ -302,6 +304,65 @@ func (h *Handler) PostUpdateDashNavWidthAPIHandler(c fiber.Ctx) error {
 			"value": width,
 		},
 	})
+}
+
+func normalizeBoolSettingValue(raw string) (string, bool) {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	switch value {
+	case "1", "true", "yes", "on":
+		return "1", true
+	case "0", "false", "no", "off":
+		return "0", true
+	default:
+		return "", false
+	}
+}
+
+func (h *Handler) postUpdateBoolSettingAPIHandler(c fiber.Ctx, code string, name string) error {
+	rawValue := strings.TrimSpace(c.FormValue("value"))
+	if rawValue == "" {
+		rawValue = strings.TrimSpace(c.FormValue("enabled"))
+	}
+	if rawValue == "" {
+		logger.Warn("[settings] update %s failed: empty value", code)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": name + "不能为空",
+		})
+	}
+
+	value, ok := normalizeBoolSettingValue(rawValue)
+	if !ok {
+		logger.Warn("[settings] update %s failed: invalid value=%q", code, rawValue)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": name + "必须是 0 或 1",
+		})
+	}
+
+	if err := UpdateSettingValueService(h.Model, code, value); err != nil {
+		logger.Error("[settings] update %s failed: value=%s err=%v", code, value, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":    false,
+			"error": "保存" + name + "失败，请稍后重试",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"ok": true,
+		"data": fiber.Map{
+			"code":  code,
+			"value": value,
+		},
+	})
+}
+
+func (h *Handler) PostUpdateDashFullMainAPIHandler(c fiber.Ctx) error {
+	return h.postUpdateBoolSettingAPIHandler(c, settingCodeDashFullMain, "菜单展开状态")
+}
+
+func (h *Handler) PostUpdateDashPostEditorTOCOpenAPIHandler(c fiber.Ctx) error {
+	return h.postUpdateBoolSettingAPIHandler(c, settingCodeDashEditorTOC, "目录展开状态")
 }
 
 func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {

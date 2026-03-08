@@ -3,25 +3,11 @@
 
 {% block body %}
 <div
-  class="app-window"
+  class="app-window{% if Settings('dash_full_main_open') == '1' %} full-main{% endif %}"
   data-nav-width-current="{{ Settings('dash_nav_width')|default('240') }}"
   style="--app-pane-nav-width: {{ Settings('dash_nav_width')|default('240') }}px;"
 >
   <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="150" data-nav-max-width="480">
-    <script>
-      (function() {
-        var appWindow = document.currentScript && document.currentScript.closest('.app-window');
-        if (!appWindow) {
-          return;
-        }
-        try {
-          if (window.localStorage.getItem('sui.layout_wide_mode') === '1') {
-            appWindow.classList.add('full-main');
-          }
-        } catch (error) {
-        }
-      })();
-    </script>
     <div class="app-panel-toolbar">
       {% block window_toolbar_left %}
         {% include "dash/include/window_toolbar_left.html" %}
