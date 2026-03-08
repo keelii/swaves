@@ -1,17 +1,4 @@
-<div class="post-editor-workspace" data-role="post-editor-workspace">
-  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
-    <div class="title header">
-      <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
-    </div>
-    <div class="content wysiwyg"></div>
-  </div>
-  <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane" hidden>
-    <div class="post-toc">
-      <div class="post-editor-toc-head header">目录</div>
-      <div class="post-editor-toc-body" data-role="post-editor-toc-body">{{ TOCHTML|safe }}</div>
-    </div>
-  </aside>
-</div>
+{% set InitialTOCHTML = TOCHTML|default('')|trim %}
 
 <script>
   (function() {
@@ -22,6 +9,42 @@
     } catch (error) {
       tocPreferredOpen = false;
     }
+    window.__suiPostEditorTOCPreferredOpen = tocPreferredOpen;
+    if (tocPreferredOpen && document.documentElement && document.documentElement.classList) {
+      document.documentElement.classList.add("post-editor-toc-preboot-open");
+    }
+  })();
+</script>
+
+<div class="post-editor-workspace{% if InitialTOCHTML %} has-initial-toc{% endif %}" data-role="post-editor-workspace">
+  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
+    <div class="title header">
+      <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
+    </div>
+    <div class="content wysiwyg"></div>
+  </div>
+  <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane" hidden>
+    <div class="post-toc">
+      <div class="post-editor-toc-head header">目录</div>
+      <div class="post-editor-toc-body" data-role="post-editor-toc-body">{{ InitialTOCHTML|safe }}</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+  (function() {
+    var tocStorageKey = "sui.post_editor_toc_open";
+    var tocPreferredOpen = typeof window.__suiPostEditorTOCPreferredOpen === "boolean"
+      ? window.__suiPostEditorTOCPreferredOpen
+      : false;
+    if (!tocPreferredOpen) {
+      try {
+        tocPreferredOpen = window.localStorage.getItem(tocStorageKey) === "1";
+      } catch (error) {
+        tocPreferredOpen = false;
+      }
+      window.__suiPostEditorTOCPreferredOpen = tocPreferredOpen;
+    }
     var tocBody = document.querySelector('[data-role="post-editor-toc-body"]');
     var tocPane = document.querySelector('[data-role="post-editor-toc-pane"]');
     var hasInitialTOC = !!(tocBody && String(tocBody.innerHTML || "").trim());
@@ -29,13 +52,12 @@
       tocPane.hidden = !hasInitialTOC;
       tocPane.setAttribute("aria-hidden", hasInitialTOC ? "false" : "true");
     }
-    window.__suiPostEditorTOCPreferredOpen = tocPreferredOpen;
-    if (!tocPreferredOpen || !hasInitialTOC) {
-      return;
-    }
     var workspace = document.querySelector('[data-role="post-editor-workspace"]');
-    if (workspace && workspace.classList) {
+    if (tocPreferredOpen && hasInitialTOC && workspace && workspace.classList) {
       workspace.classList.add("toc-open");
+    }
+    if (document.documentElement && document.documentElement.classList) {
+      document.documentElement.classList.remove("post-editor-toc-preboot-open");
     }
   })();
 </script>

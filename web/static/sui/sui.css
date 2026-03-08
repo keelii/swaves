@@ -1655,6 +1655,10 @@ a.ui-icon-btn[disabled] {
   overflow: hidden;
   flex: 1 1 auto;
 }
+.app-window .app-main-body,
+.app-window .app-nav-body {
+  overflow-y: auto;
+}
 
 .app-window .app-panel-inner {
   /*height: 100%;*/
@@ -1777,7 +1781,6 @@ a.ui-icon-btn[disabled] {
   min-width: 0;
   display: flex;
   align-items: center;
-  /*padding: 0 var(--app-spacing);*/
   border-top: var(--app-status-border-width) solid var(--app-border);
   background: var(--app-panel-bg);
   color: var(--app-text-soft);
@@ -1786,6 +1789,9 @@ a.ui-icon-btn[disabled] {
   white-space: nowrap;
   flex: 0 0 var(--app-status-height);
   box-sizing: border-box;
+}
+.main-status-bar {
+  padding: 0 var(--app-spacing);
 }
 
 .app-operation {
@@ -1970,6 +1976,10 @@ a.ui-icon-btn[disabled] {
 }
 
 .post-editor-workspace.toc-open .post-editor-toc-pane {
+  display: flex;
+}
+
+.post-editor-toc-preboot-open .post-editor-workspace.has-initial-toc .post-editor-toc-pane {
   display: flex;
 }
 
