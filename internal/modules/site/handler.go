@@ -139,6 +139,8 @@ func normalizeCommentFeedbackStatus(raw string) string {
 		return commentFeedbackCaptchaFailed
 	case commentFeedbackRateLimited:
 		return commentFeedbackRateLimited
+	case commentFeedbackDuplicate:
+		return commentFeedbackDuplicate
 	default:
 		return ""
 	}
@@ -695,6 +697,13 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 		Status:      status,
 	}
 	if _, err = db.CreateComment(h.Model, comment); err != nil {
+		if db.IsErrDuplicateComment(err) {
+			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackDuplicate)
+			if !strings.Contains(redirectPath, "#") {
+				redirectPath += "#comments"
+			}
+			return webutil.RedirectTo(c, redirectPath, fiber.StatusSeeOther)
+		}
 		return h.redirectError(c)
 	}
 

@@ -2018,6 +2018,7 @@ a.ui-icon-btn[disabled] {
 .content-editor .title input,
 .app-main-toolbar .slug input {
   font-size: inherit;
+  line-height: inherit;
   flex-grow: 1;
 }
 .app-main-toolbar .slug {
@@ -2037,16 +2038,19 @@ a.ui-icon-btn[disabled] {
 }
 .post-editor-workspace .header {
   box-sizing: border-box;
+  height: calc(16px + (var(--app-spacing) * 2));
   line-height: 16px;
   font-size: 16px;
-  padding: var(--app-spacing);
+  padding: 0 var(--app-spacing);
+  display: flex;
+  align-items: center;
 }
 .content-editor .title {
   width: min(50em, 100%);
   margin: 0 auto;
   position: relative;
   border-top: 0!important;
-  border-bottom: 0!important;
+  border-bottom: var(--app-border-width) solid var(--app-border)!important;
 }
 .content-editor h1,
 .content-editor h2,
@@ -2102,6 +2106,7 @@ a.ui-icon-btn[disabled] {
   margin: 0 auto;
   padding: var(--app-spacing);
   box-sizing: border-box;
+  border-top: 0!important;
   border-bottom: 0!important;
 }
 .content-editor .ProseMirror>*:first-child {

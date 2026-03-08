@@ -221,6 +221,11 @@ func TestErrorHelpers(t *testing.T) {
 	if !IsErrInternalError(wrapped) {
 		t.Fatal("WrapInternalErr should satisfy IsErrInternalError")
 	}
+
+	dupComment := ErrDuplicateComment("x")
+	if !IsErrDuplicateComment(dupComment) {
+		t.Fatal("ErrDuplicateComment should satisfy IsErrDuplicateComment")
+	}
 }
 
 func TestPostVisibilityAndPublish(t *testing.T) {

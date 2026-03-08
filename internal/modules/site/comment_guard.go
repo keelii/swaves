@@ -32,6 +32,7 @@ const (
 	commentFeedbackCaptchaRequired = "captcha_required"
 	commentFeedbackCaptchaFailed   = "captcha_failed"
 	commentFeedbackRateLimited     = "rate_limited"
+	commentFeedbackDuplicate       = "duplicate"
 )
 
 type commentCaptchaChallenge struct {

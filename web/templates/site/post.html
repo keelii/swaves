@@ -18,6 +18,11 @@
     {% with Count = ReadUV %}
       {% include "site/include/read_uv.html" %}
     {% endwith %}
+    {% if postData.Kind == 0 %}
+      {% with Count = CommentCount %}
+        {% include "site/include/comment_count.html" %}
+      {% endwith %}
+    {% endif %}
     {% with PostID = postData.ID, UrlPath = UrlPath, LikeCount = LikeCount, Liked = Liked %}
       {% include "site/include/like_action.html" %}
     {% endwith %}
@@ -103,6 +108,8 @@
         <p class="comment-feedback"><small>验证码错误或已过期，请刷新页面后重试。</small></p>
       {% elif CommentFeedback == "rate_limited" %}
         <p class="comment-feedback"><small>提交过于频繁，请稍后再试。</small></p>
+      {% elif CommentFeedback == "duplicate" %}
+        <p class="comment-feedback"><small>请勿重复提交相同评论内容。</small></p>
       {% endif %}
 
       <fieldset>

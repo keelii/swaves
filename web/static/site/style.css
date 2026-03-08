@@ -35,6 +35,24 @@ button[data-like-button]:disabled {
   /*gap: 0.2em;*/
 }
 
+.comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  text-decoration: none;
+  color: inherit;
+  border: 0;
+  background: none;
+  text-shadow: none;
+}
+.comment-count:hover,
+.comment-count:link,
+.comment-count:visited {
+  text-decoration: none;
+  background: none;
+  text-shadow: none;
+}
+
 .page-link-num {
   margin: 0 0.2em;
 }

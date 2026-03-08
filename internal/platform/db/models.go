@@ -1554,6 +1554,36 @@ type Comment struct {
 	ParentAuthor string
 }
 
+func buildCommentDuplicateIdentity(c *Comment) (string, []interface{}) {
+	conditions := make([]string, 0, 3)
+	args := make([]interface{}, 0, 6)
+
+	visitorID := strings.TrimSpace(c.VisitorID)
+	if visitorID != "" {
+		conditions = append(conditions, "visitor_id = ?")
+		args = append(args, visitorID)
+	}
+
+	author := strings.TrimSpace(c.Author)
+	authorEmail := strings.TrimSpace(strings.ToLower(c.AuthorEmail))
+	if authorEmail != "" {
+		conditions = append(conditions, "(author = ? AND lower(author_email) = ?)")
+		args = append(args, author, authorEmail)
+	}
+
+	authorIP := strings.TrimSpace(c.AuthorIP)
+	if authorIP != "" {
+		conditions = append(conditions, "(author = ? AND author_ip = ?)")
+		args = append(args, author, authorIP)
+	}
+
+	if len(conditions) == 0 {
+		return "1 = 0", nil
+	}
+
+	return "(" + strings.Join(conditions, " OR ") + ")", args
+}
+
 func CreateComment(db *DB, c *Comment) (int64, error) {
 	if c.PostID <= 0 {
 		return 0, errors.New("post_id is required")
@@ -1574,6 +1604,29 @@ func CreateComment(db *DB, c *Comment) (int64, error) {
 	}
 	if c.Type == "" {
 		c.Type = "comment"
+	}
+
+	userClause, userArgs := buildCommentDuplicateIdentity(c)
+	duplicateArgs := make([]interface{}, 0, 2+len(userArgs))
+	duplicateArgs = append(duplicateArgs, c.PostID, c.Content)
+	duplicateArgs = append(duplicateArgs, userArgs...)
+
+	query := `
+		SELECT id
+		FROM ` + string(TableComments) + `
+		WHERE post_id = ?
+			AND content = ?
+			AND deleted_at IS NULL
+			AND ` + userClause + `
+		LIMIT 1
+	`
+	var duplicatedCommentID int64
+	checkErr := db.QueryRow(query, duplicateArgs...).Scan(&duplicatedCommentID)
+	if checkErr == nil {
+		return 0, ErrDuplicateComment("CreateComment")
+	}
+	if !errors.Is(checkErr, sql.ErrNoRows) {
+		return 0, WrapInternalErr("CreateComment.DuplicateCheck", checkErr)
 	}
 
 	id, err := Create(db, specComments, map[string]interface{}{
@@ -4602,6 +4655,16 @@ func IsErrInternalError(err error) bool {
 // IsErrNotFound 判断是否为“未找到”错误
 func IsErrNotFound(err error) bool {
 	return errors.Is(err, errNotFoundSentinel)
+}
+
+var errDuplicateCommentSentinel = errors.New("duplicate comment")
+
+func ErrDuplicateComment(label string) error {
+	return fmt.Errorf("%s: %w", label, errDuplicateCommentSentinel)
+}
+
+func IsErrDuplicateComment(err error) bool {
+	return errors.Is(err, errDuplicateCommentSentinel)
 }
 
 type Category struct {

@@ -198,3 +198,57 @@ func TestSiteControllerP0_CommentActionCreatesPending(t *testing.T) {
 		t.Fatalf("unexpected comment status: %q", comment.Status)
 	}
 }
+
+func TestSiteControllerP0_CommentActionDuplicateShowsFeedback(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	post := createPublishedSitePost(t, swv, "Site P0 Duplicate Comment Post")
+	postPath := share.GetPostUrl(post)
+	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
+	if postResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected post detail status: path=%s status=%d", postPath, postResp.StatusCode)
+	}
+	cookieKV := responseCookieKV(postResp)
+
+	actionPath := pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))
+	form := url.Values{}
+	form.Set("author", "site-p0-duplicate-user")
+	form.Set("author_email", "site-p0-duplicate@example.com")
+	form.Set("author_url", "https://example.com")
+	form.Set("content", "site controller duplicate content")
+	form.Set("remember_me", "1")
+	form.Set("return_url", postPath)
+
+	firstResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, cookieKV, nil)
+	if firstResp.StatusCode < 300 || firstResp.StatusCode >= 400 {
+		t.Fatalf("expected first comment redirect, got %d", firstResp.StatusCode)
+	}
+	cookieKV = mergeCookieKV(cookieKV, firstResp)
+
+	secondResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, cookieKV, nil)
+	if secondResp.StatusCode < 300 || secondResp.StatusCode >= 400 {
+		t.Fatalf("expected duplicate comment redirect, got %d", secondResp.StatusCode)
+	}
+
+	location := strings.TrimSpace(secondResp.Header.Get("Location"))
+	if !strings.Contains(location, "comment_status=duplicate") {
+		t.Fatalf("duplicate redirect should include duplicate status, got location=%q", location)
+	}
+	if !strings.Contains(location, "#comments") {
+		t.Fatalf("duplicate redirect should include comments anchor, got location=%q", location)
+	}
+
+	feedbackPath := location
+	if idx := strings.Index(feedbackPath, "#"); idx >= 0 {
+		feedbackPath = feedbackPath[:idx]
+	}
+	feedbackResp := requestControllerP0(t, swv, fiber.MethodGet, feedbackPath, nil, mergeCookieKV(cookieKV, secondResp), nil)
+	assertTemplateRendered(
+		t,
+		feedbackResp,
+		fiber.StatusOK,
+		"请勿重复提交相同评论内容。",
+		`id="comment-form"`,
+	)
+}
