@@ -8,7 +8,7 @@
   <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane" hidden>
     <div class="post-toc">
       <div class="post-editor-toc-head header">目录</div>
-      <div class="post-editor-toc-body" data-role="post-editor-toc-body"></div>
+      <div class="post-editor-toc-body" data-role="post-editor-toc-body">{{ TOCHTML|safe }}</div>
     </div>
   </aside>
 </div>
@@ -22,8 +22,15 @@
     } catch (error) {
       tocPreferredOpen = false;
     }
+    var tocBody = document.querySelector('[data-role="post-editor-toc-body"]');
+    var tocPane = document.querySelector('[data-role="post-editor-toc-pane"]');
+    var hasInitialTOC = !!(tocBody && String(tocBody.innerHTML || "").trim());
+    if (tocPane) {
+      tocPane.hidden = !hasInitialTOC;
+      tocPane.setAttribute("aria-hidden", hasInitialTOC ? "false" : "true");
+    }
     window.__suiPostEditorTOCPreferredOpen = tocPreferredOpen;
-    if (!tocPreferredOpen) {
+    if (!tocPreferredOpen || !hasInitialTOC) {
       return;
     }
     var workspace = document.querySelector('[data-role="post-editor-workspace"]');
@@ -222,7 +229,7 @@
       if (typeof heading.scrollIntoView === "function") {
         heading.scrollIntoView({
           behavior: "smooth",
-          block: "center",
+          block: "start",
           inline: "nearest"
         });
       }
@@ -411,6 +418,21 @@
       slugSyncTimer = window.setTimeout(syncSlugFromTitle, 160);
     }
 
+    if (tocBody) {
+      var initialTOCHTML = String(tocBody.innerHTML || "").trim();
+      if (initialTOCHTML) {
+        var initialToggle = tocBody.querySelector(".toc-toggle");
+        if (initialToggle && initialToggle.parentNode) {
+          initialToggle.parentNode.removeChild(initialToggle);
+        }
+        setTOCAvailable(true);
+      } else {
+        setTOCAvailable(false);
+      }
+    } else {
+      setTOCAvailable(false);
+    }
+
     if (tocToggleButton) {
       tocToggleButton.addEventListener("click", function(event) {
         event.preventDefault();
@@ -447,7 +469,6 @@
 
     if (!window.SEditor || typeof window.SEditor.init !== "function") {
       updateWordCount();
-      scheduleTOCSync();
       return;
     }
 
@@ -473,7 +494,6 @@
     }
 
     updateWordCount();
-    scheduleTOCSync();
     syncSlugFromTitle();
   });
 </script>

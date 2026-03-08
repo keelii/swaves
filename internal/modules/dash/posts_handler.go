@@ -7,6 +7,7 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/helper"
+	"swaves/internal/shared/md"
 	"swaves/internal/shared/share"
 
 	"github.com/gofiber/fiber/v3"
@@ -200,6 +201,8 @@ func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 	if _, ok := data["SelectedTagNames"]; !ok {
 		data["SelectedTagNames"] = ""
 	}
+	draftContent, _ := data["DraftContent"].(string)
+	data["DraftTOCHTML"] = md.ParseMarkdownTOC(draftContent)
 
 	data["Title"] = "New Post"
 	data["Tags"] = tags
@@ -338,6 +341,7 @@ func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
 		"Categories":       allCategories,
 		"CategoryOptions":  categoryOptions,
 		"Category":         *category,
+		"PostTOCHTML":      md.ParseMarkdownTOC(postWithTags.Post.Content),
 	}, "")
 }
 

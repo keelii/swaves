@@ -198,6 +198,36 @@ func TestRenderInjectsCSRFTokenInputGlobal(t *testing.T) {
 	}
 }
 
+func TestSafeFilterRendersRawHTML(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ ContentHTML|safe }}`), 0o644); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		return name
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "page.html", map[string]any{
+		"ContentHTML": "<ol class=\"toc-list\"><li>x</li></ol>",
+	}); err != nil {
+		t.Fatalf("render page failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, `<ol class="toc-list">`) {
+		t.Fatalf("expected safe html to remain raw, got: %q", got)
+	}
+	if strings.Contains(got, "&lt;ol") {
+		t.Fatalf("expected safe html to bypass escaping: %q", got)
+	}
+}
+
 func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(
