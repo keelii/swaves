@@ -152,6 +152,247 @@ function goTo(target, options) {
   return true;
 }
 
+function bindPageSizeSelect(target, options) {
+  var selectEl = resolveElement(target);
+  if (!selectEl || typeof selectEl.addEventListener !== "function") {
+    return false;
+  }
+
+  if (selectEl.getAttribute("data-page-size-bound") === "1") {
+    return true;
+  }
+  selectEl.setAttribute("data-page-size-bound", "1");
+
+  var opts = options || {};
+  var pageSizeParam = String(opts.pageSizeParam || selectEl.getAttribute("data-page-size-param") || "pageSize").trim() || "pageSize";
+  var pageParam = String(opts.pageParam || selectEl.getAttribute("data-page-param") || "page").trim();
+  var resetPage = opts.resetPage;
+  if (resetPage == null) {
+    var resetRaw = selectEl.getAttribute("data-reset-page");
+    resetPage = resetRaw == null ? "1" : resetRaw;
+  }
+  var baseURL = String(opts.baseURL || selectEl.getAttribute("data-base-url") || "").trim();
+
+  selectEl.addEventListener("change", function() {
+    var url = null;
+    try {
+      url = new URL(baseURL || window.location.href, window.location.origin);
+    } catch (err) {
+      url = new URL(window.location.href, window.location.origin);
+    }
+
+    var value = String(selectEl.value || "").trim();
+    if (value) {
+      url.searchParams.set(pageSizeParam, value);
+    } else {
+      url.searchParams.delete(pageSizeParam);
+    }
+
+    if (pageParam) {
+      if (resetPage == null || String(resetPage) === "") {
+        url.searchParams.delete(pageParam);
+      } else {
+        url.searchParams.set(pageParam, String(resetPage));
+      }
+    }
+
+    goTo(url.toString());
+  });
+
+  return true;
+}
+
+function initPageSizeSelects() {
+  if (typeof document === "undefined" || typeof document.querySelectorAll !== "function") {
+    return;
+  }
+  var selects = document.querySelectorAll('[data-role="page-size-select"]');
+  if (!selects || selects.length === 0) {
+    return;
+  }
+  for (var i = 0; i < selects.length; i += 1) {
+    bindPageSizeSelect(selects[i]);
+  }
+}
+
+function bindSVGHitboxTooltip(options) {
+  var opts = options || {};
+  var container = resolveElement(opts.container);
+  if (!container || typeof container.querySelector !== "function") {
+    return false;
+  }
+
+  var svgEl = resolveElement(opts.svg);
+  if (!svgEl) {
+    var svgSelector = String(opts.svgSelector || "svg").trim() || "svg";
+    svgEl = container.querySelector(svgSelector);
+  }
+  if (!svgEl || typeof svgEl.querySelectorAll !== "function") {
+    return false;
+  }
+
+  var boundFlag = String(opts.boundFlag || "tooltipBound").trim();
+  if (svgEl.dataset && boundFlag) {
+    if (svgEl.dataset[boundFlag] === "1") {
+      return false;
+    }
+    svgEl.dataset[boundFlag] = "1";
+  }
+
+  var hitboxSelector = String(opts.hitboxSelector || "rect[data-uv]").trim() || "rect[data-uv]";
+  var hitboxes = svgEl.querySelectorAll(hitboxSelector);
+  if (!hitboxes || hitboxes.length === 0) {
+    return false;
+  }
+
+  var tooltipEl = resolveElement(opts.tooltip);
+  if (!tooltipEl && opts.createTooltip === true) {
+    tooltipEl = document.createElement("div");
+    tooltipEl.className = String(opts.tooltipClassName || "").trim() || "monitor-chart-tooltip";
+    if (opts.tooltipDataAttr) {
+      tooltipEl.setAttribute(String(opts.tooltipDataAttr), "1");
+    }
+    tooltipEl.hidden = true;
+    container.appendChild(tooltipEl);
+  }
+  if (!tooltipEl) {
+    return false;
+  }
+
+  var pointSelector = String(opts.pointSelector || "").trim();
+  var points = pointSelector ? svgEl.querySelectorAll(pointSelector) : [];
+  var getIndex = typeof opts.getIndex === "function"
+    ? opts.getIndex
+    : function(hitbox) {
+        var index = parseInt(hitbox && hitbox.getAttribute ? hitbox.getAttribute("data-index") || "" : "", 10);
+        if (isNaN(index) || index < 0) {
+          return -1;
+        }
+        return index;
+      };
+  var getText = typeof opts.getText === "function"
+    ? opts.getText
+    : function(hitbox) {
+        return hitbox && hitbox.getAttribute ? String(hitbox.getAttribute("data-label") || hitbox.getAttribute("data-uv") || "").trim() : "";
+      };
+  var onActivate = typeof opts.onActivate === "function" ? opts.onActivate : null;
+  var onDeactivate = typeof opts.onDeactivate === "function" ? opts.onDeactivate : null;
+  var activeHitbox = null;
+
+  function hideTooltip() {
+    tooltipEl.hidden = true;
+    activeHitbox = null;
+    if (onDeactivate) {
+      onDeactivate();
+    }
+  }
+
+  function anchorPosition(hitbox) {
+    var index = getIndex(hitbox);
+    if (index >= 0 && points && index < points.length) {
+      var pointRect = points[index].getBoundingClientRect();
+      return {
+        left: pointRect.left + pointRect.width / 2,
+        top: pointRect.top + pointRect.height / 2,
+      };
+    }
+
+    var hitboxRect = hitbox.getBoundingClientRect();
+    return {
+      left: hitboxRect.left + hitboxRect.width / 2,
+      top: hitboxRect.top + hitboxRect.height / 2,
+    };
+  }
+
+  function showTooltip(hitbox) {
+    if (!hitbox) {
+      return;
+    }
+    activeHitbox = hitbox;
+
+    var text = String(getText(hitbox) || "").trim();
+    if (!text) {
+      hideTooltip();
+      return;
+    }
+
+    tooltipEl.textContent = text;
+    tooltipEl.hidden = false;
+
+    var containerRect = container.getBoundingClientRect();
+    var anchor = anchorPosition(hitbox);
+    var tooltipHalf = tooltipEl.offsetWidth / 2;
+    var left = anchor.left - containerRect.left;
+    var minLeft = tooltipHalf + 4;
+    var maxLeft = containerRect.width - tooltipHalf - 4;
+    if (left < minLeft) {
+      left = minLeft;
+    }
+    if (left > maxLeft) {
+      left = maxLeft;
+    }
+
+    var anchorTop = anchor.top - containerRect.top;
+    var top = anchorTop - tooltipEl.offsetHeight - 8;
+    if (top < 0) {
+      top = anchorTop + 8;
+    }
+    var maxTop = containerRect.height - tooltipEl.offsetHeight;
+    if (top > maxTop) {
+      top = maxTop;
+    }
+
+    tooltipEl.style.left = left + "px";
+    tooltipEl.style.top = top + "px";
+
+    if (onActivate) {
+      onActivate(hitbox, getIndex(hitbox));
+    }
+  }
+
+  function isSameHitboxTarget(nextTarget) {
+    if (typeof SVGElement === "undefined" || !nextTarget || !(nextTarget instanceof SVGElement)) {
+      return false;
+    }
+    if (nextTarget.matches && nextTarget.matches(hitboxSelector)) {
+      return true;
+    }
+    return false;
+  }
+
+  hitboxes.forEach(function(hitbox) {
+    hitbox.setAttribute("tabindex", "0");
+    hitbox.addEventListener("mouseenter", function() {
+      showTooltip(hitbox);
+    });
+    hitbox.addEventListener("mousemove", function() {
+      showTooltip(hitbox);
+    });
+    hitbox.addEventListener("mouseleave", function(event) {
+      if (isSameHitboxTarget(event.relatedTarget)) {
+        return;
+      }
+      hideTooltip();
+    });
+    hitbox.addEventListener("focus", function() {
+      showTooltip(hitbox);
+    });
+    hitbox.addEventListener("blur", function() {
+      hideTooltip();
+    });
+  });
+
+  svgEl.addEventListener("mouseleave", function() {
+    hideTooltip();
+  });
+
+  return true;
+}
+
+function initDashMainBehaviors() {
+  initPageSizeSelects();
+}
+
 function getCSRFToken() {
   var input = document.querySelector('input[name="_csrf_token"]');
   if (!input) {
@@ -326,4 +567,9 @@ function installSFetch() {
 
 if (typeof document !== "undefined") {
   installSFetch();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initDashMainBehaviors, { once: true });
+  } else {
+    initDashMainBehaviors();
+  }
 }

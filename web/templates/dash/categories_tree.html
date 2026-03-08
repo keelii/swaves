@@ -24,7 +24,7 @@
         </div>
         <form method="post" style="display:inline" action="{{ UrlFor('dash.categories.delete', id=category.ID) }}">
           {{ _csrf_token() }}
-          {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-title="删除" onclick="this.form.submit()"') }}
+          {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-title="删除"', button_type="submit") }}
         </form>
       </div>
     </div>

@@ -243,19 +243,21 @@ $(function() {
   var $assetTable = $('#assets-table');
   var $selectedCount = $('#asset-selected-count');
   var $batchDelete = $('#asset-batch-delete');
-  var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
   var $alertDialog = $('#asset-alert-dialog');
   var $alertMessage = $('#asset-alert-message');
-  var $confirmDialog = $('#asset-confirm-dialog');
-  var $confirmMessage = $('#asset-confirm-message');
-  var $confirmCancel = $('#asset-confirm-cancel');
-  var $confirmOK = $('#asset-confirm-ok');
   var isUploading = false;
   var uploadReady = ($dropzone.attr('data-upload-ready') || '') === '1';
   var uploadError = ($dropzone.attr('data-upload-error') || '').trim();
   var uploadStatusBaseText = String($uploadStatus.text() || '').replace(/\s+/g, ' ').trim();
   var uploadStatusBaseIsError = $uploadStatus.hasClass('error');
-  var confirmResolver = null;
+
+  function getDialogAPI() {
+    return window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
+  }
+
+  function getConfirmAPI() {
+    return window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
+  }
 
   function selectedAssetIDs() {
     var ids = [];
@@ -325,7 +327,8 @@ $(function() {
       titleNode.textContent = heading;
     }
     $alertMessage.text(text);
-    if (!openAssetDialog('asset-alert-dialog')) {
+    var dialogAPI = getDialogAPI();
+    if (!(dialogAPI && typeof dialogAPI.open === 'function' && dialogAPI.open('asset-alert-dialog'))) {
       notify(text, heading, {
         variant: 'warning',
       });
@@ -342,24 +345,17 @@ $(function() {
     message = String(message || '');
     title = String(title || '确认操作');
 
-    return new Promise(function(resolve) {
-      if (confirmResolver) {
-        confirmResolver(false);
-        confirmResolver = null;
-      }
-
-      var confirmTitleNode = $confirmDialog.find('.ui-dialog-title').get(0);
-      if (confirmTitleNode) {
-        confirmTitleNode.textContent = title;
-      }
-      $confirmMessage.text(message);
-      if (!openAssetDialog('asset-confirm-dialog')) {
-        resolve(false);
-        return;
-      }
-
-      confirmResolver = resolve;
-    });
+    var confirmAPI = getConfirmAPI();
+    if (confirmAPI && typeof confirmAPI.ask === 'function') {
+      return confirmAPI.ask({
+        dialogId: 'asset-confirm-dialog',
+        title: title,
+        message: message,
+        messageSelector: '#asset-confirm-message',
+        okSelector: '#asset-confirm-ok',
+      });
+    }
+    return Promise.resolve(window.confirm(message));
   }
 
   function setUploading(working, text) {
@@ -514,83 +510,6 @@ $(function() {
     var alt = (name || '').trim();
     alt = alt.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
     return '![' + alt + '](' + url + ')';
-  }
-
-  $confirmOK.on('click', function() {
-    if (confirmResolver) {
-      var resolve = confirmResolver;
-      confirmResolver = null;
-      resolve(true);
-    }
-    closeAssetDialog('asset-confirm-dialog');
-  });
-
-  function resolvePendingConfirmAs(value) {
-    if (confirmResolver) {
-      var resolve = confirmResolver;
-      confirmResolver = null;
-      resolve(!!value);
-    }
-  }
-
-  $confirmCancel.on('click', function() {
-    resolvePendingConfirmAs(false);
-  });
-
-  $(document).on('click', '#asset-confirm-dialog [data-role~="ui-dialog-close"], #asset-confirm-dialog [data-role~="ui-dialog-cancel"]', function() {
-    resolvePendingConfirmAs(false);
-  });
-
-  $(document).on('click', '#asset-confirm-dialog', function(event) {
-    if (event.target === this) {
-      resolvePendingConfirmAs(false);
-    }
-  });
-
-  $(document).on('keydown', function(event) {
-    if (event.key === 'Escape' && isDialogVisible('asset-confirm-dialog')) {
-      window.setTimeout(function() {
-        resolvePendingConfirmAs(false);
-      }, 0);
-    }
-  });
-
-  function openAssetDialog(id) {
-    if (dialogAPI && typeof dialogAPI.open === 'function') {
-      return dialogAPI.open(id);
-    }
-    var dialogEl = document.getElementById(id);
-    if (!dialogEl || typeof dialogEl.showModal !== 'function') {
-      return false;
-    }
-    if (dialogEl.open) {
-      dialogEl.close();
-    }
-    dialogEl.showModal();
-    return true;
-  }
-
-  function closeAssetDialog(id) {
-    if (dialogAPI && typeof dialogAPI.close === 'function') {
-      return dialogAPI.close(id);
-    }
-    var dialogEl = document.getElementById(id);
-    if (!dialogEl || !dialogEl.open) {
-      return false;
-    }
-    dialogEl.close();
-    return true;
-  }
-
-  function isDialogVisible(id) {
-    var dialogEl = document.getElementById(id);
-    if (!dialogEl) {
-      return false;
-    }
-    if (dialogEl.classList && dialogEl.classList.contains('ui-dialog-backdrop')) {
-      return !dialogEl.hasAttribute('hidden');
-    }
-    return !!dialogEl.open;
   }
 
   $dropzone.on('click', function() {

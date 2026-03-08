@@ -44,7 +44,7 @@
               {% endif %}
               <form method="post" action="{{ UrlFor('dash.http_error_logs.delete', id=log.ID) }}">
                 {{ _csrf_token() }}
-                {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+                {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除"', button_type="submit") }}
               </form>
             </div>
           </td>

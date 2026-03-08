@@ -1456,6 +1456,108 @@
       closeTop: closeTopDialog,
     };
 
+    function askDialogConfirm(opts) {
+      var options = opts || {};
+      var dialogID = String(options.dialogId || '').trim();
+      var message = String(options.message || '');
+      var title = String(options.title || '');
+      var opener = options.opener || null;
+      var okSelector = String(options.okSelector || '[data-role~="ui-confirm-ok"], [data-role~="ui-dialog-confirm"]').trim();
+      var cancelSelector = String(options.cancelSelector || '[data-role~="ui-dialog-close"], [data-role~="ui-dialog-cancel"]').trim();
+      var titleSelector = String(options.titleSelector || '.ui-dialog-title').trim();
+      var messageSelector = String(options.messageSelector || '').trim();
+
+      if (!dialogID) {
+        return Promise.resolve(window.confirm(message));
+      }
+
+      var backdrop = findDialogBackdropById(dialogID);
+      if (!backdrop) {
+        return Promise.resolve(window.confirm(message));
+      }
+
+      if (title && titleSelector) {
+        var titleEl = backdrop.querySelector(titleSelector);
+        if (titleEl) {
+          titleEl.textContent = title;
+        }
+      }
+
+      if (messageSelector) {
+        var messageEl = backdrop.querySelector(messageSelector);
+        if (messageEl) {
+          messageEl.textContent = message;
+        }
+      }
+
+      return new Promise(function(resolve) {
+        var done = false;
+
+        function cleanup() {
+          backdrop.removeEventListener('click', onBackdropClick, true);
+          document.removeEventListener('keydown', onKeydown, true);
+        }
+
+        function finish(value) {
+          if (done) {
+            return;
+          }
+          done = true;
+          cleanup();
+          closeDialog(dialogID);
+          resolve(!!value);
+        }
+
+        function onBackdropClick(event) {
+          var target = event.target;
+          if (!target || !target.closest) {
+            return;
+          }
+
+          var okTarget = okSelector ? target.closest(okSelector) : null;
+          if (okTarget && backdrop.contains(okTarget)) {
+            event.preventDefault();
+            finish(true);
+            return;
+          }
+
+          var cancelTarget = cancelSelector ? target.closest(cancelSelector) : null;
+          if (cancelTarget && backdrop.contains(cancelTarget)) {
+            finish(false);
+            return;
+          }
+
+          if (target === backdrop) {
+            finish(false);
+          }
+        }
+
+        function onKeydown(event) {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          if (backdrop.hasAttribute('hidden')) {
+            return;
+          }
+          window.setTimeout(function() {
+            finish(false);
+          }, 0);
+        }
+
+        backdrop.addEventListener('click', onBackdropClick, true);
+        document.addEventListener('keydown', onKeydown, true);
+
+        if (!openDialog(dialogID, opener)) {
+          cleanup();
+          resolve(window.confirm(message));
+        }
+      });
+    }
+
+    window.DashAppUI.confirm = {
+      ask: askDialogConfirm,
+    };
+
     window.DashAppUI.toast = (function() {
       var autoCloseQueue = [];
       var autoCloseTimer = null;

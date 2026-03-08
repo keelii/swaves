@@ -32,7 +32,7 @@
 
   <div class="inline-flex items-center gap-2">
     <span for="page-size-select">每页</span>
-    <select id="page-size-select">
+    <select id="page-size-select" data-role="page-size-select" data-page-size-param="pageSize" data-page-param="page" data-reset-page="1">
       <option value="5" {% if Pager.PageSize == 5 %}selected{% endif %}>5</option>
       <option value="10" {% if Pager.PageSize == 10 %}selected{% endif %}>10</option>
       <option value="20" {% if Pager.PageSize == 20 %}selected{% endif %}>20</option>
@@ -43,14 +43,3 @@
     <span>共 {{ Pager.Total }} 条</span>
   </div>
 </nav>
-
-<script>
-$(function() {
-  $('#page-size-select').on('change', function() {
-    var url = new URL(resolveRequestURL());
-    url.searchParams.set('pageSize', $(this).val());
-    url.searchParams.set('page', '1');
-    goTo(url.toString());
-  });
-});
-</script>

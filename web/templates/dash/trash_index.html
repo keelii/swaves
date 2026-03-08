@@ -44,11 +44,11 @@
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.posts.restore', id=postItem.ID) }}">
               {{ _csrf_token() }}
-              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复"', button_type="submit") }}
             </form>
             <form method="post" action="{{ UrlFor('dash.trash.posts.delete', id=postItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
               {{ _csrf_token() }}
-              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除"', button_type="submit") }}
             </form>
           </div>
         </td>
@@ -86,11 +86,11 @@
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.encrypted_posts.restore', id=encryptedPostItem.ID) }}">
               {{ _csrf_token() }}
-              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复"', button_type="submit") }}
             </form>
             <form method="post" action="{{ UrlFor('dash.trash.encrypted_posts.delete', id=encryptedPostItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
               {{ _csrf_token() }}
-              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除"', button_type="submit") }}
             </form>
           </div>
         </td>
@@ -128,11 +128,11 @@
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.tags.restore', id=tagItem.ID) }}">
               {{ _csrf_token() }}
-              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复"', button_type="submit") }}
             </form>
             <form method="post" action="{{ UrlFor('dash.trash.tags.delete', id=tagItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
               {{ _csrf_token() }}
-              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除"', button_type="submit") }}
             </form>
           </div>
         </td>
@@ -174,11 +174,11 @@
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.categories.restore', id=categoryItem.ID) }}">
               {{ _csrf_token() }}
-              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复"', button_type="submit") }}
             </form>
             <form method="post" action="{{ UrlFor('dash.trash.categories.delete', id=categoryItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
               {{ _csrf_token() }}
-              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除"', button_type="submit") }}
             </form>
           </div>
         </td>
@@ -216,11 +216,11 @@
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.redirects.restore', id=redirectItem.ID) }}">
               {{ _csrf_token() }}
-              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复"', button_type="submit") }}
             </form>
             <form method="post" action="{{ UrlFor('dash.trash.redirects.delete', id=redirectItem.ID) }}" onsubmit="return confirm('确定永久删除吗？此操作不可恢复！')">
               {{ _csrf_token() }}
-              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("trash-2", "硬删除", "danger", attrs='data-title="硬删除"', button_type="submit") }}
             </form>
           </div>
         </td>

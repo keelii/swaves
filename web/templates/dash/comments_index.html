@@ -102,7 +102,7 @@
           <form method="post" action="{{ UrlFor('dash.comments.delete', id=comment.ID) }}">
             {{ _csrf_token() }}
             <input type="hidden" name="status_filter" value="{{ status }}">
-            {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+            {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除"', button_type="submit") }}
           </form>
         </div>
       </td>

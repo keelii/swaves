@@ -1,17 +1,19 @@
 {% set InitialTOCHTML = TOCHTML|default('')|trim %}
 {% set InitialTOCPreferredOpen = Settings('dash_post_editor_toc_open') == '1' %}
+{% set InitialSourcePreferredOpen = Settings('dash_post_editor_source_mode') == '1' %}
 
 <div
-  class="post-editor-workspace{% if InitialTOCHTML and InitialTOCPreferredOpen %} toc-open{% endif %}"
+  class="post-editor-workspace{% if InitialTOCHTML and InitialTOCPreferredOpen %} toc-open{% endif %}{% if InitialSourcePreferredOpen %} source-mode{% endif %}"
   data-role="post-editor-workspace"
   data-toc-preferred-open="{% if InitialTOCPreferredOpen %}1{% else %}0{% endif %}"
+  data-source-preferred-open="{% if InitialSourcePreferredOpen %}1{% else %}0{% endif %}"
 >
   <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
     <div class="title header">
       <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
     </div>
     <div class="content wysiwyg" data-role="post-editor-wysiwyg"></div>
-    <textarea id="post-content" name="content" class="source-editor" data-role="post-editor-source" form="form" hidden>{{ ContentValue }}</textarea>
+    <textarea id="post-content" name="content" class="source-editor" data-role="post-editor-source" form="form"{% if not InitialSourcePreferredOpen %} hidden{% endif %}>{{ ContentValue }}</textarea>
   </div>
   <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane"{% if not InitialTOCHTML %} hidden{% endif %} aria-hidden="{% if InitialTOCHTML %}false{% else %}true{% endif %}">
     <div class="post-toc">
@@ -47,6 +49,7 @@
     var slugAPIURL = {{ SlugAPIURL | tojson }};
     var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
     var tocOpenSaveURL = {{ UrlFor('dash.settings.api.post_editor_toc_open.update') | tojson }};
+    var sourceModeSaveURL = {{ UrlFor('dash.settings.api.post_editor_source_mode.update') | tojson }};
     var slugSyncTimer = null;
     var slugSyncSeq = 0;
     var tocSyncTimer = null;
@@ -54,10 +57,14 @@
     var tocLatestMarkdown = "";
     var tocAvailable = false;
     var tocPreferredOpen = !!(workspace && workspace.getAttribute("data-toc-preferred-open") === "1");
+    var sourcePreferredOpen = !!(workspace && workspace.getAttribute("data-source-preferred-open") === "1");
     var tocOpenPersisting = false;
     var tocOpenQueued = null;
     var tocOpenLastSaved = tocPreferredOpen ? "1" : "0";
-    var sourceMode = false;
+    var sourceModePersisting = false;
+    var sourceModeQueued = null;
+    var sourceModeLastSaved = sourcePreferredOpen ? "1" : "0";
+    var sourceMode = sourcePreferredOpen;
     var sourceModeEnabled = false;
     var headingIDRunePattern = null;
     try {
@@ -267,16 +274,17 @@
       sourceToggleButton.classList.toggle("selected", sourceMode);
       sourceToggleButton.setAttribute("aria-pressed", sourceMode ? "true" : "false");
       sourceToggleButton.setAttribute("data-title", sourceMode ? "切换可视化编辑" : "切换源码编辑");
+      sourceToggleButton.textContent = sourceMode ? "可视" : "源码";
     }
 
     function refreshTOCToggleButton() {
       if (!tocToggleButton) {
         return;
       }
-      tocToggleButton.hidden = !tocAvailable || sourceMode;
-      if (sourceMode) {
-        tocToggleButton.setAttribute("aria-pressed", "false");
-      }
+      tocToggleButton.hidden = !tocAvailable;
+      var active = !!(tocAvailable && workspace && workspace.classList.contains("toc-open"));
+      tocToggleButton.classList.toggle("selected", active);
+      tocToggleButton.setAttribute("aria-pressed", active ? "true" : "false");
     }
 
     function resizeSourceTextarea() {
@@ -305,6 +313,63 @@
       window.__seditor.setMarkdown(String(textarea.value || ""));
     }
 
+    function queueSaveSourceMode(nextSourceMode) {
+      if (!sourceModeSaveURL || typeof window.sfetchJSON !== "function") {
+        return;
+      }
+      var value = nextSourceMode ? "1" : "0";
+      if (sourceModeLastSaved === value && !sourceModePersisting) {
+        return;
+      }
+      sourceModeQueued = value;
+      if (!sourceModePersisting) {
+        flushSaveSourceMode();
+      }
+    }
+
+    function flushSaveSourceMode() {
+      if (sourceModePersisting || sourceModeQueued === null) {
+        return;
+      }
+      if (!sourceModeSaveURL || typeof window.sfetchJSON !== "function") {
+        sourceModeQueued = null;
+        return;
+      }
+
+      var value = sourceModeQueued;
+      sourceModeQueued = null;
+      sourceModePersisting = true;
+
+      var body = new URLSearchParams();
+      body.set("value", value);
+
+      window.sfetchJSON(sourceModeSaveURL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+        },
+        body: body.toString()
+      }).then(function(result) {
+        if (!result.ok || !result.body || result.body.ok !== true) {
+          var message = result && result.body && result.body.error ? result.body.error : "unknown error";
+          if (window.console && typeof window.console.warn === "function") {
+            window.console.warn("save source mode failed: value=" + value + " message=" + message);
+          }
+          return;
+        }
+        sourceModeLastSaved = value;
+      }).catch(function(error) {
+        if (window.console && typeof window.console.warn === "function") {
+          window.console.warn("save source mode request failed", error);
+        }
+      }).then(function() {
+        sourceModePersisting = false;
+        if (sourceModeQueued !== null && sourceModeQueued !== value) {
+          flushSaveSourceMode();
+        }
+      });
+    }
+
     function setSourceMode(nextSourceMode, options) {
       if (!workspace || !textarea || !sourceModeEnabled) {
         return;
@@ -316,6 +381,8 @@
         return;
       }
 
+      var persist = !(options && options.persist === false);
+
       sourceMode = nextMode;
       workspace.classList.toggle("source-mode", sourceMode);
       textarea.hidden = !sourceMode;
@@ -323,7 +390,6 @@
       if (sourceMode) {
         syncTextareaFromEditor();
         resizeSourceTextarea();
-        applyTOCOpenState(false, false);
         updateWordCount(textarea.value);
         scheduleTOCSync(textarea.value);
         if (!options || options.focus !== false) {
@@ -332,6 +398,7 @@
       } else {
         syncEditorFromTextarea();
         syncTOCHeadingMapping();
+        applyTOCOpenState(tocPreferredOpen, false);
         updateWordCount(textarea.value);
         scheduleTOCSync(textarea.value);
         if (!options || options.focus !== false) {
@@ -341,6 +408,9 @@
 
       refreshSourceToggleButton();
       refreshTOCToggleButton();
+      if (persist) {
+        queueSaveSourceMode(sourceMode);
+      }
     }
 
     function syncSlugFromTitle() {
@@ -445,6 +515,7 @@
         tocPane.setAttribute("aria-hidden", nextOpen ? "false" : "true");
       }
       if (tocToggleButton) {
+        tocToggleButton.classList.toggle("selected", nextOpen);
         tocToggleButton.setAttribute("aria-pressed", nextOpen ? "true" : "false");
       }
       if (persist) {
@@ -636,7 +707,7 @@
       });
     }
 
-    setSourceMode(false, { focus: false, force: true });
+    setSourceMode(sourcePreferredOpen, { focus: false, force: true, persist: false });
     updateWordCount();
     syncSlugFromTitle();
   });

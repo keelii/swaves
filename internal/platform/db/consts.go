@@ -548,5 +548,6 @@ var DefaultSettings = []Setting{
 	{Sort: 13, Kind: SettingKindUIExperience, Name: "Dash nav width", Code: "dash_nav_width", Type: "number", Value: "150", DefaultOptionValue: "150", Description: "Dash UI nav width", Attrs: `{"min": 150, "max": 480, "step": 5}`},
 	{Sort: 14, Kind: SettingKindUIExperience, Name: "Dash 主区全宽", Code: "dash_full_main_open", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "Dash 主区是否全宽", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 15, Kind: SettingKindUIExperience, Name: "编辑器目录展开", Code: "dash_post_editor_toc_open", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "文章编辑器目录默认展开状态", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
-	{Sort: 16, Kind: SettingKindUIExperience, Name: "分页器每页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
+	{Sort: 16, Kind: SettingKindUIExperience, Name: "编辑器源码模式", Code: "dash_post_editor_source_mode", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "文章编辑器默认源码模式状态", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
+	{Sort: 17, Kind: SettingKindUIExperience, Name: "分页器每页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
 }

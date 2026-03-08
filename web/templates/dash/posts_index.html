@@ -71,11 +71,7 @@
           {% set postTitle = postWithRelation.Post.Title %}
           {% set highlightPostTitle = Highlight(postTitle, SearchQuery) if SearchQuery else postTitle %}
           <div class="cell-title">
-            {% if postWithRelation.Post.Status == "published" %}
-              <a href="{{ GetPostUrl(postWithRelation.Post) }}" target="_blank" rel="noopener">{{ highlightPostTitle }}</a>
-            {% else %}
-              <span>{{ highlightPostTitle }}</span>
-            {% endif %}
+            <a href="{{ UrlFor('dash.posts.edit', id=postWithRelation.Post.ID) }}">{{ highlightPostTitle }}</a>
           </div>
         </td>
         <td class="cell-tags">
@@ -107,10 +103,10 @@
         <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
         <td>
           <div class="cell-actions">
-            {{ sui.LinkIcon("square-pen", UrlFor('dash.posts.edit', id=postWithRelation.Post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+            {{ sui.LinkIcon("square-arrow-out-up-right", GetPostUrl(postWithRelation.Post), attrs='aria-label="查看" data-title="查看" target="_blank" rel="noopener"') }}
             <form method="post" action="{{ UrlFor('dash.posts.delete', id=postWithRelation.Post.ID) }}">
               {{ _csrf_token() }}
-              {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+              {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除"', button_type="submit") }}
             </form>
           </div>
         </td>
@@ -122,20 +118,4 @@
 {% else %}
   {{ sui.EmptyState("暂无文章") }}
 {% endif %}
-
-<script>
-(function() {
-  var pageSizeSelect = document.getElementById('posts-page-size');
-  if (!pageSizeSelect) {
-    return;
-  }
-
-  pageSizeSelect.addEventListener('change', function() {
-    var url = new URL(window.location.href);
-    url.searchParams.set('pageSize', pageSizeSelect.value);
-    url.searchParams.set('page', '1');
-    window.location.href = url.toString();
-  });
-})();
-</script>
 {% endblock %}

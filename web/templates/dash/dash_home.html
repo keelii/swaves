@@ -266,20 +266,11 @@
     function attachUVTooltip(chartEl) {
       var svg = chartEl.querySelector('svg');
       var tooltipEl = chartEl.querySelector('[data-uv-tooltip]');
-      if (!svg || !tooltipEl) {
+      if (!svg || !tooltipEl || typeof bindSVGHitboxTooltip !== 'function') {
         return;
       }
 
-      var hitboxes = svg.querySelectorAll('rect[data-uv]');
-      var points = svg.querySelectorAll('circle');
       var tickLines = svg.querySelectorAll('line');
-      if (!hitboxes.length) {
-        return;
-      }
-
-      function hideTooltip() {
-        tooltipEl.hidden = true;
-      }
 
       function clearActiveTick() {
         tickLines.forEach(function(line) {
@@ -302,95 +293,31 @@
         }
       }
 
-      function getAnchorPosition(hitbox) {
-        var index = getTickIndex(hitbox);
-        if (!isNaN(index) && index >= 0 && index < points.length) {
-          var pointRect = points[index].getBoundingClientRect();
-          return {
-            left: pointRect.left + pointRect.width / 2,
-            top: pointRect.top + pointRect.height / 2,
-          };
-        }
-        var hitboxRect = hitbox.getBoundingClientRect();
-        return {
-          left: hitboxRect.left + hitboxRect.width / 2,
-          top: hitboxRect.top + hitboxRect.height / 2,
-        };
-      }
-
-      function renderTooltip(hitbox) {
-        var label = hitbox.getAttribute('data-label') || '';
-        var uv = hitbox.getAttribute('data-uv') || '0';
-        var tsRaw = hitbox.getAttribute('data-ts');
-        if (!label && tsRaw) {
-          var ts = parseInt(tsRaw, 10);
-          if (!isNaN(ts) && ts > 0) {
-            var dt = new Date(ts * 1000);
-            label = dt.toLocaleString();
+      bindSVGHitboxTooltip({
+        container: chartEl,
+        svg: svg,
+        tooltip: tooltipEl,
+        boundFlag: 'uvTooltipBound',
+        hitboxSelector: 'rect[data-uv]',
+        pointSelector: 'circle',
+        getIndex: getTickIndex,
+        getText: function(hitbox) {
+          var label = hitbox.getAttribute('data-label') || '';
+          var uv = hitbox.getAttribute('data-uv') || '0';
+          var tsRaw = hitbox.getAttribute('data-ts');
+          if (!label && tsRaw) {
+            var ts = parseInt(tsRaw, 10);
+            if (!isNaN(ts) && ts > 0) {
+              var dt = new Date(ts * 1000);
+              label = dt.toLocaleString();
+            }
           }
-        }
-
-        tooltipEl.textContent = label ? (label + ' · 访问量 ' + uv) : ('访问量 ' + uv);
-        tooltipEl.hidden = false;
-
-        var chartRect = chartEl.getBoundingClientRect();
-        var anchor = getAnchorPosition(hitbox);
-        var tooltipHalf = tooltipEl.offsetWidth / 2;
-        var left = anchor.left - chartRect.left;
-        var minLeft = tooltipHalf + 4;
-        var maxLeft = chartRect.width - tooltipHalf - 4;
-        if (left < minLeft) {
-          left = minLeft;
-        }
-        if (left > maxLeft) {
-          left = maxLeft;
-        }
-
-        var anchorTop = anchor.top - chartRect.top;
-        var top = anchorTop - tooltipEl.offsetHeight - 8;
-        if (top < 0) {
-          top = anchorTop + 8;
-        }
-        var maxTop = chartRect.height - tooltipEl.offsetHeight;
-        if (top > maxTop) {
-          top = maxTop;
-        }
-
-        tooltipEl.style.left = left + 'px';
-        tooltipEl.style.top = top + 'px';
-      }
-
-      hitboxes.forEach(function(hitbox) {
-        hitbox.setAttribute('tabindex', '0');
-        hitbox.addEventListener('mouseenter', function() {
-          setActiveTick(getTickIndex(hitbox));
-          renderTooltip(hitbox);
-        });
-        hitbox.addEventListener('mousemove', function() {
-          setActiveTick(getTickIndex(hitbox));
-          renderTooltip(hitbox);
-        });
-        hitbox.addEventListener('mouseleave', function(event) {
-          var next = event.relatedTarget;
-          if (next && next instanceof SVGElement && next.hasAttribute('data-uv')) {
-            return;
-          }
-          hideTooltip();
-          clearActiveTick();
-        });
-        hitbox.addEventListener('focus', function() {
-          setActiveTick(getTickIndex(hitbox));
-          renderTooltip(hitbox);
-        });
-        hitbox.addEventListener('blur', function() {
-          hideTooltip();
-          clearActiveTick();
-        });
-      });
-
-      svg.addEventListener('mouseleave', function() {
-        hideTooltip();
-        clearActiveTick();
+          return label ? (label + ' · 访问量 ' + uv) : ('访问量 ' + uv);
+        },
+        onActivate: function(_hitbox, index) {
+          setActiveTick(index);
+        },
+        onDeactivate: clearActiveTick,
       });
     }
 

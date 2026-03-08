@@ -33,6 +33,7 @@ const (
 	dashNavWidthMax          = 480
 	settingCodeDashFullMain  = "dash_full_main_open"
 	settingCodeDashEditorTOC = "dash_post_editor_toc_open"
+	settingCodeDashEditorSrc = "dash_post_editor_source_mode"
 )
 
 func normalizeSettingSubKind(raw string) string {
@@ -363,6 +364,10 @@ func (h *Handler) PostUpdateDashFullMainAPIHandler(c fiber.Ctx) error {
 
 func (h *Handler) PostUpdateDashPostEditorTOCOpenAPIHandler(c fiber.Ctx) error {
 	return h.postUpdateBoolSettingAPIHandler(c, settingCodeDashEditorTOC, "目录展开状态")
+}
+
+func (h *Handler) PostUpdateDashPostEditorSourceModeAPIHandler(c fiber.Ctx) error {
+	return h.postUpdateBoolSettingAPIHandler(c, settingCodeDashEditorSrc, "源码模式状态")
 }
 
 func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {

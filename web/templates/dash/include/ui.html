@@ -45,8 +45,8 @@
 </button>
 {% endmacro %}
 
-{% macro IconAction(icon_name, aria_label, kind="", disabled=false, attrs="") %}
-<button type="button" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
+{% macro IconAction(icon_name, aria_label, kind="", disabled=false, attrs="", button_type="button") %}
+<button type="{{ button_type }}" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
   {{ LucideIcon(icon_name, 16) }}
 </button>
 {% endmacro %}

@@ -127,6 +127,7 @@ func RegisterRouter(
 	dashGroup.Post("/api/settings/dash-nav-width", handler.PostUpdateDashNavWidthAPIHandler).Name("dash.settings.api.nav_width.update")
 	dashGroup.Post("/api/settings/dash-full-main", handler.PostUpdateDashFullMainAPIHandler).Name("dash.settings.api.full_main.update")
 	dashGroup.Post("/api/settings/dash-post-editor-toc-open", handler.PostUpdateDashPostEditorTOCOpenAPIHandler).Name("dash.settings.api.post_editor_toc_open.update")
+	dashGroup.Post("/api/settings/dash-post-editor-source-mode", handler.PostUpdateDashPostEditorSourceModeAPIHandler).Name("dash.settings.api.post_editor_source_mode.update")
 	dashGroup.Get("/settings/new", handler.GetSettingNewHandler).Name("dash.settings.new")
 	dashGroup.Post("/settings/new", handler.PostCreateSettingHandler).Name("dash.settings.create")
 	dashGroup.Get("/settings/:id/edit", handler.GetSettingEditHandler).Name("dash.settings.edit")

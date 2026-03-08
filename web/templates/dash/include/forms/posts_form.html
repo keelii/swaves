@@ -56,7 +56,7 @@
         {% endif %}
       {% else %}
         <input class="ui-input" type="text" name="slug" id="slug" required placeholder="可选：默认标题" value="{{ slug_value }}">
-        {{ sui.Button("自动生成", "outline", attrs='type="button" onclick="autoSetSlug()"') }}
+        {{ sui.Button("自动生成", "outline", attrs='type="button" id="post-auto-slug-btn"') }}
       {% endif %}
     </div>
   </div>
@@ -101,6 +101,7 @@
 {% if not is_edit %}
 <script>
   var slugAPIURL = {{ UrlFor('api.slug') | tojson }};
+  var autoSlugButton = document.getElementById('post-auto-slug-btn');
 
   function autoSetSlug() {
     if (typeof sfetchJSON !== 'function') {
@@ -117,6 +118,10 @@
         $('#slug').val(json.data);
       }
     });
+  }
+
+  if (autoSlugButton) {
+    autoSlugButton.addEventListener('click', autoSetSlug);
   }
 </script>
 {% endif %}

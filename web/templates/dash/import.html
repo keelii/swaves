@@ -408,32 +408,6 @@ $(function() {
     return url.pathname + url.search;
   }
 
-  function getDialogAPI() {
-    return window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
-  }
-
-  function openImportDialog(id, opener) {
-    var dialogAPI = getDialogAPI();
-    if (dialogAPI && typeof dialogAPI.open === 'function') {
-      return dialogAPI.open(id, opener);
-    }
-    if (typeof openDialog === 'function') {
-      return openDialog('#' + id);
-    }
-    return false;
-  }
-
-  function closeImportDialog(id) {
-    var dialogAPI = getDialogAPI();
-    if (dialogAPI && typeof dialogAPI.close === 'function') {
-      return dialogAPI.close(id);
-    }
-    if (typeof closeDialog === 'function') {
-      return closeDialog('#' + id);
-    }
-    return false;
-  }
-
   function show(sel, disp) { $(sel).css('display', disp || 'block'); }
   function hide(sel) { $(sel).css('display', 'none'); }
 
@@ -1099,24 +1073,30 @@ $(function() {
       if (!isParsing && !isConfirming) {
         $dropzone.removeClass('is-disabled');
       }
-      closeImportDialog('import-cancel-dialog');
     }
   }
 
-  $cancelBtn.on('click', function() {
+  $cancelBtn.on('click', async function() {
     if (isParsing || isConfirming || isCancelling) {
       return;
     }
 
-    if (!openImportDialog('import-cancel-dialog', this)) {
-      if (!window.confirm('将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？')) {
-        return;
-      }
-      void executeCancelImporting();
+    var confirmed = false;
+    var confirmAPI = window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
+    if (confirmAPI && typeof confirmAPI.ask === 'function') {
+      confirmed = await confirmAPI.ask({
+        dialogId: 'import-cancel-dialog',
+        title: '确认取消',
+        message: '将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？',
+        opener: this,
+        okSelector: '#import-cancel-confirm-btn',
+      });
+    } else {
+      confirmed = window.confirm('将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？');
     }
-  });
-
-  $cancelConfirmBtn.on('click', function() {
+    if (!confirmed) {
+      return;
+    }
     void executeCancelImporting();
   });
 

@@ -64,7 +64,7 @@
                 {{ sui.LinkIcon("square-pen", UrlFor('dash.categories.edit', id=category.ID), attrs='aria-label="编辑" data-title="编辑"') }}
                 <form method="post" action="{{ UrlFor('dash.categories.delete', id=category.ID) }}">
                   {{ _csrf_token() }}
-                  {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+                  {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除"', button_type="submit") }}
                 </form>
               </div>
             </td>

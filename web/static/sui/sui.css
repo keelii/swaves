@@ -1669,6 +1669,15 @@ a.ui-icon-btn[disabled] {
   justify-content: flex-end;
 }
 
+.app-window:has(.post-editor-workspace.source-mode) .main-status-bar .status-slot.center.disabled {
+  opacity: 0.5;
+}
+
+.app-window:has(.post-editor-workspace.source-mode) .main-status-bar .status-slot.center.disabled,
+.app-window:has(.post-editor-workspace.source-mode) .main-status-bar .status-slot.center.disabled * {
+  pointer-events: none;
+}
+
 .app-window .app-panel-body {
   min-height: 0;
   min-width: 0;

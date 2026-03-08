@@ -51,7 +51,7 @@
               {{ sui.LinkIcon("square-pen", UrlFor('dash.settings.edit', id=setting.ID), attrs='aria-label="编辑" data-title="编辑"') }}
               <form method="post" action="{{ UrlFor('dash.settings.delete', id=setting.ID) }}">
                 {{ _csrf_token() }}
-                {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除" onclick="this.form.submit()"') }}
+                {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除"', button_type="submit") }}
               </form>
             </div>
           </td>
