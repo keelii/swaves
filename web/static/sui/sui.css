@@ -2107,6 +2107,9 @@ a.ui-icon-btn[disabled] {
   box-sizing: border-box;
   border-bottom: 0!important;
 }
+.content-editor .ProseMirror>*:first-child {
+  margin-top: 0;
+}
 .content-editor .ProseMirror table {
   border-collapse: collapse;
   border-spacing: 0;

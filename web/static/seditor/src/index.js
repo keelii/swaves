@@ -789,6 +789,7 @@ function buildPlugins(schema, options) {
       "Mod-y": redo,
       "Mod-b": toggleMark(schema.marks.strong),
       "Mod-i": toggleMark(schema.marks.em),
+      Backspace: deleteSingleCellTableOnBackspace,
       Enter: listItem ? splitListItem(listItem) : undefined,
       Tab: listItem ? sinkListItem(listItem) : undefined,
       "Shift-Tab": listItem ? liftListItem(listItem) : undefined
@@ -945,7 +946,7 @@ function insertDefaultTableNode(view, schema) {
   var insertPos = view.state.selection.from;
   var tr = view.state.tr.replaceSelectionWith(tableNode);
   var mappedInsertPos = tr.mapping.map(insertPos, -1);
-  var target = normalizeTargetCell(tableNode, 1, 0);
+  var target = normalizeTargetCell(tableNode, 0, 0);
   var cursorPos = mappedInsertPos + getTableCellContentOffset(tableNode, target.row, target.col);
   tr = tr.setSelection(Selection.near(tr.doc.resolve(cursorPos))).scrollIntoView();
   view.dispatch(tr);
@@ -1175,11 +1176,48 @@ function getTableContext(state) {
   return {
     tableNode: tableNode,
     tablePos: tablePos,
+    cellDepth: cellDepth,
     rowIndex: rowIndex,
     rowIndexInSection: rowMeta.rowIndexInSection,
     sectionType: rowMeta.sectionType,
     colIndex: colIndex
   };
+}
+
+function deleteSingleCellTableOnBackspace(state, dispatch) {
+  if (!state || !state.selection || !state.selection.empty) {
+    return false;
+  }
+
+  var context = getTableContext(state);
+  if (!context || !context.tableNode || !Number.isInteger(context.cellDepth)) {
+    return false;
+  }
+
+  var $from = state.selection.$from;
+  var cellNode = $from.node(context.cellDepth);
+  if (!cellNode || cellNode.content.size !== 0 || $from.parentOffset !== 0) {
+    return false;
+  }
+
+  var rows = getTableRowsFromNode(context.tableNode);
+  if (rows.length !== 1) {
+    return false;
+  }
+  var onlyRow = rows[0].rowNode;
+  if (!onlyRow || onlyRow.childCount !== 1) {
+    return false;
+  }
+
+  if (!dispatch) {
+    return true;
+  }
+
+  var tr = state.tr.delete(context.tablePos, context.tablePos + context.tableNode.nodeSize);
+  var selectionPos = Math.min(context.tablePos, tr.doc.content.size);
+  tr = tr.setSelection(Selection.near(tr.doc.resolve(selectionPos), -1)).scrollIntoView();
+  dispatch(tr);
+  return true;
 }
 
 function cloneNodeJSON(node) {
