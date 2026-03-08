@@ -72,6 +72,7 @@
   --app-toolbar-height: 40px;
   --app-status-height: 40px;
   --app-pane-nav-width: 240px;
+  --app-toc-width: 300px;
   --app-toolbar-border-width: 1px;
   --app-status-border-width: 1px;
 }
@@ -1651,7 +1652,7 @@ a.ui-icon-btn[disabled] {
 .app-window .app-panel-body {
   min-height: 0;
   min-width: 0;
-  overflow: auto;
+  overflow: hidden;
   flex: 1 1 auto;
 }
 
@@ -1951,17 +1952,18 @@ a.ui-icon-btn[disabled] {
 
 .post-editor-workspace .content-editor {
   flex: 1 1 auto;
-  height: 100%;
+  height: calc(100vh - var(--app-toolbar-height) - var(--app-status-height));
+  overflow-y: auto;
   min-width: 0;
 }
 
 .post-editor-toc-pane {
   position: relative;
-  flex: 0 0 clamp(220px, 28vw, 360px);
-  width: clamp(220px, 28vw, 360px);
+  flex: 0 0 var(--app-toc-width);
+  width: var(--app-toc-width);
   min-height: 0;
   border-left: var(--app-border-width) solid var(--app-border);
-  background: var(--app-surface-muted-bg);
+  /*background: var(--app-surface-muted-bg);*/
   display: none;
   flex-direction: column;
   overflow: hidden;
@@ -1982,13 +1984,20 @@ a.ui-icon-btn[disabled] {
   padding-left: 1em;
 }
 .post-editor-toc-body {
-  flex: 1 1 auto;
+  /*flex: 1 1 auto;*/
   min-height: 0;
-  overflow: auto;
-  padding: 8px 10px 12px;
+  padding: var(--app-spacing);
   font-size: 0.86rem;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  height: calc(100vh - var(--app-toolbar-height) - var(--app-status-height) - 16px - var(--app-spacing) * 4);
+  /*background: var(--app-surface-muted-bg);*/
+  /*scrollbar-color: var(--app-scrollbar-thumb) var(--app-surface-muted-bg);*/
+}
+.post-toc {
+  position: fixed;
   background: var(--app-surface-muted-bg);
-  scrollbar-color: var(--app-scrollbar-thumb) var(--app-surface-muted-bg);
+  height: calc(100vh - var(--app-toolbar-height) - var(--app-status-height));
 }
 
 .post-editor-toc-body::-webkit-scrollbar-track {
@@ -2048,7 +2057,7 @@ a.ui-icon-btn[disabled] {
 }
 .post-editor-workspace .header {
   box-sizing: border-box;
-  height: calc(16px + (var(--app-spacing) * 2));
+  /*height: calc(16px + (var(--app-spacing) * 2));*/
   line-height: 16px;
   font-size: 16px;
   padding: 0 var(--app-spacing);
@@ -2104,7 +2113,7 @@ a.ui-icon-btn[disabled] {
   color: #999;
 }
 .content-editor .content {
-  flex-grow: 1;
+  /*flex-grow: 1;*/
 }
 .content-editor .title,
 .content-editor .ProseMirror {
