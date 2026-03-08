@@ -1934,6 +1934,76 @@ a.ui-icon-btn[disabled] {
   flex-direction: column;
   font-size: 16px;
 }
+
+.post-editor-workspace {
+  display: flex;
+  align-items: stretch;
+  gap: var(--app-gap-3);
+  min-height: 0;
+  height: 100%;
+}
+
+.post-editor-workspace .content-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.post-editor-workspace:not(.toc-open) .post-editor-toc-pane {
+  display: none;
+}
+
+.post-editor-toc-pane {
+  flex: 0 0 280px;
+  min-width: 220px;
+  max-width: 360px;
+  /*border: var(--app-border-width) solid var(--app-border);*/
+  border-left: var(--app-border-width) solid var(--app-border);
+  /*border-radius: var(--app-radius);*/
+  background: var(--app-surface-muted-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.post-editor-toc-head {
+  height: 38px;
+  line-height: 38px;
+  padding: 0 12px;
+  border-bottom: var(--app-border-width) solid var(--app-border);
+  color: var(--app-text);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.post-editor-toc-body ol {
+  padding-left: 1em;
+}
+.post-editor-toc-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px 12px;
+  font-size: 0.86rem;
+}
+
+.post-editor-toc-body .toc-title,
+.post-editor-toc-body .toc-toggle {
+  display: none;
+}
+
+.post-editor-toc-body .toc-list {
+  margin: 0;
+  padding-left: 1.25em;
+}
+
+.post-editor-toc-body .toc-list li {
+  margin: 2px 0;
+}
+
+.post-editor-toc-body .toc-list a {
+  color: var(--app-text-soft);
+  text-decoration: none;
+}
 .content-editor .title,
 .app-main-toolbar .slug {
   display: flex;

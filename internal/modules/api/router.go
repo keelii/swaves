@@ -28,6 +28,17 @@ func RegisterRouter(app *fiber.App) {
 		result := md.ParseMarkdown(body.Content, true)
 		return c.JSON(fiber.Map{"data": result.HTML})
 	}).Name("api.markdown")
+
+	// POST: JSON body { "content": "..." }，仅返回目录 HTML。
+	apiGroup.Post("/markdown/toc", func(c fiber.Ctx) error {
+		var body struct {
+			Content string `json:"content"`
+		}
+		if err := c.Bind().Body(&body); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid json"})
+		}
+		return c.JSON(fiber.Map{"data": md.ParseMarkdownTOC(body.Content)})
+	}).Name("api.markdown.toc")
 	//apiGroup.Get("/translate", func(c fiber.Ctx) error {
 	//	ret, err := translateText("en", c.Query("name"))
 	//	if err != nil {

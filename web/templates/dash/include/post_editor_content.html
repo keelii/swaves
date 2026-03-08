@@ -1,8 +1,14 @@
-<div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
-  <div class="title">
-    <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
+<div class="post-editor-workspace" data-role="post-editor-workspace">
+  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
+    <div class="title">
+      <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
+    </div>
+    <div class="content wysiwyg"></div>
   </div>
-  <div class="content wysiwyg"></div>
+  <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane" hidden>
+    <div class="post-editor-toc-head">目录</div>
+    <div class="post-editor-toc-body" data-role="post-editor-toc-body"></div>
+  </aside>
 </div>
 
 <textarea id="post-content" name="content" form="form" hidden>{{ ContentValue }}</textarea>
@@ -22,10 +28,217 @@
     var textarea = document.getElementById("post-content");
     var wordCount = document.getElementById("post-editor-word-count");
     var slugInput = document.getElementById("post-slug");
+    var workspace = document.querySelector('[data-role="post-editor-workspace"]');
+    var tocPane = document.querySelector('[data-role="post-editor-toc-pane"]');
+    var tocBody = document.querySelector('[data-role="post-editor-toc-body"]');
+    var tocToggleButton = document.querySelector('[data-role="toggle-post-toc"]');
     var autoSyncSlug = {% if AutoSyncSlug %}true{% else %}false{% endif %};
     var slugAPIURL = {{ SlugAPIURL | tojson }};
+    var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
     var slugSyncTimer = null;
     var slugSyncSeq = 0;
+    var tocSyncTimer = null;
+    var tocSyncSeq = 0;
+    var tocLatestMarkdown = "";
+    var tocAvailable = false;
+    var tocStorageKey = "sui.post_editor_toc_open";
+    var tocPreferredOpen = false;
+    var headingIDRunePattern = null;
+    try {
+      headingIDRunePattern = new RegExp("^[\\p{L}\\p{N}]$", "u");
+    } catch (error) {
+      headingIDRunePattern = null;
+    }
+
+    function getEditorRoot() {
+      if (!workspace || !workspace.querySelector) {
+        return null;
+      }
+      return workspace.querySelector(".content .ProseMirror");
+    }
+
+    function getEditorHeadingNodes() {
+      var root = getEditorRoot();
+      if (!root || !root.querySelectorAll) {
+        return [];
+      }
+      return Array.prototype.slice.call(root.querySelectorAll("h1, h2, h3, h4, h5, h6"));
+    }
+
+    function normalizeTOCAnchor(href) {
+      var text = String(href || "").trim();
+      if (text.charAt(0) === "#") {
+        text = text.slice(1);
+      }
+      if (!text) {
+        return "";
+      }
+      try {
+        return decodeURIComponent(text);
+      } catch (error) {
+        return text;
+      }
+    }
+
+    function isHeadingIDRune(char) {
+      if (!char) {
+        return false;
+      }
+      if (char === "-") {
+        return true;
+      }
+      if ((char >= "0" && char <= "9") || (char >= "A" && char <= "Z") || (char >= "a" && char <= "z")) {
+        return true;
+      }
+      return !!(headingIDRunePattern && headingIDRunePattern.test(char));
+    }
+
+    function buildHeadingAnchorID(text) {
+      var source = String(text == null ? "" : text).trim().replace(/ /g, "-");
+      var out = "";
+      for (var i = 0; i < source.length; i += 1) {
+        var char = source.charAt(i);
+        if (isHeadingIDRune(char)) {
+          out += char;
+        }
+      }
+      return out || "heading";
+    }
+
+    function syncTOCHeadingMapping() {
+      if (!tocBody || !tocBody.querySelectorAll) {
+        return;
+      }
+
+      var links = tocBody.querySelectorAll('.toc-list a[href^="#"]');
+      if (!links || links.length === 0) {
+        return;
+      }
+
+      var headings = getEditorHeadingNodes();
+      var headingEntries = [];
+      var headingMap = {};
+
+      for (var i = 0; i < headings.length; i += 1) {
+        var headingNode = headings[i];
+        var anchorID = buildHeadingAnchorID(headingNode.textContent || "");
+        var entry = { index: i, id: anchorID, node: headingNode };
+        headingEntries.push(entry);
+        if (!headingMap[anchorID]) {
+          headingMap[anchorID] = [];
+        }
+        headingMap[anchorID].push(entry);
+      }
+
+      var anchorHitCount = {};
+      var assignedHeadingIDs = {};
+      for (var linkIndex = 0; linkIndex < links.length; linkIndex += 1) {
+        var link = links[linkIndex];
+        var anchor = normalizeTOCAnchor(link.getAttribute("href"));
+        var anchorOffset = anchorHitCount[anchor] || 0;
+        anchorHitCount[anchor] = anchorOffset + 1;
+
+        var targetEntry = null;
+        var matchedEntries = headingMap[anchor];
+        if (matchedEntries && anchorOffset < matchedEntries.length) {
+          targetEntry = matchedEntries[anchorOffset];
+        } else if (linkIndex < headingEntries.length) {
+          targetEntry = headingEntries[linkIndex];
+        }
+
+        if (targetEntry) {
+          link.setAttribute("data-heading-index", String(targetEntry.index));
+          var resolvedID = anchor || targetEntry.id;
+          if (resolvedID) {
+            targetEntry.node.id = resolvedID;
+            assignedHeadingIDs[targetEntry.index] = true;
+          }
+        } else {
+          link.removeAttribute("data-heading-index");
+        }
+      }
+
+      for (var entryIndex = 0; entryIndex < headingEntries.length; entryIndex += 1) {
+        var headingEntry = headingEntries[entryIndex];
+        if (assignedHeadingIDs[headingEntry.index]) {
+          continue;
+        }
+        headingEntry.node.id = headingEntry.id;
+      }
+    }
+
+    function focusEditorRoot() {
+      var root = getEditorRoot();
+      if (!root || typeof root.focus !== "function") {
+        return;
+      }
+      try {
+        root.focus({ preventScroll: true });
+      } catch (error) {
+        root.focus();
+      }
+    }
+
+    function moveCaretToNodeStart(node) {
+      if (!node || typeof document.createRange !== "function" || typeof window.getSelection !== "function") {
+        return;
+      }
+      var selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      var range = document.createRange();
+      range.selectNodeContents(node);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    function focusEditorHeadingByIndex(index) {
+      if (typeof index !== "number" || !isFinite(index) || index < 0) {
+        return false;
+      }
+
+      var headings = getEditorHeadingNodes();
+      if (index >= headings.length) {
+        return false;
+      }
+
+      var heading = headings[index];
+      if (!heading) {
+        return false;
+      }
+
+      if (typeof heading.scrollIntoView === "function") {
+        heading.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest"
+        });
+      }
+
+      focusEditorRoot();
+      moveCaretToNodeStart(heading);
+      return true;
+    }
+
+    function scrollToTOCLinkTarget(link) {
+      if (!link || typeof link.getAttribute !== "function") {
+        return false;
+      }
+
+      syncTOCHeadingMapping();
+      var value = link.getAttribute("data-heading-index");
+      if (value == null || value === "") {
+        return false;
+      }
+
+      var parsed = Number(value);
+      if (!isFinite(parsed)) {
+        return false;
+      }
+      return focusEditorHeadingByIndex(parsed);
+    }
 
     function updateWordCount(nextMarkdown) {
       if (!wordCount) {
@@ -80,6 +293,109 @@
       });
     }
 
+    function loadTOCOpenState() {
+      try {
+        return window.localStorage.getItem(tocStorageKey) === "1";
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function saveTOCOpenState(open) {
+      try {
+        window.localStorage.setItem(tocStorageKey, open ? "1" : "0");
+      } catch (error) {
+      }
+    }
+
+    function applyTOCOpenState(open, persist) {
+      var nextOpen = !!open && tocAvailable;
+      if (workspace) {
+        workspace.classList.toggle("toc-open", nextOpen);
+      }
+      if (tocPane) {
+        tocPane.hidden = !nextOpen;
+      }
+      if (tocToggleButton) {
+        tocToggleButton.setAttribute("aria-pressed", nextOpen ? "true" : "false");
+      }
+      if (persist) {
+        tocPreferredOpen = nextOpen;
+        saveTOCOpenState(nextOpen);
+      }
+    }
+
+    function setTOCAvailable(available) {
+      tocAvailable = !!available;
+      if (tocToggleButton) {
+        tocToggleButton.hidden = !tocAvailable;
+      }
+      if (!tocAvailable) {
+        applyTOCOpenState(false, false);
+        return;
+      }
+      applyTOCOpenState(tocPreferredOpen, false);
+    }
+
+    function renderTOC(markdown) {
+      if (!tocBody || !markdownTOCAPIURL || typeof window.sfetchJSON !== "function") {
+        setTOCAvailable(false);
+        return;
+      }
+
+      var source = String(markdown || "").trim();
+      if (!source) {
+        tocBody.innerHTML = "";
+        setTOCAvailable(false);
+        return;
+      }
+
+      var seq = ++tocSyncSeq;
+      window.sfetchJSON(markdownTOCAPIURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: source })
+      }).then(function(result) {
+        if (seq !== tocSyncSeq) {
+          return;
+        }
+        if (!result.ok || !result.body || typeof result.body.data !== "string") {
+          tocBody.innerHTML = "";
+          setTOCAvailable(false);
+          return;
+        }
+        var tocHTML = String(result.body.data || "").trim();
+        if (!tocHTML) {
+          tocBody.innerHTML = "";
+          setTOCAvailable(false);
+          return;
+        }
+        tocBody.innerHTML = tocHTML;
+        var toggle = tocBody.querySelector(".toc-toggle");
+        if (toggle && toggle.parentNode) {
+          toggle.parentNode.removeChild(toggle);
+        }
+        syncTOCHeadingMapping();
+        setTOCAvailable(true);
+      }).catch(function() {
+        if (seq !== tocSyncSeq) {
+          return;
+        }
+        tocBody.innerHTML = "";
+        setTOCAvailable(false);
+      });
+    }
+
+    function scheduleTOCSync(nextMarkdown) {
+      tocLatestMarkdown = typeof nextMarkdown === "string" ? nextMarkdown : String(textarea && textarea.value || "");
+      if (tocSyncTimer) {
+        window.clearTimeout(tocSyncTimer);
+      }
+      tocSyncTimer = window.setTimeout(function() {
+        renderTOC(tocLatestMarkdown);
+      }, 260);
+    }
+
     function scheduleSlugSync() {
       if (slugSyncTimer) {
         window.clearTimeout(slugSyncTimer);
@@ -87,8 +403,35 @@
       slugSyncTimer = window.setTimeout(syncSlugFromTitle, 160);
     }
 
+    if (tocToggleButton) {
+      tocPreferredOpen = loadTOCOpenState();
+      tocToggleButton.addEventListener("click", function(event) {
+        event.preventDefault();
+        if (!tocAvailable) {
+          return;
+        }
+        var nextOpen = !(workspace && workspace.classList.contains("toc-open"));
+        applyTOCOpenState(nextOpen, true);
+      });
+    }
+
+    if (tocBody) {
+      tocBody.addEventListener("click", function(event) {
+        var target = event.target;
+        if (!target || !target.closest) {
+          return;
+        }
+        var link = target.closest('a[href^="#"]');
+        if (link) {
+          event.preventDefault();
+          scrollToTOCLinkTarget(link);
+        }
+      });
+    }
+
     if (!window.SEditor || typeof window.SEditor.init !== "function") {
       updateWordCount();
+      scheduleTOCSync();
       return;
     }
 
@@ -98,6 +441,7 @@
       placeholder: "输入内容",
       onChange: function(markdown) {
         updateWordCount(markdown);
+        scheduleTOCSync(markdown);
       }
     });
 
@@ -107,9 +451,13 @@
     }
     if (textarea) {
       textarea.addEventListener("input", updateWordCount);
+      textarea.addEventListener("input", function() {
+        scheduleTOCSync();
+      });
     }
 
     updateWordCount();
+    scheduleTOCSync();
     syncSlugFromTitle();
   });
 </script>
