@@ -2,10 +2,6 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
-{% block head_extra %}
-  <script src="/static/seditor/dist/seditor.min.js"></script>
-{% endblock %}
-
 {% block window_toolbar_main_left %}
   {{ sui.Button("保存", "outline", attrs='type="submit" form="form" name="action" value="save"') }}
 {% endblock %}

@@ -2,12 +2,14 @@
 {% import "dash/include/ui.html" as sui %}
 
 {% block head_extra %}
-  <script src="/static/seditor/dist/seditor.min.js"></script>
+  {% if SEditor %}
+    <script src="/static/seditor/dist/seditor.min.js"></script>
+  {% endif %}
 {% endblock %}
 
 {% block body %}
 <div
-  class="app-window{% if Settings('dash_full_main_open') == '1' %} full-main{% endif %}"
+  class="app-window{% if Settings('dash_full_main_open') == '1' %} menu-collapsed{% endif %}"
   data-nav-width-current="{{ Settings('dash_nav_width')|default('240') }}"
   style="--app-pane-nav-width: {{ Settings('dash_nav_width')|default('240') }}px;"
 >
@@ -60,7 +62,7 @@
   <main class="app-panel app-main" aria-label="内容区">
     <div class="app-panel-toolbar app-main-toolbar">
       <div class="app-toolbar-slot left">
-        {{ sui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-full-main" aria-pressed="false" aria-label="切换主区全宽" data-title="切换 full-main"') }}
+        {{ sui.LinkIcon("panel-left", "javascript:;", attrs='data-role="toggle-menu-collapse" aria-pressed="false" aria-label="切换菜单收起" data-title="收起菜单"') }}
         {% block window_toolbar_main_left %}
           {% block page_actions %}{% endblock %}
         {% endblock %}

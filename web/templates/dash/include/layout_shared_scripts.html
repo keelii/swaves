@@ -5,9 +5,9 @@
     var navResizer = document.querySelector('[data-role="nav-resizer"]');
     var navPanel = document.querySelector('.app-nav');
     var uiStateSaveURL = String(cfg.uiStateSaveURL || cfg.navWidthSaveURL || appWindow && appWindow.getAttribute('data-ui-state-save-url') || '').trim();
-    var fullMainPersisting = false;
-    var fullMainQueued = null;
-    var fullMainLastSaved = appWindow && appWindow.classList.contains('full-main') ? '1' : '0';
+    var menuCollapsedPersisting = false;
+    var menuCollapsedQueued = null;
+    var menuCollapsedLastSaved = appWindow && (appWindow.classList.contains('menu-collapsed') || appWindow.classList.contains('full-main')) ? '1' : '0';
     var navWidthPersisting = false;
     var navWidthQueued = null;
     var navWidthLastSaved = parsePixels(appWindow && appWindow.getAttribute('data-nav-width-current'));
@@ -35,19 +35,10 @@
     }
 
     function postUIStateSetting(code, value) {
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL || !window.DashApp || typeof window.DashApp.postUIStateSetting !== 'function') {
         return null;
       }
-      var body = new URLSearchParams();
-      body.set('code', code);
-      body.set('value', String(value));
-      return window.sfetchJSON(uiStateSaveURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        },
-        body: body.toString(),
-      });
+      return window.DashApp.postUIStateSetting(uiStateSaveURL, code, value);
     }
 
     function getNavWidthMinMax() {
@@ -84,7 +75,11 @@
     }
 
     function getToggleButtons() {
-      return document.querySelectorAll('[data-role="toggle-full-main"]');
+      return document.querySelectorAll('[data-role="toggle-menu-collapse"], [data-role="toggle-full-main"]');
+    }
+
+    function isMenuCollapsedState() {
+      return appWindow.classList.contains('menu-collapsed') || appWindow.classList.contains('full-main');
     }
 
     var tooltipEl = null;
@@ -310,66 +305,70 @@
       }
     }
 
-    function applyFullMain(enabled) {
-      appWindow.classList.toggle('full-main', enabled);
+    function applyMenuCollapsed(collapsed) {
+      appWindow.classList.toggle('menu-collapsed', collapsed);
+      // Keep compatibility for templates that still use the old full-main class.
+      appWindow.classList.toggle('full-main', collapsed);
       getToggleButtons().forEach(function(button) {
-        button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        button.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+        button.setAttribute('aria-label', collapsed ? '展开菜单' : '收起菜单');
+        button.setAttribute('data-title', collapsed ? '展开菜单' : '收起菜单');
       });
 
       var navToolbar = document.querySelector('.app-nav .app-panel-toolbar');
       var mainToolbar = document.querySelector('.app-main .app-panel-toolbar');
       if (navToolbar) {
-        navToolbar.classList.toggle('main-toggle-hidden', enabled);
+        navToolbar.classList.toggle('main-toggle-hidden', collapsed);
       }
       if (mainToolbar) {
-        mainToolbar.classList.toggle('main-toggle-hidden', !enabled);
+        mainToolbar.classList.toggle('main-toggle-hidden', !collapsed);
       }
     }
 
-    function queueSaveFullMainState(enabled) {
+    function queueSaveMenuCollapsedState(collapsed) {
       if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
         return;
       }
-      var value = enabled ? '1' : '0';
-      if (fullMainLastSaved === value && !fullMainPersisting) {
+      var value = collapsed ? '1' : '0';
+      if (menuCollapsedLastSaved === value && !menuCollapsedPersisting) {
         return;
       }
-      fullMainQueued = value;
-      if (!fullMainPersisting) {
-        flushSaveFullMainState();
+      menuCollapsedQueued = value;
+      if (!menuCollapsedPersisting) {
+        flushSaveMenuCollapsedState();
       }
     }
 
-    function flushSaveFullMainState() {
-      if (fullMainPersisting || fullMainQueued === null) {
+    function flushSaveMenuCollapsedState() {
+      if (menuCollapsedPersisting || menuCollapsedQueued === null) {
         return;
       }
       if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
-        fullMainQueued = null;
+        menuCollapsedQueued = null;
         return;
       }
 
-      var value = fullMainQueued;
-      fullMainQueued = null;
-      fullMainPersisting = true;
+      var value = menuCollapsedQueued;
+      menuCollapsedQueued = null;
+      menuCollapsedPersisting = true;
 
       postUIStateSetting('dash_full_main_open', value).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
           if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('save full-main state failed: value=' + value + ' message=' + message);
+            window.console.warn('save menu-collapsed state failed: value=' + value + ' message=' + message);
           }
           return;
         }
-        fullMainLastSaved = value;
+        menuCollapsedLastSaved = value;
       }).catch(function(error) {
         if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save full-main state request failed', error);
+          window.console.warn('save menu-collapsed state request failed', error);
         }
       }).then(function() {
-        fullMainPersisting = false;
-        if (fullMainQueued !== null && fullMainQueued !== value) {
-          flushSaveFullMainState();
+        menuCollapsedPersisting = false;
+        if (menuCollapsedQueued !== null && menuCollapsedQueued !== value) {
+          flushSaveMenuCollapsedState();
         }
       });
     }
@@ -584,19 +583,19 @@
     }
 
     initNavWidth();
-    applyFullMain(appWindow.classList.contains('full-main'));
+    applyMenuCollapsed(isMenuCollapsedState());
     initTheme();
     startNotificationPolling();
     ensureNotificationEmptyState();
 
     document.addEventListener('click', function(event) {
-      var button = event.target.closest('[data-role="toggle-full-main"]');
+      var button = event.target.closest('[data-role="toggle-menu-collapse"], [data-role="toggle-full-main"]');
       if (!button) {
         return;
       }
-      var nextState = !appWindow.classList.contains('full-main');
-      applyFullMain(nextState);
-      queueSaveFullMainState(nextState);
+      var nextState = !isMenuCollapsedState();
+      applyMenuCollapsed(nextState);
+      queueSaveMenuCollapsedState(nextState);
     });
 
     document.addEventListener('click', function(event) {
@@ -1254,7 +1253,7 @@
           if (event.button !== 0) {
             return;
           }
-          if (appWindow.classList.contains('full-main')) {
+          if (isMenuCollapsedState()) {
             return;
           }
           navResizer.setPointerCapture(event.pointerId);
@@ -1290,7 +1289,7 @@
           if (event.button !== 0) {
             return;
           }
-          if (appWindow.classList.contains('full-main')) {
+          if (isMenuCollapsedState()) {
             return;
           }
           document.addEventListener('mousemove', onMouseMove);

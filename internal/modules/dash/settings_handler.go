@@ -32,7 +32,7 @@ const (
 	dashNavWidthMin          = 150
 	dashNavWidthMax          = 480
 	settingCodeDashNavWidth  = "dash_nav_width"
-	settingCodeDashFullMain  = "dash_full_main_open"
+	settingCodeDashMenuState = "dash_full_main_open"
 	settingCodeDashEditorTOC = "dash_post_editor_toc_open"
 	settingCodeDashEditorSrc = "dash_post_editor_source_mode"
 )
@@ -283,8 +283,8 @@ func (h *Handler) PostUpdateDashUISettingAPIHandler(c fiber.Ctx) error {
 	switch code {
 	case settingCodeDashNavWidth:
 		return h.postUpdateDashNavWidthSettingAPIHandler(c, rawValue)
-	case settingCodeDashFullMain:
-		return h.postUpdateBoolSettingAPIHandler(c, code, "菜单展开状态", rawValue)
+	case settingCodeDashMenuState:
+		return h.postUpdateBoolSettingAPIHandler(c, code, "菜单收起状态", rawValue)
 	case settingCodeDashEditorTOC:
 		return h.postUpdateBoolSettingAPIHandler(c, code, "目录展开状态", rawValue)
 	case settingCodeDashEditorSrc:

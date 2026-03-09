@@ -70,7 +70,8 @@ func (h *Handler) GetEncryptedPostListHandler(c fiber.Ctx) error {
 
 func (h *Handler) GetEncryptedPostNewHandler(c fiber.Ctx) error {
 	return RenderDashView(c, "dash/encrypted_posts_new.html", fiber.Map{
-		"Title": "New Encrypted Post",
+		"Title":   "New Encrypted Post",
+		"SEditor": true,
 	}, "")
 }
 
@@ -103,8 +104,9 @@ func (h *Handler) GetEncryptedPostEditHandler(c fiber.Ctx) error {
 	}
 
 	return RenderDashView(c, "dash/encrypted_posts_edit.html", fiber.Map{
-		"Title": "Edit Encrypted Post",
-		"Post":  post,
+		"Title":   "Edit Encrypted Post",
+		"SEditor": true,
+		"Post":    post,
 	}, "")
 }
 

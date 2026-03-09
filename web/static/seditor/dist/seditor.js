@@ -19733,7 +19733,7 @@ var SEditor = (() => {
       keymap(baseKeymap)
     ].filter(Boolean);
   }
-  function promptForHref(currentHref) {
+  function promptForHrefNative(currentHref) {
     if (typeof window === "undefined" || typeof window.prompt !== "function") {
       return "";
     }
@@ -19743,6 +19743,156 @@ var SEditor = (() => {
       return "";
     }
     return String(value).trim();
+  }
+  var linkDialogState = null;
+  var activeLinkDialogFinish = null;
+  function ensureLinkDialogState() {
+    if (typeof document === "undefined") {
+      return null;
+    }
+    if (linkDialogState && linkDialogState.backdrop && document.body && document.body.contains(linkDialogState.backdrop)) {
+      return linkDialogState;
+    }
+    var id = "seditor-link-dialog";
+    var backdrop = document.getElementById(id);
+    if (!backdrop) {
+      backdrop = document.createElement("div");
+      backdrop.id = id;
+      backdrop.className = "ui-dialog-backdrop";
+      backdrop.setAttribute("data-role", "ui-dialog-backdrop");
+      backdrop.setAttribute("data-dialog-id", id);
+      backdrop.setAttribute("role", "presentation");
+      backdrop.setAttribute("hidden", "");
+      backdrop.innerHTML = '<div class="ui-dialog" role="dialog" aria-modal="true" aria-label="\u63D2\u5165\u94FE\u63A5">  <div class="ui-dialog-header">    <div class="ui-dialog-title">\u63D2\u5165\u94FE\u63A5</div>    <button type="button" class="ui-icon-btn" data-role="ui-dialog-close" aria-label="\u5173\u95ED" data-title="\u5173\u95ED"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>  </div>  <div class="ui-dialog-body">    <label class="ui-field-label" for="seditor-link-input">\u94FE\u63A5\u5730\u5740</label>    <input id="seditor-link-input" class="ui-input" data-role="seditor-link-input" type="url" inputmode="url" placeholder="https://" autocomplete="off">  </div>  <div class="ui-dialog-footer">    <button type="button" class="ui-btn outline" data-role="seditor-link-cancel ui-dialog-cancel">\u53D6\u6D88</button>    <button type="button" class="ui-btn primary" data-role="seditor-link-confirm">\u786E\u5B9A</button>  </div></div>';
+      document.body.appendChild(backdrop);
+    }
+    var input = backdrop.querySelector('[data-role~="seditor-link-input"]');
+    var confirmButton = backdrop.querySelector('[data-role~="seditor-link-confirm"]');
+    var cancelButton = backdrop.querySelector('[data-role~="seditor-link-cancel"]');
+    if (!input || !confirmButton || !cancelButton) {
+      return null;
+    }
+    linkDialogState = {
+      id,
+      backdrop,
+      input,
+      confirmButton,
+      cancelButton
+    };
+    return linkDialogState;
+  }
+  function openManagedDialog(dialogID, opener) {
+    if (typeof window !== "undefined" && window.DashAppUI && window.DashAppUI.dialog && typeof window.DashAppUI.dialog.open === "function") {
+      return !!window.DashAppUI.dialog.open(dialogID, opener || null);
+    }
+    if (typeof document === "undefined") {
+      return false;
+    }
+    var backdrop = document.getElementById(dialogID);
+    if (!backdrop) {
+      return false;
+    }
+    backdrop.removeAttribute("hidden");
+    return true;
+  }
+  function closeManagedDialog(dialogID) {
+    if (typeof window !== "undefined" && window.DashAppUI && window.DashAppUI.dialog && typeof window.DashAppUI.dialog.close === "function") {
+      return !!window.DashAppUI.dialog.close(dialogID);
+    }
+    if (typeof document === "undefined") {
+      return false;
+    }
+    var backdrop = document.getElementById(dialogID);
+    if (!backdrop) {
+      return false;
+    }
+    backdrop.setAttribute("hidden", "");
+    return true;
+  }
+  function requestHrefByDialog(currentHref, opener) {
+    var dialog = ensureLinkDialogState();
+    if (!dialog) {
+      return Promise.resolve(promptForHrefNative(currentHref));
+    }
+    if (typeof window === "undefined") {
+      return Promise.resolve(promptForHrefNative(currentHref));
+    }
+    var preset = currentHref ? String(currentHref).trim() : "https://";
+    dialog.input.value = preset;
+    return new Promise(function(resolve) {
+      if (typeof activeLinkDialogFinish === "function") {
+        activeLinkDialogFinish("");
+      }
+      var done = false;
+      function cleanup() {
+        dialog.backdrop.removeEventListener("click", onBackdropClick, true);
+        dialog.backdrop.removeEventListener("keydown", onBackdropKeydown, true);
+        dialog.input.removeEventListener("keydown", onInputKeydown, true);
+        if (activeLinkDialogFinish === finish) {
+          activeLinkDialogFinish = null;
+        }
+      }
+      function finish(value) {
+        if (done) {
+          return;
+        }
+        done = true;
+        cleanup();
+        closeManagedDialog(dialog.id);
+        resolve(String(value == null ? "" : value).trim());
+      }
+      function onBackdropClick(event) {
+        var target = event.target;
+        if (!target || !target.closest) {
+          return;
+        }
+        var okBtn = target.closest('[data-role~="seditor-link-confirm"]');
+        if (okBtn && dialog.backdrop.contains(okBtn)) {
+          event.preventDefault();
+          finish(dialog.input.value);
+          return;
+        }
+        var cancelBtn = target.closest('[data-role~="seditor-link-cancel"], [data-role~="ui-dialog-close"], [data-role~="ui-dialog-cancel"]');
+        if (cancelBtn && dialog.backdrop.contains(cancelBtn)) {
+          event.preventDefault();
+          finish("");
+          return;
+        }
+        if (target === dialog.backdrop) {
+          event.preventDefault();
+          finish("");
+        }
+      }
+      function onBackdropKeydown(event) {
+        if (event.key !== "Escape") {
+          return;
+        }
+        event.preventDefault();
+        finish("");
+      }
+      function onInputKeydown(event) {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        finish(dialog.input.value);
+      }
+      dialog.backdrop.addEventListener("click", onBackdropClick, true);
+      dialog.backdrop.addEventListener("keydown", onBackdropKeydown, true);
+      dialog.input.addEventListener("keydown", onInputKeydown, true);
+      activeLinkDialogFinish = finish;
+      if (!openManagedDialog(dialog.id, opener || null)) {
+        cleanup();
+        resolve(promptForHrefNative(currentHref));
+        return;
+      }
+      window.setTimeout(function() {
+        dialog.input.focus();
+        if (typeof dialog.input.select === "function") {
+          dialog.input.select();
+        }
+      }, 0);
+    });
   }
   function readFileAsDataURL(file) {
     return new Promise(function(resolve, reject) {
@@ -20673,33 +20823,44 @@ var SEditor = (() => {
           if (!view) {
             return false;
           }
+          if (typeof dispatch !== "function") {
+            return true;
+          }
           var sel = state.selection;
+          var cursorRange = sel.empty ? getLinkMarkRangeAtCursor(state, link2) : null;
           var activeLink = getActiveLinkMark(state, link2);
-          if (activeLink) {
+          if (activeLink || cursorRange) {
             if (!sel.empty) {
               dispatch(state.tr.removeMark(sel.from, sel.to, link2).scrollIntoView());
               return true;
             }
-            var range = getLinkMarkRangeAtCursor(state, link2);
-            if (!range) {
+            if (!cursorRange) {
               return false;
             }
-            dispatch(state.tr.removeMark(range.from, range.to, link2).scrollIntoView());
+            dispatch(state.tr.removeMark(cursorRange.from, cursorRange.to, link2).scrollIntoView());
             return true;
           }
-          var href = promptForHref(activeLink && activeLink.attrs ? activeLink.attrs.href : "");
-          if (!href) {
-            return false;
-          }
-          var mark = link2.create({ href, title: null });
-          if (!sel.empty) {
-            dispatch(state.tr.addMark(sel.from, sel.to, mark).scrollIntoView());
-            return true;
-          }
-          var text2 = href;
-          var tr = state.tr.insertText(text2, sel.from, sel.to);
-          tr.addMark(sel.from, sel.from + text2.length, mark);
-          dispatch(tr.scrollIntoView());
+          requestHrefByDialog("", view.dom).then(function(href) {
+            if (!href) {
+              return;
+            }
+            if (!view || !view.state) {
+              return;
+            }
+            var nextState = view.state;
+            var nextSelection = nextState.selection;
+            var mark = link2.create({ href, title: null });
+            if (!nextSelection.empty) {
+              dispatch(nextState.tr.addMark(nextSelection.from, nextSelection.to, mark).scrollIntoView());
+              view.focus();
+              return;
+            }
+            var text2 = href;
+            var tr = nextState.tr.insertText(text2, nextSelection.from, nextSelection.to);
+            tr.addMark(nextSelection.from, nextSelection.from + text2.length, mark);
+            dispatch(tr.scrollIntoView());
+            view.focus();
+          });
           return true;
         };
       case "image_upload":

@@ -3720,6 +3720,21 @@ func syncDefaultSettingMeta(db *DB, existing *Setting, defaults Setting) error {
 	if existing.Type != defaults.Type {
 		updateData["type"] = defaults.Type
 	}
+	if existing.Code == "dash_full_main_open" {
+		// Keep existing instances aligned with the updated wording/semantics.
+		if existing.Name != defaults.Name {
+			updateData["name"] = defaults.Name
+		}
+		if existing.Description != defaults.Description {
+			updateData["description"] = defaults.Description
+		}
+		if existing.Options != defaults.Options {
+			updateData["options"] = defaults.Options
+		}
+		if existing.DefaultOptionValue != defaults.DefaultOptionValue {
+			updateData["default_option_value"] = defaults.DefaultOptionValue
+		}
+	}
 
 	if len(updateData) == 0 {
 		return nil

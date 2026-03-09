@@ -1478,6 +1478,7 @@ a.ui-icon-btn[disabled] {
   background: var(--app-panel-bg);
 }
 
+.app-window.menu-collapsed .app-nav,
 .app-window.full-main .app-nav {
   display: none;
 }
@@ -1505,6 +1506,7 @@ a.ui-icon-btn[disabled] {
   opacity: 0.9;
 }
 
+.app-window.menu-collapsed .app-panel-resizer,
 .app-window.full-main .app-panel-resizer {
   display: none;
 }
@@ -1539,6 +1541,7 @@ a.ui-icon-btn[disabled] {
 .app-main-toolbar .right {
 }
 
+.menu-collapsed .app-main-toolbar .left,
 .full-main .app-main-toolbar .left {
   padding-left: 0;
 }
@@ -1559,6 +1562,7 @@ a.ui-icon-btn[disabled] {
   flex: 1 1 0;
 }
 
+.app-window .app-panel-toolbar.main-toggle-hidden [data-role="toggle-menu-collapse"],
 .app-window .app-panel-toolbar.main-toggle-hidden [data-role="toggle-full-main"] {
   display: none;
 }

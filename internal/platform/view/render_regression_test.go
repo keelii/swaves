@@ -434,6 +434,7 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 
 	var out bytes.Buffer
 	err := view.Render(&out, "dash/posts_edit.html", map[string]any{
+		"SEditor": true,
 		"Post": db.Post{
 			ID:             2,
 			Title:          "hello",

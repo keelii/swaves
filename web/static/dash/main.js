@@ -474,6 +474,23 @@ function isSameOriginRequest(input) {
   }
 }
 
+function postUIStateSetting(url, code, value) {
+  var targetURL = String(url == null ? "" : url).trim();
+  if (!targetURL || typeof window.sfetchJSON !== "function") {
+    return null;
+  }
+  var body = new URLSearchParams();
+  body.set("code", String(code == null ? "" : code));
+  body.set("value", String(value == null ? "" : value));
+  return window.sfetchJSON(targetURL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+    },
+    body: body.toString()
+  });
+}
+
 function installSFetch() {
   if (typeof window.fetch !== "function") {
     return;
@@ -567,6 +584,8 @@ function installSFetch() {
 
 if (typeof document !== "undefined") {
   installSFetch();
+  window.DashApp = window.DashApp || {};
+  window.DashApp.postUIStateSetting = postUIStateSetting;
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initDashMainBehaviors, { once: true });
   } else {

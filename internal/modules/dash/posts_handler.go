@@ -205,6 +205,7 @@ func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 	data["DraftTOCHTML"] = md.ParseMarkdownTOC(draftContent)
 
 	data["Title"] = "New Post"
+	data["SEditor"] = true
 	data["Tags"] = tags
 	data["Categories"] = categories
 	data["CategoryOptions"] = categoryOptions
@@ -334,6 +335,7 @@ func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
 
 	return RenderDashView(c, "dash/posts_edit.html", fiber.Map{
 		"Title":            "Edit Post",
+		"SEditor":          true,
 		"Post":             postWithTags.Post,
 		"Tags":             allTags,
 		"SelectedTags":     postWithTags.Tags,
