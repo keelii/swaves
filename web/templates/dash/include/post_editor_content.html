@@ -290,18 +290,33 @@
       if (!textarea || textarea.hidden) {
         return;
       }
-      // Measure from a collapsed height to avoid stale layout values.
-      textarea.style.height = "0px";
-
-      var nextHeight = textarea.scrollHeight || 0;
-      if (window.getComputedStyle) {
-        var style = window.getComputedStyle(textarea);
-        if (style && style.boxSizing === "border-box") {
-          nextHeight += (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+      var minHeight = 0;
+      if (workspace && workspace.querySelector) {
+        var contentEditor = workspace.querySelector(".content-editor");
+        if (contentEditor) {
+          minHeight = contentEditor.clientHeight || 0;
+          var title = contentEditor.querySelector(".title");
+          if (title) {
+            minHeight -= title.offsetHeight || 0;
+          }
+          if (minHeight < 0) {
+            minHeight = 0;
+          }
         }
       }
 
-      textarea.style.height = String(Math.ceil(nextHeight)) + "px";
+      if (minHeight > 0) {
+        textarea.style.minHeight = String(minHeight) + "px";
+      } else {
+        textarea.style.minHeight = "";
+      }
+
+      textarea.style.height = "auto";
+      var nextHeight = textarea.scrollHeight || 0;
+      if (nextHeight < minHeight) {
+        nextHeight = minHeight;
+      }
+      textarea.style.height = String(nextHeight) + "px";
     }
 
     function syncTextareaFromEditor() {
@@ -529,6 +544,9 @@
         tocPreferredOpen = nextOpen;
         queueSaveTOCOpenState(nextOpen);
       }
+      if (sourceMode) {
+        resizeSourceTextarea();
+      }
     }
 
     function setTOCAvailable(available) {
@@ -671,6 +689,12 @@
       }
       if (event.key === "Escape") {
         applyTOCOpenState(false, true);
+      }
+    });
+
+    window.addEventListener("resize", function() {
+      if (sourceMode) {
+        resizeSourceTextarea();
       }
     });
 
