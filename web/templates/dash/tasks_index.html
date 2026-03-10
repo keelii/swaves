@@ -13,7 +13,7 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('dash.tasks.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.tasks.list', {"pageSize":Pager.PageSize}) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 

@@ -163,6 +163,31 @@ func ListApprovedCommentsTree(dbx *db.DB, postID int64, pager *types.Pagination)
 		roots = append(roots, node)
 	}
 
+	sortCommentNodesByTimeDesc := func(nodes []*DisplayComment) {
+		sort.Slice(nodes, func(i, j int) bool {
+			left := nodes[i]
+			right := nodes[j]
+			if left.CreatedAt != right.CreatedAt {
+				return left.CreatedAt > right.CreatedAt
+			}
+			return left.ID > right.ID
+		})
+	}
+
+	var sortCommentTreeByTimeDesc func(nodes []*DisplayComment)
+	sortCommentTreeByTimeDesc = func(nodes []*DisplayComment) {
+		if len(nodes) == 0 {
+			return
+		}
+		sortCommentNodesByTimeDesc(nodes)
+		for _, node := range nodes {
+			if len(node.Children) > 0 {
+				sortCommentTreeByTimeDesc(node.Children)
+			}
+		}
+	}
+	sortCommentTreeByTimeDesc(roots)
+
 	if pager != nil {
 		if pager.Page < 1 {
 			pager.Page = config.DefaultPage

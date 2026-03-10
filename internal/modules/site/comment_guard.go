@@ -26,7 +26,7 @@ const (
 	commentCaptchaTTL         = 10 * time.Minute
 	commentCaptchaRequiredTTL = 30 * time.Minute
 
-	commentRateLimitMax        = 5
+	commentRateLimitMax        = 1
 	commentRateLimitExpiration = time.Minute
 
 	commentFeedbackCaptchaRequired = "captcha_required"

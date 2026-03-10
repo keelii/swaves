@@ -13,24 +13,24 @@
 
 {% block operation_left %}
   {{ sui.TabsStart("通知类型") }}
-    {{ sui.Tab("全部 " ~ (notificationTabCounts["all"]|default(0)), href=UrlFor('dash.notifications.list') ~ ("?pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "")) }}
-    {{ sui.Tab("点赞 " ~ (notificationTabCounts["post_like"]|default(0)), href=UrlFor('dash.notifications.list') ~ "?event_type=post_like" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "post_like")) }}
-    {{ sui.Tab("留言 " ~ (notificationTabCounts["comment"]|default(0)), href=UrlFor('dash.notifications.list') ~ "?event_type=comment" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "comment")) }}
-    {{ sui.Tab("任务 " ~ (notificationTabCounts["task_result"]|default(0)), href=UrlFor('dash.notifications.list') ~ "?event_type=task_result" ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentEventType == "task_result")) }}
+    {{ sui.Tab("全部 " ~ (notificationTabCounts["all"]|default(0)), href=UrlFor('dash.notifications.list', {"pageSize":pageSizeQuery}), active=(currentEventType == "")) }}
+    {{ sui.Tab("点赞 " ~ (notificationTabCounts["post_like"]|default(0)), href=UrlFor('dash.notifications.list', {"event_type":"post_like", "pageSize":pageSizeQuery}), active=(currentEventType == "post_like")) }}
+    {{ sui.Tab("留言 " ~ (notificationTabCounts["comment"]|default(0)), href=UrlFor('dash.notifications.list', {"event_type":"comment", "pageSize":pageSizeQuery}), active=(currentEventType == "comment")) }}
+    {{ sui.Tab("任务 " ~ (notificationTabCounts["task_result"]|default(0)), href=UrlFor('dash.notifications.list', {"event_type":"task_result", "pageSize":pageSizeQuery}), active=(currentEventType == "task_result")) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerBase = UrlFor('dash.notifications.list') %}
-  {% if currentEventType %}
-    {% set pagerBase = pagerBase ~ "?event_type=" ~ currentEventType %}
-  {% endif %}
-  {% set pagerSep = "&" if "?" in pagerBase else "?" %}
-  {% set pagerHrefPrefix = pagerBase ~ pagerSep ~ "pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.notifications.list', {"event_type":currentEventType, "pageSize":Pager.PageSize}) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block content %}
+<style>
+  #notifications-table tbody tr[data-notification-read="0"] > td {
+    font-weight: 600;
+  }
+</style>
 <div id="notifications-empty-state"{% if Notifications|length > 0 %} hidden{% endif %}>{{ sui.EmptyState("暂无通知") }}</div>
 <div id="notifications-table-wrap" class="data-table-wrap"{% if not (Notifications|length > 0) %} hidden{% endif %}>
   <table id="notifications-table" class="data-table" aria-label="通知列表" data-role="data-table">
@@ -53,13 +53,13 @@
           <td>{{ ui.table_td_id(item.ID) }}</td>
           <td>
             {% if item.EventType == "post_like" %}
-              <span class="ui-badge">点赞</span>
+              点赞
             {% elif item.EventType == "comment" %}
-              <span class="ui-badge">留言</span>
+              留言
             {% elif item.EventType == "task_result" %}
-              <span class="ui-badge">任务</span>
+              任务
             {% else %}
-              <span class="ui-badge">{{ item.EventType }}</span>
+              {{ item.EventType }}
             {% endif %}
           </td>
           <td>{{ item.Title }}</td>

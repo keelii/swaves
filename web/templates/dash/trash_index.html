@@ -58,7 +58,9 @@
     </table>
   </div>
   {% else %}
-    {{ sui.EmptyState("暂无已删除文章", "", "trash-2") }}
+    <div class="app-px">
+      {{ sui.EmptyState("暂无已删除文章", "删除后的文章会显示在这里。", "trash-2") }}
+    </div>
   {% endif %}
 {% endif %}
 
@@ -100,7 +102,9 @@
     </table>
   </div>
   {% else %}
-  {{ sui.EmptyState("暂无已删除加密文章", "删除后的加密文章会显示在这里。", "trash-2") }}
+    <div class="app-px">
+      {{ sui.EmptyState("暂无已删除加密文章", "删除后的加密文章会显示在这里。", "trash-2") }}
+    </div>
   {% endif %}
 {% endif %}
 
@@ -142,7 +146,9 @@
     </table>
   </div>
   {% else %}
-  {{ sui.EmptyState("暂无已删除标签", "删除后的标签会显示在这里。", "trash-2") }}
+    <div class="app-px">
+      {{ sui.EmptyState("暂无已删除标签", "删除后的标签会显示在这里。", "trash-2") }}
+    </div>
   {% endif %}
 {% endif %}
 
@@ -188,7 +194,9 @@
     </table>
   </div>
   {% else %}
-  {{ sui.EmptyState("暂无已删除分类", "删除后的分类会显示在这里。", "trash-2") }}
+    <div class="app-px">
+      {{ sui.EmptyState("暂无已删除分类", "删除后的分类会显示在这里。", "trash-2") }}
+    </div>
   {% endif %}
 {% endif %}
 
@@ -230,7 +238,9 @@
     </table>
   </div>
   {% else %}
-  {{ sui.EmptyState("暂无已删除重定向", "删除后的重定向规则会显示在这里。", "trash-2") }}
+    <div class="app-px">
+      {{ sui.EmptyState("暂无已删除重定向", "删除后的重定向规则会显示在这里。", "trash-2") }}
+    </div>
   {% endif %}
 {% endif %}
 {% endblock %}

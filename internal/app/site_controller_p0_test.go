@@ -301,13 +301,18 @@ func TestSiteControllerP0_PostCommentsPaginationByRootThread(t *testing.T) {
 		t,
 		page1Resp,
 		fiber.StatusOK,
-		fmt.Sprintf("comment-%d", rootAID),
-		fmt.Sprintf("comment-%d", childAID),
+		fmt.Sprintf("comment-%d", rootCID),
 		fmt.Sprintf("comment-%d", rootBID),
 		`?page=2&pageSize=2#comments`,
 	)
-	if strings.Contains(page1Body, fmt.Sprintf("comment-%d", rootCID)) {
-		t.Fatalf("page 1 should not include root comment c: id=%d", rootCID)
+	if strings.Contains(page1Body, fmt.Sprintf("comment-%d", rootAID)) {
+		t.Fatalf("page 1 should not include root comment a: id=%d", rootAID)
+	}
+	if strings.Contains(page1Body, fmt.Sprintf("comment-%d", childAID)) {
+		t.Fatalf("page 1 should not include child of root comment a: id=%d", childAID)
+	}
+	if strings.Index(page1Body, fmt.Sprintf("comment-%d", rootCID)) > strings.Index(page1Body, fmt.Sprintf("comment-%d", rootBID)) {
+		t.Fatalf("page 1 should order roots by newest first: root-c=%d root-b=%d", rootCID, rootBID)
 	}
 
 	page2Path := fmt.Sprintf("%s?page=2&pageSize=2", postPath)
@@ -316,16 +321,17 @@ func TestSiteControllerP0_PostCommentsPaginationByRootThread(t *testing.T) {
 		t,
 		page2Resp,
 		fiber.StatusOK,
-		fmt.Sprintf("comment-%d", rootCID),
+		fmt.Sprintf("comment-%d", rootAID),
+		fmt.Sprintf("comment-%d", childAID),
 		`?page=1&pageSize=2#comments`,
 	)
-	if strings.Contains(page2Body, fmt.Sprintf("comment-%d", rootAID)) {
-		t.Fatalf("page 2 should not include root comment a: id=%d", rootAID)
-	}
 	if strings.Contains(page2Body, fmt.Sprintf("comment-%d", rootBID)) {
 		t.Fatalf("page 2 should not include root comment b: id=%d", rootBID)
 	}
-	if strings.Contains(page2Body, fmt.Sprintf("comment-%d", childAID)) {
-		t.Fatalf("page 2 should not include child of root comment a: id=%d", childAID)
+	if strings.Contains(page2Body, fmt.Sprintf("comment-%d", rootCID)) {
+		t.Fatalf("page 2 should not include root comment c: id=%d", rootCID)
+	}
+	if strings.Index(page2Body, fmt.Sprintf("comment-%d", rootAID)) > strings.Index(page2Body, fmt.Sprintf("comment-%d", childAID)) {
+		t.Fatalf("page 2 should render parent comment before child: root-a=%d child-a=%d", rootAID, childAID)
 	}
 }

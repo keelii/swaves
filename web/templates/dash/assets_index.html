@@ -21,15 +21,15 @@
 {% endblock %}
 {% block status_main_right %}
   {% set pagerKind = CurrentKind|default("image") %}
-  {% set pagerHrefPrefix = UrlFor('dash.assets.list', kind=pagerKind) ~ ("&pageSize=" ~ Pager.PageSize) %}
+  {% set pagerHrefPrefix = UrlFor('dash.assets.list', {"kind":pagerKind, "pageSize":Pager.PageSize}) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block operation_left %}
   {{ sui.TabsStart("资源类型") }}
-    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('dash.assets.list', kind='image') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "image")) }}
-    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('dash.assets.list', kind='file') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "file")) }}
-    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('dash.assets.list', kind='backup') ~ ("&pageSize=" ~ pageSizeQuery if pageSizeQuery else ""), active=(currentKind == "backup")) }}
+    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"image", "pageSize":pageSizeQuery}), active=(currentKind == "image")) }}
+    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"file", "pageSize":pageSizeQuery}), active=(currentKind == "file")) }}
+    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"backup", "pageSize":pageSizeQuery}), active=(currentKind == "backup")) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
