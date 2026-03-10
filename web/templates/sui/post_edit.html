@@ -120,15 +120,13 @@
         var seq = ++slugSyncSeq;
         var requestURL = new URL(slugAPIURL, window.location.origin);
         requestURL.searchParams.set("name", name);
-        fetch(requestURL.toString(), {
+        window.sfetchJSON(requestURL.toString(), {
           method: "GET",
-          credentials: "same-origin",
-          headers: { "Accept": "application/json" }
         }).then(function(response) {
-          if (!response.ok) {
+          if (!response || !response.ok) {
             return null;
           }
-          return response.json();
+          return response.body;
         }).then(function(json) {
           if (seq !== slugSyncSeq) {
             return;

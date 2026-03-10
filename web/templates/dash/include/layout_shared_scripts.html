@@ -231,7 +231,7 @@
     }
 
     function queueSaveNavWidth(width) {
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL) {
         return;
       }
       if (navWidthLastSaved !== null && width === navWidthLastSaved) {
@@ -247,7 +247,7 @@
       if (navWidthPersisting || navWidthQueued === null) {
         return;
       }
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL) {
         navWidthQueued = null;
         return;
       }
@@ -326,7 +326,7 @@
     }
 
     function queueSaveMenuCollapsedState(collapsed) {
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL) {
         return;
       }
       var value = collapsed ? '1' : '0';
@@ -343,7 +343,7 @@
       if (menuCollapsedPersisting || menuCollapsedQueued === null) {
         return;
       }
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== 'function') {
+      if (!uiStateSaveURL) {
         menuCollapsedQueued = null;
         return;
       }
@@ -494,7 +494,7 @@
     }
 
     function refreshNotificationUnreadCount() {
-      if (!notificationsUnreadURL || typeof window.sfetchJSON !== 'function') {
+      if (!notificationsUnreadURL) {
         return Promise.resolve();
       }
       return window.sfetchJSON(notificationsUnreadURL, {
@@ -571,7 +571,7 @@
 
     function startNotificationPolling() {
       refreshNotificationUnreadCount();
-      if (!notificationsUnreadURL || typeof window.sfetchJSON !== 'function') {
+      if (!notificationsUnreadURL) {
         return;
       }
       if (notificationsPollingTimer) {
@@ -611,7 +611,7 @@
 
       var markReadButton = event.target.closest('[data-role="notification-mark-read"]');
       if (markReadButton) {
-        if (!notificationsReadURL || typeof window.sfetchJSON !== 'function') {
+        if (!notificationsReadURL) {
           return;
         }
         var id = parseInt(markReadButton.getAttribute('data-id'), 10);
@@ -651,7 +651,7 @@
 
       var markAllButton = event.target.closest('[data-role="notification-mark-all-read"]');
       if (markAllButton) {
-        if (!notificationsReadAllURL || typeof window.sfetchJSON !== 'function' || markAllButton.disabled) {
+        if (!notificationsReadAllURL || markAllButton.disabled) {
           return;
         }
         markAllButton.disabled = true;
@@ -680,7 +680,7 @@
 
       var deleteButton = event.target.closest('[data-role="notification-delete"]');
       if (deleteButton) {
-        if (!notificationsDeleteURL || typeof window.sfetchJSON !== 'function') {
+        if (!notificationsDeleteURL) {
           return;
         }
         var deleteID = parseInt(deleteButton.getAttribute('data-id'), 10);

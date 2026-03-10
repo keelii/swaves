@@ -22,14 +22,14 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('dash.encrypted_posts.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.encrypted_posts.list', {"pageSize":Pager.PageSize}) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block operation_left %}
   {{ sui.TabsStart("内容类型") }}
-    {{ sui.Tab("文章 (" ~ CountPost ~ ")", href=UrlFor('dash.posts.list') ~ "?kind=0") }}
-    {{ sui.Tab("页面 (" ~ CountPage ~ ")", href=UrlFor('dash.posts.list') ~ "?kind=1") }}
+    {{ sui.Tab("文章 (" ~ CountPost ~ ")", href=UrlFor('dash.posts.list', {"kind":"0"})) }}
+    {{ sui.Tab("页面 (" ~ CountPage ~ ")", href=UrlFor('dash.posts.list', {"kind":"1"})) }}
     {{ sui.Tab("加密 (" ~ CountEncryptedPost ~ ")", href=UrlFor('dash.encrypted_posts.list'), active=true) }}
   {{ sui.TabsEnd() }}
 {% endblock %}

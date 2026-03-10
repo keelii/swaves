@@ -476,7 +476,7 @@ function isSameOriginRequest(input) {
 
 function postUIStateSetting(url, code, value) {
   var targetURL = String(url == null ? "" : url).trim();
-  if (!targetURL || typeof window.sfetchJSON !== "function") {
+  if (!targetURL) {
     return null;
   }
   var body = new URLSearchParams();

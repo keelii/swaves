@@ -178,40 +178,12 @@
 
       function postBatchDeleteRequest(apiURL, ids) {
         var payload = JSON.stringify({ ids: ids });
-        if (typeof window.sfetchJSON === 'function') {
-          return window.sfetchJSON(apiURL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: payload,
-          });
-        }
-
-        return window.fetch(apiURL, {
+        return window.sfetchJSON(apiURL, {
           method: 'POST',
-          credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
           },
           body: payload,
-        }).then(function(response) {
-          return response.text().then(function(text) {
-            var body = null;
-            if (text) {
-              try {
-                body = JSON.parse(text);
-              } catch (error) {
-                body = null;
-              }
-            }
-            return {
-              ok: response.ok,
-              status: response.status,
-              body: body,
-              raw: text,
-            };
-          });
         });
       }
 
@@ -230,9 +202,7 @@
 
             var method = String(form.getAttribute('method') || 'POST').toUpperCase();
             var formData = new FormData(form);
-            var send = window.sfetch
-              ? window.sfetch(form.action, { method: method, body: formData })
-              : window.fetch(form.action, { method: method, body: formData, credentials: 'same-origin' });
+            var send = window.sfetch(form.action, { method: method, body: formData });
 
             return send.then(function(resp) {
               if (!resp || !resp.ok) {

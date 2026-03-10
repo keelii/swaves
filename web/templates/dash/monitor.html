@@ -413,28 +413,26 @@
       errorEl.textContent = '';
     }
 
-    function load() {
-      hideError();
+	    function load() {
+	      hideError();
 
-      var url = new URL(monitorAPIURL, window.location.origin);
-      url.searchParams.set('granularity', activeGranularity);
-      url.searchParams.set('scope', activeScope);
+	      var url = new URL(monitorAPIURL, window.location.origin);
+	      url.searchParams.set('granularity', activeGranularity);
+	      url.searchParams.set('scope', activeScope);
 
-      fetch(url.toString(), {
-        headers: { 'Accept': 'application/json' },
-        credentials: 'same-origin'
-      })
-        .then(function(resp) {
-          return resp.json().then(function(data) {
-            if (!resp.ok || !data || data.ok !== true) {
-              var msg = data && data.error ? data.error : ('请求失败，状态码 ' + resp.status);
-              throw new Error(msg);
-            }
-            return data;
-          });
-        })
-        .then(function(data) {
-          setLatestValues(data.latest || {});
+	      window.sfetchJSON(url.toString(), {
+	        method: 'GET'
+	      })
+	        .then(function(resp) {
+	          var data = resp && resp.body;
+	          if (!resp || !resp.ok || !data || data.ok !== true) {
+	            var msg = data && data.error ? data.error : ('请求失败，状态码 ' + (resp ? resp.status : 0));
+	            throw new Error(msg);
+	          }
+	          return data;
+	        })
+	        .then(function(data) {
+	          setLatestValues(data.latest || {});
           renderCharts(data.charts || []);
         })
         .catch(function(err) {

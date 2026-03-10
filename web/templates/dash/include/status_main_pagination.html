@@ -1,6 +1,7 @@
 <div class="ui-tags" aria-label="分页">
+  {% set pagerSep = "&" if "?" in pagerHrefPrefix else "?" %}
   {% if Pager.HasPrev() %}
-    <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}&page={{ Pager.PrevPage() }}" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
+    <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}{{ pagerSep }}page={{ Pager.PrevPage() }}" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
   {% else %}
     <span class="ui-icon-btn" aria-label="上一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</span>
   {% endif %}
@@ -10,11 +11,11 @@
     {% elif item.Current %}
       <span class="ui-page-link" aria-current="page">{{ item.Page }}</span>
     {% else %}
-      <a class="ui-page-link" href="{{ pagerHrefPrefix }}&page={{ item.Page }}">{{ item.Page }}</a>
+      <a class="ui-page-link" href="{{ pagerHrefPrefix }}{{ pagerSep }}page={{ item.Page }}">{{ item.Page }}</a>
     {% endif %}
   {% endfor %}
   {% if Pager.HasNext() %}
-    <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}&page={{ Pager.NextPage() }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
+    <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}{{ pagerSep }}page={{ Pager.NextPage() }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
   {% else %}
     <span class="ui-icon-btn" aria-label="下一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</span>
   {% endif %}

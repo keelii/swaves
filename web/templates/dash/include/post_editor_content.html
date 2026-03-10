@@ -345,7 +345,7 @@
     }
 
     function queueSaveSourceMode(nextSourceMode) {
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL) {
         return;
       }
       var value = nextSourceMode ? "1" : "0";
@@ -362,7 +362,7 @@
       if (sourceModePersisting || sourceModeQueued === null) {
         return;
       }
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL) {
         sourceModeQueued = null;
         return;
       }
@@ -450,15 +450,13 @@
       var requestURL = new URL(slugAPIURL, window.location.origin);
       requestURL.searchParams.set("name", name);
 
-      fetch(requestURL.toString(), {
+      window.sfetchJSON(requestURL.toString(), {
         method: "GET",
-        credentials: "same-origin",
-        headers: { "Accept": "application/json" }
       }).then(function(response) {
-        if (!response.ok) {
+        if (!response || !response.ok) {
           return null;
         }
-        return response.json();
+        return response.body;
       }).then(function(json) {
         if (seq !== slugSyncSeq) {
           return;
@@ -472,7 +470,7 @@
     }
 
     function queueSaveTOCOpenState(open) {
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL) {
         return;
       }
       var value = open ? "1" : "0";
@@ -489,7 +487,7 @@
       if (tocOpenPersisting || tocOpenQueued === null) {
         return;
       }
-      if (!uiStateSaveURL || typeof window.sfetchJSON !== "function") {
+      if (!uiStateSaveURL) {
         tocOpenQueued = null;
         return;
       }
@@ -557,7 +555,7 @@
     }
 
     function renderTOC(markdown) {
-      if (!tocBody || !markdownTOCAPIURL || typeof window.sfetchJSON !== "function") {
+      if (!tocBody || !markdownTOCAPIURL) {
         setTOCAvailable(false);
         return;
       }
