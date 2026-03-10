@@ -350,6 +350,92 @@ func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	}
 }
 
+func TestURLForDropsBlankParamsAndQuery(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(tempDir, "page.html"),
+		[]byte(`{{ UrlFor('dash.posts.list', {"kind": Kind, "q": Search, "tag": "", "category": Category}, {"status": Status, "mode": ""}) }}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	var capturedParams map[string]string
+	var capturedQuery map[string]string
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		capturedParams = params
+		capturedQuery = query
+		return "ok"
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "page.html", map[string]any{
+		"Kind":     "0",
+		"Search":   "   ",
+		"Category": "9",
+		"Status":   "published",
+	}); err != nil {
+		t.Fatalf("render page failed: %v", err)
+	}
+	if got := out.String(); got != "ok" {
+		t.Fatalf("unexpected render output: %q", got)
+	}
+	if capturedParams["kind"] != "0" || capturedParams["category"] != "9" {
+		t.Fatalf("captured params = %#v", capturedParams)
+	}
+	if _, ok := capturedParams["q"]; ok {
+		t.Fatalf("captured params should not include empty q: %#v", capturedParams)
+	}
+	if _, ok := capturedParams["tag"]; ok {
+		t.Fatalf("captured params should not include empty tag: %#v", capturedParams)
+	}
+	if capturedQuery["status"] != "published" {
+		t.Fatalf("captured query = %#v", capturedQuery)
+	}
+	if _, ok := capturedQuery["mode"]; ok {
+		t.Fatalf("captured query should not include empty mode: %#v", capturedQuery)
+	}
+}
+
+func TestURLForDropsBlankKeywordArguments(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(tempDir, "page.html"),
+		[]byte(`{{ UrlFor('dash.posts.edit', {"id": "1", "tab": "draft"}, id=PostID, tab='') }}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	var capturedParams map[string]string
+	view := newMiniJinjaView(tempDir, false)
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+		capturedParams = params
+		return "ok"
+	})
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "page.html", map[string]any{"PostID": 7}); err != nil {
+		t.Fatalf("render page failed: %v", err)
+	}
+	if got := out.String(); got != "ok" {
+		t.Fatalf("unexpected render output: %q", got)
+	}
+	if capturedParams["id"] != "7" {
+		t.Fatalf("captured params = %#v", capturedParams)
+	}
+	if _, ok := capturedParams["tab"]; ok {
+		t.Fatalf("captured params should not include empty tab: %#v", capturedParams)
+	}
+}
+
 func TestDecodeAnyToTypeReadsPostStruct(t *testing.T) {
 	post, ok := helper.DecodeAnyToType[db.Post](db.Post{
 		ID:          12,

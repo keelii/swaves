@@ -248,7 +248,7 @@
 <a href="{{ href }}" class="ui-tab{% if active %} active{% endif %}"{% if active %} aria-current="page"{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>{{ label }}</a>
 {% endmacro %}
 
-{% macro Dialog(id, title, body, actions="", open=false, attrs="") %}
+{% macro Dialog(id, title, body="", actions="", open=false, attrs="") %}
 <div id="{{ id }}" class="ui-dialog-backdrop" data-role="ui-dialog-backdrop" data-dialog-id="{{ id }}"{% if not open %} hidden{% endif %} role="presentation">
   <div class="ui-dialog" role="dialog" aria-modal="true" aria-label="{{ title }}"{% if attrs %} {{ attrs | safe }}{% endif %}>
     <div class="ui-dialog-header">
@@ -258,7 +258,11 @@
       </button>
     </div>
     <div class="ui-dialog-body">
-      {{ body | safe }}
+      {% if caller is defined %}
+        {{ caller() }}
+      {% else %}
+        {{ body | safe }}
+      {% endif %}
     </div>
     {% if actions %}
       <div class="ui-dialog-footer">

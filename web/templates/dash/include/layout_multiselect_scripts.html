@@ -1,0 +1,440 @@
+<script>
+  (function() {
+    var multiselectToggles = document.querySelectorAll('[data-role="toggle-multiselect"][data-target-table]');
+    if (!multiselectToggles || multiselectToggles.length === 0) {
+      return;
+    }
+
+    function openDialog(id, opener) {
+      var dialog = window.DashAppUI && window.DashAppUI.dialog;
+      if (!dialog || typeof dialog.open !== 'function') {
+        return false;
+      }
+      return dialog.open(id, opener);
+    }
+
+    function closeDialog(id) {
+      var dialog = window.DashAppUI && window.DashAppUI.dialog;
+      if (!dialog || typeof dialog.close !== 'function') {
+        return false;
+      }
+      return dialog.close(id);
+    }
+
+    var multiselectConfirmDialog = document.getElementById('multiselect-confirm-dialog');
+    var multiselectConfirmMessage = document.getElementById('multiselect-confirm-message');
+    var multiselectConfirmOK = document.getElementById('multiselect-confirm-ok');
+    var multiselectConfirmResolver = null;
+
+    function resolveMultiselectConfirm(value) {
+      if (!multiselectConfirmResolver) {
+        return;
+      }
+      var resolve = multiselectConfirmResolver;
+      multiselectConfirmResolver = null;
+      resolve(!!value);
+    }
+
+    function isMultiselectConfirmOpen() {
+      if (!multiselectConfirmDialog) {
+        return false;
+      }
+      return !multiselectConfirmDialog.hasAttribute('hidden');
+    }
+
+    if (multiselectConfirmOK && !multiselectConfirmOK.hasAttribute('data-bind-confirm')) {
+      multiselectConfirmOK.setAttribute('data-bind-confirm', '1');
+      multiselectConfirmOK.addEventListener('click', function() {
+        resolveMultiselectConfirm(true);
+        closeDialog('multiselect-confirm-dialog');
+      });
+    }
+
+    if (multiselectConfirmDialog && !multiselectConfirmDialog.hasAttribute('data-bind-confirm')) {
+      multiselectConfirmDialog.setAttribute('data-bind-confirm', '1');
+      multiselectConfirmDialog.addEventListener('click', function(event) {
+        if (event.target === multiselectConfirmDialog) {
+          resolveMultiselectConfirm(false);
+        }
+      });
+
+      document.addEventListener('click', function(event) {
+        var cancelButton = event.target && event.target.closest
+          ? event.target.closest('#multiselect-confirm-dialog [data-role~="ui-dialog-close"], #multiselect-confirm-dialog [data-role~="ui-dialog-cancel"]')
+          : null;
+        if (cancelButton) {
+          resolveMultiselectConfirm(false);
+        }
+      });
+
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && isMultiselectConfirmOpen()) {
+          window.setTimeout(function() {
+            resolveMultiselectConfirm(false);
+          }, 0);
+        }
+      });
+    }
+
+    function askMultiselectConfirm(message) {
+      if (!multiselectConfirmDialog || !multiselectConfirmMessage) {
+        return Promise.resolve(window.confirm(message));
+      }
+
+      return new Promise(function(resolve) {
+        if (multiselectConfirmResolver) {
+          resolveMultiselectConfirm(false);
+        }
+        multiselectConfirmMessage.textContent = String(message || '');
+        if (!openDialog('multiselect-confirm-dialog')) {
+          resolve(window.confirm(message));
+          return;
+        }
+        multiselectConfirmResolver = resolve;
+      });
+    }
+
+    function bindTableMultiselect(tableId) {
+      if (!tableId) {
+        return;
+      }
+
+      var table = document.getElementById(tableId);
+      if (!table) {
+        return;
+      }
+
+      var wrap = table.closest('.data-table-wrap');
+      if (!wrap) {
+        return;
+      }
+
+      var toggle = document.querySelector('[data-role="toggle-multiselect"][data-target-table="' + tableId + '"]');
+      var statusCount = document.querySelector('[data-role="multiselect-selected-count"][data-target-table="' + tableId + '"]');
+      var batchDelete = document.querySelector('[data-role="multiselect-batch-delete"][data-target-table="' + tableId + '"]');
+      var batchDeleteAPI = String(table.getAttribute('data-batch-delete-url') || '').trim();
+
+      function selectedRowCheckboxes() {
+        return table.querySelectorAll('tbody .cell-checkbox:checked');
+      }
+
+      function parsePositiveInt(raw) {
+        var parsed = parseInt(raw, 10);
+        if (isNaN(parsed) || parsed <= 0) {
+          return 0;
+        }
+        return parsed;
+      }
+
+      function getDeleteFormFromRow(row) {
+        if (!row) {
+          return null;
+        }
+        var actionForm = row.querySelector('.cell-actions form[action*="/delete"]');
+        if (actionForm) {
+          return actionForm;
+        }
+        return row.querySelector('form[action*="/delete"]');
+      }
+
+      function getBatchDeleteIDFromRow(row) {
+        if (!row) {
+          return 0;
+        }
+
+        var explicitID = parsePositiveInt(row.getAttribute('data-batch-delete-id'));
+        if (explicitID > 0) {
+          return explicitID;
+        }
+
+        var form = getDeleteFormFromRow(row);
+        if (!form || !form.action) {
+          return 0;
+        }
+
+        var action = String(form.action || '');
+        var matched = action.match(/\/(\d+)\/delete(?:[/?#]|$)/);
+        if (!matched || !matched[1]) {
+          matched = action.match(/\/(\d+)(?:[/?#]|$)/);
+        }
+        if (!matched || !matched[1]) {
+          return 0;
+        }
+
+        return parsePositiveInt(matched[1]);
+      }
+
+      function selectedRows() {
+        var rows = [];
+        var checked = selectedRowCheckboxes();
+        checked.forEach(function(item) {
+          var row = item.closest('tr');
+          if (row) {
+            rows.push(row);
+          }
+        });
+        return rows;
+      }
+
+      function postBatchDeleteRequest(apiURL, ids) {
+        var payload = JSON.stringify({ ids: ids });
+        if (typeof window.sfetchJSON === 'function') {
+          return window.sfetchJSON(apiURL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: payload,
+          });
+        }
+
+        return window.fetch(apiURL, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: payload,
+        }).then(function(response) {
+          return response.text().then(function(text) {
+            var body = null;
+            if (text) {
+              try {
+                body = JSON.parse(text);
+              } catch (error) {
+                body = null;
+              }
+            }
+            return {
+              ok: response.ok,
+              status: response.status,
+              body: body,
+              raw: text,
+            };
+          });
+        });
+      }
+
+      function performLegacyBatchDelete(rows) {
+        var successCount = 0;
+        var failedCount = 0;
+        var chain = Promise.resolve();
+
+        rows.forEach(function(row) {
+          chain = chain.then(function() {
+            var form = getDeleteFormFromRow(row);
+            if (!form || !form.action) {
+              failedCount += 1;
+              return;
+            }
+
+            var method = String(form.getAttribute('method') || 'POST').toUpperCase();
+            var formData = new FormData(form);
+            var send = window.sfetch
+              ? window.sfetch(form.action, { method: method, body: formData })
+              : window.fetch(form.action, { method: method, body: formData, credentials: 'same-origin' });
+
+            return send.then(function(resp) {
+              if (!resp || !resp.ok) {
+                throw new Error('delete failed');
+              }
+              successCount += 1;
+              row.remove();
+            }).catch(function() {
+              failedCount += 1;
+            });
+          });
+        });
+
+        return chain.then(function() {
+          return {
+            successCount: successCount,
+            failedCount: failedCount,
+          };
+        });
+      }
+
+      function performAPIBatchDelete(rows) {
+        var ids = [];
+        var idSeen = {};
+        var rowsByID = {};
+        var unresolvedCount = 0;
+
+        rows.forEach(function(row) {
+          var id = getBatchDeleteIDFromRow(row);
+          if (id <= 0) {
+            unresolvedCount += 1;
+            return;
+          }
+          if (!rowsByID[id]) {
+            rowsByID[id] = [];
+          }
+          rowsByID[id].push(row);
+          if (idSeen[id]) {
+            return;
+          }
+          idSeen[id] = true;
+          ids.push(id);
+        });
+
+        if (ids.length === 0) {
+          return Promise.resolve({
+            successCount: 0,
+            failedCount: rows.length,
+          });
+        }
+
+        return postBatchDeleteRequest(batchDeleteAPI, ids).then(function(result) {
+          var body = result && result.body ? result.body : {};
+          var deletedIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
+          var failedItems = Array.isArray(body.failed) ? body.failed : [];
+          var deletedCount = 0;
+
+          deletedIDs.forEach(function(idRaw) {
+            var id = parsePositiveInt(idRaw);
+            if (id <= 0 || !rowsByID[id]) {
+              return;
+            }
+            deletedCount += 1;
+            rowsByID[id].forEach(function(row) {
+              row.remove();
+            });
+            delete rowsByID[id];
+          });
+
+          var failedCount = unresolvedCount;
+          if (failedItems.length > 0) {
+            failedCount += failedItems.length;
+          } else {
+            var failedFromBody = parsePositiveInt(body.failed_count);
+            if (failedFromBody > 0) {
+              failedCount += failedFromBody;
+            } else {
+              var inferredFailed = ids.length - deletedCount;
+              if (inferredFailed > 0) {
+                failedCount += inferredFailed;
+              }
+            }
+          }
+
+          return {
+            successCount: deletedCount,
+            failedCount: failedCount,
+          };
+        }).catch(function() {
+          return {
+            successCount: 0,
+            failedCount: rows.length,
+          };
+        });
+      }
+
+      function syncSelectionStatus() {
+        var checkedCount = selectedRowCheckboxes().length;
+        if (statusCount) {
+          statusCount.textContent = '已选择 ' + checkedCount + ' 项';
+        }
+        if (batchDelete) {
+          batchDelete.disabled = checkedCount === 0;
+        }
+      }
+
+      function syncSelectAllState() {
+        var head = table.querySelector('thead .cell-checkbox');
+        if (!head) {
+          syncSelectionStatus();
+          return;
+        }
+        var items = table.querySelectorAll('tbody .cell-checkbox');
+        if (!items || items.length === 0) {
+          head.checked = false;
+          head.indeterminate = false;
+          syncSelectionStatus();
+          return;
+        }
+        var checked = 0;
+        items.forEach(function(item) {
+          if (item.checked) {
+            checked += 1;
+          }
+        });
+        head.checked = checked === items.length;
+        head.indeterminate = checked > 0 && checked < items.length;
+        syncSelectionStatus();
+      }
+
+      if (toggle) {
+        toggle.addEventListener('click', function(event) {
+          var enabled = !wrap.classList.contains('is-multiselect');
+          wrap.classList.toggle('is-multiselect', enabled);
+          toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+          event.preventDefault();
+        });
+      }
+
+      table.addEventListener('change', function(event) {
+        var selectAll = event.target && event.target.closest ? event.target.closest('thead .cell-checkbox') : null;
+        if (selectAll) {
+          var items = table.querySelectorAll('tbody .cell-checkbox');
+          items.forEach(function(item) {
+            item.checked = selectAll.checked;
+          });
+          syncSelectAllState();
+          return;
+        }
+
+        var rowCheckbox = event.target && event.target.closest ? event.target.closest('tbody .cell-checkbox') : null;
+        if (rowCheckbox) {
+          syncSelectAllState();
+        }
+      });
+
+      if (batchDelete) {
+        batchDelete.addEventListener('click', function(event) {
+          event.preventDefault();
+          var rows = selectedRows();
+          if (!rows || rows.length === 0) {
+            syncSelectionStatus();
+            return;
+          }
+
+          askMultiselectConfirm('确认批量删除选中的 ' + rows.length + ' 项？').then(function(confirmed) {
+            if (!confirmed) {
+              return;
+            }
+
+            batchDelete.disabled = true;
+            var runDelete = batchDeleteAPI
+              ? performAPIBatchDelete(rows)
+              : performLegacyBatchDelete(rows);
+
+            runDelete.then(function(result) {
+              var successCount = result && typeof result.successCount === 'number' ? result.successCount : 0;
+              var failedCount = result && typeof result.failedCount === 'number' ? result.failedCount : 0;
+
+              if (successCount > 0 || failedCount > 0) {
+                if (typeof notify === 'function') {
+                  notify('批量删除完成：成功 ' + successCount + '，失败 ' + failedCount + '。', '批量删除');
+                }
+              }
+            }).finally(function() {
+              syncSelectAllState();
+            });
+          });
+        });
+      }
+
+      syncSelectAllState();
+    }
+
+    var boundTableIDs = {};
+    multiselectToggles.forEach(function(toggle) {
+      var tableID = toggle.getAttribute('data-target-table');
+      if (!tableID || boundTableIDs[tableID]) {
+        return;
+      }
+      boundTableIDs[tableID] = true;
+      bindTableMultiselect(tableID);
+    });
+  })();
+</script>

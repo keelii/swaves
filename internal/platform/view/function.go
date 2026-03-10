@@ -61,6 +61,8 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 				params[k] = toStringValue(raw.Raw())
 			}
 		}
+		params = compactStringMap(params)
+		query = compactStringMap(query)
 		return value.FromString(urlFor(name, params, query)), nil
 	})
 	env.AddFunction("Settings", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
@@ -319,4 +321,24 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		}
 		return value.FromString(share.GetPostUrl(post)), nil
 	})
+}
+
+func compactStringMap(items map[string]string) map[string]string {
+	if len(items) == 0 {
+		return nil
+	}
+
+	compact := make(map[string]string, len(items))
+	for key, value := range items {
+		trimmedKey := strings.TrimSpace(key)
+		trimmedValue := strings.TrimSpace(value)
+		if trimmedKey == "" || trimmedValue == "" {
+			continue
+		}
+		compact[trimmedKey] = trimmedValue
+	}
+	if len(compact) == 0 {
+		return nil
+	}
+	return compact
 }

@@ -10,9 +10,8 @@
   {% if items and (items|length) > 0 %}
     <span>
     {% if label %}标签{% endif %}{{ sep }}
-    {% for item in items %}
-      <a href="{{ item.PermLink }}">{{ item.Name }}</a>{% if not loop.last %},{% endif %}
-    {% endfor %}
+    {% set tagSep = joiner(", ") %}
+    {% for item in items %}{{ tagSep() }}<a href="{{ item.PermLink }}">{{ item.Name }}</a>{% endfor %}
     </span>
   {% endif %}
 {%- endmacro %}

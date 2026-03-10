@@ -13,14 +13,11 @@
 {% endblock %}
 {% block status_main_right %}
   {% if pager.Num > 1 %}
-    {{ sui.Pager(current=pager.Page, total=pager.Num, href_prefix=UrlFor('dash.import.show') ~ "?pageSize=" ~ pager.PageSize) }}
+    {{ sui.Pager(current=pager.Page, total=pager.Num, href_prefix=UrlFor('dash.import.show', {"pageSize":pager.PageSize})) }}
   {% endif %}
 {% endblock %}
 {% block content %}
 <style>
-  .import-page {
-  }
-
   .import-config-card {
     display: grid;
     gap: var(--app-gap-3);
@@ -112,9 +109,6 @@
     margin: 0;
     color: var(--app-text-soft);
     font-size: 0.875rem;
-  }
-
-  .import-edit-panel {
   }
 
   .import-edit-actions {
@@ -360,16 +354,17 @@ markdown 文章内容...</pre>
   {% with Item = {"PostID": 0, "Filename": "", "Title": "", "Slug": "", "Content": "", "ContentPreview": "-", "Status": "draft", "Kind": "0", "CreatedAt": "", "CreatedAtUnix": 0, "Tags": "", "Category": "", "Categories": ""} %}{% include "dash/include/import_edit_row.html" %}{% endwith %}
 </template>
 
-{{ sui.Dialog(
+{% call sui.Dialog(
   "import-cancel-dialog",
   "确认取消",
-  '<p>将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？</p>',
   actions=(
     sui.Button("继续编辑", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
     sui.Button("确认取消导入", "primary", attrs='type="button" id="import-cancel-confirm-btn"')
   ),
   open=false
-) }}
+) %}
+  <p>将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？</p>
+{% endcall %}
 
 <script>
 $(function() {

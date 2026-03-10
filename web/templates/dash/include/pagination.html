@@ -1,16 +1,19 @@
 <nav aria-label="分页导航" class="pagination">
   {% set query = Query|default({}) %}
-  {% set kindQuery = query["kind"] %}
-  {% set providerFilter = query["provider"] %}
-  {% set searchQueryEscaped = query["q"] %}
-  {% set filterTagIDStr = query["tag"] %}
-  {% set filterCategoryIDStr = query["category"] %}
-  {% set statusFilter = query["status"] %}
+  {% set baseQuery = dict(
+    pageSize=Pager.PageSize,
+    kind=(query["kind"] if query["kind"] else none),
+    provider=(query["provider"] if query["provider"] else none),
+    q=(query["q"] if query["q"] else none),
+    tag=(query["tag"] if query["tag"] else none),
+    category=(query["category"] if query["category"] else none),
+    status=(query["status"] if query["status"] else none)
+  ) %}
   <div class="inline-flex items-center gap-4">
     {% if not Pager.HasPrev() %}
     <span class="ui-icon-btn" aria-label="上一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</span>
     {% else %}
-    <a class="ui-icon-btn" href="?page={{ Pager.PrevPage() }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}" aria-label="上一页" data-title="上一页" tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</a>
+    <a class="ui-icon-btn" href="?{{ dict(baseQuery, page=Pager.PrevPage())|urlencode }}" aria-label="上一页" data-title="上一页" tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</a>
     {% endif %}
 
     {% for item in Pager.GetPageItems() %}
@@ -19,14 +22,14 @@
     {% elif item.Current %}
     <span class="page-link">{{ item.Page }}</span>
     {% else %}
-    <a class="page-link" href="?page={{ item.Page }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}">{{ item.Page }}</a>
+    <a class="page-link" href="?{{ dict(baseQuery, page=item.Page)|urlencode }}">{{ item.Page }}</a>
     {% endif %}
     {% endfor %}
 
     {% if not Pager.HasNext() %}
     <span class="ui-icon-btn" aria-label="下一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</span>
     {% else %}
-    <a class="ui-icon-btn" href="?page={{ Pager.NextPage() }}&pageSize={{ Pager.PageSize }}{% if kindQuery %}&kind={{ kindQuery }}{% endif %}{% if providerFilter %}&provider={{ providerFilter }}{% endif %}{% if searchQueryEscaped %}&q={{ searchQueryEscaped }}{% endif %}{% if filterTagIDStr %}&tag={{ filterTagIDStr }}{% endif %}{% if filterCategoryIDStr %}&category={{ filterCategoryIDStr }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
+    <a class="ui-icon-btn" href="?{{ dict(baseQuery, page=Pager.NextPage())|urlencode }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
     {% endif %}
   </div>
 

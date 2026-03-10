@@ -7,18 +7,18 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('dash.posts.list') ~ "?kind=" ~ (KindQuery|default('0')) ~ ("&q=" ~ SearchQueryEscaped if SearchQueryEscaped else "") ~ ("&tag=" ~ FilterTagIDStr if FilterTagIDStr else "") ~ ("&category=" ~ FilterCategoryIDStr if FilterCategoryIDStr else "") ~ "&pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.posts.list', {"kind":(KindQuery|default('0')), "q":SearchQuery, "tag":FilterTagIDStr, "category":FilterCategoryIDStr, "pageSize":Pager.PageSize}) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block operation_left %}
   {% set kind = (Kind or 0) %}
-  {% set q = (SearchQueryEscaped or "") %}
+  {% set q = (SearchQuery or "") %}
   {% set tag = (FilterTagIDStr or "") %}
   {% set cat = (FilterCategoryIDStr or "") %}
   {{ sui.TabsStart("内容类型") }}
-    {{ sui.Tab("文章 " ~ CountPost, href=UrlFor('dash.posts.list') ~ "?kind=0" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 0)) }}
-    {{ sui.Tab("页面 " ~ CountPage, href=UrlFor('dash.posts.list') ~ "?kind=1" ~ ("&q=" ~ q if q else "") ~ ("&tag=" ~ tag if tag else "") ~ ("&category=" ~ cat if cat else ""), active=(kind == 1)) }}
+    {{ sui.Tab("文章 " ~ CountPost, href=UrlFor('dash.posts.list', {"kind":"0", "q":q, "tag":tag, "category":cat}), active=(kind == 0)) }}
+    {{ sui.Tab("页面 " ~ CountPage, href=UrlFor('dash.posts.list', {"kind":"1", "q":q, "tag":tag, "category":cat}), active=(kind == 1)) }}
     {{ sui.Tab("加密 " ~ CountEncryptedPost, href=UrlFor('dash.encrypted_posts.list')) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
@@ -76,14 +76,15 @@
         </td>
         <td class="cell-tags">
           {% if postWithRelation.Tags %}
-            {% for item in postWithRelation.Tags %}{% if not loop.first %}, {% endif %}<a href="{{ UrlFor('dash.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterCategoryIDStr %}&category={{ FilterCategoryIDStr }}{% endif %}&tag={{ item.ID }}">{{ item.Name }}</a>{% endfor %}
+            {% set tagSep = joiner(", ") %}
+            {% for item in postWithRelation.Tags %}{{ tagSep() }}<a href="{{ UrlFor('dash.posts.list', {"kind":KindQuery, "q":SearchQuery, "category":FilterCategoryIDStr, "tag":item.ID}) }}">{{ item.Name }}</a>{% endfor %}
           {% else %}
             -
           {% endif %}
         </td>
         <td class="cell-cat">
           {% if postWithRelation.Category %}
-            <a href="{{ UrlFor('dash.posts.list') }}?kind={{ KindQuery }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}{% if FilterTagIDStr %}&tag={{ FilterTagIDStr }}{% endif %}&category={{ postWithRelation.Category.ID }}">{{ postWithRelation.Category.Name }}</a>
+            <a href="{{ UrlFor('dash.posts.list', {"kind":KindQuery, "q":SearchQuery, "tag":FilterTagIDStr, "category":postWithRelation.Category.ID}) }}">{{ postWithRelation.Category.Name }}</a>
           {% else %}
             -
           {% endif %}

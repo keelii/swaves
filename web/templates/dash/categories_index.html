@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('dash.categories.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.categories.list', {"pageSize":Pager.PageSize}) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
@@ -56,7 +56,7 @@
                 {% if category.Description %}{{ category.Description }}{% else %}-{% endif %}</td>
               </div>
             <td>{{ category.Sort }}</td>
-            <td><a href="{{ UrlFor('dash.posts.list') }}?kind=0&category={{ category.ID }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
+            <td><a href="{{ UrlFor('dash.posts.list', {"kind":"0", "category":category.ID}) }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
             <td>{{ category.CreatedAt | relativeTime }}</td>
             <td>{{ category.UpdatedAt | relativeTime }}</td>
             <td>

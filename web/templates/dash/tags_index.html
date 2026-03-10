@@ -13,7 +13,7 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('dash.tags.list') ~ "?pageSize=" ~ Pager.PageSize %}
+  {% set pagerHrefPrefix = UrlFor('dash.tags.list', {"pageSize":Pager.PageSize}) %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
@@ -38,7 +38,7 @@
             <td>{{ ui.table_td_id(tag.ID) }}</td>
             <td>{{ tag.Name }}</td>
             <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
-            <td><a href="{{ UrlFor('dash.posts.list') }}?kind=0&tag={{ tag.ID }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
+            <td><a href="{{ UrlFor('dash.posts.list', {"kind":"0", "tag":tag.ID}) }}">{{ PostCounts[tag.ID] | default(0) }}</a></td>
             <td>{{ tag.CreatedAt | relativeTime }}</td>
             <td>{{ tag.UpdatedAt | relativeTime }}</td>
             <td>

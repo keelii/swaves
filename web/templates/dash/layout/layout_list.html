@@ -123,17 +123,19 @@
   </main>
 </div>
 
-{{ sui.Dialog(
+{% call sui.Dialog(
   "multiselect-confirm-dialog",
   "确认批量删除",
-  '<p id="multiselect-confirm-message"></p>',
   actions=(
     sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
     sui.Button("确认", "primary", attrs='type="button" id="multiselect-confirm-ok"')
   ),
   open=false
-) }}
+) %}
+  <p id="multiselect-confirm-message"></p>
+{% endcall %}
 
 <div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
 {% include "dash/include/layout_shared_scripts.html" %}
+{% include "dash/include/layout_multiselect_scripts.html" %}
 {% endblock %}

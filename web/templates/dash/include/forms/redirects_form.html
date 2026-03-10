@@ -48,7 +48,12 @@
 </form>
 
 {% if show_target_picker %}
-  {% set targetPickerBody %}
+  {% call sui.Dialog(
+    "redirect-target-picker-dialog",
+    "选择文章 URL",
+    actions=(sui.Button("关闭", "outline", attrs='type="button" data-role="ui-dialog-cancel"')),
+    open=false
+  ) %}
     <div class="ui-form">
       {{ sui.Input(id="redirect-target-picker-search", type="search", placeholder="按标题或 URL 过滤") }}
       <div style="max-height: 40em; overflow-y: auto;">
@@ -65,8 +70,7 @@
         </ul>
       </div>
     </div>
-  {% endset %}
-  {{ sui.Dialog("redirect-target-picker-dialog", "选择文章 URL", targetPickerBody, actions=(sui.Button("关闭", "outline", attrs='type="button" data-role="ui-dialog-cancel"')), open=false) }}
+  {% endcall %}
 
   <script>
   $(function() {

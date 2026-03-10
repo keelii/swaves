@@ -211,26 +211,28 @@
   </div>
 {% endif %}
 
-{{ sui.Dialog(
+{% call sui.Dialog(
   "asset-alert-dialog",
   "提示",
-  '<p id="asset-alert-message"></p>',
   actions=(
     sui.Button("知道了", "primary", attrs='type="button" data-role="ui-dialog-close" id="asset-alert-close"')
   ),
   open=false
-) }}
+) %}
+  <p id="asset-alert-message"></p>
+{% endcall %}
 
-{{ sui.Dialog(
+{% call sui.Dialog(
   "asset-confirm-dialog",
   "确认操作",
-  '<p id="asset-confirm-message"></p>',
   actions=(
     sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel" id="asset-confirm-cancel"') ~
     sui.Button("确认", "primary", attrs='type="button" id="asset-confirm-ok"')
   ),
   open=false
-) }}
+) %}
+  <p id="asset-confirm-message"></p>
+{% endcall %}
 
 <script>
 $(function() {
