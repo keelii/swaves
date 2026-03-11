@@ -255,7 +255,8 @@ svg rect:focus {
   white-space: nowrap;
 }
 
-.ui-tooltip[data-placement="bottom"] {
+.ui-tooltip[data-placement="bottom"],
+.ui-tooltip.is-placement-bottom {
   transform: translateY(-4px);
 }
 
@@ -273,12 +274,16 @@ svg rect:focus {
   border: 7px solid transparent;
 }
 
-.ui-tooltip[data-placement="top"]::before {
+.ui-tooltip[data-placement="top"]::before,
+.ui-tooltip[data-arrow-direction="down"]::before,
+.ui-tooltip.is-arrow-down::before {
   inset-block-start: 100%;
   border-top-color: var(--app-tooltip-bg);
 }
 
-.ui-tooltip[data-placement="bottom"]::before {
+.ui-tooltip[data-placement="bottom"]::before,
+.ui-tooltip[data-arrow-direction="up"]::before,
+.ui-tooltip.is-arrow-up::before {
   inset-block-end: 100%;
   border-bottom-color: var(--app-tooltip-bg);
 }
