@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('dash.comments.list', {"status":StatusFilter, "pageSize":Pager.PageSize}) %}
+  {% set PagerQuery = {"status":StatusFilter} %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 

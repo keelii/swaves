@@ -21,7 +21,7 @@
 {% endblock %}
 {% block status_main_right %}
   {% set pagerKind = CurrentKind|default("image") %}
-  {% set pagerHrefPrefix = UrlFor('dash.assets.list', {"kind":pagerKind, "pageSize":Pager.PageSize}) %}
+  {% set PagerQuery = {"kind":pagerKind} %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 

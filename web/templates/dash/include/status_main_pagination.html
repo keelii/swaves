@@ -1,7 +1,10 @@
 <div class="ui-tags" aria-label="分页">
-  {% set pagerSep = "&" if "?" in pagerHrefPrefix else "?" %}
-  {% if Pager.HasPrev() %}
-    <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}{{ pagerSep }}page={{ Pager.PrevPage() }}" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
+  {% set pagerRouteName = PagerRouteName|default(RouteName)|default("") %}
+  {% set pagerQuery = PagerQuery|default(Query)|default({}) %}
+  {% set pagerQuery = dict(pagerQuery, pageSize=Pager.PageSize) %}
+  {% set pagerEnabled = pagerRouteName != "" %}
+  {% if Pager.HasPrev() and pagerEnabled %}
+    <a class="ui-icon-btn" href="{{ PagerURL(Pager.PrevPage(), pagerRouteName, pagerQuery) }}" aria-label="上一页" data-title="上一页">{{ LucideIcon("chevron-left", 16) }}</a>
   {% else %}
     <span class="ui-icon-btn" aria-label="上一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</span>
   {% endif %}
@@ -10,12 +13,14 @@
       <span class="ui-page-ellipsis">…</span>
     {% elif item.Current %}
       <span class="ui-page-link" aria-current="page">{{ item.Page }}</span>
+    {% elif not pagerEnabled %}
+      <span class="ui-page-link">{{ item.Page }}</span>
     {% else %}
-      <a class="ui-page-link" href="{{ pagerHrefPrefix }}{{ pagerSep }}page={{ item.Page }}">{{ item.Page }}</a>
+      <a class="ui-page-link" href="{{ PagerURL(item.Page, pagerRouteName, pagerQuery) }}">{{ item.Page }}</a>
     {% endif %}
   {% endfor %}
-  {% if Pager.HasNext() %}
-    <a class="ui-icon-btn" href="{{ pagerHrefPrefix }}{{ pagerSep }}page={{ Pager.NextPage() }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
+  {% if Pager.HasNext() and pagerEnabled %}
+    <a class="ui-icon-btn" href="{{ PagerURL(Pager.NextPage(), pagerRouteName, pagerQuery) }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
   {% else %}
     <span class="ui-icon-btn" aria-label="下一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</span>
   {% endif %}

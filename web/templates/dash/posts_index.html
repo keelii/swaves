@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set pagerHrefPrefix = UrlFor('dash.posts.list', {"kind":(KindQuery|default('0')), "q":SearchQuery, "tag":FilterTagIDStr, "category":FilterCategoryIDStr, "pageSize":Pager.PageSize}) %}
+  {% set PagerQuery = {"kind":(KindQuery|default('0')), "q":SearchQuery, "tag":FilterTagIDStr, "category":FilterCategoryIDStr} %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 

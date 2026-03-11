@@ -1,19 +1,13 @@
 <nav aria-label="分页导航" class="pagination">
-  {% set query = Query|default({}) %}
-  {% set baseQuery = dict(
-    pageSize=Pager.PageSize,
-    kind=(query["kind"] if query["kind"] else none),
-    provider=(query["provider"] if query["provider"] else none),
-    q=(query["q"] if query["q"] else none),
-    tag=(query["tag"] if query["tag"] else none),
-    category=(query["category"] if query["category"] else none),
-    status=(query["status"] if query["status"] else none)
-  ) %}
+  {% set pagerRouteName = PagerRouteName|default(RouteName)|default("") %}
+  {% set pagerQuery = PagerQuery|default(Query)|default({}) %}
+  {% set pagerQuery = dict(pagerQuery, pageSize=Pager.PageSize) %}
+  {% set pagerEnabled = pagerRouteName != "" %}
   <div class="inline-flex items-center gap-4">
-    {% if not Pager.HasPrev() %}
+    {% if not Pager.HasPrev() or not pagerEnabled %}
     <span class="ui-icon-btn" aria-label="上一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</span>
     {% else %}
-    <a class="ui-icon-btn" href="?{{ dict(baseQuery, page=Pager.PrevPage())|urlencode }}" aria-label="上一页" data-title="上一页" tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</a>
+    <a class="ui-icon-btn" href="{{ PagerURL(Pager.PrevPage(), pagerRouteName, pagerQuery) }}" aria-label="上一页" data-title="上一页" tabindex="-1">{{ LucideIcon("chevron-left", 16) }}</a>
     {% endif %}
 
     {% for item in Pager.GetPageItems() %}
@@ -21,20 +15,22 @@
     <span class="page-link" aria-hidden="true">…</span>
     {% elif item.Current %}
     <span class="page-link">{{ item.Page }}</span>
+    {% elif not pagerEnabled %}
+    <span class="page-link">{{ item.Page }}</span>
     {% else %}
-    <a class="page-link" href="?{{ dict(baseQuery, page=item.Page)|urlencode }}">{{ item.Page }}</a>
+    <a class="page-link" href="{{ PagerURL(item.Page, pagerRouteName, pagerQuery) }}">{{ item.Page }}</a>
     {% endif %}
     {% endfor %}
 
-    {% if not Pager.HasNext() %}
+    {% if not Pager.HasNext() or not pagerEnabled %}
     <span class="ui-icon-btn" aria-label="下一页" aria-disabled="true" disabled tabindex="-1">{{ LucideIcon("chevron-right", 16) }}</span>
     {% else %}
-    <a class="ui-icon-btn" href="?{{ dict(baseQuery, page=Pager.NextPage())|urlencode }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
+    <a class="ui-icon-btn" href="{{ PagerURL(Pager.NextPage(), pagerRouteName, pagerQuery) }}" aria-label="下一页" data-title="下一页">{{ LucideIcon("chevron-right", 16) }}</a>
     {% endif %}
   </div>
 
   <div class="inline-flex items-center gap-2">
-    <span for="page-size-select">每页</span>
+    <label for="page-size-select">每页</label>
     <select id="page-size-select" data-role="page-size-select" data-page-size-param="pageSize" data-page-param="page" data-reset-page="1">
       <option value="5" {% if Pager.PageSize == 5 %}selected{% endif %}>5</option>
       <option value="10" {% if Pager.PageSize == 10 %}selected{% endif %}>10</option>

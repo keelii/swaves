@@ -35,12 +35,25 @@
 
   focusSearchToEnd();
 
-  input.addEventListener('input', function(e){
-    if (e instanceof InputEvent) {
-      // console.log("yes")
-    } else {
-      form.submit();
+  function submitSearchForm() {
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+      return;
     }
+    form.submit();
+  }
+
+  input.addEventListener('search', function() {
+    submitSearchForm();
+  });
+
+  input.addEventListener('input', function(event){
+    // Fallback: some native clear/autofill flows emit plain Event instead of InputEvent.
+    var hasInputEvent = typeof window.InputEvent !== 'undefined';
+    if (hasInputEvent && event instanceof window.InputEvent) {
+      return;
+    }
+    submitSearchForm();
   });
 })();
 </script>

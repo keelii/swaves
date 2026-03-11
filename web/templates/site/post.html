@@ -85,6 +85,19 @@
   <footer>
     <div id="comments" class="comment-block">
       <h2 class="comment-title">评论 ({{ CommentCount }})</h2>
+      {% if CommentFeedback == "approved" %}
+{#        <p class="comment-feedback"><small>评论已发布。</small></p>#}
+      {% elif CommentFeedback == "pending" %}
+        <p class="comment-feedback"><small>评论已提交，等待审核。</small></p>
+      {% elif CommentFeedback == "captcha_required" %}
+        <p class="comment-feedback"><small>提交较频繁，请先完成验证码再继续评论。</small></p>
+      {% elif CommentFeedback == "captcha_failed" %}
+        <p class="comment-feedback"><small>验证码错误或已过期，请刷新页面后重试。</small></p>
+      {% elif CommentFeedback == "rate_limited" %}
+        <p class="comment-feedback"><small>提交过于频繁，请稍后再试。</small></p>
+      {% elif CommentFeedback == "duplicate" %}
+        <p class="comment-feedback"><small>请勿重复提交相同评论内容。</small></p>
+      {% endif %}
 
       {% if Comments %}
         <ol class="comment-list">
@@ -101,20 +114,6 @@
         {% with Pager = CommentPager %}
           {% include "site/include/comment_pagination.html" %}
         {% endwith %}
-      {% endif %}
-
-      {% if CommentFeedback == "approved" %}
-{#        <p class="comment-feedback"><small>评论已发布。</small></p>#}
-      {% elif CommentFeedback == "pending" %}
-        <p class="comment-feedback"><small>评论已提交，等待审核。</small></p>
-      {% elif CommentFeedback == "captcha_required" %}
-        <p class="comment-feedback"><small>提交较频繁，请先完成验证码再继续评论。</small></p>
-      {% elif CommentFeedback == "captcha_failed" %}
-        <p class="comment-feedback"><small>验证码错误或已过期，请刷新页面后重试。</small></p>
-      {% elif CommentFeedback == "rate_limited" %}
-        <p class="comment-feedback"><small>提交过于频繁，请稍后再试。</small></p>
-      {% elif CommentFeedback == "duplicate" %}
-        <p class="comment-feedback"><small>请勿重复提交相同评论内容。</small></p>
       {% endif %}
 
       <fieldset>

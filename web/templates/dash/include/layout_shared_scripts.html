@@ -556,6 +556,58 @@
       setNotificationRowActions(row, true);
     }
 
+    function requestMarkNotificationRead(id, row, triggerButton) {
+      if (!notificationsReadURL) {
+        return;
+      }
+      if (!isFinite(id) || id <= 0) {
+        return;
+      }
+      if (row && row.getAttribute('data-notification-reading') === '1') {
+        return;
+      }
+
+      if (row) {
+        row.setAttribute('data-notification-reading', '1');
+      }
+      if (triggerButton) {
+        triggerButton.disabled = true;
+      }
+
+      window.sfetchJSON(notificationsReadURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: id }),
+      }).then(function(result) {
+        if (!result || !result.ok || !result.body || result.body.ok !== true) {
+          if (triggerButton) {
+            triggerButton.disabled = false;
+          }
+          return;
+        }
+        markNotificationRowRead(row);
+        var unreadCount = result.body.data ? result.body.data.unread_count : null;
+        if (unreadCount !== null && unreadCount !== undefined) {
+          setNotificationUnreadCount(unreadCount);
+        } else {
+          refreshNotificationUnreadCount();
+        }
+      }).catch(function(error) {
+        if (triggerButton) {
+          triggerButton.disabled = false;
+        }
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('mark notification read failed', error);
+        }
+      }).then(function() {
+        if (row) {
+          row.removeAttribute('data-notification-reading');
+        }
+      });
+    }
+
     function ensureNotificationEmptyState() {
       var tableWrap = document.getElementById('notifications-table-wrap');
       var emptyState = document.getElementById('notifications-empty-state');
@@ -611,40 +663,12 @@
 
       var markReadButton = event.target.closest('[data-role="notification-mark-read"]');
       if (markReadButton) {
-        if (!notificationsReadURL) {
-          return;
-        }
         var id = parseInt(markReadButton.getAttribute('data-id'), 10);
         if (isNaN(id) || id <= 0) {
           return;
         }
-        var body = JSON.stringify({ id: id });
-        markReadButton.disabled = true;
-        window.sfetchJSON(notificationsReadURL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: body,
-        }).then(function(result) {
-          if (!result || !result.ok || !result.body || result.body.ok !== true) {
-            markReadButton.disabled = false;
-            return;
-          }
-          var row = markReadButton.closest('[data-notification-row]');
-          markNotificationRowRead(row);
-          var unreadCount = result.body.data ? result.body.data.unread_count : null;
-          if (unreadCount !== null && unreadCount !== undefined) {
-            setNotificationUnreadCount(unreadCount);
-          } else {
-            refreshNotificationUnreadCount();
-          }
-        }).catch(function(error) {
-          markReadButton.disabled = false;
-          if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('mark notification read failed', error);
-          }
-        });
+        var row = markReadButton.closest('[data-notification-row]');
+        requestMarkNotificationRead(id, row, markReadButton);
         event.preventDefault();
         return;
       }
@@ -719,6 +743,28 @@
             window.console.warn('delete notification failed', error);
           }
         });
+        event.preventDefault();
+        return;
+      }
+
+      var notificationRow = event.target.closest('[data-notification-row]');
+      if (notificationRow) {
+        if (notificationRow.getAttribute('data-notification-read') !== '0') {
+          return;
+        }
+        if (event.target.closest('a, button, input, textarea, select, label, [role="button"]')) {
+          return;
+        }
+        if (event.target.closest('[data-role="notification-actions"]')) {
+          return;
+        }
+
+        var rowID = parseInt(notificationRow.getAttribute('data-notification-id'), 10);
+        if (isNaN(rowID) || rowID <= 0) {
+          return;
+        }
+
+        requestMarkNotificationRead(rowID, notificationRow, null);
         event.preventDefault();
         return;
       }

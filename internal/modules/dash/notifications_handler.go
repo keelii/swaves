@@ -1,10 +1,12 @@
 package dash
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/shared/share"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -16,7 +18,50 @@ const (
 	dashNotificationEventPostLike   = db.NotificationEventPostLike
 	dashNotificationEventComment    = db.NotificationEventComment
 	dashNotificationEventTaskResult = db.NotificationEventTaskResult
+	dashCommentLinkKeyPrefix        = "comment_link:"
 )
+
+type NotificationListItemView struct {
+	db.Notification
+	CommentURL string
+}
+
+func parseCommentURLFromAggregateKey(raw string) string {
+	text := strings.TrimSpace(raw)
+	if text == "" || !strings.HasPrefix(text, dashCommentLinkKeyPrefix) {
+		return ""
+	}
+
+	payload := strings.TrimPrefix(text, dashCommentLinkKeyPrefix)
+	splitAt := strings.Index(payload, ":")
+	if splitAt <= 0 || splitAt >= len(payload)-1 {
+		return ""
+	}
+
+	escapedURL := payload[splitAt+1:]
+	commentURL, err := url.QueryUnescape(escapedURL)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(commentURL)
+}
+
+func buildNotificationListItems(notifications []db.Notification, defaultCommentURL string) []NotificationListItemView {
+	items := make([]NotificationListItemView, 0, len(notifications))
+	for _, n := range notifications {
+		item := NotificationListItemView{
+			Notification: n,
+		}
+		if n.EventType == dashNotificationEventComment {
+			item.CommentURL = parseCommentURLFromAggregateKey(n.AggregateKey)
+			if item.CommentURL == "" {
+				item.CommentURL = defaultCommentURL
+			}
+		}
+		items = append(items, item)
+	}
+	return items
+}
 
 func normalizeNotificationEventTypeFilter(raw string) string {
 	switch strings.TrimSpace(raw) {
@@ -93,10 +138,15 @@ func (h *Handler) GetNotificationListHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	commentListURL := h.dashRouteURL(c, "dash.comments.list", nil, nil)
+	if strings.TrimSpace(commentListURL) == "" {
+		commentListURL = share.BuildDashPath("/comments")
+	}
+	notificationItems := buildNotificationListItems(notifications, commentListURL)
 
 	return h.RenderDashView(c, "dash/notifications_index.html", fiber.Map{
 		"Title":                 "通知中心",
-		"Notifications":         notifications,
+		"Notifications":         notificationItems,
 		"UnreadCount":           unreadCount,
 		"NotificationEventType": eventType,
 		"NotificationTabCounts": tabCounts,

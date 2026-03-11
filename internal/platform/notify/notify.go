@@ -2,9 +2,12 @@ package notify
 
 import (
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
+	"swaves/internal/shared/share"
 	"time"
 )
 
@@ -18,6 +21,7 @@ const (
 	taskNotifyMessageMaxLen   = 1024
 	defaultLikeAggregateMin   = 30
 	defaultNotificationRetain = 30
+	commentLinkKeyPrefix      = "comment_link:"
 )
 
 func IsPostLikeNotificationEnabled() bool {
@@ -88,6 +92,8 @@ func CreatePostLikeNotification(dbx *db.DB, post db.Post, likeCount int, nowUnix
 func CreateCommentNotification(dbx *db.DB, post db.Post, comment db.Comment, nowUnix int64) error {
 	title := "收到新留言"
 	body := fmt.Sprintf("《%s》收到来自 %s 的留言。", normalizePostTitle(post), normalizeCommentAuthor(comment.Author))
+	commentURL := share.GetPostUrl(post) + "#comment-" + strconv.FormatInt(comment.ID, 10)
+	aggregateKey := commentLinkKeyPrefix + strconv.FormatInt(comment.ID, 10) + ":" + url.QueryEscape(commentURL)
 
 	n := &db.Notification{
 		Receiver:     db.NotificationReceiverDash,
@@ -95,7 +101,7 @@ func CreateCommentNotification(dbx *db.DB, post db.Post, comment db.Comment, now
 		Level:        db.NotificationLevelInfo,
 		Title:        title,
 		Body:         body,
-		AggregateKey: "",
+		AggregateKey: aggregateKey,
 		CreatedAt:    nowUnix,
 		UpdatedAt:    nowUnix,
 	}

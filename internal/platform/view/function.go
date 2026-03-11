@@ -65,6 +65,45 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		query = compactStringMap(query)
 		return value.FromString(urlFor(name, params, query)), nil
 	})
+	env.AddFunction("PagerURL", func(st *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(kwargs) > 0 {
+			return value.Undefined(), errors.New("PagerURL does not support keyword arguments")
+		}
+		if len(args) == 0 {
+			return value.Undefined(), errors.New("PagerURL requires page argument")
+		}
+		pageRaw := strings.TrimSpace(toStringValue(args[0].Raw()))
+		page, err := strconv.Atoi(pageRaw)
+		if err != nil || page <= 0 {
+			return value.FromString(""), nil
+		}
+
+		routeName := ""
+		if len(args) > 1 {
+			routeName = strings.TrimSpace(toStringValue(args[1].Raw()))
+		}
+		if routeName == "" {
+			routeName = strings.TrimSpace(toStringValue(st.Lookup("RouteName").Raw()))
+		}
+		if routeName == "" {
+			return value.FromString(""), nil
+		}
+
+		var query map[string]string
+		if len(args) > 2 {
+			query = toStringMap(args[2].Raw())
+		}
+		if query == nil {
+			query = toStringMap(st.Lookup("Query").Raw())
+		}
+		query = compactStringMap(query)
+		if query == nil {
+			query = map[string]string{}
+		}
+		query["page"] = strconv.Itoa(page)
+		query = compactStringMap(query)
+		return value.FromString(urlFor(routeName, nil, query)), nil
+	})
 	env.AddFunction("Settings", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(kwargs) > 0 {
 			return value.Undefined(), errors.New("Settings does not support keyword arguments")

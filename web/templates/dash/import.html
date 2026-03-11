@@ -229,7 +229,7 @@ markdown 文章内容...</pre>
         <label class="ui-field-label" for="import-title-source">标题来源</label>
         <div class="import-control-stack">
           <select id="import-title-source" class="ui-input ui-select-input" name="title_source" required>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：title）</option>
+            <option value="frontmatter" selected>元数据字段</option>
             <option value="filename">文件名</option>
             <option value="markdown">Markdown 标题</option>
           </select>
@@ -254,7 +254,7 @@ markdown 文章内容...</pre>
         <div class="import-control-stack">
           <select id="import-slug-source" class="ui-input ui-select-input" name="slug_source" required>
             <option value="filename" selected>文件名</option>
-            <option value="frontmatter">前置信息字段（Frontmatter，默认：slug）</option>
+            <option value="frontmatter">元数据字段</option>
             <option value="title">由标题自动生成</option>
           </select>
           <input class="ui-input" type="text" name="slug_field" id="slug_field_container" value="slug" placeholder="slug" style="display: none;">
@@ -265,7 +265,7 @@ markdown 文章内容...</pre>
         <label class="ui-field-label" for="import-created-source">创建时间来源</label>
         <div class="import-control-stack">
           <select id="import-created-source" class="ui-input ui-select-input" name="created_source" required>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：date）</option>
+            <option value="frontmatter" selected>元数据字段</option>
             <option value="filetime">文件时间（当前时间）</option>
           </select>
           <input class="ui-input" type="text" name="created_field" id="created_field_container" value="date" placeholder="date">
@@ -276,7 +276,7 @@ markdown 文章内容...</pre>
         <label class="ui-field-label" for="import-status-source">状态来源</label>
         <div class="import-control-stack">
           <select id="import-status-source" class="ui-input ui-select-input" name="status_source" required>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：draft）</option>
+            <option value="frontmatter" selected>元数据字段</option>
             <option value="alldraft">全部草稿</option>
             <option value="allpublished">全部发布</option>
           </select>
@@ -289,7 +289,7 @@ markdown 文章内容...</pre>
         <div class="import-control-stack">
           <select id="import-category-source" class="ui-input ui-select-input" name="category_source" required>
             <option value="none">不设置（留空）</option>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：categories）</option>
+            <option value="frontmatter" selected>元数据字段</option>
             <option value="autocreate">自动创建默认分类</option>
           </select>
           <input class="ui-input" type="text" name="category_field" id="category_field_container" value="categories" placeholder="category" style="display: none;">
@@ -301,7 +301,7 @@ markdown 文章内容...</pre>
         <div class="import-control-stack">
           <select id="import-tag-source" class="ui-input ui-select-input" name="tag_source" required>
             <option value="none">不设置（留空）</option>
-            <option value="frontmatter" selected>前置信息字段（Frontmatter，默认：tags）</option>
+            <option value="frontmatter" selected>元数据字段</option>
             <option value="autocreate">自动创建默认标签</option>
           </select>
           <input class="ui-input" type="text" name="tag_field" id="tag_field_container" value="tags" placeholder="tags" style="display: none;">
@@ -310,7 +310,7 @@ markdown 文章内容...</pre>
     </div>
 
     {% endset %}
-    {{ sui.Details("Markdown 文件可以包含元信息（frontmatter），例如", frontmatterExample) }}
+    {{ sui.Details("Markdown 文件可以包含元数据（frontmatter），例如", frontmatterExample) }}
   </div>
 </form>
 </div>
