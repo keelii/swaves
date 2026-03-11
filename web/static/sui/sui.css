@@ -243,8 +243,8 @@ svg rect:focus {
   z-index: 3000;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(4px);
-  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s ease;
+  transform: translateY(3px);
+  transition: opacity 0.14s ease, transform 0.14s ease, visibility 0s linear 0.14s;
   pointer-events: none;
   padding: 6px 8px;
   border-radius: var(--app-radius);
@@ -253,25 +253,42 @@ svg rect:focus {
   font-size: 0.82rem;
   line-height: 1;
   white-space: nowrap;
+  --ui-tooltip-arrow-offset: 50%;
 }
 
 .ui-tooltip[data-placement="bottom"],
 .ui-tooltip.is-placement-bottom {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
 }
 
 .ui-tooltip[data-state="open"] {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  transition-delay: 0s, 0s, 0s;
 }
 
 .ui-tooltip::before {
   content: "";
   position: absolute;
-  inset-inline-start: 50%;
+  inset-inline-start: var(--ui-tooltip-arrow-offset, 50%);
   transform: translateX(-50%);
   border: 7px solid transparent;
+}
+
+.ui-tooltip[data-arrow-align="left"],
+.ui-tooltip.is-arrow-left {
+  --ui-tooltip-arrow-offset: 14px;
+}
+
+.ui-tooltip[data-arrow-align="center"],
+.ui-tooltip.is-arrow-center {
+  --ui-tooltip-arrow-offset: 50%;
+}
+
+.ui-tooltip[data-arrow-align="right"],
+.ui-tooltip.is-arrow-right {
+  --ui-tooltip-arrow-offset: calc(100% - 14px);
 }
 
 .ui-tooltip[data-placement="top"]::before,
@@ -2223,8 +2240,22 @@ a.ui-icon-btn[disabled] {
   word-wrap: break-word;
 }
 
-/* wysiwyg 适配暗色主题 */
+/* wysiwyg 内联代码与代码块配色 */
 .wysiwyg code, .wysiwyg kbd, .wysiwyg samp, .wysiwyg pre {
-  background-color: var(--app-btn-primary-bg);
+  background-color: var(--app-surface-muted-bg);
   color: var(--app-text);
+}
+
+.wysiwyg pre code {
+  color: inherit;
+}
+
+.wysiwyg thead tr, .wysiwyg tfoot tr {
+  background-color: var(--app-surface-muted-bg);
+}
+.wysiwyg tbody tr {
+  background-color: var(--app-surface-muted-bg);
+}
+.wysiwyg th, .wysiwyg td {
+  border-color: var(--app-border);
 }

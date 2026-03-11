@@ -87,24 +87,37 @@
     var tooltipOffset = 10;
     var tooltipMargin = 8;
     var tooltipOpenTimer = null;
+    var tooltipHideDurationMs = 140;
+    var tooltipClearTextTimer = null;
     var tooltipActiveTarget = null;
     var tooltipOpenTarget = null;
     var tooltipPrevDescribedBy = null;
 
-    function applyTooltipPlacementState(placement) {
+    function applyTooltipPlacementState(placement, arrowAlign) {
       if (!tooltipEl) {
         return;
       }
       var nextPlacement = placement === 'bottom' ? 'bottom' : 'top';
       var arrowDirection = nextPlacement === 'bottom' ? 'up' : 'down';
+      var nextArrowAlign = arrowAlign === 'left' || arrowAlign === 'right' ? arrowAlign : 'center';
       tooltipEl.setAttribute('data-placement', nextPlacement);
       tooltipEl.setAttribute('data-arrow-direction', arrowDirection);
+      tooltipEl.setAttribute('data-arrow-align', nextArrowAlign);
       if (!tooltipEl.classList) {
         return;
       }
-      tooltipEl.classList.remove('is-placement-top', 'is-placement-bottom', 'is-arrow-up', 'is-arrow-down');
+      tooltipEl.classList.remove('is-placement-top', 'is-placement-bottom', 'is-arrow-up', 'is-arrow-down', 'is-arrow-left', 'is-arrow-center', 'is-arrow-right');
       tooltipEl.classList.add(nextPlacement === 'bottom' ? 'is-placement-bottom' : 'is-placement-top');
       tooltipEl.classList.add(arrowDirection === 'up' ? 'is-arrow-up' : 'is-arrow-down');
+      if (nextArrowAlign === 'left') {
+        tooltipEl.classList.add('is-arrow-left');
+        return;
+      }
+      if (nextArrowAlign === 'right') {
+        tooltipEl.classList.add('is-arrow-right');
+        return;
+      }
+      tooltipEl.classList.add('is-arrow-center');
     }
 
     function ensureTooltip() {
@@ -117,7 +130,7 @@
       tooltipEl.setAttribute('role', 'tooltip');
       tooltipEl.setAttribute('aria-hidden', 'true');
       tooltipEl.setAttribute('data-state', 'closed');
-      applyTooltipPlacementState('top');
+      applyTooltipPlacementState('top', 'center');
       document.body.appendChild(tooltipEl);
       return tooltipEl;
     }
@@ -175,8 +188,14 @@
       var viewportWidth = document.documentElement.clientWidth;
       var viewportHeight = document.documentElement.clientHeight;
 
-      var left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
-      left = clampNumber(left, tooltipMargin, viewportWidth - tooltipRect.width - tooltipMargin);
+      var idealLeft = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+      var left = clampNumber(idealLeft, tooltipMargin, viewportWidth - tooltipRect.width - tooltipMargin);
+      var arrowAlign = 'center';
+      if (left > idealLeft + 0.5) {
+        arrowAlign = 'left';
+      } else if (left < idealLeft - 0.5) {
+        arrowAlign = 'right';
+      }
 
       var placement = 'top';
       var top = targetRect.top - tooltipRect.height - tooltipOffset;
@@ -191,7 +210,7 @@
 
       top = clampNumber(top, tooltipMargin, viewportHeight - tooltipRect.height - tooltipMargin);
 
-      applyTooltipPlacementState(placement);
+      applyTooltipPlacementState(placement, arrowAlign);
       tooltipEl.style.left = Math.round(left) + 'px';
       tooltipEl.style.top = Math.round(top) + 'px';
     }
@@ -201,6 +220,8 @@
         return;
       }
       ensureTooltip();
+      clearTimeout(tooltipClearTextTimer);
+      tooltipClearTextTimer = null;
       tooltipEl.textContent = text;
       tooltipEl.setAttribute('aria-hidden', 'false');
       tooltipOpenTarget = target;
@@ -216,7 +237,13 @@
       if (tooltipEl) {
         tooltipEl.setAttribute('aria-hidden', 'true');
         tooltipEl.setAttribute('data-state', 'closed');
-        tooltipEl.textContent = '';
+        clearTimeout(tooltipClearTextTimer);
+        tooltipClearTextTimer = setTimeout(function() {
+          if (!tooltipEl || tooltipEl.getAttribute('data-state') === 'open') {
+            return;
+          }
+          tooltipEl.textContent = '';
+        }, tooltipHideDurationMs);
       }
       restoreDescribedBy();
       tooltipOpenTarget = null;

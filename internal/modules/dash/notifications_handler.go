@@ -43,7 +43,22 @@ func parseCommentURLFromAggregateKey(raw string) string {
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(commentURL)
+	commentURL = strings.TrimSpace(commentURL)
+	if commentURL == "" {
+		return ""
+	}
+	parsedURL, err := url.Parse(commentURL)
+	if err != nil {
+		return ""
+	}
+	// Keep links inside current site and reject potentially dangerous schemes.
+	if parsedURL.IsAbs() || strings.TrimSpace(parsedURL.Host) != "" {
+		return ""
+	}
+	if !strings.HasPrefix(parsedURL.Path, "/") {
+		return ""
+	}
+	return commentURL
 }
 
 func buildNotificationListItems(notifications []db.Notification, defaultCommentURL string) []NotificationListItemView {
