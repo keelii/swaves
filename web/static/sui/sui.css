@@ -2222,3 +2222,9 @@ a.ui-icon-btn[disabled] {
   width: 30em;
   word-wrap: break-word;
 }
+
+/* wysiwyg 适配暗色主题 */
+.wysiwyg code, .wysiwyg kbd, .wysiwyg samp, .wysiwyg pre {
+  background-color: var(--app-btn-primary-bg);
+  color: var(--app-text);
+}

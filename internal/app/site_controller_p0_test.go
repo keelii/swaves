@@ -284,6 +284,100 @@ func TestSiteControllerP0_CommentActionDuplicateShowsFeedback(t *testing.T) {
 	)
 }
 
+func TestSiteControllerP0_CommentRateLimitRequiresCaptchaThenShowsCaptchaFailed(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	post := createPublishedSitePost(t, swv, "Site P0 Comment Captcha Guard Post")
+	postPath := share.GetPostUrl(post)
+	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
+	if postResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected post detail status: path=%s status=%d", postPath, postResp.StatusCode)
+	}
+	visitorCookie := responseCookieKV(postResp)
+	if visitorCookie == "" {
+		t.Fatalf("expected visitor cookie from post detail response")
+	}
+
+	actionPath := pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))
+	form := url.Values{}
+	form.Set("author", "site-p0-captcha-user")
+	form.Set("author_email", "site-p0-captcha@example.com")
+	form.Set("author_url", "https://example.com")
+	form.Set("content", "site controller captcha flow content")
+	form.Set("remember_me", "1")
+	form.Set("return_url", postPath)
+
+	firstResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if firstResp.StatusCode < 300 || firstResp.StatusCode >= 400 {
+		t.Fatalf("expected first comment redirect, got %d", firstResp.StatusCode)
+	}
+	firstLocation := strings.TrimSpace(firstResp.Header.Get("Location"))
+	if !strings.Contains(firstLocation, "comment_status=pending") {
+		t.Fatalf("first comment redirect should include pending status, got location=%q", firstLocation)
+	}
+
+	secondResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if secondResp.StatusCode < 300 || secondResp.StatusCode >= 400 {
+		t.Fatalf("expected second comment redirect, got %d", secondResp.StatusCode)
+	}
+	secondLocation := strings.TrimSpace(secondResp.Header.Get("Location"))
+	if !strings.Contains(secondLocation, "comment_status=captcha_required") {
+		t.Fatalf("second comment redirect should include captcha_required status, got location=%q", secondLocation)
+	}
+	if !strings.Contains(secondLocation, "#comments") {
+		t.Fatalf("second comment redirect should include comments anchor, got location=%q", secondLocation)
+	}
+
+	captchaRequiredPath := secondLocation
+	if idx := strings.Index(captchaRequiredPath, "#"); idx >= 0 {
+		captchaRequiredPath = captchaRequiredPath[:idx]
+	}
+	captchaRequiredResp := requestControllerP0(t, swv, fiber.MethodGet, captchaRequiredPath, nil, visitorCookie, nil)
+	assertTemplateRendered(
+		t,
+		captchaRequiredResp,
+		fiber.StatusOK,
+		"提交较频繁，请先完成验证码再继续评论。",
+		`id="comment-form"`,
+	)
+
+	form.Set("captcha_token", "invalid-token")
+	form.Set("captcha_answer", "9")
+	thirdResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if thirdResp.StatusCode < 300 || thirdResp.StatusCode >= 400 {
+		t.Fatalf("expected third comment redirect, got %d", thirdResp.StatusCode)
+	}
+	thirdLocation := strings.TrimSpace(thirdResp.Header.Get("Location"))
+	if !strings.Contains(thirdLocation, "comment_status=captcha_failed") {
+		t.Fatalf("third comment redirect should include captcha_failed status, got location=%q", thirdLocation)
+	}
+	if !strings.Contains(thirdLocation, "#comments") {
+		t.Fatalf("third comment redirect should include comments anchor, got location=%q", thirdLocation)
+	}
+
+	captchaFailedPath := thirdLocation
+	if idx := strings.Index(captchaFailedPath, "#"); idx >= 0 {
+		captchaFailedPath = captchaFailedPath[:idx]
+	}
+	captchaFailedResp := requestControllerP0(t, swv, fiber.MethodGet, captchaFailedPath, nil, visitorCookie, nil)
+	assertTemplateRendered(
+		t,
+		captchaFailedResp,
+		fiber.StatusOK,
+		"验证码错误或已过期，请刷新页面后重试。",
+		`id="comment-form"`,
+	)
+
+	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	if err != nil {
+		t.Fatalf("list pending comments failed: %v", err)
+	}
+	if len(pendingComments) != 1 {
+		t.Fatalf("unexpected pending comment count after captcha flow: got=%d want=1", len(pendingComments))
+	}
+}
+
 func TestSiteControllerP0_PostCommentsPaginationByRootThread(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()

@@ -49,5 +49,20 @@
       {{ sui.IconAction("trash-2", "删除", kind="danger", attrs='data-title="删除"') }}
       {{ sui.IconAction("trash-2", "删除（disabled）", kind="danger", disabled=true, attrs='data-title="disabled: 无法点击"') }}
     </div>
+
+    <h3>Tooltip 方向 Class</h3>
+    <p class="toolbar-text">运行时会自动附加 <code>is-placement-top / is-placement-bottom</code> 与 <code>is-arrow-down / is-arrow-up</code>，方便在极端场景单独覆盖箭头样式。</p>
+    <div class="ui-tags" aria-label="Tooltip 方向触发示例">
+      {{ sui.Button("常规触发", "outline", attrs='type="button" data-title="常规区域：tooltip 在上方，箭头朝下"') }}
+      {{ sui.Button("边缘触发", "outline", attrs='type="button" data-title="靠近顶部时：tooltip 会切到底部，箭头朝上"') }}
+    </div>
+    <div class="ui-tags" aria-label="Tooltip 方向静态示例" style="margin-top: 12px; align-items: flex-start; gap: 14px;">
+      <div style="position: relative; padding-top: 36px; min-width: 160px;">
+        <div class="ui-tooltip is-placement-top is-arrow-down" data-placement="top" data-arrow-direction="down" data-state="open" style="position: absolute; inset: 0 auto auto 0; opacity: 1; visibility: visible; transform: none;">is-arrow-down</div>
+      </div>
+      <div style="position: relative; padding-top: 36px; min-width: 160px;">
+        <div class="ui-tooltip is-placement-bottom is-arrow-up" data-placement="bottom" data-arrow-direction="up" data-state="open" style="position: absolute; inset: 0 auto auto 0; opacity: 1; visibility: visible; transform: none;">is-arrow-up</div>
+      </div>
+    </div>
   </div>
 {% endblock %}

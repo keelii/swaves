@@ -143,6 +143,22 @@
     var tooltipOpenTarget = null;
     var tooltipPrevDescribedBy = null;
 
+    function applyTooltipPlacementState(placement) {
+      if (!tooltipEl) {
+        return;
+      }
+      var nextPlacement = placement === 'bottom' ? 'bottom' : 'top';
+      var arrowDirection = nextPlacement === 'bottom' ? 'up' : 'down';
+      tooltipEl.setAttribute('data-placement', nextPlacement);
+      tooltipEl.setAttribute('data-arrow-direction', arrowDirection);
+      if (!tooltipEl.classList) {
+        return;
+      }
+      tooltipEl.classList.remove('is-placement-top', 'is-placement-bottom', 'is-arrow-up', 'is-arrow-down');
+      tooltipEl.classList.add(nextPlacement === 'bottom' ? 'is-placement-bottom' : 'is-placement-top');
+      tooltipEl.classList.add(arrowDirection === 'up' ? 'is-arrow-up' : 'is-arrow-down');
+    }
+
     function ensureTooltip() {
       if (tooltipEl) {
         return tooltipEl;
@@ -152,8 +168,8 @@
       tooltipEl.id = 'dash-app-tooltip';
       tooltipEl.setAttribute('role', 'tooltip');
       tooltipEl.setAttribute('aria-hidden', 'true');
-      tooltipEl.setAttribute('data-placement', 'top');
       tooltipEl.setAttribute('data-state', 'closed');
+      applyTooltipPlacementState('top');
       document.body.appendChild(tooltipEl);
       return tooltipEl;
     }
@@ -227,7 +243,7 @@
 
       top = clampNumber(top, tooltipMargin, viewportHeight - tooltipRect.height - tooltipMargin);
 
-      tooltipEl.setAttribute('data-placement', placement);
+      applyTooltipPlacementState(placement);
       tooltipEl.style.left = Math.round(left) + 'px';
       tooltipEl.style.top = Math.round(top) + 'px';
     }
