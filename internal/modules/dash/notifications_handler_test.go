@@ -46,6 +46,21 @@ func TestParseCommentURLFromAggregateKey(t *testing.T) {
 			raw:  dashCommentLinkKeyPrefix + "9:%zz",
 			want: "",
 		},
+		{
+			name: "reject javascript scheme",
+			raw:  dashCommentLinkKeyPrefix + "9:" + url.QueryEscape("javascript:alert(1)"),
+			want: "",
+		},
+		{
+			name: "reject absolute external url",
+			raw:  dashCommentLinkKeyPrefix + "9:" + url.QueryEscape("https://evil.example.com/post#comment-9"),
+			want: "",
+		},
+		{
+			name: "reject relative path without leading slash",
+			raw:  dashCommentLinkKeyPrefix + "9:" + url.QueryEscape("posts/demo#comment-9"),
+			want: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -74,14 +89,19 @@ func TestBuildNotificationListItemsCommentURLFallback(t *testing.T) {
 			AggregateKey: "invalid:comment-link",
 		},
 		{
+			ID:           4,
+			EventType:    dashNotificationEventComment,
+			AggregateKey: dashCommentLinkKeyPrefix + "12:" + url.QueryEscape("https://evil.example.com/post#comment-12"),
+		},
+		{
 			ID:           3,
 			EventType:    dashNotificationEventPostLike,
 			AggregateKey: dashCommentLinkKeyPrefix + "99:" + url.QueryEscape("/posts/ignore#comment-99"),
 		},
 	}, defaultCommentURL)
 
-	if len(items) != 3 {
-		t.Fatalf("buildNotificationListItems len = %d, want 3", len(items))
+	if len(items) != 4 {
+		t.Fatalf("buildNotificationListItems len = %d, want 4", len(items))
 	}
 	if items[0].CommentURL != validCommentURL {
 		t.Fatalf("first comment url = %q, want %q", items[0].CommentURL, validCommentURL)
@@ -89,7 +109,10 @@ func TestBuildNotificationListItemsCommentURLFallback(t *testing.T) {
 	if items[1].CommentURL != defaultCommentURL {
 		t.Fatalf("fallback comment url = %q, want %q", items[1].CommentURL, defaultCommentURL)
 	}
-	if items[2].CommentURL != "" {
-		t.Fatalf("non-comment item comment url should be empty, got %q", items[2].CommentURL)
+	if items[2].CommentURL != defaultCommentURL {
+		t.Fatalf("external comment url should fallback to default, got %q want %q", items[2].CommentURL, defaultCommentURL)
+	}
+	if items[3].CommentURL != "" {
+		t.Fatalf("non-comment item comment url should be empty, got %q", items[3].CommentURL)
 	}
 }

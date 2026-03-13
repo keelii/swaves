@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
@@ -20,6 +21,9 @@ type likeActionResponse struct {
 	Liked     bool `json:"liked"`
 	LikeCount int  `json:"likeCount"`
 }
+
+var commentCaptchaTokenPattern = regexp.MustCompile(`name="captcha_token" value="([^"]+)"`)
+var commentCaptchaPromptPattern = regexp.MustCompile(`([0-9]+)\s*([+-])\s*([0-9]+)\s*=\s*\?`)
 
 func createPublishedSitePost(t *testing.T, swv SwavesApp, title string) db.Post {
 	t.Helper()
@@ -76,6 +80,45 @@ func decodeLikeActionResponse(t *testing.T, body []byte) likeActionResponse {
 		t.Fatalf("decode like action response failed: %v body=%s", err, strings.TrimSpace(string(body)))
 	}
 	return payload
+}
+
+func extractCommentCaptchaTokenAndAnswer(t *testing.T, body string) (string, string) {
+	t.Helper()
+
+	tokenMatches := commentCaptchaTokenPattern.FindStringSubmatch(body)
+	if len(tokenMatches) < 2 {
+		t.Fatalf("captcha token not found in page body")
+	}
+	token := strings.TrimSpace(tokenMatches[1])
+	if token == "" {
+		t.Fatalf("captcha token should not be empty")
+	}
+
+	promptMatches := commentCaptchaPromptPattern.FindStringSubmatch(body)
+	if len(promptMatches) < 4 {
+		t.Fatalf("captcha prompt not found in page body")
+	}
+
+	left, err := strconv.Atoi(promptMatches[1])
+	if err != nil {
+		t.Fatalf("parse captcha left operand failed: %v", err)
+	}
+	right, err := strconv.Atoi(promptMatches[3])
+	if err != nil {
+		t.Fatalf("parse captcha right operand failed: %v", err)
+	}
+
+	answer := 0
+	switch promptMatches[2] {
+	case "+":
+		answer = left + right
+	case "-":
+		answer = left - right
+	default:
+		t.Fatalf("unsupported captcha operator: %q", promptMatches[2])
+	}
+
+	return token, strconv.Itoa(answer)
 }
 
 func TestSiteControllerP0_HomePostAndNotFound(t *testing.T) {
@@ -375,6 +418,192 @@ func TestSiteControllerP0_CommentRateLimitRequiresCaptchaThenShowsCaptchaFailed(
 	}
 	if len(pendingComments) != 1 {
 		t.Fatalf("unexpected pending comment count after captcha flow: got=%d want=1", len(pendingComments))
+	}
+}
+
+func TestSiteControllerP0_CommentRateLimitCaptchaPassesAndCreatesSecondComment(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	post := createPublishedSitePost(t, swv, "Site P0 Comment Captcha Pass Post")
+	postPath := share.GetPostUrl(post)
+	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
+	if postResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected post detail status: path=%s status=%d", postPath, postResp.StatusCode)
+	}
+	visitorCookie := responseCookieKV(postResp)
+	if visitorCookie == "" {
+		t.Fatalf("expected visitor cookie from post detail response")
+	}
+
+	actionPath := pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))
+	form := url.Values{}
+	form.Set("author", "site-p0-captcha-pass-user")
+	form.Set("author_email", "site-p0-captcha-pass@example.com")
+	form.Set("author_url", "https://example.com")
+	form.Set("content", "site controller captcha pass first content")
+	form.Set("remember_me", "1")
+	form.Set("return_url", postPath)
+
+	firstResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if firstResp.StatusCode < 300 || firstResp.StatusCode >= 400 {
+		t.Fatalf("expected first comment redirect, got %d", firstResp.StatusCode)
+	}
+	firstLocation := strings.TrimSpace(firstResp.Header.Get("Location"))
+	if !strings.Contains(firstLocation, "comment_status=pending") {
+		t.Fatalf("first comment redirect should include pending status, got location=%q", firstLocation)
+	}
+
+	secondResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if secondResp.StatusCode < 300 || secondResp.StatusCode >= 400 {
+		t.Fatalf("expected second comment redirect, got %d", secondResp.StatusCode)
+	}
+	secondLocation := strings.TrimSpace(secondResp.Header.Get("Location"))
+	if !strings.Contains(secondLocation, "comment_status=captcha_required") {
+		t.Fatalf("second comment redirect should include captcha_required status, got location=%q", secondLocation)
+	}
+
+	captchaPath := secondLocation
+	if idx := strings.Index(captchaPath, "#"); idx >= 0 {
+		captchaPath = captchaPath[:idx]
+	}
+	captchaResp := requestControllerP0(t, swv, fiber.MethodGet, captchaPath, nil, visitorCookie, nil)
+	captchaBody := assertTemplateRendered(
+		t,
+		captchaResp,
+		fiber.StatusOK,
+		"提交较频繁，请先完成验证码再继续评论。",
+		`name="captcha_answer"`,
+		`name="captcha_token"`,
+	)
+	captchaToken, captchaAnswer := extractCommentCaptchaTokenAndAnswer(t, captchaBody)
+
+	form.Set("content", "site controller captcha pass second content")
+	form.Set("captcha_token", captchaToken)
+	form.Set("captcha_answer", captchaAnswer)
+	thirdResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if thirdResp.StatusCode < 300 || thirdResp.StatusCode >= 400 {
+		t.Fatalf("expected third comment redirect, got %d", thirdResp.StatusCode)
+	}
+	thirdLocation := strings.TrimSpace(thirdResp.Header.Get("Location"))
+	if !strings.Contains(thirdLocation, "comment_status=pending") {
+		t.Fatalf("third comment redirect should include pending status after captcha pass, got location=%q", thirdLocation)
+	}
+	if !strings.Contains(thirdLocation, "#comments") {
+		t.Fatalf("third comment redirect should include comments anchor, got location=%q", thirdLocation)
+	}
+
+	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	if err != nil {
+		t.Fatalf("list pending comments failed: %v", err)
+	}
+	if len(pendingComments) != 2 {
+		t.Fatalf("unexpected pending comment count after captcha pass flow: got=%d want=2", len(pendingComments))
+	}
+}
+
+func TestSiteControllerP0_CommentCaptchaTokenReplayIsRejected(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	post := createPublishedSitePost(t, swv, "Site P0 Comment Captcha Replay Post")
+	postPath := share.GetPostUrl(post)
+	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
+	if postResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected post detail status: path=%s status=%d", postPath, postResp.StatusCode)
+	}
+	visitorCookie := responseCookieKV(postResp)
+	if visitorCookie == "" {
+		t.Fatalf("expected visitor cookie from post detail response")
+	}
+
+	actionPath := pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))
+	form := url.Values{}
+	form.Set("author", "site-p0-captcha-replay-user")
+	form.Set("author_email", "site-p0-captcha-replay@example.com")
+	form.Set("author_url", "https://example.com")
+	form.Set("content", "site controller captcha replay first content")
+	form.Set("remember_me", "1")
+	form.Set("return_url", postPath)
+
+	firstResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if firstResp.StatusCode < 300 || firstResp.StatusCode >= 400 {
+		t.Fatalf("expected first comment redirect, got %d", firstResp.StatusCode)
+	}
+	firstLocation := strings.TrimSpace(firstResp.Header.Get("Location"))
+	if !strings.Contains(firstLocation, "comment_status=pending") {
+		t.Fatalf("first comment redirect should include pending status, got location=%q", firstLocation)
+	}
+
+	secondResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if secondResp.StatusCode < 300 || secondResp.StatusCode >= 400 {
+		t.Fatalf("expected second comment redirect, got %d", secondResp.StatusCode)
+	}
+	secondLocation := strings.TrimSpace(secondResp.Header.Get("Location"))
+	if !strings.Contains(secondLocation, "comment_status=captcha_required") {
+		t.Fatalf("second comment redirect should include captcha_required status, got location=%q", secondLocation)
+	}
+
+	captchaPath := secondLocation
+	if idx := strings.Index(captchaPath, "#"); idx >= 0 {
+		captchaPath = captchaPath[:idx]
+	}
+	captchaResp := requestControllerP0(t, swv, fiber.MethodGet, captchaPath, nil, visitorCookie, nil)
+	captchaBody := assertTemplateRendered(
+		t,
+		captchaResp,
+		fiber.StatusOK,
+		`name="captcha_answer"`,
+		`name="captcha_token"`,
+	)
+	captchaToken, captchaAnswer := extractCommentCaptchaTokenAndAnswer(t, captchaBody)
+
+	form.Set("content", "site controller captcha replay second content")
+	form.Set("captcha_token", captchaToken)
+	form.Set("captcha_answer", captchaAnswer)
+	thirdResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if thirdResp.StatusCode < 300 || thirdResp.StatusCode >= 400 {
+		t.Fatalf("expected third comment redirect, got %d", thirdResp.StatusCode)
+	}
+	thirdLocation := strings.TrimSpace(thirdResp.Header.Get("Location"))
+	if !strings.Contains(thirdLocation, "comment_status=pending") {
+		t.Fatalf("third comment redirect should include pending status after captcha pass, got location=%q", thirdLocation)
+	}
+
+	form.Set("content", "site controller captcha replay third content")
+	form.Set("captcha_token", captchaToken)
+	form.Set("captcha_answer", captchaAnswer)
+	fourthResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if fourthResp.StatusCode < 300 || fourthResp.StatusCode >= 400 {
+		t.Fatalf("expected fourth comment redirect, got %d", fourthResp.StatusCode)
+	}
+	fourthLocation := strings.TrimSpace(fourthResp.Header.Get("Location"))
+	if !strings.Contains(fourthLocation, "comment_status=captcha_failed") {
+		t.Fatalf("fourth comment redirect should include captcha_failed for replayed token, got location=%q", fourthLocation)
+	}
+	if !strings.Contains(fourthLocation, "#comments") {
+		t.Fatalf("fourth comment redirect should include comments anchor, got location=%q", fourthLocation)
+	}
+
+	captchaFailedPath := fourthLocation
+	if idx := strings.Index(captchaFailedPath, "#"); idx >= 0 {
+		captchaFailedPath = captchaFailedPath[:idx]
+	}
+	captchaFailedResp := requestControllerP0(t, swv, fiber.MethodGet, captchaFailedPath, nil, visitorCookie, nil)
+	assertTemplateRendered(
+		t,
+		captchaFailedResp,
+		fiber.StatusOK,
+		"验证码错误或已过期，请刷新页面后重试。",
+		`id="comment-form"`,
+	)
+
+	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	if err != nil {
+		t.Fatalf("list pending comments failed: %v", err)
+	}
+	if len(pendingComments) != 2 {
+		t.Fatalf("unexpected pending comment count after captcha replay flow: got=%d want=2", len(pendingComments))
 	}
 }
 
