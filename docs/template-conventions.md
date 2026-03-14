@@ -3,7 +3,7 @@
 ## Scope
 
 This document defines template conventions for the MiniJinja migration.
-It focuses on template structure, context contract, and review rules.
+It focuses on template structure and review rules.
 It does not define business logic.
 
 ## MUST
@@ -13,27 +13,12 @@ It does not define business logic.
 - All templates MUST use `.html`.
 - Mixed extensions (`.jinja`, `.j2`) are not allowed.
 
-### 2) Root context contract
+### 2) Route and link generation
 
-- Root reserved keys MUST be:
-  - `Req`
-  - `Auth`
-  - `Site`
-- Renderer internally injects `__root` for MiniJinja compatibility.
-- Business payload remains at root level (no mandatory `Page` wrapper).
-
-### 3) Reserved key protection
-
-- Business data MUST NOT overwrite `Req`, `Auth`, or `Site`.
-- Business data MUST NOT overwrite `__root`.
-- Renderer MUST fail fast in development if collision is detected.
-
-### 4) Route and link generation
-
-- Internal links and redirects in templates MUST use `url_for`.
+- Internal links and redirects in templates MUST use `UrlFor`.
 - Hardcoded dash paths MUST NOT be introduced.
 
-### 5) Composition style
+### 3) Composition style
 
 - Composition MUST use MiniJinja-native patterns:
   - cross-file fragments via `import` + macro call
@@ -41,6 +26,13 @@ It does not define business logic.
   - layout composition via `embed`
 - Custom `template("...", ctx)` compatibility calls are not allowed.
 - Recursive fragments MUST use MiniJinja macros/recursive loops.
+
+### 4) View behavior boundary
+
+- Templates MUST remain DOM-oriented.
+- Page behavior code MUST live in shared/static JS, not inline template scripts, unless the code is a small bootstrapping snippet that only passes server-rendered config into an existing JS module.
+- Reusable behavior MUST be extracted to `web/static/dash/main.js` or the site entry for that runtime; page-specific behavior MAY live in a dedicated page script under `web/static/...`.
+- Inline `<style>` blocks in templates SHOULD be limited to small page-local adjustments; reusable styles MUST move into static stylesheet entries.
 
 ### 9) Full migration policy
 
@@ -80,17 +72,18 @@ It does not define business logic.
 - Macro names SHOULD follow `domain_action` pattern.
   - Example: `table_row_actions`, `form_field_text`
 
-### 4) Context readability
+### 4) Frontend behavior style
 
-- Prefer reading system data from:
-  - `Req.RouteName`, `Req.Path`, `Req.Query`, `Req.ReqID`
-  - `Auth.IsLogin`
-  - `Site.Settings`
+- Dash frontend behavior SHOULD use the repo-standard `jQuery slim` runtime consistently.
+- Do not mix multiple frontend libraries inside one page/module without explicit approval.
+- Prefer shared helpers in `web/static/dash/main.js` before adding new page-local helpers.
+- Inline bootstrapping code SHOULD stay short: collect DOM refs, read server config, call shared/page-local helpers.
 
 ## MUST NOT
 
 - MUST NOT introduce new hardcoded dash URL strings in templates.
 - MUST NOT mix template role responsibilities in one file.
+- MUST NOT implement large page controllers directly inside template files.
 - MUST NOT silently depend on hidden context injection.
 - MUST NOT add migration logic into unrelated initialization flow.
 
@@ -99,6 +92,5 @@ It does not define business logic.
 A template PR is mergeable only if:
 
 - extension rule passes (`.html` only)
-- reserved key rule passes
-- route generation rule passes (`url_for`)
+- route generation rule passes (`UrlFor`)
 - reusable fragment APIs keep explicit parameters

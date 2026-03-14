@@ -41,19 +41,23 @@
 {% endblock %}
 
 {% block content %}
-{% with
-  FormAction = UrlFor('dash.posts.update', id=Post.ID),
-  TitleValue = Post.Title,
-  TitlePlaceholder = "",
-  ContentValue = Post.Content,
-  StatusValue = Post.Status,
-  CommentEnabledValue = Printf("%d", Post.CommentEnabled),
-  KindValue = Printf("%d", Post.Kind),
-  TagsValue = SelectedTagNames|default(''),
-  TOCHTML = PostTOCHTML|default(''),
-  AutoSyncSlug = false,
-  SlugAPIURL = ""
-%}
-  {% include "dash/include/post_editor_content.html" %}
-{% endwith %}
+<div class="post-editor-layout">
+  <div class="post-editor-layout-main">
+    {% with
+      FormAction = UrlFor('dash.posts.update', id=Post.ID),
+      TitleValue = Post.Title,
+      TitlePlaceholder = "",
+      ContentValue = Post.Content,
+      StatusValue = Post.Status,
+      CommentEnabledValue = Printf("%d", Post.CommentEnabled),
+      KindValue = Printf("%d", Post.Kind),
+      TagsValue = SelectedTagNames|default(''),
+      TOCHTML = PostTOCHTML|default(''),
+      AutoSyncSlug = false,
+      SlugAPIURL = ""
+    %}
+      {% include "dash/include/post_editor_content.html" %}
+    {% endwith %}
+  </div>
+</div>
 {% endblock %}

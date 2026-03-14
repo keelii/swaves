@@ -1729,6 +1729,9 @@ a.ui-icon-btn[disabled] {
 .app-window .app-panel-detail {
   padding: var(--app-spacing);
 }
+.app-window .app-panel-detail:has(.post-editor-workspace) {
+  padding: 0;
+}
 
 .nav-menu {
   display: flex;
@@ -1970,6 +1973,24 @@ a.ui-icon-btn[disabled] {
   display: flex;
   flex-direction: column;
   font-size: 16px;
+}
+
+.post-editor-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: calc(100vh - var(--app-toolbar-height) - var(--app-status-height));
+}
+
+.post-editor-layout-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.post-editor-layout-main .post-editor-workspace,
+.post-editor-layout-main .post-editor-workspace .content-editor {
+  height: 100%;
 }
 
 .post-editor-workspace {

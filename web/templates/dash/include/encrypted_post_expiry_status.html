@@ -1,6 +1,15 @@
 {% set expiresAtUnix = ExpiresAtUnix|default(0) %}
 {% set hasExpiry = expiresAtUnix > 0 %}
+{% set PasswordPlaceholder = PasswordPlaceholder|default("访问密码（可选）") %}
+{% set PasswordHelp = PasswordHelp|default("仅用于访客访问，不影响后台登录") %}
 <style>
+  .encrypted-status-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-gap-3);
+    min-width: 0;
+  }
+
   .encrypted-expiry-status {
     display: inline-flex;
     align-items: center;
@@ -8,7 +17,7 @@
     min-width: 0;
   }
 
-  .encrypted-expiry-status-label {
+  .encrypted-status-label {
     color: var(--app-text-soft);
     white-space: nowrap;
   }
@@ -17,37 +26,87 @@
     min-width: 8.5em;
   }
 
+  .encrypted-password-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-gap-2);
+    min-width: 0;
+  }
+
+  .encrypted-password-input {
+    width: 12em;
+    min-width: 0;
+    padding: 4px 8px;
+    border: none;
+    font-size: 0.82rem;
+    line-height: 1.25;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .encrypted-password-input:focus,
+  .encrypted-password-input:focus-visible {
+    border-color: transparent;
+    box-shadow: none;
+    outline: 2px solid var(--app-focus-outline-color);
+    outline-offset: 1px;
+  }
+
   .encrypted-expiry-custom-input {
     width: 15.5em;
     max-width: 38vw;
   }
 
   @media (max-width: 900px) {
+    .encrypted-status-controls {
+      gap: var(--app-gap-2);
+    }
+
+    .encrypted-password-input {
+      width: 9.5em;
+    }
+
     .encrypted-expiry-custom-input {
       width: 12.5em;
       max-width: 46vw;
     }
   }
 </style>
-<div class="encrypted-expiry-status">
-  <span class="encrypted-expiry-status-label">过期时间</span>
-  <select class="ui-select mini noborder" id="encrypted-expiry-option" name="expires_at_option" form="form" aria-label="过期时间选项">
-    <option value="none"{% if not hasExpiry %} selected{% endif %}>永不过期</option>
-    <option value="1min">1 分钟</option>
-    <option value="5min">5 分钟</option>
-    <option value="1hour">1 小时</option>
-    <option value="1day">1 天</option>
-    <option value="custom"{% if hasExpiry %} selected{% endif %}>自定义</option>
-  </select>
-  <input
-    class="ui-input encrypted-expiry-custom-input"
-    type="datetime-local"
-    id="encrypted-expiry-custom"
-    name="expires_at_custom"
-    form="form"
-    data-initial-unix="{{ expiresAtUnix }}"
-    hidden
-  >
+<div class="encrypted-status-controls">
+  <div class="encrypted-expiry-status">
+    <span class="encrypted-status-label">过期时间</span>
+    <select class="ui-select mini noborder" id="encrypted-expiry-option" name="expires_at_option" form="form" aria-label="过期时间选项">
+      <option value="none"{% if not hasExpiry %} selected{% endif %}>永不过期</option>
+      <option value="1min">1 分钟</option>
+      <option value="5min">5 分钟</option>
+      <option value="1hour">1 小时</option>
+      <option value="1day">1 天</option>
+      <option value="custom"{% if hasExpiry %} selected{% endif %}>自定义</option>
+    </select>
+    <input
+      class="ui-input encrypted-expiry-custom-input"
+      type="datetime-local"
+      id="encrypted-expiry-custom"
+      name="expires_at_custom"
+      form="form"
+      data-initial-unix="{{ expiresAtUnix }}"
+      hidden
+    >
+  </div>
+  <div class="encrypted-password-status">
+    <label class="encrypted-status-label" for="encrypted-password">访问密码</label>
+    <input
+      class="ui-input encrypted-password-input"
+      id="encrypted-password"
+      type="password"
+      name="password"
+      form="form"
+      autocomplete="new-password"
+      placeholder="{{ PasswordPlaceholder }}"
+      aria-label="访问密码"
+      title="{{ PasswordHelp }}"
+    >
+  </div>
 </div>
 <script>
   (function() {

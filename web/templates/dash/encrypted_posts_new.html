@@ -10,7 +10,11 @@
 {% endblock %}
 
 {% block status_main_left %}
-  {% with ExpiresAtUnix = 0 %}
+  {% with
+    ExpiresAtUnix = 0,
+    PasswordPlaceholder = "访问密码（可选）",
+    PasswordHelp = "仅用于访客访问，不影响后台登录"
+  %}
     {% include "dash/include/encrypted_post_expiry_status.html" %}
   {% endwith %}
 {% endblock %}
@@ -26,27 +30,22 @@
 {% endblock %}
 
 {% block content %}
-{% with
-  PasswordPlaceholder = "可选密码（仅用于他人访问）",
-  PasswordHelp = "仅用于访客访问，不影响后台登录",
-  ShowSlug = false,
-  SlugValue = ""
-%}
-  {% include "dash/include/encrypted_post_editor_meta.html" %}
-{% endwith %}
-
-{% with
-  FormAction = UrlFor('dash.encrypted_posts.create'),
-  TitleValue = "",
-  TitlePlaceholder = "加密文章标题",
-  ContentValue = "",
-  StatusValue = "",
-  CommentEnabledValue = "1",
-  KindValue = "0",
-  TagsValue = "",
-  AutoSyncSlug = false,
-  SlugAPIURL = ""
-%}
-  {% include "dash/include/post_editor_content.html" %}
-{% endwith %}
+<div class="post-editor-layout">
+  <div class="post-editor-layout-main">
+    {% with
+      FormAction = UrlFor('dash.encrypted_posts.create'),
+      TitleValue = "",
+      TitlePlaceholder = "加密文章标题",
+      ContentValue = "",
+      StatusValue = "",
+      CommentEnabledValue = "1",
+      KindValue = "0",
+      TagsValue = "",
+      AutoSyncSlug = false,
+      SlugAPIURL = ""
+    %}
+      {% include "dash/include/post_editor_content.html" %}
+    {% endwith %}
+  </div>
+</div>
 {% endblock %}

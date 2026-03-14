@@ -283,6 +283,9 @@ func TestDashControllerP0_PostLifecycle(t *testing.T) {
 	if !strings.Contains(newPageBody, `name="action" value="publish"`) {
 		t.Fatalf("new post page should include publish action")
 	}
+	if !strings.Contains(newPageBody, `class="post-editor-layout"`) {
+		t.Fatalf("new post page should render shared editor layout shell")
+	}
 	resp = requestControllerP0(t, swv, fiber.MethodPost, createPath, baseForm, cookieKV, map[string]string{
 		"X-CSRF-Token": csrfToken,
 	})
@@ -327,6 +330,9 @@ func TestDashControllerP0_PostLifecycle(t *testing.T) {
 	)
 	if !strings.Contains(editPageBody, baseForm.Get("slug")) {
 		t.Fatalf("edit page should include post slug")
+	}
+	if !strings.Contains(editPageBody, `class="post-editor-layout"`) {
+		t.Fatalf("edit page should render shared editor layout shell")
 	}
 	updateForm := url.Values{}
 	updateForm.Set("title", "P0 Controller Post Updated")
@@ -414,6 +420,12 @@ func TestDashControllerP0_EncryptedPostEditorPages(t *testing.T) {
 	if !strings.Contains(newPageBody, `data-seditor-command="bold"`) {
 		t.Fatalf("encrypted new page should include seditor toolbar actions")
 	}
+	if !strings.Contains(newPageBody, `class="post-editor-layout"`) {
+		t.Fatalf("encrypted new page should render shared editor layout shell")
+	}
+	if strings.Contains(newPageBody, `class="post-editor-layout-meta"`) {
+		t.Fatalf("encrypted new page should keep editor body aligned with normal post layout")
+	}
 
 	expiresAt := time.Now().Add(2 * time.Hour).Unix()
 	encryptedPost := &db.EncryptedPost{
@@ -445,5 +457,11 @@ func TestDashControllerP0_EncryptedPostEditorPages(t *testing.T) {
 	}
 	if !strings.Contains(editPageBody, `value="custom" selected`) {
 		t.Fatalf("encrypted edit page should preselect custom expiry for existing expires_at")
+	}
+	if !strings.Contains(editPageBody, `class="post-editor-layout"`) {
+		t.Fatalf("encrypted edit page should render shared editor layout shell")
+	}
+	if strings.Contains(editPageBody, `class="post-editor-layout-meta"`) {
+		t.Fatalf("encrypted edit page should keep editor body aligned with normal post layout")
 	}
 }
