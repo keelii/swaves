@@ -33,5 +33,5 @@ func (h *Handler) PostDeleteHttpErrorLogHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.http_error_logs.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.http_error_logs.list", nil, nil)
 }

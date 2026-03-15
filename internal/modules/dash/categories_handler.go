@@ -286,7 +286,7 @@ func (h *Handler) PostDeleteCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.categories.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.categories.list", nil, nil)
 }
 
 func (h *Handler) PostUpdateCategoryParentHandler(c fiber.Ctx) error {

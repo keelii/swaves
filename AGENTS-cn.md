@@ -110,7 +110,7 @@
 - 数据库操作尽可能放在 models 层。
 - handlers 负责流程编排，不要内嵌复杂 SQL 逻辑。
 - 可复用 JS 工具统一沉淀到 `web/static/dash/main.js` 及站点对应入口。
-- 共享 JS 工具除 jQuery 外不应依赖其他库。
+- 共享 JS 工具优先使用原生 DOM API，不应依赖额外库。
 
 ### 11) 环境变量与配置卫生
 

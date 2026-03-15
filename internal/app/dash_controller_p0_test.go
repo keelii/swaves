@@ -401,6 +401,55 @@ func TestDashControllerP0_PostLifecycle(t *testing.T) {
 	}
 }
 
+func TestDashControllerP0_DeletePostKeepsCurrentListQuery(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+	nowUnix := time.Now().Unix()
+	postID, err := db.CreatePost(swv.Store.Model, &db.Post{
+		Title:     fmt.Sprintf("P0 Keep Query Page %d", nowUnix),
+		Slug:      fmt.Sprintf("p0-keep-query-page-%d", nowUnix),
+		Content:   "delete keep query",
+		Status:    "published",
+		Kind:      db.PostKindPage,
+		CreatedAt: nowUnix,
+		UpdatedAt: nowUnix,
+	})
+	if err != nil {
+		t.Fatalf("create page post failed: %v", err)
+	}
+
+	csrfToken, cookieKV, _ := fetchCSRFToken(t, swv, "/dash/posts?kind=1&page=2&q=keep-query", cookieKV)
+	deletePath := fmt.Sprintf("/dash/posts/%d/delete", postID)
+	resp := requestControllerP0(t, swv, fiber.MethodPost, deletePath, url.Values{}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+		"Referer":      "/dash/posts?kind=1&page=2&q=keep-query",
+	})
+	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
+		t.Fatalf("expected delete post redirect, got %d", resp.StatusCode)
+	}
+
+	location := strings.TrimSpace(resp.Header.Get("Location"))
+	redirectURL, err := url.Parse(location)
+	if err != nil {
+		t.Fatalf("parse redirect location failed: %v location=%q", err, location)
+	}
+	if redirectURL.Path != "/dash/posts" {
+		t.Fatalf("delete redirect should stay on posts list, got path=%q", redirectURL.Path)
+	}
+	query := redirectURL.Query()
+	if query.Get("kind") != "1" {
+		t.Fatalf("delete redirect should keep kind query, got kind=%q location=%q", query.Get("kind"), location)
+	}
+	if query.Get("page") != "2" {
+		t.Fatalf("delete redirect should keep page query, got page=%q location=%q", query.Get("page"), location)
+	}
+	if query.Get("q") != "keep-query" {
+		t.Fatalf("delete redirect should keep search query, got q=%q location=%q", query.Get("q"), location)
+	}
+}
+
 func TestDashControllerP0_EncryptedPostEditorPages(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()

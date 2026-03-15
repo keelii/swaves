@@ -109,7 +109,7 @@ func (h *Handler) PostDeleteTaskHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.tasks.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.tasks.list", nil, nil)
 }
 
 func (h *Handler) PostTriggerTaskHandler(c fiber.Ctx) error {

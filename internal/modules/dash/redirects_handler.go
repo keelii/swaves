@@ -197,5 +197,5 @@ func (h *Handler) PostDeleteRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.redirects.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.redirects.list", nil, nil)
 }

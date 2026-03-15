@@ -51,7 +51,7 @@ func (h *Handler) PostRestorePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeletePostHandler(c fiber.Ctx) error {
@@ -64,7 +64,7 @@ func (h *Handler) PostHardDeletePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreEncryptedPostHandler(c fiber.Ctx) error {
@@ -77,7 +77,7 @@ func (h *Handler) PostRestoreEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteEncryptedPostHandler(c fiber.Ctx) error {
@@ -90,7 +90,7 @@ func (h *Handler) PostHardDeleteEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreTagHandler(c fiber.Ctx) error {
@@ -103,7 +103,7 @@ func (h *Handler) PostRestoreTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteTagHandler(c fiber.Ctx) error {
@@ -116,7 +116,7 @@ func (h *Handler) PostHardDeleteTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreRedirectHandler(c fiber.Ctx) error {
@@ -129,7 +129,7 @@ func (h *Handler) PostRestoreRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteRedirectHandler(c fiber.Ctx) error {
@@ -142,7 +142,7 @@ func (h *Handler) PostHardDeleteRedirectHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostRestoreCategoryHandler(c fiber.Ctx) error {
@@ -155,7 +155,7 @@ func (h *Handler) PostRestoreCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }
 
 func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
@@ -168,5 +168,5 @@ func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.trash.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
 }

@@ -567,7 +567,7 @@ func (h *Handler) PostDeleteSettingHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.settings.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.settings.list", nil, nil)
 }
 
 func (h *Handler) GetSettingNewHandler(c fiber.Ctx) error {

@@ -149,5 +149,5 @@ func (h *Handler) PostDeleteEncryptedPostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.encrypted_posts.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.encrypted_posts.list", nil, nil)
 }

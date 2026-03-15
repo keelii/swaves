@@ -116,5 +116,5 @@ func (h *Handler) PostDeleteTagHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.tags.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.tags.list", nil, nil)
 }

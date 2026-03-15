@@ -409,5 +409,5 @@ func (h *Handler) PostDeletePostHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	return h.redirectToDashRoute(c, "dash.posts.list", nil, nil)
+	return h.redirectToDashRouteKeepQuery(c, "dash.posts.list", nil, nil)
 }
