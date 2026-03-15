@@ -138,6 +138,9 @@ func commentRateLimitMiddleware() fiber.Handler {
 		LimitReached: func(c fiber.Ctx) error {
 			visitorID := middleware.GetOrCreateVisitorID(c, "")
 			markCommentCaptchaRequired(visitorID)
+			if postID, err := strconv.ParseInt(strings.TrimSpace(c.Params("postID")), 10, 64); err == nil && postID > 0 {
+				saveCommentFormFlash(c, postID, commentFormDefaultsFromRequest(c))
+			}
 
 			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackCaptchaRequired)
 			if !strings.Contains(redirectPath, "#") {

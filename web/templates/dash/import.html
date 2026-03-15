@@ -367,7 +367,7 @@ markdown 文章内容...</pre>
 {% endcall %}
 
 <script>
-$(function() {
+document.addEventListener('DOMContentLoaded', function() {
   var parseItemURL = {{ UrlFor('dash.import.parse_item') | tojson }};
   var saveItemURL = {{ UrlFor('dash.import.save_item') | tojson }};
   var confirmAllURL = {{ UrlFor('dash.import.confirm_all') | tojson }};
@@ -376,20 +376,21 @@ $(function() {
     {{ category.Name | tojson }},{% endfor %}
   ];
 
-  var $form = $('#form');
-  var $fileInput = $('#import-files-input');
-  var $dropzone = $('#import-dropzone');
-  var $dropStatus = $('#import-drop-status');
-  var $editPanel = $('#import-edit-panel');
-  var $editSummary = $('#import-edit-summary');
-  var $editSummaryBody = $editSummary.find('.ui-alert-body');
-  var $editTableWrap = $('#import-edit-table-wrap');
-  var $editEmptyState = $('#import-edit-empty-state');
-  var $editRows = $('#import-edit-rows');
-  var $confirmBtn = $('#import-confirm-btn');
-  var $cancelBtn = $('#import-cancel-btn');
-  var $cancelConfirmBtn = $('#import-cancel-confirm-btn');
-  var $rowTemplate = $('#import-edit-row-template');
+  var form = document.getElementById('form');
+  var fileInput = document.getElementById('import-files-input');
+  var dropzone = document.getElementById('import-dropzone');
+  var dropStatus = document.getElementById('import-drop-status');
+  var editPanel = document.getElementById('import-edit-panel');
+  var editSummary = document.getElementById('import-edit-summary');
+  var editSummaryBody;
+  var editTableWrap = document.getElementById('import-edit-table-wrap');
+  var editEmptyState = document.getElementById('import-edit-empty-state');
+  var editRows = document.getElementById('import-edit-rows');
+  var confirmBtn = document.getElementById('import-confirm-btn');
+  var cancelBtn = document.getElementById('import-cancel-btn');
+  var cancelConfirmBtn = document.getElementById('import-cancel-confirm-btn');
+  var rowTemplate = document.getElementById('import-edit-row-template');
+  var toggleImportStatusBtn = document.getElementById('toggle-import-status-btn');
   var parseConcurrency = 50;
   var activeSaveRequests = 0;
   var importingTotalCount = Number({{ importingTotal|default(0) }}) || 0;
@@ -397,6 +398,55 @@ $(function() {
   var isParsing = false;
   var isConfirming = false;
   var isCancelling = false;
+
+  if (!form || !fileInput || !dropzone || !dropStatus || !editPanel || !editSummary || !editTableWrap ||
+      !editEmptyState || !editRows || !confirmBtn || !cancelBtn || !cancelConfirmBtn || !rowTemplate ||
+      !toggleImportStatusBtn) {
+    return;
+  }
+
+  editSummaryBody = editSummary.querySelector('.ui-alert-body');
+
+  function qs(selector, root) {
+    return (root || document).querySelector(selector);
+  }
+
+  function qsa(selector, root) {
+    return Array.from((root || document).querySelectorAll(selector));
+  }
+
+  function show(target, display) {
+    var element = typeof target === 'string' ? qs(target) : target;
+    if (element) {
+      element.style.display = display || 'block';
+    }
+  }
+
+  function hide(target) {
+    var element = typeof target === 'string' ? qs(target) : target;
+    if (element) {
+      element.style.display = 'none';
+    }
+  }
+
+  function setDisabled(elements, disabled) {
+    qsa('input, select, button, textarea', elements).forEach(function(element) {
+      element.disabled = disabled;
+    });
+  }
+
+  function readControlValue(selector, fallbackValue) {
+    var element = qs(selector, form);
+    return String((element && element.value) || fallbackValue || '');
+  }
+
+  function rowField(rowEl, fieldName) {
+    return qs('[data-field="' + fieldName + '"]', rowEl);
+  }
+
+  function rowFields(rowEl, fieldName) {
+    return qsa('[data-field="' + fieldName + '"]', rowEl);
+  }
 
   function buildImportPageURL(page) {
     var nextPage = Number(page || 1);
@@ -408,9 +458,6 @@ $(function() {
     return url.pathname + url.search;
   }
 
-  function show(sel, disp) { $(sel).css('display', disp || 'block'); }
-  function hide(sel) { $(sel).css('display', 'none'); }
-
   function normalizeConcurrency(value, fallback) {
     var num = Number(value);
     if (!Number.isFinite(num) || num < 1) {
@@ -421,16 +468,20 @@ $(function() {
 
   async function runWithConcurrency(items, concurrency, worker) {
     var list = Array.isArray(items) ? items : [];
+    var workers = [];
+    var nextIndex = 0;
+    var i;
+    var limit;
+
     if (list.length === 0) {
       return;
     }
 
-    var limit = normalizeConcurrency(concurrency, 1);
+    limit = normalizeConcurrency(concurrency, 1);
     if (limit > list.length) {
       limit = list.length;
     }
 
-    var nextIndex = 0;
     async function runWorker() {
       while (true) {
         var index = nextIndex;
@@ -442,26 +493,33 @@ $(function() {
       }
     }
 
-    var workers = [];
-    for (var i = 0; i < limit; i++) {
+    for (i = 0; i < limit; i++) {
       workers.push(runWorker());
     }
     await Promise.all(workers);
   }
 
+  function normalizeImportListValue(raw) {
+    var value = String(raw == null ? '' : raw).trim();
+    if (!value) {
+      return '';
+    }
+    value = value.replace(/^["']+|["']+$/g, '').trim();
+    return value;
+  }
+
   function splitCSV(raw) {
     var value = String(raw || '');
+    var seen = {};
+    var list = [];
+
     if (!value.trim()) {
       return [];
     }
-    var seen = {};
-    var list = [];
+
     value.split(',').forEach(function(part) {
       var item = normalizeImportListValue(part);
-      if (!item) {
-        return;
-      }
-      if (seen[item]) {
+      if (!item || seen[item]) {
         return;
       }
       seen[item] = true;
@@ -483,16 +541,13 @@ $(function() {
   }
 
   function selectedFilesFromInput() {
-    if (!$fileInput.length || !$fileInput[0] || !$fileInput[0].files) {
+    if (!fileInput.files) {
       return [];
     }
-    return Array.from($fileInput[0].files);
+    return Array.from(fileInput.files);
   }
 
   function setInputFiles(files) {
-    if (!$fileInput.length || !$fileInput[0]) {
-      return;
-    }
     if (typeof DataTransfer !== 'function') {
       return;
     }
@@ -502,7 +557,7 @@ $(function() {
       (files || []).forEach(function(file) {
         dt.items.add(file);
       });
-      $fileInput[0].files = dt.files;
+      fileInput.files = dt.files;
     } catch (err) {
       // ignore
     }
@@ -510,24 +565,28 @@ $(function() {
 
   function renderSelectedFiles() {
     if (selectedFiles.length === 0) {
-      $dropStatus.text('当前未选择文件');
+      dropStatus.textContent = '当前未选择文件';
       return;
     }
 
-    $dropStatus.text('已选择 ' + selectedFiles.length + ' 个文件');
+    dropStatus.textContent = '已选择 ' + selectedFiles.length + ' 个文件';
   }
 
   function setSelectedFiles(files) {
-    selectedFiles = Array.prototype.slice.call(files || []);
+    selectedFiles = Array.from(files || []);
     setInputFiles(selectedFiles);
     renderSelectedFiles();
   }
 
   function normalizeItem(raw) {
+    var postID;
+    var status;
+    var kind;
+
     raw = raw || {};
-    var postID = Number(raw.post_id || raw.PostID || 0);
-    var status = String(raw.status || raw.Status || 'draft').toLowerCase() === 'published' ? 'published' : 'draft';
-    var kind = String(raw.kind || raw.Kind || '0') === '1' ? '1' : '0';
+    postID = Number(raw.post_id || raw.PostID || 0);
+    status = String(raw.status || raw.Status || 'draft').toLowerCase() === 'published' ? 'published' : 'draft';
+    kind = String(raw.kind || raw.Kind || '0') === '1' ? '1' : '0';
 
     return {
       post_id: postID,
@@ -546,65 +605,79 @@ $(function() {
     };
   }
 
-  function normalizeImportListValue(raw) {
-    var value = String(raw == null ? '' : raw).trim();
-    if (!value) {
-      return '';
-    }
-    value = value.replace(/^["']+|["']+$/g, '').trim();
-    return value;
-  }
-
   function createImportRow(item) {
-    var tpl = $rowTemplate.get(0);
-    if (!tpl || !tpl.content) {
+    var tpl = rowTemplate;
+    var rowEl;
+    var contentNode;
+    var categorySelect;
+    var statusName;
+    var statusValue;
+    var kindName;
+    var kindValue;
+
+    if (!tpl.content) {
       return null;
     }
 
-    var rowEl = tpl.content.firstElementChild ? tpl.content.firstElementChild.cloneNode(true) : null;
+    rowEl = tpl.content.firstElementChild ? tpl.content.firstElementChild.cloneNode(true) : null;
     if (!rowEl) {
       return null;
     }
 
-    var $row = $(rowEl);
-    $row.attr('data-post-id', item.post_id);
-    $row.find('[data-field="post_id"]').val(item.post_id);
-    $row.find('[data-field="filename"]').val(item.filename);
-    $row.find('[data-field="created_at_unix"]').val(item.created_at_unix);
-    $row.find('[data-field="title"]').val(item.title);
-    $row.find('[data-field="slug"]').val(item.slug);
-    $row.find('[data-field="created_at"]').val(item.created_at);
-    $row.find('[data-field="tags"]').val(item.tags);
-    $row.find('[data-field="categories"]').val(item.categories);
-    $row.find('[data-field="content"]').val(item.content);
-    $row.find('.import-item-content').text(item.content_preview ? item.content_preview : '-');
+    rowEl.setAttribute('data-post-id', String(item.post_id));
+    rowField(rowEl, 'post_id').value = item.post_id;
+    rowField(rowEl, 'filename').value = item.filename;
+    rowField(rowEl, 'created_at_unix').value = item.created_at_unix;
+    rowField(rowEl, 'title').value = item.title;
+    rowField(rowEl, 'slug').value = item.slug;
+    rowField(rowEl, 'created_at').value = item.created_at;
+    rowField(rowEl, 'tags').value = item.tags;
+    rowField(rowEl, 'categories').value = item.categories;
+    rowField(rowEl, 'content').value = item.content;
 
-    var statusName = 'import_status_' + item.post_id;
-    var statusValue = item.status === 'published' ? 'published' : 'draft';
-    $row.find('[data-field="status"]').attr('name', statusName).prop('checked', false);
-    $row.find('[data-field="status"][value="' + statusValue + '"]').prop('checked', true);
+    contentNode = qs('.import-item-content', rowEl);
+    if (contentNode) {
+      contentNode.textContent = item.content_preview ? item.content_preview : '-';
+    }
 
-    var kindName = 'import_kind_' + item.post_id;
-    var kindValue = item.kind === '1' ? '1' : '0';
-    $row.find('[data-field="kind"]').attr('name', kindName).prop('checked', false);
-    $row.find('[data-field="kind"][value="' + kindValue + '"]').prop('checked', true);
+    statusName = 'import_status_' + item.post_id;
+    statusValue = item.status === 'published' ? 'published' : 'draft';
+    rowFields(rowEl, 'status').forEach(function(input) {
+      input.name = statusName;
+      input.checked = input.value === statusValue;
+    });
 
-    var $categorySelect = $row.find('select[data-field="category"]');
-    $categorySelect.attr('data-selected', item.category);
-    $categorySelect.attr('data-categories', item.categories);
+    kindName = 'import_kind_' + item.post_id;
+    kindValue = item.kind === '1' ? '1' : '0';
+    rowFields(rowEl, 'kind').forEach(function(input) {
+      input.name = kindName;
+      input.checked = input.value === kindValue;
+    });
 
-    setRowStatus($row, 'pending', '待确认');
-    return $row;
+    categorySelect = qs('select[data-field="category"]', rowEl);
+    if (categorySelect) {
+      categorySelect.setAttribute('data-selected', item.category);
+      categorySelect.setAttribute('data-categories', item.categories);
+    }
+
+    setRowStatus(rowEl, 'pending', '待确认');
+    return rowEl;
   }
 
-  function initCategorySelect($row) {
-    var $select = $row.find('select[data-field="category"]');
-    if (!$select.length) {
+  function initCategorySelect(rowEl) {
+    var select = qs('select[data-field="category"]', rowEl);
+    var categoriesInput;
+    var selected;
+    var options;
+    var categoryList;
+
+    if (!select) {
       return;
     }
 
-    var selected = normalizeImportListValue($select.attr('data-selected'));
-    var options = splitCSV($select.attr('data-categories'));
+    categoriesInput = rowField(rowEl, 'categories');
+    selected = normalizeImportListValue(select.getAttribute('data-selected'));
+    options = splitCSV(select.getAttribute('data-categories'));
 
     if (selected) {
       options = appendUnique(options, selected);
@@ -622,29 +695,35 @@ $(function() {
       selected = options[0];
     }
 
-    $select.empty();
+    select.innerHTML = '';
     options.forEach(function(name) {
-      var label = name || '未设置';
-      $('<option></option>').val(name).text(label).appendTo($select);
+      var option = document.createElement('option');
+      option.value = name;
+      option.textContent = name || '未设置';
+      select.appendChild(option);
     });
 
-    $select.val(selected);
-    if (String($select.val() || '') !== selected) {
-      $select.prop('selectedIndex', 0);
-      selected = String($select.val() || '');
+    select.value = selected;
+    if (String(select.value || '') !== selected) {
+      select.selectedIndex = 0;
+      selected = String(select.value || '');
     }
 
-    var categoryList = splitCSV($row.find('[data-field="categories"]').val());
+    categoryList = splitCSV(categoriesInput ? categoriesInput.value : '');
     categoryList = appendUnique(categoryList, selected);
-    $row.find('[data-field="categories"]').val(categoryList.join(', '));
+    if (categoriesInput) {
+      categoriesInput.value = categoryList.join(', ');
+    }
 
-    $select.off('change.import').on('change.import', function() {
-      var val = String($(this).val() || '').trim();
-      var list = splitCSV($row.find('[data-field="categories"]').val());
-      list = appendUnique(list, val);
-      $row.find('[data-field="categories"]').val(list.join(', '));
-      $(this).attr('data-selected', val);
-    });
+    select.onchange = function() {
+      var value = String(select.value || '').trim();
+      var list = splitCSV(categoriesInput ? categoriesInput.value : '');
+      list = appendUnique(list, value);
+      if (categoriesInput) {
+        categoriesInput.value = list.join(', ');
+      }
+      select.setAttribute('data-selected', value);
+    };
   }
 
   function normalizeSummaryKind(variant) {
@@ -665,86 +744,104 @@ $(function() {
     var kind = normalizeSummaryKind(variant);
     var message = String(text || '');
 
-    if ($editSummaryBody.length) {
-      $editSummaryBody.text(message);
+    if (editSummaryBody) {
+      editSummaryBody.textContent = message;
     } else {
-      $editSummary.text(message);
+      editSummary.textContent = message;
     }
 
-    $editSummary.removeClass('info success warning danger').addClass(kind);
+    editSummary.classList.remove('info', 'success', 'warning', 'danger');
+    editSummary.classList.add(kind);
   }
 
   function formatFailedDetails(items, maxItems) {
     var list = Array.isArray(items) ? items : [];
+    var limit = Number(maxItems || 3);
+    var text;
+
     if (list.length === 0) {
       return '';
     }
 
-    var limit = Number(maxItems || 3);
     if (!Number.isFinite(limit) || limit < 1) {
       limit = 3;
     }
 
-    var text = list.slice(0, limit).join('；');
+    text = list.slice(0, limit).join('；');
     if (list.length > limit) {
       text += '；...';
     }
     return text;
   }
 
-  function setRowStatus($row, state, text) {
-    var $cell = $row.find('[data-import-edit-status]');
-    $cell.attr('data-state', state);
-    $cell.text(text);
+  function setRowStatus(rowEl, state, text) {
+    var cell = qs('[data-import-edit-status]', rowEl);
+    if (!cell) {
+      return;
+    }
+    cell.setAttribute('data-state', state);
+    cell.textContent = text;
   }
 
-  function applySavedItemToRow($row, rawItem) {
+  function applySavedItemToRow(rowEl, rawItem) {
     var item = normalizeItem(rawItem);
+    var statusName;
+    var statusValue;
+    var kindName;
+    var kindValue;
+    var categorySelect;
+
     if (!item.post_id) {
       return;
     }
 
-    $row.attr('data-post-id', item.post_id);
-    $row.find('[data-field="post_id"]').val(item.post_id);
-    $row.find('[data-field="filename"]').val(item.filename);
-    $row.find('[data-field="created_at_unix"]').val(item.created_at_unix);
-    $row.find('[data-field="title"]').val(item.title);
-    $row.find('[data-field="slug"]').val(item.slug);
-    $row.find('[data-field="created_at"]').val(item.created_at);
-    $row.find('[data-field="tags"]').val(item.tags);
-    $row.find('[data-field="categories"]').val(item.categories);
-    $row.find('[data-field="content"]').val(item.content);
+    rowEl.setAttribute('data-post-id', String(item.post_id));
+    rowField(rowEl, 'post_id').value = item.post_id;
+    rowField(rowEl, 'filename').value = item.filename;
+    rowField(rowEl, 'created_at_unix').value = item.created_at_unix;
+    rowField(rowEl, 'title').value = item.title;
+    rowField(rowEl, 'slug').value = item.slug;
+    rowField(rowEl, 'created_at').value = item.created_at;
+    rowField(rowEl, 'tags').value = item.tags;
+    rowField(rowEl, 'categories').value = item.categories;
+    rowField(rowEl, 'content').value = item.content;
 
-    var statusName = 'import_status_' + item.post_id;
-    var statusValue = item.status === 'published' ? 'published' : 'draft';
-    $row.find('[data-field="status"]').attr('name', statusName).prop('checked', false);
-    $row.find('[data-field="status"][value="' + statusValue + '"]').prop('checked', true);
+    statusName = 'import_status_' + item.post_id;
+    statusValue = item.status === 'published' ? 'published' : 'draft';
+    rowFields(rowEl, 'status').forEach(function(input) {
+      input.name = statusName;
+      input.checked = input.value === statusValue;
+    });
 
-    var kindName = 'import_kind_' + item.post_id;
-    var kindValue = item.kind === '1' ? '1' : '0';
-    $row.find('[data-field="kind"]').attr('name', kindName).prop('checked', false);
-    $row.find('[data-field="kind"][value="' + kindValue + '"]').prop('checked', true);
+    kindName = 'import_kind_' + item.post_id;
+    kindValue = item.kind === '1' ? '1' : '0';
+    rowFields(rowEl, 'kind').forEach(function(input) {
+      input.name = kindName;
+      input.checked = input.value === kindValue;
+    });
 
-    var $categorySelect = $row.find('select[data-field="category"]');
-    $categorySelect.attr('data-selected', item.category);
-    $categorySelect.attr('data-categories', item.categories);
-    initCategorySelect($row);
+    categorySelect = qs('select[data-field="category"]', rowEl);
+    if (categorySelect) {
+      categorySelect.setAttribute('data-selected', item.category);
+      categorySelect.setAttribute('data-categories', item.categories);
+    }
+    initCategorySelect(rowEl);
   }
 
   function ensureEditPanelVisible() {
-    if ($editPanel.prop('hidden')) {
-      $editPanel.prop('hidden', false);
+    if (editPanel.hidden) {
+      editPanel.hidden = false;
     }
   }
 
   function syncEditEmptyState() {
-    var hasRows = $editRows.find('tr[data-import-item-row]').length > 0;
-    $editTableWrap.prop('hidden', !hasRows);
-    $editEmptyState.prop('hidden', hasRows);
+    var hasRows = qsa('tr[data-import-item-row]', editRows).length > 0;
+    editTableWrap.hidden = !hasRows;
+    editEmptyState.hidden = hasRows;
   }
 
   function syncEditSummaryByRows(defaultVariant) {
-    var pageCount = $editRows.find('tr[data-import-item-row]').length;
+    var pageCount = qsa('tr[data-import-item-row]', editRows).length;
     if (importingTotalCount <= 0) {
       setEditSummary('暂无待确认导入记录', 'success');
       syncEditEmptyState();
@@ -761,53 +858,59 @@ $(function() {
 
   function clearImportingRows() {
     importingTotalCount = 0;
-    $editRows.find('tr[data-import-item-row]').remove();
+    qsa('tr[data-import-item-row]', editRows).forEach(function(row) {
+      row.remove();
+    });
     syncEditEmptyState();
-    if (!$editPanel.prop('hidden')) {
-      $editPanel.prop('hidden', true);
+    if (!editPanel.hidden) {
+      editPanel.hidden = true;
     }
   }
 
   function appendImportEditRow(rawItem) {
     var item = normalizeItem(rawItem);
+    var newRow;
+    var existing;
+
     if (!item.post_id) {
       return;
     }
 
     ensureEditPanelVisible();
 
-    var $newRow = createImportRow(item);
-    if (!$newRow || !$newRow.length) {
+    newRow = createImportRow(item);
+    if (!newRow) {
       setEditSummary('导入预览行渲染失败，请刷新后重试', 'error');
       return;
     }
-    var $existing = $editRows.find('tr[data-import-item-row][data-post-id="' + item.post_id + '"]');
-    if ($existing.length > 0) {
-      $existing.replaceWith($newRow);
+
+    existing = qs('tr[data-import-item-row][data-post-id="' + item.post_id + '"]', editRows);
+    if (existing) {
+      existing.replaceWith(newRow);
     } else {
-      $editRows.append($newRow);
+      editRows.appendChild(newRow);
       importingTotalCount += 1;
     }
 
-    initCategorySelect($newRow);
+    initCategorySelect(newRow);
     syncEditSummaryByRows('warning');
   }
 
   function collectOptions() {
     return {
-      title_source: $('select[name="title_source"]').val() || 'frontmatter',
-      title_field: $('input[name="title_field"]').val() || 'title',
-      title_level: $('select[name="title_level"]').val() || '1',
-      slug_source: $('select[name="slug_source"]').val() || 'filename',
-      slug_field: $('input[name="slug_field"]').val() || 'slug',
-      created_source: $('select[name="created_source"]').val() || 'frontmatter',
-      created_field: $('input[name="created_field"]').val() || 'date',
-      status_source: $('select[name="status_source"]').val() || 'frontmatter',
-      status_field: $('input[name="status_field"]').val() || 'draft',
-      category_source: $('select[name="category_source"]').val() || 'none',
-      category_field: $('input[name="category_field"]').val() || 'categories',
-      tag_source: $('select[name="tag_source"]').val() || 'none',
-      tag_field: $('input[name="tag_field"]').val() || 'tags'
+      title_source: readControlValue('select[name="title_source"]', 'frontmatter'),
+      title_field: readControlValue('input[name="title_field"]', 'title'),
+      title_level: readControlValue('select[name="title_level"]', '1'),
+      slug_source: readControlValue('select[name="slug_source"]', 'filename'),
+      slug_field: readControlValue('input[name="slug_field"]', 'slug'),
+      created_source: readControlValue('select[name="created_source"]', 'frontmatter'),
+      created_field: readControlValue('input[name="created_field"]', 'date'),
+      status_source: readControlValue('select[name="status_source"]', 'frontmatter'),
+      status_field: readControlValue('input[name="status_field"]', 'draft'),
+      category_source: readControlValue('select[name="category_source"]', 'none'),
+      category_field: readControlValue('input[name="category_field"]', 'categories'),
+      tag_source: readControlValue('select[name="tag_source"]', 'none'),
+      tag_field: readControlValue('input[name="tag_field"]', 'tags')
     };
   }
 
@@ -820,177 +923,245 @@ $(function() {
     return formData;
   }
 
-  function readField($row, fieldName) {
-    return String($row.find('[data-field="' + fieldName + '"]').val() || '').trim();
+  function readField(rowEl, fieldName) {
+    var field = rowField(rowEl, fieldName);
+    return String((field && field.value) || '').trim();
   }
 
-  function readFieldRaw($row, fieldName) {
-    return String($row.find('[data-field="' + fieldName + '"]').val() || '');
+  function readFieldRaw(rowEl, fieldName) {
+    var field = rowField(rowEl, fieldName);
+    return String((field && field.value) || '');
   }
 
-  function readCheckedValue($row, fieldName, fallbackValue) {
-    var value = $row.find('[data-field="' + fieldName + '"]:checked').val();
-    if (value == null || value === '') {
+  function readCheckedValue(rowEl, fieldName, fallbackValue) {
+    var value = qs('[data-field="' + fieldName + '"]:checked', rowEl);
+    if (!value || value.value == null || value.value === '') {
       return fallbackValue || '';
     }
-    return String(value);
+    return String(value.value);
   }
 
-  function buildConfirmPayload($row) {
+  function buildConfirmPayload(rowEl) {
     var params = new URLSearchParams();
+    var category = readField(rowEl, 'category');
+    var categories = readField(rowEl, 'categories');
 
-    var category = readField($row, 'category');
-    var categories = readField($row, 'categories');
     if (!categories && category) {
       categories = category;
     }
 
-    params.set('post_id', readField($row, 'post_id'));
-    params.set('filename', readField($row, 'filename'));
-    params.set('title', readField($row, 'title'));
-    params.set('slug', readField($row, 'slug'));
-    params.set('content', readFieldRaw($row, 'content'));
-    params.set('status', readCheckedValue($row, 'status', 'draft'));
-    params.set('kind', readCheckedValue($row, 'kind', '0'));
-    params.set('created_at', readField($row, 'created_at'));
-    params.set('created_at_unix', readField($row, 'created_at_unix'));
-    params.set('tags', readField($row, 'tags'));
+    params.set('post_id', readField(rowEl, 'post_id'));
+    params.set('filename', readField(rowEl, 'filename'));
+    params.set('title', readField(rowEl, 'title'));
+    params.set('slug', readField(rowEl, 'slug'));
+    params.set('content', readFieldRaw(rowEl, 'content'));
+    params.set('status', readCheckedValue(rowEl, 'status', 'draft'));
+    params.set('kind', readCheckedValue(rowEl, 'kind', '0'));
+    params.set('created_at', readField(rowEl, 'created_at'));
+    params.set('created_at_unix', readField(rowEl, 'created_at_unix'));
+    params.set('tags', readField(rowEl, 'tags'));
     params.set('category', category);
     params.set('categories', categories);
 
     return params;
   }
 
-  function markRowAsDirty($row) {
-    if (!$row || !$row.length) {
+  function markRowAsDirty(rowEl) {
+    var statusCell;
+
+    if (!rowEl) {
       return;
     }
-    if (String($row.find('[data-import-edit-status]').attr('data-state') || '') === 'running') {
+
+    statusCell = qs('[data-import-edit-status]', rowEl);
+    if (statusCell && String(statusCell.getAttribute('data-state') || '') === 'running') {
       return;
     }
-    setRowStatus($row, 'pending', '已修改，待保存');
+    setRowStatus(rowEl, 'pending', '已修改，待保存');
   }
 
-  $('select[name="title_source"]').on('change', function() {
-    var v = $(this).val();
-    if (v === 'frontmatter') { show('#title_field_container'); hide('#title_level_container'); }
-    else if (v === 'markdown') { hide('#title_field_container'); show('#title_level_container'); }
-    else { hide('#title_field_container'); hide('#title_level_container'); }
-  }).trigger('change');
-  $('select[name="slug_source"]').on('change', function() {
-    $(this).val() === 'frontmatter' ? show('#slug_field_container') : hide('#slug_field_container');
-  }).trigger('change');
-  $('select[name="created_source"]').on('change', function() {
-    $(this).val() === 'frontmatter' ? show('#created_field_container') : hide('#created_field_container');
-  }).trigger('change');
-  $('select[name="status_source"]').on('change', function() {
-    $(this).val() === 'frontmatter' ? show('#status_field_container') : hide('#status_field_container');
-  }).trigger('change');
-  $('select[name="category_source"]').on('change', function() {
-    $(this).val() === 'frontmatter' ? show('#category_field_container') : hide('#category_field_container');
-  }).trigger('change');
-  $('select[name="tag_source"]').on('change', function() {
-    $(this).val() === 'frontmatter' ? show('#tag_field_container') : hide('#tag_field_container');
-  }).trigger('change');
+  function bindSourceToggle(selector, handler) {
+    var element = qs(selector, form);
+    if (!element) {
+      return;
+    }
 
-  $dropzone.on('click', function() {
+    function sync() {
+      handler(element.value);
+    }
+
+    element.addEventListener('change', sync);
+    sync();
+  }
+
+  bindSourceToggle('select[name="title_source"]', function(value) {
+    if (value === 'frontmatter') {
+      show('#title_field_container');
+      hide('#title_level_container');
+      return;
+    }
+    if (value === 'markdown') {
+      hide('#title_field_container');
+      show('#title_level_container');
+      return;
+    }
+    hide('#title_field_container');
+    hide('#title_level_container');
+  });
+
+  bindSourceToggle('select[name="slug_source"]', function(value) {
+    if (value === 'frontmatter') {
+      show('#slug_field_container');
+      return;
+    }
+    hide('#slug_field_container');
+  });
+
+  bindSourceToggle('select[name="created_source"]', function(value) {
+    if (value === 'frontmatter') {
+      show('#created_field_container');
+      return;
+    }
+    hide('#created_field_container');
+  });
+
+  bindSourceToggle('select[name="status_source"]', function(value) {
+    if (value === 'frontmatter') {
+      show('#status_field_container');
+      return;
+    }
+    hide('#status_field_container');
+  });
+
+  bindSourceToggle('select[name="category_source"]', function(value) {
+    if (value === 'frontmatter') {
+      show('#category_field_container');
+      return;
+    }
+    hide('#category_field_container');
+  });
+
+  bindSourceToggle('select[name="tag_source"]', function(value) {
+    if (value === 'frontmatter') {
+      show('#tag_field_container');
+      return;
+    }
+    hide('#tag_field_container');
+  });
+
+  function openFilePicker() {
     if (isParsing || isConfirming || isCancelling) {
       return;
     }
-    if ($fileInput.length && $fileInput[0]) {
-      $fileInput[0].click();
-    }
+    fileInput.click();
+  }
+
+  dropzone.addEventListener('click', function() {
+    openFilePicker();
   });
 
-  $dropzone.on('keydown', function(e) {
-    if (e.key !== 'Enter' && e.key !== ' ') {
+  dropzone.addEventListener('keydown', function(event) {
+    if (event.key !== 'Enter' && event.key !== ' ') {
       return;
     }
-    e.preventDefault();
+    event.preventDefault();
+    openFilePicker();
+  });
+
+  fileInput.addEventListener('change', function() {
+    setSelectedFiles(fileInput.files);
+  });
+
+  ['dragenter', 'dragover'].forEach(function(eventName) {
+    dropzone.addEventListener(eventName, function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isParsing || isConfirming || isCancelling) {
+        return;
+      }
+      dropzone.classList.add('dragover');
+    });
+  });
+
+  ['dragleave', 'dragend', 'drop'].forEach(function(eventName) {
+    dropzone.addEventListener(eventName, function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      dropzone.classList.remove('dragover');
+    });
+  });
+
+  dropzone.addEventListener('drop', function(event) {
+    var dt;
+
     if (isParsing || isConfirming || isCancelling) {
       return;
     }
-    if ($fileInput.length && $fileInput[0]) {
-      $fileInput[0].click();
-    }
-  });
 
-  $fileInput.on('change', function() {
-    setSelectedFiles(this.files);
-  });
-
-  $dropzone.on('dragenter dragover', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isParsing || isConfirming || isCancelling) {
-      return;
-    }
-    $dropzone.addClass('dragover');
-  });
-
-  $dropzone.on('dragleave dragend drop', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    $dropzone.removeClass('dragover');
-  });
-
-  $dropzone.on('drop', function(e) {
-    if (isParsing || isConfirming || isCancelling) {
-      return;
-    }
-    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    dt = event.dataTransfer;
     if (!dt || !dt.files || dt.files.length === 0) {
       return;
     }
     setSelectedFiles(dt.files);
   });
 
-  $('#toggle-import-status-btn').on('click', function() {
-    var $rows = $editRows.find('tr[data-import-item-row]');
-    if ($rows.length === 0) {
+  toggleImportStatusBtn.addEventListener('click', function() {
+    var rows = qsa('tr[data-import-item-row]', editRows);
+    var allDraft = true;
+
+    if (rows.length === 0) {
       return;
     }
 
-    var allDraft = true;
-    $rows.each(function() {
-      var current = readCheckedValue($(this), 'status', 'draft');
+    rows.forEach(function(rowEl) {
+      var current = readCheckedValue(rowEl, 'status', 'draft');
       if (current !== 'draft') {
         allDraft = false;
       }
     });
 
-    var targetStatus = allDraft ? 'published' : 'draft';
-    $rows.each(function() {
-      $(this).find('[data-field="status"][value="' + targetStatus + '"]').prop('checked', true);
+    rows.forEach(function(rowEl) {
+      var targetStatus = allDraft ? 'published' : 'draft';
+      var target = qs('[data-field="status"][value="' + targetStatus + '"]', rowEl);
+      if (target) {
+        target.checked = true;
+      }
     });
   });
 
-  $editRows.on(
-    'input.import change.import',
-    '[data-field="title"], [data-field="slug"], [data-field="created_at"], [data-field="tags"], [data-field="categories"], [data-field="content"], [data-field="category"], [data-field="status"], [data-field="kind"]',
-    function() {
-      var $row = $(this).closest('tr[data-import-item-row]');
-      markRowAsDirty($row);
+  function handleRowFieldMutation(event) {
+    if (!event.target.matches('[data-field="title"], [data-field="slug"], [data-field="created_at"], [data-field="tags"], [data-field="categories"], [data-field="content"], [data-field="category"], [data-field="status"], [data-field="kind"]')) {
+      return;
     }
-  );
+    markRowAsDirty(event.target.closest('tr[data-import-item-row]'));
+  }
 
-  $editRows.on('click', '[data-import-row-save-btn]', async function() {
+  editRows.addEventListener('input', handleRowFieldMutation);
+  editRows.addEventListener('change', handleRowFieldMutation);
+
+  editRows.addEventListener('click', async function(event) {
+    var button = event.target.closest('[data-import-row-save-btn]');
+    var rowEl;
+    var payload;
+    var result;
+
+    if (!button) {
+      return;
+    }
     if (isParsing || isConfirming || isCancelling) {
       return;
     }
 
-    var $btn = $(this);
-    var $row = $btn.closest('tr[data-import-item-row]');
-    if (!$row.length || $btn.prop('disabled')) {
+    rowEl = button.closest('tr[data-import-item-row]');
+    if (!rowEl || button.disabled) {
       return;
     }
 
     activeSaveRequests += 1;
-    setRowStatus($row, 'running', '保存中...');
+    setRowStatus(rowEl, 'running', '保存中...');
 
-    var payload = buildConfirmPayload($row);
-    var $rowControls = $row.find('input, select, button, textarea');
-    $rowControls.prop('disabled', true);
+    payload = buildConfirmPayload(rowEl);
+    setDisabled(rowEl, true);
 
     try {
       var ret = await sfetchJSON(saveItemURL, {
@@ -1000,26 +1171,27 @@ $(function() {
         },
         body: payload.toString()
       });
-      var result = ret.body;
+
+      result = ret.body;
       if (!ret.ok || !result || !result.ok) {
         var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
-        setRowStatus($row, 'error', '保存失败: ' + errorMessage);
+        setRowStatus(rowEl, 'error', '保存失败: ' + errorMessage);
         notify('保存失败：' + errorMessage, '', { variant: 'danger' });
         return;
       }
 
       if (result.item) {
-        applySavedItemToRow($row, result.item);
+        applySavedItemToRow(rowEl, result.item);
       }
-      setRowStatus($row, 'saved', '已保存（待确认）');
+      setRowStatus(rowEl, 'saved', '已保存（待确认）');
       setEditSummary('单行保存成功，可继续编辑或直接确认导入全部记录。', 'warning');
     } catch (err) {
       var requestErrMsg = (err && err.message) ? err.message : '请求失败';
-      setRowStatus($row, 'error', '保存失败: ' + requestErrMsg);
+      setRowStatus(rowEl, 'error', '保存失败: ' + requestErrMsg);
       notify('保存失败：' + requestErrMsg, '', { variant: 'danger' });
     } finally {
       activeSaveRequests = Math.max(0, activeSaveRequests - 1);
-      $rowControls.prop('disabled', false);
+      setDisabled(rowEl, false);
     }
   });
 
@@ -1029,10 +1201,9 @@ $(function() {
     }
 
     isCancelling = true;
-    $dropzone.addClass('is-disabled');
-    var $inputs = $editPanel.find('input, select, button, textarea');
-    $inputs.prop('disabled', true);
-    $cancelConfirmBtn.prop('disabled', true);
+    dropzone.classList.add('is-disabled');
+    setDisabled(editPanel, true);
+    cancelConfirmBtn.disabled = true;
 
     try {
       var cancelPayload = new URLSearchParams();
@@ -1068,21 +1239,23 @@ $(function() {
       notify('取消导入失败：' + requestErrMsg, '', { variant: 'danger' });
     } finally {
       isCancelling = false;
-      $inputs.prop('disabled', false);
-      $cancelConfirmBtn.prop('disabled', false);
+      setDisabled(editPanel, false);
+      cancelConfirmBtn.disabled = false;
       if (!isParsing && !isConfirming) {
-        $dropzone.removeClass('is-disabled');
+        dropzone.classList.remove('is-disabled');
       }
     }
   }
 
-  $cancelBtn.on('click', async function() {
+  cancelBtn.addEventListener('click', async function() {
+    var confirmed = false;
+    var confirmAPI;
+
     if (isParsing || isConfirming || isCancelling) {
       return;
     }
 
-    var confirmed = false;
-    var confirmAPI = window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
+    confirmAPI = window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
     if (confirmAPI && typeof confirmAPI.ask === 'function') {
       confirmed = await confirmAPI.ask({
         dialogId: 'import-cancel-dialog',
@@ -1094,13 +1267,20 @@ $(function() {
     } else {
       confirmed = window.confirm('将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？');
     }
+
     if (!confirmed) {
       return;
     }
     void executeCancelImporting();
   });
 
-  $confirmBtn.on('click', async function() {
+  confirmBtn.addEventListener('click', async function() {
+    var total;
+    var successCount;
+    var failCount;
+    var failDetail;
+    var failMessage;
+
     if (isConfirming || isCancelling) {
       return;
     }
@@ -1116,9 +1296,8 @@ $(function() {
     }
 
     isConfirming = true;
-    $dropzone.addClass('is-disabled');
-    var $inputs = $editPanel.find('input, select, button, textarea');
-    $inputs.prop('disabled', true);
+    dropzone.classList.add('is-disabled');
+    setDisabled(editPanel, true);
 
     try {
       setEditSummary('正在确认导入全部待确认记录...', 'warning');
@@ -1130,6 +1309,7 @@ $(function() {
         body: ''
       });
       var result = ret.body;
+
       if (!ret.ok || !result || !result.ok) {
         var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
         setEditSummary('确认导入失败：' + errorMessage, 'error');
@@ -1137,15 +1317,17 @@ $(function() {
         return;
       }
 
-      var total = Number(result.total || 0);
+      total = Number(result.total || 0);
       if (!Number.isFinite(total) || total < 0) {
         total = 0;
       }
-      var successCount = Number(result.success || 0);
+
+      successCount = Number(result.success || 0);
       if (!Number.isFinite(successCount) || successCount < 0) {
         successCount = 0;
       }
-      var failCount = Number(result.fail || 0);
+
+      failCount = Number(result.fail || 0);
       if (!Number.isFinite(failCount) || failCount < 0) {
         failCount = 0;
       }
@@ -1163,8 +1345,8 @@ $(function() {
         return;
       }
 
-      var failDetail = formatFailedDetails(result.errors || [], 2);
-      var failMessage = '确认完成：成功 ' + successCount + ' 条，失败 ' + failCount + ' 条。';
+      failDetail = formatFailedDetails(result.errors || [], 2);
+      failMessage = '确认完成：成功 ' + successCount + ' 条，失败 ' + failCount + ' 条。';
       if (failDetail) {
         failMessage += ' 失败详情：' + failDetail;
       }
@@ -1177,21 +1359,30 @@ $(function() {
       setEditSummary('确认导入失败：' + requestErrMsg, 'error');
       notify('确认导入失败：' + requestErrMsg, '', { variant: 'danger' });
     } finally {
-      $inputs.prop('disabled', false);
+      setDisabled(editPanel, false);
       isConfirming = false;
       if (!isParsing && !isCancelling) {
-        $dropzone.removeClass('is-disabled');
+        dropzone.classList.remove('is-disabled');
       }
     }
   });
 
-  $form.on('submit', async function(e) {
-    e.preventDefault();
+  form.addEventListener('submit', async function(event) {
+    var files;
+    var options;
+    var successCount = 0;
+    var failCount = 0;
+    var completedCount = 0;
+    var failedNames = [];
+    var detail;
+    var message;
+
+    event.preventDefault();
     if (isParsing || isCancelling || isConfirming) {
       return;
     }
 
-    var files = selectedFiles.slice();
+    files = selectedFiles.slice();
     if (files.length === 0) {
       files = selectedFilesFromInput();
     }
@@ -1201,80 +1392,77 @@ $(function() {
       return;
     }
 
-    var options = collectOptions();
-
+    options = collectOptions();
     isParsing = true;
-    $dropzone.addClass('is-disabled');
+    dropzone.classList.add('is-disabled');
     ensureEditPanelVisible();
     setEditSummary('开始逐个导入文件（临时状态：导入中）...', 'warning');
-
-    var successCount = 0;
-    var failCount = 0;
-    var completedCount = 0;
-    var failedNames = [];
-    var $inputs = $form.find('input, select, button, textarea');
-    $inputs.prop('disabled', true);
+    setDisabled(form, true);
 
     await runWithConcurrency(files, parseConcurrency, async function(file) {
       var formData = buildParseFormData(file, options);
+      var ret;
+      var result;
+      var errMsg;
 
       try {
-        var ret = await sfetchJSON(parseItemURL, {
+        ret = await sfetchJSON(parseItemURL, {
           method: 'POST',
           body: formData
         });
-        var result = ret.body;
+        result = ret.body;
 
         if (ret.ok && result && result.ok) {
-          successCount++;
+          successCount += 1;
         } else {
-          failCount++;
-          var errMsg = (result && result.error) ? result.error : ('HTTP ' + ret.status);
+          failCount += 1;
+          errMsg = (result && result.error) ? result.error : ('HTTP ' + ret.status);
           failedNames.push((file.name || '未命名文件') + '：' + errMsg);
         }
       } catch (err) {
-        failCount++;
+        failCount += 1;
         failedNames.push((file.name || '未命名文件') + '：' + (err && err.message ? err.message : '请求失败'));
       }
 
-      completedCount++;
+      completedCount += 1;
       setEditSummary(
         '导入进度 ' + completedCount + '/' + files.length + '，成功 ' + successCount + '，失败 ' + failCount,
         failCount > 0 ? 'error' : 'warning'
       );
     });
 
-    $inputs.prop('disabled', false);
+    setDisabled(form, false);
     isParsing = false;
     if (!isConfirming && !isCancelling) {
-      $dropzone.removeClass('is-disabled');
+      dropzone.classList.remove('is-disabled');
     }
 
     if (successCount > 0 && failCount === 0) {
       goTo(buildImportPageURL(1));
       return;
     }
+
     if (successCount > 0) {
-      var detail = formatFailedDetails(failedNames, 2);
-      var msg = '导入完成：成功 ' + successCount + '，失败 ' + failCount + '。';
+      detail = formatFailedDetails(failedNames, 2);
+      message = '导入完成：成功 ' + successCount + '，失败 ' + failCount + '。';
       if (detail) {
-        msg += '失败详情：' + detail;
+        message += '失败详情：' + detail;
       }
-      setEditSummary(msg + ' 即将刷新导入列表。', 'error');
+      setEditSummary(message + ' 即将刷新导入列表。', 'error');
       goTo(buildImportPageURL(1));
       return;
     }
 
-    var failDetail = formatFailedDetails(failedNames, 3);
-    if (failDetail) {
-      setEditSummary('导入失败：' + failDetail, 'error');
+    detail = formatFailedDetails(failedNames, 3);
+    if (detail) {
+      setEditSummary('导入失败：' + detail, 'error');
       return;
     }
     setEditSummary('导入失败，请检查文件或配置。', 'error');
   });
 
-  $editRows.find('tr[data-import-item-row]').each(function() {
-    initCategorySelect($(this));
+  qsa('tr[data-import-item-row]', editRows).forEach(function(rowEl) {
+    initCategorySelect(rowEl);
   });
   selectedFiles = selectedFilesFromInput();
   renderSelectedFiles();

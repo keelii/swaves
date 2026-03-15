@@ -22,8 +22,14 @@ const (
 )
 
 type NotificationListItemView struct {
-	db.Notification
-	CommentURL string
+	ID             int64
+	EventType      string
+	Title          string
+	Body           string
+	AggregateCount int
+	ReadAt         *int64
+	UpdatedAt      int64
+	CommentURL     string
 }
 
 func parseCommentURLFromAggregateKey(raw string) string {
@@ -65,7 +71,13 @@ func buildNotificationListItems(notifications []db.Notification, defaultCommentU
 	items := make([]NotificationListItemView, 0, len(notifications))
 	for _, n := range notifications {
 		item := NotificationListItemView{
-			Notification: n,
+			ID:             n.ID,
+			EventType:      n.EventType,
+			Title:          n.Title,
+			Body:           n.Body,
+			AggregateCount: n.AggregateCount,
+			ReadAt:         n.ReadAt,
+			UpdatedAt:      n.UpdatedAt,
 		}
 		if n.EventType == dashNotificationEventComment {
 			item.CommentURL = parseCommentURLFromAggregateKey(n.AggregateKey)
@@ -211,6 +223,10 @@ func (h *Handler) GetNotificationUnreadCountAPIHandler(c fiber.Ctx) error {
 			"error": "获取未读数量失败",
 		})
 	}
+
+	c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate")
+	c.Set(fiber.HeaderPragma, "no-cache")
+	c.Set(fiber.HeaderExpires, "0")
 
 	return c.JSON(fiber.Map{
 		"ok": true,

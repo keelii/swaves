@@ -116,3 +116,47 @@ func TestBuildNotificationListItemsCommentURLFallback(t *testing.T) {
 		t.Fatalf("non-comment item comment url should be empty, got %q", items[3].CommentURL)
 	}
 }
+
+func TestBuildNotificationListItemsCopiesTemplateFields(t *testing.T) {
+	readAt := int64(123)
+	updatedAt := int64(456)
+
+	items := buildNotificationListItems([]db.Notification{
+		{
+			ID:             9,
+			EventType:      dashNotificationEventPostLike,
+			Title:          "文章收到新点赞",
+			Body:           "《demo》收到新的点赞。",
+			AggregateCount: 3,
+			ReadAt:         &readAt,
+			UpdatedAt:      updatedAt,
+		},
+	}, "/dash/comments")
+
+	if len(items) != 1 {
+		t.Fatalf("buildNotificationListItems len = %d, want 1", len(items))
+	}
+
+	item := items[0]
+	if item.ID != 9 {
+		t.Fatalf("item.ID = %d, want 9", item.ID)
+	}
+	if item.EventType != dashNotificationEventPostLike {
+		t.Fatalf("item.EventType = %q, want %q", item.EventType, dashNotificationEventPostLike)
+	}
+	if item.Title != "文章收到新点赞" {
+		t.Fatalf("item.Title = %q", item.Title)
+	}
+	if item.Body != "《demo》收到新的点赞。" {
+		t.Fatalf("item.Body = %q", item.Body)
+	}
+	if item.AggregateCount != 3 {
+		t.Fatalf("item.AggregateCount = %d, want 3", item.AggregateCount)
+	}
+	if item.ReadAt == nil || *item.ReadAt != readAt {
+		t.Fatalf("item.ReadAt = %v, want %d", item.ReadAt, readAt)
+	}
+	if item.UpdatedAt != updatedAt {
+		t.Fatalf("item.UpdatedAt = %d, want %d", item.UpdatedAt, updatedAt)
+	}
+}

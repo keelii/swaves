@@ -73,38 +73,44 @@
 </form>
 
 <script>
-$(function() {
-  var $preset = $('#schedule-preset');
-  var $wrap = $('#schedule-custom-wrap');
-  var $custom = $('#schedule-custom');
-  var $val = $('#schedule-value');
+document.addEventListener('DOMContentLoaded', function() {
+  var preset = document.getElementById('schedule-preset');
+  var wrap = document.getElementById('schedule-custom-wrap');
+  var custom = document.getElementById('schedule-custom');
+  var valueInput = document.getElementById('schedule-value');
+  var form = document.getElementById('form');
+
+  if (!preset || !wrap || !custom || !valueInput || !form) {
+    return;
+  }
 
   function syncScheduleValue() {
-    $val.val($preset.val() === '__custom__' ? $custom.val() : $preset.val());
+    valueInput.value = preset.value === '__custom__' ? custom.value : preset.value;
   }
 
   function toggleScheduleInput() {
-    var isCustom = $preset.val() === '__custom__';
-    $wrap.prop('hidden', !isCustom);
+    var isCustom = preset.value === '__custom__';
+    wrap.hidden = !isCustom;
     syncScheduleValue();
   }
 
   toggleScheduleInput();
 
-  $preset.on('change', function() {
+  preset.addEventListener('change', function() {
     toggleScheduleInput();
-    if ($preset.val() === '__custom__') {
-      $custom.focus();
+    if (preset.value === '__custom__') {
+      custom.focus();
     }
   });
 
-  $custom.on('input change', syncScheduleValue);
+  custom.addEventListener('input', syncScheduleValue);
+  custom.addEventListener('change', syncScheduleValue);
 
-  $('#form').on('submit', function(e) {
-    if ($preset.val() === '__custom__' && !$custom.val().trim()) {
-      e.preventDefault();
-      $custom.focus();
-      return false;
+  form.addEventListener('submit', function(event) {
+    if (preset.value === '__custom__' && !custom.value.trim()) {
+      event.preventDefault();
+      custom.focus();
+      return;
     }
     syncScheduleValue();
   });

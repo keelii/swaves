@@ -74,7 +74,7 @@ It does not define business logic.
 
 ### 4) Frontend behavior style
 
-- Dash frontend behavior SHOULD use the repo-standard `jQuery slim` runtime consistently.
+- Dash frontend behavior SHOULD use native DOM APIs consistently; do not reintroduce `jQuery` without explicit approval.
 - Do not mix multiple frontend libraries inside one page/module without explicit approval.
 - Prefer shared helpers in `web/static/dash/main.js` before adding new page-local helpers.
 - Inline bootstrapping code SHOULD stay short: collect DOM refs, read server config, call shared/page-local helpers.

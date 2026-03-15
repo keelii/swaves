@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseCommentFormDefaults(t *testing.T) {
-	raw := "author=%E5%BC%A0%E4%B8%89&author_email=test%40example.com&author_url=https%3A%2F%2Fexample.com"
+	raw := "author=%E5%BC%A0%E4%B8%89&author_email=test%40example.com&author_url=https%3A%2F%2Fexample.com&content=hello+world"
 	got := parseCommentFormDefaults(raw)
 
 	if got.Author != "张三" {
@@ -18,6 +18,9 @@ func TestParseCommentFormDefaults(t *testing.T) {
 	}
 	if got.AuthorURL != "https://example.com" {
 		t.Fatalf("unexpected author url: %q", got.AuthorURL)
+	}
+	if got.Content != "hello world" {
+		t.Fatalf("unexpected content: %q", got.Content)
 	}
 	if !got.RememberMe {
 		t.Fatal("remember me should be true when any remembered field exists")
@@ -45,6 +48,13 @@ func TestParseCommentFormDefaultsInvalidOrOversized(t *testing.T) {
 	}
 	if !got.RememberMe {
 		t.Fatal("remember me should stay true when email/url exist")
+	}
+
+	values = url.Values{}
+	values.Set("content", strings.Repeat("x", 5001))
+	got = parseCommentFormDefaults(values.Encode())
+	if got.Content != "" {
+		t.Fatalf("oversized content should be ignored, got len=%d", len(got.Content))
 	}
 }
 

@@ -324,6 +324,7 @@ func TestSiteControllerP0_CommentActionDuplicateShowsFeedback(t *testing.T) {
 		fiber.StatusOK,
 		"请勿重复提交相同评论内容。",
 		`id="comment-form"`,
+		"site controller duplicate content",
 	)
 }
 
@@ -383,6 +384,7 @@ func TestSiteControllerP0_CommentRateLimitRequiresCaptchaThenShowsCaptchaFailed(
 		fiber.StatusOK,
 		"提交较频繁，请先完成验证码再继续评论。",
 		`id="comment-form"`,
+		"site controller captcha flow content",
 	)
 
 	form.Set("captcha_token", "invalid-token")
@@ -410,6 +412,7 @@ func TestSiteControllerP0_CommentRateLimitRequiresCaptchaThenShowsCaptchaFailed(
 		fiber.StatusOK,
 		"验证码错误或已过期，请刷新页面后重试。",
 		`id="comment-form"`,
+		"site controller captcha flow content",
 	)
 
 	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
@@ -596,6 +599,7 @@ func TestSiteControllerP0_CommentCaptchaTokenReplayIsRejected(t *testing.T) {
 		fiber.StatusOK,
 		"验证码错误或已过期，请刷新页面后重试。",
 		`id="comment-form"`,
+		"site controller captcha replay third content",
 	)
 
 	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
@@ -604,6 +608,107 @@ func TestSiteControllerP0_CommentCaptchaTokenReplayIsRejected(t *testing.T) {
 	}
 	if len(pendingComments) != 2 {
 		t.Fatalf("unexpected pending comment count after captcha replay flow: got=%d want=2", len(pendingComments))
+	}
+}
+
+func TestSiteControllerP0_CommentReplyCreatesPendingChild(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	post := createPublishedSitePost(t, swv, "Site P0 Reply Comment Post")
+	parentID := createApprovedSiteComment(t, swv, post.ID, 0, "root-user", "root comment content", 100)
+
+	postPath := share.GetPostUrl(post)
+	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
+	if postResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected post detail status: path=%s status=%d", postPath, postResp.StatusCode)
+	}
+	visitorCookie := responseCookieKV(postResp)
+	if visitorCookie == "" {
+		t.Fatalf("expected visitor cookie from post detail response")
+	}
+
+	actionPath := pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))
+	form := url.Values{}
+	form.Set("author", "site-p0-reply-user")
+	form.Set("author_email", "site-p0-reply@example.com")
+	form.Set("author_url", "https://example.com/reply")
+	form.Set("content", "site controller reply content")
+	form.Set("parent_id", strconv.FormatInt(parentID, 10))
+	form.Set("remember_me", "1")
+	form.Set("return_url", postPath)
+
+	resp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
+		t.Fatalf("expected reply comment redirect, got %d", resp.StatusCode)
+	}
+	location := strings.TrimSpace(resp.Header.Get("Location"))
+	if !strings.Contains(location, "comment_status=pending") {
+		t.Fatalf("reply redirect should include pending status, got location=%q", location)
+	}
+	if !strings.Contains(location, "#comments") {
+		t.Fatalf("reply redirect should include comments anchor, got location=%q", location)
+	}
+
+	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	if err != nil {
+		t.Fatalf("list pending comments failed: %v", err)
+	}
+	if len(pendingComments) != 1 {
+		t.Fatalf("unexpected pending reply count: got=%d want=1", len(pendingComments))
+	}
+	reply := pendingComments[0]
+	if reply.ParentID != parentID {
+		t.Fatalf("reply parent_id = %d, want %d", reply.ParentID, parentID)
+	}
+	if reply.Content != "site controller reply content" {
+		t.Fatalf("unexpected reply content: %q", reply.Content)
+	}
+}
+
+func TestSiteControllerP0_CommentReplyRejectsParentFromAnotherPost(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	post := createPublishedSitePost(t, swv, "Site P0 Reply Current Post")
+	otherPost := createPublishedSitePost(t, swv, "Site P0 Reply Other Post")
+	foreignParentID := createApprovedSiteComment(t, swv, otherPost.ID, 0, "other-root", "other root comment", 101)
+
+	postPath := share.GetPostUrl(post)
+	postResp := requestControllerP0(t, swv, fiber.MethodGet, postPath, nil, "", nil)
+	if postResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected post detail status: path=%s status=%d", postPath, postResp.StatusCode)
+	}
+	visitorCookie := responseCookieKV(postResp)
+	if visitorCookie == "" {
+		t.Fatalf("expected visitor cookie from post detail response")
+	}
+
+	actionPath := pathutil.JoinAbsolute(share.GetBasePath(), "_action", "comment", strconv.FormatInt(post.ID, 10))
+	form := url.Values{}
+	form.Set("author", "site-p0-invalid-reply-user")
+	form.Set("author_email", "site-p0-invalid-reply@example.com")
+	form.Set("author_url", "https://example.com/invalid-reply")
+	form.Set("content", "site controller invalid reply content")
+	form.Set("parent_id", strconv.FormatInt(foreignParentID, 10))
+	form.Set("remember_me", "1")
+	form.Set("return_url", postPath)
+
+	resp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
+	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
+		t.Fatalf("expected invalid reply redirect, got %d", resp.StatusCode)
+	}
+	location := strings.TrimSpace(resp.Header.Get("Location"))
+	if !strings.Contains(location, pathutil.JoinAbsolute(share.GetBasePath(), "error")) {
+		t.Fatalf("invalid reply should redirect to error page, got location=%q", location)
+	}
+
+	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	if err != nil {
+		t.Fatalf("list pending comments failed: %v", err)
+	}
+	if len(pendingComments) != 0 {
+		t.Fatalf("invalid reply should not create pending comments, got=%d", len(pendingComments))
 	}
 }
 

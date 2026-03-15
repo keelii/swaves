@@ -398,7 +398,7 @@ func (h Handler) funcName(c fiber.Ctx, post *DisplayPostWithRelation) (int, int,
 	comments := ListApprovedCommentsTree(h.Model, post.Post.ID, &commentPager)
 	commentCount := CountApprovedComments(h.Model, post.Post.ID)
 	commentFeedback := normalizeCommentFeedbackStatus(c.Query("comment_status"))
-	commentForm := readCommentFormDefaults(c)
+	commentForm := readCommentFormDefaults(c, post.Post.ID)
 	visitorID := middleware.GetOrCreateVisitorID(c, "")
 	captchaRequired := isCommentCaptchaRequired(visitorID)
 	commentCaptcha := commentCaptchaChallenge{}
@@ -633,6 +633,7 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 		captchaToken := strings.TrimSpace(c.FormValue(commentCaptchaTokenField))
 		captchaAnswer := strings.TrimSpace(c.FormValue(commentCaptchaAnswerField))
 		if !verifyCommentCaptchaChallenge(visitorID, captchaToken, captchaAnswer) {
+			saveCommentFormFlash(c, postID, commentFormDefaultsFromRequest(c))
 			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackCaptchaFailed)
 			if !strings.Contains(redirectPath, "#") {
 				redirectPath += "#comments"
@@ -701,6 +702,7 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 	}
 	if _, err = db.CreateComment(h.Model, comment); err != nil {
 		if db.IsErrDuplicateComment(err) {
+			saveCommentFormFlash(c, postID, commentFormDefaultsFromRequest(c))
 			redirectPath := appendQueryParam(resolveReturnPath(c), "comment_status", commentFeedbackDuplicate)
 			if !strings.Contains(redirectPath, "#") {
 				redirectPath += "#comments"

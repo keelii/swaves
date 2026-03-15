@@ -73,12 +73,21 @@
   {% endcall %}
 
   <script>
-  $(function() {
-    var $dialog = $('#redirect-target-picker-dialog');
-    var $search = $('#redirect-target-picker-search');
-    var $toInput = $('#redirect-to-path');
-    var $rows = $('#redirect-target-picker-body').find('[data-target-row]');
+  document.addEventListener('DOMContentLoaded', function() {
+    var dialog = document.getElementById('redirect-target-picker-dialog');
+    var search = document.getElementById('redirect-target-picker-search');
+    var toInput = document.getElementById('redirect-to-path');
+    var body = document.getElementById('redirect-target-picker-body');
+    var openButton = document.getElementById('redirect-target-picker-open');
     var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
+
+    if (!dialog || !search || !toInput || !body) {
+      return;
+    }
+
+    function getRows() {
+      return body.querySelectorAll('[data-target-row]');
+    }
 
     function openPickerDialog() {
       if (dialogAPI && typeof dialogAPI.open === 'function') {
@@ -94,39 +103,48 @@
     }
 
     function filterRows() {
-      var keyword = String($search.val() || '').trim().toLowerCase();
-      if (!keyword) {
-        $rows.show();
-        return;
-      }
+      var keyword = String(search.value || '').trim().toLowerCase();
 
-      $rows.each(function() {
-        var text = String($(this).attr('data-search-text') || $(this).text() || '').toLowerCase();
-        $(this).toggle(text.indexOf(keyword) >= 0);
+      getRows().forEach(function(row) {
+        if (!keyword) {
+          row.hidden = false;
+          return;
+        }
+
+        var text = String(row.getAttribute('data-search-text') || row.textContent || '').toLowerCase();
+        row.hidden = text.indexOf(keyword) < 0;
       });
     }
 
-    $('#redirect-target-picker-open').on('click', function(event) {
-      event.preventDefault();
-      if (openPickerDialog()) {
-        $search.val('');
-        filterRows();
-        window.setTimeout(function() {
-          $search.trigger('focus');
-        }, 0);
-      }
-    });
+    if (openButton) {
+      openButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        if (openPickerDialog()) {
+          search.value = '';
+          filterRows();
+          window.setTimeout(function() {
+            search.focus();
+          }, 0);
+        }
+      });
+    }
 
-    $(document).on('click', '.redirect-target-picker-choose', function() {
-      var targetURL = String($(this).attr('data-target-url') || '').trim();
+    document.addEventListener('click', function(event) {
+      var button = event.target.closest('.redirect-target-picker-choose');
+      if (!button) {
+        return;
+      }
+
+      var targetURL = String(button.getAttribute('data-target-url') || '').trim();
       if (!targetURL) {
         return;
       }
-      $toInput.val(targetURL);
+      toInput.value = targetURL;
       closePickerDialog();
     });
 
-    $search.on('input search', filterRows);
+    search.addEventListener('input', filterRows);
+    search.addEventListener('search', filterRows);
     filterRows();
   });
   </script>

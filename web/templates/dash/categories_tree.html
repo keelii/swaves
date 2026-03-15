@@ -138,9 +138,15 @@
 {% endif %}
 
 <script>
-$(function() {
-  $('form.category-parent-form').find('select[name="categories"]').on('change', function() {
-    $(this).closest('form').submit();
+document.addEventListener('DOMContentLoaded', function() {
+  var selects = document.querySelectorAll('form.category-parent-form select[name="categories"]');
+  selects.forEach(function(select) {
+    select.addEventListener('change', function() {
+      var form = select.closest('form');
+      if (form) {
+        form.submit();
+      }
+    });
   });
 });
 </script>

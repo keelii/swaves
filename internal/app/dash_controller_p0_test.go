@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -463,5 +464,93 @@ func TestDashControllerP0_EncryptedPostEditorPages(t *testing.T) {
 	}
 	if strings.Contains(editPageBody, `class="post-editor-layout-meta"`) {
 		t.Fatalf("encrypted edit page should keep editor body aligned with normal post layout")
+	}
+}
+
+func TestDashControllerP0_NotificationsListRendersFields(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+
+	nowUnix := time.Now().Unix()
+	item := &db.Notification{
+		Receiver:       db.NotificationReceiverDash,
+		EventType:      db.NotificationEventPostLike,
+		Level:          db.NotificationLevelInfo,
+		Title:          "控制器测试通知标题",
+		Body:           "控制器测试通知内容",
+		AggregateKey:   fmt.Sprintf("controller-test:%d", nowUnix),
+		AggregateCount: 7,
+		CreatedAt:      nowUnix,
+		UpdatedAt:      nowUnix,
+	}
+	id, err := db.CreateNotification(swv.Store.Model, item)
+	if err != nil {
+		t.Fatalf("create notification failed: %v", err)
+	}
+
+	body := assertTemplateRendered(
+		t,
+		requestControllerP0(t, swv, fiber.MethodGet, "/dash/notifications", nil, cookieKV, nil),
+		fiber.StatusOK,
+		"通知中心",
+		"控制器测试通知标题",
+		"控制器测试通知内容",
+		"点赞",
+		"未读",
+		fmt.Sprintf(`data-notification-id="%d"`, id),
+	)
+	if !strings.Contains(body, ">7<") {
+		t.Fatalf("notifications page should render aggregate count")
+	}
+}
+
+func TestDashControllerP0_NotificationsUnreadCountAPIHeaders(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+
+	nowUnix := time.Now().Unix()
+	if _, err := db.CreateNotification(swv.Store.Model, &db.Notification{
+		Receiver:     db.NotificationReceiverDash,
+		EventType:    db.NotificationEventComment,
+		Level:        db.NotificationLevelInfo,
+		Title:        "未读通知",
+		Body:         "用于测试 unread_count API",
+		AggregateKey: fmt.Sprintf("notification-unread-api:%d", nowUnix),
+		CreatedAt:    nowUnix,
+		UpdatedAt:    nowUnix,
+	}); err != nil {
+		t.Fatalf("create notification failed: %v", err)
+	}
+
+	resp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/api/notifications/unread_count", nil, cookieKV, map[string]string{
+		"Accept": "application/json",
+	})
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("expected unread count api status 200, got %d", resp.StatusCode)
+	}
+
+	if cacheControl := strings.TrimSpace(resp.Header.Get("Cache-Control")); !strings.Contains(cacheControl, "no-store") {
+		t.Fatalf("unread count api should disable cache, got Cache-Control=%q", cacheControl)
+	}
+
+	body := readResponseBody(t, resp)
+	var payload struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			UnreadCount int `json:"unread_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("decode unread count api failed: %v body=%q", err, body)
+	}
+	if !payload.OK {
+		t.Fatalf("unread count api should return ok=true body=%q", body)
+	}
+	if payload.Data.UnreadCount < 1 {
+		t.Fatalf("unread count api should include unread notification, got %d", payload.Data.UnreadCount)
 	}
 }

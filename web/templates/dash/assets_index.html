@@ -235,23 +235,32 @@
 {% endcall %}
 
 <script>
-$(function() {
+document.addEventListener('DOMContentLoaded', function() {
   var assetAPIBase = {{ UrlFor('dash.assets.api.list') | tojson }};
   var assetBatchDeleteAPI = {{ UrlFor('dash.assets.api.batch_delete') | tojson }};
-  var $dropzone = $('#asset-dropzone');
-  var $fileInput = $('#asset-drop-input');
-  var $uploadRemark = $('#asset-upload-remark');
-  var $uploadStatus = $('#asset-upload-status');
-  var $assetTable = $('#assets-table');
-  var $selectedCount = $('#asset-selected-count');
-  var $batchDelete = $('#asset-batch-delete');
-  var $alertDialog = $('#asset-alert-dialog');
-  var $alertMessage = $('#asset-alert-message');
+  var dropzone = document.getElementById('asset-dropzone');
+  var fileInput = document.getElementById('asset-drop-input');
+  var uploadRemark = document.getElementById('asset-upload-remark');
+  var uploadStatus = document.getElementById('asset-upload-status');
+  var assetTable = document.getElementById('assets-table');
+  var selectedCount = document.getElementById('asset-selected-count');
+  var batchDelete = document.getElementById('asset-batch-delete');
+  var alertDialog = document.getElementById('asset-alert-dialog');
+  var alertMessage = document.getElementById('asset-alert-message');
   var isUploading = false;
-  var uploadReady = ($dropzone.attr('data-upload-ready') || '') === '1';
-  var uploadError = ($dropzone.attr('data-upload-error') || '').trim();
-  var uploadStatusBaseText = String($uploadStatus.text() || '').replace(/\s+/g, ' ').trim();
-  var uploadStatusBaseIsError = $uploadStatus.hasClass('error');
+  var uploadReady;
+  var uploadError;
+  var uploadStatusBaseText;
+  var uploadStatusBaseIsError;
+
+  if (!dropzone || !fileInput || !uploadRemark || !uploadStatus || !selectedCount || !batchDelete) {
+    return;
+  }
+
+  uploadReady = String(dropzone.getAttribute('data-upload-ready') || '') === '1';
+  uploadError = String(dropzone.getAttribute('data-upload-error') || '').trim();
+  uploadStatusBaseText = String(uploadStatus.textContent || '').replace(/\s+/g, ' ').trim();
+  uploadStatusBaseIsError = uploadStatus.classList.contains('error');
 
   function getDialogAPI() {
     return window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
@@ -263,8 +272,14 @@ $(function() {
 
   function selectedAssetIDs() {
     var ids = [];
-    $assetTable.find('tbody .cell-checkbox:checked').each(function() {
-      var id = Number($(this).closest('tr').attr('data-asset-id') || '0');
+
+    if (!assetTable) {
+      return ids;
+    }
+
+    assetTable.querySelectorAll('tbody .cell-checkbox:checked').forEach(function(checkbox) {
+      var row = checkbox.closest('tr');
+      var id = Number(row ? row.getAttribute('data-asset-id') || '0' : '0');
       if (id > 0) {
         ids.push(id);
       }
@@ -273,15 +288,26 @@ $(function() {
   }
 
   function updateBatchDeleteState() {
-    var $items = $assetTable.find('tbody .cell-checkbox');
-    var total = $items.length;
-    var selected = $items.filter(':checked').length;
+    var items;
+    var total = 0;
+    var selected = 0;
 
-    $selectedCount.text('已选 ' + selected + ' 项');
-    $batchDelete.prop('disabled', selected === 0);
-    if (total === 0) {
-      $batchDelete.prop('disabled', true);
+    if (assetTable) {
+      items = assetTable.querySelectorAll('tbody .cell-checkbox');
+      total = items.length;
+      selected = assetTable.querySelectorAll('tbody .cell-checkbox:checked').length;
     }
+
+    selectedCount.textContent = '已选 ' + selected + ' 项';
+    batchDelete.disabled = selected === 0 || total === 0;
+  }
+
+  function removeAssetRows(ids) {
+    ids.forEach(function(id) {
+      document.querySelectorAll('tr[data-asset-id="' + id + '"]').forEach(function(row) {
+        row.remove();
+      });
+    });
   }
 
   function summarizeBatchDeleteResult(ret) {
@@ -289,13 +315,12 @@ $(function() {
     var deletedIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
     var failed = Array.isArray(body.failed) ? body.failed : [];
     var warnings = Array.isArray(body.warnings) ? body.warnings : [];
+    var text;
 
-    deletedIDs.forEach(function(id) {
-      $('tr[data-asset-id="' + id + '"]').remove();
-    });
+    removeAssetRows(deletedIDs);
     updateBatchDeleteState();
 
-    var text = '批量删除完成：成功 ' + deletedIDs.length + '，失败 ' + failed.length + '。';
+    text = '批量删除完成：成功 ' + deletedIDs.length + '，失败 ' + failed.length + '。';
     if (failed.length > 0) {
       var failedDetails = failed.slice(0, 3).map(function(item) {
         return '#' + item.id + '：' + String(item.error || '删除失败');
@@ -324,12 +349,15 @@ $(function() {
   function showAssetNotice(message, title) {
     var heading = String(title || '提示');
     var text = String(message || '');
-    var titleNode = $alertDialog.find('.ui-dialog-title').get(0);
+    var titleNode = alertDialog ? alertDialog.querySelector('.ui-dialog-title') : null;
+    var dialogAPI = getDialogAPI();
+
     if (titleNode) {
       titleNode.textContent = heading;
     }
-    $alertMessage.text(text);
-    var dialogAPI = getDialogAPI();
+    if (alertMessage) {
+      alertMessage.textContent = text;
+    }
     if (!(dialogAPI && typeof dialogAPI.open === 'function' && dialogAPI.open('asset-alert-dialog'))) {
       notify(text, heading, {
         variant: 'warning',
@@ -344,10 +372,11 @@ $(function() {
   }
 
   function askConfirm(message, title) {
+    var confirmAPI = getConfirmAPI();
+
     message = String(message || '');
     title = String(title || '确认操作');
 
-    var confirmAPI = getConfirmAPI();
     if (confirmAPI && typeof confirmAPI.ask === 'function') {
       return confirmAPI.ask({
         dialogId: 'asset-confirm-dialog',
@@ -362,21 +391,22 @@ $(function() {
 
   function setUploading(working, text) {
     isUploading = working;
-    $dropzone.toggleClass('is-uploading', working);
+    dropzone.classList.toggle('is-uploading', working);
     if (text) {
-      $uploadStatus.text(text);
-      $uploadStatus.removeClass('error');
+      uploadStatus.textContent = text;
+      uploadStatus.classList.remove('error');
       return;
     }
     if (!working) {
-      $uploadStatus.text(uploadStatusBaseText);
-      $uploadStatus.toggleClass('error', uploadStatusBaseIsError);
+      uploadStatus.textContent = uploadStatusBaseText;
+      uploadStatus.classList.toggle('error', uploadStatusBaseIsError);
     }
   }
 
   function uploadSingleFile(file) {
     var fd = new FormData();
-    var remark = String($uploadRemark.val() || '').trim();
+    var remark = String(uploadRemark.value || '').trim();
+
     fd.append('file', file);
     if (remark) {
       fd.append('remark', remark);
@@ -385,14 +415,13 @@ $(function() {
     return sfetchJSON(assetAPIBase, {
       method: 'POST',
       body: fd
-    })
-      .then(function(ret) {
-        if (!ret.body || ret.body.ok !== true) {
-          var msg = (ret.body && ret.body.error) || ret.raw || ('上传失败，状态码 ' + ret.status);
-          throw new Error(msg);
-        }
-        return ret.body;
-      });
+    }).then(function(ret) {
+      if (!ret.body || ret.body.ok !== true) {
+        var msg = (ret.body && ret.body.error) || ret.raw || ('上传失败，状态码 ' + ret.status);
+        throw new Error(msg);
+      }
+      return ret.body;
+    });
   }
 
   function compactErrorMessage(message) {
@@ -407,6 +436,9 @@ $(function() {
   }
 
   function handleFiles(fileList) {
+    var files;
+    var confirmText;
+
     if (!uploadReady) {
       showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
@@ -416,26 +448,27 @@ $(function() {
       return;
     }
 
-    var files = Array.prototype.slice.call(fileList || []);
+    files = Array.from(fileList || []);
     if (!files.length) {
       return;
     }
 
-    var confirmText = files.length === 1
+    confirmText = files.length === 1
       ? ('确认上传文件 "' + files[0].name + '" ?')
       : ('确认上传这 ' + files.length + ' 个文件？');
+
     askConfirm(confirmText, '确认上传').then(function(confirmed) {
-      if (!confirmed) {
-        return;
-      }
-
-      setUploading(true, '上传中 0/' + files.length + '...');
-
       var successCount = 0;
       var failedCount = 0;
       var failedNames = [];
       var failedDetails = [];
       var chain = Promise.resolve();
+
+      if (!confirmed) {
+        return;
+      }
+
+      setUploading(true, '上传中 0/' + files.length + '...');
 
       files.forEach(function(file, idx) {
         chain = chain.then(function() {
@@ -443,8 +476,9 @@ $(function() {
           return uploadSingleFile(file).then(function() {
             successCount += 1;
           }).catch(function(err) {
-            failedCount += 1;
             var name = file.name || '（未命名）';
+
+            failedCount += 1;
             failedNames.push(name);
             failedDetails.push(name + '：' + compactErrorMessage(err && err.message));
           });
@@ -484,37 +518,48 @@ $(function() {
   }
 
   function copyToClipboard(text) {
-    if (!text) return Promise.reject(new Error('empty text'));
+    if (!text) {
+      return Promise.reject(new Error('empty text'));
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(text);
     }
 
     return new Promise(function(resolve, reject) {
-      var $temp = $('<textarea>').val(text).css({ position: 'fixed', top: '-999px', left: '-999px' }).appendTo('body');
-      $temp[0].focus();
-      $temp[0].select();
+      var temp = document.createElement('textarea');
+      var ok;
+
+      temp.value = text;
+      temp.style.position = 'fixed';
+      temp.style.top = '-999px';
+      temp.style.left = '-999px';
+      document.body.appendChild(temp);
+      temp.focus();
+      temp.select();
+
       try {
-        var ok = document.execCommand('copy');
-        $temp.remove();
+        ok = document.execCommand('copy');
+        temp.remove();
         if (!ok) {
           reject(new Error('copy failed'));
           return;
         }
         resolve();
       } catch (err) {
-        $temp.remove();
+        temp.remove();
         reject(err);
       }
     });
   }
 
   function markdownImage(url, name) {
-    var alt = (name || '').trim();
+    var alt = String(name || '').trim();
+
     alt = alt.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
     return '![' + alt + '](' + url + ')';
   }
 
-  $dropzone.on('click', function() {
+  function openFilePicker() {
     if (!uploadReady) {
       showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
@@ -523,31 +568,39 @@ $(function() {
     if (isUploading) {
       return;
     }
-    if ($fileInput.length) {
-      $fileInput[0].click();
-    }
+    fileInput.click();
+  }
+
+  dropzone.addEventListener('click', function() {
+    openFilePicker();
   });
 
-  $fileInput.on('change', function() {
-    handleFiles(this.files);
-    this.value = '';
+  fileInput.addEventListener('change', function() {
+    handleFiles(fileInput.files);
+    fileInput.value = '';
   });
 
-  $dropzone.on('dragenter dragover', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isUploading) {
-      $dropzone.addClass('dragover');
-    }
+  ['dragenter', 'dragover'].forEach(function(eventName) {
+    dropzone.addEventListener(eventName, function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!isUploading) {
+        dropzone.classList.add('dragover');
+      }
+    });
   });
 
-  $dropzone.on('dragleave dragend drop', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    $dropzone.removeClass('dragover');
+  ['dragleave', 'dragend', 'drop'].forEach(function(eventName) {
+    dropzone.addEventListener(eventName, function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      dropzone.classList.remove('dragover');
+    });
   });
 
-  $dropzone.on('drop', function(e) {
+  dropzone.addEventListener('drop', function(event) {
+    var dt;
+
     if (!uploadReady) {
       showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
       return;
@@ -557,7 +610,7 @@ $(function() {
       return;
     }
 
-    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    dt = event.dataTransfer;
     if (!dt || !dt.files || !dt.files.length) {
       return;
     }
@@ -565,32 +618,46 @@ $(function() {
     handleFiles(dt.files);
   });
 
-  $(document).on('click', '.asset-copy-url', function() {
-    var url = $(this).data('url') || '';
-    copyToClipboard(url).then(function() {
-      showAssetNotice('已复制链接');
-    }).catch(function() {
-      showAssetNotice('复制失败');
-    });
-  });
+  document.addEventListener('click', function(event) {
+    var copyURLButton = event.target.closest('.asset-copy-url');
+    var copyMarkdownButton = event.target.closest('.asset-copy-markdown');
+    var deleteButton = event.target.closest('.asset-delete');
+    var id;
 
-  $(document).on('click', '.asset-copy-markdown', function() {
-    var url = $(this).data('url') || '';
-    var name = $(this).data('name') || '';
-    var markdown = markdownImage(url, name);
-    copyToClipboard(markdown).then(function() {
-      showAssetNotice('已复制 Markdown');
-    }).catch(function() {
-      showAssetNotice('复制失败');
-    });
-  });
+    if (copyURLButton) {
+      event.preventDefault();
+      copyToClipboard(copyURLButton.getAttribute('data-url') || '').then(function() {
+        showAssetNotice('已复制链接');
+      }).catch(function() {
+        showAssetNotice('复制失败');
+      });
+      return;
+    }
 
-  $(document).on('click', '.asset-delete', function() {
-    var id = $(this).data('id');
+    if (copyMarkdownButton) {
+      event.preventDefault();
+      copyToClipboard(markdownImage(
+        copyMarkdownButton.getAttribute('data-url') || '',
+        copyMarkdownButton.getAttribute('data-name') || ''
+      )).then(function() {
+        showAssetNotice('已复制 Markdown');
+      }).catch(function() {
+        showAssetNotice('复制失败');
+      });
+      return;
+    }
+
+    if (!deleteButton) {
+      return;
+    }
+
+    event.preventDefault();
+    id = Number(deleteButton.getAttribute('data-id') || '0');
     if (!id) {
       showAssetNotice('无效 ID');
       return;
     }
+
     askConfirm('确认删除该资源？会同时删除远端文件。', '确认删除').then(function(confirmed) {
       if (!confirmed) {
         return;
@@ -598,27 +665,30 @@ $(function() {
 
       sfetchJSON(assetAPIBase + '/' + id, {
         method: 'DELETE',
-      })
-        .then(function(ret) {
-          if (!ret.body || ret.body.ok !== true) {
-            var msg = (ret.body && ret.body.error) || ret.raw || ('删除失败，状态码 ' + ret.status);
-            throw new Error(msg);
-          }
-          $('tr[data-asset-id="' + id + '"]').remove();
-          updateBatchDeleteState();
-        })
-        .catch(function(err) {
-          showAssetNotice(err.message || '删除失败');
-        });
+      }).then(function(ret) {
+        if (!ret.body || ret.body.ok !== true) {
+          var msg = (ret.body && ret.body.error) || ret.raw || ('删除失败，状态码 ' + ret.status);
+          throw new Error(msg);
+        }
+        removeAssetRows([id]);
+        updateBatchDeleteState();
+      }).catch(function(err) {
+        showAssetNotice(err.message || '删除失败');
+      });
     });
   });
 
-  $assetTable.on('change', '.cell-checkbox', function() {
-    updateBatchDeleteState();
-  });
+  if (assetTable) {
+    assetTable.addEventListener('change', function(event) {
+      if (event.target.matches('.cell-checkbox')) {
+        updateBatchDeleteState();
+      }
+    });
+  }
 
-  $batchDelete.on('click', function() {
+  batchDelete.addEventListener('click', function() {
     var ids = selectedAssetIDs();
+
     if (!ids.length) {
       showAssetNotice('请先选择要删除的资源');
       return;
@@ -635,27 +705,25 @@ $(function() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ ids: ids })
-      })
-        .then(function(ret) {
-          if (!ret.body) {
-            throw new Error(ret.raw || ('批量删除失败，状态码 ' + ret.status));
-          }
-          if (ret.body.ok === false && ret.body.error) {
-            throw new Error(ret.body.error);
-          }
-          showAssetNotice(summarizeBatchDeleteResult(ret));
-        })
-        .catch(function(err) {
-          showAssetNotice(err.message || '批量删除失败');
-        });
+      }).then(function(ret) {
+        if (!ret.body) {
+          throw new Error(ret.raw || ('批量删除失败，状态码 ' + ret.status));
+        }
+        if (ret.body.ok === false && ret.body.error) {
+          throw new Error(ret.body.error);
+        }
+        showAssetNotice(summarizeBatchDeleteResult(ret));
+      }).catch(function(err) {
+        showAssetNotice(err.message || '批量删除失败');
+      });
     });
   });
 
   updateBatchDeleteState();
 
-  $uploadRemark.on("click", function() {
-    return false;
-  })
+  uploadRemark.addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
 });
 </script>
 {% endblock %}

@@ -542,6 +542,11 @@
       }
       return window.sfetchJSON(notificationsUnreadURL, {
         method: 'GET',
+        cache: 'no-store',
+      }, {
+        query: {
+          _ts: Date.now()
+        }
       }).then(function(result) {
         if (!result || !result.ok || !result.body || result.body.ok !== true) {
           return;
@@ -675,6 +680,13 @@
       notificationsPollingTimer = window.setInterval(function() {
         refreshNotificationUnreadCount();
       }, notificationsPollingIntervalMs);
+    }
+
+    function refreshNotificationUnreadCountIfVisible() {
+      if (document.visibilityState && document.visibilityState !== 'visible') {
+        return;
+      }
+      refreshNotificationUnreadCount();
     }
 
     initNavWidth();
@@ -832,6 +844,15 @@
       }
       event.preventDefault();
     });
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      refreshNotificationUnreadCount();
+    });
+
+    window.addEventListener('focus', refreshNotificationUnreadCountIfVisible);
 
     document.addEventListener('change', function(event) {
       var select = event.target.closest('[data-role="ui-dropdown-select"]');

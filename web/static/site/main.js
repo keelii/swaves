@@ -1,16 +1,9 @@
-function isJQueryObject(value) {
-  return !!(value && typeof value === "object" && value.jquery);
-}
-
 function resolveElement(target) {
   if (!target) {
     return null;
   }
   if (target.nodeType === 1) {
     return target;
-  }
-  if (isJQueryObject(target)) {
-    return target.length > 0 ? target.get(0) : null;
   }
   if (Array.isArray(target) && target.length > 0 && target[0] && target[0].nodeType === 1) {
     return target[0];
@@ -21,33 +14,11 @@ function resolveElement(target) {
   return null;
 }
 
-function resolveJQuery(target) {
-  if (!window.jQuery) {
-    return null;
-  }
-  if (isJQueryObject(target)) {
-    return target;
-  }
-  if (typeof target === "string") {
-    return window.jQuery(target);
-  }
-  if (target && target.nodeType === 1) {
-    return window.jQuery(target);
-  }
-  return null;
-}
-
 function setText(target, value) {
   var text = String(value == null ? "" : value);
   var el = resolveElement(target);
   if (el) {
     el.textContent = text;
-    return;
-  }
-
-  var $target = resolveJQuery(target);
-  if ($target && $target.length) {
-    $target.text(text);
   }
 }
 

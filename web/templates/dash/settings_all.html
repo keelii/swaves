@@ -320,39 +320,48 @@
 {% endif %}
 
 <script>
-$(function() {
-  $('#setting-shortcuts button').on('click', function() {
-    var $button = $(this);
-    var options = {
-      setting_post_url_prefix: String($button.attr('data-prefix') || ''),
-      setting_post_url_name: String($button.attr('data-name') || ''),
-      setting_post_url_ext: String($button.attr('data-ext') || ''),
-    };
-    for (var code in options) {
-      if (!Object.prototype.hasOwnProperty.call(options, code)) {
-        continue;
-      }
-      var input = $('[name="' + code + '"]');
-      if (input.length) {
-        input.val(options[code]);
-      }
-    }
-    syncPrefixLegends();
-    return false;
-  });
+document.addEventListener('DOMContentLoaded', function() {
+  var settingShortcuts = document.getElementById('setting-shortcuts');
+  var basePathContainer = document.querySelector('[data-setting-code="base_path"]');
 
-  $('input[data-range-value]').each(function() {
-    var $input = $(this);
-    var $output = $input.siblings('.range-value');
-    if (!$output.length) {
+  if (settingShortcuts) {
+    settingShortcuts.addEventListener('click', function(event) {
+      var button = event.target.closest('button');
+      var options;
+
+      if (!button) {
+        return;
+      }
+
+      event.preventDefault();
+      options = {
+        setting_post_url_prefix: String(button.getAttribute('data-prefix') || ''),
+        setting_post_url_name: String(button.getAttribute('data-name') || ''),
+        setting_post_url_ext: String(button.getAttribute('data-ext') || ''),
+      };
+
+      Object.keys(options).forEach(function(code) {
+        var input = document.querySelector('[name="' + code + '"]');
+        if (input) {
+          input.value = options[code];
+        }
+      });
+      syncPrefixLegends();
+    });
+  }
+
+  document.querySelectorAll('input[data-range-value]').forEach(function(input) {
+    var output = input.parentElement ? input.parentElement.querySelector('.range-value') : null;
+    if (!output) {
       return;
     }
 
     function updateRangeOutput() {
-      $output.text($input.val() + ($input.data('unit') || ''));
+      output.textContent = input.value + (input.dataset.unit || '');
     }
 
-    $input.on('input change', updateRangeOutput);
+    input.addEventListener('input', updateRangeOutput);
+    input.addEventListener('change', updateRangeOutput);
     updateRangeOutput();
   });
 
@@ -374,51 +383,72 @@ $(function() {
   }
 
   function syncPrefixLegends() {
-    var $baseInput = $('[data-setting-code="base_path"]').find('input,textarea,select').first();
-    var basePrefix = normalizePrefixLiteral($baseInput.val());
+    var baseInput = basePathContainer ? basePathContainer.querySelector('input,textarea,select') : null;
+    var basePrefix = normalizePrefixLiteral(baseInput ? baseInput.value : '');
 
-    if (basePrefix !== '/') {
-      $('.settings-prefix-text').text('/' + basePrefix);
-    } else {
-      $('.settings-prefix-text').text('');
-    }
+    document.querySelectorAll('.settings-prefix-text').forEach(function(node) {
+      node.textContent = basePrefix !== '/' ? '/' + basePrefix : '';
+    });
 
-    $('[data-prefix-default]').each(function() {
-      var $input = $(this);
-      var sourceCode = String($input.attr('data-prefix-source-code') || '').trim();
-      var prefixText = String($input.attr('data-prefix-default') || '').trim() || '/';
+    document.querySelectorAll('[data-prefix-default]').forEach(function(input) {
+      var sourceCode = String(input.getAttribute('data-prefix-source-code') || '').trim();
+      var prefixText = String(input.getAttribute('data-prefix-default') || '').trim() || '/';
+      var prefixGroup;
+      var prefixNode;
 
       if (sourceCode === 'base_path') {
         prefixText = basePrefix;
       }
 
-      $input.closest('.ui-input-prefix-group').find('.ui-input-prefix').first().text(renderPrefixLiteral(prefixText));
+      prefixGroup = input.closest('.ui-input-prefix-group');
+      if (!prefixGroup) {
+        return;
+      }
+
+      prefixNode = prefixGroup.querySelector('.ui-input-prefix');
+      if (prefixNode) {
+        prefixNode.textContent = renderPrefixLiteral(prefixText);
+      }
     });
   }
 
-  $('[data-setting-code="base_path"]').find('input,textarea,select').on('input change', syncPrefixLegends);
+  if (basePathContainer) {
+    basePathContainer.querySelectorAll('input,textarea,select').forEach(function(input) {
+      input.addEventListener('input', syncPrefixLegends);
+      input.addEventListener('change', syncPrefixLegends);
+    });
+  }
   syncPrefixLegends();
 
-  $(document).on('click', '.settings-secret-toggle', function() {
-    var $button = $(this);
-    var targetID = ($button.attr('data-target-id') || '').trim();
+  document.addEventListener('click', function(event) {
+    var button = event.target.closest('.settings-secret-toggle');
+    var targetID;
+    var input;
+    var isPassword;
+
+    if (!button) {
+      return;
+    }
+
+    targetID = String(button.getAttribute('data-target-id') || '').trim();
     if (!targetID) {
       return;
     }
 
-    var $input = $('#' + targetID);
-    if (!$input.length) {
+    input = document.getElementById(targetID);
+    if (!input) {
       return;
     }
 
-    var isPassword = ($input.attr('type') || '').toLowerCase() === 'password';
+    isPassword = String(input.getAttribute('type') || '').toLowerCase() === 'password';
     if (isPassword) {
-      $input.attr('type', 'text');
-      $button.text($button.attr('data-hide-text') || '隐藏');
-    } else {
-      $input.attr('type', 'password');
-      $button.text($button.attr('data-show-text') || '显示');
+      input.setAttribute('type', 'text');
+      button.textContent = button.getAttribute('data-hide-text') || '隐藏';
+      return;
     }
+
+    input.setAttribute('type', 'password');
+    button.textContent = button.getAttribute('data-show-text') || '显示';
   });
 });
 </script>

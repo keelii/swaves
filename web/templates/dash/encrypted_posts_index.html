@@ -71,6 +71,8 @@
     </table>
   </div>
 {% else %}
-  {{ sui.EmptyState("暂无加密文章") }}
+  <div class="app-px">
+    {{ sui.EmptyState("暂无加密文章") }}
+  </div>
 {% endif %}
 {% endblock %}
