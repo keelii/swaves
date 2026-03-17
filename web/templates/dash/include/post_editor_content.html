@@ -80,7 +80,7 @@
   data-toc-preferred-open="{% if initialTOCPreferredOpen %}1{% else %}0{% endif %}"
   data-source-preferred-open="{% if initialSourcePreferredOpen %}1{% else %}0{% endif %}"
 >
-  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
+  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" style="font-size: {{ Settings('editor_font_size')|trim }}px; font-family: {{ Settings('editor_font_family')|trim }};" spellcheck="false">
     <div class="title header">
       <input type="text" name="title" value="{{ titleValue }}" class="input-title" id="post-title" form="form"{% if titlePlaceholder %} placeholder="{{ titlePlaceholder }}"{% endif %} required>
     </div>
@@ -121,8 +121,6 @@
     var slugAPIURL = {{ slugAPIURLValue | tojson }};
     var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
     var uiStateSaveURL = {{ UrlFor('dash.settings.api.ui_state.update') | tojson }};
-    var editorFontSizeSetting = {{ Settings('editor_font_size') | tojson }};
-    var editorFontFamilySetting = {{ Settings('editor_font_family') | tojson }};
     var slugSyncTimer = null;
     var slugSyncSeq = 0;
     var tocSyncTimer = null;
@@ -145,55 +143,6 @@
     } catch (error) {
       headingIDRunePattern = null;
     }
-
-    function normalizeEditorFontSize(raw) {
-      var parsed = Number.parseInt(String(raw == null ? "" : raw).trim(), 10);
-      if (!Number.isFinite(parsed)) {
-        return "";
-      }
-      if (parsed < 12) {
-        parsed = 12;
-      } else if (parsed > 36) {
-        parsed = 36;
-      }
-      return String(parsed);
-    }
-
-    function normalizeEditorFontFamily(raw) {
-      var value = String(raw == null ? "" : raw).trim();
-      if (!value) {
-        return "";
-      }
-      if (value.length > 200) {
-        value = value.slice(0, 200);
-      }
-      if (/[;\r\n{}]/.test(value)) {
-        return "";
-      }
-      return value;
-    }
-
-    function applyEditorTypographySettings() {
-      if (!workspace || !workspace.style) {
-        return;
-      }
-
-      var normalizedSize = normalizeEditorFontSize(editorFontSizeSetting);
-      if (normalizedSize) {
-        workspace.style.setProperty("--post-editor-font-size", normalizedSize + "px");
-      } else {
-        workspace.style.removeProperty("--post-editor-font-size");
-      }
-
-      var normalizedFamily = normalizeEditorFontFamily(editorFontFamilySetting);
-      if (normalizedFamily) {
-        workspace.style.setProperty("--post-editor-font-family", normalizedFamily);
-      } else {
-        workspace.style.removeProperty("--post-editor-font-family");
-      }
-    }
-
-    applyEditorTypographySettings();
 
     function getEditorRoot() {
       if (!workspace || !workspace.querySelector) {
