@@ -7,5 +7,6 @@
 {{ sui.LinkButton("新建", "outline", href=UrlFor('dash.redirects.new')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('dash.redirects.update', id=Redirect.ID), Redirect = Redirect %}{% include "dash/include/forms/redirects_form.html" %}{% endwith %}
+{% set Action = UrlFor('dash.redirects.update', id=Redirect.ID) %}
+{% include "dash/include/forms/redirects_form.html" %}
 {% endblock %}

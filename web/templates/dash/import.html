@@ -339,9 +339,8 @@ markdown 文章内容...</pre>
       </thead>
       <tbody id="import-edit-rows">
       {% for importingItem in importingItems %}
-        {% with Item = importingItem %}
-          {% include "dash/include/import_edit_row.html" %}
-        {% endwith %}
+        {% set Item = importingItem %}
+        {% include "dash/include/import_edit_row.html" %}
       {% endfor %}
       </tbody>
     </table>
@@ -351,7 +350,8 @@ markdown 文章内容...</pre>
 </div>
 
 <template id="import-edit-row-template">
-  {% with Item = {"PostID": 0, "Filename": "", "Title": "", "Slug": "", "Content": "", "ContentPreview": "-", "Status": "draft", "Kind": "0", "CreatedAt": "", "CreatedAtUnix": 0, "Tags": "", "Category": "", "Categories": ""} %}{% include "dash/include/import_edit_row.html" %}{% endwith %}
+  {% set Item = {"PostID": 0, "Filename": "", "Title": "", "Slug": "", "Content": "", "ContentPreview": "-", "Status": "draft", "Kind": "0", "CreatedAt": "", "CreatedAtUnix": 0, "Tags": "", "Category": "", "Categories": ""} %}
+  {% include "dash/include/import_edit_row.html" %}
 </template>
 
 {% call sui.Dialog(

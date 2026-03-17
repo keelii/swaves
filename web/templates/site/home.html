@@ -2,9 +2,7 @@
 {% block content %}
 <header>
   <h1>{{ Settings("site_title") }}</h1>
-  {% with Pages = Pages, IsLogin = IsLogin %}
-    {% include "site/include/nav.html" %}
-  {% endwith %}
+  {% include "site/include/nav.html" %}
 </header>
 
 <ul class="articles">
@@ -18,7 +16,5 @@
   {% endfor %}
 </ul>
 
-{% with Pager = Pager, SearchQueryEscaped = SearchQueryEscaped %}
-  {% include "site/include/pagination.html" %}
-{% endwith %}
+{% include "site/include/pagination.html" %}
 {% endblock %}

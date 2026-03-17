@@ -7,5 +7,6 @@
 {{ sui.LinkButton("列表", "outline", href=UrlFor('dash.tasks.list')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('dash.tasks.create') %}{% include "dash/include/forms/tasks_form.html" %}{% endwith %}
+{% set Action = UrlFor('dash.tasks.create') %}
+{% include "dash/include/forms/tasks_form.html" %}
 {% endblock %}

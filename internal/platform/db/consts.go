@@ -549,5 +549,7 @@ var DefaultSettings = []Setting{
 	{Sort: 14, Kind: SettingKindUIExperience, Name: "菜单收起", Code: "dash_full_main_open", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "Dash 菜单是否收起", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 15, Kind: SettingKindUIExperience, Name: "编辑器目录展开", Code: "dash_post_editor_toc_open", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "文章编辑器目录默认展开状态", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 16, Kind: SettingKindUIExperience, Name: "编辑器源码模式", Code: "dash_post_editor_source_mode", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "文章编辑器默认源码模式状态", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
-	{Sort: 17, Kind: SettingKindUIExperience, Name: "分页器每页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
+	{Sort: 17, Kind: SettingKindUIExperience, Name: "编辑器字体大小", Code: "editor_font_size", Type: "number", Value: "16", DefaultOptionValue: "16", Description: "文章编辑器文字大小（px）", Attrs: `{"min": 12, "max": 36, "step": 1}`},
+	{Sort: 18, Kind: SettingKindUIExperience, Name: "编辑器字体", Code: "editor_font_family", Type: "text", Value: `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`, Description: "文章编辑器字体（font-family）"},
+	{Sort: 19, Kind: SettingKindUIExperience, Name: "分页器每页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "每页显示的文章数量", Attrs: `{"min": 1, "max": 100}`},
 }

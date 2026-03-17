@@ -15,17 +15,14 @@
     {% if IsLogin and (postData.ID > 0) %}
       <a href="{{ UrlFor('dash.posts.edit', id=postData.ID) }}">编辑</a>
     {% endif %}
-    {% with Count = ReadUV %}
-      {% include "site/include/read_uv.html" %}
-    {% endwith %}
+    {% set Count = ReadUV %}
+    {% include "site/include/read_uv.html" %}
     {% if postData.Kind == 0 %}
-      {% with Count = CommentCount %}
-        {% include "site/include/comment_count.html" %}
-      {% endwith %}
+      {% set Count = CommentCount %}
+      {% include "site/include/comment_count.html" %}
     {% endif %}
-    {% with PostID = postData.ID, UrlPath = UrlPath, LikeCount = LikeCount, Liked = Liked %}
-      {% include "site/include/like_action.html" %}
-    {% endwith %}
+    {% set PostID = postData.ID %}
+    {% include "site/include/like_action.html" %}
   </nav>
 </header>
 <article>
@@ -102,18 +99,16 @@
       {% if Comments %}
         <ol class="comment-list">
           {% for item in Comments %}
-            {% with Comment = item %}
-              {% include "site/include/comment_item.html" %}
-            {% endwith %}
+            {% set Comment = item %}
+            {% include "site/include/comment_item.html" %}
           {% endfor %}
         </ol>
       {% else %}
         <p class="comment-empty"><small>暂无评论，欢迎抢沙发。</small></p>
       {% endif %}
       {% if CommentPager and CommentPager.Num > 1 %}
-        {% with Pager = CommentPager %}
-          {% include "site/include/comment_pagination.html" %}
-        {% endwith %}
+        {% set Pager = CommentPager %}
+        {% include "site/include/comment_pagination.html" %}
       {% endif %}
 
       <fieldset>

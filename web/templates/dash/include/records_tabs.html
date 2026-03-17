@@ -1,5 +1,5 @@
 {% import "dash/include/ui.html" as sui %}
-{% set recordTab = ActiveRecordTab|default("") %}
+{% set recordTab = ActiveRecordTab %}
 
 {{ sui.TabsStart("记录列表导航") }}
   {{ sui.Tab("分类列表", href=UrlFor('dash.categories.list'), active=(recordTab == "categories")) }}

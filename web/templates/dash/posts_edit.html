@@ -25,15 +25,11 @@
 {% endblock %}
 
 {% block status_main_left %}
-  {% with SelectedCategoryID = Category.ID|default(0), CategoryOptions = CategoryOptions %}
-    {% include "dash/include/post_category.html" %}
-  {% endwith %}
+  {% include "dash/include/post_category.html" %}
 {% endblock %}
 
 {% block status_main_center %}
-  {% with ShowLinkAction = true, ShowImageAction = true %}
-    {% include "dash/include/post_status_toolbar_actions.html" %}
-  {% endwith %}
+  {% include "dash/include/post_status_toolbar_actions.html" %}
 {% endblock %}
 
 {% block status_main_right %}
@@ -43,21 +39,7 @@
 {% block content %}
 <div class="post-editor-layout">
   <div class="post-editor-layout-main">
-    {% with
-      FormAction = UrlFor('dash.posts.update', id=Post.ID),
-      TitleValue = Post.Title,
-      TitlePlaceholder = "",
-      ContentValue = Post.Content,
-      StatusValue = Post.Status,
-      CommentEnabledValue = Printf("%d", Post.CommentEnabled),
-      KindValue = Printf("%d", Post.Kind),
-      TagsValue = SelectedTagNames|default(''),
-      TOCHTML = PostTOCHTML|default(''),
-      AutoSyncSlug = false,
-      SlugAPIURL = ""
-    %}
-      {% include "dash/include/post_editor_content.html" %}
-    {% endwith %}
+    {% include "dash/include/post_editor_content.html" %}
   </div>
 </div>
 {% endblock %}

@@ -7,7 +7,7 @@
     {% if Error %}
       {{ sui.Alert(Error, kind="danger", title="保存失败") }}
     {% endif %}
-    {{ sui.Field("名称", sui.Input(id="tag-name", name="name", value=tag.Name|default(""), placeholder="标签名称", attrs="required"), id="tag-name", required=true) }}
-    {{ sui.Field("URL 标识", sui.Input(id="tag-slug", name="slug", value=tag.Slug|default(""), placeholder="url 标识", attrs="required"), id="tag-slug", required=true) }}
+    {{ sui.Field("名称", sui.Input(id="tag-name", name="name", value=tag.Name, placeholder="标签名称", attrs="required"), id="tag-name", required=true) }}
+    {{ sui.Field("URL 标识", sui.Input(id="tag-slug", name="slug", value=tag.Slug, placeholder="url 标识", attrs="required"), id="tag-slug", required=true) }}
   </div>
 </form>

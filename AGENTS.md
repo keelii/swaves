@@ -27,6 +27,7 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - Keep template context flat and explicit; do not reintroduce wrapper namespaces.
 - Register helpers directly via `env.AddFilter`/`env.AddFunction`.
 - Use template-root-relative paths with explicit `.html` suffix.
+- Prefer `include` without `with`; included templates should read needed values directly from current context when feasible.
 
 3) Data and workflow discipline:
 - Keep settings/prefix semantics stable.

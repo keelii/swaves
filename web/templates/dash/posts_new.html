@@ -8,7 +8,7 @@
 
 {% block window_toolbar_main_center %}
   <div class="slug">
-    <input type="text" name="slug" id="post-slug" value="{{ DraftSlug|default('') }}" class="input-slug" form="form" placeholder="文章 slug" required>
+    <input type="text" name="slug" id="post-slug" value="{{ DraftSlug }}" class="input-slug" form="form" placeholder="文章 slug" required>
   </div>
 {% endblock %}
 
@@ -17,9 +17,7 @@
 {% endblock %}
 
 {% block status_main_left %}
-  {% with SelectedCategoryID = DraftCategoryID|default(0), CategoryOptions = CategoryOptions %}
-    {% include "dash/include/post_category.html" %}
-  {% endwith %}
+  {% include "dash/include/post_category.html" %}
 {% endblock %}
 
 {% block status_main_center %}
@@ -33,21 +31,7 @@
 {% block content %}
 <div class="post-editor-layout">
   <div class="post-editor-layout-main">
-    {% with
-      FormAction = UrlFor('dash.posts.create'),
-      TitleValue = DraftTitle|default(''),
-      TitlePlaceholder = "标题",
-      ContentValue = DraftContent|default(''),
-      StatusValue = "",
-      CommentEnabledValue = "1",
-      KindValue = "0",
-      TagsValue = SelectedTagNames|default(''),
-      TOCHTML = DraftTOCHTML|default(''),
-      AutoSyncSlug = true,
-      SlugAPIURL = UrlFor('api.slug')
-    %}
-      {% include "dash/include/post_editor_content.html" %}
-    {% endwith %}
+    {% include "dash/include/post_editor_content.html" %}
   </div>
 </div>
 {% endblock %}

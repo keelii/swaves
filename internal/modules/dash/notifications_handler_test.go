@@ -106,14 +106,26 @@ func TestBuildNotificationListItemsCommentURLFallback(t *testing.T) {
 	if items[0].CommentURL != validCommentURL {
 		t.Fatalf("first comment url = %q, want %q", items[0].CommentURL, validCommentURL)
 	}
+	if !items[0].CommentInNewTab {
+		t.Fatalf("first comment should open in new tab")
+	}
 	if items[1].CommentURL != defaultCommentURL {
 		t.Fatalf("fallback comment url = %q, want %q", items[1].CommentURL, defaultCommentURL)
+	}
+	if items[1].CommentInNewTab {
+		t.Fatalf("fallback dash comment should stay in current tab")
 	}
 	if items[2].CommentURL != defaultCommentURL {
 		t.Fatalf("external comment url should fallback to default, got %q want %q", items[2].CommentURL, defaultCommentURL)
 	}
+	if items[2].CommentInNewTab {
+		t.Fatalf("external fallback should stay in current tab")
+	}
 	if items[3].CommentURL != "" {
 		t.Fatalf("non-comment item comment url should be empty, got %q", items[3].CommentURL)
+	}
+	if items[3].CommentInNewTab {
+		t.Fatalf("non-comment item should not set comment target")
 	}
 }
 

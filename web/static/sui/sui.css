@@ -78,6 +78,8 @@
   --app-toc-width: 300px;
   --app-toolbar-border-width: 1px;
   --app-status-border-width: 1px;
+  --post-editor-font-size: inherit;
+  --post-editor-font-family: inherit;
 }
 
 [data-theme="dark"] {
@@ -2096,6 +2098,12 @@ a.ui-icon-btn[disabled] {
 .app-main-toolbar .input-slug {
   border: none;
   background-color: transparent;
+}
+.post-editor-workspace .content-editor .input-title,
+.post-editor-workspace .content-editor .ProseMirror,
+.post-editor-workspace .content-editor .source-editor {
+  font-size: var(--post-editor-font-size, inherit);
+  font-family: var(--post-editor-font-family, inherit);
 }
 .content-editor .input-title:focus-visible,
 .app-main-toolbar .input-slug:focus-visible {

@@ -1,35 +1,107 @@
-{% set InitialTOCHTML = TOCHTML|default('')|trim %}
-{% set InitialTOCPreferredOpen = Settings('dash_post_editor_toc_open') == '1' %}
-{% set InitialSourcePreferredOpen = Settings('dash_post_editor_source_mode') == '1' %}
+{% set isRegularPostEditor = (DraftCategoryID is defined) or (Category is defined) %}
+{% set isEditMode = Post is defined %}
+
+{% set formAction = UrlFor('dash.encrypted_posts.create') %}
+{% if isRegularPostEditor %}
+  {% set formAction = UrlFor('dash.posts.create') %}
+{% endif %}
+{% if isEditMode %}
+  {% if isRegularPostEditor %}
+    {% set formAction = UrlFor('dash.posts.update', id=Post.ID) %}
+  {% else %}
+    {% set formAction = UrlFor('dash.encrypted_posts.update', id=Post.ID) %}
+  {% endif %}
+{% endif %}
+
+{% set titleValue = "" %}
+{% if isRegularPostEditor %}
+  {% set titleValue = DraftTitle %}
+{% endif %}
+{% if isEditMode %}
+  {% set titleValue = Post.Title %}
+{% endif %}
+
+{% set titlePlaceholder = "加密文章标题" %}
+{% if isRegularPostEditor %}
+  {% set titlePlaceholder = "标题" %}
+{% endif %}
+{% if isEditMode %}
+  {% set titlePlaceholder = "" %}
+{% endif %}
+
+{% set contentValue = "" %}
+{% if isRegularPostEditor %}
+  {% set contentValue = DraftContent %}
+{% endif %}
+{% if isEditMode %}
+  {% set contentValue = Post.Content %}
+{% endif %}
+
+{% set statusValue = "" %}
+{% if isRegularPostEditor and isEditMode %}
+  {% set statusValue = Post.Status %}
+{% endif %}
+
+{% set commentEnabledValue = "1" %}
+{% if isRegularPostEditor and isEditMode %}
+  {% set commentEnabledValue = Printf("%d", Post.CommentEnabled) %}
+{% endif %}
+
+{% set kindValue = "0" %}
+{% if isRegularPostEditor and isEditMode %}
+  {% set kindValue = Printf("%d", Post.Kind) %}
+{% endif %}
+
+{% set tagsValue = "" %}
+{% if isRegularPostEditor %}
+  {% set tagsValue = SelectedTagNames %}
+{% endif %}
+
+{% set tocHTML = "" %}
+{% if isRegularPostEditor and isEditMode %}
+  {% set tocHTML = PostTOCHTML %}
+{% elif isRegularPostEditor %}
+  {% set tocHTML = DraftTOCHTML %}
+{% endif %}
+{% set initialTOCHTML = tocHTML|trim %}
+
+{% set autoSyncSlugEnabled = isRegularPostEditor and (not isEditMode) %}
+{% set slugAPIURLValue = "" %}
+{% if autoSyncSlugEnabled %}
+  {% set slugAPIURLValue = UrlFor('api.slug') %}
+{% endif %}
+
+{% set initialTOCPreferredOpen = Settings('dash_post_editor_toc_open') == '1' %}
+{% set initialSourcePreferredOpen = Settings('dash_post_editor_source_mode') == '1' %}
 
 <div
-  class="post-editor-workspace{% if InitialTOCHTML and InitialTOCPreferredOpen %} toc-open{% endif %}{% if InitialSourcePreferredOpen %} source-mode{% endif %}"
+  class="post-editor-workspace{% if initialTOCHTML and initialTOCPreferredOpen %} toc-open{% endif %}{% if initialSourcePreferredOpen %} source-mode{% endif %}"
   data-role="post-editor-workspace"
-  data-toc-preferred-open="{% if InitialTOCPreferredOpen %}1{% else %}0{% endif %}"
-  data-source-preferred-open="{% if InitialSourcePreferredOpen %}1{% else %}0{% endif %}"
+  data-toc-preferred-open="{% if initialTOCPreferredOpen %}1{% else %}0{% endif %}"
+  data-source-preferred-open="{% if initialSourcePreferredOpen %}1{% else %}0{% endif %}"
 >
   <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" spellcheck="false">
     <div class="title header">
-      <input type="text" name="title" value="{{ TitleValue }}" class="input-title" id="post-title" form="form"{% if TitlePlaceholder %} placeholder="{{ TitlePlaceholder }}"{% endif %} required>
+      <input type="text" name="title" value="{{ titleValue }}" class="input-title" id="post-title" form="form"{% if titlePlaceholder %} placeholder="{{ titlePlaceholder }}"{% endif %} required>
     </div>
     <div class="content wysiwyg" data-role="post-editor-wysiwyg"></div>
-    <textarea id="post-content" name="content" class="source-editor" data-role="post-editor-source" form="form"{% if not InitialSourcePreferredOpen %} hidden{% endif %}>{{ ContentValue }}</textarea>
+    <textarea id="post-content" name="content" class="source-editor" data-role="post-editor-source" form="form"{% if not initialSourcePreferredOpen %} hidden{% endif %}>{{ contentValue }}</textarea>
   </div>
-  <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane"{% if not InitialTOCHTML %} hidden{% endif %} aria-hidden="{% if InitialTOCHTML %}false{% else %}true{% endif %}">
+  <aside class="post-editor-toc-pane" data-role="post-editor-toc-pane"{% if not initialTOCHTML %} hidden{% endif %} aria-hidden="{% if initialTOCHTML %}false{% else %}true{% endif %}">
     <div class="post-toc">
       <div class="post-editor-toc-head header">目录</div>
-      <div class="post-editor-toc-body" data-role="post-editor-toc-body">{{ InitialTOCHTML|safe }}</div>
+      <div class="post-editor-toc-body" data-role="post-editor-toc-body">{{ initialTOCHTML|safe }}</div>
     </div>
   </aside>
 </div>
 
-{% if StatusValue is not none and StatusValue != "" %}
-<input type="hidden" name="status" value="{{ StatusValue }}" form="form">
+{% if statusValue is not none and statusValue != "" %}
+<input type="hidden" name="status" value="{{ statusValue }}" form="form">
 {% endif %}
-<input type="hidden" name="comment_enabled" value="{{ CommentEnabledValue }}" form="form">
-<input type="hidden" name="kind" value="{{ KindValue }}" form="form">
-<input type="hidden" name="tags" value="{{ TagsValue }}" form="form">
-<form id="form" method="post" action="{{ FormAction }}">
+<input type="hidden" name="comment_enabled" value="{{ commentEnabledValue }}" form="form">
+<input type="hidden" name="kind" value="{{ kindValue }}" form="form">
+<input type="hidden" name="tags" value="{{ tagsValue }}" form="form">
+<form id="form" method="post" action="{{ formAction }}">
   {{ _csrf_token() }}
 </form>
 
@@ -45,10 +117,12 @@
     var wysiwygMount = document.querySelector('[data-role="post-editor-wysiwyg"]');
     var tocToggleButton = document.querySelector('[data-role="toggle-post-toc"]');
     var sourceToggleButton = document.querySelector('[data-role="toggle-post-source"]');
-    var autoSyncSlug = {% if AutoSyncSlug %}true{% else %}false{% endif %};
-    var slugAPIURL = {{ SlugAPIURL | tojson }};
+    var autoSyncSlug = {% if autoSyncSlugEnabled %}true{% else %}false{% endif %};
+    var slugAPIURL = {{ slugAPIURLValue | tojson }};
     var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
     var uiStateSaveURL = {{ UrlFor('dash.settings.api.ui_state.update') | tojson }};
+    var editorFontSizeSetting = {{ Settings('editor_font_size') | tojson }};
+    var editorFontFamilySetting = {{ Settings('editor_font_family') | tojson }};
     var slugSyncTimer = null;
     var slugSyncSeq = 0;
     var tocSyncTimer = null;
@@ -71,6 +145,55 @@
     } catch (error) {
       headingIDRunePattern = null;
     }
+
+    function normalizeEditorFontSize(raw) {
+      var parsed = Number.parseInt(String(raw == null ? "" : raw).trim(), 10);
+      if (!Number.isFinite(parsed)) {
+        return "";
+      }
+      if (parsed < 12) {
+        parsed = 12;
+      } else if (parsed > 36) {
+        parsed = 36;
+      }
+      return String(parsed);
+    }
+
+    function normalizeEditorFontFamily(raw) {
+      var value = String(raw == null ? "" : raw).trim();
+      if (!value) {
+        return "";
+      }
+      if (value.length > 200) {
+        value = value.slice(0, 200);
+      }
+      if (/[;\r\n{}]/.test(value)) {
+        return "";
+      }
+      return value;
+    }
+
+    function applyEditorTypographySettings() {
+      if (!workspace || !workspace.style) {
+        return;
+      }
+
+      var normalizedSize = normalizeEditorFontSize(editorFontSizeSetting);
+      if (normalizedSize) {
+        workspace.style.setProperty("--post-editor-font-size", normalizedSize + "px");
+      } else {
+        workspace.style.removeProperty("--post-editor-font-size");
+      }
+
+      var normalizedFamily = normalizeEditorFontFamily(editorFontFamilySetting);
+      if (normalizedFamily) {
+        workspace.style.setProperty("--post-editor-font-family", normalizedFamily);
+      } else {
+        workspace.style.removeProperty("--post-editor-font-family");
+      }
+    }
+
+    applyEditorTypographySettings();
 
     function getEditorRoot() {
       if (!workspace || !workspace.querySelector) {

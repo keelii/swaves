@@ -1,4 +1,9 @@
-{% set selectedCategoryID = SelectedCategoryID|default(0) %}
+{% set selectedCategoryID = 0 %}
+{% if Category is defined %}
+  {% set selectedCategoryID = Category.ID %}
+{% elif DraftCategoryID is defined %}
+  {% set selectedCategoryID = DraftCategoryID %}
+{% endif %}
 <select class="ui-select mini noborder" style="width:7em;" id="post-category-select" name="categories" form="form" aria-label="分类选择">
   <option value="">顶级分类</option>
   {% for category in CategoryOptions|default([]) %}

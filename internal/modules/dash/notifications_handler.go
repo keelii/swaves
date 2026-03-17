@@ -22,14 +22,15 @@ const (
 )
 
 type NotificationListItemView struct {
-	ID             int64
-	EventType      string
-	Title          string
-	Body           string
-	AggregateCount int
-	ReadAt         *int64
-	UpdatedAt      int64
-	CommentURL     string
+	ID              int64
+	EventType       string
+	Title           string
+	Body            string
+	AggregateCount  int
+	ReadAt          *int64
+	UpdatedAt       int64
+	CommentURL      string
+	CommentInNewTab bool
 }
 
 func parseCommentURLFromAggregateKey(raw string) string {
@@ -69,6 +70,7 @@ func parseCommentURLFromAggregateKey(raw string) string {
 
 func buildNotificationListItems(notifications []db.Notification, defaultCommentURL string) []NotificationListItemView {
 	items := make([]NotificationListItemView, 0, len(notifications))
+	defaultCommentURL = strings.TrimSpace(defaultCommentURL)
 	for _, n := range notifications {
 		item := NotificationListItemView{
 			ID:             n.ID,
@@ -84,10 +86,38 @@ func buildNotificationListItems(notifications []db.Notification, defaultCommentU
 			if item.CommentURL == "" {
 				item.CommentURL = defaultCommentURL
 			}
+			item.CommentInNewTab = isWebSideRelativePath(item.CommentURL)
 		}
 		items = append(items, item)
 	}
 	return items
+}
+
+func isWebSideRelativePath(rawURL string) bool {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return false
+	}
+
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+
+	// Only classify same-origin relative paths; absolute URLs are rejected at parseCommentURLFromAggregateKey.
+	if parsedURL.IsAbs() || strings.TrimSpace(parsedURL.Host) != "" {
+		return false
+	}
+	path := strings.TrimSpace(parsedURL.Path)
+	if path == "" || !strings.HasPrefix(path, "/") {
+		return false
+	}
+
+	dashBasePath := share.GetDashUrl()
+	if path == dashBasePath || strings.HasPrefix(path, dashBasePath+"/") {
+		return false
+	}
+	return true
 }
 
 func normalizeNotificationEventTypeFilter(raw string) string {

@@ -12,19 +12,11 @@
 {% endblock %}
 
 {% block status_main_left %}
-  {% with
-    ExpiresAtUnix = Post.ExpiresAt|default(0),
-    PasswordPlaceholder = "留空保持当前密码",
-    PasswordHelp = "留空可保持当前密码"
-  %}
-    {% include "dash/include/encrypted_post_expiry_status.html" %}
-  {% endwith %}
+  {% include "dash/include/encrypted_post_expiry_status.html" %}
 {% endblock %}
 
 {% block status_main_center %}
-  {% with ShowLinkAction = true, ShowImageAction = false %}
-    {% include "dash/include/post_status_toolbar_actions.html" %}
-  {% endwith %}
+  {% include "dash/include/post_status_toolbar_actions.html" %}
 {% endblock %}
 
 {% block status_main_right %}
@@ -34,20 +26,7 @@
 {% block content %}
 <div class="post-editor-layout">
   <div class="post-editor-layout-main">
-    {% with
-      FormAction = UrlFor('dash.encrypted_posts.update', id=Post.ID),
-      TitleValue = Post.Title,
-      TitlePlaceholder = "",
-      ContentValue = Post.Content,
-      StatusValue = "",
-      CommentEnabledValue = "1",
-      KindValue = "0",
-      TagsValue = "",
-      AutoSyncSlug = false,
-      SlugAPIURL = ""
-    %}
-      {% include "dash/include/post_editor_content.html" %}
-    {% endwith %}
+    {% include "dash/include/post_editor_content.html" %}
   </div>
 </div>
 {% endblock %}

@@ -91,16 +91,41 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 }
 
 func resolveProjectPath(path string) string {
-	primary := filepath.Clean(path)
-	if _, err := os.Stat(primary); err == nil {
-		return primary
+	rel := filepath.Clean(path)
+	if filepath.IsAbs(rel) {
+		if _, err := os.Stat(rel); err == nil {
+			return rel
+		}
+		return rel
 	}
 
-	fallback := filepath.Clean(filepath.Join("..", "..", path))
-	if _, err := os.Stat(fallback); err == nil {
-		return fallback
+	wd, err := os.Getwd()
+	if err == nil {
+		if resolved, ok := findPathUpward(wd, rel); ok {
+			return resolved
+		}
 	}
-	return primary
+
+	if _, err := os.Stat(rel); err == nil {
+		return rel
+	}
+	return rel
+}
+
+func findPathUpward(startDir, relPath string) (string, bool) {
+	dir := filepath.Clean(startDir)
+	for {
+		candidate := filepath.Join(dir, relPath)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, true
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
 }
 
 func (swv *SwavesApp) Listen(opts fiber.ListenConfig) {

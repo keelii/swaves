@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -128,5 +129,44 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	}
 	if getResp.StatusCode != fiber.StatusMethodNotAllowed {
 		t.Fatalf("unexpected get /dash/import/parse-item status: %d", getResp.StatusCode)
+	}
+}
+
+func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "repo")
+	templatesDir := filepath.Join(projectRoot, "web", "templates")
+	nestedDir := filepath.Join(projectRoot, "web", "static", "seditor")
+
+	if err := os.MkdirAll(templatesDir, 0o755); err != nil {
+		t.Fatalf("create templates dir failed: %v", err)
+	}
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatalf("create nested dir failed: %v", err)
+	}
+
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+
+	if err := os.Chdir(nestedDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	got := resolveProjectPath(filepath.Join("web", "templates"))
+	want := templatesDir
+	gotInfo, err := os.Stat(got)
+	if err != nil {
+		t.Fatalf("stat resolved path failed: %v", err)
+	}
+	wantInfo, err := os.Stat(want)
+	if err != nil {
+		t.Fatalf("stat expected path failed: %v", err)
+	}
+	if !os.SameFile(gotInfo, wantInfo) {
+		t.Fatalf("unexpected resolved template path: got %q want %q", got, want)
 	}
 }

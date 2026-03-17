@@ -3439,6 +3439,11 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 	}
 
 	s.ID = id
+
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableSettings, TableOpInsert)
+	}
+
 	return id, nil
 }
 

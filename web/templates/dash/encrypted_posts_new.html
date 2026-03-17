@@ -10,19 +10,11 @@
 {% endblock %}
 
 {% block status_main_left %}
-  {% with
-    ExpiresAtUnix = 0,
-    PasswordPlaceholder = "访问密码（可选）",
-    PasswordHelp = "仅用于访客访问，不影响后台登录"
-  %}
-    {% include "dash/include/encrypted_post_expiry_status.html" %}
-  {% endwith %}
+  {% include "dash/include/encrypted_post_expiry_status.html" %}
 {% endblock %}
 
 {% block status_main_center %}
-  {% with ShowLinkAction = true, ShowImageAction = false %}
-    {% include "dash/include/post_status_toolbar_actions.html" %}
-  {% endwith %}
+  {% include "dash/include/post_status_toolbar_actions.html" %}
 {% endblock %}
 
 {% block status_main_right %}
@@ -32,20 +24,7 @@
 {% block content %}
 <div class="post-editor-layout">
   <div class="post-editor-layout-main">
-    {% with
-      FormAction = UrlFor('dash.encrypted_posts.create'),
-      TitleValue = "",
-      TitlePlaceholder = "加密文章标题",
-      ContentValue = "",
-      StatusValue = "",
-      CommentEnabledValue = "1",
-      KindValue = "0",
-      TagsValue = "",
-      AutoSyncSlug = false,
-      SlugAPIURL = ""
-    %}
-      {% include "dash/include/post_editor_content.html" %}
-    {% endwith %}
+    {% include "dash/include/post_editor_content.html" %}
   </div>
 </div>
 {% endblock %}

@@ -5,9 +5,7 @@
 <header>
   <h1>{{ Entity.Name }}</h1>
 
-  {% with IsCategory = IsCategory, IsTag = IsTag %}
-    {% include "site/include/list_nav.html" %}
-  {% endwith %}
+  {% include "site/include/list_nav.html" %}
 </header>
 
 {% if Entity.Description %}

@@ -1190,6 +1190,62 @@ func TestEnsureDefaultSettingsSyncSubKind(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsEditorTypography(t *testing.T) {
+	db := openTestDB(t)
+
+	editorFontSize, err := GetSettingByCode(db, "editor_font_size")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(editor_font_size) failed: %v", err)
+	}
+	if editorFontSize.Type != "number" {
+		t.Fatalf("expected editor_font_size type=number, got %s", editorFontSize.Type)
+	}
+	if strings.TrimSpace(editorFontSize.Value) == "" {
+		t.Fatal("editor_font_size value should not be empty")
+	}
+
+	editorFontFamily, err := GetSettingByCode(db, "editor_font_family")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(editor_font_family) failed: %v", err)
+	}
+	if editorFontFamily.Type != "text" {
+		t.Fatalf("expected editor_font_family type=text, got %s", editorFontFamily.Type)
+	}
+	if strings.TrimSpace(editorFontFamily.Value) == "" {
+		t.Fatal("editor_font_family value should not be empty")
+	}
+}
+
+func TestCreateSettingEmitsInsertCallback(t *testing.T) {
+	db := openTestDB(t)
+
+	originalCallback := OnDatabaseChanged
+	t.Cleanup(func() {
+		OnDatabaseChanged = originalCallback
+	})
+
+	triggered := false
+	OnDatabaseChanged = func(tableName TableName, kind TableOp) {
+		if tableName == TableSettings && kind == TableOpInsert {
+			triggered = true
+		}
+	}
+
+	item := &Setting{
+		Code:  uniqueValue("setting_insert_signal"),
+		Kind:  SettingKindUIExperience,
+		Name:  "tmp",
+		Type:  "text",
+		Value: "1",
+	}
+	if _, err := CreateSetting(db, item); err != nil {
+		t.Fatalf("CreateSetting failed: %v", err)
+	}
+	if !triggered {
+		t.Fatal("expected OnDatabaseChanged insert callback for setting creation")
+	}
+}
+
 func TestBuiltinPrefixFieldSettings(t *testing.T) {
 	db := openTestDB(t)
 

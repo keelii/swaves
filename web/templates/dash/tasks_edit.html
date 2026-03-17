@@ -7,5 +7,7 @@
 {{ sui.LinkButton("新建", "outline", href=UrlFor('dash.tasks.new')) }}
 {% endblock %}
 {% block content %}
-{% with Action = UrlFor('dash.tasks.update', id=Task.ID), Task = Task, IsEdit = true %}{% include "dash/include/forms/tasks_form.html" %}{% endwith %}
+{% set Action = UrlFor('dash.tasks.update', id=Task.ID) %}
+{% set IsEdit = true %}
+{% include "dash/include/forms/tasks_form.html" %}
 {% endblock %}

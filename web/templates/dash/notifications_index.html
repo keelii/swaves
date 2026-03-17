@@ -3,7 +3,7 @@
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "notifications-table" %}
-{% set currentEventType = NotificationEventType|default("") %}
+{% set currentEventType = NotificationEventType %}
 {% set notificationTabCounts = NotificationTabCounts|default({}) %}
 {% set pageSizeQuery = Query["pageSize"] %}
 
@@ -74,7 +74,8 @@
             <div class="cell-content">
               <span>{{ item.Body }}</span>
               {% if item.EventType == "comment" %}
-                <a href="{{ item.CommentURL if item.CommentURL else UrlFor('dash.comments.list') }}">查看留言</a>
+                {% set commentLink = item.CommentURL if item.CommentURL else UrlFor('dash.comments.list') %}
+                <a href="{{ commentLink }}"{% if item.CommentInNewTab %} target="_blank" rel="noopener noreferrer"{% endif %}>查看留言</a>
               {% endif %}
             </div>
           </td>

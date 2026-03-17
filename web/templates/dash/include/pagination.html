@@ -1,5 +1,5 @@
 <nav aria-label="分页导航" class="pagination">
-  {% set pagerRouteName = PagerRouteName|default(RouteName)|default("") %}
+  {% set pagerRouteName = PagerRouteName|default(RouteName) %}
   {% set pagerQuery = PagerQuery|default(Query)|default({}) %}
   {% set pagerQuery = dict(pagerQuery, pageSize=Pager.PageSize) %}
   {% set pagerEnabled = pagerRouteName != "" %}

@@ -1,7 +1,14 @@
-{% set expiresAtUnix = ExpiresAtUnix|default(0) %}
+{% set expiresAtUnix = 0 %}
+{% if Post is defined and Post.ExpiresAt is not none %}
+  {% set expiresAtUnix = Post.ExpiresAt %}
+{% endif %}
 {% set hasExpiry = expiresAtUnix > 0 %}
-{% set PasswordPlaceholder = PasswordPlaceholder|default("访问密码（可选）") %}
-{% set PasswordHelp = PasswordHelp|default("仅用于访客访问，不影响后台登录") %}
+{% set passwordPlaceholder = "访问密码（可选）" %}
+{% set passwordHelp = "仅用于访客访问，不影响后台登录" %}
+{% if Post is defined %}
+  {% set passwordPlaceholder = "留空保持当前密码" %}
+  {% set passwordHelp = "留空可保持当前密码" %}
+{% endif %}
 <style>
   .encrypted-status-controls {
     display: inline-flex;
@@ -102,9 +109,9 @@
       name="password"
       form="form"
       autocomplete="new-password"
-      placeholder="{{ PasswordPlaceholder }}"
+      placeholder="{{ passwordPlaceholder }}"
       aria-label="访问密码"
-      title="{{ PasswordHelp }}"
+      title="{{ passwordHelp }}"
     >
   </div>
 </div>

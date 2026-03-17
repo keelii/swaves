@@ -6,7 +6,6 @@
 {% endblock %}
 
 {% block content %}
-{% with Action = UrlFor('dash.settings.create') %}
-  {% include "dash/include/forms/settings_form.html" %}
-{% endwith %}
+{% set Action = UrlFor('dash.settings.create') %}
+{% include "dash/include/forms/settings_form.html" %}
 {% endblock %}

@@ -9,7 +9,7 @@
 {% set type_value = "text" %}
 {% set options_value = "" %}
 {% set attrs_value = "" %}
-{% set default_option_value = DefaultOptionValue|default("") %}
+{% set default_option_value = DefaultOptionValue %}
 {% set prefix_value = "" %}
 {% set value_value = "" %}
 {% set description_value = "" %}
@@ -20,15 +20,15 @@
 
 {% if setting %}
   {% set kind_value = setting.Kind|default("default") %}
-  {% set sub_kind_value = setting.SubKind|default("") %}
-  {% set name_value = setting.Name|default("") %}
-  {% set code_value = setting.Code|default("") %}
+  {% set sub_kind_value = setting.SubKind %}
+  {% set name_value = setting.Name %}
+  {% set code_value = setting.Code %}
   {% set type_value = setting.Type|default("text") %}
-  {% set options_value = setting.Options|default("") %}
-  {% set attrs_value = setting.Attrs|default("") %}
-  {% set prefix_value = setting.PrefixValue|default("") %}
-  {% set value_value = setting.Value|default("") %}
-  {% set description_value = setting.Description|default("") %}
+  {% set options_value = setting.Options %}
+  {% set attrs_value = setting.Attrs %}
+  {% set prefix_value = setting.PrefixValue %}
+  {% set value_value = setting.Value %}
+  {% set description_value = setting.Description %}
   {% set sort_value = setting.Sort|default(0) %}
   {% set reload_checked = setting.Reload == 1 %}
   {% if setting.DefaultOptionValue %}

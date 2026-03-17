@@ -192,3 +192,7 @@
 - Web 公开端能力基线参考 `internal/modules/site/router.go`。
 - Web 管理端能力基线参考 `internal/modules/dash/router.go`。
 - 任务与后台运维能力基线参考 `internal/platform/jobs/register.go`。
+
+## 9. 相关设计
+
+- 管理端统一鉴权设计见 `docs/admin-auth-architecture.md`。

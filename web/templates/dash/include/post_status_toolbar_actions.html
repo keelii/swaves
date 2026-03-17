@@ -1,6 +1,8 @@
 {% import "dash/include/ui.html" as sui %}
-{% set showLinkAction = ShowLinkAction|default(false) %}
-{% set showImageAction = ShowImageAction|default(false) %}
+{% set isRegularPostEditor = (DraftCategoryID is defined) or (Category is defined) %}
+{% set isEditMode = Post is defined %}
+{% set showLinkAction = (not isRegularPostEditor) or isEditMode %}
+{% set showImageAction = isRegularPostEditor and isEditMode %}
 
 <div aria-label="Markdown 常用按钮">
   {{ sui.IconAction("bold", "加粗", attrs='data-title="加粗" data-seditor-command="bold"') }}

@@ -1,5 +1,5 @@
 <div class="ui-tags" aria-label="分页">
-  {% set pagerRouteName = PagerRouteName|default(RouteName)|default("") %}
+  {% set pagerRouteName = PagerRouteName|default(RouteName) %}
   {% set pagerQuery = PagerQuery|default(Query)|default({}) %}
   {% set pagerQuery = dict(pagerQuery, pageSize=Pager.PageSize) %}
   {% set pagerEnabled = pagerRouteName != "" %}

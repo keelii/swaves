@@ -16,7 +16,11 @@
       <div class="flex items-center gap-4" style="flex-grow: 1; width: 300px; justify-content: end;">
         <form method="post" style="display:inline" action="{{ UrlFor('dash.categories.parent.update', id=category.ID) }}" class="category-parent-form">
           {{ _csrf_token() }}
-            {% with Root = root, SelectedID = category.ParentID, EmptyOption = "顶级分类", SelectID = "" %}{% include "dash/include/category_select.html" %}{% endwith %}
+          {% set Root = root %}
+          {% set SelectedID = category.ParentID %}
+          {% set EmptyOption = "顶级分类" %}
+          {% set SelectID = "" %}
+          {% include "dash/include/category_select.html" %}
         </form>
         <div class="category-row-actions">
           {{ sui.LinkIcon("square-pen", UrlFor('dash.categories.edit', id=category.ID), attrs='aria-label="编辑" data-title="编辑"') }}

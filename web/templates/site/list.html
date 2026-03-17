@@ -18,9 +18,13 @@
 <header>
   <h1>{{ Title }}</h1>
 
-  {% with IsCategory = true, IsTag = true %}
-    {% include "site/include/list_nav.html" %}
-  {% endwith %}
+  {% set __listNavIsCategory = IsCategory %}
+  {% set __listNavIsTag = IsTag %}
+  {% set IsCategory = true %}
+  {% set IsTag = true %}
+  {% include "site/include/list_nav.html" %}
+  {% set IsCategory = __listNavIsCategory %}
+  {% set IsTag = __listNavIsTag %}
 </header>
 
 
