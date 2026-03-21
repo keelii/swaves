@@ -13,10 +13,13 @@
     var navWidthLastSaved = parsePixels(appWindow && appWindow.getAttribute('data-nav-width-current'));
     var notificationsUnreadURL = String(cfg.notificationsUnreadURL || appWindow && appWindow.getAttribute('data-notifications-unread-url') || '').trim();
     var notificationsReadURL = String(cfg.notificationsReadURL || appWindow && appWindow.getAttribute('data-notifications-read-url') || '').trim();
-    var notificationsReadAllURL = String(cfg.notificationsReadAllURL || appWindow && appWindow.getAttribute('data-notifications-read-all-url') || '').trim();
-    var notificationsDeleteURL = String(cfg.notificationsDeleteURL || appWindow && appWindow.getAttribute('data-notifications-delete-url') || '').trim();
-    var notificationsPollingTimer = null;
-    var notificationsPollingIntervalMs = 20000;
+	    var notificationsReadAllURL = String(cfg.notificationsReadAllURL || appWindow && appWindow.getAttribute('data-notifications-read-all-url') || '').trim();
+	    var notificationsDeleteURL = String(cfg.notificationsDeleteURL || appWindow && appWindow.getAttribute('data-notifications-delete-url') || '').trim();
+	    var notificationsPollingTimer = null;
+	    var notificationsPollingIntervalMs = 20000;
+	    var themeModePersisting = false;
+	    var themeModeQueued = null;
+	    var themeModeLastSaved = document.body && document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
     if (!appWindow) {
       return;
@@ -416,11 +419,9 @@
       });
     }
 
-    var themeStorageKey = 'sui.demo_theme_mode';
-
-    function getThemeToggleButtons() {
-      return document.querySelectorAll('[data-role="toggle-theme"]');
-    }
+	    function getThemeToggleButtons() {
+	      return document.querySelectorAll('[data-role="toggle-theme"]');
+	    }
 
     function isDarkTheme() {
       return document.body && document.body.getAttribute('data-theme') === 'dark';
@@ -447,38 +448,66 @@
       });
     }
 
-    function loadThemeState() {
-      try {
-        var stored = window.localStorage.getItem(themeStorageKey);
-        if (stored !== 'dark' && stored !== 'light') {
-          return null;
-        }
-        return stored;
-      } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('read theme state failed', error);
-        }
-        return null;
-      }
-    }
+	    function normalizeThemeMode(mode) {
+	      var value = String(mode || '').trim().toLowerCase();
+	      if (value === 'dark' || value === 'light') {
+	        return value;
+	      }
+	      return '';
+	    }
 
-    function saveThemeState(mode) {
-      try {
-        window.localStorage.setItem(themeStorageKey, mode);
-      } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save theme state failed', error);
-        }
-      }
-    }
+	    function queueSaveThemeMode(nextMode) {
+	      var value = normalizeThemeMode(nextMode);
+	      if (!value) {
+	        return;
+	      }
+	      if (themeModeLastSaved === value && !themeModePersisting) {
+	        return;
+	      }
+	      themeModeQueued = value;
+	      if (!themeModePersisting) {
+	        flushSaveThemeMode();
+	      }
+	    }
 
-    function initTheme() {
-      var stored = loadThemeState();
-      if (stored) {
-        applyThemeMode(stored);
-      }
-      syncThemeToggleButtons();
-    }
+	    function flushSaveThemeMode() {
+	      if (themeModePersisting || themeModeQueued === null) {
+	        return;
+	      }
+
+	      var value = themeModeQueued;
+	      themeModeQueued = null;
+
+	      if (!uiStateSaveURL) {
+	        themeModeLastSaved = value;
+	        return;
+	      }
+
+	      themeModePersisting = true;
+	      postUIStateSetting('mode', value).then(function(result) {
+	        if (!result || !result.ok || (result.body && result.body.ok === false)) {
+	          var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
+	          if (window.console && typeof window.console.warn === 'function') {
+	            window.console.warn('save theme mode failed: value=' + value + ' message=' + message);
+	          }
+	          return;
+	        }
+	        themeModeLastSaved = value;
+	      }).catch(function(error) {
+	        if (window.console && typeof window.console.warn === 'function') {
+	          window.console.warn('save theme mode request failed', error);
+	        }
+	      }).then(function() {
+	        themeModePersisting = false;
+	        if (themeModeQueued !== null && themeModeQueued !== value) {
+	          flushSaveThemeMode();
+	        }
+	      });
+	    }
+
+	    function initTheme() {
+	      syncThemeToggleButtons();
+	    }
 
     function getNotificationBadges() {
       return document.querySelectorAll('[data-role="nav-notification-badge"]');
@@ -706,14 +735,14 @@
     });
 
     document.addEventListener('click', function(event) {
-      var themeToggle = event.target.closest('[data-role="toggle-theme"]');
-      if (themeToggle) {
-        var nextMode = isDarkTheme() ? 'light' : 'dark';
-        applyThemeMode(nextMode);
-        saveThemeState(nextMode);
-        syncThemeToggleButtons();
-        event.preventDefault();
-        return;
+	      var themeToggle = event.target.closest('[data-role="toggle-theme"]');
+	      if (themeToggle) {
+	        var nextMode = isDarkTheme() ? 'light' : 'dark';
+	        applyThemeMode(nextMode);
+	        queueSaveThemeMode(nextMode);
+	        syncThemeToggleButtons();
+	        event.preventDefault();
+	        return;
       }
 
       var markReadButton = event.target.closest('[data-role="notification-mark-read"]');

@@ -365,20 +365,33 @@ func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 		t.Fatalf("load templates failed: %v", err)
 	}
 
-	groups := []dash.SettingSubKindGroupView{
+	areas := []dash.SettingAreaView{
 		{
-			Code:  "",
-			Label: "",
-			Settings: []dash.SettingView{
+			Code:  "frontend",
+			Label: "前台",
+			Sections: []dash.SettingSectionView{
 				{
-					Setting: db.Setting{
-						Kind:  "site",
-						Name:  "站点标题",
-						Code:  "site_title",
-						Type:  "text",
-						Value: "Swaves",
+					Code:        "site",
+					Label:       "站点信息",
+					Description: "配置公开站点的名称、访问地址、语言和页面基础信息。",
+					Cards: []dash.SettingCardView{
+						{
+							Code:  "identity",
+							Label: "基础信息",
+							Settings: []dash.SettingView{
+								{
+									Setting: db.Setting{
+										Kind:  "site",
+										Name:  "站点标题",
+										Code:  "site_title",
+										Type:  "text",
+										Value: "Swaves",
+									},
+									AttrsParsed: map[string]any{},
+								},
+							},
+						},
 					},
-					AttrsParsed: map[string]any{},
 				},
 			},
 		},
@@ -386,17 +399,23 @@ func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 
 	var out bytes.Buffer
 	err := view.Render(&out, "dash/settings_all.html", map[string]any{
-		"SettingKinds":       []string{"site"},
-		"SettingKindLabels":  map[string]string{"site": "站点"},
-		"ActiveKind":         "site",
-		"ActiveKindGroups":   groups,
-		"ContentRoutingKind": db.SettingKindContentRouting,
+		"SettingAreas":              areas,
+		"ActiveArea":                areas[0],
+		"ActiveSection":             areas[0].Sections[0],
+		"ContentRoutingSectionCode": "content",
 	})
 	if err != nil {
 		t.Fatalf("render settings_all failed: %v", err)
 	}
 	if out.Len() == 0 {
 		t.Fatalf("expected non-empty render output")
+	}
+	rendered := out.String()
+	if !strings.Contains(rendered, "站点信息") {
+		t.Fatalf("expected rendered settings output to contain section title")
+	}
+	if !strings.Contains(rendered, "前台") {
+		t.Fatalf("expected rendered settings output to contain area label")
 	}
 }
 

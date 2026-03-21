@@ -43,13 +43,13 @@
 
 - 模板运行时仅使用 MiniJinja；禁止引入双引擎切换或回退路径。
 - 站点与管理后台模板文件统一使用 `.html`。
-- 根上下文契约为 `Req`、`Auth`、`Site`；`__root` 为内部兼容上下文。
-- 业务绑定不得覆盖保留键（`Req`、`Auth`、`Site`、`__root`）。
+- 模板上下文保持扁平且显式；不得恢复 `Req/Auth/Site/__root` 包装命名空间。
+- 业务绑定不得覆盖渲染层已注入字段（例如 `RouteName`、`Query`、`IsLogin`、`_csrf_token_value`）。
 - 避免将请求 locals 盲目全量注入模板；通过渲染辅助函数显式传入稳定字段。
-- 模板中的 `import/include` 路径必须使用绝对模板路径（以 `/` 开头）。
+- 模板中的 `import/include` 路径使用模板根相对路径，并显式带 `.html` 后缀（不要求 `/` 前缀）。
 - `include` 场景尽量不要使用 `with` 传参；在可行前提下，由被 include 模板直接读取当前上下文所需字段。
 - 模板中的内部链接必须继续使用 `url_for`，不得硬编码 dash 路径。
-- 开发期热重载使用 `SWAVES_TEMPLATE_RELOAD`；生产环境不得在每次请求时清空模板缓存。
+- 模板热重载由 `SWAVES_ENV` 推导：非 `prod` 可按请求清缓存，`prod` 禁止按请求清缓存。
 
 ## 类别 B) 产品流程与数据语义
 
@@ -141,9 +141,9 @@
 - [ ] 错误分支有包含上下文的日志。
 - [ ] `InitDatabase` 中未新增迁移逻辑（`EnsureDefaultSettings` 除外）。
 - [ ] 重复模板/JS HTML 块已同步或已合并统一。
-- [ ] 模板绑定未引入 `Req/Auth/Site/__root` 键冲突。
-- [ ] 模板 `import/include` 路径均为绝对模板路径（以 `/` 开头）。
-- [ ] 模板重载行为符合 `SWAVES_TEMPLATE_RELOAD`（仅开发期按请求清缓存）。
+- [ ] 模板绑定保持扁平显式上下文，未恢复 `Req/Auth/Site/__root` 包装层。
+- [ ] 模板 `import/include` 路径使用模板根相对 `.html` 路径（不依赖 `/` 前缀）。
+- [ ] 模板重载行为符合 `SWAVES_ENV` 推导（非 `prod` 可按请求清缓存）。
 - [ ] Job registry 生命周期保持安全（listen hook 初始化 + shutdown 销毁）。
 - [ ] 新增/更新测试覆盖新行为并移除遗留行为测试。
 - [ ] `go test ./...` 全量通过。

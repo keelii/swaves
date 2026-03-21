@@ -19,7 +19,9 @@
       <div class="status-grid cols-3">
         <div class="status-slot left">
           {% block status_nav_left %}
-            {% block status_nav %}{% endblock %}
+            <a href="{{ UrlFor('dash.settings.all') }}" class="ui-icon-btn" aria-label="设置" data-title="设置">
+              {{ LucideIcon("setting", 16) }}
+            </a>
           {% endblock %}
         </div>
         <div class="status-slot center">
@@ -28,7 +30,17 @@
           {% endblock %}
         </div>
         <div class="status-slot right">
-          {% block status_nav_right %}{% endblock %}
+          {% block status_nav_right %}
+            {% if IsLogin %}
+              <a href="{{ UrlFor('dash.logout') }}" class="ui-icon-btn" aria-label="退出登录" data-title="退出登录">
+                {{ LucideIcon("log-out", 16) }}
+              </a>
+            {% else %}
+              <a href="{{ UrlFor('dash.login.show') }}" class="ui-icon-btn" aria-label="登录" data-title="登录">
+                {{ LucideIcon("log-in", 16) }}
+              </a>
+            {% endif %}
+          {% endblock %}
         </div>
       </div>
     </div>
@@ -73,13 +85,18 @@
     </div>
   </main>
 </div>
+<div style="display:none;" aria-hidden="true">{{ _csrf_token() }}</div>
 <script>
   (function() {
     var appWindow = document.querySelector('.app-window');
     var fullMainStorageKey = 'sui.layout_wide_mode';
     var navWidthStorageKey = 'sui.layout_nav_width';
+    var uiStateSaveURL = {{ UrlFor('dash.settings.api.ui_state.update') | tojson }};
     var navResizer = document.querySelector('[data-role="nav-resizer"]');
     var navPanel = document.querySelector('.app-nav');
+    var themeModePersisting = false;
+    var themeModeQueued = null;
+    var themeModeLastSaved = document.body && document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
     if (!appWindow) {
       return;
@@ -415,8 +432,6 @@
       }
     }
 
-    var themeStorageKey = 'sui.demo_theme_mode';
-
     function getThemeToggleButtons() {
       return document.querySelectorAll('[data-role="toggle-theme"]');
     }
@@ -446,36 +461,116 @@
       });
     }
 
-    function loadThemeState() {
-      try {
-        var stored = window.localStorage.getItem(themeStorageKey);
-        if (stored !== 'dark' && stored !== 'light') {
-          return null;
-        }
-        return stored;
-      } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('read theme state failed', error);
-        }
+    function getCSRFToken() {
+      var input = document.querySelector('input[name="_csrf_token"]');
+      if (!input) {
+        return '';
+      }
+      return String(input.value || '').trim();
+    }
+
+    function postUIStateSetting(code, value) {
+      if (!uiStateSaveURL || typeof window.fetch !== 'function') {
         return null;
+      }
+
+      var body = new URLSearchParams();
+      body.set('code', String(code == null ? '' : code));
+      body.set('value', String(value == null ? '' : value));
+
+      var headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      };
+      var csrfToken = getCSRFToken();
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
+      return window.fetch(uiStateSaveURL, {
+        method: 'POST',
+        headers: headers,
+        body: body.toString()
+      }).then(function(response) {
+        return response.text().then(function(raw) {
+          var text = String(raw || '').trim();
+          var parsed = null;
+          if (text) {
+            try {
+              parsed = JSON.parse(text);
+            } catch (error) {
+              parsed = null;
+            }
+          }
+          return {
+            ok: response.ok,
+            status: response.status,
+            body: parsed,
+            raw: text
+          };
+        });
+      });
+    }
+
+    function normalizeThemeMode(mode) {
+      var value = String(mode || '').trim().toLowerCase();
+      if (value === 'dark' || value === 'light') {
+        return value;
+      }
+      return '';
+    }
+
+    function queueSaveThemeMode(nextMode) {
+      var value = normalizeThemeMode(nextMode);
+      if (!value) {
+        return;
+      }
+      if (themeModeLastSaved === value && !themeModePersisting) {
+        return;
+      }
+      themeModeQueued = value;
+      if (!themeModePersisting) {
+        flushSaveThemeMode();
       }
     }
 
-    function saveThemeState(mode) {
-      try {
-        window.localStorage.setItem(themeStorageKey, mode);
-      } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save theme state failed', error);
-        }
+    function flushSaveThemeMode() {
+      if (themeModePersisting || themeModeQueued === null) {
+        return;
       }
+
+      var value = themeModeQueued;
+      themeModeQueued = null;
+
+      if (!uiStateSaveURL) {
+        themeModeLastSaved = value;
+        return;
+      }
+
+      themeModePersisting = true;
+      postUIStateSetting('mode', value).then(function(result) {
+        if (!result || !result.ok || (result.body && result.body.ok === false)) {
+          var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
+          if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('save theme mode failed: value=' + value + ' message=' + message);
+          }
+          return;
+        }
+        themeModeLastSaved = value;
+      }).catch(function(error) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('save theme mode request failed', error);
+        }
+      }).then(function() {
+        themeModePersisting = false;
+        if (themeModeQueued !== null && themeModeQueued !== value) {
+          flushSaveThemeMode();
+        }
+      });
     }
 
     function initTheme() {
-      var stored = loadThemeState();
-      if (stored) {
-        applyThemeMode(stored);
-      }
       syncThemeToggleButtons();
     }
 
@@ -498,7 +593,7 @@
       if (themeToggle) {
         var nextMode = isDarkTheme() ? 'light' : 'dark';
         applyThemeMode(nextMode);
-        saveThemeState(nextMode);
+        queueSaveThemeMode(nextMode);
         syncThemeToggleButtons();
         event.preventDefault();
         return;

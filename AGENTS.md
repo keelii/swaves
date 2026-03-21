@@ -48,17 +48,17 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - Preserve file history when moving/renaming (prefer tracked move).
 - Treat tests and PR checklist as a merge gate; run `go test ./...`.
 
-## Current Project Decisions (From Active Thread)
+## Current Project Baselines
 
-### SUI migration scope
-- Current dash->sui migration is frontend UI only; do not implement backend logic in this phase.
-- For modules/pages, prioritize component-layer parity; reuse existing generic components (for example data list/table list pages) instead of rebuilding per-module list pages.
-- If a module is not implemented in old dash, it can be skipped for now.
+### SUI admin baseline
+- SUI migration is complete; treat SUI as the default admin UI baseline.
+- New admin pages/features should be implemented in SUI first, while keeping backend semantics and route discipline unchanged.
+- For modules/pages, prioritize component-layer consistency and reuse existing generic components (for example data list/table list pages) instead of rebuilding per-module list pages.
 
 ### SEditor (ProseMirror) v1 scope
 - `web/static/seditor/` is a standalone editor workspace and only exports one public init API.
 - Bundle editor with esbuild into a single JS artifact for integration.
-- Initial integration target is `/dash_app/post_edit`.
+- Current integration route is `/sui/post_edit` (`sui.post_edit`).
 - v1 supports minimal markdown WYSIWYG: bold, italic, heading (`###` style), blockquote, ordered/unordered list.
 - v1 explicitly does not add rendered support for footnote/formula; these stay raw text behavior.
 - `raw_block` is editable in WYSIWYG mode using `<pre contenteditable>` style behavior, without preview rendering.

@@ -22,10 +22,42 @@ type SettingView struct {
 	AttrsParsed    map[string]interface{} // 解析后的 attrs（用于 HTML 属性）
 }
 
-type SettingSubKindGroupView struct {
+type SettingCardView struct {
+	Code        string
+	Label       string
+	Description string
+	Settings    []SettingView
+}
+
+type SettingSectionView struct {
+	Code         string
+	Label        string
+	Description  string
+	Summary      string
+	SettingCount int
+	Cards        []SettingCardView
+}
+
+type SettingAreaView struct {
 	Code     string
 	Label    string
-	Settings []SettingView
+	Sections []SettingSectionView
+}
+
+type settingLocation struct {
+	Area    string
+	Section string
+	Card    string
+}
+
+type settingSectionMeta struct {
+	Label       string
+	Description string
+}
+
+type settingCardMeta struct {
+	Label       string
+	Description string
 }
 
 const (
@@ -35,48 +67,701 @@ const (
 	settingCodeDashMenuState = "dash_full_main_open"
 	settingCodeDashEditorTOC = "dash_post_editor_toc_open"
 	settingCodeDashEditorSrc = "dash_post_editor_source_mode"
+	settingCodeThemeMode     = "mode"
+
+	settingAreaFrontend = "frontend"
+	settingAreaBackend  = "backend"
+
+	settingSectionSite          = "site"
+	settingSectionAuthor        = "author"
+	settingSectionContent       = "content"
+	settingSectionDisplay       = "display"
+	settingSectionIntegrations  = "integrations"
+	settingSectionSecurity      = "security"
+	settingSectionEditor        = "editor"
+	settingSectionLayout        = "layout"
+	settingSectionAssets        = "assets"
+	settingSectionBackup        = "backup"
+	settingSectionNotifications = "notifications"
+	settingSectionOther         = "other"
 )
 
-func normalizeSettingSubKind(raw string) string {
-	return strings.TrimSpace(raw)
+var settingAreaOrder = []string{
+	settingAreaFrontend,
+	settingAreaBackend,
 }
 
-func resolveSettingSubKindLabel(kind string, subKind string) string {
-	subKind = normalizeSettingSubKind(subKind)
-	if subKind == "" {
+var settingAreaLabels = map[string]string{
+	settingAreaFrontend: "前台",
+	settingAreaBackend:  "后台",
+}
+
+var settingSectionOrderByArea = map[string][]string{
+	settingAreaFrontend: {
+		settingSectionSite,
+		settingSectionAuthor,
+		settingSectionContent,
+		settingSectionDisplay,
+		settingSectionIntegrations,
+	},
+	settingAreaBackend: {
+		settingSectionSecurity,
+		settingSectionEditor,
+		settingSectionLayout,
+		settingSectionAssets,
+		settingSectionBackup,
+		settingSectionNotifications,
+		settingSectionOther,
+	},
+}
+
+var settingSectionMetaByCode = map[string]settingSectionMeta{
+	settingSectionSite: {
+		Label:       "站点信息",
+		Description: "配置公开站点的名称、访问地址、语言和页面基础信息。",
+	},
+	settingSectionAuthor: {
+		Label:       "作者信息",
+		Description: "配置公开文章和站点中使用的作者身份信息。",
+	},
+	settingSectionContent: {
+		Label:       "内容链接",
+		Description: "配置页面、文章、分类和标签的公开访问地址。修改后可能影响既有链接。",
+	},
+	settingSectionDisplay: {
+		Label:       "展示与阅读",
+		Description: "配置站点默认显示模式和列表阅读体验。",
+	},
+	settingSectionIntegrations: {
+		Label:       "统计与集成",
+		Description: "配置公开站点的统计分析与外部集成。",
+	},
+	settingSectionSecurity: {
+		Label:       "后台访问与安全",
+		Description: "配置管理后台入口地址和登录安全信息。",
+	},
+	settingSectionEditor: {
+		Label:       "编辑器",
+		Description: "配置文章编辑页的默认模式和文字显示。",
+	},
+	settingSectionLayout: {
+		Label:       "后台布局",
+		Description: "配置管理后台导航与默认布局状态。",
+	},
+	settingSectionAssets: {
+		Label:       "资源与云服务",
+		Description: "配置资源上传服务及其访问凭据。",
+	},
+	settingSectionBackup: {
+		Label:       "备份与同步",
+		Description: "配置本地备份策略和远程备份目标。",
+	},
+	settingSectionNotifications: {
+		Label:       "通知与任务",
+		Description: "配置站点互动和后台任务的通知策略。",
+	},
+	settingSectionOther: {
+		Label:       "其他设置",
+		Description: "暂未归入标准信息结构的设置项。",
+	},
+}
+
+var settingCardOrderBySection = map[string][]string{
+	settingSectionSite:          {"identity", "locale"},
+	settingSectionAuthor:        {"profile"},
+	settingSectionContent:       {"page", "post", "taxonomy"},
+	settingSectionDisplay:       {"appearance", "pagination"},
+	settingSectionIntegrations:  {"analytics"},
+	settingSectionSecurity:      {"entry", "auth"},
+	settingSectionEditor:        {"defaults", "typography"},
+	settingSectionLayout:        {"navigation"},
+	settingSectionAssets:        {"provider", "see", "imagekit"},
+	settingSectionBackup:        {"local", "remote", "s3"},
+	settingSectionNotifications: {"interaction", "task", "policy"},
+	settingSectionOther:         {"misc"},
+}
+
+var settingCardMetaBySection = map[string]map[string]settingCardMeta{
+	settingSectionSite: {
+		"identity": {Label: "基础信息"},
+		"locale":   {Label: "语言与地区"},
+	},
+	settingSectionAuthor: {
+		"profile": {},
+	},
+	settingSectionContent: {
+		"page":     {Label: "全局与页面"},
+		"post":     {Label: "文章链接"},
+		"taxonomy": {Label: "分类与标签"},
+	},
+	settingSectionDisplay: {
+		"appearance": {Label: "外观"},
+		"pagination": {Label: "列表与分页"},
+	},
+	settingSectionIntegrations: {
+		"analytics": {},
+	},
+	settingSectionSecurity: {
+		"entry": {Label: "后台入口"},
+		"auth":  {Label: "登录安全"},
+	},
+	settingSectionEditor: {
+		"defaults":   {Label: "默认模式"},
+		"typography": {Label: "编辑器文字"},
+	},
+	settingSectionLayout: {
+		"navigation": {},
+	},
+	settingSectionAssets: {
+		"provider": {Label: "默认资源服务"},
+		"see":      {Label: "S.EE"},
+		"imagekit": {Label: "ImageKit"},
+	},
+	settingSectionBackup: {
+		"local":  {Label: "本地备份"},
+		"remote": {Label: "远程备份"},
+		"s3":     {Label: "Amazon S3"},
+	},
+	settingSectionNotifications: {
+		"interaction": {Label: "站点互动"},
+		"task":        {Label: "系统任务"},
+		"policy":      {Label: "通知策略"},
+	},
+	settingSectionOther: {
+		"misc": {Label: "未归类"},
+	},
+}
+
+var settingLocationsByCode = map[string]settingLocation{
+	"site_url":                         {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"site_name":                        {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"site_title":                       {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"site_desc":                        {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"keyword":                          {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"site_copyright":                   {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"language":                         {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},
+	"charset":                          {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},
+	"timezone":                         {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},
+	"author":                           {Area: settingAreaFrontend, Section: settingSectionAuthor, Card: "profile"},
+	"author_email":                     {Area: settingAreaFrontend, Section: settingSectionAuthor, Card: "profile"},
+	"base_path":                        {Area: settingAreaFrontend, Section: settingSectionContent, Card: "page"},
+	"page_url_prefix":                  {Area: settingAreaFrontend, Section: settingSectionContent, Card: "page"},
+	"rss_path":                         {Area: settingAreaFrontend, Section: settingSectionContent, Card: "page"},
+	"post_url_prefix":                  {Area: settingAreaFrontend, Section: settingSectionContent, Card: "post"},
+	"post_url_name":                    {Area: settingAreaFrontend, Section: settingSectionContent, Card: "post"},
+	"post_url_ext":                     {Area: settingAreaFrontend, Section: settingSectionContent, Card: "post"},
+	"category_url_prefix":              {Area: settingAreaFrontend, Section: settingSectionContent, Card: "taxonomy"},
+	"tag_url_prefix":                   {Area: settingAreaFrontend, Section: settingSectionContent, Card: "taxonomy"},
+	"mode":                             {Area: settingAreaFrontend, Section: settingSectionDisplay, Card: "appearance"},
+	"page_size":                        {Area: settingAreaFrontend, Section: settingSectionDisplay, Card: "pagination"},
+	"ga4_id":                           {Area: settingAreaFrontend, Section: settingSectionIntegrations, Card: "analytics"},
+	"dash_path":                        {Area: settingAreaBackend, Section: settingSectionSecurity, Card: "entry"},
+	"dash_password":                    {Area: settingAreaBackend, Section: settingSectionSecurity, Card: "auth"},
+	"dash_post_editor_toc_open":        {Area: settingAreaBackend, Section: settingSectionEditor, Card: "defaults"},
+	"dash_post_editor_source_mode":     {Area: settingAreaBackend, Section: settingSectionEditor, Card: "defaults"},
+	"editor_font_size":                 {Area: settingAreaBackend, Section: settingSectionEditor, Card: "typography"},
+	"editor_font_family":               {Area: settingAreaBackend, Section: settingSectionEditor, Card: "typography"},
+	"dash_nav_width":                   {Area: settingAreaBackend, Section: settingSectionLayout, Card: "navigation"},
+	"dash_full_main_open":              {Area: settingAreaBackend, Section: settingSectionLayout, Card: "navigation"},
+	"asset_default_provider":           {Area: settingAreaBackend, Section: settingSectionAssets, Card: "provider"},
+	"asset_see_api_base":               {Area: settingAreaBackend, Section: settingSectionAssets, Card: "see"},
+	"asset_see_api_token":              {Area: settingAreaBackend, Section: settingSectionAssets, Card: "see"},
+	"asset_imagekit_endpoint":          {Area: settingAreaBackend, Section: settingSectionAssets, Card: "imagekit"},
+	"asset_imagekit_private_key":       {Area: settingAreaBackend, Section: settingSectionAssets, Card: "imagekit"},
+	"sync_push_enabled":                {Area: settingAreaBackend, Section: settingSectionBackup, Card: "remote"},
+	"sync_push_provider":               {Area: settingAreaBackend, Section: settingSectionBackup, Card: "remote"},
+	"backup_local_dir":                 {Area: settingAreaBackend, Section: settingSectionBackup, Card: "local"},
+	"backup_local_interval_min":        {Area: settingAreaBackend, Section: settingSectionBackup, Card: "local"},
+	"backup_local_max_count":           {Area: settingAreaBackend, Section: settingSectionBackup, Card: "local"},
+	"sync_push_timeout_sec":            {Area: settingAreaBackend, Section: settingSectionBackup, Card: "remote"},
+	"s3_api_endpoint":                  {Area: settingAreaBackend, Section: settingSectionBackup, Card: "s3"},
+	"s3_bucket":                        {Area: settingAreaBackend, Section: settingSectionBackup, Card: "s3"},
+	"s3_access_key_id":                 {Area: settingAreaBackend, Section: settingSectionBackup, Card: "s3"},
+	"s3_secret_access_key":             {Area: settingAreaBackend, Section: settingSectionBackup, Card: "s3"},
+	"notify_enable_post_like":          {Area: settingAreaBackend, Section: settingSectionNotifications, Card: "interaction"},
+	"notify_enable_comment":            {Area: settingAreaBackend, Section: settingSectionNotifications, Card: "interaction"},
+	"notify_enable_task_success":       {Area: settingAreaBackend, Section: settingSectionNotifications, Card: "task"},
+	"notify_enable_task_error":         {Area: settingAreaBackend, Section: settingSectionNotifications, Card: "task"},
+	"notify_like_aggregate_window_min": {Area: settingAreaBackend, Section: settingSectionNotifications, Card: "policy"},
+	"notify_retention_days":            {Area: settingAreaBackend, Section: settingSectionNotifications, Card: "policy"},
+}
+
+var hiddenSettingCodes = map[string]struct{}{
+	"font_size":       {},
+	"dash_main_width": {},
+}
+
+var settingPresentationOverrides = map[string]struct {
+	Name        string
+	Description string
+}{
+	"mode": {
+		Name:        "界面模式",
+		Description: "当前同时影响前台与后台主题模式。",
+	},
+	"page_size": {
+		Name:        "默认分页数量",
+		Description: "系统默认分页数量，当前同时影响前后台列表分页。",
+	},
+	"dash_nav_width": {
+		Name:        "后台导航宽度",
+		Description: "管理后台左侧导航栏宽度。",
+	},
+	"dash_post_editor_toc_open": {
+		Name:        "目录展开",
+		Description: "目录默认展开状态。",
+	},
+	"dash_post_editor_source_mode": {
+		Name:        "源码模式",
+		Description: "默认源码模式状态。",
+	},
+	"editor_font_size": {
+		Name:        "字体大小",
+		Description: "文字大小（px）。",
+	},
+	"editor_font_family": {
+		Name:        "字体",
+		Description: "文字使用的 font-family。",
+	},
+	"asset_default_provider": {
+		Name:        "默认资源上传服务",
+		Description: "资源上传默认使用的服务商。",
+	},
+	"asset_see_api_base": {
+		Name:        "S.EE 上传地址",
+		Description: "S.EE 上传接口地址。",
+	},
+	"asset_see_api_token": {
+		Name:        "S.EE 访问令牌",
+		Description: "S.EE Bearer Token。",
+	},
+	"asset_imagekit_endpoint": {
+		Name:        "ImageKit 上传地址",
+		Description: "ImageKit 上传接口地址。",
+	},
+	"asset_imagekit_private_key": {
+		Name:        "ImageKit Private Key",
+		Description: "ImageKit 服务端 Private Key。",
+	},
+	"sync_push_enabled": {
+		Name:        "开启远程备份",
+		Description: "开启后允许将备份推送到远程服务。",
+	},
+	"sync_push_provider": {
+		Name:        "远程备份服务",
+		Description: "选择 ImageKit 时，将复用“资源与云服务”中的 ImageKit 配置。",
+	},
+	"s3_api_endpoint": {
+		Name:        "S3 接口地址",
+		Description: "S3 兼容接口地址。",
+	},
+	"s3_bucket": {
+		Name:        "S3 Bucket",
+		Description: "远程备份使用的 Bucket 名称。",
+	},
+	"s3_access_key_id": {
+		Name:        "S3 Access Key ID",
+		Description: "S3 Access Key ID。",
+	},
+	"s3_secret_access_key": {
+		Name:        "S3 Secret Access Key",
+		Description: "S3 Secret Access Key。",
+	},
+	"ga4_id": {
+		Name:        "GA4 统计 ID",
+		Description: "Google Analytics 4 Measurement ID。",
+	},
+}
+
+var legacyKindLocations = map[string]settingLocation{
+	db.SettingKindSiteBasics:         {Area: settingAreaFrontend, Section: settingSectionSite},
+	db.SettingKindAuthorInfo:         {Area: settingAreaFrontend, Section: settingSectionAuthor},
+	db.SettingKindContentRouting:     {Area: settingAreaFrontend, Section: settingSectionContent},
+	db.SettingKindBackupSync:         {Area: settingAreaBackend, Section: settingSectionBackup},
+	db.SettingKindThirdPartyServices: {Area: settingAreaBackend, Section: settingSectionAssets},
+	db.SettingKindDashSecurity:       {Area: settingAreaBackend, Section: settingSectionSecurity},
+	db.SettingKindNotifications:      {Area: settingAreaBackend, Section: settingSectionNotifications},
+	db.SettingKindUIExperience:       {Area: settingAreaBackend, Section: settingSectionEditor},
+}
+
+func normalizeSettingArea(raw string) string {
+	return strings.TrimSpace(strings.ToLower(raw))
+}
+
+func normalizeSettingSection(raw string) string {
+	return strings.TrimSpace(strings.ToLower(raw))
+}
+
+func isHiddenSettingCode(code string) bool {
+	_, hidden := hiddenSettingCodes[strings.TrimSpace(code)]
+	return hidden
+}
+
+func resolveSettingLocation(s db.Setting) settingLocation {
+	if isHiddenSettingCode(s.Code) {
+		return settingLocation{}
+	}
+	if location, ok := settingLocationsByCode[strings.TrimSpace(s.Code)]; ok {
+		return location
+	}
+	return settingLocation{
+		Area:    settingAreaBackend,
+		Section: settingSectionOther,
+		Card:    "misc",
+	}
+}
+
+func resolveLegacySettingLocation(rawKind string) settingLocation {
+	return legacyKindLocations[strings.TrimSpace(rawKind)]
+}
+
+func buildSectionCards(sectionCode string) ([]SettingCardView, map[string]int) {
+	order := settingCardOrderBySection[sectionCode]
+	metas := settingCardMetaBySection[sectionCode]
+	cards := make([]SettingCardView, 0, len(order))
+	index := make(map[string]int, len(order))
+	for _, cardCode := range order {
+		meta := metas[cardCode]
+		index[cardCode] = len(cards)
+		cards = append(cards, SettingCardView{
+			Code:        cardCode,
+			Label:       meta.Label,
+			Description: meta.Description,
+			Settings:    []SettingView{},
+		})
+	}
+	return cards, index
+}
+
+func effectiveSettingValue(setting db.Setting) string {
+	if value := strings.TrimSpace(setting.Value); value != "" {
+		return value
+	}
+	return strings.TrimSpace(setting.DefaultOptionValue)
+}
+
+func countSectionSettingViews(section SettingSectionView) int {
+	total := 0
+	for _, card := range section.Cards {
+		total += len(card.Settings)
+	}
+	return total
+}
+
+func collectSectionSettingValues(section SettingSectionView) map[string]string {
+	values := make(map[string]string)
+	for _, card := range section.Cards {
+		for _, settingView := range card.Settings {
+			code := strings.TrimSpace(settingView.Code)
+			if code == "" {
+				continue
+			}
+			values[code] = effectiveSettingValue(settingView.Setting)
+		}
+	}
+	return values
+}
+
+func joinSectionSummary(parts ...string) string {
+	items := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		items = append(items, part)
+	}
+	return strings.Join(items, " · ")
+}
+
+func normalizeSummaryPathPart(raw string) string {
+	return strings.Trim(strings.TrimSpace(raw), "/")
+}
+
+func renderSummaryPath(raw string) string {
+	part := normalizeSummaryPathPart(raw)
+	if part == "" {
+		return "/"
+	}
+	return "/" + part
+}
+
+func buildPostRouteSummary(values map[string]string) string {
+	segments := make([]string, 0, 2)
+	if basePath := normalizeSummaryPathPart(values["base_path"]); basePath != "" {
+		segments = append(segments, basePath)
+	}
+	if prefix := normalizeSummaryPathPart(values["post_url_prefix"]); prefix != "" {
+		segments = append(segments, prefix)
+	}
+
+	name := strings.TrimSpace(values["post_url_name"])
+	if name == "" {
+		name = "{slug}"
+	}
+
+	ext := strings.TrimSpace(values["post_url_ext"])
+	if ext != "" && !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+
+	path := "/"
+	if len(segments) > 0 {
+		path += strings.Join(segments, "/") + "/"
+	}
+	path += name + ext
+	return "文章 " + path
+}
+
+func humanizeThemeModeSummary(raw string) string {
+	switch normalizeThemeModeValue(raw) {
+	case "dark":
+		return "深色界面"
+	case "light":
+		return "浅色界面"
+	default:
 		return ""
 	}
-	if labels, ok := db.SettingSubKindLabels[kind]; ok {
-		if label, exists := labels[subKind]; exists && strings.TrimSpace(label) != "" {
-			return label
-		}
-	}
-	return subKind
 }
 
-func buildSettingSubKindGroups(kind string, settings []SettingView) []SettingSubKindGroupView {
-	groups := make([]SettingSubKindGroupView, 0)
-	groupIndex := make(map[string]int)
+func humanizeAssetProviderSummary(raw string) string {
+	switch normalizeAssetProvider(raw) {
+	case "imagekit":
+		return "ImageKit"
+	case "see":
+		return "S.EE"
+	default:
+		return ""
+	}
+}
 
-	for _, item := range settings {
-		subKind := normalizeSettingSubKind(item.SubKind)
-		item.SubKind = subKind
+func normalizeBackupProviderSummary(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "imagekit":
+		return "imagekit"
+	case "s3":
+		return "s3"
+	default:
+		return ""
+	}
+}
 
-		idx, ok := groupIndex[subKind]
-		if !ok {
-			groupIndex[subKind] = len(groups)
-			groups = append(groups, SettingSubKindGroupView{
-				Code:     subKind,
-				Label:    resolveSettingSubKindLabel(kind, subKind),
-				Settings: []SettingView{},
-			})
-			idx = len(groups) - 1
+func humanizeBackupProviderSummary(raw string) string {
+	switch normalizeBackupProviderSummary(raw) {
+	case "imagekit":
+		return "ImageKit"
+	case "s3":
+		return "S3"
+	default:
+		return ""
+	}
+}
+
+func isEnabledSettingValue(raw string) bool {
+	value, ok := normalizeBoolSettingValue(raw)
+	return ok && value == "1"
+}
+
+func buildSectionSummary(section SettingSectionView) string {
+	values := collectSectionSettingValues(section)
+
+	switch section.Code {
+	case settingSectionSite:
+		return joinSectionSummary(values["site_name"], values["site_url"])
+	case settingSectionAuthor:
+		return joinSectionSummary(values["author"], values["author_email"])
+	case settingSectionContent:
+		return buildPostRouteSummary(values)
+	case settingSectionDisplay:
+		pageSize := strings.TrimSpace(values["page_size"])
+		if pageSize != "" {
+			pageSize = "每页 " + pageSize + " 条"
 		}
-
-		groups[idx].Settings = append(groups[idx].Settings, item)
+		return joinSectionSummary(humanizeThemeModeSummary(values["mode"]), pageSize)
+	case settingSectionIntegrations:
+		if strings.TrimSpace(values["ga4_id"]) != "" {
+			return "GA4 已连接"
+		}
+		return "暂无统计接入"
+	case settingSectionSecurity:
+		passwordSummary := "未设置登录密码"
+		if strings.TrimSpace(values["dash_password"]) != "" {
+			passwordSummary = "已设置登录密码"
+		}
+		return joinSectionSummary("入口 "+renderSummaryPath(values["dash_path"]), passwordSummary)
+	case settingSectionEditor:
+		fontSize := strings.TrimSpace(values["editor_font_size"])
+		if fontSize != "" {
+			fontSize += "px"
+		}
+		editorMode := "默认可视模式"
+		if isEnabledSettingValue(values["dash_post_editor_source_mode"]) {
+			editorMode = "默认源码模式"
+		}
+		return joinSectionSummary(fontSize, editorMode)
+	case settingSectionLayout:
+		navWidth := strings.TrimSpace(values["dash_nav_width"])
+		if navWidth != "" {
+			return "导航 " + navWidth + "px"
+		}
+		return "后台布局"
+	case settingSectionAssets:
+		provider := humanizeAssetProviderSummary(values["asset_default_provider"])
+		if provider == "" {
+			provider = "S.EE"
+		}
+		return "默认 " + provider
+	case settingSectionBackup:
+		if isEnabledSettingValue(values["sync_push_enabled"]) {
+			provider := humanizeBackupProviderSummary(values["sync_push_provider"])
+			if provider == "" {
+				provider = "S3"
+			}
+			return "远程备份已开启 · " + provider
+		}
+		return "仅本地备份"
+	case settingSectionNotifications:
+		enabledCount := 0
+		for _, code := range []string{
+			"notify_enable_post_like",
+			"notify_enable_comment",
+			"notify_enable_task_success",
+			"notify_enable_task_error",
+		} {
+			if isEnabledSettingValue(values[code]) {
+				enabledCount++
+			}
+		}
+		if enabledCount == 0 {
+			return "通知默认关闭"
+		}
+		return strconv.Itoa(enabledCount) + " 项通知已开启"
+	case settingSectionOther:
+		if section.SettingCount > 0 {
+			return strconv.Itoa(section.SettingCount) + " 项待整理设置"
+		}
 	}
 
-	return groups
+	return ""
+}
+
+func buildSettingAreas(settings []db.Setting) []SettingAreaView {
+	areas := make([]SettingAreaView, 0, len(settingAreaOrder))
+	areaIndex := make(map[string]int, len(settingAreaOrder))
+	sectionIndex := make(map[string]map[string]int, len(settingAreaOrder))
+	cardIndex := make(map[string]map[string]map[string]int, len(settingAreaOrder))
+
+	for _, areaCode := range settingAreaOrder {
+		sections := make([]SettingSectionView, 0, len(settingSectionOrderByArea[areaCode]))
+		sectionIndex[areaCode] = make(map[string]int, len(settingSectionOrderByArea[areaCode]))
+		cardIndex[areaCode] = make(map[string]map[string]int, len(settingSectionOrderByArea[areaCode]))
+
+		for _, sectionCode := range settingSectionOrderByArea[areaCode] {
+			sectionMeta := settingSectionMetaByCode[sectionCode]
+			cards, sectionCardIndex := buildSectionCards(sectionCode)
+			sectionIndex[areaCode][sectionCode] = len(sections)
+			cardIndex[areaCode][sectionCode] = sectionCardIndex
+			sections = append(sections, SettingSectionView{
+				Code:        sectionCode,
+				Label:       sectionMeta.Label,
+				Description: sectionMeta.Description,
+				Cards:       cards,
+			})
+		}
+
+		areaIndex[areaCode] = len(areas)
+		areas = append(areas, SettingAreaView{
+			Code:     areaCode,
+			Label:    settingAreaLabels[areaCode],
+			Sections: sections,
+		})
+	}
+
+	for _, setting := range settings {
+		location := resolveSettingLocation(setting)
+		if location.Area == "" || location.Section == "" {
+			continue
+		}
+
+		areaPos, ok := areaIndex[location.Area]
+		if !ok {
+			continue
+		}
+
+		sectionPos, ok := sectionIndex[location.Area][location.Section]
+		if !ok {
+			continue
+		}
+
+		cardCode := location.Card
+		if strings.TrimSpace(cardCode) == "" {
+			cardCode = "misc"
+		}
+		cardPos, ok := cardIndex[location.Area][location.Section][cardCode]
+		if !ok {
+			continue
+		}
+
+		areas[areaPos].Sections[sectionPos].Cards[cardPos].Settings = append(
+			areas[areaPos].Sections[sectionPos].Cards[cardPos].Settings,
+			buildSettingView(setting),
+		)
+	}
+
+	filteredAreas := make([]SettingAreaView, 0, len(areas))
+	for _, area := range areas {
+		filteredSections := make([]SettingSectionView, 0, len(area.Sections))
+		for _, section := range area.Sections {
+			filteredCards := make([]SettingCardView, 0, len(section.Cards))
+			for _, card := range section.Cards {
+				if len(card.Settings) == 0 {
+					continue
+				}
+				filteredCards = append(filteredCards, card)
+			}
+			if len(filteredCards) == 0 {
+				continue
+			}
+			section.Cards = filteredCards
+			section.SettingCount = countSectionSettingViews(section)
+			section.Summary = buildSectionSummary(section)
+			filteredSections = append(filteredSections, section)
+		}
+		if len(filteredSections) == 0 {
+			continue
+		}
+		area.Sections = filteredSections
+		filteredAreas = append(filteredAreas, area)
+	}
+
+	return filteredAreas
+}
+
+func findSettingAreaIndex(areas []SettingAreaView, areaCode string) int {
+	for idx, area := range areas {
+		if area.Code == areaCode {
+			return idx
+		}
+	}
+	return -1
+}
+
+func findSettingSectionIndex(area SettingAreaView, sectionCode string) int {
+	for idx, section := range area.Sections {
+		if section.Code == sectionCode {
+			return idx
+		}
+	}
+	return -1
+}
+
+func findSettingAreaCodeBySection(areas []SettingAreaView, sectionCode string) string {
+	for _, area := range areas {
+		if findSettingSectionIndex(area, sectionCode) >= 0 {
+			return area.Code
+		}
+	}
+	return ""
 }
 
 // Settings
@@ -85,7 +770,9 @@ func (h *Handler) GetSettingsHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) GetSettingsAllHandler(c fiber.Ctx) error {
-	kind := strings.TrimSpace(c.Query("kind", ""))
+	area := normalizeSettingArea(c.Query("area", ""))
+	section := normalizeSettingSection(c.Query("section", ""))
+	legacyKind := strings.TrimSpace(c.Query("kind", ""))
 	errMsg := strings.TrimSpace(c.Query("error", ""))
 
 	settings, err := ListAllSettings(h.Model)
@@ -93,49 +780,41 @@ func (h *Handler) GetSettingsAllHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	// 按 kind 分组，key=kind，value=settings，保持查询结果顺序
-	settingsByKind := make(map[string][]SettingView)
-	settingKinds := make([]string, 0)
-	for _, s := range settings {
-		view := buildSettingView(s)
+	settingAreas := buildSettingAreas(settings)
+	activeArea := SettingAreaView{}
+	activeSection := SettingSectionView{}
 
-		if _, ok := settingsByKind[s.Kind]; !ok {
-			settingKinds = append(settingKinds, s.Kind)
+	if len(settingAreas) > 0 {
+		if area == "" && section == "" {
+			legacyLocation := resolveLegacySettingLocation(legacyKind)
+			area = legacyLocation.Area
+			section = legacyLocation.Section
 		}
-		settingsByKind[s.Kind] = append(settingsByKind[s.Kind], view)
-	}
 
-	activeKind := kind
-	if _, ok := settingsByKind[activeKind]; !ok {
-		activeKind = ""
-		if len(settingKinds) > 0 {
-			activeKind = settingKinds[0]
+		if area == "" && section != "" {
+			area = findSettingAreaCodeBySection(settingAreas, section)
 		}
-	}
 
-	settingKindLabels := make(map[string]string, len(settingKinds))
-	for _, item := range settingKinds {
-		label, ok := db.SettingKindLabels[item]
-		if !ok || strings.TrimSpace(label) == "" {
-			label = item
+		areaIndex := findSettingAreaIndex(settingAreas, area)
+		if areaIndex < 0 {
+			areaIndex = 0
 		}
-		settingKindLabels[item] = label
-	}
+		activeArea = settingAreas[areaIndex]
 
-	activeKindGroups := make([]SettingSubKindGroupView, 0)
-	if activeKind != "" {
-		activeKindGroups = buildSettingSubKindGroups(activeKind, settingsByKind[activeKind])
+		sectionIndex := findSettingSectionIndex(activeArea, section)
+		if sectionIndex < 0 {
+			sectionIndex = 0
+		}
+		activeSection = activeArea.Sections[sectionIndex]
 	}
 
 	return RenderDashView(c, "dash/settings_all.html", fiber.Map{
-		"Title":              "Settings - Edit All",
-		"SettingsByKind":     settingsByKind,
-		"SettingKinds":       settingKinds,
-		"SettingKindLabels":  settingKindLabels,
-		"ActiveKindGroups":   activeKindGroups,
-		"ActiveKind":         activeKind,
-		"ContentRoutingKind": db.SettingKindContentRouting,
-		"Error":              errMsg,
+		"Title":                     "Settings - Edit All",
+		"SettingAreas":              settingAreas,
+		"ActiveArea":                activeArea,
+		"ActiveSection":             activeSection,
+		"ContentRoutingSectionCode": settingSectionContent,
+		"Error":                     errMsg,
 	}, "")
 }
 
@@ -173,6 +852,15 @@ func buildSettingView(s db.Setting) SettingView {
 		}
 	}
 
+	if override, ok := settingPresentationOverrides[strings.TrimSpace(s.Code)]; ok {
+		if strings.TrimSpace(override.Name) != "" {
+			view.Name = override.Name
+		}
+		if strings.TrimSpace(override.Description) != "" {
+			view.Description = override.Description
+		}
+	}
+
 	return view
 }
 
@@ -191,10 +879,13 @@ func isAssetSettingCode(code string) bool {
 	}
 }
 
-func (h *Handler) buildSettingsAllRedirectPath(c fiber.Ctx, kind string, errMsg string) string {
+func (h *Handler) buildSettingsAllRedirectPath(c fiber.Ctx, area string, section string, errMsg string) string {
 	params := map[string]string{}
-	if strings.TrimSpace(kind) != "" {
-		params["kind"] = strings.TrimSpace(kind)
+	if strings.TrimSpace(area) != "" {
+		params["area"] = strings.TrimSpace(area)
+	}
+	if strings.TrimSpace(section) != "" {
+		params["section"] = strings.TrimSpace(section)
 	}
 	if strings.TrimSpace(errMsg) != "" {
 		params["error"] = strings.TrimSpace(errMsg)
@@ -283,6 +974,8 @@ func (h *Handler) PostUpdateDashUISettingAPIHandler(c fiber.Ctx) error {
 	switch code {
 	case settingCodeDashNavWidth:
 		return h.postUpdateDashNavWidthSettingAPIHandler(c, rawValue)
+	case settingCodeThemeMode:
+		return h.postUpdateThemeModeSettingAPIHandler(c, rawValue)
 	case settingCodeDashMenuState:
 		return h.postUpdateBoolSettingAPIHandler(c, code, "菜单收起状态", rawValue)
 	case settingCodeDashEditorTOC:
@@ -333,6 +1026,45 @@ func (h *Handler) postUpdateDashNavWidthSettingAPIHandler(c fiber.Ctx, rawValue 
 	})
 }
 
+func normalizeThemeModeValue(raw string) string {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	switch value {
+	case "dark":
+		return "dark"
+	case "light":
+		return "light"
+	default:
+		return ""
+	}
+}
+
+func (h *Handler) postUpdateThemeModeSettingAPIHandler(c fiber.Ctx, rawValue string) error {
+	value := normalizeThemeModeValue(rawValue)
+	if value == "" {
+		logger.Warn("[settings] update %s failed: invalid value=%q", settingCodeThemeMode, rawValue)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "界面模式必须是 light 或 dark",
+		})
+	}
+
+	if err := UpdateSettingValueService(h.Model, settingCodeThemeMode, value); err != nil {
+		logger.Error("[settings] update %s failed: value=%s err=%v", settingCodeThemeMode, value, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":    false,
+			"error": "保存界面模式失败，请稍后重试",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"ok": true,
+		"data": fiber.Map{
+			"code":  settingCodeThemeMode,
+			"value": value,
+		},
+	})
+}
+
 func normalizeBoolSettingValue(raw string) (string, bool) {
 	value := strings.TrimSpace(strings.ToLower(raw))
 	switch value {
@@ -373,21 +1105,59 @@ func (h *Handler) postUpdateBoolSettingAPIHandler(c fiber.Ctx, code string, name
 }
 
 func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
-	activeKind := strings.TrimSpace(c.Query("kind", ""))
-	if activeKind == "" {
+	activeArea := normalizeSettingArea(c.Query("area", ""))
+	activeSection := normalizeSettingSection(c.Query("section", ""))
+	legacyKind := strings.TrimSpace(c.Query("kind", ""))
+	if activeArea == "" && activeSection == "" && legacyKind == "" {
 		return h.redirectToDashRoute(c, "dash.settings.all", nil, nil)
 	}
 
-	// 只更新当前 tab(kind) 下的配置，避免把其它 tab 未提交字段写空
-	settings, err := ListSettingsByKind(h.Model, activeKind)
+	settings, err := ListAllSettings(h.Model)
 	if err != nil {
 		return err
 	}
 
-	updates := make([]settingsValueUpdate, 0, len(settings))
+	settingAreas := buildSettingAreas(settings)
+	if len(settingAreas) == 0 {
+		return h.redirectToDashRoute(c, "dash.settings.all", nil, nil)
+	}
+
+	if activeArea == "" && activeSection == "" {
+		legacyLocation := resolveLegacySettingLocation(legacyKind)
+		activeArea = legacyLocation.Area
+		activeSection = legacyLocation.Section
+	}
+	if activeArea == "" && activeSection != "" {
+		activeArea = findSettingAreaCodeBySection(settingAreas, activeSection)
+	}
+
+	areaIndex := findSettingAreaIndex(settingAreas, activeArea)
+	if areaIndex < 0 {
+		areaIndex = 0
+	}
+	activeArea = settingAreas[areaIndex].Code
+
+	sectionIndex := findSettingSectionIndex(settingAreas[areaIndex], activeSection)
+	if sectionIndex < 0 {
+		sectionIndex = 0
+	}
+	activeSection = settingAreas[areaIndex].Sections[sectionIndex].Code
+
+	sectionSettings := make([]db.Setting, 0)
+	for _, setting := range settings {
+		location := resolveSettingLocation(setting)
+		if location.Area == activeArea && location.Section == activeSection {
+			sectionSettings = append(sectionSettings, setting)
+		}
+	}
+	if len(sectionSettings) == 0 {
+		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeArea, activeSection, ""))
+	}
+
+	updates := make([]settingsValueUpdate, 0, len(sectionSettings))
 	assetOverrides := make(map[string]string)
 
-	for _, setting := range settings {
+	for _, setting := range sectionSettings {
 		fieldName := "setting_" + setting.Code
 
 		// checkbox 类型需要特殊处理，可能有多个值
@@ -429,7 +1199,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	}
 
 	if err = h.validateAssetSettingPayload(assetOverrides); err != nil {
-		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeKind, err.Error()))
+		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeArea, activeSection, err.Error()))
 	}
 
 	for _, item := range updates {
@@ -441,7 +1211,7 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeKind, ""))
+	return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeArea, activeSection, ""))
 }
 
 func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {

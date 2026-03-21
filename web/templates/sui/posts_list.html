@@ -19,14 +19,6 @@
   {{ sui.Button("草稿", "secondary") }}
 {% endblock %}
 
-{# A5: 两列，左设置，右退出 #}
-{% block status_nav_left %}
-  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
-{% endblock %}
-{% block status_nav_right %}
-  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
-{% endblock %}
-
 {# A6: 三列 #}
 {% block status_main_left %}
   <span>已选择 0 项</span>

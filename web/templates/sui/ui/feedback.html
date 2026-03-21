@@ -17,13 +17,6 @@
 {% block window_toolbar_main_right %}
 {% endblock %}
 
-{% block status_nav_left %}
-  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
-{% endblock %}
-{% block status_nav_right %}
-  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
-{% endblock %}
-
 {% block nav_pane %}
   {% include "sui/include/nav.html" %}
 {% endblock %}

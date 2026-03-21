@@ -41,12 +41,13 @@ func TestNewURLForResolver(t *testing.T) {
 	}
 
 	settingsURL, err := resolver("dash.settings.all", map[string]string{
-		"kind": "third_party_services",
+		"area":    "backend",
+		"section": "editor",
 	}, nil)
 	if err != nil {
 		t.Fatalf("resolve dash.settings.all failed: %v", err)
 	}
-	if settingsURL != "/settings/all?kind=third_party_services" {
+	if settingsURL != "/settings/all?area=backend&section=editor" {
 		t.Fatalf("unexpected dash.settings.all url: %s", settingsURL)
 	}
 

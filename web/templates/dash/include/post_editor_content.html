@@ -80,7 +80,7 @@
   data-toc-preferred-open="{% if initialTOCPreferredOpen %}1{% else %}0{% endif %}"
   data-source-preferred-open="{% if initialSourcePreferredOpen %}1{% else %}0{% endif %}"
 >
-  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor" style="font-size: {{ Settings('editor_font_size')|trim }}px; font-family: {{ Settings('editor_font_family')|trim }};" spellcheck="false">
+  <div autofocus role="region" aria-label="文章内容编辑器" class="content-editor"{{ HtmlAttrs(style=Printf("font-size: %spx; font-family: %s;", Settings('editor_font_size')|trim, Settings('editor_font_family')|trim)) }} spellcheck="false">
     <div class="title header">
       <input type="text" name="title" value="{{ titleValue }}" class="input-title" id="post-title" form="form"{% if titlePlaceholder %} placeholder="{{ titlePlaceholder }}"{% endif %} required>
     </div>

@@ -22,6 +22,8 @@
     {{ sui.LinkButton("查看", "outline", href=GetPostUrl(Post), attrs='target="_blank" rel="noopener"') }}
   {% else %}
   {% endif %}
+  {{ sui.Button("源码", "outline", attrs='data-role="toggle-post-source" data-title="切换源码编辑" aria-pressed="false" hidden') }}
+  {{ sui.Button("目录", "outline", attrs='data-role="toggle-post-toc" data-title="目录" aria-pressed="false" hidden') }}
 {% endblock %}
 
 {% block status_main_left %}

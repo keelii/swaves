@@ -251,6 +251,62 @@ func TestDashControllerP0_LoginReturnURLValidation(t *testing.T) {
 	})
 }
 
+func TestDashControllerP0_ThemeModeSettingAppliesToRenderedPage(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+	csrfToken, cookieKV, _ := fetchCSRFToken(
+		t,
+		swv,
+		"/dash/posts/new",
+		cookieKV,
+		`data-role="toggle-theme"`,
+	)
+
+	form := url.Values{}
+	form.Set("code", "mode")
+	form.Set("value", "dark")
+
+	resp := requestControllerP0(t, swv, fiber.MethodPost, "/dash/api/settings/dash-ui", form, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected theme mode update status: %d body=%q", resp.StatusCode, readResponseBody(t, resp))
+	}
+
+	var payload struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			Code  string `json:"code"`
+			Value string `json:"value"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(readResponseBody(t, resp)), &payload); err != nil {
+		t.Fatalf("parse theme mode update response failed: %v", err)
+	}
+	if !payload.OK || payload.Data.Code != "mode" || payload.Data.Value != "dark" {
+		t.Fatalf("unexpected theme mode update payload: %+v", payload)
+	}
+
+	modeSetting, err := db.GetSettingByCode(swv.Store.Model, "mode")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(mode) failed: %v", err)
+	}
+	if modeSetting.Value != "dark" {
+		t.Fatalf("expected mode setting updated to dark, got %q", modeSetting.Value)
+	}
+
+	renderResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/posts/new", nil, cookieKV, nil)
+	renderBody := assertTemplateRendered(t, renderResp, fiber.StatusOK, `data-role="toggle-theme"`)
+	if !strings.Contains(renderBody, `data-theme="dark"`) {
+		t.Fatalf("expected rendered page to use dark theme, body=%q", renderBody)
+	}
+	if strings.Contains(renderBody, "sui.demo_theme_mode") {
+		t.Fatalf("theme rendering should not depend on demo localStorage key")
+	}
+}
+
 func TestDashControllerP0_PostLifecycle(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()

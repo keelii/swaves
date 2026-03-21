@@ -74,7 +74,7 @@
   --app-toolbar-height: 40px;
   --app-status-height: 40px;
   --app-pane-nav-width: 240px;
-  --app-article-width: 50em;
+  --app-article-width: 50rem;
   --app-toc-width: 300px;
   --app-toolbar-border-width: 1px;
   --app-status-border-width: 1px;
@@ -618,6 +618,10 @@ svg rect:focus {
   white-space: nowrap;
   text-decoration: none;
   box-sizing: border-box;
+}
+
+.ui-btn[hidden] {
+  display: none;
 }
 
 .ui-btn-icon {

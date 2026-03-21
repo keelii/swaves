@@ -21,14 +21,6 @@
   {{ sui.Button("发布", "primary") }}
 {% endblock %}
 
-{# A5: 两列，左设置，右退出 #}
-{% block status_nav_left %}
-  {{ sui.IconButton("setting", "设置", attrs='data-title="设置"') }}
-{% endblock %}
-{% block status_nav_right %}
-  {{ sui.IconButton("log-out", "退出", attrs='data-title="退出"') }}
-{% endblock %}
-
 {# A6: 分类选择 标签选择 ｜ markdown常用按钮 ｜ 文章字数 #}
 {% block status_main_left %}
   {{ sui.Select([

@@ -7,12 +7,182 @@
 
 {% block content %}
 <style>
-  .settings-kind-tabs {
+  .settings-area-tabs {
     margin-bottom: var(--app-spacing);
   }
 
+  .settings-shell {
+    display: grid;
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+    gap: var(--app-spacing);
+    align-items: start;
+  }
+
+  .settings-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.75);
+    position: sticky;
+    top: calc(var(--app-spacing) * 0.75);
+  }
+
+  .settings-card {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-panel-bg);
+  }
+
+  .settings-section-nav {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.45);
+  }
+
+  .settings-section-link {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.2);
+    padding: calc(var(--app-spacing) * 0.75);
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-md);
+    text-decoration: none;
+    color: inherit;
+    background: transparent;
+  }
+
+  .settings-section-link:hover {
+    border-color: var(--app-border);
+    background: var(--app-panel-bg);
+  }
+
+  .settings-section-link.is-active {
+    border-color: var(--app-border);
+    background: var(--app-panel-bg);
+  }
+
+  .settings-section-link-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--app-text);
+  }
+
+  .settings-section-link-desc {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--app-text-soft);
+  }
+
+  .settings-section-link-meta {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--app-spacing) * 0.45);
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .settings-section-link-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: var(--app-bg);
+    color: var(--app-text-soft);
+    font-size: 0.74rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .settings-main {
+    min-width: 0;
+  }
+
+  .settings-all-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-spacing);
+  }
+
+  .settings-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-spacing);
+  }
+
+  .settings-card {
+    padding: var(--app-spacing);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.8);
+  }
+
+  .settings-card.is-emphasis {
+    background: var(--app-bg);
+  }
+
+  .settings-card.is-muted {
+    border-style: dashed;
+  }
+
+  .settings-card.is-muted .settings-card-title,
+  .settings-card.is-muted .settings-card-desc {
+    color: var(--app-text-soft);
+  }
+
+  .settings-card-header {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.2);
+  }
+
+  .settings-card-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: calc(var(--app-spacing) * 0.75);
+  }
+
+  .settings-card-title {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--app-text);
+  }
+
+  .settings-card-desc {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--app-text-soft);
+  }
+
+  .settings-card-note {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--app-text-soft);
+  }
+
+  .settings-card.is-emphasis .settings-card-note {
+    color: var(--app-text);
+  }
+
+  .settings-card-header-top .ui-btn[data-card-toggle] {
+    flex: 0 0 auto;
+  }
+
+  .settings-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.9);
+  }
+
+  .settings-card[data-collapsible="1"][data-collapsed="1"] .settings-card-body {
+    display: none;
+  }
+
   .settings-shortcut-list {
-    margin: calc(var(--app-spacing) * 0.75) 0 0;
+    margin: 0;
     padding: 0;
     list-style: none;
     display: flex;
@@ -32,33 +202,10 @@
     color: var(--app-text-soft);
   }
 
-  .settings-kind-fields {
-    display: flex;
-    flex-direction: column;
-    gap: var(--app-spacing);
-  }
-
-  .settings-sub-kind-group {
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-md);
-    background: var(--app-panel-bg);
-    padding: var(--app-spacing);
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--app-spacing) * 0.75);
-  }
-
-  .settings-sub-kind-title {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--app-text-soft);
-  }
-
   .settings-item {
     display: flex;
-    align-items: flex-start;
-    flex-wrap: nowrap;
-    gap: calc(var(--app-spacing) * 0.75);
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.5);
   }
 
   .settings-item-main {
@@ -66,7 +213,15 @@
     flex-direction: column;
     gap: calc(var(--app-spacing) * 0.5);
     min-width: 0;
-    flex: 1 1 560px;
+    flex: 1 1 auto;
+  }
+
+  .settings-item-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: calc(var(--app-spacing) * 0.6);
+    min-width: 0;
+    flex-wrap: wrap;
   }
 
   .settings-item-header {
@@ -98,7 +253,6 @@
   }
 
   .settings-item-control .ui-input-prefix {
-    {#min-width: 52px;#}
     text-align: center;
   }
 
@@ -125,62 +279,85 @@
   }
 
   .settings-item-desc {
-    flex: 0 1 320px;
-    min-width: 220px;
+    min-width: 0;
     color: var(--app-text-soft);
     font-size: 0.82rem;
     line-height: 1.45;
-    padding-top: 2px;
   }
 
   @media (max-width: 960px) {
+    .settings-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .settings-sidebar {
+      position: static;
+    }
+
+    .settings-section-nav {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
     .settings-item {
-      flex-direction: column;
-      align-items: stretch;
       gap: calc(var(--app-spacing) * 0.5);
     }
 
     .settings-item-desc {
-      flex: 1 1 auto;
-      min-width: 0;
-      padding-top: 0;
+      width: 100%;
     }
   }
 </style>
 
-{% set settingKinds = SettingKinds|default([]) %}
-{% set settingKindLabels = SettingKindLabels|default({}) %}
-{% set activeKind = ActiveKind %}
-{% set activeKindGroups = ActiveKindGroups|default([]) %}
-{% set contentRoutingKind = ContentRoutingKind %}
+{% set settingAreas = SettingAreas %}
+{% set activeArea = ActiveArea %}
+{% set activeSection = ActiveSection %}
+{% set contentRoutingSectionCode = ContentRoutingSectionCode %}
 
 {% if Error %}
   {{ sui.Alert(Error, kind="danger", title="保存失败", inline=true) }}
 {% endif %}
 
-{% if (settingKinds|length) > 0 %}
-  <div class="settings-kind-tabs">
-    {{ sui.TabsStart("设置分类") }}
-      {% for kind in settingKinds %}
-        {% set label = settingKindLabels[kind]|default(kind) %}
-        {{ sui.Tab(label, href=UrlFor('dash.settings.all', kind=kind), active=(activeKind == kind)) }}
+{% if (settingAreas|length) > 0 %}
+  <div class="settings-area-tabs">
+    {{ sui.TabsStart("设置范围") }}
+      {% for area in settingAreas %}
+        {{ sui.Tab(area.Label, href=UrlFor('dash.settings.all', area=area.Code, section=area.Sections[0].Code), active=(activeArea.Code == area.Code), attrs='data-role="settings-area-tab" data-area-code="' ~ area.Code ~ '"') }}
       {% endfor %}
     {{ sui.TabsEnd() }}
   </div>
 
-  <div class="app-mx">
-    <form id="settings-all-form" method="post" action="{{ UrlFor('dash.settings.all.update', kind=activeKind) }}" class="settings-all-form">
-      {{ _csrf_token() }}
+  <div class="settings-shell">
+    <aside class="settings-sidebar" aria-label="设置分组导航">
+      <nav class="settings-section-nav" aria-label="设置分组">
+        {% for section in activeArea.Sections %}
+          <a
+            class="settings-section-link{% if activeSection.Code == section.Code %} is-active{% endif %}"
+            href="{{ UrlFor('dash.settings.all', area=activeArea.Code, section=section.Code) }}"
+            data-role="settings-section-link"
+            data-section-code="{{ section.Code }}"
+          >
+            <span class="settings-section-link-title">{{ section.Label }}</span>
+            <span class="settings-section-link-desc">{{ section.Description }}</span>
+            <span class="settings-section-link-meta">
+              <span class="settings-section-link-count">{{ section.SettingCount }} 项</span>
+            </span>
+          </a>
+        {% endfor %}
+      </nav>
+    </aside>
 
-      {% if activeKind == contentRoutingKind %}
-        <div class="ui-tree app-pb">
+    <div class="settings-main">
+      <form id="settings-all-form" method="post" action="{{ UrlFor('dash.settings.all.update', area=activeArea.Code, section=activeSection.Code) }}" class="settings-all-form">
+        {{ _csrf_token() }}
 
-          <details class="ui-tree-item settings-shortcuts">
-            <summary class="ui-tree-summary">
-              <span class="ui-tree-caret" aria-hidden="true">{{ LucideIcon("chevron-right", 16) }}</span>
-              <span class="ui-tree-label">文章链接快速设置</span>
-            </summary>
-            <div class="ui-tree-children">
+        {% if activeSection.Code == contentRoutingSectionCode %}
+          <section class="settings-card" aria-label="文章链接快速设置">
+            <header class="settings-card-header">
+              <h3 class="settings-card-title">文章链接快速设置</h3>
+              <p class="settings-card-desc">选择常用链接结构，快速填充文章 URL 相关字段。</p>
+            </header>
+            <div class="settings-card-body">
               <ul id="setting-shortcuts" class="settings-shortcut-list">
                 <li class="settings-shortcut-item">
                   <code><span class="settings-prefix-text"></span>/2006/01/02/hello-world</code>
@@ -204,116 +381,141 @@
                 </li>
               </ul>
             </div>
-          </details>
-        </div>
-      {% endif %}
+          </section>
+        {% endif %}
 
-      <div class="settings-kind-fields">
-        {% for subGroup in activeKindGroups %}
-          {% if subGroup.Code %}
-            <section class="settings-sub-kind-group" data-sub-kind="{{ subGroup.Code }}">
-              <h3 class="settings-sub-kind-title">{{ subGroup.Label }}</h3>
-          {% endif %}
-
-            {% for settingView in subGroup.Settings %}
-              {% set setting = settingView.Setting %}
-              {% set code = setting.Code %}
-              {% set attrs = settingView.AttrsParsed %}
-              {% set settingType = setting.Type %}
-              {% set settingName = setting.Name %}
-              {% set settingValue = setting.Value %}
-              {% set settingPrefixValue = setting.PrefixValue %}
-              {% set settingDescription = setting.Description %}
-              {% set settingDefaultOptionValue = setting.DefaultOptionValue %}
-              {% set settingOptionsParsed = settingView.OptionsParsed %}
-              {% set settingCheckboxValues = settingView.CheckboxValues %}
-
-              <div class="settings-item" data-setting-code="{{ code }}" data-setting-name="{{ settingName }}">
-                <div class="settings-item-main">
-                  {% if settingType == "radio" %}
-                    <div class="settings-item-header">{{ settingName }}</div>
-                  {% else %}
-                    <label class="settings-item-header" for="setting_{{ code }}">{{ settingName }}</label>
-                  {% endif %}
-
-                  <div class="settings-item-control">
-                    {% if settingType == "text" %}
-                      <input id="setting_{{ code }}" autocomplete="off" type="text" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                    {% elif settingType == "prefix-field" %}
-                      {% set prefixSourceCode = "" %}
-                      {% if (code == "page_url_prefix") or (code == "rss_path") or (code == "post_url_prefix") or (code == "category_url_prefix") or (code == "tag_url_prefix") %}
-                        {% set prefixSourceCode = "base_path" %}
+        <div class="settings-card-list">
+          {% for card in activeSection.Cards %}
+            {% set cardIsCollapsible = (card.Code == "see") or (card.Code == "imagekit") or (card.Code == "remote") or (card.Code == "s3") %}
+            {% set cardSupportsNote = (card.Code == "provider") or cardIsCollapsible %}
+            {% set cardShowHeader = cardIsCollapsible or card.Description or cardSupportsNote %}
+            {% set cardShowTitle = cardIsCollapsible or card.Description %}
+            <section class="settings-card" data-card-code="{{ card.Code }}"{% if card.Label and not cardShowTitle %} aria-label="{{ card.Label }}"{% endif %}>
+              {% if cardShowHeader %}
+                <header class="settings-card-header">
+                  {% if cardShowTitle or cardIsCollapsible %}
+                    <div class="settings-card-header-top">
+                      {% if cardShowTitle and card.Label %}
+                        <h3 class="settings-card-title">{{ card.Label }}</h3>
                       {% endif %}
-                      {{ sui.Input(
-                        id="setting_" ~ code,
-                        name="setting_" ~ code,
-                        value=settingValue,
-                        attrs=(RenderAttrs(attrs) ~ ' data-prefix-source-code="' ~ prefixSourceCode ~ '" data-prefix-default="' ~ settingPrefixValue ~ '"'),
-                        prefix=settingPrefixValue
-                      ) }}
-                    {% elif settingType == "number" %}
-                      <input id="setting_{{ code }}" type="number" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                    {% elif settingType == "date" %}
-                      <input id="setting_{{ code }}" type="date" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                    {% elif settingType == "time" %}
-                      <input id="setting_{{ code }}" type="time" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                    {% elif settingType == "datetime" %}
-                      <input id="setting_{{ code }}" type="datetime-local" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                    {% elif settingType == "url" %}
-                      <input id="setting_{{ code }}" type="url" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
-                    {% elif settingType == "range" %}
-                      <span class="settings-range-wrap">
-                        <input id="setting_{{ code }}" type="range" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
-                        <output class="range-value" for="setting_{{ code }}">{{ settingValue }}{% if code == "font_size" %} px{% endif %}</output>
-                      </span>
-                    {% elif settingType == "password" %}
-                      <input id="setting_{{ code }}" type="password" class="ui-input" name="setting_{{ code }}" placeholder="留空则保持当前值"{{ RenderAttrs(attrs) }}>
-                    {% elif settingType == "secret" %}
-                      <span class="settings-secret-wrap">
-                        <input id="setting_{{ code }}_secret" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ RenderAttrs(attrs) }}>
-                        <button class="ui-btn outline settings-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
-                      </span>
-                    {% elif settingType == "textarea" %}
-                      <textarea id="setting_{{ code }}" class="ui-textarea" name="setting_{{ code }}" rows="4"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
-                    {% elif settingType == "radio" %}
-                      {% set currentValue = (settingValue or settingDefaultOptionValue) %}
-                      {% set radioOptions %}
-                        {% for radioOption in settingOptionsParsed %}
-                          <label class="ui-radio-field">
-                            <input type="radio" class="ui-radio" name="setting_{{ code }}" value="{{ radioOption.value }}"{% if currentValue == radioOption.value %} checked{% endif %}{{ RenderAttrs(attrs) }}>
-                            <span class="ui-radio-label">{{ radioOption.label }}</span>
-                          </label>
-                        {% endfor %}
-                      {% endset %}
-                      {{ sui.Fieldset(body=radioOptions, class_name="settings-options") }}
-                    {% elif settingType == "checkbox" %}
-                      <div class="settings-options">
-                        {% for checkboxOption in settingOptionsParsed %}
-                          <label class="ui-checkbox-field">
-                            <input type="checkbox" class="ui-checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}"{% if settingCheckboxValues[checkboxOption.value] %} checked{% endif %}{{ RenderAttrs(attrs) }}>
-                            <span class="ui-checkbox-label">{{ checkboxOption.label }}</span>
-                          </label>
-                        {% endfor %}
+                      {% if cardIsCollapsible %}
+                        {{ sui.Button("收起", "outline", attrs='type="button" data-card-toggle data-card-code="' ~ card.Code ~ '" aria-expanded="true"') }}
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                  {% if card.Description %}
+                    <p class="settings-card-desc">{{ card.Description }}</p>
+                  {% endif %}
+                  {% if cardSupportsNote %}
+                    <p class="settings-card-note" data-card-note hidden></p>
+                  {% endif %}
+                </header>
+              {% endif %}
+
+              <div class="settings-card-body">
+                {% for settingView in card.Settings %}
+                  {% set setting = settingView.Setting %}
+                  {% set code = setting.Code %}
+                  {% set attrs = settingView.AttrsParsed %}
+                  {% set settingType = setting.Type %}
+                  {% set settingName = setting.Name %}
+                  {% set settingValue = setting.Value %}
+                  {% set settingPrefixValue = setting.PrefixValue %}
+                  {% set settingDescription = setting.Description %}
+                  {% set settingDefaultOptionValue = setting.DefaultOptionValue %}
+                  {% set settingOptionsParsed = settingView.OptionsParsed %}
+                  {% set settingCheckboxValues = settingView.CheckboxValues %}
+
+                  <div class="settings-item" data-setting-code="{{ code }}" data-setting-name="{{ settingName }}">
+                    <div class="settings-item-main">
+                      <div class="settings-item-title-row">
+                        {% if settingType == "radio" %}
+                          <div class="settings-item-header">{{ settingName }}</div>
+                        {% else %}
+                          <label class="settings-item-header" for="setting_{{ code }}">{{ settingName }}</label>
+                        {% endif %}
+                        {% if settingDescription %}
+                          <div class="settings-item-desc">{{ settingDescription }}</div>
+                        {% endif %}
                       </div>
-                    {% elif settingType == "select" %}
-                      {% set currentValue = (settingValue or settingDefaultOptionValue) %}
-                      <select id="setting_{{ code }}" class="ui-select" name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>
-                        {% for selectOption in settingOptionsParsed %}
-                          <option value="{{ selectOption.value }}"{% if currentValue == selectOption.value %} selected{% endif %}>{{ selectOption.label }}</option>
-                        {% endfor %}
-                      </select>
-                    {% endif %}
+
+                      <div class="settings-item-control">
+                        {% if settingType == "text" %}
+                          <input id="setting_{{ code }}" autocomplete="off" type="text" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                        {% elif settingType == "prefix-field" %}
+                          {% set prefixSourceCode = "" %}
+                          {% if (code == "page_url_prefix") or (code == "rss_path") or (code == "post_url_prefix") or (code == "category_url_prefix") or (code == "tag_url_prefix") %}
+                            {% set prefixSourceCode = "base_path" %}
+                          {% endif %}
+                          {{ sui.Input(
+                            id="setting_" ~ code,
+                            name="setting_" ~ code,
+                            value=settingValue,
+                            attrs=(RenderAttrs(attrs) ~ ' data-prefix-source-code="' ~ prefixSourceCode ~ '" data-prefix-default="' ~ settingPrefixValue ~ '"'),
+                            prefix=settingPrefixValue
+                          ) }}
+                        {% elif settingType == "number" %}
+                          <input id="setting_{{ code }}" type="number" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                        {% elif settingType == "date" %}
+                          <input id="setting_{{ code }}" type="date" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                        {% elif settingType == "time" %}
+                          <input id="setting_{{ code }}" type="time" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                        {% elif settingType == "datetime" %}
+                          <input id="setting_{{ code }}" type="datetime-local" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                        {% elif settingType == "url" %}
+                          <input id="setting_{{ code }}" type="url" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                        {% elif settingType == "range" %}
+                          <span class="settings-range-wrap">
+                            <input id="setting_{{ code }}" type="range" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
+                            <output class="range-value" for="setting_{{ code }}">{{ settingValue }}{% if code == "font_size" %} px{% endif %}</output>
+                          </span>
+                        {% elif settingType == "password" %}
+                          <input id="setting_{{ code }}" type="password" class="ui-input" name="setting_{{ code }}" placeholder="留空则保持当前值"{{ RenderAttrs(attrs) }}>
+                        {% elif settingType == "secret" %}
+                          <span class="settings-secret-wrap">
+                            <input id="setting_{{ code }}_secret" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ RenderAttrs(attrs) }}>
+                            <button class="ui-btn outline settings-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
+                          </span>
+                        {% elif settingType == "textarea" %}
+                          <textarea id="setting_{{ code }}" class="ui-textarea" name="setting_{{ code }}" rows="4"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
+                        {% elif settingType == "radio" %}
+                          {% set currentValue = (settingValue or settingDefaultOptionValue) %}
+                          {% set radioOptions %}
+                            {% for radioOption in settingOptionsParsed %}
+                              <label class="ui-radio-field">
+                                <input type="radio" class="ui-radio" name="setting_{{ code }}" value="{{ radioOption.value }}"{% if currentValue == radioOption.value %} checked{% endif %}{{ RenderAttrs(attrs) }}>
+                                <span class="ui-radio-label">{{ radioOption.label }}</span>
+                              </label>
+                            {% endfor %}
+                          {% endset %}
+                          {{ sui.Fieldset(body=radioOptions, class_name="settings-options") }}
+                        {% elif settingType == "checkbox" %}
+                          <div class="settings-options">
+                            {% for checkboxOption in settingOptionsParsed %}
+                              <label class="ui-checkbox-field">
+                                <input type="checkbox" class="ui-checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}"{% if settingCheckboxValues[checkboxOption.value] %} checked{% endif %}{{ RenderAttrs(attrs) }}>
+                                <span class="ui-checkbox-label">{{ checkboxOption.label }}</span>
+                              </label>
+                            {% endfor %}
+                          </div>
+                        {% elif settingType == "select" %}
+                          {% set currentValue = (settingValue or settingDefaultOptionValue) %}
+                          <select id="setting_{{ code }}" class="ui-select" name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>
+                            {% for selectOption in settingOptionsParsed %}
+                              <option value="{{ selectOption.value }}"{% if currentValue == selectOption.value %} selected{% endif %}>{{ selectOption.label }}</option>
+                            {% endfor %}
+                          </select>
+                        {% endif %}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div class="settings-item-desc">{% if settingDescription %}{{ settingDescription }}{% else %}-{% endif %}</div>
+                {% endfor %}
               </div>
-            {% endfor %}
-          {% if subGroup.Code %}
             </section>
-          {% endif %}
-        {% endfor %}
-      </div>
-    </form>
+          {% endfor %}
+        </div>
+      </form>
+    </div>
   </div>
 {% else %}
   {{ sui.Alert("暂无可编辑设置", kind="warning", inline=true) }}
@@ -321,8 +523,177 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  var settingsForm = document.getElementById('settings-all-form');
   var settingShortcuts = document.getElementById('setting-shortcuts');
   var basePathContainer = document.querySelector('[data-setting-code="base_path"]');
+
+  function normalizeLower(raw, fallback) {
+    raw = String(raw || '').trim().toLowerCase();
+    if (!raw) {
+      return String(fallback || '').trim().toLowerCase();
+    }
+    return raw;
+  }
+
+  function readFieldValue(name) {
+    var field = document.querySelector('[name="' + name + '"]');
+    if (!field) {
+      return '';
+    }
+    return String(field.value || '').trim();
+  }
+
+  function readChoiceValue(name) {
+    var checked = document.querySelector('[name="' + name + '"]:checked');
+    if (checked) {
+      return String(checked.value || '').trim();
+    }
+    return readFieldValue(name);
+  }
+
+  function setCardState(cardCode, options) {
+    var card = document.querySelector('.settings-card[data-card-code="' + cardCode + '"]');
+    var noteEl;
+    var note;
+    var manualState;
+    var collapsed;
+
+    if (!card) {
+      return;
+    }
+
+    noteEl = card.querySelector('[data-card-note]');
+    card.classList.toggle('is-emphasis', !!options.emphasis);
+    card.classList.toggle('is-muted', !!options.muted);
+
+    if (!noteEl) {
+      return;
+    }
+
+    note = String(options.note || '').trim();
+    if (!note) {
+      noteEl.textContent = '';
+      noteEl.hidden = true;
+    } else {
+      noteEl.textContent = note;
+      noteEl.hidden = false;
+    }
+
+    if (!options.collapsible) {
+      card.removeAttribute('data-collapsible');
+      card.removeAttribute('data-collapsed');
+      return;
+    }
+
+    card.setAttribute('data-collapsible', '1');
+    manualState = String(card.getAttribute('data-card-manual') || '').trim();
+    if (options.emphasis) {
+      collapsed = false;
+    } else if (manualState === 'expanded') {
+      collapsed = false;
+    } else if (manualState === 'collapsed') {
+      collapsed = true;
+    } else {
+      collapsed = !!options.collapseWhenMuted;
+    }
+    if (collapsed) {
+      card.setAttribute('data-collapsed', '1');
+    } else {
+      card.removeAttribute('data-collapsed');
+    }
+    syncCardToggleButton(card);
+  }
+
+  function syncCardToggleButton(card) {
+    var button;
+    var collapsed;
+
+    if (!card) {
+      return;
+    }
+
+    button = card.querySelector('[data-card-toggle]');
+    if (!button) {
+      return;
+    }
+
+    collapsed = card.getAttribute('data-collapsed') === '1';
+    button.textContent = collapsed ? '展开' : '收起';
+    button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+
+  function syncAssetProviderCards() {
+    var provider = normalizeLower(readChoiceValue('setting_asset_default_provider'), 'see');
+
+    setCardState('provider', {
+      emphasis: true,
+      muted: false,
+      note: '当前默认资源服务：' + (provider === 'imagekit' ? 'ImageKit' : 'S.EE'),
+    });
+    setCardState('see', {
+      emphasis: provider === 'see',
+      muted: provider !== 'see',
+      collapsible: true,
+      collapseWhenMuted: provider !== 'see',
+      note: provider === 'see'
+        ? '当前上传默认使用这组 S.EE 配置。'
+        : '切换默认资源服务到 S.EE 后会使用这组配置。',
+    });
+    setCardState('imagekit', {
+      emphasis: provider === 'imagekit',
+      muted: provider !== 'imagekit',
+      collapsible: true,
+      collapseWhenMuted: provider !== 'imagekit',
+      note: provider === 'imagekit'
+        ? '当前上传默认使用这组 ImageKit 配置。'
+        : '切换默认资源服务到 ImageKit 后会使用这组配置。',
+    });
+  }
+
+  function syncBackupProviderCards() {
+    var enabled = normalizeLower(readChoiceValue('setting_sync_push_enabled'), '0');
+    var provider = normalizeLower(readChoiceValue('setting_sync_push_provider'), 's3');
+    var providerLabel = provider === 'imagekit' ? 'ImageKit' : 'S3';
+    var remoteNote = '';
+    var s3Note = '';
+
+    if (enabled === '1') {
+      remoteNote = '当前远程备份服务：' + providerLabel;
+      if (provider === 'imagekit') {
+        remoteNote += '，凭证复用“资源与云服务”中的 ImageKit 配置。';
+      }
+    } else {
+      remoteNote = '远程备份当前关闭，展开后可开启并配置服务。';
+    }
+
+    if (provider === 's3') {
+      s3Note = enabled === '1'
+        ? '当前远程备份会使用这组 S3 配置。'
+        : '当前未启用远程备份，S3 配置会在开启后生效。';
+    } else {
+      s3Note = '当前远程备份未使用 S3。';
+    }
+
+    setCardState('remote', {
+      emphasis: enabled === '1',
+      muted: enabled !== '1',
+      collapsible: true,
+      collapseWhenMuted: enabled !== '1',
+      note: remoteNote,
+    });
+    setCardState('s3', {
+      emphasis: enabled === '1' && provider === 's3',
+      muted: provider !== 's3',
+      collapsible: true,
+      collapseWhenMuted: provider !== 's3',
+      note: s3Note,
+    });
+  }
+
+  function syncDynamicCardStates() {
+    syncAssetProviderCards();
+    syncBackupProviderCards();
+  }
 
   if (settingShortcuts) {
     settingShortcuts.addEventListener('click', function(event) {
@@ -419,6 +790,41 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   syncPrefixLegends();
+
+  if (settingsForm) {
+    settingsForm.addEventListener('input', function() {
+      syncDynamicCardStates();
+    });
+    settingsForm.addEventListener('change', function() {
+      syncDynamicCardStates();
+    });
+  }
+  syncDynamicCardStates();
+
+  document.addEventListener('click', function(event) {
+    var button = event.target.closest('[data-card-toggle]');
+    var card;
+    var collapsed;
+
+    if (!button) {
+      return;
+    }
+
+    card = button.closest('.settings-card');
+    if (!card) {
+      return;
+    }
+
+    collapsed = card.getAttribute('data-collapsed') === '1';
+    if (collapsed) {
+      card.setAttribute('data-card-manual', 'expanded');
+      card.removeAttribute('data-collapsed');
+    } else {
+      card.setAttribute('data-card-manual', 'collapsed');
+      card.setAttribute('data-collapsed', '1');
+    }
+    syncCardToggleButton(card);
+  });
 
   document.addEventListener('click', function(event) {
     var button = event.target.closest('.settings-secret-toggle');
