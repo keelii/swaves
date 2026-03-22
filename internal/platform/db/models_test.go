@@ -905,6 +905,24 @@ func TestSettingsLifecycleAndPassword(t *testing.T) {
 		t.Fatalf("updated hash compare failed: %v", err)
 	}
 
+	longRawPassword := strings.Repeat("long-password-", 5)
+	if len(longRawPassword) <= 60 {
+		t.Fatalf("expected long raw password > 60 chars, got %d", len(longRawPassword))
+	}
+	if err := UpdateSettingByCode(db, pwdCode, longRawPassword); err != nil {
+		t.Fatalf("UpdateSettingByCode long password failed: %v", err)
+	}
+	gotPwd, err = GetSettingByCode(db, pwdCode)
+	if err != nil {
+		t.Fatalf("GetSettingByCode failed: %v", err)
+	}
+	if gotPwd.Value == longRawPassword {
+		t.Fatal("expected long raw password to be hashed before storing")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(gotPwd.Value), []byte(longRawPassword)); err != nil {
+		t.Fatalf("long password hash compare failed: %v", err)
+	}
+
 	if err := UpdateSettingByCode(db, "dash_password", "secret-123"); err != nil {
 		t.Fatalf("UpdateSettingByCode dash_password failed: %v", err)
 	}
@@ -913,6 +931,24 @@ func TestSettingsLifecycleAndPassword(t *testing.T) {
 	}
 	if err := CheckPassword(db, "wrong"); err == nil {
 		t.Fatal("CheckPassword should fail for wrong password")
+	}
+
+	preHashedDashPassword, err := bcrypt.GenerateFromPassword([]byte("secret-456"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword failed: %v", err)
+	}
+	if err := UpdateSettingByCode(db, "dash_password", string(preHashedDashPassword)); err != nil {
+		t.Fatalf("UpdateSettingByCode pre-hashed dash_password failed: %v", err)
+	}
+	storedDashPassword, err := GetSettingByCode(db, "dash_password")
+	if err != nil {
+		t.Fatalf("GetSettingByCode dash_password failed: %v", err)
+	}
+	if storedDashPassword.Value != string(preHashedDashPassword) {
+		t.Fatal("expected pre-hashed dash_password to be stored without rehashing")
+	}
+	if err := CheckPassword(db, "secret-456"); err != nil {
+		t.Fatalf("CheckPassword should pass for pre-hashed password: %v", err)
 	}
 
 	m, err := LoadSettingsToMap(db)

@@ -38,6 +38,14 @@ type TableName string
 var OnDatabaseChanged func(tableName TableName, kind TableOp)
 
 func Open(opts Options) *DB {
+	conn, err := OpenWithError(opts)
+	if err != nil {
+		logger.Fatal("open sqlite failed: %v", err)
+	}
+	return conn
+}
+
+func OpenWithError(opts Options) (*DB, error) {
 	var sqlDB *sql.DB
 	var err error
 
@@ -52,16 +60,18 @@ func Open(opts Options) *DB {
 	//
 	_, err = sqlDB.Exec(`PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;`)
 	if err != nil {
-		logger.Fatal("set journal_mode failed: %v", err)
+		_ = sqlDB.Close()
+		return nil, WrapInternalErr("Open.pragma", err)
 	}
 
 	conn := &DB{DB: sqlDB}
 
 	if r2 := InitDatabase(conn); r2 != nil {
-		logger.Fatal("migrate failed: %v", r2)
+		_ = conn.Close()
+		return nil, r2
 	}
 
-	return conn
+	return conn, nil
 }
 
 func InitDatabase(db *DB) error {
@@ -74,10 +84,18 @@ func InitDatabase(db *DB) error {
 	}
 
 	if err := EnsureDefaultSettings(db); err != nil {
-		logger.Fatal("ensure default settings failed: %v", err)
+		return WrapInternalErr("InitDatabase.EnsureDefaultSettings", err)
 	}
 
 	return nil
+}
+
+func isBcryptHash(value string) bool {
+	if value == "" {
+		return false
+	}
+	_, err := bcrypt.Cost([]byte(value))
+	return err == nil
 }
 
 func now() int64 {
@@ -3403,7 +3421,7 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 	}
 
 	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
-	if s.Type == "password" && s.Value != "" && len(s.Value) < 60 {
+	if s.Type == "password" && s.Value != "" && !isBcryptHash(s.Value) {
 		hashed, err := bcrypt.GenerateFromPassword(
 			[]byte(s.Value),
 			bcrypt.DefaultCost,
@@ -3596,7 +3614,7 @@ func ListAllSettings(db *DB) ([]Setting, error) {
 
 func UpdateSetting(db *DB, s *Setting) error {
 	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
-	if s.Type == "password" && s.Value != "" && len(s.Value) < 60 {
+	if s.Type == "password" && s.Value != "" && !isBcryptHash(s.Value) {
 		hashed, err := bcrypt.GenerateFromPassword(
 			[]byte(s.Value),
 			bcrypt.DefaultCost,
@@ -3639,7 +3657,7 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 	}
 
 	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
-	if setting.Type == "password" && value != "" && len(value) < 60 {
+	if setting.Type == "password" && value != "" && !isBcryptHash(value) {
 		hashed, err := bcrypt.GenerateFromPassword(
 			[]byte(value),
 			bcrypt.DefaultCost,

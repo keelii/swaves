@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
 	"swaves/internal/platform/config"
+	"swaves/internal/platform/db"
 )
 
 func TestRunUtilityCommandHashPassword(t *testing.T) {
@@ -51,6 +53,87 @@ func TestRunUtilityCommandHashPasswordRequiresPassword(t *testing.T) {
 	}
 }
 
+func TestRunUtilityCommandSetAdminPassword(t *testing.T) {
+	sqliteFile := filepath.Join(t.TempDir(), "data.sqlite")
+	model := db.Open(db.Options{DSN: sqliteFile})
+	_ = model.Close()
+
+	rawPassword := strings.Repeat("admin-password-", 4) + "adm"
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	handled, exitCode := runUtilityCommand([]string{"set-admin-password", sqliteFile, rawPassword}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected set-admin-password to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+
+	hashed := strings.TrimSpace(stdout.String())
+	if hashed == "" {
+		t.Fatal("expected stored hash output")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hashed), []byte(rawPassword)); err != nil {
+		t.Fatalf("output is not valid bcrypt hash for input password: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "updated settings.dash_password") {
+		t.Fatalf("expected success message, got stderr=%q", stderr.String())
+	}
+
+	verifyDB, err := db.OpenWithError(db.Options{DSN: sqliteFile})
+	if err != nil {
+		t.Fatalf("OpenWithError failed: %v", err)
+	}
+	defer func() { _ = verifyDB.Close() }()
+
+	if err := db.CheckPassword(verifyDB, rawPassword); err != nil {
+		t.Fatalf("CheckPassword should pass: %v", err)
+	}
+	setting, err := db.GetSettingByCode(verifyDB, "dash_password")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(dash_password) failed: %v", err)
+	}
+	if setting.Value != hashed {
+		t.Fatalf("stored dash_password mismatch: got=%q want=%q", setting.Value, hashed)
+	}
+}
+
+func TestRunUtilityCommandSetAdminPasswordRequiresPassword(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	handled, exitCode := runUtilityCommand([]string{"set-admin-password", "data.sqlite"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected set-admin-password to be handled")
+	}
+	if exitCode != 2 {
+		t.Fatalf("unexpected exit code: %d", exitCode)
+	}
+	if !strings.Contains(stderr.String(), "password is required for set-admin-password") {
+		t.Fatalf("unexpected stderr: %q", stderr.String())
+	}
+}
+
+func TestRunUtilityCommandSetAdminPasswordHelp(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	handled, exitCode := runUtilityCommand([]string{"set-admin-password", "--help"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected set-admin-password help to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), "swaves set-admin-password <sqlite-file> <raw-password>") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("unexpected stderr: %q", stderr.String())
+	}
+}
+
 func TestRunUtilityCommandTopLevelHelp(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -63,6 +146,9 @@ func TestRunUtilityCommandTopLevelHelp(t *testing.T) {
 		t.Fatalf("unexpected exit code: %d", exitCode)
 	}
 	if !strings.Contains(stdout.String(), "swaves hash-password <raw-password>") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "swaves set-admin-password <sqlite-file> <raw-password>") {
 		t.Fatalf("unexpected stdout: %q", stdout.String())
 	}
 	if stderr.Len() != 0 {
