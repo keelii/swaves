@@ -27,9 +27,10 @@ func newControllerP0TestApp(t *testing.T) SwavesApp {
 
 	dbPath := filepath.Join(t.TempDir(), "controller-p0.sqlite")
 	return NewApp(types.AppConfig{
-		SqliteFile: dbPath,
-		ListenAddr: ":0",
-		AppName:    "swaves-test",
+		SqliteFile:    dbPath,
+		AdminPassword: mustHashPassword(t, "dash"),
+		ListenAddr:    ":0",
+		AppName:       "swaves-test",
 	})
 }
 

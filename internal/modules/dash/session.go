@@ -10,9 +10,9 @@ import (
 	"github.com/gofiber/storage/sqlite3/v2"
 )
 
-func NewSessionStore() *types.SessionStore {
+func NewSessionStore(database string) *types.SessionStore {
 	storage := sqlite3.New(sqlite3.Config{
-		Database:   "./data.sqlite",
+		Database:   database,
 		Table:      string(db.TableSessions),
 		Reset:      false,
 		GCInterval: 1 * time.Minute, // 每1分钟清理一次过期 session

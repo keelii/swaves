@@ -15,14 +15,26 @@ import (
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
+	"golang.org/x/crypto/bcrypt"
 )
+
+func mustHashPassword(t *testing.T, raw string) string {
+	t.Helper()
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password failed: %v", err)
+	}
+	return string(hashed)
+}
 
 func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.sqlite")
 	swv := NewApp(types.AppConfig{
-		SqliteFile: dbPath,
-		ListenAddr: ":0",
-		AppName:    "swaves-test",
+		SqliteFile:    dbPath,
+		AdminPassword: mustHashPassword(t, "dash"),
+		ListenAddr:    ":0",
+		AppName:       "swaves-test",
 	})
 	defer swv.Shutdown()
 

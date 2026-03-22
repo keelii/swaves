@@ -1,8 +1,11 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"swaves/internal/modules/api"
 	dash "swaves/internal/modules/dash"
 	"swaves/internal/modules/site"
@@ -30,10 +33,18 @@ type SwavesApp struct {
 }
 
 func NewApp(appCfg types.AppConfig) SwavesApp {
+	if err := validateAppConfig(appCfg); err != nil {
+		logger.Fatal("invalid app config: %v", err)
+	}
+
 	globalStore := store.NewGlobalStore(db.Open(db.Options{
 		DSN:          appCfg.SqliteFile,
 		EnableSQLLog: appCfg.EnableSQLLog,
-	}), dash.NewSessionStore())
+	}), dash.NewSessionStore(appCfg.SqliteFile))
+
+	if err := syncRuntimeAppConfig(globalStore.Model, appCfg); err != nil {
+		logger.Fatal("sync runtime app config failed: %v", err)
+	}
 
 	store.InitSettings(globalStore)
 	templateRoot := resolveProjectPath("web/templates")
@@ -88,6 +99,32 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		Store:  globalStore,
 		Config: &appCfg,
 	}
+}
+
+func validateAppConfig(appCfg types.AppConfig) error {
+	if strings.TrimSpace(appCfg.SqliteFile) == "" {
+		return errors.New("sqlite file is required")
+	}
+	if strings.TrimSpace(appCfg.AdminPassword) == "" {
+		return errors.New("admin password is required")
+	}
+	return nil
+}
+
+func syncRuntimeAppConfig(model *db.DB, appCfg types.AppConfig) error {
+	adminPassword := strings.TrimSpace(appCfg.AdminPassword)
+
+	setting, err := db.GetSettingByCode(model, "dash_password")
+	if err != nil {
+		return fmt.Errorf("get dash_password failed: %w", err)
+	}
+	if strings.TrimSpace(setting.Value) == adminPassword {
+		return nil
+	}
+	if err := db.UpdateSettingByCode(model, "dash_password", adminPassword); err != nil {
+		return fmt.Errorf("update dash_password failed: %w", err)
+	}
+	return nil
 }
 
 func resolveProjectPath(path string) string {
