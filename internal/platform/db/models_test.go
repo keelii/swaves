@@ -22,6 +22,18 @@ func openTestDB(t *testing.T) *DB {
 
 	dsn := filepath.Join(t.TempDir(), "data.sqlite")
 	db := Open(Options{DSN: dsn})
+	if err := EnsureDefaultSettings(db); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db
+}
+
+func openEmptyTestDB(t *testing.T) *DB {
+	t.Helper()
+
+	dsn := filepath.Join(t.TempDir(), "empty.sqlite")
+	db := Open(Options{DSN: dsn})
 	t.Cleanup(func() { _ = db.Close() })
 	return db
 }
@@ -980,6 +992,49 @@ func TestSettingsLifecycleAndPassword(t *testing.T) {
 
 	if err := EnsureDefaultSettings(db); err != nil {
 		t.Fatalf("EnsureDefaultSettings should be idempotent: %v", err)
+	}
+}
+
+func TestBootstrapDefaultSettingsFromEmptyDB(t *testing.T) {
+	db := openEmptyTestDB(t)
+
+	count, err := CountSettings(db)
+	if err != nil {
+		t.Fatalf("CountSettings failed: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected empty settings table, got %d", count)
+	}
+
+	if err := BootstrapDefaultSettings(db, map[string]string{
+		"site_name":     "Installed Swaves",
+		"dash_password": "install-secret",
+	}); err != nil {
+		t.Fatalf("BootstrapDefaultSettings failed: %v", err)
+	}
+
+	count, err = CountSettings(db)
+	if err != nil {
+		t.Fatalf("CountSettings after bootstrap failed: %v", err)
+	}
+	if count != len(DefaultSettings) {
+		t.Fatalf("unexpected settings count after bootstrap: got=%d want=%d", count, len(DefaultSettings))
+	}
+
+	siteName, err := GetSettingByCode(db, "site_name")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(site_name) failed: %v", err)
+	}
+	if siteName.Value != "Installed Swaves" {
+		t.Fatalf("unexpected site_name value: %q", siteName.Value)
+	}
+
+	if err := CheckPassword(db, "install-secret"); err != nil {
+		t.Fatalf("CheckPassword should pass after bootstrap: %v", err)
+	}
+
+	if err := BootstrapDefaultSettings(db, nil); err == nil {
+		t.Fatal("expected second bootstrap to fail once settings already exist")
 	}
 }
 

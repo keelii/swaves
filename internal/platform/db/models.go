@@ -83,8 +83,10 @@ func InitDatabase(db *DB) error {
 		}
 	}
 
-	if err := EnsureDefaultSettings(db); err != nil {
-		return WrapInternalErr("InitDatabase.EnsureDefaultSettings", err)
+	if config.ShouldEnsureDefaultSettings() {
+		if err := EnsureDefaultSettings(db); err != nil {
+			return WrapInternalErr("InitDatabase.EnsureDefaultSettings", err)
+		}
 	}
 
 	return nil
@@ -96,6 +98,43 @@ func isBcryptHash(value string) bool {
 	}
 	_, err := bcrypt.Cost([]byte(value))
 	return err == nil
+}
+
+func normalizeSettingValueForStorage(settingType string, value string) (string, error) {
+	if settingType == "password" && value != "" && !isBcryptHash(value) {
+		hashed, err := bcrypt.GenerateFromPassword(
+			[]byte(value),
+			bcrypt.DefaultCost,
+		)
+		if err != nil {
+			return "", err
+		}
+		return string(hashed), nil
+	}
+
+	return value, nil
+}
+
+func normalizeSettingForWrite(s *Setting) error {
+	if s == nil {
+		return errors.New("setting is required")
+	}
+	if s.Code == "" {
+		return errors.New("code is required")
+	}
+	if s.Type == "" {
+		return errors.New("type is required")
+	}
+	if s.Kind == "" {
+		s.Kind = "default"
+	}
+
+	value, err := normalizeSettingValueForStorage(s.Type, s.Value)
+	if err != nil {
+		return err
+	}
+	s.Value = value
+	return nil
 }
 
 func now() int64 {
@@ -3410,26 +3449,11 @@ func (s Setting) String() string {
 }
 
 func CreateSetting(db *DB, s *Setting) (int64, error) {
-	if s.Code == "" {
-		return 0, errors.New("code is required")
-	}
-	if s.Type == "" {
-		return 0, errors.New("type is required")
-	}
-	if s.Kind == "" {
-		s.Kind = "default"
-	}
-
-	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
-	if s.Type == "password" && s.Value != "" && !isBcryptHash(s.Value) {
-		hashed, err := bcrypt.GenerateFromPassword(
-			[]byte(s.Value),
-			bcrypt.DefaultCost,
-		)
-		if err != nil {
-			return 0, WrapInternalErr("CreateSetting.bcrypt", err)
+	if err := normalizeSettingForWrite(s); err != nil {
+		if err.Error() == "code is required" || err.Error() == "type is required" {
+			return 0, err
 		}
-		s.Value = string(hashed)
+		return 0, WrapInternalErr("CreateSetting.normalize", err)
 	}
 
 	id, err := Create(db, specSettings, map[string]interface{}{
@@ -3613,16 +3637,8 @@ func ListAllSettings(db *DB) ([]Setting, error) {
 }
 
 func UpdateSetting(db *DB, s *Setting) error {
-	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
-	if s.Type == "password" && s.Value != "" && !isBcryptHash(s.Value) {
-		hashed, err := bcrypt.GenerateFromPassword(
-			[]byte(s.Value),
-			bcrypt.DefaultCost,
-		)
-		if err != nil {
-			return WrapInternalErr("UpdateSetting.bcrypt", err)
-		}
-		s.Value = string(hashed)
+	if err := normalizeSettingForWrite(s); err != nil {
+		return WrapInternalErr("UpdateSetting.normalize", err)
 	}
 
 	err := Update(db, specSettings, s.ID, map[string]interface{}{
@@ -3656,16 +3672,9 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 		return err
 	}
 
-	// 如果是 password 类型，需要对 value 进行 bcrypt 加密
-	if setting.Type == "password" && value != "" && !isBcryptHash(value) {
-		hashed, err := bcrypt.GenerateFromPassword(
-			[]byte(value),
-			bcrypt.DefaultCost,
-		)
-		if err != nil {
-			return WrapInternalErr("UpdateSettingByCode.bcrypt", err)
-		}
-		value = string(hashed)
+	value, err = normalizeSettingValueForStorage(setting.Type, value)
+	if err != nil {
+		return WrapInternalErr("UpdateSettingByCode.normalize", err)
 	}
 
 	if err = Update(db, specSettings, setting.ID, map[string]interface{}{
@@ -3676,6 +3685,96 @@ func UpdateSettingByCode(db *DB, code string, value string) error {
 
 	if OnDatabaseChanged != nil {
 		OnDatabaseChanged(TableSettings, TableOpUpdate)
+	}
+
+	return nil
+}
+
+func CountSettings(db *DB) (int, error) {
+	return Count(db, specSettings, "", nil)
+}
+
+func HasInstalledSettings(db *DB) (bool, error) {
+	count, err := CountSettings(db)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func insertSettingTx(tx *sql.Tx, s Setting) error {
+	_, err := tx.Exec(
+		`INSERT INTO `+string(TableSettings)+` (
+			kind, sub_kind, name, code, type, options, attrs, value, default_option_value,
+			prefix_value, description, sort, charset, author, keywords, reload, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.Kind,
+		strings.TrimSpace(s.SubKind),
+		s.Name,
+		s.Code,
+		s.Type,
+		s.Options,
+		s.Attrs,
+		s.Value,
+		s.DefaultOptionValue,
+		s.PrefixValue,
+		s.Description,
+		s.Sort,
+		s.Charset,
+		s.Author,
+		s.Keywords,
+		s.Reload,
+		s.CreatedAt,
+		s.UpdatedAt,
+	)
+	if err != nil {
+		return WrapInternalErr("insertSettingTx", err)
+	}
+	return nil
+}
+
+func BootstrapDefaultSettings(db *DB, overrides map[string]string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return WrapInternalErr("BootstrapDefaultSettings.Begin", err)
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	var count int
+	row := tx.QueryRow(`SELECT COUNT(1) FROM ` + string(TableSettings) + ` WHERE deleted_at IS NULL`)
+	if err = row.Scan(&count); err != nil {
+		return WrapInternalErr("BootstrapDefaultSettings.Count", err)
+	}
+	if count > 0 {
+		return errors.New("settings already initialized")
+	}
+
+	for _, defaultSetting := range DefaultSettings {
+		setting := defaultSetting
+		if overrides != nil {
+			if value, ok := overrides[setting.Code]; ok {
+				setting.Value = value
+			}
+		}
+		if err = normalizeSettingForWrite(&setting); err != nil {
+			return WrapInternalErr("BootstrapDefaultSettings.normalize", err)
+		}
+		if err = insertSettingTx(tx, setting); err != nil {
+			return WrapInternalErr("BootstrapDefaultSettings.insert", err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return WrapInternalErr("BootstrapDefaultSettings.Commit", err)
+	}
+	tx = nil
+
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableSettings, TableOpInsert)
 	}
 
 	return nil

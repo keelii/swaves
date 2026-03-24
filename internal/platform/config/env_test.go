@@ -47,3 +47,40 @@ func TestEnvIsAndEnvIsNot(t *testing.T) {
 		t.Fatalf("EnvIs(envProd) should be false when env=dev")
 	}
 }
+
+func TestShouldEnsureDefaultSettings(t *testing.T) {
+	original := AppEnv
+	defer func() { AppEnv = original }()
+
+	t.Run("prod never ensures", func(t *testing.T) {
+		AppEnv = envProd
+		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "true")
+		if ShouldEnsureDefaultSettings() {
+			t.Fatal("ShouldEnsureDefaultSettings should be false in prod")
+		}
+	})
+
+	t.Run("dev defaults to false", func(t *testing.T) {
+		AppEnv = envDev
+		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "")
+		if ShouldEnsureDefaultSettings() {
+			t.Fatal("ShouldEnsureDefaultSettings should default to false in dev")
+		}
+	})
+
+	t.Run("dev explicit true", func(t *testing.T) {
+		AppEnv = envDev
+		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "true")
+		if !ShouldEnsureDefaultSettings() {
+			t.Fatal("ShouldEnsureDefaultSettings should be true when explicitly enabled in dev")
+		}
+	})
+
+	t.Run("dev explicit false-like value", func(t *testing.T) {
+		AppEnv = envDev
+		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "false")
+		if ShouldEnsureDefaultSettings() {
+			t.Fatal("ShouldEnsureDefaultSettings should be false for false-like values")
+		}
+	})
+}

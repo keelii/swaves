@@ -77,6 +77,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 
 	app.Use("/static", static.New(resolveProjectPath("web/static")))
 
+	app.Use(middleware.InstallGate(globalStore.Model, "/install"))
 	app.Use(middleware.DashViewContext(globalStore.Session))
 	app.Use(middleware.GlobalSettings(config.GlobalSettingKey))
 	app.Use(middleware.PaginationMiddleware())
@@ -112,6 +113,14 @@ func validateAppConfig(appCfg types.AppConfig) error {
 }
 
 func syncRuntimeAppConfig(model *db.DB, appCfg types.AppConfig) error {
+	installed, err := db.HasInstalledSettings(model)
+	if err != nil {
+		return fmt.Errorf("check installed settings failed: %w", err)
+	}
+	if !installed {
+		return nil
+	}
+
 	adminPassword := strings.TrimSpace(appCfg.AdminPassword)
 
 	setting, err := db.GetSettingByCode(model, "dash_password")

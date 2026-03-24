@@ -15,6 +15,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	flagAdminPassword = flag.String("admin-password", "", "dash admin password bcrypt hash")
+	flagBackupDir     = flag.String("backup-dir", "backups", "backup directory")
+	flagListenAddr    = flag.String("listen-addr", ":3000", "listen address")
+	flagAppName       = flag.String("app-name", "swaves", "app name")
+	flagEnableSQLLog  = flag.Bool("enable-sql-log", config.EnableSQLLog, "enable sql log")
+)
+
 func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool, int) {
 	if len(args) == 0 {
 		return false, 0
@@ -190,6 +198,57 @@ func parseAppConfig(args []string) (types.AppConfig, error) {
 	return cfg, nil
 }
 
+func parseMainAppConfig(args []string) (types.AppConfig, error) {
+	cfg := types.AppConfig{
+		BackupDir:    "backups",
+		ListenAddr:   ":3000",
+		AppName:      "swaves",
+		EnableSQLLog: config.EnableSQLLog,
+	}
+
+	if err := applyEnvAppConfig(&cfg); err != nil {
+		return cfg, err
+	}
+
+	*flagAdminPassword = cfg.AdminPassword
+	*flagBackupDir = cfg.BackupDir
+	*flagListenAddr = cfg.ListenAddr
+	*flagAppName = cfg.AppName
+	*flagEnableSQLLog = cfg.EnableSQLLog
+
+	flagArgs := args
+	if len(args) > 0 {
+		firstArg := strings.TrimSpace(args[0])
+		if firstArg != "" && !strings.HasPrefix(firstArg, "-") {
+			cfg.SqliteFile = firstArg
+			flagArgs = args[1:]
+		}
+	}
+
+	flag.CommandLine.SetOutput(io.Discard)
+	if err := flag.CommandLine.Parse(flagArgs); err != nil {
+		return cfg, err
+	}
+	if flag.CommandLine.NArg() > 0 {
+		return cfg, fmt.Errorf("unexpected extra arguments: %s", strings.Join(flag.CommandLine.Args(), " "))
+	}
+
+	cfg.AdminPassword = strings.TrimSpace(*flagAdminPassword)
+	cfg.BackupDir = strings.TrimSpace(*flagBackupDir)
+	cfg.ListenAddr = strings.TrimSpace(*flagListenAddr)
+	cfg.AppName = strings.TrimSpace(*flagAppName)
+	cfg.EnableSQLLog = *flagEnableSQLLog
+
+	if strings.TrimSpace(cfg.SqliteFile) == "" {
+		return cfg, errors.New("sqlite file is required")
+	}
+	if cfg.AdminPassword == "" {
+		return cfg, errors.New("admin password is required")
+	}
+
+	return cfg, nil
+}
+
 func applyEnvAppConfig(cfg *types.AppConfig) error {
 	if cfg == nil {
 		return nil
@@ -247,6 +306,7 @@ Environment:
   SWAVES_LISTEN_ADDR
   SWAVES_APP_NAME
   SWAVES_ENABLE_SQL_LOG
+  SWAVES_ENSURE_DEFAULT_SETTINGS
 
 Priority:
   command line > environment variables > defaults
@@ -254,6 +314,7 @@ Priority:
 Notes:
   set-admin-password updates settings.dash_password in the sqlite file and prints the stored bcrypt hash.
   App startup syncs settings.dash_password from --admin-password / SWAVES_ADMIN_PASSWORD.
+  SWAVES_ENSURE_DEFAULT_SETTINGS=true only enables EnsureDefaultSettings when SWAVES_ENV=dev.
 
 Examples:
   ./swaves hash-password admin

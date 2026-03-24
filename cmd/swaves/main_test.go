@@ -56,6 +56,9 @@ func TestRunUtilityCommandHashPasswordRequiresPassword(t *testing.T) {
 func TestRunUtilityCommandSetAdminPassword(t *testing.T) {
 	sqliteFile := filepath.Join(t.TempDir(), "data.sqlite")
 	model := db.Open(db.Options{DSN: sqliteFile})
+	if err := db.EnsureDefaultSettings(model); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
 	_ = model.Close()
 
 	rawPassword := strings.Repeat("admin-password-", 4) + "adm"

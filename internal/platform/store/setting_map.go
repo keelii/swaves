@@ -9,6 +9,7 @@ import (
 )
 
 var Settings atomic.Value
+var defaultSettingValues = buildDefaultSettingValues()
 
 func InitSettings(gStore *GlobalStore) {
 	if err := ReloadSettings(gStore); err != nil {
@@ -43,14 +44,31 @@ func ReloadSettings(gStore *GlobalStore) error {
 	return nil
 }
 
+func buildDefaultSettingValues() map[string]string {
+	values := make(map[string]string, len(db.DefaultSettings))
+	for _, setting := range db.DefaultSettings {
+		code := strings.TrimSpace(setting.Code)
+		if code == "" {
+			continue
+		}
+		values[code] = setting.Value
+	}
+	return values
+}
+
 func GetSetting(code string) string {
 	s, ok := Settings.Load().(map[string]string)
 	if !ok {
 		logger.Error("error converting settings to map[string]string")
-		return ""
+		s = map[string]string{}
 	}
 	val, exists := s[code]
 	if !exists {
+		if len(s) == 0 {
+			if fallback, ok := defaultSettingValues[code]; ok {
+				return fallback
+			}
+		}
 		logger.Warn("no settings found for code: %s", code)
 	}
 	return val

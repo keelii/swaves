@@ -21,7 +21,7 @@ func main() {
 		return
 	}
 
-	appCfg, err := parseAppConfig(args)
+	appCfg, err := parseMainAppConfig(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			_, _ = fmt.Fprint(os.Stdout, cliUsage())

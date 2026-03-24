@@ -26,6 +26,15 @@ var UrlPrefixValidator = map[string]interface{}{
 }
 var UrlPrefixValidatorJSON = jsonStringify(UrlPrefixValidator)
 
+var DashPathRegexp = regexp.MustCompile(`^/?([a-z]+(?:/[a-z]+)*)?$`)
+
+var DashPathValidator = map[string]interface{}{
+	"title":   "只能是 / 和小写英文字母路径",
+	"pattern": DashPathRegexp.String(),
+}
+
+var DashPathValidatorJSON = jsonStringify(DashPathValidator)
+
 var UrlFileNamePrefixRegexp = regexp.MustCompile(`^[a-z]+[0-9]*\.?[a-z]+$`)
 
 var UrlFileNamePrefixValidator = map[string]interface{}{

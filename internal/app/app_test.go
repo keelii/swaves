@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
+	"swaves/internal/platform/db"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -28,8 +30,22 @@ func mustHashPassword(t *testing.T, raw string) string {
 	return string(hashed)
 }
 
+func prepareInstalledAppDB(t *testing.T, dbPath string) {
+	t.Helper()
+
+	model := db.Open(db.Options{DSN: dbPath})
+	if err := db.EnsureDefaultSettings(model); err != nil {
+		_ = model.Close()
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+	if err := model.Close(); err != nil {
+		t.Fatalf("close prepared db failed: %v", err)
+	}
+}
+
 func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.sqlite")
+	prepareInstalledAppDB(t, dbPath)
 	swv := NewApp(types.AppConfig{
 		SqliteFile:    dbPath,
 		AdminPassword: mustHashPassword(t, "dash"),
@@ -181,4 +197,140 @@ func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {
 	if !os.SameFile(gotInfo, wantInfo) {
 		t.Fatalf("unexpected resolved template path: got %q want %q", got, want)
 	}
+}
+
+func TestInstallFlowRedirectsThenInitializesSettings(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "install.sqlite")
+	swv := NewApp(types.AppConfig{
+		SqliteFile:    dbPath,
+		AdminPassword: mustHashPassword(t, "runtime-secret"),
+		ListenAddr:    ":0",
+		AppName:       "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	homeResp := requestControllerP0(t, swv, fiber.MethodGet, "/", nil, "", nil)
+	if homeResp.StatusCode < 300 || homeResp.StatusCode >= 400 {
+		t.Fatalf("expected install redirect status, got %d", homeResp.StatusCode)
+	}
+	if location := strings.TrimSpace(homeResp.Header.Get("Location")); location != "/install" {
+		t.Fatalf("unexpected install redirect location: %q", location)
+	}
+
+	csrfToken, cookieKV, _ := fetchCSRFToken(
+		t,
+		swv,
+		"/install",
+		"",
+		`name="setting_dash_password"`,
+		"完成安装",
+	)
+
+	form := url.Values{}
+	form.Set("_csrf_token", csrfToken)
+	form.Set("setting_dash_password", "install-secret")
+
+	installResp := requestControllerP0(t, swv, fiber.MethodPost, "/install", form, cookieKV, nil)
+	body := assertTemplateRendered(t, installResp, fiber.StatusOK, "安装完成", "进入当前后台")
+	if !strings.Contains(body, "runtime-secret") {
+		// sanity check only: response should not leak runtime secret
+	} else {
+		t.Fatal("install success page should not expose runtime secret")
+	}
+
+	count, err := db.CountSettings(swv.Store.Model)
+	if err != nil {
+		t.Fatalf("CountSettings failed: %v", err)
+	}
+	if count != len(db.DefaultSettings) {
+		t.Fatalf("unexpected installed settings count: got=%d want=%d", count, len(db.DefaultSettings))
+	}
+	if err := db.CheckPassword(swv.Store.Model, "install-secret"); err != nil {
+		t.Fatalf("CheckPassword should use installed password before restart: %v", err)
+	}
+
+	installAgainResp := requestControllerP0(t, swv, fiber.MethodGet, "/install", nil, cookieKV, nil)
+	if installAgainResp.StatusCode != fiber.StatusNotFound {
+		t.Fatalf("expected /install to be unavailable after install, got %d", installAgainResp.StatusCode)
+	}
+
+	loginToken, loginCookieKV, _ := fetchCSRFToken(
+		t,
+		swv,
+		"/dash/login",
+		"",
+		`<h1 class="auth-title">登录管理后台</h1>`,
+	)
+	loginForm := url.Values{}
+	loginForm.Set("_csrf_token", loginToken)
+	loginForm.Set("password", "install-secret")
+	loginResp := requestControllerP0(t, swv, fiber.MethodPost, "/dash/login", loginForm, loginCookieKV, nil)
+	if loginResp.StatusCode < 300 || loginResp.StatusCode >= 400 {
+		t.Fatalf("expected login redirect after install, got %d", loginResp.StatusCode)
+	}
+}
+
+func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "install-fields.sqlite")
+	swv := NewApp(types.AppConfig{
+		SqliteFile:    dbPath,
+		AdminPassword: mustHashPassword(t, "runtime-secret"),
+		ListenAddr:    ":0",
+		AppName:       "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	_, _, body := fetchCSRFToken(
+		t,
+		swv,
+		"/install",
+		"",
+		`name="setting_site_name"`,
+		`name="setting_dash_password"`,
+		"完成安装",
+	)
+
+	if strings.Contains(body, `name="setting_editor_font_size"`) {
+		t.Fatal("install page should not expose editor settings")
+	}
+	if strings.Contains(body, `name="setting_editor_font_family"`) {
+		t.Fatal("install page should not expose editor font settings")
+	}
+	if !strings.Contains(body, `name="setting_page_url_prefix"`) || !strings.Contains(body, `data-prefix-source-code="base_path"`) {
+		t.Fatal("install page should wire prefix-field sync metadata for routed prefixes")
+	}
+}
+
+func TestInstallFlowShowsRestartNoteForReloadSettings(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "install-restart.sqlite")
+	swv := NewApp(types.AppConfig{
+		SqliteFile:    dbPath,
+		AdminPassword: mustHashPassword(t, "runtime-secret"),
+		ListenAddr:    ":0",
+		AppName:       "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	csrfToken, cookieKV, _ := fetchCSRFToken(
+		t,
+		swv,
+		"/install",
+		"",
+		`name="setting_dash_password"`,
+	)
+
+	form := url.Values{}
+	form.Set("_csrf_token", csrfToken)
+	form.Set("setting_dash_password", "install-secret")
+	form.Set("setting_dash_path", "/console")
+	form.Set("setting_backup_local_interval_min", strconv.Itoa(1440))
+
+	installResp := requestControllerP0(t, swv, fiber.MethodPost, "/install", form, cookieKV, nil)
+	assertTemplateRendered(
+		t,
+		installResp,
+		fiber.StatusOK,
+		"请先重启应用",
+		"管理后台路径",
+	)
 }

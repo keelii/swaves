@@ -26,6 +26,7 @@ func newControllerP0TestApp(t *testing.T) SwavesApp {
 	t.Helper()
 
 	dbPath := filepath.Join(t.TempDir(), "controller-p0.sqlite")
+	prepareInstalledAppDB(t, dbPath)
 	return NewApp(types.AppConfig{
 		SqliteFile:    dbPath,
 		AdminPassword: mustHashPassword(t, "dash"),

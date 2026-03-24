@@ -1,0 +1,331 @@
+{% import "dash/include/ui.html" as sui %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>{{ Title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/sui/sui.css">
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    html {
+      height: auto;
+      min-height: 100%;
+      overflow-y: auto;
+    }
+
+    body {
+      margin: 0;
+      height: auto;
+      min-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f3ec;
+      color: #163038;
+    }
+
+    .install-page {
+      width: min(760px, calc(100vw - 24px));
+      margin: 24px auto 40px;
+    }
+
+    .install-form {
+      border: 1px solid rgba(22, 48, 56, 0.12);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 16px 40px rgba(22, 48, 56, 0.06);
+      overflow: hidden;
+    }
+
+    .install-error {
+      margin-bottom: 16px;
+    }
+
+    .install-fields {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .install-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(22, 48, 56, 0.1);
+    }
+
+    .install-field:last-child {
+      border-bottom: 0;
+    }
+
+    .install-field-head {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .install-field-label {
+      font-size: 0.93rem;
+      font-weight: 700;
+      color: #163038;
+    }
+
+    .install-field-desc {
+      color: rgba(22, 48, 56, 0.64);
+      font-size: 0.83rem;
+      line-height: 1.55;
+    }
+
+    .install-field-control {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .install-field-control .ui-input,
+    .install-field-control .ui-textarea,
+    .install-field-control .ui-select,
+    .install-field-control .ui-input-prefix-group,
+    .install-field-control .install-range-wrap,
+    .install-field-control .install-options,
+    .install-field-control .install-secret-wrap {
+      width: 100%;
+    }
+
+    .install-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+    }
+
+    .install-range-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .install-range-wrap .range-value {
+      min-width: 48px;
+      color: rgba(22, 48, 56, 0.68);
+    }
+
+    .install-secret-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .install-secret-wrap .ui-input {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .install-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 18px 20px;
+      border-top: 1px solid rgba(22, 48, 56, 0.1);
+      background: rgba(245, 243, 236, 0.42);
+    }
+  </style>
+</head>
+<body>
+  <main class="install-page">
+    {% if Error %}
+      <div class="install-error">
+        {{ sui.Alert(Error, kind="danger", title="安装失败", inline=true) }}
+      </div>
+    {% endif %}
+
+    <form class="install-form" method="post" action="{{ UrlFor('install.submit') }}">
+      {{ _csrf_token() }}
+
+      <div class="install-fields">
+        {% for settingView in InstallSettings %}
+          {% set setting = settingView.Setting %}
+          {% set code = setting.Code %}
+          {% set attrs = settingView.AttrsParsed %}
+          {% set settingType = setting.Type %}
+          {% set settingName = settingView.Name or setting.Name %}
+          {% set settingValue = setting.Value %}
+          {% set settingPrefixValue = setting.PrefixValue %}
+          {% set settingDescription = settingView.Description or setting.Description %}
+          {% set settingDefaultOptionValue = setting.DefaultOptionValue %}
+          {% set settingOptionsParsed = settingView.OptionsParsed %}
+          {% set settingCheckboxValues = settingView.CheckboxValues %}
+
+          <div class="install-field" data-setting-code="{{ code }}">
+            <div class="install-field-head">
+              <label class="install-field-label" for="setting_{{ code }}">{{ settingName }}</label>
+              {% if settingDescription %}
+                <div class="install-field-desc">{{ settingDescription }}</div>
+              {% endif %}
+            </div>
+
+            <div class="install-field-control">
+              {% if settingType == "text" %}
+                <input id="setting_{{ code }}" autocomplete="off" type="text" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+              {% elif settingType == "prefix-field" %}
+                {% set prefixSourceCode = "" %}
+                {% if (code == "page_url_prefix") or (code == "rss_path") or (code == "post_url_prefix") or (code == "category_url_prefix") or (code == "tag_url_prefix") %}
+                  {% set prefixSourceCode = "base_path" %}
+                {% endif %}
+                {{ sui.Input(
+                  id="setting_" ~ code,
+                  name="setting_" ~ code,
+                  value=settingValue,
+                  attrs=(RenderAttrs(attrs) ~ ' data-prefix-source-code="' ~ prefixSourceCode ~ '" data-prefix-default="' ~ settingPrefixValue ~ '"'),
+                  prefix=settingPrefixValue
+                ) }}
+              {% elif settingType == "number" %}
+                <input id="setting_{{ code }}" type="number" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+              {% elif settingType == "date" %}
+                <input id="setting_{{ code }}" type="date" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+              {% elif settingType == "time" %}
+                <input id="setting_{{ code }}" type="time" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+              {% elif settingType == "datetime" %}
+                <input id="setting_{{ code }}" type="datetime-local" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+              {% elif settingType == "url" %}
+                <input id="setting_{{ code }}" type="url" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+              {% elif settingType == "range" %}
+                <span class="install-range-wrap">
+                  <input id="setting_{{ code }}" type="range" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
+                  <output class="range-value" for="setting_{{ code }}">{{ settingValue }}{% if code == "font_size" %} px{% endif %}</output>
+                </span>
+              {% elif settingType == "password" %}
+                <input id="setting_{{ code }}" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" placeholder="设置后台登录密码"{{ RenderAttrs(attrs) }}>
+              {% elif settingType == "secret" %}
+                <span class="install-secret-wrap">
+                  <input id="setting_{{ code }}_secret" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ RenderAttrs(attrs) }}>
+                  <button class="ui-btn outline install-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
+                </span>
+              {% elif settingType == "textarea" %}
+                <textarea id="setting_{{ code }}" class="ui-textarea" name="setting_{{ code }}" rows="4"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
+              {% elif settingType == "radio" %}
+                {% set currentValue = (settingValue or settingDefaultOptionValue) %}
+                <div class="install-options">
+                  {% for radioOption in settingOptionsParsed %}
+                    <label class="ui-radio-field">
+                      <input type="radio" class="ui-radio" name="setting_{{ code }}" value="{{ radioOption.value }}"{% if currentValue == radioOption.value %} checked{% endif %}{{ RenderAttrs(attrs) }}>
+                      <span class="ui-radio-label">{{ radioOption.label }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              {% elif settingType == "checkbox" %}
+                <div class="install-options">
+                  {% for checkboxOption in settingOptionsParsed %}
+                    <label class="ui-checkbox-field">
+                      <input type="checkbox" class="ui-checkbox" name="setting_{{ code }}" value="{{ checkboxOption.value }}"{% if settingCheckboxValues[checkboxOption.value] %} checked{% endif %}{{ RenderAttrs(attrs) }}>
+                      <span class="ui-checkbox-label">{{ checkboxOption.label }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              {% elif settingType == "select" %}
+                {% set currentValue = (settingValue or settingDefaultOptionValue) %}
+                <select id="setting_{{ code }}" class="ui-select" name="setting_{{ code }}"{{ RenderAttrs(attrs) }}>
+                  {% for selectOption in settingOptionsParsed %}
+                    <option value="{{ selectOption.value }}"{% if currentValue == selectOption.value %} selected{% endif %}>{{ selectOption.label }}</option>
+                  {% endfor %}
+                </select>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="install-actions">
+        {{ sui.Button("完成安装", "primary", attrs='type="submit"') }}
+      </div>
+    </form>
+  </main>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var basePathContainer = document.querySelector('[data-setting-code="base_path"]');
+
+    document.querySelectorAll('[data-range-value]').forEach(function(input) {
+      var output = input.parentElement && input.parentElement.querySelector('.range-value');
+      var unit = String(input.getAttribute('data-unit') || '');
+
+      function syncRange() {
+        if (!output) {
+          return;
+        }
+        output.textContent = String(input.value || '') + unit;
+      }
+
+      input.addEventListener('input', syncRange);
+      syncRange();
+    });
+
+    document.querySelectorAll('.install-secret-toggle').forEach(function(button) {
+      button.addEventListener('click', function() {
+        var input = document.getElementById(button.getAttribute('data-target-id'));
+        if (!input) {
+          return;
+        }
+
+        var isPassword = String(input.getAttribute('type') || '').toLowerCase() === 'password';
+        input.setAttribute('type', isPassword ? 'text' : 'password');
+        button.textContent = isPassword ? button.getAttribute('data-hide-text') : button.getAttribute('data-show-text');
+      });
+    });
+
+    function normalizePrefixLiteral(raw) {
+      raw = String(raw || '').trim();
+      raw = raw.replace(/^\/+|\/+$/g, '');
+      if (!raw) {
+        return '/';
+      }
+      return raw;
+    }
+
+    function renderPrefixLiteral(raw) {
+      var normalized = normalizePrefixLiteral(raw);
+      if (normalized === '/') {
+        return '/';
+      }
+      return '/' + normalized + '/';
+    }
+
+    function syncPrefixLegends() {
+      var baseInput = basePathContainer ? basePathContainer.querySelector('input,textarea,select') : null;
+      var basePrefix = normalizePrefixLiteral(baseInput ? baseInput.value : '');
+
+      document.querySelectorAll('[data-prefix-default]').forEach(function(input) {
+        var sourceCode = String(input.getAttribute('data-prefix-source-code') || '').trim();
+        var prefixText = String(input.getAttribute('data-prefix-default') || '').trim() || '/';
+        var prefixGroup = input.closest('.ui-input-prefix-group');
+        var prefixNode;
+
+        if (sourceCode === 'base_path') {
+          prefixText = basePrefix;
+        }
+
+        if (!prefixGroup) {
+          return;
+        }
+
+        prefixNode = prefixGroup.querySelector('.ui-input-prefix');
+        if (prefixNode) {
+          prefixNode.textContent = renderPrefixLiteral(prefixText);
+        }
+      });
+    }
+
+    if (basePathContainer) {
+      basePathContainer.querySelectorAll('input,textarea,select').forEach(function(input) {
+        input.addEventListener('input', syncPrefixLegends);
+        input.addEventListener('change', syncPrefixLegends);
+      });
+    }
+    syncPrefixLegends();
+  });
+  </script>
+</body>
+</html>

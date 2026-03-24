@@ -150,6 +150,10 @@ func openPushJobTestDB(t *testing.T) *db.DB {
 	t.Helper()
 	dsn := filepath.Join(t.TempDir(), "data.sqlite")
 	dbx := db.Open(db.Options{DSN: dsn})
+	if err := db.BootstrapDefaultSettings(dbx, nil); err != nil {
+		_ = dbx.Close()
+		t.Fatalf("BootstrapDefaultSettings failed: %v", err)
+	}
 	t.Cleanup(func() {
 		_ = dbx.Close()
 	})

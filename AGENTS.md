@@ -48,6 +48,13 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - Preserve file history when moving/renaming (prefer tracked move).
 - Treat tests and PR checklist as a merge gate; run `go test ./...`.
 
+6) Go CLI flag discipline:
+- Declare all CLI flags at package top level via `var` with `flag.String`/`flag.Bool`/etc.
+- Call `flag.Parse()` (or `flag.CommandLine.Parse(...)`) only in `main()`.
+- Dereference flag pointers before use and validate required inputs explicitly in `main()` flow.
+- Keep `flag` as input boundary only; pass plain values into business/runtime code.
+- Keep CLI simple for single-command tools; avoid cross-package flag access and unnecessary wrappers.
+
 ## Current Project Baselines
 
 ### SUI admin baseline
