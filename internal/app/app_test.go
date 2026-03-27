@@ -286,6 +286,7 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 		"/install",
 		"",
 		`name="setting_site_name"`,
+		`name="setting_author"`,
 		`name="setting_dash_password"`,
 		"完成安装",
 	)
@@ -296,8 +297,35 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if strings.Contains(body, `name="setting_editor_font_family"`) {
 		t.Fatal("install page should not expose editor font settings")
 	}
-	if !strings.Contains(body, `name="setting_page_url_prefix"`) || !strings.Contains(body, `data-prefix-source-code="base_path"`) {
-		t.Fatal("install page should wire prefix-field sync metadata for routed prefixes")
+	if strings.Contains(body, `name="setting_language"`) {
+		t.Fatal("install page should not expose language settings")
+	}
+	if strings.Contains(body, `name="setting_timezone"`) {
+		t.Fatal("install page should not expose timezone settings")
+	}
+	if strings.Contains(body, `name="setting_author_email"`) {
+		t.Fatal("install page should not expose author email settings")
+	}
+	if strings.Contains(body, `name="setting_site_title"`) {
+		t.Fatal("install page should not expose site title settings")
+	}
+	if strings.Contains(body, `name="setting_site_desc"`) {
+		t.Fatal("install page should not expose site description settings")
+	}
+	if strings.Contains(body, `name="setting_asset_default_provider"`) {
+		t.Fatal("install page should not expose asset provider settings")
+	}
+	if strings.Contains(body, `name="setting_page_url_prefix"`) {
+		t.Fatal("install page should not expose page url prefix settings")
+	}
+	if strings.Contains(body, `name="setting_post_url_prefix"`) {
+		t.Fatal("install page should not expose post url prefix settings")
+	}
+	if strings.Contains(body, `name="setting_post_url_ext"`) {
+		t.Fatal("install page should not expose post url ext settings")
+	}
+	if !strings.Contains(body, `name="setting_base_path"`) {
+		t.Fatal("install page should still expose base path setting")
 	}
 }
 
