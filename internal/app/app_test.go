@@ -327,6 +327,27 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if !strings.Contains(body, `name="setting_base_path"`) {
 		t.Fatal("install page should still expose base path setting")
 	}
+
+	expectedOrder := []string{
+		`name="setting_site_name"`,
+		`name="setting_site_url"`,
+		`name="setting_author"`,
+		`name="setting_base_path"`,
+		`name="setting_post_url_name"`,
+		`name="setting_dash_path"`,
+		`name="setting_dash_password"`,
+	}
+	lastIndex := -1
+	for _, marker := range expectedOrder {
+		currentIndex := strings.Index(body, marker)
+		if currentIndex < 0 {
+			t.Fatalf("install page should contain %s", marker)
+		}
+		if currentIndex <= lastIndex {
+			t.Fatalf("install page field order mismatch at %s", marker)
+		}
+		lastIndex = currentIndex
+	}
 }
 
 func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {

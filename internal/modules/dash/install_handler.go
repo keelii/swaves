@@ -8,51 +8,59 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-var installSettingCodes = []string{
-	"site_name",
-	"site_url",
-	"author",
-	"base_path",
-	"post_url_name",
-	"dash_path",
-	"dash_password",
-	"page_url_prefix",
-	"post_url_prefix",
-	"post_url_ext",
-}
-
-var installSettingPresentationOverrides = map[string]struct {
+type installSettingPresentationOverride struct {
+	Code        string
 	Name        string
 	Description string
-}{
-	"site_name": {
+}
+
+var installSettingPresentationOverrides = []installSettingPresentationOverride{
+	{
+		Code:        "site_name",
 		Description: "公开展示的站点名称",
 	},
-	"author": {
-		Description: "公开内容显示的作者名",
-	},
-	"site_url": {
+	{
+		Code:        "site_url",
 		Description: "站点访问地址，不包含路径前缀",
 	},
-	"base_path": {
-		Description: "站点前台统一路径前缀，留空表示根路径",
+	{
+		Code:        "sep",
+		Description: "",
 	},
-	"page_url_prefix": {
-		Description: "页面访问前缀，留空表示直接挂在站点根路径。",
+	{
+		Code:        "author",
+		Description: "公开内容显示的作者名",
 	},
-	"post_url_prefix": {
-		Description: "文章访问前缀，支持日期变量。",
+	{
+		Code:        "sep",
+		Description: "",
 	},
-	"post_url_name": {
-		Description: "文章链接中使用的名称格式",
+	{
+		Code:        "base_path",
+		Description: "前台统一路径前缀，留空表示根路径",
 	},
-	"post_url_ext": {
-		Description: "文章链接扩展名，留空表示不追加。",
+	{
+		Code:        "post_url_prefix",
+		Description: "前台文章路径前缀",
 	},
-	"dash_path": {
+	{
+		Code:        "post_url_name",
+		Description: "文章链接地址中使用的名称格式",
+	},
+	{
+		Code:        "post_url_ext",
+		Description: "文章链接地址扩展名",
+	},
+	{
+		Code:        "sep",
+		Description: "",
+	},
+	{
+		Code:        "dash_path",
 		Description: "管理后台访问路径，修改后需重启",
 	},
-	"dash_password": {
+	{
+		Code:        "dash_password",
 		Description: "后台登录密码",
 	},
 }
@@ -107,21 +115,26 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 		settingsByCode[code] = setting
 	}
 
-	views := make([]SettingView, 0, len(installSettingCodes))
-	for _, code := range installSettingCodes {
+	views := make([]SettingView, 0, len(installSettingPresentationOverrides))
+	for _, override := range installSettingPresentationOverrides {
+		code := strings.TrimSpace(override.Code)
+		if code == "" {
+			continue
+		}
+
 		setting, ok := settingsByCode[code]
 		if !ok {
 			continue
 		}
+
 		view := buildSettingView(setting)
-		if override, ok := installSettingPresentationOverrides[code]; ok {
-			if strings.TrimSpace(override.Name) != "" {
-				view.Name = override.Name
-			}
-			if strings.TrimSpace(override.Description) != "" {
-				view.Description = override.Description
-			}
+		if strings.TrimSpace(override.Name) != "" {
+			view.Name = override.Name
 		}
+		if strings.TrimSpace(override.Description) != "" {
+			view.Description = override.Description
+		}
+
 		views = append(views, view)
 	}
 
