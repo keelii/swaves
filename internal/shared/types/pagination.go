@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/mitsuhiko/minijinja/minijinja-go/v2/value"
@@ -63,12 +62,6 @@ func (p Pagination) GetAttr(name string) value.Value {
 }
 
 func (p Pagination) CallMethod(_ value.State, name string, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-	if len(kwargs) > 0 {
-		return value.Undefined(), fmt.Errorf("pagination method %q does not support keyword arguments", name)
-	}
-	if len(args) > 0 {
-		return value.Undefined(), fmt.Errorf("pagination method %q does not support positional arguments", name)
-	}
 	normalized := p.normalized()
 	switch name {
 	case "GetPageItems":

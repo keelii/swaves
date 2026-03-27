@@ -209,7 +209,7 @@ func newMiniJinjaTemplateLoader(templateRoot string) minijinja.LoaderFunc {
 }
 
 func resolveTemplateImportPath(name string, parent string) string {
-	name = strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
+	name = strings.TrimSpace(name)
 	if name == "" {
 		return name
 	}
@@ -280,9 +280,6 @@ func normalizeTemplateName(name string) (string, error) {
 	}
 	if strings.HasPrefix(normalized, "../") || normalized == ".." {
 		return "", fmt.Errorf("template name %q points outside root", name)
-	}
-	if path.Ext(normalized) != ".html" {
-		return "", fmt.Errorf("template name %q must end with .html", name)
 	}
 	return normalized, nil
 }

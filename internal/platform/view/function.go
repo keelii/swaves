@@ -66,13 +66,15 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromString(urlFor(name, params, query)), nil
 	})
 	env.AddFunction("PagerURL", func(st *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("PagerURL does not support keyword arguments")
+		pageRaw := ""
+		if len(args) > 0 {
+			pageRaw = strings.TrimSpace(toStringValue(args[0].Raw()))
+		} else if rawPage, ok := kwargs["page"]; ok {
+			pageRaw = strings.TrimSpace(toStringValue(rawPage.Raw()))
 		}
-		if len(args) == 0 {
+		if pageRaw == "" {
 			return value.Undefined(), errors.New("PagerURL requires page argument")
 		}
-		pageRaw := strings.TrimSpace(toStringValue(args[0].Raw()))
 		page, err := strconv.Atoi(pageRaw)
 		if err != nil || page <= 0 {
 			return value.FromString(""), nil
@@ -81,6 +83,8 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		routeName := ""
 		if len(args) > 1 {
 			routeName = strings.TrimSpace(toStringValue(args[1].Raw()))
+		} else if rawRouteName, ok := kwargs["routeName"]; ok {
+			routeName = strings.TrimSpace(toStringValue(rawRouteName.Raw()))
 		}
 		if routeName == "" {
 			routeName = strings.TrimSpace(toStringValue(st.Lookup("RouteName").Raw()))
@@ -92,6 +96,8 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		var query map[string]string
 		if len(args) > 2 {
 			query = toStringMap(args[2].Raw())
+		} else if rawQuery, ok := kwargs["query"]; ok {
+			query = toStringMap(rawQuery.Raw())
 		}
 		if query == nil {
 			query = toStringMap(st.Lookup("Query").Raw())
@@ -100,14 +106,21 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		if query == nil {
 			query = map[string]string{}
 		}
+		for key, raw := range kwargs {
+			if key == "page" || key == "routeName" || key == "query" {
+				continue
+			}
+			k := strings.TrimSpace(key)
+			if k == "" {
+				continue
+			}
+			query[k] = toStringValue(raw.Raw())
+		}
 		query["page"] = strconv.Itoa(page)
 		query = compactStringMap(query)
 		return value.FromString(urlFor(routeName, nil, query)), nil
 	})
 	env.AddFunction("Settings", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("Settings does not support keyword arguments")
-		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
@@ -115,9 +128,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromString(store.GetSetting(key)), nil
 	})
 	env.AddFunction("Printf", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("Printf does not support keyword arguments")
-		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
@@ -129,9 +139,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromString(fmt.Sprintf(format, values...)), nil
 	})
 	env.AddFunction("LongText", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("LongText does not support keyword arguments")
-		}
 		text := ""
 		if len(args) > 0 {
 			text = toStringValue(args[0].Raw())
@@ -173,9 +180,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromSafeString(rendered), nil
 	})
 	env.AddFunction("RenderAttrs", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("RenderAttrs does not support keyword arguments")
-		}
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
 		}
@@ -205,9 +209,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromSafeString(renderHTMLAttrs(args[0].Raw())), nil
 	})
 	env.AddFunction("Highlight", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("Highlight does not support keyword arguments")
-		}
 		if len(args) == 0 {
 			return value.FromSafeString(""), nil
 		}
@@ -239,9 +240,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromSafeString(buf.String()), nil
 	})
 	env.AddFunction("GetAvatarImage", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetAvatarImage does not support keyword arguments")
-		}
 		email := ""
 		author := ""
 		size := 0
@@ -266,9 +264,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromString(helper.BuildGAvatarURL(email, author, size)), nil
 	})
 	env.AddFunction("GetAuthorGravatarUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetAuthorGravatarUrl does not support keyword arguments")
-		}
 		size := 0
 		if len(args) > 0 {
 			if parsed, ok := args[0].AsInt(); ok {
@@ -285,9 +280,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromString(share.GetAuthorGravatarUrl(size)), nil
 	})
 	env.AddFunction("UrlIs", func(st *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("UrlIs does not support keyword arguments")
-		}
 		if len(args) != 1 {
 			return value.Undefined(), errors.New("UrlIs requires exactly one route name argument")
 		}
@@ -298,39 +290,21 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromBool(current == strings.TrimSpace(toStringValue(args[0].Raw()))), nil
 	})
 	env.AddFunction("GetBasePath", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetBasePath does not support keyword arguments")
-		}
 		return value.FromString(share.GetBasePath()), nil
 	})
 	env.AddFunction("GetCategoryPrefix", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetCategoryPrefix does not support keyword arguments")
-		}
 		return value.FromString(share.GetCategoryPrefix()), nil
 	})
 	env.AddFunction("GetTagPrefix", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetTagPrefix does not support keyword arguments")
-		}
 		return value.FromString(share.GetTagPrefix()), nil
 	})
 	env.AddFunction("GetRSSUrl", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetRSSUrl does not support keyword arguments")
-		}
 		return value.FromString(share.GetRSSUrl()), nil
 	})
 	env.AddFunction("GetDashUrl", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetDashUrl does not support keyword arguments")
-		}
 		return value.FromString(share.GetDashUrl()), nil
 	})
 	env.AddFunction("GetTagUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetTagUrl does not support keyword arguments")
-		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
@@ -338,9 +312,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromString(share.GetTagUrl(db.Tag{Slug: slug})), nil
 	})
 	env.AddFunction("GetCategoryUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetCategoryUrl does not support keyword arguments")
-		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}
@@ -348,9 +319,6 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		return value.FromString(share.GetCategoryUrl(db.Category{Slug: slug})), nil
 	})
 	env.AddFunction("GetPostUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
-		if len(kwargs) > 0 {
-			return value.Undefined(), errors.New("GetPostUrl does not support keyword arguments")
-		}
 		if len(args) == 0 {
 			return value.FromString(""), nil
 		}

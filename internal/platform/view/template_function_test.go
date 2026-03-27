@@ -529,19 +529,23 @@ func TestPagerURLUsesExplicitRouteAndQuery(t *testing.T) {
 	}
 }
 
-func TestPagerURLRejectsKeywordArguments(t *testing.T) {
+func TestPagerURLAllowsKeywordArguments(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(
 		filepath.Join(tempDir, "page.html"),
-		[]byte(`{{ PagerURL(page=2) }}`),
+		[]byte(`{{ PagerURL(page=2, routeName="dash.comments.list", status="pending", pageSize=20) }}`),
 		0o644,
 	); err != nil {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
+	var capturedName string
+	var capturedQuery map[string]string
 	view := newMiniJinjaView(tempDir, false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return "ok"
+		capturedName = name
+		capturedQuery = query
+		return "resolved"
 	})
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
@@ -549,11 +553,17 @@ func TestPagerURLRejectsKeywordArguments(t *testing.T) {
 
 	var out bytes.Buffer
 	err := view.Render(&out, "page.html", map[string]any{})
-	if err == nil {
-		t.Fatal("expected render error when PagerURL receives keyword arguments")
+	if err != nil {
+		t.Fatalf("render failed: %v", err)
 	}
-	if !strings.Contains(err.Error(), "PagerURL does not support keyword arguments") {
-		t.Fatalf("unexpected error: %v", err)
+	if strings.TrimSpace(out.String()) != "resolved" {
+		t.Fatalf("unexpected render output: %q", out.String())
+	}
+	if capturedName != "dash.comments.list" {
+		t.Fatalf("captured route name = %q", capturedName)
+	}
+	if capturedQuery["status"] != "pending" || capturedQuery["pageSize"] != "20" || capturedQuery["page"] != "2" {
+		t.Fatalf("captured query = %#v", capturedQuery)
 	}
 }
 
