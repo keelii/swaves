@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"net/url"
 	"strings"
 	"swaves/internal/platform/db"
 
@@ -15,6 +16,9 @@ var installSettingCodes = []string{
 	"post_url_name",
 	"dash_path",
 	"dash_password",
+	"page_url_prefix",
+	"post_url_prefix",
+	"post_url_ext",
 }
 
 var installSettingPresentationOverrides = map[string]struct {
@@ -22,25 +26,34 @@ var installSettingPresentationOverrides = map[string]struct {
 	Description string
 }{
 	"site_name": {
-		Description: "公开展示的站点名称。",
+		Description: "公开展示的站点名称",
 	},
 	"author": {
-		Description: "公开内容显示的作者名。",
+		Description: "公开内容显示的作者名",
 	},
 	"site_url": {
-		Description: "站点访问地址，不包含路径前缀。",
+		Description: "站点访问地址，不包含路径前缀",
 	},
 	"base_path": {
-		Description: "站点前台统一路径前缀，留空表示根路径。",
+		Description: "站点前台统一路径前缀，留空表示根路径",
+	},
+	"page_url_prefix": {
+		Description: "页面访问前缀，留空表示直接挂在站点根路径。",
+	},
+	"post_url_prefix": {
+		Description: "文章访问前缀，支持日期变量。",
 	},
 	"post_url_name": {
-		Description: "文章链接中使用的名称格式。",
+		Description: "文章链接中使用的名称格式",
+	},
+	"post_url_ext": {
+		Description: "文章链接扩展名，留空表示不追加。",
 	},
 	"dash_path": {
-		Description: "管理后台访问路径，修改后需重启。",
+		Description: "管理后台访问路径，修改后需重启",
 	},
 	"dash_password": {
-		Description: "后台登录密码。",
+		Description: "后台登录密码",
 	},
 }
 
@@ -50,6 +63,38 @@ func routeURL(c fiber.Ctx, name string) string {
 		return ""
 	}
 	return path
+}
+
+func resolveInstallSiteURL(c fiber.Ctx) string {
+	baseURL := strings.TrimSpace(c.BaseURL())
+	if baseURL == "" {
+		return ""
+	}
+
+	currentURL := strings.TrimSpace(c.OriginalURL())
+	if currentURL == "" {
+		return baseURL
+	}
+
+	parsed, err := url.Parse(currentURL)
+	if err != nil {
+		return baseURL
+	}
+
+	path := strings.TrimSpace(parsed.Path)
+	if path == "" || path == "/" || path == "/install" {
+		return strings.TrimRight(baseURL, "/")
+	}
+
+	if strings.HasSuffix(path, "/install") {
+		path = strings.TrimSuffix(path, "/install")
+	}
+	path = strings.TrimRight(path, "/")
+	if path == "" {
+		return strings.TrimRight(baseURL, "/")
+	}
+
+	return strings.TrimRight(baseURL, "/") + path
 }
 
 func buildInstallSettingViews(settings []db.Setting) []SettingView {
@@ -85,7 +130,7 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 
 func cloneInstallDefaultSettings(c fiber.Ctx) []db.Setting {
 	settings := make([]db.Setting, 0, len(db.DefaultSettings))
-	siteURL := strings.TrimSpace(c.BaseURL())
+	siteURL := resolveInstallSiteURL(c)
 
 	for _, item := range db.DefaultSettings {
 		setting := item

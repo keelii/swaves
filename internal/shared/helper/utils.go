@@ -12,6 +12,7 @@ import (
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/logger"
 
+	"github.com/elliotchance/orderedmap/v3"
 	"github.com/gosimple/slug"
 	"github.com/mitsuhiko/minijinja/minijinja-go/v2/value"
 	"golang.org/x/net/html"
@@ -258,4 +259,9 @@ func BuildGAvatarURL(email, author string, size int) string {
 
 	//return "https://cravatar.cn/avatar/" + hash + "?" + query.Encode()
 	return fmt.Sprintf("%s/avatar/%s?%s", config.GravatarDomain, hash, query.Encode())
+}
+
+// func NewOrderedMap[K comparable, V any]() *OrderedMap[K, V] {
+func OrderMap[K comparable, V any]() *orderedmap.OrderedMap[K, V] {
+	return orderedmap.NewOrderedMap[K, V]()
 }

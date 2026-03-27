@@ -329,6 +329,23 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	}
 }
 
+func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "install-site-url.sqlite")
+	swv := NewApp(types.AppConfig{
+		SqliteFile:    dbPath,
+		AdminPassword: mustHashPassword(t, "runtime-secret"),
+		ListenAddr:    ":0",
+		AppName:       "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	resp := requestControllerP0(t, swv, fiber.MethodGet, "http://127.0.0.1:4321/install", nil, "", nil)
+	body := assertTemplateRendered(t, resp, fiber.StatusOK, `name="setting_site_url"`)
+	if !strings.Contains(body, `value="http:&#x2f;&#x2f;127.0.0.1:4321"`) {
+		t.Fatalf("install page should prefill site_url from current page address, body=%q", body)
+	}
+}
+
 func TestInstallFlowShowsRestartNoteForReloadSettings(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "install-restart.sqlite")
 	swv := NewApp(types.AppConfig{
