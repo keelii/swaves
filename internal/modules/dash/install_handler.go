@@ -35,6 +35,19 @@ var installSettingPresentationOverrides = []installSettingPresentationOverride{
 	},
 	{
 		Code:        installSettingSeparatorCode,
+		Name:        "后台",
+		Description: "",
+	},
+	{
+		Code:        "dash_path",
+		Description: "管理后台访问路径，修改后需重启",
+	},
+	{
+		Code:        "dash_password",
+		Description: "后台登录密码",
+	},
+	{
+		Code:        installSettingSeparatorCode,
 		Name:        "前台（可选）",
 		Description: "",
 	},
@@ -53,19 +66,6 @@ var installSettingPresentationOverrides = []installSettingPresentationOverride{
 	{
 		Code:        "post_url_ext",
 		Description: "文章链接地址扩展名",
-	},
-	{
-		Code:        installSettingSeparatorCode,
-		Name:        "后台",
-		Description: "",
-	},
-	{
-		Code:        "dash_path",
-		Description: "管理后台访问路径，修改后需重启",
-	},
-	{
-		Code:        "dash_password",
-		Description: "后台登录密码",
 	},
 }
 
