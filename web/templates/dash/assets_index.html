@@ -628,7 +628,10 @@ document.addEventListener('DOMContentLoaded', function() {
       event.preventDefault();
       copyToClipboard(copyURLButton.getAttribute('data-url') || '').then(function() {
         showAssetNotice('已复制链接');
-      }).catch(function() {
+      }).catch(function(err) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('copy url failed', err);
+        }
         showAssetNotice('复制失败');
       });
       return;
@@ -641,7 +644,10 @@ document.addEventListener('DOMContentLoaded', function() {
         copyMarkdownButton.getAttribute('data-name') || ''
       )).then(function() {
         showAssetNotice('已复制 Markdown');
-      }).catch(function() {
+      }).catch(function(err) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('copy markdown failed', err);
+        }
         showAssetNotice('复制失败');
       });
       return;

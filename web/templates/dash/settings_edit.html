@@ -8,5 +8,7 @@
 {% block content %}
 {% set Action = UrlFor('dash.settings.update', id=Setting.ID) %}
 {% set IsEdit = true %}
+{% set OptionsParsed = Setting.OptionsParsed %}
+{% set DefaultOptionValue = Setting.DefaultOptionValue %}
 {% include "dash/include/forms/settings_form.html" %}
 {% endblock %}

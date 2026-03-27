@@ -35,11 +35,6 @@ type redirectTargetOptionView struct {
 	KindLabel string
 }
 
-func parseRedirectStatus(raw string) int {
-	status, _ := parseRedirectStatusStrict(raw)
-	return status
-}
-
 func parseRedirectStatusStrict(raw string) (int, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

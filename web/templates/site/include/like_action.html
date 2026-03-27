@@ -58,6 +58,9 @@
           countEl.textContent = previousCount;
         }
         button.dataset.liked = previousLiked;
+        if (window.console && typeof window.console.warn === "function") {
+          window.console.warn("like request failed", error);
+        }
       } finally {
         button.disabled = false;
       }

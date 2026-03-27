@@ -210,7 +210,10 @@
               }
               successCount += 1;
               row.remove();
-            }).catch(function() {
+            }).catch(function(err) {
+              if (window.console && typeof window.console.warn === 'function') {
+                window.console.warn('legacy batch delete failed', err);
+              }
               failedCount += 1;
             });
           });
@@ -291,7 +294,10 @@
             successCount: deletedCount,
             failedCount: failedCount,
           };
-        }).catch(function() {
+        }).catch(function(err) {
+          if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('api batch delete failed', err);
+          }
           return {
             successCount: 0,
             failedCount: rows.length,

@@ -668,7 +668,10 @@
         }
         syncTOCHeadingMapping();
         setTOCAvailable(true);
-      }).catch(function() {
+      }).catch(function(err) {
+        if (window.console && typeof window.console.warn === "function") {
+          window.console.warn("toc render failed", err);
+        }
         if (seq !== tocSyncSeq) {
           return;
         }

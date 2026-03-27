@@ -2114,8 +2114,10 @@ function commandByName(schema, name, opts) {
                 return;
               }
               insertImageNode(view, schema, attrs);
-            }).catch(function() {
-              // Keep image insertion best-effort and continue with remaining files.
+            }).catch(function(err) {
+              if (window.console && typeof window.console.warn === "function") {
+                window.console.warn("image insertion failed", err);
+              }
             });
           });
 

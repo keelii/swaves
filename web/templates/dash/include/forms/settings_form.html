@@ -1,6 +1,6 @@
 {% import "dash/include/ui.html" as sui %}
-{% set is_edit = IsEdit|default(false) %}
-{% set setting = Setting|default(none) %}
+{% set is_edit = IsEdit %}
+{% set setting = Setting %}
 
 {% set kind_value = "default" %}
 {% set sub_kind_value = "" %}
@@ -15,29 +15,29 @@
 {% set description_value = "" %}
 {% set sort_value = 0 %}
 {% set reload_checked = false %}
-{% set options_parsed = OptionsParsed|default([]) %}
+{% set options_parsed = OptionsParsed %}
 {% set attrs_parsed = {} %}
 
 {% if setting %}
-  {% set kind_value = setting.Kind|default("default") %}
+  {% set kind_value = setting.Kind %}
   {% set sub_kind_value = setting.SubKind %}
   {% set name_value = setting.Name %}
   {% set code_value = setting.Code %}
-  {% set type_value = setting.Type|default("text") %}
+  {% set type_value = setting.Type %}
   {% set options_value = setting.Options %}
   {% set attrs_value = setting.Attrs %}
   {% set prefix_value = setting.PrefixValue %}
   {% set value_value = setting.Value %}
   {% set description_value = setting.Description %}
-  {% set sort_value = setting.Sort|default(0) %}
+  {% set sort_value = setting.Sort %}
   {% set reload_checked = setting.Reload == 1 %}
   {% if setting.DefaultOptionValue %}
     {% set default_option_value = setting.DefaultOptionValue %}
   {% endif %}
-  {% if (setting.OptionsParsed|default([])|length) > 0 %}
+  {% if (setting.OptionsParsed|length) > 0 %}
     {% set options_parsed = setting.OptionsParsed %}
   {% endif %}
-  {% set attrs_parsed = setting.AttrsParsed|default({}) %}
+  {% set attrs_parsed = setting.AttrsParsed %}
 {% endif %}
 
 {% set setting_type_options = [

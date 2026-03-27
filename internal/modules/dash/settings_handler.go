@@ -1397,10 +1397,6 @@ func (h *Handler) PostCreateSettingHandler(c fiber.Ctx) error {
 		s.Reload = 0
 	}
 
-	if s.Kind == "" {
-		s.Kind = "default"
-	}
-
 	if err := CreateSettingService(h.Model, s); err != nil {
 		// 解析 options 用于错误回显
 		var optionsParsed []map[string]string

@@ -559,7 +559,9 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       fileInput.files = dt.files;
     } catch (err) {
-      // ignore
+      if (window.console && typeof window.console.warn === 'function') {
+        window.console.warn('set input files failed', err);
+      }
     }
   }
 

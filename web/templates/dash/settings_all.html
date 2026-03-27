@@ -527,11 +527,8 @@ document.addEventListener('DOMContentLoaded', function() {
   var settingShortcuts = document.getElementById('setting-shortcuts');
   var basePathContainer = document.querySelector('[data-setting-code="base_path"]');
 
-  function normalizeLower(raw, fallback) {
+  function normalizeLower(raw) {
     raw = String(raw || '').trim().toLowerCase();
-    if (!raw) {
-      return String(fallback || '').trim().toLowerCase();
-    }
     return raw;
   }
 
@@ -623,7 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function syncAssetProviderCards() {
-    var provider = normalizeLower(readChoiceValue('setting_asset_default_provider'), 'see');
+    var provider = normalizeLower(readChoiceValue('setting_asset_default_provider'));
 
     setCardState('provider', {
       emphasis: true,
@@ -651,8 +648,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function syncBackupProviderCards() {
-    var enabled = normalizeLower(readChoiceValue('setting_sync_push_enabled'), '0');
-    var provider = normalizeLower(readChoiceValue('setting_sync_push_provider'), 's3');
+    var enabled = normalizeLower(readChoiceValue('setting_sync_push_enabled'));
+    var provider = normalizeLower(readChoiceValue('setting_sync_push_provider'));
     var providerLabel = provider === 'imagekit' ? 'ImageKit' : 'S3';
     var remoteNote = '';
     var s3Note = '';
