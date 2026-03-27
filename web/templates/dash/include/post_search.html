@@ -5,7 +5,7 @@
   }
 </style>
 <form method="get" action="{{ UrlFor('dash.posts.list') }}" class="posts-search-form" id="posts-search-form">
-  <input type="hidden" name="kind" value="{{ KindQuery|default("0") }}">
+  <input type="hidden" name="kind" value="{{ KindQuery }}">
   {% if FilterTagIDStr %}<input type="hidden" name="tag" value="{{ FilterTagIDStr }}">{% endif %}
   {% if FilterCategoryIDStr %}<input type="hidden" name="category" value="{{ FilterCategoryIDStr }}">{% endif %}
   <input class="ui-input post-search" type="search" name="q" value="{{ SearchQuery }}"{% if SearchQuery %} autofocus{% endif %} placeholder="搜索标题、内容" id="posts-search-input">

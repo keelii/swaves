@@ -1,5 +1,5 @@
 <nav class="nav-menu" aria-label="管理菜单">
-  {% set navNotificationUnreadCount = NotificationUnreadCount|default(0) %}
+  {% set navNotificationUnreadCount = NotificationUnreadCount %}
   {% set navHasNotificationUnread = navNotificationUnreadCount > 0 %}
   <div class="nav-section">
     <div class="nav-section-title">概览</div>

@@ -47,7 +47,7 @@
               {% if category.ParentID == 0 %}
                 -
               {% else %}
-                {{ ParentMap[category.ID] | default(category.ParentID) }}
+                {{ ParentMap[category.ID] }}
               {% endif %}
             </td>
             <td>
@@ -55,7 +55,7 @@
                 {% if category.Description %}{{ category.Description }}{% else %}-{% endif %}</td>
               </div>
             <td>{{ category.Sort }}</td>
-            <td><a href="{{ UrlFor('dash.posts.list', {"kind":"0", "category":category.ID}) }}">{{ PostCounts[category.ID] | default(0) }}</a></td>
+            <td><a href="{{ UrlFor('dash.posts.list', {"kind":"0", "category":category.ID}) }}">{{ PostCounts[category.ID] }}</a></td>
             <td>{{ category.CreatedAt | relativeTime }}</td>
             <td>{{ category.UpdatedAt | relativeTime }}</td>
             <td>

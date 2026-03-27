@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block status_main_right %}
-  {% set PagerQuery = {"kind":(KindQuery|default('0')), "q":SearchQuery, "tag":FilterTagIDStr, "category":FilterCategoryIDStr} %}
+  {% set PagerQuery = {"kind":KindQuery, "q":SearchQuery, "tag":FilterTagIDStr, "category":FilterCategoryIDStr} %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
@@ -100,7 +100,7 @@
             <span class="ui-badge">{{ postWithRelation.Post.Status }}</span>
           {% endif %}
         </td>
-        <td>{{ PostUVMap[postWithRelation.Post.ID] | default(0) }}</td>
+        <td>{{ PostUVMap[postWithRelation.Post.ID] }}</td>
         <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
         <td>
           <div class="cell-actions">

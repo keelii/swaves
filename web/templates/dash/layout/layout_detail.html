@@ -10,8 +10,8 @@
 {% block body %}
 <div
   class="app-window{% if Settings('dash_full_main_open') == '1' %} menu-collapsed{% endif %}"
-  data-nav-width-current="{{ Settings('dash_nav_width')|default('240') }}"
-  style="--app-pane-nav-width: {{ Settings('dash_nav_width')|default('240') }}px;"
+  data-nav-width-current="{{ Settings('dash_nav_width') }}"
+  style="--app-pane-nav-width: {{ Settings('dash_nav_width') }}px;"
 >
   <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="150" data-nav-max-width="480">
     <div class="app-panel-toolbar">
@@ -57,7 +57,7 @@
     </div>
   </aside>
 
-  <div class="app-panel-resizer" data-role="nav-resizer" role="separator" aria-orientation="vertical" aria-label="调整导航栏宽度" aria-valuenow="{{ Settings('dash_nav_width')|default('240') }}"></div>
+  <div class="app-panel-resizer" data-role="nav-resizer" role="separator" aria-orientation="vertical" aria-label="调整导航栏宽度" aria-valuenow="{{ Settings('dash_nav_width') }}"></div>
 
   <main class="app-panel app-main" aria-label="内容区">
     <div class="app-panel-toolbar app-main-toolbar">
