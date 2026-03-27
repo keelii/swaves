@@ -1,6 +1,6 @@
 {% import "dash/include/ui.html" as sui %}
 
-{% set tag = Tag|default({}) %}
+{% set tag = Tag %}
 <form id="form" method="post" action="{{ Action }}">
   {{ _csrf_token() }}
   <div class="ui-form">

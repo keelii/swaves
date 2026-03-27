@@ -176,8 +176,8 @@
       {% for assetItem in Items %}
         <tr data-asset-id="{{ assetItem.id }}">
           <td>{{ ui.table_td_id(assetItem.id) }}</td>
-          <td>{{ assetKindLabelMap[assetItem.kind] | default(assetItem.kind) }}</td>
-          <td>{{ assetProviderLabelMap[assetItem.provider] | default(assetItem.provider) }}</td>
+          <td>{{ assetKindLabelMap[assetItem.kind] }}</td>
+          <td>{{ assetProviderLabelMap[assetItem.provider] }}</td>
           <td>{{ assetItem.original_name }}</td>
           <td>{% if assetItem.remark %}{{ assetItem.remark }}{% else %}-{% endif %}</td>
           <td>

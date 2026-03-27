@@ -8,5 +8,6 @@
 {% endblock %}
 {% block content %}
 {% set Action = UrlFor('dash.categories.update', id=Category.ID) %}
+{% set ParentID = Category.ParentID %}
 {% include "dash/include/forms/categories_form.html" %}
 {% endblock %}

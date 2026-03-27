@@ -8,5 +8,7 @@
 {% endblock %}
 {% block content %}
 {% set Action = UrlFor('dash.tasks.create') %}
+{% set Task = none %}
+{% set IsEdit = false %}
 {% include "dash/include/forms/tasks_form.html" %}
 {% endblock %}

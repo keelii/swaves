@@ -1,10 +1,10 @@
 {% import "dash/include/ui.html" as sui %}
-{% set redirect = Redirect|default(none) %}
+{% set redirect = Redirect %}
 {% set source_value = "" %}
 {% set target_value = "" %}
 {% set status_value = 301 %}
 {% set enabled_checked = true %}
-{% set target_options = RedirectTargetOptions|default([]) %}
+{% set target_options = RedirectTargetOptions %}
 {% set is_new_redirect = (not redirect) or (redirect.ID == 0) %}
 {% set show_target_picker = is_new_redirect and ((target_options|length) > 0) %}
 

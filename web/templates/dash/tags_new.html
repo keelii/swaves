@@ -8,5 +8,6 @@
 {% endblock %}
 {% block content %}
 {% set Action = UrlFor('dash.tags.create') %}
+{% set Tag = {"Name":"", "Slug":""} %}
 {% include "dash/include/forms/tags_form.html" %}
 {% endblock %}

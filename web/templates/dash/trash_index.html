@@ -4,7 +4,7 @@
 {% set OperationTableID = "trash-table" %}
 {% block page_actions %}{% endblock %}
 
-{% set type = Query["type"] | default("posts") %}
+{% set type = Query["type"] %}
 
 {% block operation_left %}
 {{ sui.TabsStart("回收站类型") }}

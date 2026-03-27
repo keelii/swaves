@@ -1,6 +1,6 @@
 {% import "dash/include/ui.html" as sui %}
-{% set category = Category|default(none) %}
-{% set selected_parent_id = ParentID|default(0) %}
+{% set category = Category %}
+{% set selected_parent_id = ParentID %}
 {% set name_value = "" %}
 {% set slug_value = "" %}
 {% set description_value = "" %}
@@ -25,7 +25,7 @@
       <select class="ui-select" id="parent-id-select" name="parent_id">
         <option value="0">顶级分类</option>
         {% for option in CategoryOptions %}
-          <option value="{{ option.ID }}"{% if selected_parent_id == option.ID %} selected{% endif %}>{{ option.DisplayName|default(option.Name) }}</option>
+          <option value="{{ option.ID }}"{% if selected_parent_id == option.ID %} selected{% endif %}>{{ option.DisplayName }}</option>
         {% endfor %}
       </select>
     {% endset %}

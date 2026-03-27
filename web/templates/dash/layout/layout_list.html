@@ -81,7 +81,7 @@
           <div class="app-operation-left">
             <div class="app-flex">
               {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({
-              "data-role":"toggle-multiselect","data-target-table":(OperationTableID|default("posts-table")),"aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
+              "data-role":"toggle-multiselect","data-target-table":OperationTableID,"aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
               })) }}
               {% block operation_left %}{% endblock %}
             </div>
@@ -107,8 +107,8 @@
                 {% block status_bar %}{% endblock %}
               {% endif %}
             {% else %}
-              <span data-role="multiselect-selected-count" data-target-table="{{ OperationTableID|default('posts-table') }}">已选择 0 项</span>
-              {{ sui.Button("批量删除", "outline", attrs=HtmlAttrs({"type":"button","data-role":"multiselect-batch-delete","data-target-table":(OperationTableID|default("posts-table")),"disabled":"disabled"})) }}
+              <span data-role="multiselect-selected-count" data-target-table="{{ OperationTableID }}">已选择 0 项</span>
+              {{ sui.Button("批量删除", "outline", attrs=HtmlAttrs({"type":"button","data-role":"multiselect-batch-delete","data-target-table":OperationTableID,"disabled":"disabled"})) }}
             {% endif %}
           {% endblock %}
         </div>
