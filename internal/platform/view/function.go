@@ -38,7 +38,7 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 	})
 	env.AddFunction("UrlFor", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
-			return value.FromString(""), nil
+			return value.Undefined(), errors.New("UrlFor requires route name argument")
 		}
 		name := toStringValue(args[0].Raw())
 		var params map[string]string
@@ -122,14 +122,14 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 	})
 	env.AddFunction("Settings", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
-			return value.FromString(""), nil
+			return value.Undefined(), errors.New("Settings requires key argument")
 		}
 		key := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(store.GetSetting(key)), nil
 	})
 	env.AddFunction("Printf", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
-			return value.FromString(""), nil
+			return value.Undefined(), errors.New("Printf requires format argument")
 		}
 		format := toStringValue(args[0].Raw())
 		values := make([]any, 0, len(args)-1)
@@ -210,7 +210,7 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 	})
 	env.AddFunction("Highlight", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
-			return value.FromSafeString(""), nil
+			return value.Undefined(), errors.New("Highlight requires text argument")
 		}
 		text := toStringValue(args[0].Raw())
 		query := ""
@@ -306,25 +306,25 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 	})
 	env.AddFunction("GetTagUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
-			return value.FromString(""), nil
+			return value.Undefined(), errors.New("GetTagUrl requires slug argument")
 		}
 		slug := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(share.GetTagUrl(db.Tag{Slug: slug})), nil
 	})
 	env.AddFunction("GetCategoryUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
-			return value.FromString(""), nil
+			return value.Undefined(), errors.New("GetCategoryUrl requires slug argument")
 		}
 		slug := strings.TrimSpace(toStringValue(args[0].Raw()))
 		return value.FromString(share.GetCategoryUrl(db.Category{Slug: slug})), nil
 	})
 	env.AddFunction("GetPostUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {
-			return value.FromString(""), nil
+			return value.Undefined(), errors.New("GetPostUrl requires post argument")
 		}
 		post, ok := helper.DecodeAnyToType[db.Post](args[0].Raw())
 		if !ok {
-			return value.FromString(""), nil
+			return value.Undefined(), errors.New("GetPostUrl expects db.Post argument")
 		}
 		return value.FromString(share.GetPostUrl(post)), nil
 	})

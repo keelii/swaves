@@ -43,18 +43,15 @@ func TestParseCommentFormDefaultsInvalidOrOversized(t *testing.T) {
 
 	values.Set("author", strings.Repeat("a", 81))
 	got = parseCommentFormDefaults(values.Encode())
-	if got.Author != "" {
-		t.Fatalf("oversized author should be ignored, got %q", got.Author)
-	}
-	if !got.RememberMe {
-		t.Fatal("remember me should stay true when email/url exist")
+	if got != (commentFormDefaults{}) {
+		t.Fatalf("oversized author should invalidate remembered cookie, got %#v", got)
 	}
 
 	values = url.Values{}
 	values.Set("content", strings.Repeat("x", 5001))
 	got = parseCommentFormDefaults(values.Encode())
-	if got.Content != "" {
-		t.Fatalf("oversized content should be ignored, got len=%d", len(got.Content))
+	if got != (commentFormDefaults{}) {
+		t.Fatalf("oversized content should invalidate remembered cookie, got %#v", got)
 	}
 }
 

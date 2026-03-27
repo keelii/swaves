@@ -38,7 +38,11 @@
     flex-wrap: wrap;
   }
 </style>
-<div id="notifications-empty-state"{% if Notifications|length > 0 %} hidden{% endif %}>{{ sui.EmptyState("暂无通知") }}</div>
+<div id="notifications-empty-state"{% if Notifications|length > 0 %} hidden{% endif %}>
+  <div class="app-px">
+    {{ sui.EmptyState("暂无通知") }}
+  </div>
+</div>
 <div id="notifications-table-wrap" class="data-table-wrap"{% if not (Notifications|length > 0) %} hidden{% endif %}>
   <table id="notifications-table" class="data-table" aria-label="通知列表" data-role="data-table">
     <thead>

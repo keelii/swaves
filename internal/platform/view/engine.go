@@ -274,7 +274,7 @@ func normalizeTemplateName(name string) (string, error) {
 	if name == "" {
 		return "", errors.New("template name is empty")
 	}
-	normalized := strings.TrimPrefix(path.Clean(strings.ReplaceAll(name, "\\", "/")), "./")
+	normalized := strings.TrimPrefix(path.Clean(name), "./")
 	if normalized == "." || normalized == "" {
 		return "", fmt.Errorf("invalid template name %q", name)
 	}

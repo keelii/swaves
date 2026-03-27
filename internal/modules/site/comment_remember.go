@@ -69,17 +69,8 @@ func parseCommentFormDefaults(raw string) commentFormDefaults {
 	defaults.AuthorURL = strings.TrimSpace(values.Get("author_url"))
 	defaults.Content = values.Get("content")
 
-	if len(defaults.Author) > 80 {
-		defaults.Author = ""
-	}
-	if len(defaults.AuthorEmail) > 120 {
-		defaults.AuthorEmail = ""
-	}
-	if len(defaults.AuthorURL) > 300 {
-		defaults.AuthorURL = ""
-	}
-	if len(defaults.Content) > 5000 {
-		defaults.Content = ""
+	if len(defaults.Author) > 80 || len(defaults.AuthorEmail) > 120 || len(defaults.AuthorURL) > 300 || len(defaults.Content) > 5000 {
+		return commentFormDefaults{}
 	}
 
 	defaults.RememberMe = defaults.Author != "" || defaults.AuthorEmail != "" || defaults.AuthorURL != ""
@@ -132,18 +123,6 @@ func commentFormDefaultsFromRequest(c fiber.Ctx) commentFormDefaults {
 		AuthorURL:   strings.TrimSpace(c.FormValue("author_url")),
 		Content:     c.FormValue("content"),
 		RememberMe:  isCommentRememberMeEnabled(c.FormValue("remember_me")),
-	}
-	if len(defaults.Author) > 80 {
-		defaults.Author = ""
-	}
-	if len(defaults.AuthorEmail) > 120 {
-		defaults.AuthorEmail = ""
-	}
-	if len(defaults.AuthorURL) > 300 {
-		defaults.AuthorURL = ""
-	}
-	if len(defaults.Content) > 5000 {
-		defaults.Content = ""
 	}
 	return defaults
 }

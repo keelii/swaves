@@ -106,7 +106,9 @@
   </tbody>
 </table>
 {% else %}
-  {{ sui.EmptyState("暂无评论") }}
+  <div class="app-px">
+    {{ sui.EmptyState("暂无评论") }}
+  </div>
 {% endif %}
 </div>
 {% endblock %}
