@@ -1,8 +1,8 @@
 {% extends "dash/layout/layout_detail.html" %}
 {% import "dash/include/ui.html" as sui %}
-{% set importingItems = ImportingItems|default([]) %}
-{% set importingTotal = ImportingTotal|default(importingItems|length) %}
-{% set pager = Pager|default({"Page": 1, "PageSize": 20, "Num": 1, "Total": importingTotal}) %}
+{% set importingItems = ImportingItems %}
+{% set importingTotal = ImportingTotal %}
+{% set pager = Pager %}
 {% block page_actions %}
   {{ sui.Button("导入", "primary", attrs='type="submit" form="form"') }}
 {% endblock %}
@@ -184,7 +184,7 @@
 
 {% set errorMessage = Error %}
 {% set successMessage = Success %}
-{% set allCategories = AllCategories|default([]) %}
+{% set allCategories = AllCategories %}
 
 <div class="import-page">
 {% if errorMessage %}
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var toggleImportStatusBtn = document.getElementById('toggle-import-status-btn');
   var parseConcurrency = 50;
   var activeSaveRequests = 0;
-  var importingTotalCount = Number({{ importingTotal|default(0) }}) || 0;
+  var importingTotalCount = Number({{ importingTotal }}) || 0;
   var selectedFiles = [];
   var isParsing = false;
   var isConfirming = false;

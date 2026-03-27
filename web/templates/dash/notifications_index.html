@@ -4,7 +4,7 @@
 
 {% set OperationTableID = "notifications-table" %}
 {% set currentEventType = NotificationEventType %}
-{% set notificationTabCounts = NotificationTabCounts|default({}) %}
+{% set notificationTabCounts = NotificationTabCounts %}
 {% set pageSizeQuery = Query["pageSize"] %}
 
 {% block page_actions %}
@@ -13,10 +13,10 @@
 
 {% block operation_left %}
   {{ sui.TabsStart("通知类型") }}
-    {{ sui.Tab("全部 " ~ (notificationTabCounts["all"]|default(0)), href=UrlFor('dash.notifications.list', {"pageSize":pageSizeQuery}), active=(currentEventType == "")) }}
-    {{ sui.Tab("点赞 " ~ (notificationTabCounts["post_like"]|default(0)), href=UrlFor('dash.notifications.list', {"event_type":"post_like", "pageSize":pageSizeQuery}), active=(currentEventType == "post_like")) }}
-    {{ sui.Tab("留言 " ~ (notificationTabCounts["comment"]|default(0)), href=UrlFor('dash.notifications.list', {"event_type":"comment", "pageSize":pageSizeQuery}), active=(currentEventType == "comment")) }}
-    {{ sui.Tab("任务 " ~ (notificationTabCounts["task_result"]|default(0)), href=UrlFor('dash.notifications.list', {"event_type":"task_result", "pageSize":pageSizeQuery}), active=(currentEventType == "task_result")) }}
+    {{ sui.Tab("全部 " ~ notificationTabCounts["all"], href=UrlFor('dash.notifications.list', {"pageSize":pageSizeQuery}), active=(currentEventType == "")) }}
+    {{ sui.Tab("点赞 " ~ notificationTabCounts["post_like"], href=UrlFor('dash.notifications.list', {"event_type":"post_like", "pageSize":pageSizeQuery}), active=(currentEventType == "post_like")) }}
+    {{ sui.Tab("留言 " ~ notificationTabCounts["comment"], href=UrlFor('dash.notifications.list', {"event_type":"comment", "pageSize":pageSizeQuery}), active=(currentEventType == "comment")) }}
+    {{ sui.Tab("任务 " ~ notificationTabCounts["task_result"], href=UrlFor('dash.notifications.list', {"event_type":"task_result", "pageSize":pageSizeQuery}), active=(currentEventType == "task_result")) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 

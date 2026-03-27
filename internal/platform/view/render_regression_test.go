@@ -222,7 +222,10 @@ func TestRenderDashAssetsIndexWithItems(t *testing.T) {
 		"DefaultProviderReady":  true,
 		"DefaultProviderError":  "",
 		"AssetProviderLabelMap": map[string]string{"see": "S.EE"},
-		"AssetKindLabelMap":     map[string]string{"image": "图片"},
+		"AssetKindLabelMap":     map[string]string{"image": "图片", "file": "文件", "backup": "备份"},
+		"KindCounts":            map[string]int{"image": 1, "file": 0, "backup": 0},
+		"CurrentKind":           "image",
+		"Query":                 map[string]string{"pageSize": "10"},
 	})
 	if err != nil {
 		t.Fatalf("render assets index failed: %v", err)
@@ -248,6 +251,8 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 	var out bytes.Buffer
 	err := view.Render(&out, "dash/import.html", map[string]any{
 		"ImportingItems": []dash.PreviewPostItem{},
+		"ImportingTotal": 0,
+		"Pager":          types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 20},
 		"AllCategories":  []db.Category{},
 	})
 	if err != nil {
@@ -646,6 +651,8 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 	var out bytes.Buffer
 	err := view.Render(&out, "dash/import.html", map[string]any{
 		"ImportingItems": []dash.PreviewPostItem{},
+		"ImportingTotal": 0,
+		"Pager":          types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 20},
 		"AllCategories": []db.Category{
 			{Name: "生活"},
 			{Name: "文娱"},

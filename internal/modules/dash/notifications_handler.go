@@ -165,7 +165,9 @@ type notificationReadRequest struct {
 
 func parseNotificationID(c fiber.Ctx) (int64, error) {
 	var req notificationReadRequest
-	_ = c.Bind().Body(&req)
+	if err := c.Bind().Body(&req); err != nil {
+		return 0, fiber.ErrBadRequest
+	}
 	if req.ID > 0 {
 		return req.ID, nil
 	}

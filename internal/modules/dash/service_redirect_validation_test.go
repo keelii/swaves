@@ -18,6 +18,9 @@ func newRedirectValidationTestDB(t *testing.T) *db.DB {
 	t.Cleanup(func() {
 		_ = dbx.Close()
 	})
+	if err := db.EnsureDefaultSettings(dbx); err != nil {
+		t.Fatalf("ensure default settings failed: %v", err)
+	}
 
 	if err := store.ReloadSettings(&store.GlobalStore{Model: dbx}); err != nil {
 		t.Fatalf("reload settings failed: %v", err)
@@ -111,6 +114,36 @@ func TestCreateRedirectServiceRejectsPostSlugAsSource(t *testing.T) {
 		t.Fatalf("expected conflict error when from path matches post slug")
 	}
 	if !strings.Contains(err.Error(), "来源路径与文章 slug 冲突") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateRedirectServiceRejectsInvalidStatusAndEnabled(t *testing.T) {
+	dbx := newRedirectValidationTestDB(t)
+
+	err := CreateRedirectService(dbx, CreateRedirectInput{
+		From:    "/old-path",
+		To:      "/new-path",
+		Status:  307,
+		Enabled: 1,
+	})
+	if err == nil {
+		t.Fatalf("expected invalid status error")
+	}
+	if !strings.Contains(err.Error(), "status must be 301 or 302") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	err = CreateRedirectService(dbx, CreateRedirectInput{
+		From:    "/old-path-2",
+		To:      "/new-path-2",
+		Status:  301,
+		Enabled: 2,
+	})
+	if err == nil {
+		t.Fatalf("expected invalid enabled error")
+	}
+	if !strings.Contains(err.Error(), "enabled must be 0 or 1") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

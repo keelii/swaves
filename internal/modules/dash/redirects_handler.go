@@ -36,11 +36,20 @@ type redirectTargetOptionView struct {
 }
 
 func parseRedirectStatus(raw string) int {
+	status, _ := parseRedirectStatusStrict(raw)
+	return status
+}
+
+func parseRedirectStatusStrict(raw string) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 301, nil
+	}
 	status, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil || (status != 301 && status != 302) {
-		return 301
+		return 0, fiber.ErrBadRequest
 	}
-	return status
+	return status, nil
 }
 
 func (h *Handler) loadRedirectTargetOptions() []redirectTargetOptionView {
@@ -91,10 +100,14 @@ func (h *Handler) loadRedirectTargetOptions() []redirectTargetOptionView {
 }
 
 func (h *Handler) GetRedirectNewHandler(c fiber.Ctx) error {
+	status, err := parseRedirectStatusStrict(c.Query("status"))
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
 	draft := &db.Redirect{
 		From:    strings.TrimSpace(c.Query("from")),
 		To:      strings.TrimSpace(c.Query("to")),
-		Status:  parseRedirectStatus(c.Query("status")),
+		Status:  status,
 		Enabled: 1,
 	}
 
@@ -106,7 +119,10 @@ func (h *Handler) GetRedirectNewHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
-	status := parseRedirectStatus(c.FormValue("status"))
+	status, err := parseRedirectStatusStrict(c.FormValue("status"))
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
 
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"
 	enabledInt := 0
@@ -162,9 +178,9 @@ func (h *Handler) PostUpdateRedirectHandler(c fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	status, err := strconv.Atoi(c.FormValue("status"))
-	if err != nil || (status != 301 && status != 302) {
-		status = 301 // default to 301 if invalid
+	status, err := parseRedirectStatusStrict(c.FormValue("status"))
+	if err != nil {
+		return fiber.ErrBadRequest
 	}
 
 	enabled := c.FormValue("enabled") == "1" || c.FormValue("enabled") == "on" || c.FormValue("enabled") == "true"

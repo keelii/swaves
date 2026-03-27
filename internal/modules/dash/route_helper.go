@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strings"
 	"swaves/internal/platform/logger"
-	"swaves/internal/shared/share"
 	"swaves/internal/shared/webutil"
 
 	"github.com/gofiber/fiber/v3"
@@ -127,7 +126,7 @@ func (h *Handler) dashRouteURL(c fiber.Ctx, name string, params map[string]strin
 func (h *Handler) redirectToDashRoute(c fiber.Ctx, name string, params map[string]string, query map[string]string, status ...int) error {
 	path := h.dashRouteURL(c, name, params, query)
 	if path == "" {
-		path = share.BuildDashPath("")
+		return fmt.Errorf("redirect route resolve failed: name=%s", name)
 	}
 	return webutil.RedirectTo(c, path, status...)
 }

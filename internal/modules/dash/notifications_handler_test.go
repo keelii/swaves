@@ -1,10 +1,14 @@
 package dash
 
 import (
+	"bytes"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
 	"swaves/internal/platform/db"
+
+	"github.com/gofiber/fiber/v3"
 )
 
 func TestParseCommentURLFromAggregateKey(t *testing.T) {
@@ -170,5 +174,26 @@ func TestBuildNotificationListItemsCopiesTemplateFields(t *testing.T) {
 	}
 	if item.UpdatedAt != updatedAt {
 		t.Fatalf("item.UpdatedAt = %d, want %d", item.UpdatedAt, updatedAt)
+	}
+}
+
+func TestParseNotificationIDRejectsInvalidJSONBody(t *testing.T) {
+	app := fiber.New()
+	app.Post("/test", func(c fiber.Ctx) error {
+		_, err := parseNotificationID(c)
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest("POST", "/test", bytes.NewBufferString(`{"id":`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
 	}
 }

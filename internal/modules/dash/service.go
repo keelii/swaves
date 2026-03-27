@@ -604,8 +604,8 @@ func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
 		return errors.New("from 和 to 不能相同")
 	}
 
-	if in.Status == 0 {
-		in.Status = 301 // default
+	if in.Status != 301 && in.Status != 302 {
+		return errors.New("status must be 301 or 302")
 	}
 
 	// 检查是否存在循环重定向
@@ -613,11 +613,8 @@ func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
 		return err
 	}
 
-	if in.Status == 0 {
-		in.Status = 301 // default
-	}
-	if in.Enabled == 0 {
-		in.Enabled = 1 // default
+	if in.Enabled != 0 && in.Enabled != 1 {
+		return errors.New("enabled must be 0 or 1")
 	}
 
 	r := &db.Redirect{
@@ -642,11 +639,13 @@ func UpdateRedirectService(dbx *db.DB, id int64, in UpdateRedirectInput) error {
 
 	r.From = in.From
 	r.To = in.To
-	if in.Status > 0 {
-		r.Status = in.Status
-	} else {
-		r.Status = 301 // default
+	if in.Status != 301 && in.Status != 302 {
+		return errors.New("status must be 301 or 302")
 	}
+	if in.Enabled != 0 && in.Enabled != 1 {
+		return errors.New("enabled must be 0 or 1")
+	}
+	r.Status = in.Status
 	r.Enabled = in.Enabled
 
 	return db.UpdateRedirect(dbx, r)

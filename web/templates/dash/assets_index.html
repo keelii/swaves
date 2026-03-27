@@ -1,18 +1,18 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
-{% set defaultProviderReady = DefaultProviderReady|default(false) %}
+{% set defaultProviderReady = DefaultProviderReady %}
 {% set defaultProviderError = DefaultProviderError %}
 {% set defaultProvider = DefaultProvider %}
-{% set assetProviderLabelMap = AssetProviderLabelMap|default({}) %}
-{% set assetKindLabelMap = AssetKindLabelMap|default({}) %}
-{% set kindCounts = KindCounts|default({}) %}
-{% set currentKind = CurrentKind|default("image") %}
-{% set query = Query|default({}) %}
+{% set assetProviderLabelMap = AssetProviderLabelMap %}
+{% set assetKindLabelMap = AssetKindLabelMap %}
+{% set kindCounts = KindCounts %}
+{% set currentKind = CurrentKind %}
+{% set query = Query %}
 {% set pageSizeQuery = query["pageSize"] %}
-{% set imageCount = kindCounts["image"] | default(0) %}
-{% set fileCount = kindCounts["file"] | default(0) %}
-{% set backupCount = kindCounts["backup"] | default(0) %}
+{% set imageCount = kindCounts["image"] %}
+{% set fileCount = kindCounts["file"] %}
+{% set backupCount = kindCounts["backup"] %}
 {% set OperationTableID = "assets-table" %}
 {% block page_actions %}{% endblock %}
 {% block status_main_left %}
@@ -20,16 +20,16 @@
   {{ sui.Button("批量删除", "outline", attrs='type="button" id="asset-batch-delete" disabled') }}
 {% endblock %}
 {% block status_main_right %}
-  {% set pagerKind = CurrentKind|default("image") %}
+  {% set pagerKind = CurrentKind %}
   {% set PagerQuery = {"kind":pagerKind} %}
   {% include "dash/include/status_main_pagination.html" %}
 {% endblock %}
 
 {% block operation_left %}
   {{ sui.TabsStart("资源类型") }}
-    {{ sui.Tab((assetKindLabelMap["image"] | default("图片")) ~ " (" ~ imageCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"image", "pageSize":pageSizeQuery}), active=(currentKind == "image")) }}
-    {{ sui.Tab((assetKindLabelMap["file"] | default("文件")) ~ " (" ~ fileCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"file", "pageSize":pageSizeQuery}), active=(currentKind == "file")) }}
-    {{ sui.Tab((assetKindLabelMap["backup"] | default("备份")) ~ " (" ~ backupCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"backup", "pageSize":pageSizeQuery}), active=(currentKind == "backup")) }}
+    {{ sui.Tab(assetKindLabelMap["image"] ~ " (" ~ imageCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"image", "pageSize":pageSizeQuery}), active=(currentKind == "image")) }}
+    {{ sui.Tab(assetKindLabelMap["file"] ~ " (" ~ fileCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"file", "pageSize":pageSizeQuery}), active=(currentKind == "file")) }}
+    {{ sui.Tab(assetKindLabelMap["backup"] ~ " (" ~ backupCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"backup", "pageSize":pageSizeQuery}), active=(currentKind == "backup")) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
@@ -45,7 +45,7 @@
       <p class="asset-upload-title">拖拽文件到这里上传</p>
       <p class="asset-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
       <p class="asset-upload-status{% if not defaultProviderReady %} error{% endif %}" id="asset-upload-status">
-        当前默认服务：{{ assetProviderLabelMap[defaultProvider] | default(defaultProvider) }}
+        当前默认服务：{{ assetProviderLabelMap[defaultProvider] }}
         {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
       </p>
       <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">

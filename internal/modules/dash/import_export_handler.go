@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/shared/types"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -31,6 +33,29 @@ type importParseOptions struct {
 	categoryField  string
 	tagSource      TagSource
 	tagField       string
+}
+
+func defaultImportPager() types.Pagination {
+	return types.Pagination{
+		Page:     config.DefaultPage,
+		PageSize: config.DefaultPageSize,
+		Num:      0,
+		Total:    0,
+	}
+}
+
+func renderImportView(c fiber.Ctx, data fiber.Map) error {
+	viewData := fiber.Map{
+		"Title":          "Import Markdown",
+		"ImportingItems": []PreviewPostItem{},
+		"ImportingTotal": 0,
+		"Pager":          defaultImportPager(),
+		"AllCategories":  []db.Category{},
+	}
+	for k, v := range data {
+		viewData[k] = v
+	}
+	return RenderDashView(c, "dash/import.html", viewData, "")
 }
 
 func readImportParseOptions(c fiber.Ctx) importParseOptions {
@@ -158,14 +183,14 @@ func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 	importingItems, err := ListImportingPreviewItemsService(h.Model, &pager)
 	if err != nil {
 		logger.Error("list importing items failed: %v", err)
-		return RenderDashView(c, "dash/import.html", fiber.Map{
+		return renderImportView(c, fiber.Map{
 			"Title":          "Import Markdown",
 			"ImportingItems": []PreviewPostItem{},
 			"ImportingTotal": 0,
 			"Pager":          pager,
 			"AllCategories":  []db.Category{},
 			"Error":          "Load importing items failed: " + err.Error(),
-		}, "")
+		})
 	}
 
 	allCategories, err := GetAllCategoriesFlat(h.Model)
@@ -178,13 +203,13 @@ func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return RenderDashView(c, "dash/import.html", fiber.Map{
+	return renderImportView(c, fiber.Map{
 		"Title":          "Import Markdown",
 		"ImportingItems": importingItems,
 		"ImportingTotal": pager.Total,
 		"Pager":          pager,
 		"AllCategories":  allCategories,
-	}, "")
+	})
 }
 
 func (h *Handler) PostImportParseItemHandler(c fiber.Ctx) error {
@@ -427,18 +452,18 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 		}
 		c.Status(statusCode)
 		logger.Warn("import multipart parse failed: status=%d method=%s path=%s ip=%s err=%v", statusCode, c.Method(), c.Path(), c.IP(), err)
-		return RenderDashView(c, "dash/import.html", fiber.Map{
+		return renderImportView(c, fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "Failed to parse form: " + err.Error(),
-		}, "")
+		})
 	}
 
 	files := form.File["files"]
 	if len(files) == 0 {
-		return RenderDashView(c, "dash/import.html", fiber.Map{
+		return renderImportView(c, fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "Please select at least one file to import",
-		}, "")
+		})
 	}
 
 	// 获取 slug 来源选择
@@ -492,19 +517,19 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 	for _, fileHeader := range files {
 		src, err := fileHeader.Open()
 		if err != nil {
-			return RenderDashView(c, "dash/import.html", fiber.Map{
+			return renderImportView(c, fiber.Map{
 				"Title": "Import Markdown",
 				"Error": "Failed to open file " + fileHeader.Filename + ": " + err.Error(),
-			}, "")
+			})
 		}
 
 		content, err := io.ReadAll(src)
 		src.Close()
 		if err != nil {
-			return RenderDashView(c, "dash/import.html", fiber.Map{
+			return renderImportView(c, fiber.Map{
 				"Title": "Import Markdown",
 				"Error": "Failed to read file " + fileHeader.Filename + ": " + err.Error(),
-			}, "")
+			})
 		}
 
 		// 提取文件名（不含扩展名）
@@ -599,23 +624,23 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 
 	items, parseErr := ParseImportFiles(importFiles, slugSource, slugField, titleSource, titleField, titleLevel, createdSource, createdField, statusSource, statusField, categorySource, categoryField, tagSource, tagField)
 	if parseErr != nil && len(items) == 0 {
-		return RenderDashView(c, "dash/import.html", fiber.Map{
+		return renderImportView(c, fiber.Map{
 			"Title": "Import Markdown",
 			"Error": parseErr.Error(),
-		}, "")
+		})
 	}
 	if len(items) == 0 {
-		return RenderDashView(c, "dash/import.html", fiber.Map{
+		return renderImportView(c, fiber.Map{
 			"Title": "Import Markdown",
 			"Error": "No items to import",
-		}, "")
+		})
 	}
 
 	if err := ImportPreviewService(h.Model, items); err != nil {
-		return RenderDashView(c, "dash/import.html", fiber.Map{
+		return renderImportView(c, fiber.Map{
 			"Title": "Import Markdown",
 			"Error": err.Error(),
-		}, "")
+		})
 	}
 
 	success := fmt.Sprintf("Import finished: %d items imported", len(items))
@@ -623,10 +648,10 @@ func (h *Handler) PostImportHandler(c fiber.Ctx) error {
 		success += " (with warning: " + parseErr.Error() + ")"
 	}
 
-	return RenderDashView(c, "dash/import.html", fiber.Map{
+	return renderImportView(c, fiber.Map{
 		"Title":   "Import Markdown",
 		"Success": success,
-	}, "")
+	})
 }
 
 func (h *Handler) GetDevUIComponentsHandler(c fiber.Ctx) error {
