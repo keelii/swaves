@@ -3,12 +3,12 @@ package dash
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/store"
-	"swaves/internal/shared/share"
 	"swaves/internal/shared/webutil"
 
 	"github.com/gofiber/fiber/v3"
@@ -879,7 +879,7 @@ func isAssetSettingCode(code string) bool {
 	}
 }
 
-func (h *Handler) buildSettingsAllRedirectPath(c fiber.Ctx, area string, section string, errMsg string) string {
+func (h *Handler) buildSettingsAllRedirectPath(c fiber.Ctx, area string, section string, errMsg string) (string, error) {
 	params := map[string]string{}
 	if strings.TrimSpace(area) != "" {
 		params["area"] = strings.TrimSpace(area)
@@ -893,9 +893,9 @@ func (h *Handler) buildSettingsAllRedirectPath(c fiber.Ctx, area string, section
 
 	redirectPath := h.dashRouteURL(c, "dash.settings.all", nil, params)
 	if redirectPath == "" {
-		return share.BuildDashPath("/settings/all")
+		return "", fmt.Errorf("resolve route failed: dash.settings.all")
 	}
-	return redirectPath
+	return redirectPath, nil
 }
 
 func (h *Handler) validateAssetSettingPayload(overrides map[string]string) error {
@@ -1151,7 +1151,11 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 		}
 	}
 	if len(sectionSettings) == 0 {
-		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeArea, activeSection, ""))
+		redirectPath, err := h.buildSettingsAllRedirectPath(c, activeArea, activeSection, "")
+		if err != nil {
+			return err
+		}
+		return webutil.RedirectTo(c, redirectPath)
 	}
 
 	updates := make([]settingsValueUpdate, 0, len(sectionSettings))
@@ -1199,7 +1203,11 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 	}
 
 	if err = h.validateAssetSettingPayload(assetOverrides); err != nil {
-		return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeArea, activeSection, err.Error()))
+		redirectPath, redirectErr := h.buildSettingsAllRedirectPath(c, activeArea, activeSection, err.Error())
+		if redirectErr != nil {
+			return redirectErr
+		}
+		return webutil.RedirectTo(c, redirectPath)
 	}
 
 	for _, item := range updates {
@@ -1211,7 +1219,11 @@ func (h *Handler) PostUpdateSettingsAllHandler(c fiber.Ctx) error {
 		}
 	}
 
-	return webutil.RedirectTo(c, h.buildSettingsAllRedirectPath(c, activeArea, activeSection, ""))
+	redirectPath, err := h.buildSettingsAllRedirectPath(c, activeArea, activeSection, "")
+	if err != nil {
+		return err
+	}
+	return webutil.RedirectTo(c, redirectPath)
 }
 
 func (h *Handler) GetSettingEditHandler(c fiber.Ctx) error {

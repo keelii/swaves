@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -8,7 +9,6 @@ import (
 	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/md"
-	"swaves/internal/shared/share"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -126,7 +126,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	}
 	filterTagRemoveURL := h.dashRouteURL(c, "dash.posts.list", nil, filterTagRemoveQuery)
 	if filterTagRemoveURL == "" {
-		filterTagRemoveURL = share.BuildDashPath("/posts")
+		return fmt.Errorf("resolve route failed: dash.posts.list")
 	}
 
 	filterCategoryRemoveQuery := map[string]string{"kind": kindQuery}
@@ -138,7 +138,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	}
 	filterCategoryRemoveURL := h.dashRouteURL(c, "dash.posts.list", nil, filterCategoryRemoveQuery)
 	if filterCategoryRemoveURL == "" {
-		filterCategoryRemoveURL = share.BuildDashPath("/posts")
+		return fmt.Errorf("resolve route failed: dash.posts.list")
 	}
 
 	return RenderDashView(c, "dash/posts_index.html", fiber.Map{

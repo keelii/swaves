@@ -162,7 +162,7 @@ function isSameOriginRequest(input) {
     var url = new URL(resolveRequestURL(input), window.location.origin);
     return url.origin === window.location.origin;
   } catch (err) {
-    return true;
+    return false;
   }
 }
 

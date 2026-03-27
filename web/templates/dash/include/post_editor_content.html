@@ -536,10 +536,12 @@
         if (json && json.data) {
           slugInput.value = String(json.data);
         }
-      }).catch(function() {
-        // Slug sync is best-effort; ignore fetch errors.
-      });
-    }
+        }).catch(function(err) {
+          if (window.console && typeof window.console.warn === "function") {
+            window.console.warn("slug sync failed", err);
+          }
+        });
+      }
 
     function queueSaveTOCOpenState(open) {
       if (!uiStateSaveURL) {

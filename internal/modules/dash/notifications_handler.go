@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -199,7 +200,7 @@ func (h *Handler) GetNotificationListHandler(c fiber.Ctx) error {
 	}
 	commentListURL := h.dashRouteURL(c, "dash.comments.list", nil, nil)
 	if strings.TrimSpace(commentListURL) == "" {
-		commentListURL = share.BuildDashPath("/comments")
+		return fmt.Errorf("resolve route failed: dash.comments.list")
 	}
 	notificationItems := buildNotificationListItems(notifications, commentListURL)
 
