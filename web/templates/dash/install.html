@@ -36,7 +36,8 @@
 
     .install-form {
       border: 1px solid rgba(22, 48, 56, 0.12);
-      border-radius: 20px;
+      border-radius: 10px;
+/*       padding-top: 1em; */
       background: rgba(255, 255, 255, 0.96);
       box-shadow: 0 16px 40px rgba(22, 48, 56, 0.06);
       overflow: hidden;
@@ -49,18 +50,34 @@
     .install-fields {
       display: flex;
       flex-direction: column;
+      padding: 2em 0;
     }
 
     .install-field {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      padding: 18px 20px;
-      border-bottom: 1px solid rgba(22, 48, 56, 0.1);
+      padding: 0.5em 2em;
     }
 
-    .install-field:last-child {
-      border-bottom: 0;
+    .install-sep {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 1em 20px;
+    }
+
+    .install-sep-line {
+      flex: 1 1 auto;
+      height: 1px;
+      background: rgba(22, 48, 56, 0.12);
+    }
+
+    .install-sep-label {
+      flex: 0 0 auto;
+      color: rgba(22, 48, 56, 0.52);
+      font-size: 0.78rem;
+      line-height: 1;
     }
 
     .install-field-head {
@@ -130,7 +147,6 @@
       display: flex;
       justify-content: flex-end;
       padding: 18px 20px;
-      border-top: 1px solid rgba(22, 48, 56, 0.1);
       background: rgba(245, 243, 236, 0.42);
     }
   </style>
@@ -150,6 +166,18 @@
         {% for settingView in InstallSettings %}
           {% set setting = settingView.Setting %}
           {% set code = setting.Code %}
+          {% set sepName = settingView.Name or setting.Name %}
+          {% if code == "sep" %}
+            <div class="install-sep">
+              <span class="install-sep-line" aria-hidden="true"></span>
+              {% if sepName %}
+                <span class="install-sep-label">{{ sepName }}</span>
+                <span class="install-sep-line" aria-hidden="true"></span>
+              {% endif %}
+            </div>
+            {% continue %}
+          {% endif %}
+
           {% set attrs = settingView.AttrsParsed %}
           {% set settingType = setting.Type %}
           {% set settingName = settingView.Name or setting.Name %}

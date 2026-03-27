@@ -14,6 +14,8 @@ type installSettingPresentationOverride struct {
 	Description string
 }
 
+const installSettingSeparatorCode = "sep"
+
 var installSettingPresentationOverrides = []installSettingPresentationOverride{
 	{
 		Code:        "site_name",
@@ -24,7 +26,7 @@ var installSettingPresentationOverrides = []installSettingPresentationOverride{
 		Description: "站点访问地址，不包含路径前缀",
 	},
 	{
-		Code:        "sep",
+		Code:        installSettingSeparatorCode,
 		Description: "",
 	},
 	{
@@ -32,7 +34,8 @@ var installSettingPresentationOverrides = []installSettingPresentationOverride{
 		Description: "公开内容显示的作者名",
 	},
 	{
-		Code:        "sep",
+		Code:        installSettingSeparatorCode,
+		Name:        "前台（可选）",
 		Description: "",
 	},
 	{
@@ -52,7 +55,8 @@ var installSettingPresentationOverrides = []installSettingPresentationOverride{
 		Description: "文章链接地址扩展名",
 	},
 	{
-		Code:        "sep",
+		Code:        installSettingSeparatorCode,
+		Name:        "后台",
 		Description: "",
 	},
 	{
@@ -119,6 +123,16 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 	for _, override := range installSettingPresentationOverrides {
 		code := strings.TrimSpace(override.Code)
 		if code == "" {
+			continue
+		}
+		if code == installSettingSeparatorCode {
+			views = append(views, SettingView{
+				Setting: db.Setting{
+					Code:        code,
+					Name:        override.Name,
+					Description: override.Description,
+				},
+			})
 			continue
 		}
 

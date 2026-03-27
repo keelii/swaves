@@ -318,14 +318,26 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if strings.Contains(body, `name="setting_page_url_prefix"`) {
 		t.Fatal("install page should not expose page url prefix settings")
 	}
-	if strings.Contains(body, `name="setting_post_url_prefix"`) {
-		t.Fatal("install page should not expose post url prefix settings")
+	if !strings.Contains(body, `name="setting_post_url_prefix"`) {
+		t.Fatal("install page should expose post url prefix setting")
 	}
-	if strings.Contains(body, `name="setting_post_url_ext"`) {
-		t.Fatal("install page should not expose post url ext settings")
+	if !strings.Contains(body, `name="setting_post_url_ext"`) {
+		t.Fatal("install page should expose post url ext setting")
 	}
 	if !strings.Contains(body, `name="setting_base_path"`) {
 		t.Fatal("install page should still expose base path setting")
+	}
+	if got := strings.Count(body, `class="install-sep"`); got != 3 {
+		t.Fatalf("install page should render 3 separators, got %d", got)
+	}
+	if got := strings.Count(body, `class="install-sep-label"`); got != 2 {
+		t.Fatalf("install page should render 2 separator labels, got %d", got)
+	}
+	if !strings.Contains(body, `class="install-sep-label">前台</span>`) {
+		t.Fatal("install page should render frontend separator label")
+	}
+	if !strings.Contains(body, `class="install-sep-label">后台</span>`) {
+		t.Fatal("install page should render backend separator label")
 	}
 
 	expectedOrder := []string{
@@ -333,7 +345,9 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 		`name="setting_site_url"`,
 		`name="setting_author"`,
 		`name="setting_base_path"`,
+		`name="setting_post_url_prefix"`,
 		`name="setting_post_url_name"`,
+		`name="setting_post_url_ext"`,
 		`name="setting_dash_path"`,
 		`name="setting_dash_password"`,
 	}
