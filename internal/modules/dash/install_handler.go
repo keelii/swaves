@@ -2,8 +2,10 @@ package dash
 
 import (
 	"net/url"
+	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/shared/pathutil"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -16,10 +18,21 @@ type installSettingPresentationOverride struct {
 
 const installSettingSeparatorCode = "sep"
 
+const (
+	installPostURLPreviewDatePath       = "2024/01/02"
+	installPostURLPreviewSlug           = "hello-world"
+	installPostURLPreviewTitle          = "my-first-post"
+	installPostURLPreviewID       int64 = 123
+)
+
 var installSettingPresentationOverrides = []installSettingPresentationOverride{
 	{
 		Code:        "site_name",
 		Description: "公开展示的站点名称",
+	},
+	{
+		Code:        "site_desc",
+		Description: "公开展示的站点描述",
 	},
 	{
 		Code:        "site_url",
@@ -211,6 +224,48 @@ func buildInstallOverrides(settings []db.Setting) map[string]string {
 	return overrides
 }
 
+func installSettingValue(settings []db.Setting, code string) string {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return ""
+	}
+
+	for _, setting := range settings {
+		if strings.TrimSpace(setting.Code) != code {
+			continue
+		}
+		return strings.TrimSpace(setting.Value)
+	}
+
+	return ""
+}
+
+func buildInstallPostURLPreview(settings []db.Setting) string {
+	siteURL := strings.TrimRight(installSettingValue(settings, "site_url"), "/")
+	basePath := pathutil.JoinRelative(installSettingValue(settings, "base_path"))
+	postPrefix := pathutil.JoinRelative(installSettingValue(settings, "post_url_prefix"))
+	postPrefix = strings.ReplaceAll(postPrefix, "{datetime}", installPostURLPreviewDatePath)
+
+	postName := installSettingValue(settings, "post_url_name")
+	if postName == "" {
+		postName = "{slug}"
+	}
+	postName = strings.ReplaceAll(postName, "{slug}", installPostURLPreviewSlug)
+	postName = strings.ReplaceAll(postName, "{id}", strconv.FormatInt(installPostURLPreviewID, 10))
+	postName = strings.ReplaceAll(postName, "{title}", installPostURLPreviewTitle)
+	if strings.TrimSpace(postName) == "" {
+		postName = installPostURLPreviewSlug
+	}
+
+	postExt := installSettingValue(settings, "post_url_ext")
+	postPath := pathutil.JoinAbsolute(basePath, postPrefix, postName+postExt)
+	if siteURL == "" {
+		return postPath
+	}
+
+	return siteURL + postPath
+}
+
 func changedReloadSettingNames(settings []db.Setting) []string {
 	defaultByCode := make(map[string]db.Setting, len(db.DefaultSettings))
 	for _, setting := range db.DefaultSettings {
@@ -236,9 +291,10 @@ func changedReloadSettingNames(settings []db.Setting) []string {
 
 func (h *Handler) renderInstallPage(c fiber.Ctx, settings []db.Setting, errMsg string) error {
 	return RenderDashView(c, "dash/install.html", fiber.Map{
-		"Title":           "Install Swaves",
-		"InstallSettings": buildInstallSettingViews(settings),
-		"Error":           strings.TrimSpace(errMsg),
+		"Title":                 "Install Swaves",
+		"InstallSettings":       buildInstallSettingViews(settings),
+		"InstallPostURLPreview": buildInstallPostURLPreview(settings),
+		"Error":                 strings.TrimSpace(errMsg),
 	}, "")
 }
 

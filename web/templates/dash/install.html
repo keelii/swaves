@@ -149,6 +149,15 @@
       padding: 18px 20px;
       background: rgba(245, 243, 236, 0.42);
     }
+
+    #install-post-url-preview {
+      margin: 0.5em 2em 0;
+    }
+
+    #install-post-url-preview .ui-alert-body {
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
   </style>
 </head>
 <body>
@@ -265,7 +274,7 @@
             </div>
           </div>
         {% endfor %}
-        <div class="ui-alert"></div>
+        {{ sui.Alert(InstallPostURLPreview, kind="info", title="文章 URL 样例", attrs='id="install-post-url-preview"') }}
       </div>
 
       <div class="install-actions">
@@ -276,7 +285,9 @@
 
   <script>
   document.addEventListener('DOMContentLoaded', function() {
+    var installForm = document.querySelector('.install-form');
     var basePathContainer = document.querySelector('[data-setting-code="base_path"]');
+    var installPostURLPreview = document.getElementById('install-post-url-preview');
 
     document.querySelectorAll('[data-range-value]').forEach(function(input) {
       var output = input.parentElement && input.parentElement.querySelector('.range-value');
@@ -323,6 +334,87 @@
       return '/' + normalized + '/';
     }
 
+    function readFieldValue(name) {
+      var field = document.querySelector('[name="' + name + '"]');
+      if (!field) {
+        return '';
+      }
+      return String(field.value || '').trim();
+    }
+
+    function splitPathSegments(raw) {
+      raw = String(raw || '').trim();
+      if (!raw) {
+        return [];
+      }
+
+      return raw
+        .split('/')
+        .map(function(part) {
+          return String(part || '').trim();
+        })
+        .filter(function(part) {
+          return part !== '';
+        });
+    }
+
+    function joinAbsoluteParts(parts) {
+      var segments = [];
+
+      parts.forEach(function(part) {
+        segments = segments.concat(splitPathSegments(part));
+      });
+
+      if (!segments.length) {
+        return '/';
+      }
+
+      return '/' + segments.join('/');
+    }
+
+    function buildInstallPostURLPreview() {
+      var siteURL = readFieldValue('setting_site_url').replace(/\/+$/g, '');
+      var basePath = readFieldValue('setting_base_path');
+      var postPrefix = readFieldValue('setting_post_url_prefix');
+      var postName = readFieldValue('setting_post_url_name');
+      var postExt = readFieldValue('setting_post_url_ext');
+      var postPath;
+
+      postPrefix = postPrefix.split('{datetime}').join('2024/01/02');
+
+      if (!postName) {
+        postName = '{slug}';
+      }
+      postName = postName.split('{slug}').join('hello-world');
+      postName = postName.split('{id}').join('123');
+      postName = postName.split('{title}').join('my-first-post');
+      if (!String(postName || '').trim()) {
+        postName = 'hello-world';
+      }
+
+      postPath = joinAbsoluteParts([basePath, postPrefix, postName + postExt]);
+      if (!siteURL) {
+        return postPath;
+      }
+
+      return siteURL + postPath;
+    }
+
+    function syncInstallPostURLPreview() {
+      var bodyNode;
+
+      if (!installPostURLPreview) {
+        return;
+      }
+
+      bodyNode = installPostURLPreview.querySelector('.ui-alert-body');
+      if (!bodyNode) {
+        return;
+      }
+
+      bodyNode.textContent = buildInstallPostURLPreview();
+    }
+
     function syncPrefixLegends() {
       var baseInput = basePathContainer ? basePathContainer.querySelector('input,textarea,select') : null;
       var basePrefix = normalizePrefixLiteral(baseInput ? baseInput.value : '');
@@ -355,6 +447,12 @@
       });
     }
     syncPrefixLegends();
+
+    if (installForm) {
+      installForm.addEventListener('input', syncInstallPostURLPreview);
+      installForm.addEventListener('change', syncInstallPostURLPreview);
+    }
+    syncInstallPostURLPreview();
   });
   </script>
 </body>

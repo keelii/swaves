@@ -333,23 +333,26 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if got := strings.Count(body, `class="install-sep-label"`); got != 2 {
 		t.Fatalf("install page should render 2 separator labels, got %d", got)
 	}
-	if !strings.Contains(body, `class="install-sep-label">前台</span>`) {
-		t.Fatal("install page should render frontend separator label")
-	}
 	if !strings.Contains(body, `class="install-sep-label">后台</span>`) {
 		t.Fatal("install page should render backend separator label")
+	}
+	if !strings.Contains(body, `class="install-sep-label">前台（可选）</span>`) {
+		t.Fatal("install page should render optional frontend separator label")
+	}
+	if !strings.Contains(body, `id="install-post-url-preview"`) {
+		t.Fatal("install page should render post url preview alert")
 	}
 
 	expectedOrder := []string{
 		`name="setting_site_name"`,
 		`name="setting_site_url"`,
 		`name="setting_author"`,
+		`name="setting_dash_path"`,
+		`name="setting_dash_password"`,
 		`name="setting_base_path"`,
 		`name="setting_post_url_prefix"`,
 		`name="setting_post_url_name"`,
 		`name="setting_post_url_ext"`,
-		`name="setting_dash_path"`,
-		`name="setting_dash_password"`,
 	}
 	lastIndex := -1
 	for _, marker := range expectedOrder {
@@ -378,6 +381,12 @@ func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
 	body := assertTemplateRendered(t, resp, fiber.StatusOK, `name="setting_site_url"`)
 	if !strings.Contains(body, `value="http:&#x2f;&#x2f;127.0.0.1:4321"`) {
 		t.Fatalf("install page should prefill site_url from current page address, body=%q", body)
+	}
+	if !strings.Contains(body, `文章 URL 样例`) {
+		t.Fatalf("install page should show post url preview title, body=%q", body)
+	}
+	if !strings.Contains(body, `http:&#x2f;&#x2f;127.0.0.1:4321&#x2f;2024&#x2f;01&#x2f;02&#x2f;hello-world`) {
+		t.Fatalf("install page should prefill post url preview from current page address, body=%q", body)
 	}
 }
 
