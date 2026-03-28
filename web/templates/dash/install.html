@@ -200,7 +200,11 @@
 
           <div class="install-field" data-setting-code="{{ code }}">
             <div class="install-field-head">
-              <label class="install-field-label" for="setting_{{ code }}">{{ settingName }}</label>
+              <label class="install-field-label" for="setting_{{ code }}">{{ settingName }}
+                {% if settingView.Required %}
+                <span style="color:red">*</span>
+                {% endif %}
+                </label>
               {% if settingDescription %}
                 <div class="install-field-desc">{{ settingDescription }}</div>
               {% endif %}

@@ -14,6 +14,7 @@ type InstallSettingsOption struct {
 	Code         string
 	Name         string
 	Description  string
+	Required     bool
 	DefaultValue any
 	Placeholder  string
 }
@@ -39,10 +40,10 @@ var installSettings = []InstallSettingsOption{
 		DefaultValue: "",
 		Description:  "公开展示的站点描述",
 	},
-	{
-		Code:        "site_url",
-		Description: "站点访问地址，不包含路径前缀",
-	},
+	//{
+	//	Code:        "site_url",
+	//	Description: "站点访问地址，不包含路径前缀",
+	//},
 	{
 		Code:        installSettingSeparatorCode,
 		Description: "",
@@ -59,11 +60,12 @@ var installSettings = []InstallSettingsOption{
 	},
 	{
 		Code:        "dash_path",
-		Description: "管理后台访问路径，修改后需重启",
+		Description: "管理后台访问路径",
 	},
 	{
 		Code:        "dash_password",
-		Description: "后台登录密码",
+		Required:    true,
+		Description: "管理后台登录密码",
 	},
 	{
 		Code:        installSettingSeparatorCode,
@@ -151,6 +153,7 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 					Name:        override.Name,
 					Description: override.Description,
 				},
+				Required:    override.Required,
 				Placeholder: override.Placeholder,
 			})
 			continue
@@ -162,15 +165,16 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 		}
 
 		view := buildSettingView(setting)
-		if strings.TrimSpace(override.Name) != "" {
+		if override.Name != "" {
 			view.Name = override.Name
 		}
-		if strings.TrimSpace(override.Description) != "" {
+		if override.Description != "" {
 			view.Description = override.Description
 		}
-		if strings.TrimSpace(override.Placeholder) != "" {
+		if override.Placeholder != "" {
 			view.Placeholder = override.Placeholder
 		}
+		view.Required = override.Required
 
 		views = append(views, view)
 	}

@@ -21,6 +21,7 @@ type SettingView struct {
 	CheckboxValues map[string]bool        // checkbox 的选中状态
 	AttrsParsed    map[string]interface{} // 解析后的 attrs（用于 HTML 属性）
 	Placeholder    string
+	Required       bool
 }
 
 type SettingCardView struct {
