@@ -309,8 +309,8 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if strings.Contains(body, `name="setting_site_title"`) {
 		t.Fatal("install page should not expose site title settings")
 	}
-	if strings.Contains(body, `name="setting_site_desc"`) {
-		t.Fatal("install page should not expose site description settings")
+	if !strings.Contains(body, `name="setting_site_desc"`) {
+		t.Fatal("install page should expose site description setting")
 	}
 	if strings.Contains(body, `name="setting_asset_default_provider"`) {
 		t.Fatal("install page should not expose asset provider settings")
@@ -345,6 +345,7 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 
 	expectedOrder := []string{
 		`name="setting_site_name"`,
+		`name="setting_site_desc"`,
 		`name="setting_site_url"`,
 		`name="setting_author"`,
 		`name="setting_dash_path"`,

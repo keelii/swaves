@@ -11,9 +11,10 @@ import (
 )
 
 type installSettingPresentationOverride struct {
-	Code        string
-	Name        string
-	Description string
+	Code         string
+	Name         string
+	Description  string
+	DefaultValue any
 }
 
 const installSettingSeparatorCode = "sep"
@@ -27,12 +28,14 @@ const (
 
 var installSettingPresentationOverrides = []installSettingPresentationOverride{
 	{
-		Code:        "site_name",
-		Description: "公开展示的站点名称",
+		Code:         "site_name",
+		DefaultValue: "",
+		Description:  "公开展示的站点名称",
 	},
 	{
-		Code:        "site_desc",
-		Description: "公开展示的站点描述",
+		Code:         "site_desc",
+		DefaultValue: "",
+		Description:  "公开展示的站点描述",
 	},
 	{
 		Code:        "site_url",
@@ -43,8 +46,9 @@ var installSettingPresentationOverrides = []installSettingPresentationOverride{
 		Description: "",
 	},
 	{
-		Code:        "author",
-		Description: "公开内容显示的作者名",
+		Code:         "author",
+		DefaultValue: "",
+		Description:  "公开内容显示的作者名",
 	},
 	{
 		Code:        installSettingSeparatorCode,
@@ -168,12 +172,46 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 	return views
 }
 
-func cloneInstallDefaultSettings(c fiber.Ctx) []db.Setting {
+func findInstallSettingPresentationOverride(code string) (installSettingPresentationOverride, bool) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return installSettingPresentationOverride{}, false
+	}
+
+	for _, override := range installSettingPresentationOverrides {
+		if strings.TrimSpace(override.Code) != code {
+			continue
+		}
+		return override, true
+	}
+
+	return installSettingPresentationOverride{}, false
+}
+
+func installSettingDefaultOverrideValue(override installSettingPresentationOverride) (string, bool) {
+	if override.DefaultValue == nil {
+		return "", false
+	}
+
+	value, ok := override.DefaultValue.(string)
+	if !ok {
+		panic("install setting default value must be string")
+	}
+
+	return value, true
+}
+
+func cloneInstallDefaultSettingsWithSiteURL(siteURL string) []db.Setting {
 	settings := make([]db.Setting, 0, len(db.DefaultSettings))
-	siteURL := resolveInstallSiteURL(c)
+	siteURL = strings.TrimSpace(siteURL)
 
 	for _, item := range db.DefaultSettings {
 		setting := item
+		if override, ok := findInstallSettingPresentationOverride(setting.Code); ok {
+			if defaultValue, ok := installSettingDefaultOverrideValue(override); ok {
+				setting.Value = defaultValue
+			}
+		}
 		switch setting.Code {
 		case "site_url":
 			if siteURL != "" {
@@ -186,6 +224,10 @@ func cloneInstallDefaultSettings(c fiber.Ctx) []db.Setting {
 	}
 
 	return settings
+}
+
+func cloneInstallDefaultSettings(c fiber.Ctx) []db.Setting {
+	return cloneInstallDefaultSettingsWithSiteURL(resolveInstallSiteURL(c))
 }
 
 func applyInstallFormValues(c fiber.Ctx, settings []db.Setting) []db.Setting {
