@@ -293,88 +293,6 @@ var hiddenSettingCodes = map[string]struct{}{
 	"dash_main_width": {},
 }
 
-var settingPresentationOverrides = map[string]struct {
-	Name        string
-	Description string
-}{
-	"mode": {
-		Name:        "界面模式",
-		Description: "当前同时影响前台与后台主题模式。",
-	},
-	"page_size": {
-		Name:        "默认分页数量",
-		Description: "系统默认分页数量，当前同时影响前后台列表分页。",
-	},
-	"dash_nav_width": {
-		Name:        "后台导航宽度",
-		Description: "管理后台左侧导航栏宽度。",
-	},
-	"dash_post_editor_toc_open": {
-		Name:        "目录展开",
-		Description: "目录默认展开状态。",
-	},
-	"dash_post_editor_source_mode": {
-		Name:        "源码模式",
-		Description: "默认源码模式状态。",
-	},
-	"editor_font_size": {
-		Name:        "字体大小",
-		Description: "文字大小（px）。",
-	},
-	"editor_font_family": {
-		Name:        "字体",
-		Description: "文字使用的 font-family。",
-	},
-	"asset_default_provider": {
-		Name:        "默认资源上传服务",
-		Description: "资源上传默认使用的服务商。",
-	},
-	"asset_see_api_base": {
-		Name:        "S.EE 上传地址",
-		Description: "S.EE 上传接口地址。",
-	},
-	"asset_see_api_token": {
-		Name:        "S.EE 访问令牌",
-		Description: "S.EE Bearer Token。",
-	},
-	"asset_imagekit_endpoint": {
-		Name:        "ImageKit 上传地址",
-		Description: "ImageKit 上传接口地址。",
-	},
-	"asset_imagekit_private_key": {
-		Name:        "ImageKit Private Key",
-		Description: "ImageKit 服务端 Private Key。",
-	},
-	"sync_push_enabled": {
-		Name:        "开启远程备份",
-		Description: "开启后允许将备份推送到远程服务。",
-	},
-	"sync_push_provider": {
-		Name:        "远程备份服务",
-		Description: "选择 ImageKit 时，将复用“资源与云服务”中的 ImageKit 配置。",
-	},
-	"s3_api_endpoint": {
-		Name:        "S3 接口地址",
-		Description: "S3 兼容接口地址。",
-	},
-	"s3_bucket": {
-		Name:        "S3 Bucket",
-		Description: "远程备份使用的 Bucket 名称。",
-	},
-	"s3_access_key_id": {
-		Name:        "S3 Access Key ID",
-		Description: "S3 Access Key ID。",
-	},
-	"s3_secret_access_key": {
-		Name:        "S3 Secret Access Key",
-		Description: "S3 Secret Access Key。",
-	},
-	"ga4_id": {
-		Name:        "GA4 统计 ID",
-		Description: "Google Analytics 4 Measurement ID。",
-	},
-}
-
 var legacyKindLocations = map[string]settingLocation{
 	db.SettingKindSiteBasics:         {Area: settingAreaFrontend, Section: settingSectionSite},
 	db.SettingKindAuthorInfo:         {Area: settingAreaFrontend, Section: settingSectionAuthor},
@@ -851,15 +769,6 @@ func buildSettingView(s db.Setting) SettingView {
 			view.AttrsParsed = attrs
 		} else {
 			logger.Warn("Error parsing attrs for setting %s: %v", s.Attrs, err)
-		}
-	}
-
-	if override, ok := settingPresentationOverrides[strings.TrimSpace(s.Code)]; ok {
-		if strings.TrimSpace(override.Name) != "" {
-			view.Name = override.Name
-		}
-		if strings.TrimSpace(override.Description) != "" {
-			view.Description = override.Description
 		}
 	}
 

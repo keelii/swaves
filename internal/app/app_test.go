@@ -297,34 +297,34 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if strings.Contains(body, `name="setting_timezone"`) {
 		t.Fatal("install page should not expose timezone settings")
 	}
-	if strings.Contains(body, `name="setting_author_email"`) {
+	if strings.Contains(body, `id="setting_author_email"`) {
 		t.Fatal("install page should not expose author email settings")
 	}
-	if strings.Contains(body, `name="setting_site_title"`) {
+	if strings.Contains(body, `id="setting_site_title"`) {
 		t.Fatal("install page should not expose site title settings")
 	}
 	if !strings.Contains(body, `name="setting_site_desc"`) {
 		t.Fatal("install page should expose site description setting")
 	}
-	if strings.Contains(body, `name="setting_site_url"`) {
+	if strings.Contains(body, `id="setting_site_url"`) {
 		t.Fatal("install page should not expose site url setting")
 	}
-	if strings.Contains(body, `name="setting_asset_default_provider"`) {
+	if strings.Contains(body, `id="setting_asset_default_provider"`) {
 		t.Fatal("install page should not expose asset provider settings")
 	}
-	if strings.Contains(body, `name="setting_page_url_prefix"`) {
+	if strings.Contains(body, `id="setting_page_url_prefix"`) {
 		t.Fatal("install page should not expose page url prefix settings")
 	}
-	if strings.Contains(body, `name="setting_post_url_prefix"`) {
+	if strings.Contains(body, `id="setting_post_url_prefix"`) {
 		t.Fatal("install page should not expose post url prefix setting")
 	}
-	if strings.Contains(body, `name="setting_post_url_name"`) {
+	if strings.Contains(body, `id="setting_post_url_name"`) {
 		t.Fatal("install page should not expose post url name setting")
 	}
-	if strings.Contains(body, `name="setting_post_url_ext"`) {
+	if strings.Contains(body, `id="setting_post_url_ext"`) {
 		t.Fatal("install page should not expose post url ext setting")
 	}
-	if strings.Contains(body, `name="setting_base_path"`) {
+	if strings.Contains(body, `id="setting_base_path"`) {
 		t.Fatal("install page should not expose base path setting")
 	}
 	if got := strings.Count(body, `class="install-sep"`); got != 1 {
@@ -372,7 +372,7 @@ func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
 
 	resp := requestControllerP0(t, swv, fiber.MethodGet, "http://127.0.0.1:4321/install", nil, "", nil)
 	body := assertTemplateRendered(t, resp, fiber.StatusOK, `文章 URL 样例`)
-	if strings.Contains(body, `name="setting_site_url"`) {
+	if strings.Contains(body, `id="setting_site_url"`) {
 		t.Fatalf("install page should not expose site_url input, body=%q", body)
 	}
 	if !strings.Contains(body, `文章 URL 样例`) {
