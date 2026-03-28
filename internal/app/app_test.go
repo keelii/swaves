@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -231,11 +230,15 @@ func TestInstallFlowRedirectsThenInitializesSettings(t *testing.T) {
 	form.Set("setting_dash_password", "install-secret")
 
 	installResp := requestControllerP0(t, swv, fiber.MethodPost, "/install", form, cookieKV, nil)
-	body := assertTemplateRendered(t, installResp, fiber.StatusOK, "安装完成", "进入当前后台")
-	if !strings.Contains(body, "runtime-secret") {
-		// sanity check only: response should not leak runtime secret
-	} else {
-		t.Fatal("install success page should not expose runtime secret")
+	if installResp.StatusCode < 300 || installResp.StatusCode >= 400 {
+		t.Fatalf("expected install redirect status, got %d", installResp.StatusCode)
+	}
+	if location := strings.TrimSpace(installResp.Header.Get("Location")); location != "/dash" {
+		t.Fatalf("unexpected install redirect location: %q", location)
+	}
+	cookieKV = mergeCookieKV(cookieKV, installResp)
+	if cookieKV == "" {
+		t.Fatal("expected install response to set logged-in session cookie")
 	}
 
 	count, err := db.CountSettings(swv.Store.Model)
@@ -254,19 +257,10 @@ func TestInstallFlowRedirectsThenInitializesSettings(t *testing.T) {
 		t.Fatalf("expected /install to be unavailable after install, got %d", installAgainResp.StatusCode)
 	}
 
-	loginToken, loginCookieKV, _ := fetchCSRFToken(
-		t,
-		swv,
-		"/dash/login",
-		"",
-		`<h1 class="auth-title">登录管理后台</h1>`,
-	)
-	loginForm := url.Values{}
-	loginForm.Set("_csrf_token", loginToken)
-	loginForm.Set("password", "install-secret")
-	loginResp := requestControllerP0(t, swv, fiber.MethodPost, "/dash/login", loginForm, loginCookieKV, nil)
-	if loginResp.StatusCode < 300 || loginResp.StatusCode >= 400 {
-		t.Fatalf("expected login redirect after install, got %d", loginResp.StatusCode)
+	dashHomeResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash", nil, cookieKV, nil)
+	assertTemplateRendered(t, dashHomeResp, fiber.StatusOK)
+	if strings.Contains(strings.TrimSpace(dashHomeResp.Header.Get("Location")), "/dash/login") {
+		t.Fatal("install should log into dash automatically")
 	}
 }
 
@@ -312,32 +306,35 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if !strings.Contains(body, `name="setting_site_desc"`) {
 		t.Fatal("install page should expose site description setting")
 	}
+	if strings.Contains(body, `name="setting_site_url"`) {
+		t.Fatal("install page should not expose site url setting")
+	}
 	if strings.Contains(body, `name="setting_asset_default_provider"`) {
 		t.Fatal("install page should not expose asset provider settings")
 	}
 	if strings.Contains(body, `name="setting_page_url_prefix"`) {
 		t.Fatal("install page should not expose page url prefix settings")
 	}
-	if !strings.Contains(body, `name="setting_post_url_prefix"`) {
-		t.Fatal("install page should expose post url prefix setting")
+	if strings.Contains(body, `name="setting_post_url_prefix"`) {
+		t.Fatal("install page should not expose post url prefix setting")
 	}
-	if !strings.Contains(body, `name="setting_post_url_ext"`) {
-		t.Fatal("install page should expose post url ext setting")
+	if strings.Contains(body, `name="setting_post_url_name"`) {
+		t.Fatal("install page should not expose post url name setting")
 	}
-	if !strings.Contains(body, `name="setting_base_path"`) {
-		t.Fatal("install page should still expose base path setting")
+	if strings.Contains(body, `name="setting_post_url_ext"`) {
+		t.Fatal("install page should not expose post url ext setting")
 	}
-	if got := strings.Count(body, `class="install-sep"`); got != 3 {
-		t.Fatalf("install page should render 3 separators, got %d", got)
+	if strings.Contains(body, `name="setting_base_path"`) {
+		t.Fatal("install page should not expose base path setting")
 	}
-	if got := strings.Count(body, `class="install-sep-label"`); got != 2 {
-		t.Fatalf("install page should render 2 separator labels, got %d", got)
+	if got := strings.Count(body, `class="install-sep"`); got != 1 {
+		t.Fatalf("install page should render 1 separator, got %d", got)
+	}
+	if got := strings.Count(body, `class="install-sep-label"`); got != 1 {
+		t.Fatalf("install page should render 1 separator label, got %d", got)
 	}
 	if !strings.Contains(body, `class="install-sep-label">后台</span>`) {
 		t.Fatal("install page should render backend separator label")
-	}
-	if !strings.Contains(body, `class="install-sep-label">前台（可选）</span>`) {
-		t.Fatal("install page should render optional frontend separator label")
 	}
 	if !strings.Contains(body, `id="install-post-url-preview"`) {
 		t.Fatal("install page should render post url preview alert")
@@ -346,14 +343,9 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	expectedOrder := []string{
 		`name="setting_site_name"`,
 		`name="setting_site_desc"`,
-		`name="setting_site_url"`,
 		`name="setting_author"`,
 		`name="setting_dash_path"`,
 		`name="setting_dash_password"`,
-		`name="setting_base_path"`,
-		`name="setting_post_url_prefix"`,
-		`name="setting_post_url_name"`,
-		`name="setting_post_url_ext"`,
 	}
 	lastIndex := -1
 	for _, marker := range expectedOrder {
@@ -379,9 +371,9 @@ func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
 	defer swv.Shutdown()
 
 	resp := requestControllerP0(t, swv, fiber.MethodGet, "http://127.0.0.1:4321/install", nil, "", nil)
-	body := assertTemplateRendered(t, resp, fiber.StatusOK, `name="setting_site_url"`)
-	if !strings.Contains(body, `value="http:&#x2f;&#x2f;127.0.0.1:4321"`) {
-		t.Fatalf("install page should prefill site_url from current page address, body=%q", body)
+	body := assertTemplateRendered(t, resp, fiber.StatusOK, `文章 URL 样例`)
+	if strings.Contains(body, `name="setting_site_url"`) {
+		t.Fatalf("install page should not expose site_url input, body=%q", body)
 	}
 	if !strings.Contains(body, `文章 URL 样例`) {
 		t.Fatalf("install page should show post url preview title, body=%q", body)
@@ -389,38 +381,4 @@ func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
 	if !strings.Contains(body, `http:&#x2f;&#x2f;127.0.0.1:4321&#x2f;2024&#x2f;01&#x2f;02&#x2f;hello-world`) {
 		t.Fatalf("install page should prefill post url preview from current page address, body=%q", body)
 	}
-}
-
-func TestInstallFlowShowsRestartNoteForReloadSettings(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "install-restart.sqlite")
-	swv := NewApp(types.AppConfig{
-		SqliteFile:    dbPath,
-		AdminPassword: mustHashPassword(t, "runtime-secret"),
-		ListenAddr:    ":0",
-		AppName:       "swaves-test",
-	})
-	defer swv.Shutdown()
-
-	csrfToken, cookieKV, _ := fetchCSRFToken(
-		t,
-		swv,
-		"/install",
-		"",
-		`name="setting_dash_password"`,
-	)
-
-	form := url.Values{}
-	form.Set("_csrf_token", csrfToken)
-	form.Set("setting_dash_password", "install-secret")
-	form.Set("setting_dash_path", "/console")
-	form.Set("setting_backup_local_interval_min", strconv.Itoa(1440))
-
-	installResp := requestControllerP0(t, swv, fiber.MethodPost, "/install", form, cookieKV, nil)
-	assertTemplateRendered(
-		t,
-		installResp,
-		fiber.StatusOK,
-		"请先重启应用",
-		"管理后台路径",
-	)
 }

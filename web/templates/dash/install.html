@@ -168,7 +168,16 @@
       </div>
     {% endif %}
 
-    <form class="install-form" method="post" action="{{ UrlFor('install.submit') }}">
+    <form
+      class="install-form"
+      method="post"
+      action="{{ UrlFor('install.submit') }}"
+      data-preview-site-url="{{ InstallPreviewSiteURL }}"
+      data-preview-base-path="{{ InstallPreviewBasePath }}"
+      data-preview-post-prefix="{{ InstallPreviewPostPath }}"
+      data-preview-post-name="{{ InstallPreviewPostName }}"
+      data-preview-post-ext="{{ InstallPreviewPostExt }}"
+    >
       {{ _csrf_token() }}
 
       <div class="install-fields">
@@ -340,10 +349,17 @@
       return '/' + normalized + '/';
     }
 
-    function readFieldValue(name) {
+    function readPreviewDefault(name) {
+      if (!installForm) {
+        return '';
+      }
+      return String(installForm.getAttribute('data-preview-' + name) || '').trim();
+    }
+
+    function readFieldValue(name, fallbackValue) {
       var field = document.querySelector('[name="' + name + '"]');
       if (!field) {
-        return '';
+        return String(fallbackValue || '').trim();
       }
       return String(field.value || '').trim();
     }
@@ -379,11 +395,11 @@
     }
 
     function buildInstallPostURLPreview() {
-      var siteURL = readFieldValue('setting_site_url').replace(/\/+$/g, '');
-      var basePath = readFieldValue('setting_base_path');
-      var postPrefix = readFieldValue('setting_post_url_prefix');
-      var postName = readFieldValue('setting_post_url_name');
-      var postExt = readFieldValue('setting_post_url_ext');
+      var siteURL = readFieldValue('setting_site_url', readPreviewDefault('site-url')).replace(/\/+$/g, '');
+      var basePath = readFieldValue('setting_base_path', readPreviewDefault('base-path'));
+      var postPrefix = readFieldValue('setting_post_url_prefix', readPreviewDefault('post-prefix'));
+      var postName = readFieldValue('setting_post_url_name', readPreviewDefault('post-name'));
+      var postExt = readFieldValue('setting_post_url_ext', readPreviewDefault('post-ext'));
       var postPath;
 
       postPrefix = postPrefix.split('{datetime}').join('2024/01/02');

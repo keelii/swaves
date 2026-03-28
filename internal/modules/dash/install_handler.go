@@ -318,35 +318,17 @@ func buildInstallPostURLPreview(settings []db.Setting) string {
 	return siteURL + postPath
 }
 
-func changedReloadSettingNames(settings []db.Setting) []string {
-	defaultByCode := make(map[string]db.Setting, len(db.DefaultSettings))
-	for _, setting := range db.DefaultSettings {
-		defaultByCode[setting.Code] = setting
-	}
-
-	names := make([]string, 0)
-	for _, setting := range settings {
-		if setting.Reload != 1 {
-			continue
-		}
-		defaultSetting, ok := defaultByCode[setting.Code]
-		if !ok {
-			continue
-		}
-		if setting.Value == defaultSetting.Value {
-			continue
-		}
-		names = append(names, setting.Name)
-	}
-	return names
-}
-
 func (h *Handler) renderInstallPage(c fiber.Ctx, settings []db.Setting, errMsg string) error {
 	return RenderDashView(c, "dash/install.html", fiber.Map{
-		"Title":                 "Install Swaves",
-		"InstallSettings":       buildInstallSettingViews(settings),
-		"InstallPostURLPreview": buildInstallPostURLPreview(settings),
-		"Error":                 strings.TrimSpace(errMsg),
+		"Title":                  "Install Swaves",
+		"InstallSettings":        buildInstallSettingViews(settings),
+		"InstallPostURLPreview":  buildInstallPostURLPreview(settings),
+		"InstallPreviewSiteURL":  installSettingValue(settings, "site_url"),
+		"InstallPreviewBasePath": installSettingValue(settings, "base_path"),
+		"InstallPreviewPostPath": installSettingValue(settings, "post_url_prefix"),
+		"InstallPreviewPostName": installSettingValue(settings, "post_url_name"),
+		"InstallPreviewPostExt":  installSettingValue(settings, "post_url_ext"),
+		"Error":                  strings.TrimSpace(errMsg),
 	}, "")
 }
 
@@ -387,12 +369,9 @@ func (h *Handler) PostInstallHandler(c fiber.Ctx) error {
 		return h.renderInstallPage(c, settings, "安装失败："+err.Error())
 	}
 
-	reloadSettingNames := changedReloadSettingNames(settings)
-	return RenderDashView(c, "dash/install_done.html", fiber.Map{
-		"Title":               "Install Complete",
-		"ReloadSettingNames":  reloadSettingNames,
-		"RestartRequired":     len(reloadSettingNames) > 0,
-		"CurrentDashLoginURL": routeURL(c, "dash.login.show"),
-		"CurrentSiteHomeURL":  routeURL(c, "site.home"),
-	}, "")
+	if h.Session.SaveSession(c) {
+		return h.redirectToDashRoute(c, "dash.home", nil, nil)
+	}
+
+	return h.redirectToDashRoute(c, "dash.login.show", nil, nil)
 }

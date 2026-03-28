@@ -15,6 +15,15 @@ func init() {
 	settingEmpty.Store(false)
 }
 
+func storeSettingsMap(m map[string]string) {
+	if m == nil {
+		m = map[string]string{}
+	}
+
+	Settings.Store(m)
+	settingEmpty.Store(len(m) == 0)
+}
+
 func InitSettings(gStore *GlobalStore) {
 	if err := ReloadSettings(gStore); err != nil {
 		logger.Fatal("initial settings load failed: %v", err)
@@ -43,9 +52,7 @@ func ReloadSettings(gStore *GlobalStore) error {
 		return err
 	}
 
-	if len(m) == 0 {
-		settingEmpty.Store(true)
-	}
+	storeSettingsMap(m)
 
 	logger.Info("settings loaded successfully: count=%d", len(m))
 	return nil
@@ -100,7 +107,7 @@ func GetSettingInt(code string, defaultValue int) int {
 func GetSettingMap() map[string]string {
 	s, ok := Settings.Load().(map[string]string)
 	if !ok {
-		settingEmpty.Store(true)
+		storeSettingsMap(map[string]string{})
 		return map[string]string{}
 	}
 	return s
