@@ -24,8 +24,10 @@ func RegisterRouter(
 		monitorStore,
 	)
 
-	app.Get("/install", middleware.DashCSRF(gStore.Session), handler.GetInstallHandler).Name("install.show")
-	app.Post("/install", middleware.DashCSRF(gStore.Session), handler.PostInstallHandler).Name("install.submit")
+	if store.IsSettingEmpty() {
+		app.Get("/install", middleware.DashCSRF(gStore.Session), handler.GetInstallHandler).Name("install.show")
+		app.Post("/install", middleware.DashCSRF(gStore.Session), handler.PostInstallHandler).Name("install.submit")
+	}
 
 	dashGroup := app.Group(dashBasePath)
 	dashGroup.Use(middleware.DashCSRF(gStore.Session))

@@ -10,7 +10,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type installSettingPresentationOverride struct {
+type InstallSettingsOption struct {
 	Code         string
 	Name         string
 	Description  string
@@ -27,7 +27,7 @@ const (
 	installPostURLPreviewID       int64 = 123
 )
 
-var installSettingPresentationOverrides = []installSettingPresentationOverride{
+var installSettings = []InstallSettingsOption{
 	{
 		Code:         "site_name",
 		DefaultValue: "",
@@ -138,8 +138,8 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 		settingsByCode[code] = setting
 	}
 
-	views := make([]SettingView, 0, len(installSettingPresentationOverrides))
-	for _, override := range installSettingPresentationOverrides {
+	views := make([]SettingView, 0, len(installSettings))
+	for _, override := range installSettings {
 		code := strings.TrimSpace(override.Code)
 		if code == "" {
 			continue
@@ -178,23 +178,23 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 	return views
 }
 
-func findInstallSettingPresentationOverride(code string) (installSettingPresentationOverride, bool) {
+func findInstallSettingPresentationOverride(code string) (InstallSettingsOption, bool) {
 	code = strings.TrimSpace(code)
 	if code == "" {
-		return installSettingPresentationOverride{}, false
+		return InstallSettingsOption{}, false
 	}
 
-	for _, override := range installSettingPresentationOverrides {
+	for _, override := range installSettings {
 		if strings.TrimSpace(override.Code) != code {
 			continue
 		}
 		return override, true
 	}
 
-	return installSettingPresentationOverride{}, false
+	return InstallSettingsOption{}, false
 }
 
-func installSettingDefaultOverrideValue(override installSettingPresentationOverride) (string, bool) {
+func installSettingDefaultOverrideValue(override InstallSettingsOption) (string, bool) {
 	if override.DefaultValue == nil {
 		return "", false
 	}

@@ -9,6 +9,11 @@ import (
 )
 
 var Settings atomic.Value
+var settingEmpty atomic.Bool
+
+func init() {
+	settingEmpty.Store(false)
+}
 
 func InitSettings(gStore *GlobalStore) {
 	if err := ReloadSettings(gStore); err != nil {
@@ -38,7 +43,10 @@ func ReloadSettings(gStore *GlobalStore) error {
 		return err
 	}
 
-	Settings.Store(m)
+	if len(m) == 0 {
+		settingEmpty.Store(true)
+	}
+
 	logger.Info("settings loaded successfully: count=%d", len(m))
 	return nil
 }
@@ -92,7 +100,12 @@ func GetSettingInt(code string, defaultValue int) int {
 func GetSettingMap() map[string]string {
 	s, ok := Settings.Load().(map[string]string)
 	if !ok {
+		settingEmpty.Store(true)
 		return map[string]string{}
 	}
 	return s
+}
+
+func IsSettingEmpty() bool {
+	return settingEmpty.Load()
 }

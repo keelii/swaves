@@ -1,0 +1,196 @@
+name: Release Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (semver, e.g. v1.2.3)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark this release as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  validate_release_tag:
+    name: Validate Release Tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate semver tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          semver_regex='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$'
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="${{ github.event.inputs.tag }}"
+          fi
+
+          if [[ -z "${tag}" ]]; then
+            echo "tag is required for release workflow"
+            exit 1
+          fi
+
+          if [[ ! "${tag}" =~ ${semver_regex} ]]; then
+            echo "invalid tag: ${tag}"
+            echo "expected semver like: v1.2.3, v1.2.3-rc.1, or v1.2.3+build.5"
+            exit 1
+          fi
+
+          echo "validated tag: ${tag}"
+
+  test:
+    name: Run Tests
+    needs: validate_release_tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run go test
+        run: go test ./...
+
+  build:
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            ext: ''
+            runner: ubuntu-latest
+          - os: windows
+            arch: amd64
+            ext: '.exe'
+            runner: windows-latest
+          - os: darwin
+            arch: amd64
+            ext: ''
+            runner: macos-13
+          - os: darwin
+            arch: arm64
+            ext: ''
+            runner: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME}"
+          elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            version="${{ github.event.inputs.tag }}"
+          else
+            version="manual-${GITHUB_SHA::7}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "asset_basename=swaves_${version}_${{ matrix.os }}_${{ matrix.arch }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build binary
+        shell: bash
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 1
+        run: |
+          mkdir -p dist
+          output="dist/${{ steps.meta.outputs.asset_basename }}${{ matrix.ext }}"
+          go build -trimpath \
+            -ldflags "-s -w" \
+            -o "$output" ./cmd/swaves
+
+      - name: Package and checksum (Unix)
+        if: matrix.os != 'windows'
+        shell: bash
+        run: |
+          cd dist
+          archive="${{ steps.meta.outputs.asset_basename }}.tar.gz"
+          bin="${{ steps.meta.outputs.asset_basename }}${{ matrix.ext }}"
+          tar -czf "$archive" "$bin"
+          shasum -a 256 "$archive" > "${archive}.sha256"
+
+      - name: Package and checksum (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          Set-Location dist
+          $archive = "${{ steps.meta.outputs.asset_basename }}.zip"
+          $bin = "${{ steps.meta.outputs.asset_basename }}${{ matrix.ext }}"
+          Compress-Archive -Path $bin -DestinationPath $archive -Force
+          (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() + "  " + $archive | Out-File -FilePath ("$archive.sha256") -Encoding ascii
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.asset_basename }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Resolve tag and release name
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            tag="${{ github.event.inputs.tag }}"
+          else
+            tag="manual-${GITHUB_SHA::7}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
+            artifacts/*.sha256

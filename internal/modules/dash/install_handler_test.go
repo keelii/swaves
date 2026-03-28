@@ -3,17 +3,17 @@ package dash
 import "testing"
 
 func TestBuildInstallSettingViewsAppliesPlaceholderOverride(t *testing.T) {
-	original := append([]installSettingPresentationOverride(nil), installSettingPresentationOverrides...)
+	original := append([]InstallSettingsOption(nil), installSettings...)
 	t.Cleanup(func() {
-		installSettingPresentationOverrides = original
+		installSettings = original
 	})
 
-	installSettingPresentationOverrides = append([]installSettingPresentationOverride(nil), installSettingPresentationOverrides...)
-	for i := range installSettingPresentationOverrides {
-		if installSettingPresentationOverrides[i].Code != "site_desc" {
+	installSettings = append([]InstallSettingsOption(nil), installSettings...)
+	for i := range installSettings {
+		if installSettings[i].Code != "site_desc" {
 			continue
 		}
-		installSettingPresentationOverrides[i].Placeholder = "一句话描述你的站点"
+		installSettings[i].Placeholder = "一句话描述你的站点"
 	}
 
 	views := buildInstallSettingViews(cloneInstallDefaultSettingsWithSiteURL(""))
@@ -32,18 +32,18 @@ func TestBuildInstallSettingViewsAppliesPlaceholderOverride(t *testing.T) {
 }
 
 func TestCloneInstallDefaultSettingsWithSiteURLAppliesPresentationDefaultValue(t *testing.T) {
-	original := append([]installSettingPresentationOverride(nil), installSettingPresentationOverrides...)
+	original := append([]InstallSettingsOption(nil), installSettings...)
 	t.Cleanup(func() {
-		installSettingPresentationOverrides = original
+		installSettings = original
 	})
 
-	installSettingPresentationOverrides = append([]installSettingPresentationOverride(nil), installSettingPresentationOverrides...)
-	for i := range installSettingPresentationOverrides {
-		switch installSettingPresentationOverrides[i].Code {
+	installSettings = append([]InstallSettingsOption(nil), installSettings...)
+	for i := range installSettings {
+		switch installSettings[i].Code {
 		case "site_desc":
-			installSettingPresentationOverrides[i].DefaultValue = "A default site description"
+			installSettings[i].DefaultValue = "A default site description"
 		case "site_url":
-			installSettingPresentationOverrides[i].DefaultValue = "https://override.example"
+			installSettings[i].DefaultValue = "https://override.example"
 		}
 	}
 

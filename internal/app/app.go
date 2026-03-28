@@ -76,8 +76,9 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	})
 
 	app.Use("/static", static.New(resolveProjectPath("web/static")))
+	app.Use(recover.New())
+	app.Use(middleware.InstallGate("/install"))
 
-	app.Use(middleware.InstallGate(globalStore.Model, "/install"))
 	app.Use(middleware.DashViewContext(globalStore.Session))
 	app.Use(middleware.GlobalSettings(config.GlobalSettingKey))
 	app.Use(middleware.PaginationMiddleware())
@@ -87,7 +88,6 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 			return uuid.NewString()
 		},
 	}))
-	app.Use(recover.New())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 
 	dash.RegisterRouter(app, globalStore)
