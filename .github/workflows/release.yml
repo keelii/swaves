@@ -84,10 +84,6 @@ jobs:
             ext: '.exe'
             runner: windows-latest
           - os: darwin
-            arch: amd64
-            ext: ''
-            runner: macos-13
-          - os: darwin
             arch: arm64
             ext: ''
             runner: macos-latest
