@@ -15,6 +15,7 @@ type installSettingPresentationOverride struct {
 	Name         string
 	Description  string
 	DefaultValue any
+	Placeholder  string
 }
 
 const installSettingSeparatorCode = "sep"
@@ -30,6 +31,7 @@ var installSettingPresentationOverrides = []installSettingPresentationOverride{
 	{
 		Code:         "site_name",
 		DefaultValue: "",
+		Placeholder:  "",
 		Description:  "公开展示的站点名称",
 	},
 	{
@@ -149,6 +151,7 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 					Name:        override.Name,
 					Description: override.Description,
 				},
+				Placeholder: override.Placeholder,
 			})
 			continue
 		}
@@ -164,6 +167,9 @@ func buildInstallSettingViews(settings []db.Setting) []SettingView {
 		}
 		if strings.TrimSpace(override.Description) != "" {
 			view.Description = override.Description
+		}
+		if strings.TrimSpace(override.Placeholder) != "" {
+			view.Placeholder = override.Placeholder
 		}
 
 		views = append(views, view)

@@ -193,6 +193,7 @@
           {% set settingValue = setting.Value %}
           {% set settingPrefixValue = setting.PrefixValue %}
           {% set settingDescription = settingView.Description or setting.Description %}
+          {% set settingPlaceholder = settingView.Placeholder %}
           {% set settingDefaultOptionValue = setting.DefaultOptionValue %}
           {% set settingOptionsParsed = settingView.OptionsParsed %}
           {% set settingCheckboxValues = settingView.CheckboxValues %}
@@ -207,7 +208,7 @@
 
             <div class="install-field-control">
               {% if settingType == "text" %}
-                <input id="setting_{{ code }}" autocomplete="off" type="text" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                <input id="setting_{{ code }}" autocomplete="off" type="text" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>
               {% elif settingType == "prefix-field" %}
                 {% set prefixSourceCode = "" %}
                 {% if (code == "page_url_prefix") or (code == "rss_path") or (code == "post_url_prefix") or (code == "category_url_prefix") or (code == "tag_url_prefix") %}
@@ -217,33 +218,34 @@
                   id="setting_" ~ code,
                   name="setting_" ~ code,
                   value=settingValue,
+                  placeholder=settingPlaceholder,
                   attrs=(RenderAttrs(attrs) ~ ' data-prefix-source-code="' ~ prefixSourceCode ~ '" data-prefix-default="' ~ settingPrefixValue ~ '"'),
                   prefix=settingPrefixValue
                 ) }}
               {% elif settingType == "number" %}
-                <input id="setting_{{ code }}" type="number" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                <input id="setting_{{ code }}" type="number" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>
               {% elif settingType == "date" %}
-                <input id="setting_{{ code }}" type="date" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                <input id="setting_{{ code }}" type="date" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>
               {% elif settingType == "time" %}
-                <input id="setting_{{ code }}" type="time" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                <input id="setting_{{ code }}" type="time" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>
               {% elif settingType == "datetime" %}
-                <input id="setting_{{ code }}" type="datetime-local" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                <input id="setting_{{ code }}" type="datetime-local" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>
               {% elif settingType == "url" %}
-                <input id="setting_{{ code }}" type="url" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }}>
+                <input id="setting_{{ code }}" type="url" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>
               {% elif settingType == "range" %}
                 <span class="install-range-wrap">
                   <input id="setting_{{ code }}" type="range" name="setting_{{ code }}" value="{{ settingValue }}"{{ RenderAttrs(attrs) }} data-range-value{% if code == "font_size" %} data-unit=" px"{% endif %}>
                   <output class="range-value" for="setting_{{ code }}">{{ settingValue }}{% if code == "font_size" %} px{% endif %}</output>
                 </span>
               {% elif settingType == "password" %}
-                <input id="setting_{{ code }}" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" placeholder="设置后台登录密码"{{ RenderAttrs(attrs) }}>
+                <input id="setting_{{ code }}" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" placeholder="{{ settingPlaceholder or '设置后台登录密码' }}"{{ RenderAttrs(attrs) }}>
               {% elif settingType == "secret" %}
                 <span class="install-secret-wrap">
-                  <input id="setting_{{ code }}_secret" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{{ RenderAttrs(attrs) }}>
+                  <input id="setting_{{ code }}_secret" type="password" class="ui-input" name="setting_{{ code }}" value="{{ settingValue }}" autocomplete="off"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>
                   <button class="ui-btn outline install-secret-toggle" type="button" data-target-id="setting_{{ code }}_secret" data-show-text="显示" data-hide-text="隐藏">显示</button>
                 </span>
               {% elif settingType == "textarea" %}
-                <textarea id="setting_{{ code }}" class="ui-textarea" name="setting_{{ code }}" rows="4"{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
+                <textarea id="setting_{{ code }}" class="ui-textarea" name="setting_{{ code }}" rows="4"{% if settingPlaceholder %} placeholder="{{ settingPlaceholder }}"{% endif %}{{ RenderAttrs(attrs) }}>{{ settingValue }}</textarea>
               {% elif settingType == "radio" %}
                 {% set currentValue = (settingValue or settingDefaultOptionValue) %}
                 <div class="install-options">
