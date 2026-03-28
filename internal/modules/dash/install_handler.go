@@ -45,10 +45,6 @@ var installSettings = []InstallSettingsOption{
 	//	Description: "站点访问地址，不包含路径前缀",
 	//},
 	{
-		Code:        installSettingSeparatorCode,
-		Description: "",
-	},
-	{
 		Code:         "author",
 		DefaultValue: "",
 		Description:  "公开内容显示的作者名",
@@ -66,27 +62,6 @@ var installSettings = []InstallSettingsOption{
 		Code:        "dash_password",
 		Required:    true,
 		Description: "管理后台登录密码",
-	},
-	{
-		Code:        installSettingSeparatorCode,
-		Name:        "前台（可选）",
-		Description: "",
-	},
-	{
-		Code:        "base_path",
-		Description: "前台统一路径前缀，留空表示根路径",
-	},
-	{
-		Code:        "post_url_prefix",
-		Description: "前台文章路径前缀",
-	},
-	{
-		Code:        "post_url_name",
-		Description: "文章链接地址中使用的名称格式",
-	},
-	{
-		Code:        "post_url_ext",
-		Description: "文章链接地址扩展名",
 	},
 }
 
