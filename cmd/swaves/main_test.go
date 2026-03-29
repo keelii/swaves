@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/crypto/bcrypt"
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestRunUtilityCommandHashPassword(t *testing.T) {
@@ -285,16 +286,6 @@ func TestParseAppConfigUsesDefaultFlags(t *testing.T) {
 	}
 	if cfg.EnableSQLLog != config.EnableSQLLog {
 		t.Fatalf("unexpected default sql log flag: got=%v want=%v", cfg.EnableSQLLog, config.EnableSQLLog)
-	}
-}
-
-func TestParseAppConfigRequiresAdminPassword(t *testing.T) {
-	_, err := parseAppConfig([]string{"data.sqlite"})
-	if err == nil {
-		t.Fatal("expected missing admin password error")
-	}
-	if err.Error() != "admin password is required" {
-		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

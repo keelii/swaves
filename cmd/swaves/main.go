@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"swaves/internal/app"
+	"swaves/internal/platform/logger"
+	"swaves/internal/platform/supervisor"
+	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -31,10 +34,25 @@ func main() {
 		os.Exit(2)
 	}
 
+	if err := supervisor.Run(supervisor.Config{
+		DaemonMode:  *flagDemonMode == 1,
+		MaxFailures: *flagMaxFailures,
+		Args:        args,
+		Worker: func() error {
+			return runSwavesWorker(appCfg)
+		},
+	}); err != nil {
+		logger.Fatal("%v", err)
+	}
+}
+
+func runSwavesWorker(appCfg types.AppConfig) error {
 	swv := app.NewApp(appCfg)
 	defer swv.Shutdown()
 
-	swv.Listen(fiber.ListenConfig{
-		DisableStartupMessage: true,
-	})
+	logger.Info("%s listening on %s", swv.Config.AppName, swv.Config.ListenAddr)
+	if err := swv.App.Listen(swv.Config.ListenAddr, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+		return err
+	}
+	return nil
 }

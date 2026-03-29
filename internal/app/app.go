@@ -106,9 +106,9 @@ func validateAppConfig(appCfg types.AppConfig) error {
 	if strings.TrimSpace(appCfg.SqliteFile) == "" {
 		return errors.New("sqlite file is required")
 	}
-	if strings.TrimSpace(appCfg.AdminPassword) == "" {
-		return errors.New("admin password is required")
-	}
+	//if strings.TrimSpace(appCfg.AdminPassword) == "" {
+	//	return errors.New("admin password is required")
+	//}
 	return nil
 }
 

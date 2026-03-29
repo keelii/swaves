@@ -21,6 +21,8 @@ var (
 	flagListenAddr    = flag.String("listen-addr", ":3000", "listen address")
 	flagAppName       = flag.String("app-name", "swaves", "app name")
 	flagEnableSQLLog  = flag.Bool("enable-sql-log", config.EnableSQLLog, "enable sql log")
+	flagDemonMode     = flag.Int("demon-mode", 1, "1: run with master process, otherwise run worker directly")
+	flagMaxFailures   = flag.Int("max-failures", 5, "max consecutive worker failures before master exits (<=0 means unlimited)")
 )
 
 func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool, int) {
@@ -181,6 +183,10 @@ func parseAppConfig(args []string) (types.AppConfig, error) {
 	fs.StringVar(&cfg.ListenAddr, "listen-addr", cfg.ListenAddr, "listen address")
 	fs.StringVar(&cfg.AppName, "app-name", cfg.AppName, "app name")
 	fs.BoolVar(&cfg.EnableSQLLog, "enable-sql-log", cfg.EnableSQLLog, "enable sql log")
+	var ignoredDemonMode int
+	var ignoredMaxFailures int
+	fs.IntVar(&ignoredDemonMode, "demon-mode", 1, "1: run with master process, otherwise run worker directly")
+	fs.IntVar(&ignoredMaxFailures, "max-failures", 5, "max consecutive worker failures before master exits (<=0 means unlimited)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return cfg, err
@@ -190,9 +196,6 @@ func parseAppConfig(args []string) (types.AppConfig, error) {
 	}
 	if strings.TrimSpace(cfg.SqliteFile) == "" {
 		return cfg, errors.New("sqlite file is required")
-	}
-	if strings.TrimSpace(cfg.AdminPassword) == "" {
-		return cfg, errors.New("admin password is required")
 	}
 
 	return cfg, nil
@@ -241,9 +244,6 @@ func parseMainAppConfig(args []string) (types.AppConfig, error) {
 
 	if strings.TrimSpace(cfg.SqliteFile) == "" {
 		return cfg, errors.New("sqlite file is required")
-	}
-	if cfg.AdminPassword == "" {
-		return cfg, errors.New("admin password is required")
 	}
 
 	return cfg, nil
@@ -297,7 +297,7 @@ func cliUsage() string {
 Usage:
   swaves hash-password <raw-password>
   swaves set-admin-password <sqlite-file> <raw-password>
-  swaves <sqlite-file> --admin-password=<bcrypt-hash> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>]
+  swaves <sqlite-file> --admin-password=<bcrypt-hash> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>] [--demon-mode=<0|1>] [--max-failures=<n>]
 
 Environment:
   SWAVES_SQLITE_FILE
