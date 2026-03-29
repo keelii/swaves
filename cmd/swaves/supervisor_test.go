@@ -16,10 +16,9 @@ func TestRunSupervisorRequiresWorkerCallback(t *testing.T) {
 }
 
 func TestRunSupervisorWorkerModeUsesWorkerDirectly(t *testing.T) {
-	t.Setenv("TEST_WORKER_MODE", "1")
+	t.Setenv(defaultWorkerModeEnv, "1")
 	called := false
 	err := runSupervisor(supervisorConfig{
-		WorkerModeEnv: "TEST_WORKER_MODE",
 		Worker: func() error {
 			called = true
 			return nil
@@ -60,12 +59,12 @@ func TestRunSupervisorDaemonRequiresListenAddr(t *testing.T) {
 
 func TestWaitWorkerReadyReturnsExitError(t *testing.T) {
 	worker := &workerProcess{
-		cmd:     &exec.Cmd{},
-		waitErr: errors.New("boom"),
-		waitCh:  make(chan struct{}),
-		readyCh: make(chan error),
+		cmd:      &exec.Cmd{},
+		exitErr:  errors.New("boom"),
+		exitDone: make(chan struct{}),
+		readyCh:  make(chan error),
 	}
-	close(worker.waitCh)
+	close(worker.exitDone)
 
 	err := waitWorkerReady(worker, 50*time.Millisecond)
 	if err == nil || err.Error() != "worker exited before ready: boom" {
