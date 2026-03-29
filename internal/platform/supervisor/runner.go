@@ -1,16 +1,20 @@
 package supervisor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/proctitle"
+	"syscall"
 	"time"
 )
 
 const defaultWorkerModeEnv = "SWAVES_RUN_MODE"
+const defaultWorkerStopTimeout = 8 * time.Second
 
 type Config struct {
 	DaemonMode    bool
@@ -51,33 +55,41 @@ func Run(cfg Config) error {
 		restartDelay = 300 * time.Millisecond
 	}
 
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
 	consecutiveFailures := 0
 	for {
-		cmd, err := startWorkerProcess(workerModeEnv, cfg.Args)
+		cmd, waitCh, err := startWorkerProcess(workerModeEnv, cfg.Args)
 		if err != nil {
 			return err
 		}
 
-		err = cmd.Wait()
-		if err != nil {
-			consecutiveFailures++
-			logger.Error("[master] worker exited: %v", err)
-			if cfg.MaxFailures > 0 && consecutiveFailures >= cfg.MaxFailures {
-				return fmt.Errorf("worker failed %d times continuously, reached max-failures=%d", consecutiveFailures, cfg.MaxFailures)
+		select {
+		case sig := <-sigCh:
+			logger.Info("[master] shutdown requested by signal: %s", sig)
+			return stopWorkerProcess(cmd, waitCh, defaultWorkerStopTimeout)
+		case err := <-waitCh:
+			if err != nil {
+				consecutiveFailures++
+				logger.Error("[master] worker exited: %v", err)
+				if cfg.MaxFailures > 0 && consecutiveFailures >= cfg.MaxFailures {
+					return fmt.Errorf("worker failed %d times continuously, reached max-failures=%d", consecutiveFailures, cfg.MaxFailures)
+				}
+			} else {
+				consecutiveFailures = 0
+				logger.Info("[master] worker exited")
 			}
-		} else {
-			consecutiveFailures = 0
-			logger.Info("[master] worker exited")
+			time.Sleep(restartDelay)
 		}
-
-		time.Sleep(restartDelay)
 	}
 }
 
-func startWorkerProcess(workerModeEnv string, args []string) (*exec.Cmd, error) {
+func startWorkerProcess(workerModeEnv string, args []string) (*exec.Cmd, <-chan error, error) {
 	execPath, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("resolve executable failed: %w", err)
+		return nil, nil, fmt.Errorf("resolve executable failed: %w", err)
 	}
 
 	cmd := exec.Command(execPath, args...)
@@ -85,9 +97,40 @@ func startWorkerProcess(workerModeEnv string, args []string) (*exec.Cmd, error) 
 	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(), workerModeEnv+"=1")
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start worker failed: %w", err)
+		return nil, nil, fmt.Errorf("start worker failed: %w", err)
 	}
 
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
 	logger.Info("[master] worker started pid=%d", cmd.Process.Pid)
-	return cmd, nil
+	return cmd, waitCh, nil
+}
+
+func stopWorkerProcess(cmd *exec.Cmd, waitCh <-chan error, timeout time.Duration) error {
+	if cmd == nil || cmd.Process == nil {
+		return nil
+	}
+
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
+		return fmt.Errorf("signal worker SIGTERM failed: %w", err)
+	}
+
+	select {
+	case err := <-waitCh:
+		if err != nil {
+			return fmt.Errorf("worker exit after SIGTERM failed: %w", err)
+		}
+		logger.Info("[master] worker stopped gracefully")
+		return nil
+	case <-time.After(timeout):
+		if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			return fmt.Errorf("kill worker after timeout failed: %w", err)
+		}
+		<-waitCh
+		logger.Warn("[master] worker killed after timeout")
+		return nil
+	}
 }

@@ -21,7 +21,7 @@ var (
 	flagListenAddr    = flag.String("listen-addr", ":3000", "listen address")
 	flagAppName       = flag.String("app-name", "swaves", "app name")
 	flagEnableSQLLog  = flag.Bool("enable-sql-log", config.EnableSQLLog, "enable sql log")
-	flagDemonMode     = flag.Int("demon-mode", 1, "1: run with master process, otherwise run worker directly")
+	flagDaemonMode    = flag.Int("daemon-mode", 1, "1: run with master process, otherwise run worker directly")
 	flagMaxFailures   = flag.Int("max-failures", 5, "max consecutive worker failures before master exits (<=0 means unlimited)")
 )
 
