@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -179,6 +180,13 @@ func (swv *SwavesApp) Listen(opts fiber.ListenConfig) {
 	if err := swv.App.Listen(swv.Config.ListenAddr, opts); err != nil {
 		logger.Fatal("%v", err)
 	}
+}
+
+func (swv *SwavesApp) Serve(listener net.Listener, opts fiber.ListenConfig) error {
+	if listener == nil {
+		return errors.New("listener is required")
+	}
+	return swv.App.Listener(listener, opts)
 }
 
 func (swv *SwavesApp) Shutdown() {
