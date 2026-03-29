@@ -306,6 +306,54 @@ func TestParseAppConfigReturnsHelp(t *testing.T) {
 	}
 }
 
+func TestParseMainConfigParsesSupervisorFlags(t *testing.T) {
+	cfg, err := parseMainConfig([]string{
+		"data.sqlite",
+		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
+		"--daemon-mode=0",
+		"--max-failures=9",
+	})
+	if err != nil {
+		t.Fatalf("parseMainConfig failed: %v", err)
+	}
+
+	if cfg.DaemonMode {
+		t.Fatal("expected daemon mode disabled")
+	}
+	if cfg.MaxFailures != 9 {
+		t.Fatalf("unexpected max failures: %d", cfg.MaxFailures)
+	}
+}
+
+func TestParseMainConfigSupportsLegacyDemonModeFlag(t *testing.T) {
+	cfg, err := parseMainConfig([]string{
+		"data.sqlite",
+		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
+		"--demon-mode=0",
+	})
+	if err != nil {
+		t.Fatalf("parseMainConfig failed: %v", err)
+	}
+
+	if cfg.DaemonMode {
+		t.Fatal("expected legacy demon-mode flag to disable daemon mode")
+	}
+}
+
+func TestParseMainConfigRejectsInvalidDaemonMode(t *testing.T) {
+	_, err := parseMainConfig([]string{
+		"data.sqlite",
+		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
+		"--daemon-mode=2",
+	})
+	if err == nil {
+		t.Fatal("expected invalid daemon mode error")
+	}
+	if err.Error() != "daemon-mode must be 0 or 1" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestParseAppConfigRejectsInvalidEnvBool(t *testing.T) {
 	t.Setenv("SWAVES_SQLITE_FILE", "env.sqlite")
 	t.Setenv("SWAVES_ADMIN_PASSWORD", "$2a$10$envhashenvhashenvhashenvhashenvhashenvhashenvhash")

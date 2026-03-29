@@ -1,4 +1,4 @@
-package supervisor
+package main
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ import (
 const defaultWorkerModeEnv = "SWAVES_RUN_MODE"
 const defaultWorkerStopTimeout = 8 * time.Second
 
-type Config struct {
+type supervisorConfig struct {
 	DaemonMode    bool
 	MaxFailures   int
 	RestartDelay  time.Duration
@@ -27,7 +27,7 @@ type Config struct {
 	Worker        func() error
 }
 
-func Run(cfg Config) error {
+func runSupervisor(cfg supervisorConfig) error {
 	if cfg.Worker == nil {
 		return fmt.Errorf("worker callback is required")
 	}

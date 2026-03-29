@@ -10,20 +10,86 @@ import (
 	"strings"
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/logger"
 	"swaves/internal/shared/types"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	flagAdminPassword = flag.String("admin-password", "", "dash admin password bcrypt hash")
-	flagBackupDir     = flag.String("backup-dir", "backups", "backup directory")
-	flagListenAddr    = flag.String("listen-addr", ":3000", "listen address")
-	flagAppName       = flag.String("app-name", "swaves", "app name")
-	flagEnableSQLLog  = flag.Bool("enable-sql-log", config.EnableSQLLog, "enable sql log")
-	flagDaemonMode    = flag.Int("daemon-mode", 1, "1: run with master process, otherwise run worker directly")
-	flagMaxFailures   = flag.Int("max-failures", 5, "max consecutive worker failures before master exits (<=0 means unlimited)")
+const (
+	defaultBackupDir     = "backups"
+	defaultListenAddr    = ":3000"
+	defaultAppName       = "swaves"
+	defaultDaemonMode    = 1
+	defaultMaxFailures   = 5
+	flagAdminPasswordKey = "admin-password"
+	flagBackupDirKey     = "backup-dir"
+	flagListenAddrKey    = "listen-addr"
+	flagAppNameKey       = "app-name"
+	flagEnableSQLLogKey  = "enable-sql-log"
+	flagDaemonModeKey    = "daemon-mode"
+	flagDemonModeKey     = "demon-mode"
+	flagMaxFailuresKey   = "max-failures"
 )
+
+const (
+	flagAdminPasswordUsage = "dash admin password bcrypt hash"
+	flagBackupDirUsage     = "backup directory"
+	flagListenAddrUsage    = "listen address"
+	flagAppNameUsage       = "app name"
+	flagEnableSQLLogUsage  = "enable sql log"
+	flagDaemonModeUsage    = "1: run with master process, otherwise run worker directly"
+	flagMaxFailuresUsage   = "max consecutive worker failures before master exits (<=0 means unlimited)"
+)
+
+var (
+	flagAdminPassword = flag.String(flagAdminPasswordKey, "", flagAdminPasswordUsage)
+	flagBackupDir     = flag.String(flagBackupDirKey, defaultBackupDir, flagBackupDirUsage)
+	flagListenAddr    = flag.String(flagListenAddrKey, defaultListenAddr, flagListenAddrUsage)
+	flagAppName       = flag.String(flagAppNameKey, defaultAppName, flagAppNameUsage)
+	flagEnableSQLLog  = flag.Bool(flagEnableSQLLogKey, config.EnableSQLLog, flagEnableSQLLogUsage)
+	flagDaemonMode    = flag.Int(flagDaemonModeKey, defaultDaemonMode, flagDaemonModeUsage)
+	flagDemonMode     = flag.Int(flagDemonModeKey, defaultDaemonMode, flagDaemonModeUsage+" (deprecated alias)")
+	flagMaxFailures   = flag.Int(flagMaxFailuresKey, defaultMaxFailures, flagMaxFailuresUsage)
+)
+
+type mainConfig struct {
+	AppConfig   types.AppConfig
+	DaemonMode  bool
+	MaxFailures int
+}
+
+func runCLI(args []string, stdout io.Writer, stderr io.Writer) int {
+	handled, exitCode := runUtilityCommand(args, stdout, stderr)
+	if handled {
+		return exitCode
+	}
+
+	cfg, err := parseMainConfig(args)
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			_, _ = fmt.Fprint(stdout, cliUsage())
+			return 0
+		}
+		_, _ = fmt.Fprintf(stderr, "%v\n\n%s", err, cliUsage())
+		return 2
+	}
+
+	if err := runSupervisor(supervisorConfig{
+		DaemonMode:  cfg.DaemonMode,
+		MaxFailures: cfg.MaxFailures,
+		MasterTitle: "swaves: master process",
+		WorkerTitle: "swaves: worker process",
+		Args:        args,
+		Worker: func() error {
+			return runSwavesWorker(cfg.AppConfig)
+		},
+	}); err != nil {
+		logger.Fatal("%v", err)
+	}
+
+	return 0
+}
 
 func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool, int) {
 	if len(args) == 0 {
@@ -149,14 +215,18 @@ func setAdminPassword(sqliteFile string, raw string) (string, error) {
 }
 
 func parseAppConfig(args []string) (types.AppConfig, error) {
-	cfg := types.AppConfig{
-		BackupDir:    "backups",
-		ListenAddr:   ":3000",
-		AppName:      "swaves",
-		EnableSQLLog: config.EnableSQLLog,
+	cfg, err := parseMainConfig(args)
+	return cfg.AppConfig, err
+}
+
+func parseMainConfig(args []string) (mainConfig, error) {
+	cfg := mainConfig{
+		AppConfig:   defaultAppConfig(),
+		DaemonMode:  defaultDaemonMode == 1,
+		MaxFailures: defaultMaxFailures,
 	}
 
-	if err := applyEnvAppConfig(&cfg); err != nil {
+	if err := applyEnvAppConfig(&cfg.AppConfig); err != nil {
 		return cfg, err
 	}
 
@@ -167,86 +237,75 @@ func parseAppConfig(args []string) (types.AppConfig, error) {
 		}
 	}
 
-	flagArgs := args
-	if len(args) > 0 {
-		firstArg := strings.TrimSpace(args[0])
-		if firstArg != "" && !strings.HasPrefix(firstArg, "-") {
-			cfg.SqliteFile = firstArg
-			flagArgs = args[1:]
-		}
+	flagArgs := consumeSQLitePositionalArg(&cfg.AppConfig, args)
+	daemonMode := defaultDaemonMode
+	if !cfg.DaemonMode {
+		daemonMode = 0
 	}
 
-	fs := flag.NewFlagSet("swaves", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	fs.StringVar(&cfg.AdminPassword, "admin-password", cfg.AdminPassword, "dash admin password bcrypt hash")
-	fs.StringVar(&cfg.BackupDir, "backup-dir", cfg.BackupDir, "backup directory")
-	fs.StringVar(&cfg.ListenAddr, "listen-addr", cfg.ListenAddr, "listen address")
-	fs.StringVar(&cfg.AppName, "app-name", cfg.AppName, "app name")
-	fs.BoolVar(&cfg.EnableSQLLog, "enable-sql-log", cfg.EnableSQLLog, "enable sql log")
-	var ignoredDemonMode int
-	var ignoredMaxFailures int
-	fs.IntVar(&ignoredDemonMode, "demon-mode", 1, "1: run with master process, otherwise run worker directly")
-	fs.IntVar(&ignoredMaxFailures, "max-failures", 5, "max consecutive worker failures before master exits (<=0 means unlimited)")
-
+	fs := newMainFlagSet(&cfg, &daemonMode)
 	if err := fs.Parse(flagArgs); err != nil {
 		return cfg, err
 	}
 	if fs.NArg() > 0 {
 		return cfg, fmt.Errorf("unexpected extra arguments: %s", strings.Join(fs.Args(), " "))
 	}
-	if strings.TrimSpace(cfg.SqliteFile) == "" {
+	if daemonMode != 0 && daemonMode != 1 {
+		return cfg, fmt.Errorf("%s must be 0 or 1", flagDaemonModeKey)
+	}
+
+	normalizeAppConfig(&cfg.AppConfig)
+	cfg.DaemonMode = daemonMode == 1
+	if cfg.AppConfig.SqliteFile == "" {
 		return cfg, errors.New("sqlite file is required")
 	}
 
 	return cfg, nil
 }
 
-func parseMainAppConfig(args []string) (types.AppConfig, error) {
-	cfg := types.AppConfig{
-		BackupDir:    "backups",
-		ListenAddr:   ":3000",
-		AppName:      "swaves",
+func defaultAppConfig() types.AppConfig {
+	return types.AppConfig{
+		BackupDir:    defaultBackupDir,
+		ListenAddr:   defaultListenAddr,
+		AppName:      defaultAppName,
 		EnableSQLLog: config.EnableSQLLog,
 	}
+}
 
-	if err := applyEnvAppConfig(&cfg); err != nil {
-		return cfg, err
+func consumeSQLitePositionalArg(cfg *types.AppConfig, args []string) []string {
+	if len(args) == 0 {
+		return args
 	}
 
-	*flagAdminPassword = cfg.AdminPassword
-	*flagBackupDir = cfg.BackupDir
-	*flagListenAddr = cfg.ListenAddr
-	*flagAppName = cfg.AppName
-	*flagEnableSQLLog = cfg.EnableSQLLog
-
-	flagArgs := args
-	if len(args) > 0 {
-		firstArg := strings.TrimSpace(args[0])
-		if firstArg != "" && !strings.HasPrefix(firstArg, "-") {
-			cfg.SqliteFile = firstArg
-			flagArgs = args[1:]
-		}
+	firstArg := strings.TrimSpace(args[0])
+	if firstArg == "" || strings.HasPrefix(firstArg, "-") {
+		return args
 	}
 
-	flag.CommandLine.SetOutput(io.Discard)
-	if err := flag.CommandLine.Parse(flagArgs); err != nil {
-		return cfg, err
-	}
-	if flag.CommandLine.NArg() > 0 {
-		return cfg, fmt.Errorf("unexpected extra arguments: %s", strings.Join(flag.CommandLine.Args(), " "))
-	}
+	cfg.SqliteFile = firstArg
+	return args[1:]
+}
 
-	cfg.AdminPassword = strings.TrimSpace(*flagAdminPassword)
-	cfg.BackupDir = strings.TrimSpace(*flagBackupDir)
-	cfg.ListenAddr = strings.TrimSpace(*flagListenAddr)
-	cfg.AppName = strings.TrimSpace(*flagAppName)
-	cfg.EnableSQLLog = *flagEnableSQLLog
+func newMainFlagSet(cfg *mainConfig, daemonMode *int) *flag.FlagSet {
+	fs := flag.NewFlagSet("swaves", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.StringVar(&cfg.AppConfig.AdminPassword, flagAdminPasswordKey, cfg.AppConfig.AdminPassword, flagAdminPasswordUsage)
+	fs.StringVar(&cfg.AppConfig.BackupDir, flagBackupDirKey, cfg.AppConfig.BackupDir, flagBackupDirUsage)
+	fs.StringVar(&cfg.AppConfig.ListenAddr, flagListenAddrKey, cfg.AppConfig.ListenAddr, flagListenAddrUsage)
+	fs.StringVar(&cfg.AppConfig.AppName, flagAppNameKey, cfg.AppConfig.AppName, flagAppNameUsage)
+	fs.BoolVar(&cfg.AppConfig.EnableSQLLog, flagEnableSQLLogKey, cfg.AppConfig.EnableSQLLog, flagEnableSQLLogUsage)
+	fs.IntVar(daemonMode, flagDaemonModeKey, *daemonMode, flagDaemonModeUsage)
+	fs.IntVar(daemonMode, flagDemonModeKey, *daemonMode, flagDaemonModeUsage)
+	fs.IntVar(&cfg.MaxFailures, flagMaxFailuresKey, cfg.MaxFailures, flagMaxFailuresUsage)
+	return fs
+}
 
-	if strings.TrimSpace(cfg.SqliteFile) == "" {
-		return cfg, errors.New("sqlite file is required")
-	}
-
-	return cfg, nil
+func normalizeAppConfig(cfg *types.AppConfig) {
+	cfg.SqliteFile = strings.TrimSpace(cfg.SqliteFile)
+	cfg.AdminPassword = strings.TrimSpace(cfg.AdminPassword)
+	cfg.BackupDir = strings.TrimSpace(cfg.BackupDir)
+	cfg.ListenAddr = strings.TrimSpace(cfg.ListenAddr)
+	cfg.AppName = strings.TrimSpace(cfg.AppName)
 }
 
 func applyEnvAppConfig(cfg *types.AppConfig) error {
@@ -297,7 +356,7 @@ func cliUsage() string {
 Usage:
   swaves hash-password <raw-password>
   swaves set-admin-password <sqlite-file> <raw-password>
-  swaves <sqlite-file> --admin-password=<bcrypt-hash> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>] [--demon-mode=<0|1>] [--max-failures=<n>]
+  swaves <sqlite-file> --admin-password=<bcrypt-hash> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>] [--daemon-mode=<0|1>] [--max-failures=<n>]
 
 Environment:
   SWAVES_SQLITE_FILE
@@ -312,6 +371,7 @@ Priority:
   command line > environment variables > defaults
 
 Notes:
+  --demon-mode remains supported as a deprecated alias of --daemon-mode.
   set-admin-password updates settings.dash_password in the sqlite file and prints the stored bcrypt hash.
   App startup syncs settings.dash_password from --admin-password / SWAVES_ADMIN_PASSWORD.
   SWAVES_ENSURE_DEFAULT_SETTINGS=true only enables EnsureDefaultSettings when SWAVES_ENV=dev.
