@@ -37,6 +37,8 @@ func main() {
 	if err := supervisor.Run(supervisor.Config{
 		DaemonMode:  *flagDemonMode == 1,
 		MaxFailures: *flagMaxFailures,
+		MasterTitle: "swaves: master process",
+		WorkerTitle: "swaves: worker process",
 		Args:        args,
 		Worker: func() error {
 			return runSwavesWorker(appCfg)

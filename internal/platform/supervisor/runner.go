@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/proctitle"
 	"time"
 )
 
@@ -16,6 +17,8 @@ type Config struct {
 	MaxFailures   int
 	RestartDelay  time.Duration
 	WorkerModeEnv string
+	MasterTitle   string
+	WorkerTitle   string
 	Args          []string
 	Worker        func() error
 }
@@ -31,10 +34,16 @@ func Run(cfg Config) error {
 	}
 
 	if os.Getenv(workerModeEnv) == "1" {
+		if strings.TrimSpace(cfg.WorkerTitle) != "" {
+			proctitle.Set(cfg.WorkerTitle)
+		}
 		return cfg.Worker()
 	}
 	if !cfg.DaemonMode {
 		return cfg.Worker()
+	}
+	if strings.TrimSpace(cfg.MasterTitle) != "" {
+		proctitle.Set(cfg.MasterTitle)
 	}
 
 	restartDelay := cfg.RestartDelay
