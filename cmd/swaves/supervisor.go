@@ -53,7 +53,7 @@ func runSupervisor(cfg supervisorConfig) error {
 	}
 
 	if os.Getenv(defaultWorkerModeEnv) == "1" {
-		if strings.TrimSpace(cfg.WorkerTitle) != "" {
+		if cfg.WorkerTitle != "" {
 			proctitle.Set(cfg.WorkerTitle)
 		}
 		return cfg.Worker()
@@ -61,30 +61,24 @@ func runSupervisor(cfg supervisorConfig) error {
 	if !cfg.DaemonMode {
 		return cfg.Worker()
 	}
-	if strings.TrimSpace(cfg.ListenAddr) == "" {
+	if cfg.ListenAddr == "" {
 		return fmt.Errorf("listen addr is required in daemon mode")
 	}
-	if strings.TrimSpace(cfg.MasterTitle) != "" {
+
+	normalizeSupervisorConfig(&cfg)
+
+	if cfg.MasterTitle != "" {
 		proctitle.Set(cfg.MasterTitle)
 	}
 
-	if cfg.RestartDelay <= 0 {
-		cfg.RestartDelay = 300 * time.Millisecond
-	}
-	if cfg.ReadyTimeout <= 0 {
-		cfg.ReadyTimeout = defaultWorkerReadyTimeout
-	}
-	if cfg.ShutdownTimeout <= 0 {
-		cfg.ShutdownTimeout = defaultWorkerStopTimeout
-	}
-
+	// master Listen port
 	ln, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed: %w", err)
 	}
 	defer func() { _ = ln.Close() }()
 
-	active, err := startReadyWorker(ln, cfg.Args, cfg.ReadyTimeout, cfg.ShutdownTimeout)
+	active, err := startReadyWorker(ln, cfg)
 	if err != nil {
 		return err
 	}
@@ -100,7 +94,7 @@ func runSupervisor(cfg supervisorConfig) error {
 			switch sig {
 			case syscall.SIGHUP:
 				logger.Info("[master] restart requested by signal: %s", sig)
-				next, err := restartWorker(active, ln, cfg.Args, cfg.ReadyTimeout, cfg.ShutdownTimeout)
+				next, err := restartWorker(active, ln, cfg)
 				if err != nil {
 					logger.Error("[master] restart worker failed: %v", err)
 					continue
@@ -123,7 +117,7 @@ func runSupervisor(cfg supervisorConfig) error {
 				logger.Info("[master] worker exited")
 			}
 			time.Sleep(cfg.RestartDelay)
-			next, startErr := startReadyWorker(ln, cfg.Args, cfg.ReadyTimeout, cfg.ShutdownTimeout)
+			next, startErr := startReadyWorker(ln, cfg)
 			if startErr != nil {
 				return startErr
 			}
@@ -132,24 +126,39 @@ func runSupervisor(cfg supervisorConfig) error {
 	}
 }
 
-func restartWorker(active *workerProcess, listener net.Listener, args []string, readyTimeout time.Duration, shutdownTimeout time.Duration) (*workerProcess, error) {
-	next, err := startReadyWorker(listener, args, readyTimeout, shutdownTimeout)
+func normalizeSupervisorConfig(cfg *supervisorConfig) {
+	if cfg == nil {
+		return
+	}
+	if cfg.RestartDelay <= 0 {
+		cfg.RestartDelay = 300 * time.Millisecond
+	}
+	if cfg.ReadyTimeout <= 0 {
+		cfg.ReadyTimeout = defaultWorkerReadyTimeout
+	}
+	if cfg.ShutdownTimeout <= 0 {
+		cfg.ShutdownTimeout = defaultWorkerStopTimeout
+	}
+}
+
+func restartWorker(active *workerProcess, listener net.Listener, cfg supervisorConfig) (*workerProcess, error) {
+	next, err := startReadyWorker(listener, cfg)
 	if err != nil {
 		return nil, err
 	}
-	if err := stopWorkerProcess(active, shutdownTimeout); err != nil {
+	if err := stopWorkerProcess(active, cfg.ShutdownTimeout); err != nil {
 		logger.Error("[master] stop previous worker failed: %v", err)
 	}
 	return next, nil
 }
 
-func startReadyWorker(listener net.Listener, args []string, readyTimeout time.Duration, shutdownTimeout time.Duration) (*workerProcess, error) {
-	worker, err := startWorkerProcess(listener, args)
+func startReadyWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, error) {
+	worker, err := startWorkerProcess(listener, cfg.Args)
 	if err != nil {
 		return nil, err
 	}
-	if err := waitWorkerReady(worker, readyTimeout); err != nil {
-		_ = stopWorkerProcess(worker, shutdownTimeout)
+	if err := waitWorkerReady(worker, cfg.ReadyTimeout); err != nil {
+		_ = stopWorkerProcess(worker, cfg.ShutdownTimeout)
 		return nil, err
 	}
 	return worker, nil
