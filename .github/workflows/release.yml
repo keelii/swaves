@@ -152,7 +152,6 @@ jobs:
           name: ${{ steps.meta.outputs.asset_basename }}
           path: |
             dist/*.tar.gz
-            dist/*.zip
             dist/*.sha256
           if-no-files-found: error
 
@@ -189,5 +188,4 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             artifacts/*.tar.gz
-            artifacts/*.zip
             artifacts/*.sha256
