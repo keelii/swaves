@@ -15,4 +15,7 @@ func TestStaticFSIncludesStaticFiles(t *testing.T) {
 	if _, err := fs.ReadFile(StaticFS(), "sui/sui.css"); err != nil {
 		t.Fatalf("read embedded static file failed: %v", err)
 	}
+	if _, err := fs.ReadFile(StaticFS(), "favicon.svg"); err != nil {
+		t.Fatalf("read embedded favicon failed: %v", err)
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/config"
@@ -17,40 +18,37 @@ import (
 )
 
 const (
-	defaultBackupDir     = "backups"
-	defaultListenAddr    = ":3000"
-	defaultAppName       = "swaves"
-	defaultDaemonMode    = 1
-	defaultMaxFailures   = 5
-	flagAdminPasswordKey = "admin-password"
-	flagBackupDirKey     = "backup-dir"
-	flagListenAddrKey    = "listen-addr"
-	flagAppNameKey       = "app-name"
-	flagEnableSQLLogKey  = "enable-sql-log"
-	flagDaemonModeKey    = "daemon-mode"
-	flagDemonModeKey     = "demon-mode"
-	flagMaxFailuresKey   = "max-failures"
+	defaultBackupDir    = "backups"
+	defaultListenAddr   = ":3000"
+	defaultAppName      = "swaves"
+	defaultDaemonMode   = 1
+	defaultMaxFailures  = 5
+	flagBackupDirKey    = "backup-dir"
+	flagListenAddrKey   = "listen-addr"
+	flagAppNameKey      = "app-name"
+	flagEnableSQLLogKey = "enable-sql-log"
+	flagDaemonModeKey   = "daemon-mode"
+	flagDemonModeKey    = "demon-mode"
+	flagMaxFailuresKey  = "max-failures"
 )
 
 const (
-	flagAdminPasswordUsage = "dash admin password bcrypt hash"
-	flagBackupDirUsage     = "backup directory"
-	flagListenAddrUsage    = "listen address"
-	flagAppNameUsage       = "app name"
-	flagEnableSQLLogUsage  = "enable sql log"
-	flagDaemonModeUsage    = "1: run with master process, otherwise run worker directly"
-	flagMaxFailuresUsage   = "max consecutive worker failures before master exits (<=0 means unlimited)"
+	flagBackupDirUsage    = "backup directory"
+	flagListenAddrUsage   = "listen address"
+	flagAppNameUsage      = "app name"
+	flagEnableSQLLogUsage = "enable sql log"
+	flagDaemonModeUsage   = "1: run with master process, otherwise run worker directly"
+	flagMaxFailuresUsage  = "max consecutive worker failures before master exits (<=0 means unlimited)"
 )
 
 var (
-	flagAdminPassword = flag.String(flagAdminPasswordKey, "", flagAdminPasswordUsage)
-	flagBackupDir     = flag.String(flagBackupDirKey, defaultBackupDir, flagBackupDirUsage)
-	flagListenAddr    = flag.String(flagListenAddrKey, defaultListenAddr, flagListenAddrUsage)
-	flagAppName       = flag.String(flagAppNameKey, defaultAppName, flagAppNameUsage)
-	flagEnableSQLLog  = flag.Bool(flagEnableSQLLogKey, config.EnableSQLLog, flagEnableSQLLogUsage)
-	flagDaemonMode    = flag.Int(flagDaemonModeKey, defaultDaemonMode, flagDaemonModeUsage)
-	flagDemonMode     = flag.Int(flagDemonModeKey, defaultDaemonMode, flagDaemonModeUsage+" (deprecated alias)")
-	flagMaxFailures   = flag.Int(flagMaxFailuresKey, defaultMaxFailures, flagMaxFailuresUsage)
+	flagBackupDir    = flag.String(flagBackupDirKey, defaultBackupDir, flagBackupDirUsage)
+	flagListenAddr   = flag.String(flagListenAddrKey, defaultListenAddr, flagListenAddrUsage)
+	flagAppName      = flag.String(flagAppNameKey, defaultAppName, flagAppNameUsage)
+	flagEnableSQLLog = flag.Bool(flagEnableSQLLogKey, config.EnableSQLLog, flagEnableSQLLogUsage)
+	flagDaemonMode   = flag.Int(flagDaemonModeKey, defaultDaemonMode, flagDaemonModeUsage)
+	flagDemonMode    = flag.Int(flagDemonModeKey, defaultDaemonMode, flagDaemonModeUsage+" (deprecated alias)")
+	flagMaxFailures  = flag.Int(flagMaxFailuresKey, defaultMaxFailures, flagMaxFailuresUsage)
 )
 
 type mainConfig struct {
@@ -72,6 +70,10 @@ func runCLI(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 0
 		}
 		_, _ = fmt.Fprintf(stderr, "%v\n\n%s", err, cliUsage())
+		return 2
+	}
+	if err := validateRuntimeMode(cfg, runtime.GOOS); err != nil {
+		_, _ = fmt.Fprintf(stderr, "%v\n", err)
 		return 2
 	}
 
@@ -97,6 +99,13 @@ func runCLI(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	return 0
+}
+
+func validateRuntimeMode(cfg mainConfig, goos string) error {
+	if cfg.DaemonMode && goos == "windows" {
+		return fmt.Errorf("%s=1 is not supported on Windows", flagDaemonModeKey)
+	}
+	return nil
 }
 
 func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool, int) {
@@ -156,7 +165,7 @@ func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool,
 		_, _ = fmt.Fprintln(stdout, hashed)
 		_, _ = fmt.Fprintf(
 			stderr,
-			"updated settings.dash_password in %s\nnote: app startup will sync settings.dash_password from --admin-password / SWAVES_ADMIN_PASSWORD\n",
+			"updated settings.dash_password in %s\n",
 			args[1],
 		)
 		return true, 0
@@ -297,7 +306,6 @@ func consumeSQLitePositionalArg(cfg *types.AppConfig, args []string) []string {
 func newMainFlagSet(cfg *mainConfig, daemonMode *int) *flag.FlagSet {
 	fs := flag.NewFlagSet("swaves", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	fs.StringVar(&cfg.AppConfig.AdminPassword, flagAdminPasswordKey, cfg.AppConfig.AdminPassword, flagAdminPasswordUsage)
 	fs.StringVar(&cfg.AppConfig.BackupDir, flagBackupDirKey, cfg.AppConfig.BackupDir, flagBackupDirUsage)
 	fs.StringVar(&cfg.AppConfig.ListenAddr, flagListenAddrKey, cfg.AppConfig.ListenAddr, flagListenAddrUsage)
 	fs.StringVar(&cfg.AppConfig.AppName, flagAppNameKey, cfg.AppConfig.AppName, flagAppNameUsage)
@@ -310,7 +318,6 @@ func newMainFlagSet(cfg *mainConfig, daemonMode *int) *flag.FlagSet {
 
 func normalizeAppConfig(cfg *types.AppConfig) {
 	cfg.SqliteFile = strings.TrimSpace(cfg.SqliteFile)
-	cfg.AdminPassword = strings.TrimSpace(cfg.AdminPassword)
 	cfg.BackupDir = strings.TrimSpace(cfg.BackupDir)
 	cfg.ListenAddr = strings.TrimSpace(cfg.ListenAddr)
 	cfg.AppName = strings.TrimSpace(cfg.AppName)
@@ -323,9 +330,6 @@ func applyEnvAppConfig(cfg *types.AppConfig) error {
 
 	if value, ok := lookupTrimmedEnv("SWAVES_SQLITE_FILE"); ok {
 		cfg.SqliteFile = value
-	}
-	if value, ok := lookupTrimmedEnv("SWAVES_ADMIN_PASSWORD"); ok {
-		cfg.AdminPassword = value
 	}
 	if value, ok := lookupTrimmedEnv("SWAVES_BACKUP_DIR"); ok {
 		cfg.BackupDir = value
@@ -364,11 +368,10 @@ func cliUsage() string {
 Usage:
   swaves hash-password <raw-password>
   swaves set-admin-password <sqlite-file> <raw-password>
-  swaves <sqlite-file> --admin-password=<bcrypt-hash> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>] [--daemon-mode=<0|1>] [--max-failures=<n>]
+  swaves <sqlite-file> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>] [--daemon-mode=<0|1>] [--max-failures=<n>]
 
 Environment:
   SWAVES_SQLITE_FILE
-  SWAVES_ADMIN_PASSWORD
   SWAVES_BACKUP_DIR
   SWAVES_LISTEN_ADDR
   SWAVES_APP_NAME
@@ -381,14 +384,13 @@ Priority:
 Notes:
   --demon-mode remains supported as a deprecated alias of --daemon-mode.
   set-admin-password updates settings.dash_password in the sqlite file and prints the stored bcrypt hash.
-  App startup syncs settings.dash_password from --admin-password / SWAVES_ADMIN_PASSWORD.
   SWAVES_ENSURE_DEFAULT_SETTINGS=true only enables EnsureDefaultSettings when SWAVES_ENV=dev.
 
 Examples:
   ./swaves hash-password admin
   ./swaves set-admin-password data.sqlite admin
-  ./swaves data.sqlite --admin-password='$2a$10$exampleexampleexampleexampleexampleexampleexampleexample'
-  SWAVES_SQLITE_FILE=data.sqlite SWAVES_ADMIN_PASSWORD='$2a$10$exampleexampleexampleexampleexampleexampleexampleexample' ./swaves
+  ./swaves data.sqlite --listen-addr=:3000
+  SWAVES_SQLITE_FILE=data.sqlite SWAVES_LISTEN_ADDR=:3000 ./swaves
 `) + "\n"
 }
 
@@ -409,8 +411,7 @@ Usage:
 
 Notes:
   Updates settings.dash_password in the sqlite file.
-  Prints the stored bcrypt hash so you can reuse it for --admin-password or SWAVES_ADMIN_PASSWORD.
-  App startup syncs settings.dash_password from --admin-password / SWAVES_ADMIN_PASSWORD.
+  Prints the stored bcrypt hash after update.
 
 Example:
   ./swaves set-admin-password data.sqlite admin

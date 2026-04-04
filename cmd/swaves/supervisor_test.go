@@ -31,15 +31,14 @@ func TestRunSupervisorWorkerModeUsesWorkerDirectly(t *testing.T) {
 	}
 }
 
-func TestRunSupervisorNonDaemonUsesWorkerDirectly(t *testing.T) {
-	expected := errors.New("worker failed")
+func TestRunSupervisorRequiresDaemonMode(t *testing.T) {
 	err := runSupervisor(supervisorConfig{
 		DaemonMode: false,
 		Worker: func() error {
-			return expected
+			return nil
 		},
 	})
-	if !errors.Is(err, expected) {
+	if err == nil || err.Error() != "daemon mode is required" {
 		t.Fatalf("unexpected err=%v", err)
 	}
 }

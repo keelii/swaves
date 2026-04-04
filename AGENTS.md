@@ -63,7 +63,7 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - For modules/pages, prioritize component-layer consistency and reuse existing generic components (for example data list/table list pages) instead of rebuilding per-module list pages.
 
 ### SEditor (ProseMirror) v1 scope
-- `web/static/seditor/` is a standalone editor workspace and only exports one public init API.
+- `web/seditor/` is a standalone editor workspace and only exports one public init API.
 - Bundle editor with esbuild into a single JS artifact for integration.
 - Current integration route is `/sui/post_edit` (`sui.post_edit`).
 - v1 supports minimal markdown WYSIWYG: bold, italic, heading (`###` style), blockquote, ordered/unordered list.

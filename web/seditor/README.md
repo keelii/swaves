@@ -8,7 +8,7 @@ global init API.
 From the repository root:
 
 ```bash
-cd web/static/seditor
+cd web/seditor
 npm install
 npm run build
 ```
@@ -16,7 +16,7 @@ npm run build
 This produces:
 
 - `web/static/seditor/dist/seditor.js`
-- `web/static/seditor/dist/seditor.js.map`
+- `web/static/seditor/dist/seditor.min.js`
 
 ## Use (minimal)
 

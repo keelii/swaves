@@ -163,7 +163,6 @@ func TestRunUtilityCommandTopLevelHelp(t *testing.T) {
 func TestParseAppConfigSupportsPositionalSQLiteAndFlags(t *testing.T) {
 	cfg, err := parseAppConfig([]string{
 		"data.sqlite",
-		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
 		"--backup-dir=my-backups",
 		"--listen-addr=:4321",
 		"--app-name=swaves-local",
@@ -175,9 +174,6 @@ func TestParseAppConfigSupportsPositionalSQLiteAndFlags(t *testing.T) {
 
 	if cfg.SqliteFile != "data.sqlite" {
 		t.Fatalf("unexpected sqlite file: %q", cfg.SqliteFile)
-	}
-	if cfg.AdminPassword != "$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd" {
-		t.Fatalf("unexpected admin password: %q", cfg.AdminPassword)
 	}
 	if cfg.BackupDir != "my-backups" {
 		t.Fatalf("unexpected backup dir: %q", cfg.BackupDir)
@@ -195,7 +191,6 @@ func TestParseAppConfigSupportsPositionalSQLiteAndFlags(t *testing.T) {
 
 func TestParseAppConfigSupportsEnvironmentVariables(t *testing.T) {
 	t.Setenv("SWAVES_SQLITE_FILE", "env.sqlite")
-	t.Setenv("SWAVES_ADMIN_PASSWORD", "$2a$10$envhashenvhashenvhashenvhashenvhashenvhashenvhash")
 	t.Setenv("SWAVES_BACKUP_DIR", "env-backups")
 	t.Setenv("SWAVES_LISTEN_ADDR", ":5678")
 	t.Setenv("SWAVES_APP_NAME", "swaves-env")
@@ -208,9 +203,6 @@ func TestParseAppConfigSupportsEnvironmentVariables(t *testing.T) {
 
 	if cfg.SqliteFile != "env.sqlite" {
 		t.Fatalf("unexpected sqlite file: %q", cfg.SqliteFile)
-	}
-	if cfg.AdminPassword != "$2a$10$envhashenvhashenvhashenvhashenvhashenvhashenvhash" {
-		t.Fatalf("unexpected admin password: %q", cfg.AdminPassword)
 	}
 	if cfg.BackupDir != "env-backups" {
 		t.Fatalf("unexpected backup dir: %q", cfg.BackupDir)
@@ -228,7 +220,6 @@ func TestParseAppConfigSupportsEnvironmentVariables(t *testing.T) {
 
 func TestParseAppConfigFlagsOverrideEnvironmentVariables(t *testing.T) {
 	t.Setenv("SWAVES_SQLITE_FILE", "env.sqlite")
-	t.Setenv("SWAVES_ADMIN_PASSWORD", "$2a$10$envhashenvhashenvhashenvhashenvhashenvhashenvhash")
 	t.Setenv("SWAVES_BACKUP_DIR", "env-backups")
 	t.Setenv("SWAVES_LISTEN_ADDR", ":5678")
 	t.Setenv("SWAVES_APP_NAME", "swaves-env")
@@ -236,7 +227,6 @@ func TestParseAppConfigFlagsOverrideEnvironmentVariables(t *testing.T) {
 
 	cfg, err := parseAppConfig([]string{
 		"cli.sqlite",
-		"--admin-password=$2a$10$clihashclihashclihashclihashclihashclihashclihashc",
 		"--backup-dir=cli-backups",
 		"--listen-addr=:9999",
 		"--app-name=swaves-cli",
@@ -248,9 +238,6 @@ func TestParseAppConfigFlagsOverrideEnvironmentVariables(t *testing.T) {
 
 	if cfg.SqliteFile != "cli.sqlite" {
 		t.Fatalf("unexpected sqlite file: %q", cfg.SqliteFile)
-	}
-	if cfg.AdminPassword != "$2a$10$clihashclihashclihashclihashclihashclihashclihashc" {
-		t.Fatalf("unexpected admin password: %q", cfg.AdminPassword)
 	}
 	if cfg.BackupDir != "cli-backups" {
 		t.Fatalf("unexpected backup dir: %q", cfg.BackupDir)
@@ -269,7 +256,6 @@ func TestParseAppConfigFlagsOverrideEnvironmentVariables(t *testing.T) {
 func TestParseAppConfigUsesDefaultFlags(t *testing.T) {
 	cfg, err := parseAppConfig([]string{
 		"data.sqlite",
-		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
 	})
 	if err != nil {
 		t.Fatalf("parseAppConfig failed: %v", err)
@@ -290,11 +276,24 @@ func TestParseAppConfigUsesDefaultFlags(t *testing.T) {
 }
 
 func TestParseAppConfigRequiresSQLitePositionalArgument(t *testing.T) {
-	_, err := parseAppConfig([]string{"--admin-password=hash"})
+	_, err := parseAppConfig(nil)
 	if err == nil {
 		t.Fatal("expected missing sqlite file error")
 	}
 	if err.Error() != "sqlite file is required" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseAppConfigRejectsAdminPasswordFlag(t *testing.T) {
+	_, err := parseAppConfig([]string{
+		"data.sqlite",
+		"--admin-password=hash",
+	})
+	if err == nil {
+		t.Fatal("expected unknown flag error")
+	}
+	if !strings.Contains(err.Error(), "flag provided but not defined: -admin-password") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -309,7 +308,6 @@ func TestParseAppConfigReturnsHelp(t *testing.T) {
 func TestParseMainConfigParsesSupervisorFlags(t *testing.T) {
 	cfg, err := parseMainConfig([]string{
 		"data.sqlite",
-		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
 		"--daemon-mode=0",
 		"--max-failures=9",
 	})
@@ -328,7 +326,6 @@ func TestParseMainConfigParsesSupervisorFlags(t *testing.T) {
 func TestParseMainConfigSupportsLegacyDemonModeFlag(t *testing.T) {
 	cfg, err := parseMainConfig([]string{
 		"data.sqlite",
-		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
 		"--demon-mode=0",
 	})
 	if err != nil {
@@ -343,7 +340,6 @@ func TestParseMainConfigSupportsLegacyDemonModeFlag(t *testing.T) {
 func TestParseMainConfigRejectsInvalidDaemonMode(t *testing.T) {
 	_, err := parseMainConfig([]string{
 		"data.sqlite",
-		"--admin-password=$2a$10$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuvabcd",
 		"--daemon-mode=2",
 	})
 	if err == nil {
@@ -354,9 +350,25 @@ func TestParseMainConfigRejectsInvalidDaemonMode(t *testing.T) {
 	}
 }
 
+func TestValidateRuntimeModeRejectsWindowsDaemonMode(t *testing.T) {
+	err := validateRuntimeMode(mainConfig{DaemonMode: true}, "windows")
+	if err == nil {
+		t.Fatal("expected windows daemon mode error")
+	}
+	if err.Error() != "daemon-mode=1 is not supported on Windows" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateRuntimeModeAllowsNonWindowsDaemonMode(t *testing.T) {
+	err := validateRuntimeMode(mainConfig{DaemonMode: true}, "linux")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestParseAppConfigRejectsInvalidEnvBool(t *testing.T) {
 	t.Setenv("SWAVES_SQLITE_FILE", "env.sqlite")
-	t.Setenv("SWAVES_ADMIN_PASSWORD", "$2a$10$envhashenvhashenvhashenvhashenvhashenvhashenvhash")
 	t.Setenv("SWAVES_ENABLE_SQL_LOG", "not-bool")
 
 	_, err := parseAppConfig(nil)

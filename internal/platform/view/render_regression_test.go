@@ -585,6 +585,25 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	if out.Len() == 0 {
 		t.Fatalf("expected non-empty render output")
 	}
+	if !strings.Contains(out.String(), `/static/favicon.svg`) {
+		t.Fatalf("expected favicon link in site layout")
+	}
+}
+
+func TestRenderSUILayoutIncludesFavicon(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "sui/layout/base.html", map[string]any{})
+	if err != nil {
+		t.Fatalf("render sui layout failed: %v", err)
+	}
+	if !strings.Contains(out.String(), `/static/favicon.svg`) {
+		t.Fatalf("expected favicon link in sui layout")
+	}
 }
 
 func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {

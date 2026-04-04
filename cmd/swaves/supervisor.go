@@ -59,7 +59,7 @@ func runSupervisor(cfg supervisorConfig) error {
 		return cfg.Worker()
 	}
 	if !cfg.DaemonMode {
-		return cfg.Worker()
+		return fmt.Errorf("daemon mode is required")
 	}
 	if cfg.ListenAddr == "" {
 		return fmt.Errorf("listen addr is required in daemon mode")

@@ -20887,7 +20887,10 @@ var SEditor = (() => {
                   return;
                 }
                 insertImageNode(view, schema2, attrs2);
-              }).catch(function() {
+              }).catch(function(err) {
+                if (window.console && typeof window.console.warn === "function") {
+                  window.console.warn("image insertion failed", err);
+                }
               });
             });
             sequence.then(function() {
@@ -21053,4 +21056,3 @@ var SEditor = (() => {
   }
   return __toCommonJS(index_exports);
 })();
-//# sourceMappingURL=seditor.js.map

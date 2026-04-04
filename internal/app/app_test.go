@@ -16,18 +16,7 @@ import (
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
-	"golang.org/x/crypto/bcrypt"
 )
-
-func mustHashPassword(t *testing.T, raw string) string {
-	t.Helper()
-
-	hashed, err := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.DefaultCost)
-	if err != nil {
-		t.Fatalf("hash password failed: %v", err)
-	}
-	return string(hashed)
-}
 
 func prepareInstalledAppDB(t *testing.T, dbPath string) {
 	t.Helper()
@@ -46,10 +35,9 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.sqlite")
 	prepareInstalledAppDB(t, dbPath)
 	swv := NewApp(types.AppConfig{
-		SqliteFile:    dbPath,
-		AdminPassword: mustHashPassword(t, "dash"),
-		ListenAddr:    ":0",
-		AppName:       "swaves-test",
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
 	})
 	defer swv.Shutdown()
 
@@ -162,7 +150,7 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {
 	projectRoot := filepath.Join(t.TempDir(), "repo")
 	templatesDir := filepath.Join(projectRoot, "web", "templates")
-	nestedDir := filepath.Join(projectRoot, "web", "static", "seditor")
+	nestedDir := filepath.Join(projectRoot, "web", "seditor")
 
 	if err := os.MkdirAll(templatesDir, 0o755); err != nil {
 		t.Fatalf("create templates dir failed: %v", err)
@@ -201,10 +189,9 @@ func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {
 func TestInstallFlowRedirectsThenInitializesSettings(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "install.sqlite")
 	swv := NewApp(types.AppConfig{
-		SqliteFile:    dbPath,
-		AdminPassword: mustHashPassword(t, "runtime-secret"),
-		ListenAddr:    ":0",
-		AppName:       "swaves-test",
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
 	})
 	defer swv.Shutdown()
 
@@ -267,10 +254,9 @@ func TestInstallFlowRedirectsThenInitializesSettings(t *testing.T) {
 func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "install-fields.sqlite")
 	swv := NewApp(types.AppConfig{
-		SqliteFile:    dbPath,
-		AdminPassword: mustHashPassword(t, "runtime-secret"),
-		ListenAddr:    ":0",
-		AppName:       "swaves-test",
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
 	})
 	defer swv.Shutdown()
 
@@ -363,10 +349,9 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "install-site-url.sqlite")
 	swv := NewApp(types.AppConfig{
-		SqliteFile:    dbPath,
-		AdminPassword: mustHashPassword(t, "runtime-secret"),
-		ListenAddr:    ":0",
-		AppName:       "swaves-test",
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
 	})
 	defer swv.Shutdown()
 
