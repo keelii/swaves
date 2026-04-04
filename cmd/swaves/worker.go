@@ -20,16 +20,7 @@ func runSwavesWorker(appCfg types.AppConfig) error {
 	defer swv.Shutdown()
 
 	installWorkerReadyHook(swv.App)
-
-	shutdownCh := make(chan os.Signal, 1)
-	signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
-	defer signal.Stop(shutdownCh)
-	go func() {
-		<-shutdownCh
-		if err := swv.App.ShutdownWithTimeout(8 * time.Second); err != nil {
-			logger.Error("graceful shutdown failed: %v", err)
-		}
-	}()
+	installAppShutdownHook(swv.App)
 
 	listener, err := inheritedListenerFromEnv()
 	if err != nil {
@@ -46,6 +37,35 @@ func runSwavesWorker(appCfg types.AppConfig) error {
 		return err
 	}
 	return nil
+}
+
+func runSwavesApp(appCfg types.AppConfig) error {
+	swv := app.NewApp(appCfg)
+	defer swv.Shutdown()
+
+	installAppShutdownHook(swv.App)
+	listenCfg := fiber.ListenConfig{DisableStartupMessage: true}
+	logger.Info("%s listening on %s", swv.Config.AppName, swv.Config.ListenAddr)
+	if err := swv.App.Listen(swv.Config.ListenAddr, listenCfg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func installAppShutdownHook(appInstance *fiber.App) {
+	if appInstance == nil {
+		return
+	}
+
+	shutdownCh := make(chan os.Signal, 1)
+	signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-shutdownCh
+		signal.Stop(shutdownCh)
+		if err := appInstance.ShutdownWithTimeout(8 * time.Second); err != nil {
+			logger.Error("graceful shutdown failed: %v", err)
+		}
+	}()
 }
 
 func installWorkerReadyHook(appInstance *fiber.App) {

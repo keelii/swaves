@@ -20,6 +20,7 @@ const (
 	defaultWorkerModeEnv      = "SWAVES_RUN_MODE"
 	defaultWorkerStopTimeout  = 8 * time.Second
 	defaultWorkerReadyTimeout = 8 * time.Second
+	defaultWorkerRestartDelay = 300 * time.Millisecond
 	workerListenerFDEnv       = "SWAVES_LISTENER_FD"
 	workerReadyFDEnv          = "SWAVES_READY_FD"
 	workerReadyMessage        = "READY"
@@ -41,17 +42,16 @@ type supervisorConfig struct {
 }
 
 type workerProcess struct {
-	cmd      *exec.Cmd
-	exitErr  error
-	exitDone chan struct{}
-	readyCh  <-chan error
+	cmd     *exec.Cmd
+	done    chan struct{}
+	ready   chan error
+	exitErr error
 }
 
 func runSupervisor(cfg supervisorConfig) error {
 	if cfg.Worker == nil {
 		return fmt.Errorf("worker callback is required")
 	}
-
 	if os.Getenv(defaultWorkerModeEnv) == "1" {
 		if cfg.WorkerTitle != "" {
 			proctitle.Set(cfg.WorkerTitle)
@@ -66,19 +66,17 @@ func runSupervisor(cfg supervisorConfig) error {
 	}
 
 	normalizeSupervisorConfig(&cfg)
-
 	if cfg.MasterTitle != "" {
 		proctitle.Set(cfg.MasterTitle)
 	}
 
-	// master Listen port
 	ln, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed: %w", err)
 	}
 	defer func() { _ = ln.Close() }()
 
-	active, err := startReadyWorker(ln, cfg)
+	active, err := spawnWorker(ln, cfg)
 	if err != nil {
 		return err
 	}
@@ -87,41 +85,44 @@ func runSupervisor(cfg supervisorConfig) error {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(sigCh)
 
-	consecutiveFailures := 0
+	failures := 0
 	for {
 		select {
 		case sig := <-sigCh:
 			switch sig {
 			case syscall.SIGHUP:
 				logger.Info("[master] restart requested by signal: %s", sig)
-				next, err := restartWorker(active, ln, cfg)
+				next, err := spawnWorker(ln, cfg)
 				if err != nil {
 					logger.Error("[master] restart worker failed: %v", err)
 					continue
 				}
+				if err := stopWorkerProcess(active, cfg.ShutdownTimeout); err != nil {
+					logger.Error("[master] stop previous worker failed: %v", err)
+				}
 				active = next
-				consecutiveFailures = 0
+				failures = 0
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Info("[master] shutdown requested by signal: %s", sig)
 				return stopWorkerProcess(active, cfg.ShutdownTimeout)
 			}
-		case <-active.exitDone:
+		case <-active.done:
 			if active.exitErr != nil {
-				consecutiveFailures++
+				failures++
 				logger.Error("[master] worker exited: %v", active.exitErr)
-				if cfg.MaxFailures > 0 && consecutiveFailures >= cfg.MaxFailures {
-					return fmt.Errorf("worker failed %d times continuously, reached max-failures=%d", consecutiveFailures, cfg.MaxFailures)
+				if cfg.MaxFailures > 0 && failures >= cfg.MaxFailures {
+					return fmt.Errorf("worker failed %d times continuously, reached max-failures=%d", failures, cfg.MaxFailures)
 				}
 			} else {
-				consecutiveFailures = 0
+				failures = 0
 				logger.Info("[master] worker exited")
 			}
+
 			time.Sleep(cfg.RestartDelay)
-			next, startErr := startReadyWorker(ln, cfg)
-			if startErr != nil {
-				return startErr
+			active, err = spawnWorker(ln, cfg)
+			if err != nil {
+				return err
 			}
-			active = next
 		}
 	}
 }
@@ -131,7 +132,7 @@ func normalizeSupervisorConfig(cfg *supervisorConfig) {
 		return
 	}
 	if cfg.RestartDelay <= 0 {
-		cfg.RestartDelay = 300 * time.Millisecond
+		cfg.RestartDelay = defaultWorkerRestartDelay
 	}
 	if cfg.ReadyTimeout <= 0 {
 		cfg.ReadyTimeout = defaultWorkerReadyTimeout
@@ -141,30 +142,7 @@ func normalizeSupervisorConfig(cfg *supervisorConfig) {
 	}
 }
 
-func restartWorker(active *workerProcess, listener net.Listener, cfg supervisorConfig) (*workerProcess, error) {
-	next, err := startReadyWorker(listener, cfg)
-	if err != nil {
-		return nil, err
-	}
-	if err := stopWorkerProcess(active, cfg.ShutdownTimeout); err != nil {
-		logger.Error("[master] stop previous worker failed: %v", err)
-	}
-	return next, nil
-}
-
-func startReadyWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, error) {
-	worker, err := startWorkerProcess(listener, cfg.Args)
-	if err != nil {
-		return nil, err
-	}
-	if err := waitWorkerReady(worker, cfg.ReadyTimeout); err != nil {
-		_ = stopWorkerProcess(worker, cfg.ShutdownTimeout)
-		return nil, err
-	}
-	return worker, nil
-}
-
-func startWorkerProcess(listener net.Listener, args []string) (*workerProcess, error) {
+func spawnWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, error) {
 	listenerDup, err := listenerFile(listener)
 	if err != nil {
 		return nil, err
@@ -182,7 +160,7 @@ func startWorkerProcess(listener net.Listener, args []string) (*workerProcess, e
 		return nil, fmt.Errorf("resolve executable failed: %w", err)
 	}
 
-	cmd := exec.Command(execPath, args...)
+	cmd := exec.Command(execPath, cfg.Args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.ExtraFiles = []*os.File{listenerDup, readyWriter}
@@ -194,24 +172,40 @@ func startWorkerProcess(listener net.Listener, args []string) (*workerProcess, e
 	_ = readyWriter.Close()
 
 	worker := &workerProcess{
-		cmd:      cmd,
-		exitDone: make(chan struct{}),
+		cmd:   cmd,
+		done:  make(chan struct{}),
+		ready: make(chan error, 1),
 	}
 
 	go func() {
 		worker.exitErr = cmd.Wait()
-		close(worker.exitDone)
+		close(worker.done)
 	}()
 
-	readyCh := make(chan error, 1)
 	go func() {
-		defer close(readyCh)
-		readyCh <- readWorkerReady(readyReader)
+		defer close(worker.ready)
+		worker.ready <- readWorkerReady(readyReader)
 	}()
-	worker.readyCh = readyCh
 
 	logger.Info("[master] worker started pid=%d", cmd.Process.Pid)
-	return worker, nil
+
+	select {
+	case err := <-worker.ready:
+		if err != nil {
+			_ = stopWorkerProcess(worker, cfg.ShutdownTimeout)
+			return nil, err
+		}
+		logger.Info("[master] worker ready pid=%d", worker.cmd.Process.Pid)
+		return worker, nil
+	case <-worker.done:
+		if worker.exitErr != nil {
+			return nil, fmt.Errorf("worker exited before ready: %w", worker.exitErr)
+		}
+		return nil, fmt.Errorf("worker exited before ready")
+	case <-time.After(cfg.ReadyTimeout):
+		_ = stopWorkerProcess(worker, cfg.ShutdownTimeout)
+		return nil, fmt.Errorf("worker ready timeout after %s", cfg.ReadyTimeout)
+	}
 }
 
 func workerEnv() []string {
@@ -235,31 +229,6 @@ func readWorkerReady(reader *os.File) error {
 	return nil
 }
 
-func waitWorkerReady(worker *workerProcess, timeout time.Duration) error {
-	if worker == nil {
-		return fmt.Errorf("worker is required")
-	}
-	if timeout <= 0 {
-		timeout = defaultWorkerReadyTimeout
-	}
-
-	select {
-	case err := <-worker.readyCh:
-		if err != nil {
-			return err
-		}
-		logger.Info("[master] worker ready pid=%d", worker.cmd.Process.Pid)
-		return nil
-	case <-worker.exitDone:
-		if worker.exitErr != nil {
-			return fmt.Errorf("worker exited before ready: %w", worker.exitErr)
-		}
-		return fmt.Errorf("worker exited before ready")
-	case <-time.After(timeout):
-		return fmt.Errorf("worker ready timeout after %s", timeout)
-	}
-}
-
 func stopWorkerProcess(worker *workerProcess, timeout time.Duration) error {
 	if worker == nil || worker.cmd == nil || worker.cmd.Process == nil {
 		return nil
@@ -270,7 +239,7 @@ func stopWorkerProcess(worker *workerProcess, timeout time.Duration) error {
 	}
 
 	select {
-	case <-worker.exitDone:
+	case <-worker.done:
 		if worker.exitErr != nil {
 			return fmt.Errorf("worker exit after SIGTERM failed: %w", worker.exitErr)
 		}
@@ -280,7 +249,7 @@ func stopWorkerProcess(worker *workerProcess, timeout time.Duration) error {
 		if err := worker.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 			return fmt.Errorf("kill worker after timeout failed: %w", err)
 		}
-		<-worker.exitDone
+		<-worker.done
 		logger.Warn("[master] worker killed after timeout")
 		return nil
 	}

@@ -3,9 +3,8 @@ package main
 import (
 	"errors"
 	"net"
-	"os/exec"
+	"os"
 	"testing"
-	"time"
 )
 
 func TestRunSupervisorRequiresWorkerCallback(t *testing.T) {
@@ -57,17 +56,35 @@ func TestRunSupervisorDaemonRequiresListenAddr(t *testing.T) {
 	}
 }
 
-func TestWaitWorkerReadyReturnsExitError(t *testing.T) {
-	worker := &workerProcess{
-		cmd:      &exec.Cmd{},
-		exitErr:  errors.New("boom"),
-		exitDone: make(chan struct{}),
-		readyCh:  make(chan error),
-	}
-	close(worker.exitDone)
+func TestNormalizeSupervisorConfigAppliesDefaults(t *testing.T) {
+	cfg := supervisorConfig{}
 
-	err := waitWorkerReady(worker, 50*time.Millisecond)
-	if err == nil || err.Error() != "worker exited before ready: boom" {
+	normalizeSupervisorConfig(&cfg)
+
+	if cfg.RestartDelay != defaultWorkerRestartDelay {
+		t.Fatalf("unexpected restart delay=%s", cfg.RestartDelay)
+	}
+	if cfg.ReadyTimeout != defaultWorkerReadyTimeout {
+		t.Fatalf("unexpected ready timeout=%s", cfg.ReadyTimeout)
+	}
+	if cfg.ShutdownTimeout != defaultWorkerStopTimeout {
+		t.Fatalf("unexpected shutdown timeout=%s", cfg.ShutdownTimeout)
+	}
+}
+
+func TestReadWorkerReadyReturnsUnexpectedMessage(t *testing.T) {
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe failed: %v", err)
+	}
+
+	go func() {
+		_, _ = writer.WriteString("NOPE\n")
+		_ = writer.Close()
+	}()
+
+	err = readWorkerReady(reader)
+	if err == nil || err.Error() != `unexpected worker ready message: "NOPE"` {
 		t.Fatalf("unexpected err=%v", err)
 	}
 }

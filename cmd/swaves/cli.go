@@ -75,6 +75,13 @@ func runCLI(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 
+	if !cfg.DaemonMode && os.Getenv(defaultWorkerModeEnv) != "1" {
+		if err := runSwavesApp(cfg.AppConfig); err != nil {
+			logger.Fatal("%v", err)
+		}
+		return 0
+	}
+
 	if err := runSupervisor(supervisorConfig{
 		DaemonMode:  cfg.DaemonMode,
 		ListenAddr:  cfg.AppConfig.ListenAddr,
