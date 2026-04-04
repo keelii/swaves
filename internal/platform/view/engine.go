@@ -6,6 +6,7 @@ import (
 	"fmt"
 	HTML "html"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path"
@@ -27,6 +28,7 @@ import (
 
 type FiberView struct {
 	env           *minijinja.Environment
+	templateFS    fs.FS
 	templateRoot  string
 	clearOnRender bool
 	mu            sync.Mutex
@@ -106,8 +108,16 @@ var lucideSVGByName = map[string]string{
 }
 
 func NewViewEngine(dir string, reload bool) (fiber.Views, func(app *fiber.App)) {
+	return newViewEngine(dir, nil, reload)
+}
+
+func NewViewEngineFS(templateFS fs.FS, reload bool) (fiber.Views, func(app *fiber.App)) {
+	return newViewEngine("", templateFS, reload)
+}
+
+func newViewEngine(dir string, templateFS fs.FS, reload bool) (fiber.Views, func(app *fiber.App)) {
 	urlForStore := share.NewURLForStore()
-	view := newMiniJinjaView(dir, reload)
+	view := newMiniJinjaViewWithFS(dir, templateFS, reload)
 	registerViewFunc(view.env, urlForStore.URLFor)
 	initURLResolver := func(app *fiber.App) {
 		urlForStore.SetResolver(newURLForResolver(app))
@@ -116,14 +126,19 @@ func NewViewEngine(dir string, reload bool) (fiber.Views, func(app *fiber.App)) 
 }
 
 func newMiniJinjaView(templateRoot string, clearOnRender bool) *FiberView {
+	return newMiniJinjaViewWithFS(templateRoot, nil, clearOnRender)
+}
+
+func newMiniJinjaViewWithFS(templateRoot string, templateFS fs.FS, clearOnRender bool) *FiberView {
 	env := minijinja.NewEnvironment()
 	env.SetDebug(true)
 	env.SetUndefinedBehavior(minijinja.UndefinedLenient)
 	env.SetDebug(clearOnRender)
-	env.SetLoader(newMiniJinjaTemplateLoader(templateRoot))
+	env.SetLoader(newMiniJinjaTemplateLoader(templateRoot, templateFS))
 	env.SetPathJoinCallback(resolveTemplateImportPath)
 	return &FiberView{
 		env:           env,
+		templateFS:    templateFS,
 		templateRoot:  templateRoot,
 		clearOnRender: clearOnRender,
 	}
@@ -136,7 +151,7 @@ func (v *FiberView) Load() error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	templateNames, err := collectTemplateNames(v.templateRoot)
+	templateNames, err := collectTemplateNames(v.templateRoot, v.templateFS)
 	if err != nil {
 		return err
 	}
@@ -180,11 +195,21 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 	return tmpl.RenderToWrite(context, out)
 }
 
-func newMiniJinjaTemplateLoader(templateRoot string) minijinja.LoaderFunc {
+func newMiniJinjaTemplateLoader(templateRoot string, templateFS fs.FS) minijinja.LoaderFunc {
 	return func(name string) (string, error) {
 		normalizedName, err := normalizeTemplateName(name)
 		if err != nil {
 			return "", err
+		}
+		if templateFS != nil {
+			content, err := fs.ReadFile(templateFS, normalizedName)
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					return "", minijinja.NewError(minijinja.ErrTemplateNotFound, normalizedName)
+				}
+				return "", err
+			}
+			return string(content), nil
 		}
 
 		rootPath, err := filepath.Abs(templateRoot)
@@ -238,7 +263,29 @@ func resolveTemplateImportPath(name string, parent string) string {
 	return path.Clean(path.Join(parentDir, cleaned))
 }
 
-func collectTemplateNames(templateRoot string) ([]string, error) {
+func collectTemplateNames(templateRoot string, templateFS fs.FS) ([]string, error) {
+	if templateFS != nil {
+		var names []string
+		err := fs.WalkDir(templateFS, ".", func(filePath string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			if !strings.HasSuffix(entry.Name(), ".html") {
+				return nil
+			}
+			names = append(names, filepath.ToSlash(filePath))
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		sort.Strings(names)
+		return names, nil
+	}
+
 	rootPath, err := filepath.Abs(templateRoot)
 	if err != nil {
 		return nil, err

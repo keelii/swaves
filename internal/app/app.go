@@ -19,6 +19,7 @@ import (
 	"swaves/internal/platform/store"
 	"swaves/internal/platform/view"
 	"swaves/internal/shared/types"
+	webassets "swaves/web"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/recover"
@@ -48,8 +49,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	}
 
 	store.InitSettings(globalStore)
-	templateRoot := resolveProjectPath("web/templates")
-	viewEngine, initURLResolver := view.NewViewEngine(templateRoot, config.TemplateReload)
+	viewEngine, initURLResolver := newRuntimeViewEngine()
 
 	app := fiber.New(fiber.Config{
 		AppName:       appCfg.AppName,
@@ -76,7 +76,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		return nil
 	})
 
-	app.Use("/static", static.New(resolveProjectPath("web/static")))
+	app.Use("/static", newStaticMiddleware())
 	app.Use(recover.New())
 	app.Use(middleware.InstallGate("/install"))
 
@@ -101,6 +101,24 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		Store:  globalStore,
 		Config: &appCfg,
 	}
+}
+
+func newRuntimeViewEngine() (fiber.Views, func(app *fiber.App)) {
+	if config.TemplateReload {
+		templateRoot := resolveProjectPath("web/templates")
+		if pathExists(templateRoot) {
+			return view.NewViewEngine(templateRoot, true)
+		}
+	}
+	return view.NewViewEngineFS(webassets.TemplateFS(), false)
+}
+
+func newStaticMiddleware() fiber.Handler {
+	staticRoot := resolveProjectPath("web/static")
+	if config.TemplateReload && pathExists(staticRoot) {
+		return static.New(staticRoot)
+	}
+	return static.New("", static.Config{FS: webassets.StaticFS()})
 }
 
 func validateAppConfig(appCfg types.AppConfig) error {
@@ -157,6 +175,11 @@ func resolveProjectPath(path string) string {
 		return rel
 	}
 	return rel
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func findPathUpward(startDir, relPath string) (string, bool) {

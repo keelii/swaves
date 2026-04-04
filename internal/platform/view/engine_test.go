@@ -1,6 +1,7 @@
 package view
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -15,6 +16,13 @@ func TestMiniJinjaViewLoadTemplates(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
+	}
+}
+
+func TestMiniJinjaViewLoadTemplatesFromFS(t *testing.T) {
+	view, _ := NewViewEngineFS(os.DirFS(testTemplateRoot()), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates from fs failed: %v", err)
 	}
 }
 
