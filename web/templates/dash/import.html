@@ -1065,6 +1065,65 @@ document.addEventListener('DOMContentLoaded', function() {
     return params;
   }
 
+  async function saveImportRow(rowEl, options) {
+    var opts = options || {};
+    var payload;
+    var ret;
+    var result;
+    var errorMessage;
+    var requestErrMsg;
+
+    if (!rowEl) {
+      return false;
+    }
+
+    activeSaveRequests += 1;
+    setRowStatus(rowEl, 'running', opts.runningText || '保存中...');
+    setDisabled(rowEl, true);
+    payload = buildConfirmPayload(rowEl);
+
+    try {
+      ret = await sfetchJSON(saveItemURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
+        body: payload.toString()
+      });
+
+      result = ret.body;
+      if (!ret.ok || !result || !result.ok) {
+        errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
+        setRowStatus(rowEl, 'save-error', '保存失败', errorMessage);
+        if (opts.notify !== false) {
+          notify('保存失败：' + errorMessage, '', { variant: 'danger' });
+        }
+        return false;
+      }
+
+      if (result.item) {
+        applySavedItemToRow(rowEl, result.item);
+      }
+      setRowStatus(rowEl, 'saved', opts.successText || '已保存', opts.successDetail || '待确认导入');
+      if (opts.summaryText) {
+        setEditSummary(opts.summaryText, opts.summaryVariant || 'warning');
+      }
+      return true;
+    } catch (err) {
+      requestErrMsg = (err && err.message) ? err.message : '请求失败';
+      setRowStatus(rowEl, 'save-error', '保存失败', requestErrMsg);
+      if (opts.notify !== false) {
+        notify('保存失败：' + requestErrMsg, '', { variant: 'danger' });
+      }
+      return false;
+    } finally {
+      activeSaveRequests = Math.max(0, activeSaveRequests - 1);
+      if (!opts.keepDisabled) {
+        setDisabled(rowEl, false);
+      }
+    }
+  }
+
   function markRowAsDirty(rowEl) {
     var statusCell;
 
@@ -1241,8 +1300,7 @@ document.addEventListener('DOMContentLoaded', function() {
   editRows.addEventListener('click', async function(event) {
     var button = event.target.closest('[data-import-row-save-btn]');
     var rowEl;
-    var payload;
-    var result;
+    var saved;
 
     if (!button) {
       return;
@@ -1256,41 +1314,12 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    activeSaveRequests += 1;
-    setRowStatus(rowEl, 'running', '保存中...');
-
-    payload = buildConfirmPayload(rowEl);
-    setDisabled(rowEl, true);
-
-    try {
-      var ret = await sfetchJSON(saveItemURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-        },
-        body: payload.toString()
-      });
-
-      result = ret.body;
-      if (!ret.ok || !result || !result.ok) {
-        var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
-        setRowStatus(rowEl, 'save-error', '保存失败', errorMessage);
-        notify('保存失败：' + errorMessage, '', { variant: 'danger' });
-        return;
-      }
-
-      if (result.item) {
-        applySavedItemToRow(rowEl, result.item);
-      }
-      setRowStatus(rowEl, 'saved', '已保存', '待确认导入');
-      setEditSummary('单行保存成功，可继续编辑或直接确认导入全部记录。', 'warning');
-    } catch (err) {
-      var requestErrMsg = (err && err.message) ? err.message : '请求失败';
-      setRowStatus(rowEl, 'save-error', '保存失败', requestErrMsg);
-      notify('保存失败：' + requestErrMsg, '', { variant: 'danger' });
-    } finally {
-      activeSaveRequests = Math.max(0, activeSaveRequests - 1);
-      setDisabled(rowEl, false);
+    saved = await saveImportRow(rowEl, {
+      summaryText: '单行保存成功，可继续编辑或直接确认导入全部记录。',
+      summaryVariant: 'warning'
+    });
+    if (!saved) {
+      return;
     }
   });
 
@@ -1435,6 +1464,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var failCount;
     var failDetail;
     var failMessage;
+    var visibleRows;
+    var i;
+    var saved;
 
     if (isConfirming || isCancelling) {
       return;
@@ -1453,11 +1485,28 @@ document.addEventListener('DOMContentLoaded', function() {
     isConfirming = true;
     dropzone.classList.add('is-disabled');
     setDisabled(editPanel, true);
-    qsa('tr[data-import-item-row]', editRows).forEach(function(rowEl) {
-      setRowStatus(rowEl, 'running', '确认中...');
-    });
 
     try {
+      visibleRows = qsa('tr[data-import-item-row]', editRows);
+      if (visibleRows.length > 0) {
+        setEditSummary('正在保存当前页修改...', 'warning');
+      }
+      for (i = 0; i < visibleRows.length; i++) {
+        saved = await saveImportRow(visibleRows[i], {
+          notify: false,
+          keepDisabled: true,
+          successDetail: '待确认导入'
+        });
+        if (!saved) {
+          setEditSummary('确认导入前自动保存失败，请先修正当前页错误后重试。', 'error');
+          notify('确认导入前自动保存失败，请先修正当前页错误后重试。', '', { variant: 'danger' });
+          return;
+        }
+      }
+
+      visibleRows.forEach(function(rowEl) {
+        setRowStatus(rowEl, 'running', '确认中...');
+      });
       setEditSummary('正在确认导入全部待确认记录...', 'warning');
       var ret = await sfetchJSON(confirmAllURL, {
         method: 'POST',

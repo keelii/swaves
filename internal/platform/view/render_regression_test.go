@@ -122,6 +122,9 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 	if !strings.Contains(rendered, "<p>hello</p>") {
 		t.Fatalf("expected rendered html content")
 	}
+	if !strings.Contains(rendered, "/static/katex/katex.min.css") {
+		t.Fatalf("expected math assets on site post detail")
+	}
 }
 
 func TestRenderSitePostWithCommentTree(t *testing.T) {
@@ -594,6 +597,9 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `/static/favicon.svg`) {
 		t.Fatalf("expected favicon link in site layout")
+	}
+	if strings.Contains(out.String(), `/static/katex/katex.min.css`) {
+		t.Fatalf("expected site layout not to include math assets by default")
 	}
 }
 
