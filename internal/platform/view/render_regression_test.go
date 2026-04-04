@@ -261,6 +261,13 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 	if out.Len() == 0 {
 		t.Fatalf("expected non-empty render output")
 	}
+	rendered := out.String()
+	if !strings.Contains(rendered, `data-import-edit-status`) {
+		t.Fatalf("expected import row status cell")
+	}
+	if !strings.Contains(rendered, `data-import-row-retry-btn`) {
+		t.Fatalf("expected import retry button markup")
+	}
 }
 
 func TestRenderDashHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {

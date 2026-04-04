@@ -148,6 +148,45 @@
     white-space: nowrap;
   }
 
+  .import-row-actions {
+    display: grid;
+    gap: var(--app-gap-1);
+  }
+
+  .import-row-actions .ui-icon-btn {
+    width: 100%;
+  }
+
+  .import-row-status {
+    display: grid;
+    gap: 4px;
+  }
+
+  .import-row-status-label {
+    font-weight: 600;
+    color: var(--app-text);
+  }
+
+  .import-row-status-detail {
+    color: var(--app-text-soft);
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  td[data-import-edit-status][data-state="confirm-error"] .import-row-status-label,
+  td[data-import-edit-status][data-state="save-error"] .import-row-status-label {
+    color: var(--app-danger-fg);
+  }
+
+  td[data-import-edit-status][data-state="running"] .import-row-status-label {
+    color: var(--app-brand-fg);
+  }
+
+  td[data-import-edit-status][data-state="saved"] .import-row-status-label,
+  td[data-import-edit-status][data-state="success"] .import-row-status-label {
+    color: var(--app-success-fg);
+  }
+
   .import-field-stack {
     display: flex;
     flex-direction: column;
@@ -334,6 +373,7 @@ markdown 文章内容...</pre>
         <th>类型</th>
         <th>标签/分类</th>
         <th>内容（前 200 字）</th>
+        <th class="cell-status">状态</th>
         <th class="cell-action">操作</th>
       </tr>
       </thead>
@@ -370,6 +410,7 @@ markdown 文章内容...</pre>
 document.addEventListener('DOMContentLoaded', function() {
   var parseItemURL = {{ UrlFor('dash.import.parse_item') | tojson }};
   var saveItemURL = {{ UrlFor('dash.import.save_item') | tojson }};
+  var confirmItemURL = {{ UrlFor('dash.import.confirm_item') | tojson }};
   var confirmAllURL = {{ UrlFor('dash.import.confirm_all') | tojson }};
   var cancelItemURL = {{ UrlFor('dash.import.cancel') | tojson }};
   var baseCategoryOptions = [{% for category in allCategories %}
@@ -776,13 +817,78 @@ document.addEventListener('DOMContentLoaded', function() {
     return text;
   }
 
-  function setRowStatus(rowEl, state, text) {
+  function setRetryVisible(rowEl, visible) {
+    var button = qs('[data-import-row-retry-btn]', rowEl);
+    if (!button) {
+      return;
+    }
+    button.hidden = !visible;
+  }
+
+  function setRowStatus(rowEl, state, text, detail, allowRetry) {
     var cell = qs('[data-import-edit-status]', rowEl);
+    var label;
+    var detailEl;
+
     if (!cell) {
       return;
     }
     cell.setAttribute('data-state', state);
-    cell.textContent = text;
+    label = qs('.import-row-status-label', cell);
+    detailEl = qs('.import-row-status-detail', cell);
+    if (label) {
+      label.textContent = text;
+    } else {
+      cell.textContent = text;
+    }
+    if (detailEl) {
+      detailEl.textContent = String(detail || '');
+      detailEl.hidden = !detail;
+    }
+    setRetryVisible(rowEl, !!allowRetry);
+  }
+
+  function removeImportRow(rowEl) {
+    if (!rowEl) {
+      return;
+    }
+    rowEl.remove();
+    importingTotalCount = Math.max(0, importingTotalCount - 1);
+    syncEditEmptyState();
+  }
+
+  function parseConfirmAllFailure(raw) {
+    var text = String(raw || '').trim();
+    var match;
+
+    if (!text) {
+      return null;
+    }
+
+    match = text.match(/^ID=(\d+)(?:\((.*?)\))?:\s*(.+)$/);
+    if (!match) {
+      return null;
+    }
+
+    return {
+      postID: Number(match[1] || 0),
+      title: String(match[2] || ''),
+      error: String(match[3] || text)
+    };
+  }
+
+  function mapConfirmAllFailures(errors) {
+    var result = {};
+
+    (Array.isArray(errors) ? errors : []).forEach(function(item) {
+      var parsed = parseConfirmAllFailure(item);
+      if (!parsed || !parsed.postID) {
+        return;
+      }
+      result[parsed.postID] = parsed;
+    });
+
+    return result;
   }
 
   function applySavedItemToRow(rowEl, rawItem) {
@@ -1177,7 +1283,7 @@ document.addEventListener('DOMContentLoaded', function() {
       result = ret.body;
       if (!ret.ok || !result || !result.ok) {
         var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
-        setRowStatus(rowEl, 'error', '保存失败: ' + errorMessage);
+        setRowStatus(rowEl, 'save-error', '保存失败', errorMessage);
         notify('保存失败：' + errorMessage, '', { variant: 'danger' });
         return;
       }
@@ -1185,14 +1291,70 @@ document.addEventListener('DOMContentLoaded', function() {
       if (result.item) {
         applySavedItemToRow(rowEl, result.item);
       }
-      setRowStatus(rowEl, 'saved', '已保存（待确认）');
+      setRowStatus(rowEl, 'saved', '已保存', '待确认导入');
       setEditSummary('单行保存成功，可继续编辑或直接确认导入全部记录。', 'warning');
     } catch (err) {
       var requestErrMsg = (err && err.message) ? err.message : '请求失败';
-      setRowStatus(rowEl, 'error', '保存失败: ' + requestErrMsg);
+      setRowStatus(rowEl, 'save-error', '保存失败', requestErrMsg);
       notify('保存失败：' + requestErrMsg, '', { variant: 'danger' });
     } finally {
       activeSaveRequests = Math.max(0, activeSaveRequests - 1);
+      setDisabled(rowEl, false);
+    }
+  });
+
+  editRows.addEventListener('click', async function(event) {
+    var button = event.target.closest('[data-import-row-retry-btn]');
+    var rowEl;
+    var payload;
+    var result;
+
+    if (!button) {
+      return;
+    }
+    if (isParsing || isConfirming || isCancelling || button.disabled) {
+      return;
+    }
+
+    rowEl = button.closest('tr[data-import-item-row]');
+    if (!rowEl) {
+      return;
+    }
+
+    payload = buildConfirmPayload(rowEl);
+    setDisabled(rowEl, true);
+    setRowStatus(rowEl, 'running', '重试中...');
+
+    try {
+      var ret = await sfetchJSON(confirmItemURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
+        body: payload.toString()
+      });
+
+      result = ret.body;
+      if (!ret.ok || !result || !result.ok) {
+        var errorMessage = (result && result.error) ? result.error : ('HTTP ' + ret.status);
+        setRowStatus(rowEl, 'confirm-error', '导入失败', errorMessage, true);
+        notify('重试失败：' + errorMessage, '', { variant: 'danger' });
+        return;
+      }
+
+      removeImportRow(rowEl);
+      if (importingTotalCount <= 0) {
+        editPanel.hidden = true;
+        setEditSummary('所有待确认导入记录已完成。', 'success');
+      } else {
+        setEditSummary('重试成功，剩余待确认 ' + importingTotalCount + ' 条。', 'warning');
+      }
+      notify('重试成功，已完成该条导入。', '', { variant: 'success' });
+    } catch (err) {
+      var requestErrMsg = (err && err.message) ? err.message : '请求失败';
+      setRowStatus(rowEl, 'confirm-error', '导入失败', requestErrMsg, true);
+      notify('重试失败：' + requestErrMsg, '', { variant: 'danger' });
+    } finally {
       setDisabled(rowEl, false);
     }
   });
@@ -1300,6 +1462,9 @@ document.addEventListener('DOMContentLoaded', function() {
     isConfirming = true;
     dropzone.classList.add('is-disabled');
     setDisabled(editPanel, true);
+    qsa('tr[data-import-item-row]', editRows).forEach(function(rowEl) {
+      setRowStatus(rowEl, 'running', '确认中...');
+    });
 
     try {
       setEditSummary('正在确认导入全部待确认记录...', 'warning');
@@ -1339,11 +1504,30 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
+      var failuresByID = mapConfirmAllFailures(result.errors || []);
+      var visibleRows = qsa('tr[data-import-item-row]', editRows);
+      var visibleFailureCount = 0;
+
+      visibleRows.forEach(function(rowEl) {
+        var postID = Number(readField(rowEl, 'post_id') || 0);
+        var failure = failuresByID[postID];
+
+        if (failure) {
+          visibleFailureCount += 1;
+          setRowStatus(rowEl, 'confirm-error', '导入失败', failure.error, true);
+          return;
+        }
+
+        removeImportRow(rowEl);
+      });
+
       if (failCount === 0) {
         var doneMessage = '确认完成：共 ' + total + ' 条，成功导入 ' + successCount + ' 条。';
+        if (importingTotalCount <= 0) {
+          editPanel.hidden = true;
+        }
         setEditSummary(doneMessage, 'success');
         notify(doneMessage, '', { variant: 'success' });
-        goTo(buildImportPageURL(1));
         return;
       }
 
@@ -1352,9 +1536,11 @@ document.addEventListener('DOMContentLoaded', function() {
       if (failDetail) {
         failMessage += ' 失败详情：' + failDetail;
       }
+      if (visibleFailureCount === 0 && importingTotalCount > 0) {
+        failMessage += ' 当前页无失败记录，请刷新或切页查看剩余失败项。';
+      }
       setEditSummary(failMessage, 'error');
       notify(failMessage, '', { variant: 'danger' });
-      goTo(buildImportPageURL(1));
       return;
     } catch (err) {
       var requestErrMsg = (err && err.message) ? err.message : '请求失败';

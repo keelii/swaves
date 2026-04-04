@@ -34,7 +34,16 @@
       <div class="import-item-content">{% if Item.ContentPreview %}{{ Item.ContentPreview }}{% else %}-{% endif %}</div>
     </div>
   </td>
+  <td data-import-edit-status>
+    <div class="import-row-status">
+      <div class="import-row-status-label">待确认</div>
+      <div class="import-row-status-detail" hidden></div>
+    </div>
+  </td>
   <td data-import-edit-action>
-    {{ sui.IconButton("save", "保存", attrs='type="button" data-title="保存" data-import-row-save-btn') }}
+    <div class="import-row-actions">
+      {{ sui.IconButton("save", "保存", attrs='type="button" data-title="保存" data-import-row-save-btn') }}
+      {{ sui.IconButton("undo", "重试导入", attrs='type="button" data-title="重试导入" data-import-row-retry-btn hidden') }}
+    </div>
   </td>
 </tr>
