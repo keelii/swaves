@@ -79,14 +79,14 @@ jobs:
             arch: amd64
             ext: ''
             runner: ubuntu-latest
-          - os: windows
-            arch: amd64
-            ext: '.exe'
-            runner: windows-latest
-          - os: darwin
-            arch: arm64
-            ext: ''
-            runner: macos-latest
+          # - os: windows
+          #   arch: amd64
+          #   ext: '.exe'
+          #   runner: windows-latest
+          # - os: darwin
+          #   arch: arm64
+          #   ext: ''
+          #   runner: macos-latest
 
     steps:
       - name: Checkout

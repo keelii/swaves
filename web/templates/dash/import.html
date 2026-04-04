@@ -390,7 +390,7 @@ markdown 文章内容...</pre>
 </div>
 
 <template id="import-edit-row-template">
-  {% set Item = {"PostID": 0, "Filename": "", "Title": "", "Slug": "", "Content": "", "ContentPreview": "-", "Status": "draft", "Kind": "0", "CreatedAt": "", "CreatedAtUnix": 0, "Tags": "", "Category": "", "Categories": ""} %}
+  {% set Item = {"PostID": 0, "Filename": "", "Title": "", "Slug": "", "ContentPreview": "-", "Status": "draft", "Kind": "0", "CreatedAt": "", "CreatedAtUnix": 0, "Tags": "", "Category": "", "Categories": ""} %}
   {% include "dash/include/import_edit_row.html" %}
 </template>
 
@@ -636,7 +636,6 @@ document.addEventListener('DOMContentLoaded', function() {
       filename: String(raw.filename || raw.Filename || ''),
       title: String(raw.title || raw.Title || ''),
       slug: String(raw.slug || raw.Slug || ''),
-      content: String(raw.content || raw.Content || ''),
       content_preview: String(raw.content_preview || raw.ContentPreview || ''),
       status: status,
       kind: kind,
@@ -676,7 +675,6 @@ document.addEventListener('DOMContentLoaded', function() {
     rowField(rowEl, 'created_at').value = item.created_at;
     rowField(rowEl, 'tags').value = item.tags;
     rowField(rowEl, 'categories').value = item.categories;
-    rowField(rowEl, 'content').value = item.content;
 
     contentNode = qs('.import-item-content', rowEl);
     if (contentNode) {
@@ -912,7 +910,6 @@ document.addEventListener('DOMContentLoaded', function() {
     rowField(rowEl, 'created_at').value = item.created_at;
     rowField(rowEl, 'tags').value = item.tags;
     rowField(rowEl, 'categories').value = item.categories;
-    rowField(rowEl, 'content').value = item.content;
 
     statusName = 'import_status_' + item.post_id;
     statusValue = item.status === 'published' ? 'published' : 'draft';
@@ -1036,11 +1033,6 @@ document.addEventListener('DOMContentLoaded', function() {
     return String((field && field.value) || '').trim();
   }
 
-  function readFieldRaw(rowEl, fieldName) {
-    var field = rowField(rowEl, fieldName);
-    return String((field && field.value) || '');
-  }
-
   function readCheckedValue(rowEl, fieldName, fallbackValue) {
     var value = qs('[data-field="' + fieldName + '"]:checked', rowEl);
     if (!value || value.value == null || value.value === '') {
@@ -1062,7 +1054,6 @@ document.addEventListener('DOMContentLoaded', function() {
     params.set('filename', readField(rowEl, 'filename'));
     params.set('title', readField(rowEl, 'title'));
     params.set('slug', readField(rowEl, 'slug'));
-    params.set('content', readFieldRaw(rowEl, 'content'));
     params.set('status', readCheckedValue(rowEl, 'status', 'draft'));
     params.set('kind', readCheckedValue(rowEl, 'kind', '0'));
     params.set('created_at', readField(rowEl, 'created_at'));
@@ -1238,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   function handleRowFieldMutation(event) {
-    if (!event.target.matches('[data-field="title"], [data-field="slug"], [data-field="created_at"], [data-field="tags"], [data-field="categories"], [data-field="content"], [data-field="category"], [data-field="status"], [data-field="kind"]')) {
+    if (!event.target.matches('[data-field="title"], [data-field="slug"], [data-field="created_at"], [data-field="tags"], [data-field="categories"], [data-field="category"], [data-field="status"], [data-field="kind"]')) {
       return;
     }
     markRowAsDirty(event.target.closest('tr[data-import-item-row]'));

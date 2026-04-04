@@ -141,14 +141,18 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 		t.Fatalf("unexpected post /dash/import/parse-item status: %d", postResp.StatusCode)
 	}
 
+	parseBodyBytes, err := io.ReadAll(postResp.Body)
+	if err != nil {
+		t.Fatalf("read parse-item response failed: %v", err)
+	}
+
 	var parseResult struct {
 		OK   bool `json:"ok"`
 		Item struct {
-			Content        string `json:"content"`
 			ContentPreview string `json:"content_preview"`
 		} `json:"item"`
 	}
-	if err := json.NewDecoder(postResp.Body).Decode(&parseResult); err != nil {
+	if err := json.Unmarshal(parseBodyBytes, &parseResult); err != nil {
 		t.Fatalf("decode parse-item response failed: %v", err)
 	}
 	if !parseResult.OK {
@@ -157,11 +161,17 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	if parseResult.Item.ContentPreview == "" {
 		t.Fatal("expected parse-item response content preview")
 	}
-	if len(parseResult.Item.Content) >= len(sourceContent) {
-		t.Fatalf("expected parse-item response content to be truncated: got=%d want<%d", len(parseResult.Item.Content), len(sourceContent))
+
+	var parseBody map[string]any
+	if err := json.Unmarshal(parseBodyBytes, &parseBody); err != nil {
+		t.Fatalf("decode parse-item response map failed: %v", err)
 	}
-	if !strings.HasSuffix(parseResult.Item.Content, "...") {
-		t.Fatalf("expected parse-item response content suffix ..., got %q", parseResult.Item.Content[len(parseResult.Item.Content)-10:])
+	itemMap, ok := parseBody["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected item object in parse-item response")
+	}
+	if _, exists := itemMap["content"]; exists {
+		t.Fatal("expected parse-item response to omit content")
 	}
 
 	getReq := httptest.NewRequest("GET", "/dash/import/parse-item", nil)

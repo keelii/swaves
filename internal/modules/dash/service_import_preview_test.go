@@ -141,6 +141,12 @@ func TestSaveImportPreviewItemServicePersistsRowEdits(t *testing.T) {
 	if items[0].Status != "published" {
 		t.Fatalf("unexpected importing preview status: %q", items[0].Status)
 	}
+	if items[0].Content != "" {
+		t.Fatalf("expected importing list to omit full content")
+	}
+	if items[0].ContentPreview == "" {
+		t.Fatal("expected importing list content preview")
+	}
 }
 
 func TestConfirmAllImportingPreviewItemsServiceConfirmsAcrossPages(t *testing.T) {
@@ -216,5 +222,41 @@ func TestConfirmAllImportingPreviewItemsServiceConfirmsAcrossPages(t *testing.T)
 	}
 	if postC.Status != "draft" {
 		t.Fatalf("unexpected post C status: %q", postC.Status)
+	}
+}
+
+func TestSaveImportPreviewItemServiceKeepsExistingContentWhenFormOmitsContent(t *testing.T) {
+	dbx := newImportPreviewTestDB(t)
+
+	staged := mustStageImportingItem(t, dbx, PreviewPostItem{
+		Title:     "Keep Content",
+		Slug:      "keep-content",
+		Content:   "full body content",
+		Status:    "draft",
+		Kind:      "0",
+		CreatedAt: "2024-01-01 00:00:00",
+	})
+
+	saved, err := SaveImportPreviewItemService(dbx, PreviewPostItem{
+		PostID:    staged.PostID,
+		Title:     "Keep Content Updated",
+		Slug:      "keep-content-updated",
+		Status:    "draft",
+		Kind:      "0",
+		CreatedAt: "2024-01-01 00:00:00",
+	})
+	if err != nil {
+		t.Fatalf("save importing item failed: %v", err)
+	}
+	if saved.Content != "full body content" {
+		t.Fatalf("expected saved content to keep existing body, got %q", saved.Content)
+	}
+
+	post, err := db.GetPostByIDAnyStatus(dbx, staged.PostID)
+	if err != nil {
+		t.Fatalf("load saved post failed: %v", err)
+	}
+	if post.Content != "full body content" {
+		t.Fatalf("expected post content unchanged, got %q", post.Content)
 	}
 }

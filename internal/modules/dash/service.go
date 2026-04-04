@@ -1479,7 +1479,6 @@ type PreviewPostItem struct {
 }
 
 const importPreviewContentLimit = 200
-const importParseResponseContentLimit = 4000
 const importingPostStatus = "importing"
 
 func buildImportContentPreview(content string) string {
@@ -1492,14 +1491,6 @@ func buildImportContentPreview(content string) string {
 		return normalized
 	}
 	return string(runes[:importPreviewContentLimit]) + "..."
-}
-
-func buildImportResponseContent(content string) string {
-	runes := []rune(content)
-	if len(runes) <= importParseResponseContentLimit {
-		return content
-	}
-	return string(runes[:importParseResponseContentLimit]) + "..."
 }
 
 func appendUniqueTrimmed(items []string, value string) []string {
@@ -2117,12 +2108,12 @@ func ListImportingPreviewItemsService(dbx *db.DB, pager *types.Pagination) ([]Pr
 	}
 
 	querySQL := `
-		SELECT id, title, slug, content, kind, created_at, published_at
+		SELECT id, title, slug, substr(content, 1, ?), kind, created_at, published_at
 		FROM ` + string(db.TablePosts) + `
 		WHERE status = ? AND deleted_at IS NULL
 		ORDER BY created_at DESC, id DESC
 	`
-	queryArgs := []interface{}{importingPostStatus}
+	queryArgs := []interface{}{importPreviewContentLimit * 4, importingPostStatus}
 	if queryLimit > 0 {
 		querySQL += " LIMIT ? OFFSET ?"
 		queryArgs = append(queryArgs, queryLimit, queryOffset)
@@ -2138,6 +2129,7 @@ func ListImportingPreviewItemsService(dbx *db.DB, pager *types.Pagination) ([]Pr
 	for rows.Next() {
 		var (
 			item        PreviewPostItem
+			content     string
 			kind        db.PostKind
 			publishedAt int64
 		)
@@ -2145,7 +2137,7 @@ func ListImportingPreviewItemsService(dbx *db.DB, pager *types.Pagination) ([]Pr
 			&item.PostID,
 			&item.Title,
 			&item.Slug,
-			&item.Content,
+			&content,
 			&kind,
 			&item.CreatedAtUnix,
 			&publishedAt,
@@ -2154,7 +2146,7 @@ func ListImportingPreviewItemsService(dbx *db.DB, pager *types.Pagination) ([]Pr
 		}
 
 		item.CreatedAt = formatImportCreatedAt(item.CreatedAtUnix)
-		item.ContentPreview = buildImportContentPreview(item.Content)
+		item.ContentPreview = buildImportContentPreview(content)
 		if kind == db.PostKindPage {
 			item.Kind = "1"
 		} else {
@@ -2303,6 +2295,9 @@ func SaveImportPreviewItemService(dbx *db.DB, item PreviewPostItem) (PreviewPost
 		return item, err
 	}
 	normalizedItem.PostID = item.PostID
+	if strings.TrimSpace(normalizedItem.Content) == "" {
+		normalizedItem.Content = post.Content
+	}
 
 	if _, err = dbx.Exec(`
 		UPDATE `+string(db.TablePosts)+`
@@ -2336,6 +2331,9 @@ func ConfirmImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
 	normalizedItem, kind, createdAt, publishedAt, err := normalizeImportPreviewPersistFields(item, "018")
 	if err != nil {
 		return err
+	}
+	if strings.TrimSpace(normalizedItem.Content) == "" {
+		normalizedItem.Content = post.Content
 	}
 
 	if _, err = dbx.Exec(`
