@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http/httptest"
@@ -111,7 +112,8 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create form file failed: %v", err)
 	}
-	if _, err := part.Write([]byte("# title\n\ncontent")); err != nil {
+	sourceContent := "# title\n\n" + strings.Repeat("content ", 700)
+	if _, err := part.Write([]byte(sourceContent)); err != nil {
 		t.Fatalf("write markdown content failed: %v", err)
 	}
 	if err := writer.WriteField("title_source", "markdown"); err != nil {
@@ -134,6 +136,32 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	}
 	if postResp.StatusCode == fiber.StatusNotFound {
 		t.Fatalf("expected post /dash/import/parse-item route to exist")
+	}
+	if postResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected post /dash/import/parse-item status: %d", postResp.StatusCode)
+	}
+
+	var parseResult struct {
+		OK   bool `json:"ok"`
+		Item struct {
+			Content        string `json:"content"`
+			ContentPreview string `json:"content_preview"`
+		} `json:"item"`
+	}
+	if err := json.NewDecoder(postResp.Body).Decode(&parseResult); err != nil {
+		t.Fatalf("decode parse-item response failed: %v", err)
+	}
+	if !parseResult.OK {
+		t.Fatal("expected parse-item response ok=true")
+	}
+	if parseResult.Item.ContentPreview == "" {
+		t.Fatal("expected parse-item response content preview")
+	}
+	if len(parseResult.Item.Content) >= len(sourceContent) {
+		t.Fatalf("expected parse-item response content to be truncated: got=%d want<%d", len(parseResult.Item.Content), len(sourceContent))
+	}
+	if !strings.HasSuffix(parseResult.Item.Content, "...") {
+		t.Fatalf("expected parse-item response content suffix ..., got %q", parseResult.Item.Content[len(parseResult.Item.Content)-10:])
 	}
 
 	getReq := httptest.NewRequest("GET", "/dash/import/parse-item", nil)

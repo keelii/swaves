@@ -1479,6 +1479,7 @@ type PreviewPostItem struct {
 }
 
 const importPreviewContentLimit = 200
+const importParseResponseContentLimit = 4000
 const importingPostStatus = "importing"
 
 func buildImportContentPreview(content string) string {
@@ -1491,6 +1492,14 @@ func buildImportContentPreview(content string) string {
 		return normalized
 	}
 	return string(runes[:importPreviewContentLimit]) + "..."
+}
+
+func buildImportResponseContent(content string) string {
+	runes := []rune(content)
+	if len(runes) <= importParseResponseContentLimit {
+		return content
+	}
+	return string(runes[:importParseResponseContentLimit]) + "..."
 }
 
 func appendUniqueTrimmed(items []string, value string) []string {

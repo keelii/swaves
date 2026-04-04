@@ -297,7 +297,7 @@ func (h *Handler) PostImportParseItemHandler(c fiber.Ctx) error {
 			"post_id":         stagedItem.PostID,
 			"title":           stagedItem.Title,
 			"slug":            stagedItem.Slug,
-			"content":         stagedItem.Content,
+			"content":         buildImportResponseContent(stagedItem.Content),
 			"content_preview": stagedItem.ContentPreview,
 			"status":          stagedItem.Status,
 			"kind":            stagedItem.Kind,
