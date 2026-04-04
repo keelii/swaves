@@ -122,6 +122,7 @@ jobs:
           mkdir -p dist
           output="dist/${{ steps.meta.outputs.asset_basename }}${{ matrix.ext }}"
           go build -trimpath \
+            -buildvcs=false \
             -ldflags "-s -w" \
             -o "$output" ./cmd/swaves
 
