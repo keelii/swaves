@@ -505,7 +505,7 @@ var DefaultSettings = []Setting{
 	{Sort: 11, Kind: SettingKindSiteBasics, Name: "站点名称", Code: "site_name", Type: "text", Value: "Swaves", Description: "站点名称"},
 	{Sort: 12, Kind: SettingKindSiteBasics, Name: "站点标题", Code: "site_title", Type: "text", Value: "", Description: "站点标题"},
 	{Sort: 13, Kind: SettingKindSiteBasics, Name: "站点描述", Code: "site_desc", Type: "text", Value: "", Description: "站点描述"},
-	{Sort: 14, Kind: SettingKindSiteBasics, Name: "站点关键字", Code: "site_keywords", Type: "text", Value: "", Description: "关键字"},
+	{Sort: 14, Kind: SettingKindSiteBasics, Name: "站点关键字", Code: "site_keywords", Type: "text", Value: "", Description: "关键字，英文,分割多个"},
 	{Sort: 15, Kind: SettingKindSiteBasics, Name: "版权文字", Code: "site_copyright", Type: "text", Value: "", Description: "站点版权", Attrs: `{"placeholder": "Copyright © {{year}} ..."}`},
 	{Sort: 16, Kind: SettingKindSiteBasics, Name: "语言", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
 	{Sort: 17, Kind: SettingKindSiteBasics, Name: "页面字符集", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},

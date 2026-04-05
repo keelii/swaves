@@ -187,6 +187,45 @@
         });
       }
 
+      function summarizeBatchDeleteItems(items, key, limit) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '';
+        }
+
+        return items.slice(0, limit).map(function(item) {
+          var id = parsePositiveInt(item && item.id);
+          var text = item && item[key] ? String(item[key]) : '';
+
+          if (!text) {
+            return '';
+          }
+          if (id > 0) {
+            return '#' + id + '：' + text;
+          }
+          return text;
+        }).filter(Boolean).join('；');
+      }
+
+      function buildBatchDeleteMessage(body, successCount, failedCount) {
+        var message = '批量删除完成：成功 ' + successCount + '，失败 ' + failedCount + '。';
+        var failedText = summarizeBatchDeleteItems(body && body.failed, 'error', 3);
+        var warningText = summarizeBatchDeleteItems(body && body.warnings, 'warning', 2);
+
+        if (failedText) {
+          message += ' 失败原因：' + failedText;
+          if (Array.isArray(body.failed) && body.failed.length > 3) {
+            message += '；...';
+          }
+        }
+        if (warningText) {
+          message += ' 警告：' + warningText;
+          if (Array.isArray(body.warnings) && body.warnings.length > 2) {
+            message += '；...';
+          }
+        }
+        return message;
+      }
+
       function performLegacyBatchDelete(rows) {
         var successCount = 0;
         var failedCount = 0;
@@ -223,6 +262,7 @@
           return {
             successCount: successCount,
             failedCount: failedCount,
+            message: buildBatchDeleteMessage(null, successCount, failedCount),
           };
         });
       }
@@ -293,6 +333,7 @@
           return {
             successCount: deletedCount,
             failedCount: failedCount,
+            message: buildBatchDeleteMessage(body, deletedCount, failedCount),
           };
         }).catch(function(err) {
           if (window.console && typeof window.console.warn === 'function') {
@@ -301,6 +342,7 @@
           return {
             successCount: 0,
             failedCount: rows.length,
+            message: buildBatchDeleteMessage(null, 0, rows.length),
           };
         });
       }
@@ -337,6 +379,10 @@
         head.checked = checked === items.length;
         head.indeterminate = checked > 0 && checked < items.length;
         syncSelectionStatus();
+      }
+
+      function refreshMultiselectState() {
+        syncSelectAllState();
       }
 
       if (toggle) {
@@ -387,10 +433,11 @@
             runDelete.then(function(result) {
               var successCount = result && typeof result.successCount === 'number' ? result.successCount : 0;
               var failedCount = result && typeof result.failedCount === 'number' ? result.failedCount : 0;
+              var message = result && result.message ? String(result.message) : buildBatchDeleteMessage(null, successCount, failedCount);
 
               if (successCount > 0 || failedCount > 0) {
                 if (typeof notify === 'function') {
-                  notify('批量删除完成：成功 ' + successCount + '，失败 ' + failedCount + '。', '批量删除');
+                  notify(message, '批量删除');
                 }
               }
 
@@ -407,6 +454,14 @@
           });
         });
       }
+
+      document.addEventListener('dash:multiselect:refresh', function(event) {
+        var detail = event && event.detail ? event.detail : {};
+        if (detail.tableId && detail.tableId !== tableId) {
+          return;
+        }
+        refreshMultiselectState();
+      });
 
       syncSelectAllState();
     }

@@ -13,7 +13,6 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/types"
-	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -495,22 +494,41 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Set("Content-Type", "application/x-sqlite3")
 
-	// 发送文件
-	if err := c.SendFile(result.File); err != nil {
+	stream, err := openCleanupFileStream(result.File, cleanupTmpDir)
+	if err != nil {
 		cleanupTmpDir()
 		return RenderDashView(c, "dash/export.html", fiber.Map{
 			"Title": "导出数据库",
-			"Error": "Failed to send file: " + err.Error(),
+			"Error": "Failed to open export file: " + err.Error(),
 		}, "")
 	}
+	return c.SendStream(stream)
+}
 
-	// 下载完成后删除临时文件
-	go func(dir string) {
-		time.Sleep(5 * time.Second) // 等待下载完成
-		if removeErr := os.RemoveAll(dir); removeErr != nil {
-			logger.Warn("export cleanup temp dir failed: dir=%s err=%v", dir, removeErr)
-		}
-	}(tmpDir)
+type cleanupFileStream struct {
+	file    *os.File
+	cleanup func()
+}
 
-	return nil
+func openCleanupFileStream(path string, cleanup func()) (*cleanupFileStream, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	return &cleanupFileStream{
+		file:    file,
+		cleanup: cleanup,
+	}, nil
+}
+
+func (s *cleanupFileStream) Read(p []byte) (int, error) {
+	return s.file.Read(p)
+}
+
+func (s *cleanupFileStream) Close() error {
+	closeErr := s.file.Close()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
+	return closeErr
 }

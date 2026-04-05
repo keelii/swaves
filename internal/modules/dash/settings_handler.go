@@ -239,7 +239,7 @@ var settingLocationsByCode = map[string]settingLocation{
 	"site_name":                        {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"site_title":                       {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"site_desc":                        {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
-	"keyword":                          {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"site_keywords":                    {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"site_copyright":                   {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"language":                         {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},
 	"charset":                          {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},

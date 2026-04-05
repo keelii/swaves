@@ -52,7 +52,7 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 
 	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
-		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process")
+		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
 	}
 
 	version, err := validateLocalArchiveName(result.ArchiveName, goos, goarch)
@@ -94,7 +94,7 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
 	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
-		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process")
+		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
 	}
 
 	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
