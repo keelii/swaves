@@ -5,11 +5,6 @@
 {% set backendArea = BackendArea %}
 {% set frontendFirstSection = FrontendFirstSection %}
 
-{% block page_actions %}
-  {{ sui.Button("自动更新", "primary", attrs='type="submit" form="version-update-auto-form"' ~ (' disabled' if not UpdateSupported else '')) }}
-  {{ sui.Button("手动更新", "outline", attrs='type="button" data-role="version-update-manual-trigger"' ~ (' disabled' if not UpdateSupported else '')) }}
-{% endblock %}
-
 {% block content %}
 <style>
   .settings-area-tabs {
@@ -266,9 +261,6 @@
           </div>
           {% if VersionRuntimePID > 0 %}
             <div class="version-update-status">master pid: {{ VersionRuntimePID }}</div>
-          {% endif %}
-          {% if VersionRuntimeExecutable %}
-            <div class="version-update-status">binary: {{ VersionRuntimeExecutable }}</div>
           {% endif %}
           {% if LatestReleaseURL %}
             <div class="version-update-meta"><a href="{{ LatestReleaseURL }}" target="_blank" rel="noopener noreferrer">查看 GitHub 发布说明</a></div>

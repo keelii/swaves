@@ -84,3 +84,23 @@ func TestShouldEnsureDefaultSettings(t *testing.T) {
 		}
 	})
 }
+
+func TestShouldEnableSQLLog(t *testing.T) {
+	tests := []struct {
+		name string
+		env  AppEnvironment
+		want bool
+	}{
+		{name: "prod disables sql log", env: envProd, want: false},
+		{name: "test disables sql log", env: envTest, want: false},
+		{name: "dev enables sql log", env: envDev, want: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := shouldEnableSQLLog(tc.env); got != tc.want {
+				t.Fatalf("shouldEnableSQLLog(%q) = %v, want %v", tc.env, got, tc.want)
+			}
+		})
+	}
+}

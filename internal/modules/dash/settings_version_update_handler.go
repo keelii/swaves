@@ -85,19 +85,18 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 	}
 
 	return h.RenderDashView(c, "dash/settings_version_update.html", fiber.Map{
-		"Title":                    "版本更新",
-		"FrontendArea":             frontendArea,
-		"BackendArea":              backendArea,
-		"FrontendFirstSection":     firstSettingSectionCode(frontendArea),
-		"CurrentVersion":           versionLabel(buildinfo.Version),
-		"LatestVersion":            latestVersion,
-		"LatestReleaseURL":         latestReleaseURL,
-		"UpdateSupported":          updateSupported,
-		"UpdateSupportMessage":     updateSupportMessage,
-		"VersionUpdateNotice":      strings.TrimSpace(c.Query("notice")),
-		"VersionUpdateError":       strings.TrimSpace(c.Query("error")),
-		"VersionRuntimePID":        runtimeInfo.PID,
-		"VersionRuntimeExecutable": runtimeInfo.Executable,
+		"Title":                "版本更新",
+		"FrontendArea":         frontendArea,
+		"BackendArea":          backendArea,
+		"FrontendFirstSection": firstSettingSectionCode(frontendArea),
+		"CurrentVersion":       versionLabel(buildinfo.Version),
+		"LatestVersion":        latestVersion,
+		"LatestReleaseURL":     latestReleaseURL,
+		"UpdateSupported":      updateSupported,
+		"UpdateSupportMessage": updateSupportMessage,
+		"VersionUpdateNotice":  strings.TrimSpace(c.Query("notice")),
+		"VersionUpdateError":   strings.TrimSpace(c.Query("error")),
+		"VersionRuntimePID":    runtimeInfo.PID,
 	}, "")
 }
 

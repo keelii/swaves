@@ -31,7 +31,7 @@ var (
 	IsDevelopment   = EnvIs(envDev)
 
 	TemplateReload        = EnvIsNot(envProd)
-	EnableSQLLog          = EnvIs(envProd)
+	EnableSQLLog          = shouldEnableSQLLog(AppEnv)
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
 )
@@ -64,6 +64,10 @@ func ShouldEnsureDefaultSettings() bool {
 		return false
 	}
 	return envBool("SWAVES_ENSURE_DEFAULT_SETTINGS")
+}
+
+func shouldEnableSQLLog(env AppEnvironment) bool {
+	return env == envDev
 }
 
 func normalizeAppEnv(value string) string {
