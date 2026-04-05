@@ -15,7 +15,7 @@ func TestRunSupervisorRequiresWorkerCallback(t *testing.T) {
 }
 
 func TestRunSupervisorWorkerModeUsesWorkerDirectly(t *testing.T) {
-	t.Setenv(defaultWorkerModeEnv, "1")
+	t.Setenv(workerModeEnv, "1")
 	called := false
 	err := runSupervisor(supervisorConfig{
 		Worker: func() error {
@@ -60,9 +60,6 @@ func TestNormalizeSupervisorConfigAppliesDefaults(t *testing.T) {
 
 	normalizeSupervisorConfig(&cfg)
 
-	if cfg.RestartDelay != defaultWorkerRestartDelay {
-		t.Fatalf("unexpected restart delay=%s", cfg.RestartDelay)
-	}
 	if cfg.ReadyTimeout != defaultWorkerReadyTimeout {
 		t.Fatalf("unexpected ready timeout=%s", cfg.ReadyTimeout)
 	}
@@ -108,6 +105,29 @@ func TestEnvFDMissingValue(t *testing.T) {
 	fd, ok, err := envFD("TEST_FD_MISSING")
 	if err != nil || ok || fd != 0 {
 		t.Fatalf("unexpected result fd=%d ok=%v err=%v", fd, ok, err)
+	}
+}
+
+func TestWorkerArgsAppendsInternalWorkerFlag(t *testing.T) {
+	args := workerArgs([]string{"data.sqlite", "--daemon-mode=1"})
+	if len(args) != 3 {
+		t.Fatalf("unexpected args len=%d args=%v", len(args), args)
+	}
+	if args[2] != workerProcessFlag {
+		t.Fatalf("expected worker flag appended, got %v", args)
+	}
+}
+
+func TestWorkerArgsDoesNotDuplicateInternalWorkerFlag(t *testing.T) {
+	args := workerArgs([]string{"data.sqlite", workerProcessFlag})
+	count := 0
+	for _, arg := range args {
+		if arg == workerProcessFlag {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected one worker flag, got %d args=%v", count, args)
 	}
 }
 

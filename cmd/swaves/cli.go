@@ -21,9 +21,9 @@ import (
 
 const (
 	defaultBackupDir    = "backups"
-	defaultListenAddr   = ":3000"
+	defaultListenAddr   = ":4096"
 	defaultAppName      = "swaves"
-	defaultDaemonMode   = 0
+	defaultDaemonMode   = 1
 	defaultMaxFailures  = 5
 	flagBackupDirKey    = "backup-dir"
 	flagListenAddrKey   = "listen-addr"
@@ -82,7 +82,7 @@ func runCLI(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 
-	if !cfg.DaemonMode && os.Getenv(defaultWorkerModeEnv) != "1" {
+	if !cfg.DaemonMode && os.Getenv(workerModeEnv) != "1" {
 		if err := runSwavesApp(cfg.AppConfig); err != nil {
 			logger.Fatal("%v", err)
 		}
@@ -93,8 +93,6 @@ func runCLI(args []string, stdout io.Writer, stderr io.Writer) int {
 		DaemonMode:  cfg.DaemonMode,
 		ListenAddr:  cfg.AppConfig.ListenAddr,
 		MaxFailures: cfg.MaxFailures,
-		MasterTitle: "swaves: master process",
-		WorkerTitle: "swaves: worker process",
 		Args:        args,
 		Worker: func() error {
 			return runSwavesWorker(cfg.AppConfig)
@@ -353,11 +351,19 @@ func parseMainConfig(args []string) (mainConfig, error) {
 
 	flagArgs := consumeSQLitePositionalArg(&cfg.AppConfig, args)
 	daemonMode := defaultDaemonMode
+	internalWorker := false
 	if !cfg.DaemonMode {
 		daemonMode = 0
 	}
+	if raw, ok := lookupTrimmedEnv(daemonModeConfigEnv); ok {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			return cfg, fmt.Errorf("invalid %s: %w", daemonModeConfigEnv, err)
+		}
+		daemonMode = parsed
+	}
 
-	fs := newMainFlagSet(&cfg, &daemonMode)
+	fs := newMainFlagSet(&cfg, &daemonMode, &internalWorker)
 	if err := fs.Parse(flagArgs); err != nil {
 		return cfg, err
 	}
@@ -400,7 +406,7 @@ func consumeSQLitePositionalArg(cfg *types.AppConfig, args []string) []string {
 	return args[1:]
 }
 
-func newMainFlagSet(cfg *mainConfig, daemonMode *int) *flag.FlagSet {
+func newMainFlagSet(cfg *mainConfig, daemonMode *int, internalWorker *bool) *flag.FlagSet {
 	fs := flag.NewFlagSet("swaves", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&cfg.AppConfig.BackupDir, flagBackupDirKey, cfg.AppConfig.BackupDir, flagBackupDirUsage)
@@ -410,6 +416,7 @@ func newMainFlagSet(cfg *mainConfig, daemonMode *int) *flag.FlagSet {
 	fs.IntVar(daemonMode, flagDaemonModeKey, *daemonMode, flagDaemonModeUsage)
 	fs.IntVar(daemonMode, flagDemonModeKey, *daemonMode, flagDaemonModeUsage)
 	fs.IntVar(&cfg.MaxFailures, flagMaxFailuresKey, cfg.MaxFailures, flagMaxFailuresUsage)
+	fs.BoolVar(internalWorker, strings.TrimPrefix(workerProcessFlag, "--"), false, "")
 	return fs
 }
 
@@ -477,6 +484,7 @@ Environment:
   SWAVES_LISTEN_ADDR
   SWAVES_APP_NAME
   SWAVES_ENABLE_SQL_LOG
+  SWAVES_DAEMON_MODE
   SWAVES_ENSURE_DEFAULT_SETTINGS
 
 Priority:

@@ -11,17 +11,17 @@ import (
 	"strconv"
 	"strings"
 	"swaves/internal/platform/logger"
-	"swaves/internal/platform/proctitle"
 	"swaves/internal/platform/updater"
 	"syscall"
 	"time"
 )
 
 const (
-	defaultWorkerModeEnv      = "SWAVES_RUN_MODE"
+	daemonModeConfigEnv       = "SWAVES_DAEMON_MODE"
+	workerModeEnv             = "SWAVES_RUN_MODE"
+	workerProcessFlag         = "--worker-process"
 	defaultWorkerStopTimeout  = 8 * time.Second
 	defaultWorkerReadyTimeout = 8 * time.Second
-	defaultWorkerRestartDelay = 300 * time.Millisecond
 	workerListenerFDEnv       = "SWAVES_LISTENER_FD"
 	workerReadyFDEnv          = "SWAVES_READY_FD"
 	workerReadyMessage        = "READY"
@@ -33,11 +33,8 @@ type supervisorConfig struct {
 	DaemonMode      bool
 	ListenAddr      string
 	MaxFailures     int
-	RestartDelay    time.Duration
 	ReadyTimeout    time.Duration
 	ShutdownTimeout time.Duration
-	MasterTitle     string
-	WorkerTitle     string
 	Args            []string
 	Worker          func() error
 }
@@ -53,10 +50,7 @@ func runSupervisor(cfg supervisorConfig) error {
 	if cfg.Worker == nil {
 		return fmt.Errorf("worker callback is required")
 	}
-	if os.Getenv(defaultWorkerModeEnv) == "1" {
-		if cfg.WorkerTitle != "" {
-			proctitle.Set(cfg.WorkerTitle)
-		}
+	if os.Getenv(workerModeEnv) == "1" {
 		return cfg.Worker()
 	}
 	if !cfg.DaemonMode {
@@ -67,9 +61,6 @@ func runSupervisor(cfg supervisorConfig) error {
 	}
 
 	normalizeSupervisorConfig(&cfg)
-	if cfg.MasterTitle != "" {
-		proctitle.Set(cfg.MasterTitle)
-	}
 
 	execPath, err := os.Executable()
 	if err != nil {
@@ -131,7 +122,6 @@ func runSupervisor(cfg supervisorConfig) error {
 				logger.Info("[master] worker exited")
 			}
 
-			time.Sleep(cfg.RestartDelay)
 			active, err = spawnWorker(ln, cfg)
 			if err != nil {
 				return err
@@ -143,9 +133,6 @@ func runSupervisor(cfg supervisorConfig) error {
 func normalizeSupervisorConfig(cfg *supervisorConfig) {
 	if cfg == nil {
 		return
-	}
-	if cfg.RestartDelay <= 0 {
-		cfg.RestartDelay = defaultWorkerRestartDelay
 	}
 	if cfg.ReadyTimeout <= 0 {
 		cfg.ReadyTimeout = defaultWorkerReadyTimeout
@@ -173,7 +160,7 @@ func spawnWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, e
 		return nil, fmt.Errorf("resolve executable failed: %w", err)
 	}
 
-	cmd := exec.Command(execPath, cfg.Args...)
+	cmd := exec.Command(execPath, workerArgs(cfg.Args)...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.ExtraFiles = []*os.File{listenerDup, readyWriter}
@@ -223,10 +210,25 @@ func spawnWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, e
 
 func workerEnv() []string {
 	return append(os.Environ(),
-		defaultWorkerModeEnv+"=1",
+		workerModeEnv+"=1",
 		workerListenerFDEnv+"="+strconv.Itoa(workerListenerFD),
 		workerReadyFDEnv+"="+strconv.Itoa(workerReadyFD),
 	)
+}
+
+func workerArgs(args []string) []string {
+	if len(args) == 0 {
+		return []string{workerProcessFlag}
+	}
+
+	next := make([]string, 0, len(args)+1)
+	for _, arg := range args {
+		if strings.TrimSpace(arg) == workerProcessFlag {
+			return append(next, args[len(next):]...)
+		}
+		next = append(next, arg)
+	}
+	return append(next, workerProcessFlag)
 }
 
 func readWorkerReady(reader *os.File) error {

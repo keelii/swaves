@@ -32,6 +32,8 @@ var (
 	signalProcess = defaultSignalProcess
 )
 
+type executableRollback func() error
+
 func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
 }
@@ -74,10 +76,14 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 	if err := os.Chmod(extractedPath, 0755); err != nil {
 		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
 	}
-	if err := os.Rename(extractedPath, runtimeInfo.Executable); err != nil {
-		return result, fmt.Errorf("replace executable failed: %w", err)
+	rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
+	if err != nil {
+		return result, err
 	}
 	if err := signalProcess(runtimeInfo.PID); err != nil {
+		if rollbackErr := rollback(); rollbackErr != nil {
+			return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
+		}
 		return result, fmt.Errorf("signal master restart failed: %w", err)
 	}
 
@@ -152,10 +158,14 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 	if err := os.Chmod(extractedPath, 0755); err != nil {
 		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
 	}
-	if err := os.Rename(extractedPath, runtimeInfo.Executable); err != nil {
-		return result, fmt.Errorf("replace executable failed: %w", err)
+	rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
+	if err != nil {
+		return result, err
 	}
 	if err := signalProcess(runtimeInfo.PID); err != nil {
+		if rollbackErr := rollback(); rollbackErr != nil {
+			return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
+		}
 		return result, fmt.Errorf("signal master restart failed: %w", err)
 	}
 
@@ -289,6 +299,64 @@ func defaultSignalProcess(pid int) error {
 		return err
 	}
 	return process.Signal(syscall.SIGHUP)
+}
+
+func replaceExecutableWithRollback(nextPath string, runtimeInfo RuntimeInfo, backupPath string) (executableRollback, error) {
+	if err := ensureRuntimeInstallTarget(runtimeInfo); err != nil {
+		return nil, err
+	}
+
+	nextPath = strings.TrimSpace(nextPath)
+	targetPath := strings.TrimSpace(runtimeInfo.Executable)
+	backupPath = strings.TrimSpace(backupPath)
+	if nextPath == "" || targetPath == "" || backupPath == "" {
+		return nil, fmt.Errorf("replace executable paths are required")
+	}
+
+	if err := os.Rename(targetPath, backupPath); err != nil {
+		return nil, fmt.Errorf("backup executable failed: %w", err)
+	}
+
+	restore := func() error {
+		if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove replaced executable failed: %w", err)
+		}
+		if err := os.Rename(backupPath, targetPath); err != nil {
+			return fmt.Errorf("restore previous executable failed: %w", err)
+		}
+		return nil
+	}
+
+	if err := os.Rename(nextPath, targetPath); err != nil {
+		if restoreErr := restore(); restoreErr != nil {
+			return nil, fmt.Errorf("replace executable failed: %w (rollback failed: %v)", err, restoreErr)
+		}
+		return nil, fmt.Errorf("replace executable failed: %w", err)
+	}
+
+	return restore, nil
+}
+
+func ensureRuntimeInstallTarget(expected RuntimeInfo) error {
+	expected.Executable = strings.TrimSpace(expected.Executable)
+	if expected.PID <= 0 {
+		return fmt.Errorf("runtime pid is required")
+	}
+	if expected.Executable == "" {
+		return fmt.Errorf("runtime executable is required")
+	}
+
+	active, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		return fmt.Errorf("revalidate active master failed: %w", err)
+	}
+	if active.PID != expected.PID {
+		return fmt.Errorf("revalidate active master failed: runtime pid changed")
+	}
+	if !sameExecutablePath(active.Executable, expected.Executable) {
+		return fmt.Errorf("revalidate active master failed: runtime executable changed")
+	}
+	return nil
 }
 
 func validateLocalArchiveName(archiveName string, goos string, goarch string) (string, error) {

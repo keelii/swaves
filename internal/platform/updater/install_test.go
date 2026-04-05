@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -310,6 +311,162 @@ func TestInstallLatestReleaseRejectsStaleRuntimeInfo(t *testing.T) {
 	_, err := Client{}.InstallLatestRelease("v1.2.3", "linux", "amd64")
 	if err == nil || !strings.Contains(err.Error(), "active master process") {
 		t.Fatalf("expected active master process error, got %v", err)
+	}
+}
+
+func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
+	tmpDir := t.TempDir()
+	runtimePath := filepath.Join(tmpDir, "runtime.json")
+	oldRuntimePath := runtimeInfoPath
+	oldCurrentExecutable := currentExecutable
+	oldProcessExecutable := processExecutable
+	oldProcessExists := processExists
+	oldSignalProcess := signalProcess
+	runtimeInfoPath = func() string { return runtimePath }
+	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
+	processExecutable = func(pid int) (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
+	processExists = func(pid int) bool { return pid == 4321 }
+	signalProcess = func(pid int) error { return errors.New("restart failed") }
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+		currentExecutable = oldCurrentExecutable
+		processExecutable = oldProcessExecutable
+		processExists = oldProcessExists
+		signalProcess = oldSignalProcess
+	}()
+
+	executablePath := filepath.Join(tmpDir, "swaves")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write executable failed: %v", err)
+	}
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
+	hash := sha256.Sum256(archiveData)
+	checksumData := []byte(hex.EncodeToString(hash[:]) + "  swaves_v1.2.4_linux_amd64.tar.gz\n")
+	client := Client{
+		BaseURL: "https://example.test/latest",
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			switch req.URL.String() {
+			case "https://example.test/latest":
+				body := `{
+					"tag_name":"v1.2.4",
+					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"published_at":"2026-04-05T00:00:00Z",
+					"draft":false,
+					"prerelease":false,
+					"assets":[
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
+					]
+				}`
+				return newHTTPResponse(http.StatusOK, body), nil
+			case "https://example.test/archive":
+				return newBinaryResponse(http.StatusOK, archiveData), nil
+			case "https://example.test/archive.sha256":
+				return newBinaryResponse(http.StatusOK, checksumData), nil
+			default:
+				return newHTTPResponse(http.StatusNotFound, "not found"), nil
+			}
+		})},
+	}
+
+	_, err := client.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	if err == nil || !strings.Contains(err.Error(), "signal master restart failed") {
+		t.Fatalf("expected signal failure, got %v", err)
+	}
+
+	gotBinary, readErr := os.ReadFile(executablePath)
+	if readErr != nil {
+		t.Fatalf("ReadFile executable failed: %v", readErr)
+	}
+	if string(gotBinary) != "old-binary" {
+		t.Fatalf("unexpected executable contents after rollback: %q", string(gotBinary))
+	}
+}
+
+func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
+	tmpDir := t.TempDir()
+	runtimePath := filepath.Join(tmpDir, "runtime.json")
+	oldRuntimePath := runtimeInfoPath
+	oldCurrentExecutable := currentExecutable
+	oldProcessExecutable := processExecutable
+	oldProcessExists := processExists
+	oldSignalProcess := signalProcess
+	runtimeInfoPath = func() string { return runtimePath }
+	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
+	processExecutable = func(pid int) (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
+	processExists = func(pid int) bool { return pid == 4321 || pid == 9999 }
+	signalCalled := false
+	signalProcess = func(pid int) error {
+		signalCalled = true
+		return nil
+	}
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+		currentExecutable = oldCurrentExecutable
+		processExecutable = oldProcessExecutable
+		processExists = oldProcessExists
+		signalProcess = oldSignalProcess
+	}()
+
+	executablePath := filepath.Join(tmpDir, "swaves")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write executable failed: %v", err)
+	}
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
+	hash := sha256.Sum256(archiveData)
+	checksumData := []byte(hex.EncodeToString(hash[:]) + "  swaves_v1.2.4_linux_amd64.tar.gz\n")
+	client := Client{
+		BaseURL: "https://example.test/latest",
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			switch req.URL.String() {
+			case "https://example.test/latest":
+				body := `{
+					"tag_name":"v1.2.4",
+					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"published_at":"2026-04-05T00:00:00Z",
+					"draft":false,
+					"prerelease":false,
+					"assets":[
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
+					]
+				}`
+				return newHTTPResponse(http.StatusOK, body), nil
+			case "https://example.test/archive":
+				if err := WriteRuntimeInfo(RuntimeInfo{PID: 9999, Executable: executablePath}); err != nil {
+					t.Fatalf("WriteRuntimeInfo during download failed: %v", err)
+				}
+				return newBinaryResponse(http.StatusOK, archiveData), nil
+			case "https://example.test/archive.sha256":
+				return newBinaryResponse(http.StatusOK, checksumData), nil
+			default:
+				return newHTTPResponse(http.StatusNotFound, "not found"), nil
+			}
+		})},
+	}
+
+	_, err := client.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	if err == nil || !strings.Contains(err.Error(), "runtime pid changed") {
+		t.Fatalf("expected runtime change error, got %v", err)
+	}
+	if signalCalled {
+		t.Fatal("signalProcess should not be called when runtime changes")
+	}
+
+	gotBinary, readErr := os.ReadFile(executablePath)
+	if readErr != nil {
+		t.Fatalf("ReadFile executable failed: %v", readErr)
+	}
+	if string(gotBinary) != "old-binary" {
+		t.Fatalf("unexpected executable contents after runtime change: %q", string(gotBinary))
 	}
 }
 

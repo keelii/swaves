@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -13,7 +14,9 @@ import (
 	"strings"
 	"testing"
 
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -196,6 +199,223 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	if legacyPostResp.StatusCode != fiber.StatusMethodNotAllowed {
 		t.Fatalf("unexpected post /dash/import status: %d", legacyPostResp.StatusCode)
 	}
+}
+
+func TestDashLoginRateLimitInProduction(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "login-rate-limit.sqlite")
+	prepareInstalledAppDB(t, dbPath)
+	middleware.DashLoginRateLimitResetAll()
+
+	originalIsProduction := config.IsProduction
+	originalIsNotProduction := config.IsNotProduction
+	config.IsProduction = true
+	config.IsNotProduction = false
+	defer func() {
+		config.IsProduction = originalIsProduction
+		config.IsNotProduction = originalIsNotProduction
+	}()
+
+	swv := NewApp(types.AppConfig{
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	cookieKV, csrfToken := loadDashLoginForm(t, swv, "198.51.100.10:12345")
+
+	for i := 0; i < 9; i++ {
+		resp, err := postDashLogin(t, swv, "198.51.100.10:12345", cookieKV, csrfToken, "wrong-password")
+		if err != nil {
+			t.Fatalf("login post %d failed: %v", i+1, err)
+		}
+		if resp.StatusCode != fiber.StatusOK {
+			t.Fatalf("login post %d status = %d, want %d", i+1, resp.StatusCode, fiber.StatusOK)
+		}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("read login post %d failed: %v", i+1, err)
+		}
+		if !strings.Contains(string(body), "Invalid password") {
+			t.Fatalf("expected invalid password message in attempt %d, got: %s", i+1, string(body))
+		}
+	}
+
+	resp, err := postDashLogin(t, swv, "198.51.100.10:12345", cookieKV, csrfToken, "wrong-password")
+	if err != nil {
+		t.Fatalf("rate-limited login post failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusTooManyRequests {
+		t.Fatalf("rate-limited login post status = %d, want %d", resp.StatusCode, fiber.StatusTooManyRequests)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read rate-limited login post failed: %v", err)
+	}
+	if !strings.Contains(string(body), "今日登录访问次数已达上限") {
+		t.Fatalf("expected rate-limit message in body, got: %s", string(body))
+	}
+}
+
+func TestDashLoginRateLimitSkippedOutsideProduction(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "login-rate-limit-dev.sqlite")
+	prepareInstalledAppDB(t, dbPath)
+	middleware.DashLoginRateLimitResetAll()
+
+	originalIsProduction := config.IsProduction
+	originalIsNotProduction := config.IsNotProduction
+	config.IsProduction = false
+	config.IsNotProduction = true
+	defer func() {
+		config.IsProduction = originalIsProduction
+		config.IsNotProduction = originalIsNotProduction
+	}()
+
+	swv := NewApp(types.AppConfig{
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	cookieKV, csrfToken := loadDashLoginForm(t, swv, "198.51.100.11:12345")
+
+	for i := 0; i < 11; i++ {
+		resp, err := postDashLogin(t, swv, "198.51.100.11:12345", cookieKV, csrfToken, "wrong-password")
+		if err != nil {
+			t.Fatalf("login post %d failed: %v", i+1, err)
+		}
+		if resp.StatusCode != fiber.StatusOK {
+			t.Fatalf("login post %d status = %d, want %d", i+1, resp.StatusCode, fiber.StatusOK)
+		}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("read login post %d failed: %v", i+1, err)
+		}
+		if !strings.Contains(string(body), "Invalid password") {
+			t.Fatalf("expected invalid password message in attempt %d, got: %s", i+1, string(body))
+		}
+	}
+}
+
+func TestDashLoginRateLimitResetsAfterSuccessfulLogin(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "login-rate-limit-reset.sqlite")
+	prepareInstalledAppDB(t, dbPath)
+	middleware.DashLoginRateLimitResetAll()
+
+	originalIsProduction := config.IsProduction
+	originalIsNotProduction := config.IsNotProduction
+	config.IsProduction = true
+	config.IsNotProduction = false
+	defer func() {
+		config.IsProduction = originalIsProduction
+		config.IsNotProduction = originalIsNotProduction
+	}()
+
+	swv := NewApp(types.AppConfig{
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	cookieKV, csrfToken := loadDashLoginForm(t, swv, "198.51.100.12:12345")
+
+	for i := 0; i < 9; i++ {
+		resp, err := postDashLogin(t, swv, "198.51.100.12:12345", cookieKV, csrfToken, "wrong-password")
+		if err != nil {
+			t.Fatalf("pre-reset login post %d failed: %v", i+1, err)
+		}
+		if resp.StatusCode != fiber.StatusOK {
+			t.Fatalf("pre-reset login post %d status = %d, want %d", i+1, resp.StatusCode, fiber.StatusOK)
+		}
+	}
+
+	successResp, err := postDashLogin(t, swv, "198.51.100.12:12345", cookieKV, csrfToken, "dash")
+	if err != nil {
+		t.Fatalf("successful login failed: %v", err)
+	}
+	if successResp.StatusCode < 300 || successResp.StatusCode >= 400 {
+		t.Fatalf("successful login status = %d, want redirect", successResp.StatusCode)
+	}
+
+	cookieKV, csrfToken = loadDashLoginForm(t, swv, "198.51.100.12:12345")
+
+	for i := 0; i < 9; i++ {
+		resp, err := postDashLogin(t, swv, "198.51.100.12:12345", cookieKV, csrfToken, "wrong-password")
+		if err != nil {
+			t.Fatalf("post-reset login post %d failed: %v", i+1, err)
+		}
+		if resp.StatusCode != fiber.StatusOK {
+			t.Fatalf("post-reset login post %d status = %d, want %d", i+1, resp.StatusCode, fiber.StatusOK)
+		}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("read post-reset login post %d failed: %v", i+1, err)
+		}
+		if !strings.Contains(string(body), "Invalid password") {
+			t.Fatalf("expected invalid password message in post-reset attempt %d, got: %s", i+1, string(body))
+		}
+	}
+
+	limitedResp, err := postDashLogin(t, swv, "198.51.100.12:12345", cookieKV, csrfToken, "wrong-password")
+	if err != nil {
+		t.Fatalf("post-reset rate-limited login post failed: %v", err)
+	}
+	if limitedResp.StatusCode != fiber.StatusTooManyRequests {
+		t.Fatalf("post-reset rate-limited login post status = %d, want %d", limitedResp.StatusCode, fiber.StatusTooManyRequests)
+	}
+}
+
+func loadDashLoginForm(t *testing.T, swv SwavesApp, remoteAddr string) (string, string) {
+	t.Helper()
+
+	req := httptest.NewRequest("GET", "/dash/login", nil)
+	req.RemoteAddr = remoteAddr
+
+	resp, err := swv.App.Test(req)
+	if err != nil {
+		t.Fatalf("login page request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected login page status: %d", resp.StatusCode)
+	}
+
+	cookieHeader := strings.TrimSpace(resp.Header.Get("Set-Cookie"))
+	if cookieHeader == "" {
+		t.Fatal("expected login page response to set session cookie")
+	}
+	cookieKV := strings.SplitN(cookieHeader, ";", 2)[0]
+	if cookieKV == "" {
+		t.Fatal("expected valid session cookie")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read login page failed: %v", err)
+	}
+	matches := regexp.MustCompile(`name="_csrf_token" value="([^"]+)"`).FindStringSubmatch(string(body))
+	if len(matches) < 2 || strings.TrimSpace(matches[1]) == "" {
+		t.Fatal("expected csrf token in login form")
+	}
+
+	return cookieKV, strings.TrimSpace(matches[1])
+}
+
+func postDashLogin(t *testing.T, swv SwavesApp, remoteAddr string, cookieKV string, csrfToken string, password string) (*http.Response, error) {
+	t.Helper()
+
+	form := url.Values{}
+	form.Set("_csrf_token", csrfToken)
+	form.Set("password", password)
+
+	req := httptest.NewRequest("POST", "/dash/login", strings.NewReader(form.Encode()))
+	req.RemoteAddr = remoteAddr
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", cookieKV)
+
+	return swv.App.Test(req)
 }
 
 func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {

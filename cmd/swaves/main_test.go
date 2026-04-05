@@ -348,6 +348,12 @@ func TestParseAppConfigFlagsOverrideEnvironmentVariables(t *testing.T) {
 }
 
 func TestParseAppConfigUsesDefaultFlags(t *testing.T) {
+	t.Setenv("SWAVES_SQLITE_FILE", "")
+	t.Setenv("SWAVES_BACKUP_DIR", "")
+	t.Setenv("SWAVES_LISTEN_ADDR", "")
+	t.Setenv("SWAVES_APP_NAME", "")
+	t.Setenv("SWAVES_ENABLE_SQL_LOG", "")
+
 	cfg, err := parseAppConfig([]string{
 		"data.sqlite",
 	})
@@ -358,10 +364,10 @@ func TestParseAppConfigUsesDefaultFlags(t *testing.T) {
 	if cfg.BackupDir != "backups" {
 		t.Fatalf("unexpected default backup dir: %q", cfg.BackupDir)
 	}
-	if cfg.ListenAddr != ":3000" {
+	if cfg.ListenAddr != defaultListenAddr {
 		t.Fatalf("unexpected default listen addr: %q", cfg.ListenAddr)
 	}
-	if cfg.AppName != "swaves" {
+	if cfg.AppName != defaultAppName {
 		t.Fatalf("unexpected default app name: %q", cfg.AppName)
 	}
 	if cfg.EnableSQLLog != config.EnableSQLLog {
@@ -431,6 +437,45 @@ func TestParseMainConfigSupportsLegacyDemonModeFlag(t *testing.T) {
 	}
 }
 
+func TestParseMainConfigSupportsDaemonModeEnv(t *testing.T) {
+	t.Setenv("SWAVES_SQLITE_FILE", "env.sqlite")
+	t.Setenv(daemonModeConfigEnv, "1")
+
+	cfg, err := parseMainConfig(nil)
+	if err != nil {
+		t.Fatalf("parseMainConfig failed: %v", err)
+	}
+	if !cfg.DaemonMode {
+		t.Fatal("expected daemon mode enabled from environment")
+	}
+}
+
+func TestParseMainConfigAcceptsInternalWorkerFlag(t *testing.T) {
+	cfg, err := parseMainConfig([]string{
+		"data.sqlite",
+		workerProcessFlag,
+	})
+	if err != nil {
+		t.Fatalf("parseMainConfig failed: %v", err)
+	}
+	if cfg.DaemonMode != (defaultDaemonMode == 1) {
+		t.Fatal("expected internal worker flag not to change daemon mode")
+	}
+}
+
+func TestParseMainConfigIgnoresWorkerModeEnvForDaemonConfig(t *testing.T) {
+	t.Setenv("SWAVES_SQLITE_FILE", "env.sqlite")
+	t.Setenv(workerModeEnv, "1")
+
+	cfg, err := parseMainConfig(nil)
+	if err != nil {
+		t.Fatalf("parseMainConfig failed: %v", err)
+	}
+	if cfg.DaemonMode != (defaultDaemonMode == 1) {
+		t.Fatal("expected worker mode env not to change daemon mode")
+	}
+}
+
 func TestParseMainConfigRejectsInvalidDaemonMode(t *testing.T) {
 	_, err := parseMainConfig([]string{
 		"data.sqlite",
@@ -440,6 +485,19 @@ func TestParseMainConfigRejectsInvalidDaemonMode(t *testing.T) {
 		t.Fatal("expected invalid daemon mode error")
 	}
 	if err.Error() != "daemon-mode must be 0 or 1" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseMainConfigRejectsInvalidDaemonModeEnv(t *testing.T) {
+	t.Setenv("SWAVES_SQLITE_FILE", "env.sqlite")
+	t.Setenv(daemonModeConfigEnv, "nope")
+
+	_, err := parseMainConfig(nil)
+	if err == nil {
+		t.Fatal("expected invalid daemon mode env error")
+	}
+	if !strings.Contains(err.Error(), "invalid SWAVES_DAEMON_MODE") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

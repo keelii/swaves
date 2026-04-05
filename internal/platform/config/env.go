@@ -31,7 +31,7 @@ var (
 	IsDevelopment   = EnvIs(envDev)
 
 	TemplateReload        = EnvIsNot(envProd)
-	EnableSQLLog          = EnvIs(envDev)
+	EnableSQLLog          = EnvIs(envProd)
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
 )
