@@ -1,11 +1,17 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/include/ui.html" as sui %}
-{% set ShowMultiSelectStatus = false %}
 
 {% block page_actions %}{% endblock %}
+{% block operation_multiselect %}{% endblock %}
 
 {% block operation_left %}
 {% include "dash/include/records_tabs.html" %}
+{% endblock %}
+
+{% block status_main_left %}
+  {% if RouteName %}
+    <span>{{ RouteName }}</span>
+  {% endif %}
 {% endblock %}
 
 {% block content %}

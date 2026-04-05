@@ -1,7 +1,6 @@
 {% extends "dash/layout/base.html" %}
 {% import "dash/include/ui.html" as sui %}
 {% set menuCollapsed = Settings('dash_full_main_open') == '1' %}
-
 {% block body %}
 <div
   class="app-window{% if menuCollapsed %} menu-collapsed{% endif %}"
@@ -79,11 +78,13 @@
           {% block app_header %}{% endblock %}
         </div>
         <div class="app-operation">
-          <div class="app-operation-left">
-            <div class="app-flex">
-              {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({
-              "data-role":"toggle-multiselect","data-target-table":OperationTableID,"aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
-              })) }}
+        <div class="app-operation-left">
+          <div class="app-flex">
+              {% block operation_multiselect %}
+                {{ sui.LinkIcon("list-checks", "javascript:;", attrs=HtmlAttrs({
+                "data-role":"toggle-multiselect","data-target-table":OperationTableID,"aria-label":"切换多选","aria-pressed":"false","data-title":"切换多选"
+                })) }}
+              {% endblock %}
               {% block operation_left %}{% endblock %}
             </div>
           </div>
@@ -101,16 +102,10 @@
       <div class="status-grid cols-3">
         <div class="status-slot left">
           {% block status_main_left %}
-            {% if ShowMultiSelectStatus is defined and ShowMultiSelectStatus == false %}
-              {% if RouteName %}
-                <span>{{ RouteName }}</span>
-              {% else %}
-                {% block status_bar %}{% endblock %}
-              {% endif %}
-            {% else %}
+            {% block status_main_left_content %}
               <span data-role="multiselect-selected-count" data-target-table="{{ OperationTableID }}">已选择 0 项</span>
               {{ sui.Button("批量删除", "outline", attrs=HtmlAttrs({"type":"button","data-role":"multiselect-batch-delete","data-target-table":OperationTableID,"disabled":"disabled"})) }}
-            {% endif %}
+            {% endblock %}
           {% endblock %}
         </div>
         <div class="status-slot center">

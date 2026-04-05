@@ -148,6 +148,12 @@ func (h *Handler) PostTaskBatchDeleteAPIHandler(c fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) PostNotificationBatchDeleteAPIHandler(c fiber.Ctx) error {
+	return h.runBatchDelete(c, "notifications", func(id int64) error {
+		return DeleteNotificationService(h.Model, id, dashNotificationReceiver)
+	})
+}
+
 func (h *Handler) PostTrashBatchDeleteAPIHandler(c fiber.Ctx) error {
 	modelType := strings.TrimSpace(c.Params("type"))
 	var deleteByID func(int64) error

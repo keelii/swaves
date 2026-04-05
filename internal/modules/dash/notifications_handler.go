@@ -3,13 +3,10 @@ package dash
 import (
 	"fmt"
 	"net/url"
-	"runtime"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
-	"swaves/internal/platform/notify"
-	"swaves/internal/platform/updater"
 	"swaves/internal/shared/share"
 
 	"github.com/gofiber/fiber/v3"
@@ -27,17 +24,16 @@ const (
 )
 
 type NotificationListItemView struct {
-	ID                  int64
-	EventType           string
-	Title               string
-	Body                string
-	AggregateCount      int
-	ReadAt              *int64
-	UpdatedAt           int64
-	CommentURL          string
-	CommentInNewTab     bool
-	AppUpdateReleaseURL string
-	AppUpdateCanUpgrade bool
+	ID               int64
+	EventType        string
+	Title            string
+	Body             string
+	AggregateCount   int
+	ReadAt           *int64
+	UpdatedAt        int64
+	CommentURL       string
+	CommentInNewTab  bool
+	AppUpdatePageURL string
 }
 
 func parseCommentURLFromAggregateKey(raw string) string {
@@ -75,7 +71,7 @@ func parseCommentURLFromAggregateKey(raw string) string {
 	return commentURL
 }
 
-func buildNotificationListItems(notifications []db.Notification, defaultCommentURL string, appUpdateEnabled bool) []NotificationListItemView {
+func buildNotificationListItems(notifications []db.Notification, defaultCommentURL string, appUpdatePageURL string) []NotificationListItemView {
 	items := make([]NotificationListItemView, 0, len(notifications))
 	defaultCommentURL = strings.TrimSpace(defaultCommentURL)
 	for _, n := range notifications {
@@ -96,8 +92,7 @@ func buildNotificationListItems(notifications []db.Notification, defaultCommentU
 			item.CommentInNewTab = isWebSideRelativePath(item.CommentURL)
 		}
 		if n.EventType == dashNotificationEventAppUpdate {
-			item.AppUpdateReleaseURL = notify.ParseAppUpdateReleaseURL(n.AggregateKey)
-			item.AppUpdateCanUpgrade = appUpdateEnabled
+			item.AppUpdatePageURL = appUpdatePageURL
 		}
 		items = append(items, item)
 	}
@@ -219,11 +214,11 @@ func (h *Handler) GetNotificationListHandler(c fiber.Ctx) error {
 	if strings.TrimSpace(commentListURL) == "" {
 		return fmt.Errorf("resolve route failed: dash.comments.list")
 	}
-	appUpdateEnabled := runtime.GOOS != "windows"
-	if _, err := updater.ReadRuntimeInfo(); err != nil {
-		appUpdateEnabled = false
+	appUpdatePageURL := h.dashRouteURL(c, "dash.settings.version_update", nil, nil)
+	if appUpdatePageURL == "" {
+		return fmt.Errorf("resolve route failed: dash.settings.version_update")
 	}
-	notificationItems := buildNotificationListItems(notifications, commentListURL, appUpdateEnabled)
+	notificationItems := buildNotificationListItems(notifications, commentListURL, appUpdatePageURL)
 
 	return h.RenderDashView(c, "dash/notifications_index.html", fiber.Map{
 		"Title":                 "通知中心",

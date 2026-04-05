@@ -37,6 +37,60 @@ func InstallLatestRelease(currentVersion string, goos string, goarch string) (In
 	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
 }
 
+func InstallLocalReleaseArchive(archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
+	installMu.Lock()
+	defer installMu.Unlock()
+
+	archiveName = strings.TrimSpace(archiveName)
+	archivePath = strings.TrimSpace(archivePath)
+	result := InstallResult{
+		CurrentVersion: strings.TrimSpace(currentVersion),
+		ArchiveName:    filepath.Base(archiveName),
+	}
+	if archivePath == "" {
+		return result, fmt.Errorf("local release archive path is required")
+	}
+
+	runtimeInfo, err := ReadRuntimeInfo()
+	if err != nil {
+		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process")
+	}
+	if !processExists(runtimeInfo.PID) {
+		return result, fmt.Errorf("master process is not running: pid=%d", runtimeInfo.PID)
+	}
+
+	version, err := validateLocalArchiveName(result.ArchiveName, goos, goarch)
+	if err != nil {
+		return result, err
+	}
+	result.LatestVersion = version
+
+	tmpDir, err := os.MkdirTemp(filepath.Dir(runtimeInfo.Executable), ".swaves-upgrade-")
+	if err != nil {
+		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	extractedPath, err := extractReleaseBinary(archivePath, tmpDir)
+	if err != nil {
+		return result, err
+	}
+	if err := os.Chmod(extractedPath, 0755); err != nil {
+		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
+	}
+	if err := os.Rename(extractedPath, runtimeInfo.Executable); err != nil {
+		return result, fmt.Errorf("replace executable failed: %w", err)
+	}
+	if err := signalProcess(runtimeInfo.PID); err != nil {
+		return result, fmt.Errorf("signal master restart failed: %w", err)
+	}
+
+	result.Installed = true
+	result.RestartedPID = runtimeInfo.PID
+	result.Reason = fmt.Sprintf("upgraded to %s", version)
+	return result, nil
+}
+
 func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	installMu.Lock()
 	defer installMu.Unlock()
@@ -248,4 +302,43 @@ func defaultSignalProcess(pid int) error {
 		return err
 	}
 	return process.Signal(syscall.SIGHUP)
+}
+
+func validateLocalArchiveName(archiveName string, goos string, goarch string) (string, error) {
+	archiveName = filepath.Base(strings.TrimSpace(archiveName))
+	if archiveName == "" {
+		return "", fmt.Errorf("local release archive name is required")
+	}
+	if strings.TrimSpace(goos) == "" {
+		goos = runtime.GOOS
+	}
+	if strings.TrimSpace(goarch) == "" {
+		goarch = runtime.GOARCH
+	}
+	if runtime.GOOS == "windows" {
+		return "", fmt.Errorf("automatic upgrade is not supported on %s/%s", goos, goarch)
+	}
+	if !strings.HasPrefix(archiveName, "swaves_") || !strings.HasSuffix(archiveName, ".tar.gz") {
+		return "", fmt.Errorf("invalid local archive name: %s", archiveName)
+	}
+
+	trimmed := strings.TrimSuffix(strings.TrimPrefix(archiveName, "swaves_"), ".tar.gz")
+	parts := strings.Split(trimmed, "_")
+	if len(parts) < 3 {
+		return "", fmt.Errorf("invalid local archive name: %s", archiveName)
+	}
+
+	version := strings.Join(parts[:len(parts)-2], "_")
+	archiveGOOS := parts[len(parts)-2]
+	archiveGOARCH := parts[len(parts)-1]
+	if !semverutil.IsStable(version) {
+		return "", fmt.Errorf("local archive version must be a stable semver tag: %s", version)
+	}
+	if archiveGOOS != goos || archiveGOARCH != goarch {
+		return "", fmt.Errorf("local archive %s does not match current platform %s/%s", archiveName, goos, goarch)
+	}
+	if archiveName != ReleaseArchiveName(version, goos, goarch) {
+		return "", fmt.Errorf("invalid local archive name: %s", archiveName)
+	}
+	return version, nil
 }

@@ -1,10 +1,16 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
-{% set ShowMultiSelectStatus = false %}
 {% set OperationTableID = "task-runs-table" %}
 
 {% block page_actions %}{% endblock %}
+{% block operation_multiselect %}{% endblock %}
+
+{% block status_main_left %}
+  {% if RouteName %}
+    <span>{{ RouteName }}</span>
+  {% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="app-px app-pb">

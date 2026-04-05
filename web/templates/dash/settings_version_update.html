@@ -1,0 +1,353 @@
+{% extends "dash/layout/layout_detail.html" %}
+{% import "dash/include/ui.html" as sui %}
+
+{% set frontendArea = FrontendArea %}
+{% set backendArea = BackendArea %}
+{% set frontendFirstSection = FrontendFirstSection %}
+
+{% block page_actions %}
+  {{ sui.Button("自动更新", "primary", attrs='type="submit" form="version-update-auto-form"' ~ (' disabled' if not UpdateSupported else '')) }}
+  {{ sui.Button("手动更新", "outline", attrs='type="button" data-role="version-update-manual-trigger"' ~ (' disabled' if not UpdateSupported else '')) }}
+{% endblock %}
+
+{% block content %}
+<style>
+  .settings-area-tabs {
+    margin-bottom: var(--app-spacing);
+  }
+
+  .settings-shell {
+    display: grid;
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+    gap: var(--app-spacing);
+    align-items: start;
+  }
+
+  .settings-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.75);
+    position: sticky;
+    top: calc(var(--app-spacing) * 0.75);
+  }
+
+  .settings-card {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-panel-bg);
+  }
+
+  .settings-section-nav {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.45);
+  }
+
+  .settings-section-link {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.2);
+    padding: calc(var(--app-spacing) * 0.75);
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-md);
+    text-decoration: none;
+    color: inherit;
+    background: transparent;
+  }
+
+  .settings-section-link:hover {
+    border-color: var(--app-border);
+    background: var(--app-panel-bg);
+  }
+
+  .settings-section-link.is-active {
+    border-color: var(--app-border);
+    background: var(--app-panel-bg);
+  }
+
+  .settings-section-link-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--app-text);
+  }
+
+  .settings-section-link-desc {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--app-text-soft);
+  }
+
+  .settings-section-link-meta {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--app-spacing) * 0.45);
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .settings-section-link-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: var(--app-bg);
+    color: var(--app-text-soft);
+    font-size: 0.74rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .settings-main {
+    min-width: 0;
+  }
+
+  .settings-card.is-emphasis {
+    background: var(--app-bg);
+  }
+
+  .settings-card-header {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.2);
+  }
+
+  .settings-card-title {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--app-text);
+  }
+
+  .settings-card-desc {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--app-text-soft);
+  }
+
+  .settings-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-spacing);
+  }
+
+  .settings-card {
+    padding: var(--app-spacing);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.8);
+  }
+
+  .settings-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--app-spacing) * 0.9);
+  }
+
+  .version-update-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--app-spacing);
+  }
+
+  .version-update-item {
+    display: grid;
+    gap: calc(var(--app-spacing) * 0.3);
+    padding: calc(var(--app-spacing) * 0.8);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-panel-bg);
+  }
+
+  .version-update-label {
+    color: var(--app-text-soft);
+    font-size: 0.84rem;
+  }
+
+  .version-update-value {
+    font-size: 1.05rem;
+    font-weight: 600;
+    word-break: break-word;
+  }
+
+  .version-update-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--app-spacing);
+    flex-wrap: wrap;
+  }
+
+  .version-update-status,
+  .version-update-meta {
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--app-text-soft);
+    word-break: break-word;
+  }
+
+  .version-update-meta code,
+  .version-update-file-name {
+    color: var(--app-text-soft);
+    word-break: break-all;
+  }
+
+  @media (max-width: 1100px) {
+    .settings-shell,
+    .version-update-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .settings-sidebar {
+      position: static;
+    }
+  }
+</style>
+
+<div class="settings-area-tabs">
+  {{ sui.TabsStart("设置范围") }}
+    {% if frontendArea.Code and frontendFirstSection %}
+      {{ sui.Tab(frontendArea.Label, href=UrlFor('dash.settings.all', area=frontendArea.Code, section=frontendFirstSection), active=false) }}
+    {% endif %}
+    {{ sui.Tab("后台", href=UrlFor('dash.settings.version_update'), active=true) }}
+  {{ sui.TabsEnd() }}
+</div>
+
+<div class="settings-shell">
+  <aside class="settings-sidebar" aria-label="设置分组导航">
+    <nav class="settings-section-nav" aria-label="设置分组">
+      {% for section in backendArea.Sections %}
+        <a class="settings-section-link" href="{{ UrlFor('dash.settings.all', area=backendArea.Code, section=section.Code) }}">
+          <span class="settings-section-link-title">{{ section.Label }}</span>
+          <span class="settings-section-link-desc">{{ section.Description }}</span>
+          <span class="settings-section-link-meta">
+            <span class="settings-section-link-count">{{ section.SettingCount }} 项</span>
+          </span>
+        </a>
+      {% endfor %}
+      <a class="settings-section-link is-active" href="{{ UrlFor('dash.settings.version_update') }}" aria-current="page">
+        <span class="settings-section-link-title">版本更新</span>
+        <span class="settings-section-link-desc">查看当前版本，执行自动更新或安装本地发布包。</span>
+        <span class="settings-section-link-meta">
+          <span class="settings-section-link-count">应用</span>
+        </span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="settings-main">
+    {% if VersionUpdateError %}
+      {{ sui.Alert(VersionUpdateError, kind="danger", title="更新失败", inline=true) }}
+    {% endif %}
+    {% if VersionUpdateNotice %}
+      {{ sui.Alert(VersionUpdateNotice, kind="success", title="更新状态", inline=true) }}
+    {% endif %}
+
+    <div class="settings-card-list">
+      <section class="settings-card is-emphasis">
+        <header class="settings-card-header">
+          <h3 class="settings-card-title">版本信息</h3>
+          <p class="settings-card-desc">当前页面只负责 stable release 更新，不安装 dev 版本。</p>
+        </header>
+        <div class="settings-card-body">
+          <div class="version-update-grid">
+            <div class="version-update-item">
+              <span class="version-update-label">当前版本</span>
+              <span class="version-update-value">{{ CurrentVersion }}</span>
+            </div>
+            <div class="version-update-item">
+              <span class="version-update-label">最新通知版本</span>
+              <span class="version-update-value">{{ LatestVersion if LatestVersion else "暂未发现新版本" }}</span>
+            </div>
+            <div class="version-update-item">
+              <span class="version-update-label">运行模式</span>
+              <span class="version-update-value">{{ "daemon-mode 已开启" if UpdateSupported else "daemon-mode 未启用" }}</span>
+            </div>
+          </div>
+          {% if VersionRuntimePID > 0 %}
+            <div class="version-update-status">master pid: {{ VersionRuntimePID }}</div>
+          {% endif %}
+          {% if VersionRuntimeExecutable %}
+            <div class="version-update-status">binary: {{ VersionRuntimeExecutable }}</div>
+          {% endif %}
+          {% if LatestReleaseURL %}
+            <div class="version-update-meta"><a href="{{ LatestReleaseURL }}" target="_blank" rel="noopener noreferrer">查看 GitHub 发布说明</a></div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <header class="settings-card-header">
+          <h3 class="settings-card-title">自动更新</h3>
+          <p class="settings-card-desc">下载当前平台的最新 stable release 安装包，替换可执行文件后让 master 自动切换到新版本。</p>
+        </header>
+        <div class="settings-card-body">
+          {% if UpdateSupported %}
+            {{ sui.Alert("将从 GitHub release 自动下载并切换到最新稳定版本。", kind="info", inline=true) }}
+          {% else %}
+            {{ sui.Alert(UpdateSupportMessage, kind="warning", inline=true) }}
+          {% endif %}
+          <form id="version-update-auto-form" method="post" action="{{ UrlFor('dash.settings.version_update.auto') }}">
+            {{ _csrf_token() }}
+            {{ sui.Button("自动更新", "primary", attrs='type="submit"' ~ (' disabled' if not UpdateSupported else '')) }}
+          </form>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <header class="settings-card-header">
+          <h3 class="settings-card-title">手动更新</h3>
+          <p class="settings-card-desc">选择本地安装包后立即安装。文件名和归档格式必须与 GitHub release 一致，例如 <code>swaves_v1.2.4_linux_amd64.tar.gz</code>。</p>
+        </header>
+        <div class="settings-card-body">
+          {% if not UpdateSupported %}
+            {{ sui.Alert(UpdateSupportMessage, kind="warning", inline=true) }}
+          {% endif %}
+          <form id="version-update-manual-form" method="post" action="{{ UrlFor('dash.settings.version_update.manual') }}" enctype="multipart/form-data">
+            {{ _csrf_token() }}
+            <input id="version-update-archive" type="file" name="archive" accept=".tar.gz,application/gzip" hidden{% if not UpdateSupported %} disabled{% endif %}>
+            <div class="version-update-actions">
+              {{ sui.Button("手动更新", "primary", attrs='type="button" data-role="version-update-manual-trigger"' ~ (' disabled' if not UpdateSupported else '')) }}
+              <span id="version-update-file-name" class="version-update-file-name">未选择安装包</span>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var triggers = document.querySelectorAll('[data-role="version-update-manual-trigger"]');
+    var input = document.getElementById('version-update-archive');
+    var form = document.getElementById('version-update-manual-form');
+    var fileName = document.getElementById('version-update-file-name');
+    if (!triggers || triggers.length === 0 || !input || !form || !fileName) {
+      return;
+    }
+
+    triggers.forEach(function(trigger) {
+      trigger.addEventListener('click', function() {
+        if (trigger.disabled || input.disabled) {
+          return;
+        }
+        input.click();
+      });
+    });
+
+    input.addEventListener('change', function() {
+      if (!input.files || input.files.length === 0) {
+        fileName.textContent = '未选择安装包';
+        return;
+      }
+      fileName.textContent = input.files[0].name || '已选择安装包';
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+        return;
+      }
+      form.submit();
+    });
+  })();
+</script>
+{% endblock %}

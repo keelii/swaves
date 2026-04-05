@@ -344,6 +344,15 @@
             </span>
           </a>
         {% endfor %}
+        {% if activeArea.Code == "backend" %}
+          <a class="settings-section-link" href="{{ UrlFor('dash.settings.version_update') }}">
+            <span class="settings-section-link-title">版本更新</span>
+            <span class="settings-section-link-desc">查看当前版本并执行自动或手动更新。</span>
+            <span class="settings-section-link-meta">
+              <span class="settings-section-link-count">应用</span>
+            </span>
+          </a>
+        {% endif %}
       </nav>
     </aside>
 

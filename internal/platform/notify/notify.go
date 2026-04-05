@@ -7,6 +7,7 @@ import (
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
+	"swaves/internal/shared/semverutil"
 	"swaves/internal/shared/share"
 	"time"
 )
@@ -76,6 +77,23 @@ func BuildAppUpdateAggregateKey(version string, releaseURL string) string {
 		return appUpdateKeyPrefix + version
 	}
 	return appUpdateKeyPrefix + version + ":" + url.QueryEscape(releaseURL)
+}
+
+func ParseAppUpdateVersion(raw string) string {
+	text := strings.TrimSpace(raw)
+	if text == "" || !strings.HasPrefix(text, appUpdateKeyPrefix) {
+		return ""
+	}
+	payload := strings.TrimPrefix(text, appUpdateKeyPrefix)
+	splitAt := strings.Index(payload, ":")
+	if splitAt >= 0 {
+		payload = payload[:splitAt]
+	}
+	version := strings.TrimSpace(payload)
+	if !semverutil.IsStable(version) {
+		return ""
+	}
+	return version
 }
 
 func ParseAppUpdateReleaseURL(raw string) string {

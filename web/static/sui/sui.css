@@ -2017,6 +2017,7 @@ a.ui-icon-btn[disabled] {
   position: relative;
   flex: 0 0 var(--app-toc-width);
   width: var(--app-toc-width);
+  min-width: 240px;
   min-height: 0;
   border-left: var(--app-border-width) solid var(--app-border);
   /*background: var(--app-surface-muted-bg);*/
@@ -2053,7 +2054,10 @@ a.ui-icon-btn[disabled] {
 .post-toc {
   position: fixed;
   background: var(--app-surface-muted-bg);
+  width: max(var(--app-toc-width), 240px);
+  min-width: 240px;
   height: calc(100vh - var(--app-toolbar-height) - var(--app-status-height));
+  box-sizing: border-box;
 }
 
 .post-editor-toc-body .toc-title,

@@ -2,8 +2,11 @@ package dash
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"testing"
 
 	"swaves/internal/platform/db"
@@ -102,7 +105,7 @@ func TestBuildNotificationListItemsCommentURLFallback(t *testing.T) {
 			EventType:    dashNotificationEventPostLike,
 			AggregateKey: dashCommentLinkKeyPrefix + "99:" + url.QueryEscape("/posts/ignore#comment-99"),
 		},
-	}, defaultCommentURL, false)
+	}, defaultCommentURL, "")
 
 	if len(items) != 4 {
 		t.Fatalf("buildNotificationListItems len = %d, want 4", len(items))
@@ -147,7 +150,7 @@ func TestBuildNotificationListItemsCopiesTemplateFields(t *testing.T) {
 			ReadAt:         &readAt,
 			UpdatedAt:      updatedAt,
 		},
-	}, "/dash/comments", false)
+	}, "/dash/comments", "")
 
 	if len(items) != 1 {
 		t.Fatalf("buildNotificationListItems len = %d, want 1", len(items))
@@ -199,22 +202,128 @@ func TestParseNotificationIDRejectsInvalidJSONBody(t *testing.T) {
 }
 
 func TestBuildNotificationListItemsAppUpdateFields(t *testing.T) {
-	releaseURL := "https://github.com/keelii/swaves/releases/tag/v1.2.4"
+	pageURL := "/dash/settings/version-update"
 	items := buildNotificationListItems([]db.Notification{
 		{
 			ID:           7,
 			EventType:    dashNotificationEventAppUpdate,
-			AggregateKey: "app_update:v1.2.4:" + url.QueryEscape(releaseURL),
+			AggregateKey: "app_update:v1.2.4:" + url.QueryEscape("https://github.com/keelii/swaves/releases/tag/v1.2.4"),
 		},
-	}, "/dash/comments", true)
+	}, "/dash/comments", pageURL)
 
 	if len(items) != 1 {
 		t.Fatalf("buildNotificationListItems len = %d, want 1", len(items))
 	}
-	if items[0].AppUpdateReleaseURL != releaseURL {
-		t.Fatalf("AppUpdateReleaseURL = %q, want %q", items[0].AppUpdateReleaseURL, releaseURL)
+	if items[0].AppUpdatePageURL != pageURL {
+		t.Fatalf("AppUpdatePageURL = %q, want %q", items[0].AppUpdatePageURL, pageURL)
 	}
-	if !items[0].AppUpdateCanUpgrade {
-		t.Fatal("expected AppUpdateCanUpgrade=true")
+}
+
+func openDashTestDB(t *testing.T) *db.DB {
+	t.Helper()
+
+	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "dash.sqlite")})
+	if err := db.EnsureDefaultSettings(dbx); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = dbx.Close()
+	})
+	return dbx
+}
+
+func mustCreateNotificationForTest(t *testing.T, dbx *db.DB, title string, readAt *int64) int64 {
+	t.Helper()
+
+	item := &db.Notification{
+		Receiver:  db.NotificationReceiverDash,
+		EventType: db.NotificationEventComment,
+		Level:     db.NotificationLevelInfo,
+		Title:     title,
+		Body:      title,
+		ReadAt:    readAt,
+	}
+	id, err := db.CreateNotification(dbx, item)
+	if err != nil {
+		t.Fatalf("CreateNotification failed: %v", err)
+	}
+	return id
+}
+
+func TestPostNotificationBatchDeleteAPIHandler(t *testing.T) {
+	dbx := openDashTestDB(t)
+	readAt := int64(123)
+	readID := mustCreateNotificationForTest(t, dbx, "read", &readAt)
+	unreadID := mustCreateNotificationForTest(t, dbx, "unread", nil)
+
+	h := &Handler{Model: dbx}
+	app := fiber.New()
+	app.Post("/test", h.PostNotificationBatchDeleteAPIHandler)
+
+	reqBody := fmt.Sprintf(`{"ids":[0,%d,%d,%d]}`, readID, unreadID, readID)
+	req := httptest.NewRequest("POST", "/test", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusMultiStatus {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, fiber.StatusMultiStatus)
+	}
+
+	var body struct {
+		OK             bool    `json:"ok"`
+		RequestedCount int     `json:"requested_count"`
+		DeletedCount   int     `json:"deleted_count"`
+		FailedCount    int     `json:"failed_count"`
+		DeletedIDs     []int64 `json:"deleted_ids"`
+		Failed         []struct {
+			ID     int64  `json:"id"`
+			Status int    `json:"status"`
+			Error  string `json:"error"`
+		} `json:"failed"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response failed: %v", err)
+	}
+	if body.OK {
+		t.Fatal("expected ok=false for partial delete")
+	}
+	if body.RequestedCount != 2 {
+		t.Fatalf("requested_count = %d, want 2", body.RequestedCount)
+	}
+	if body.DeletedCount != 1 {
+		t.Fatalf("deleted_count = %d, want 1", body.DeletedCount)
+	}
+	if len(body.DeletedIDs) != 1 || body.DeletedIDs[0] != readID {
+		t.Fatalf("deleted_ids = %v, want [%d]", body.DeletedIDs, readID)
+	}
+	if body.FailedCount != 1 {
+		t.Fatalf("failed_count = %d, want 1", body.FailedCount)
+	}
+	if len(body.Failed) != 1 {
+		t.Fatalf("failed len = %d, want 1", len(body.Failed))
+	}
+	if body.Failed[0].ID != unreadID {
+		t.Fatalf("failed id = %d, want %d", body.Failed[0].ID, unreadID)
+	}
+	if body.Failed[0].Status != fiber.StatusNotFound {
+		t.Fatalf("failed status = %d, want %d", body.Failed[0].Status, fiber.StatusNotFound)
+	}
+
+	totalCount, err := db.CountNotifications(dbx, db.NotificationReceiverDash)
+	if err != nil {
+		t.Fatalf("CountNotifications failed: %v", err)
+	}
+	if totalCount != 1 {
+		t.Fatalf("CountNotifications = %d, want 1", totalCount)
+	}
+
+	unreadCount, err := db.CountUnreadNotifications(dbx, db.NotificationReceiverDash)
+	if err != nil {
+		t.Fatalf("CountUnreadNotifications failed: %v", err)
+	}
+	if unreadCount != 1 {
+		t.Fatalf("CountUnreadNotifications = %d, want 1", unreadCount)
 	}
 }

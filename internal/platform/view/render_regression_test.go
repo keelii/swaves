@@ -73,6 +73,47 @@ func TestRenderDashPostsIndexWithoutFilterNames(t *testing.T) {
 	if out.Len() == 0 {
 		t.Fatalf("expected non-empty render output")
 	}
+	if !strings.Contains(out.String(), "多选") {
+		t.Fatal("expected posts index to render multiselect toggle")
+	}
+}
+
+func TestRenderDashRecordsIndexDoesNotRenderMultiselect(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/records_index.html", map[string]any{
+		"RouteName": "dash.records.list",
+	})
+	if err != nil {
+		t.Fatalf("render records index failed: %v", err)
+	}
+	if strings.Contains(out.String(), "多选") {
+		t.Fatal("expected records index to hide multiselect toggle")
+	}
+}
+
+func TestRenderDashTaskRunsIndexDoesNotRenderMultiselect(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/task_runs_index.html", map[string]any{
+		"RouteName": "dash.tasks.runs",
+		"Task":      db.Task{Name: "demo", Code: "demo"},
+		"Runs":      []db.TaskRun{},
+	})
+	if err != nil {
+		t.Fatalf("render task runs index failed: %v", err)
+	}
+	if strings.Contains(out.String(), "多选") {
+		t.Fatal("expected task runs index to hide multiselect toggle")
+	}
 }
 
 func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {

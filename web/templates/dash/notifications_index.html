@@ -45,7 +45,7 @@
   </div>
 </div>
 <div id="notifications-table-wrap" class="data-table-wrap"{% if not (Notifications|length > 0) %} hidden{% endif %}>
-  <table id="notifications-table" class="data-table" aria-label="通知列表" data-role="data-table">
+  <table id="notifications-table" class="data-table" aria-label="通知列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.notifications.api.batch_delete') }}">
     <thead>
       <tr>
         <th>{{ ui.table_th_id() }}</th>
@@ -61,7 +61,7 @@
     <tbody>
       {% for item in Notifications %}
         {% set isUnread = item.ReadAt == none %}
-        <tr data-notification-row data-notification-id="{{ item.ID }}" data-notification-read="{{ 0 if isUnread else 1 }}">
+        <tr data-notification-row data-notification-id="{{ item.ID }}" data-notification-read="{{ 0 if isUnread else 1 }}" data-batch-delete-id="{{ item.ID }}">
           <td>{{ ui.table_td_id(item.ID) }}</td>
           <td>
             {% if item.EventType == "post_like" %}
@@ -84,8 +84,8 @@
                 {% set commentLink = item.CommentURL if item.CommentURL else UrlFor('dash.comments.list') %}
                 <a href="{{ commentLink }}"{% if item.CommentInNewTab %} target="_blank" rel="noopener noreferrer"{% endif %}>查看留言</a>
               {% endif %}
-              {% if item.EventType == "app_update" and item.AppUpdateReleaseURL %}
-                <a href="{{ item.AppUpdateReleaseURL }}" target="_blank" rel="noopener noreferrer">发布说明</a>
+              {% if item.EventType == "app_update" and item.AppUpdatePageURL %}
+                <a href="{{ item.AppUpdatePageURL }}">前往版本更新</a>
               {% endif %}
             </div>
           </td>
@@ -101,9 +101,6 @@
           </td>
           <td>{{ item.UpdatedAt | relativeTime }}</td>
           <td data-role="notification-actions">
-            {% if item.EventType == "app_update" and item.AppUpdateCanUpgrade %}
-              {{ sui.IconAction("download", "立即更新", attrs='data-role="notification-upgrade" data-id="' ~ item.ID ~ '" data-title="立即更新"') }}
-            {% endif %}
             {{ sui.IconAction("square-check", "标记已读", attrs='data-role="notification-mark-read" data-id="' ~ item.ID ~ '" data-title="标记已读"' ~ (' hidden' if not isUnread else '')) }}
             {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-role="notification-delete" data-id="' ~ item.ID ~ '" data-title="删除"' ~ (' hidden' if isUnread else '')) }}
           </td>

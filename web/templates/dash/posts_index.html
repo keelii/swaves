@@ -1,6 +1,7 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
+{% set OperationTableID = "posts-table" %}
 
 {% block page_actions %}
   {{ sui.LinkButton("新建文章", "primary", href=UrlFor('dash.posts.new')) }}

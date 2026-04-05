@@ -166,6 +166,70 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 	}
 }
 
+func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing.T) {
+	tmpDir := t.TempDir()
+	runtimePath := filepath.Join(tmpDir, "runtime.json")
+	oldRuntimePath := runtimeInfoPath
+	runtimeInfoPath = func() string { return runtimePath }
+	defer func() { runtimeInfoPath = oldRuntimePath }()
+
+	executablePath := filepath.Join(tmpDir, "swaves")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write old executable failed: %v", err)
+	}
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	var signaledPID atomic.Int64
+	oldProcessExists := processExists
+	oldSignalProcess := signalProcess
+	processExists = func(pid int) bool { return pid == 4321 }
+	signalProcess = func(pid int) error {
+		signaledPID.Store(int64(pid))
+		return nil
+	}
+	defer func() {
+		processExists = oldProcessExists
+		signalProcess = oldSignalProcess
+	}()
+
+	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
+	archivePath := filepath.Join(tmpDir, archiveName)
+	archiveData := buildTarGzArchive(t, "swaves", []byte("new-binary"))
+	if err := os.WriteFile(archivePath, archiveData, 0644); err != nil {
+		t.Fatalf("write local archive failed: %v", err)
+	}
+
+	result, err := InstallLocalReleaseArchive(archiveName, archivePath, "v1.2.3", "linux", "amd64")
+	if err != nil {
+		t.Fatalf("InstallLocalReleaseArchive failed: %v", err)
+	}
+	if !result.Installed {
+		t.Fatal("expected Installed=true")
+	}
+	if result.LatestVersion != "v1.2.4" {
+		t.Fatalf("LatestVersion = %q, want v1.2.4", result.LatestVersion)
+	}
+	if signaledPID.Load() != 4321 {
+		t.Fatalf("signal pid = %d, want 4321", signaledPID.Load())
+	}
+
+	gotBinary, err := os.ReadFile(executablePath)
+	if err != nil {
+		t.Fatalf("ReadFile executable failed: %v", err)
+	}
+	if string(gotBinary) != "new-binary" {
+		t.Fatalf("unexpected executable contents: %q", string(gotBinary))
+	}
+}
+
+func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
+	if _, err := validateLocalArchiveName("swaves_v1.2.4_darwin_arm64.tar.gz", "linux", "amd64"); err == nil {
+		t.Fatal("expected wrong platform archive to be rejected")
+	}
+}
+
 func buildTarGzArchive(t *testing.T, name string, content []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer

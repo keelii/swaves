@@ -23,7 +23,7 @@ const (
 	defaultBackupDir    = "backups"
 	defaultListenAddr   = ":3000"
 	defaultAppName      = "swaves"
-	defaultDaemonMode   = 1
+	defaultDaemonMode   = 0
 	defaultMaxFailures  = 5
 	flagBackupDirKey    = "backup-dir"
 	flagListenAddrKey   = "listen-addr"

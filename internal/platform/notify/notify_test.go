@@ -104,3 +104,12 @@ func TestParseAppUpdateReleaseURL(t *testing.T) {
 		t.Fatalf("ParseAppUpdateReleaseURL without release url = %q", got)
 	}
 }
+
+func TestParseAppUpdateVersion(t *testing.T) {
+	if got := ParseAppUpdateVersion(BuildAppUpdateAggregateKey("v1.2.4", "https://github.com/keelii/swaves/releases/tag/v1.2.4")); got != "v1.2.4" {
+		t.Fatalf("ParseAppUpdateVersion = %q", got)
+	}
+	if got := ParseAppUpdateVersion("app_update:dev"); got != "" {
+		t.Fatalf("ParseAppUpdateVersion(dev) = %q", got)
+	}
+}

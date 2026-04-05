@@ -393,6 +393,14 @@
                   notify('批量删除完成：成功 ' + successCount + '，失败 ' + failedCount + '。', '批量删除');
                 }
               }
+
+              document.dispatchEvent(new CustomEvent('dash:batch-delete:done', {
+                detail: {
+                  tableId: tableId,
+                  successCount: successCount,
+                  failedCount: failedCount
+                }
+              }));
             }).finally(function() {
               syncSelectAllState();
             });

@@ -1377,6 +1377,17 @@ func CountNotificationsByEventTypeService(dbx *db.DB, receiver string, eventType
 	return db.CountNotificationsByEventType(dbx, receiver, eventType)
 }
 
+func GetLatestNotificationByEventTypeService(dbx *db.DB, receiver string, eventType string) (*db.Notification, error) {
+	items, err := db.ListNotificationsByEventType(dbx, receiver, eventType, 1, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	return &items[0], nil
+}
+
 func MarkNotificationReadService(dbx *db.DB, id int64, receiver string) error {
 	return db.MarkNotificationRead(dbx, id, receiver)
 }

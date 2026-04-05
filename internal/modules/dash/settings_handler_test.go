@@ -43,6 +43,7 @@ func TestBuildSettingAreasGroupsCrossKindSettings(t *testing.T) {
 		{Kind: db.SettingKindSiteBasics, Name: "访问地址", Code: "site_url", Type: "text", Value: "https://example.com"},
 		{Kind: db.SettingKindDashSecurity, Name: "资源默认服务", Code: "asset_default_provider", Type: "select", Value: "see"},
 		{Kind: db.SettingKindThirdPartyServices, Name: "S.EE API 地址", Code: "asset_see_api_base", Type: "url", Value: "https://s.ee/api/v1/file/upload"},
+		{Kind: db.SettingKindThirdPartyServices, Name: "S3 接口地址", Code: "s3_api_endpoint", Type: "url", Value: "https://s3.example.com"},
 		{Kind: db.SettingKindThirdPartyServices, Name: "Google analytics ID", Code: "ga4_id", Type: "text", Value: "G-TEST"},
 		{Kind: db.SettingKindUIExperience, Name: "文字大小", Code: "font_size", Type: "number", Value: "14"},
 	})
@@ -75,8 +76,13 @@ func TestBuildSettingAreasGroupsCrossKindSettings(t *testing.T) {
 	if assets == nil {
 		t.Fatalf("expected assets section to exist")
 	}
-	if got := countSectionSettings(assets); got != 2 {
-		t.Fatalf("expected assets section to include 2 settings from different kinds, got %d", got)
+	if got := countSectionSettings(assets); got != 3 {
+		t.Fatalf("expected assets section to include 3 settings from different kinds, got %d", got)
+	}
+
+	backup := findSettingSection(backend, settingSectionBackup)
+	if backup != nil {
+		t.Fatalf("expected backup section to stay hidden without backup settings, got %+v", backup)
 	}
 
 	display := findSettingSection(frontend, settingSectionDisplay)
@@ -160,5 +166,15 @@ func TestBuildSettingAreasAddsSectionCountsAndSummaries(t *testing.T) {
 	}
 	if notifications.Summary != "3 项通知已开启" {
 		t.Fatalf("unexpected notifications summary: %q", notifications.Summary)
+	}
+}
+
+func TestResolveSettingLocationPlacesS3UnderAssets(t *testing.T) {
+	location := resolveSettingLocation(db.Setting{
+		Kind: db.SettingKindThirdPartyServices,
+		Code: "s3_api_endpoint",
+	})
+	if location.Area != settingAreaBackend || location.Section != settingSectionAssets || location.Card != "s3" {
+		t.Fatalf("unexpected s3 location: %+v", location)
 	}
 }
