@@ -68,6 +68,31 @@ func TestNormalizeSupervisorConfigAppliesDefaults(t *testing.T) {
 	}
 }
 
+func TestResolveSupervisorExecutablePathUsesConfiguredValue(t *testing.T) {
+	got, err := resolveSupervisorExecutablePath(" /tmp/swaves ")
+	if err != nil {
+		t.Fatalf("resolveSupervisorExecutablePath failed: %v", err)
+	}
+	if got != "/tmp/swaves" {
+		t.Fatalf("resolveSupervisorExecutablePath = %q, want %q", got, "/tmp/swaves")
+	}
+}
+
+func TestResolveSupervisorExecutablePathFallsBackToCurrentExecutable(t *testing.T) {
+	want, err := os.Executable()
+	if err != nil {
+		t.Fatalf("os.Executable failed: %v", err)
+	}
+
+	got, err := resolveSupervisorExecutablePath("")
+	if err != nil {
+		t.Fatalf("resolveSupervisorExecutablePath failed: %v", err)
+	}
+	if got != want {
+		t.Fatalf("resolveSupervisorExecutablePath = %q, want %q", got, want)
+	}
+}
+
 func TestReadWorkerReadyReturnsUnexpectedMessage(t *testing.T) {
 	reader, writer, err := os.Pipe()
 	if err != nil {

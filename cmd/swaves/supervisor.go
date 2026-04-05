@@ -35,6 +35,7 @@ type supervisorConfig struct {
 	MaxFailures     int
 	ReadyTimeout    time.Duration
 	ShutdownTimeout time.Duration
+	ExecutablePath  string
 	Args            []string
 	Worker          func() error
 }
@@ -62,10 +63,11 @@ func runSupervisor(cfg supervisorConfig) error {
 
 	normalizeSupervisorConfig(&cfg)
 
-	execPath, err := os.Executable()
+	execPath, err := resolveSupervisorExecutablePath(cfg.ExecutablePath)
 	if err != nil {
 		return fmt.Errorf("resolve executable failed: %w", err)
 	}
+	cfg.ExecutablePath = execPath
 	if err := updater.WriteRuntimeInfo(updater.RuntimeInfo{
 		PID:        os.Getpid(),
 		Executable: execPath,
@@ -155,9 +157,9 @@ func spawnWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, e
 	}
 	defer func() { _ = readyWriter.Close() }()
 
-	execPath, err := os.Executable()
-	if err != nil {
-		return nil, fmt.Errorf("resolve executable failed: %w", err)
+	execPath := strings.TrimSpace(cfg.ExecutablePath)
+	if execPath == "" {
+		return nil, fmt.Errorf("worker executable path is required")
 	}
 
 	cmd := exec.Command(execPath, workerArgs(cfg.Args)...)
@@ -206,6 +208,14 @@ func spawnWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, e
 		_ = stopWorkerProcess(worker, cfg.ShutdownTimeout)
 		return nil, fmt.Errorf("worker ready timeout after %s", cfg.ReadyTimeout)
 	}
+}
+
+func resolveSupervisorExecutablePath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path != "" {
+		return path, nil
+	}
+	return os.Executable()
 }
 
 func workerEnv() []string {

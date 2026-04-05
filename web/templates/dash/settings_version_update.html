@@ -32,6 +32,10 @@
     background: var(--app-panel-bg);
   }
 
+  .version-update-banner {
+    margin-bottom: var(--app-spacing);
+  }
+
   .settings-section-nav {
     display: flex;
     flex-direction: column;
@@ -232,10 +236,14 @@
 
   <div class="settings-main">
     {% if VersionUpdateError %}
-      {{ sui.Alert(VersionUpdateError, kind="danger", title="更新失败", inline=true) }}
+      <div class="version-update-banner">
+        {{ sui.Alert(VersionUpdateError, kind="danger", title="更新失败", inline=true) }}
+      </div>
     {% endif %}
     {% if VersionUpdateNotice %}
-      {{ sui.Alert(VersionUpdateNotice, kind="success", title="更新状态", inline=true) }}
+      <div class="version-update-banner">
+        {{ sui.Alert(VersionUpdateNotice, kind="success", title="更新状态", inline=true) }}
+      </div>
     {% endif %}
 
     <div class="settings-card-list">
@@ -311,6 +319,36 @@
 
 <script>
   (function() {
+    var currentVersion = {{ CurrentVersion | tojson }};
+    var latestVersion = {{ LatestVersion | tojson }};
+    var versionNotice = {{ VersionUpdateNotice | tojson }};
+    if (versionNotice && currentVersion && latestVersion && currentVersion !== latestVersion) {
+      var refreshURL = window.location.pathname;
+      window.setTimeout(function() {
+        var attempts = 0;
+        var maxAttempts = 10;
+        var refreshTimer = window.setInterval(function() {
+          attempts += 1;
+          fetch(refreshURL, { credentials: 'same-origin', cache: 'no-store' })
+            .then(function(response) {
+              if (response.ok) {
+                window.clearInterval(refreshTimer);
+                window.location.replace(refreshURL);
+                return;
+              }
+              if (attempts >= maxAttempts) {
+                window.clearInterval(refreshTimer);
+              }
+            })
+            .catch(function() {
+              if (attempts >= maxAttempts) {
+                window.clearInterval(refreshTimer);
+              }
+            });
+        }, 1500);
+      }, 1000);
+    }
+
     var triggers = document.querySelectorAll('[data-role="version-update-manual-trigger"]');
     var input = document.getElementById('version-update-archive');
     var form = document.getElementById('version-update-manual-form');
