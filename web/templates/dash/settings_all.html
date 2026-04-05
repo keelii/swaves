@@ -661,7 +661,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     setCardState('imagekit', {
       emphasis: provider === 'imagekit',
-      muted: provider !== 'imagekit',
+      muted: false,
       collapsible: true,
       collapseWhenMuted: provider !== 'imagekit',
       note: provider === 'imagekit'
@@ -703,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     setCardState('s3', {
       emphasis: enabled === '1' && provider === 's3',
-      muted: provider !== 's3',
+      muted: false,
       collapsible: true,
       collapseWhenMuted: provider !== 's3',
       note: s3Note,

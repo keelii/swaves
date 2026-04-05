@@ -289,7 +289,7 @@
           {% endif %}
           <form id="version-update-auto-form" method="post" action="{{ UrlFor('dash.settings.version_update.auto') }}">
             {{ _csrf_token() }}
-            {{ sui.Button("自动更新", "primary", attrs='type="submit"' ~ (' disabled' if not UpdateSupported else '')) }}
+            {{ sui.Button("自动更新", "primary", attrs='type="submit"' ~ (' disabled' if not AutoUpdateEnabled else '')) }}
           </form>
         </div>
       </section>

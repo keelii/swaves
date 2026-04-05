@@ -16,6 +16,12 @@ import (
 
 var checkLatestRelease = updater.CheckLatestRelease
 
+type latestVersionInfo struct {
+	Version           string
+	ReleaseURL        string
+	AutoUpdateEnabled bool
+}
+
 func versionLabel(version string) string {
 	version = strings.TrimSpace(version)
 	if version == "" {
@@ -64,13 +70,18 @@ func versionUpdateSupportState() (bool, string, updater.RuntimeInfo) {
 	return true, "", runtimeInfo
 }
 
-func loadLatestVersionInfo(currentVersion string, goos string, goarch string, fallbackVersion string, fallbackReleaseURL string) (string, string) {
+func loadLatestVersionInfo(currentVersion string, goos string, goarch string, fallbackVersion string, fallbackReleaseURL string) latestVersionInfo {
+	currentVersion = strings.TrimSpace(currentVersion)
 	fallbackVersion = strings.TrimSpace(fallbackVersion)
 	fallbackReleaseURL = strings.TrimSpace(fallbackReleaseURL)
 
 	result, err := checkLatestRelease(currentVersion, goos, goarch)
 	if err != nil {
-		return fallbackVersion, fallbackReleaseURL
+		return latestVersionInfo{
+			Version:           fallbackVersion,
+			ReleaseURL:        fallbackReleaseURL,
+			AutoUpdateEnabled: currentVersion == "" || fallbackVersion == "" || fallbackVersion != currentVersion,
+		}
 	}
 
 	latestVersion := strings.TrimSpace(result.LatestVersion)
@@ -81,7 +92,11 @@ func loadLatestVersionInfo(currentVersion string, goos string, goarch string, fa
 	if latestReleaseURL == "" {
 		latestReleaseURL = fallbackReleaseURL
 	}
-	return latestVersion, latestReleaseURL
+	return latestVersionInfo{
+		Version:           latestVersion,
+		ReleaseURL:        latestReleaseURL,
+		AutoUpdateEnabled: currentVersion == "" || latestVersion == "" || latestVersion != currentVersion,
+	}
 }
 
 func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
@@ -105,7 +120,7 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 		latestVersion = notify.ParseAppUpdateVersion(latestNotification.AggregateKey)
 		latestReleaseURL = notify.ParseAppUpdateReleaseURL(latestNotification.AggregateKey)
 	}
-	latestVersion, latestReleaseURL = loadLatestVersionInfo(buildinfo.Version, runtime.GOOS, runtime.GOARCH, latestVersion, latestReleaseURL)
+	latestInfo := loadLatestVersionInfo(buildinfo.Version, runtime.GOOS, runtime.GOARCH, latestVersion, latestReleaseURL)
 
 	return h.RenderDashView(c, "dash/settings_version_update.html", fiber.Map{
 		"Title":                "版本更新",
@@ -113,8 +128,9 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 		"BackendArea":          backendArea,
 		"FrontendFirstSection": firstSettingSectionCode(frontendArea),
 		"CurrentVersion":       versionLabel(buildinfo.Version),
-		"LatestVersion":        latestVersion,
-		"LatestReleaseURL":     latestReleaseURL,
+		"LatestVersion":        latestInfo.Version,
+		"LatestReleaseURL":     latestInfo.ReleaseURL,
+		"AutoUpdateEnabled":    updateSupported && latestInfo.AutoUpdateEnabled,
 		"UpdateSupported":      updateSupported,
 		"UpdateSupportMessage": updateSupportMessage,
 		"VersionUpdateNotice":  strings.TrimSpace(c.Query("notice")),

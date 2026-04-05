@@ -19,7 +19,7 @@ func TestLoadLatestVersionInfoPrefersFreshReleaseCheck(t *testing.T) {
 		checkLatestRelease = original
 	}()
 
-	latestVersion, latestReleaseURL := loadLatestVersionInfo(
+	latestInfo := loadLatestVersionInfo(
 		"v0.0.12",
 		"linux",
 		"amd64",
@@ -27,11 +27,14 @@ func TestLoadLatestVersionInfoPrefersFreshReleaseCheck(t *testing.T) {
 		"https://github.com/keelii/swaves/releases/tag/v0.0.11",
 	)
 
-	if latestVersion != "v0.0.13" {
-		t.Fatalf("latestVersion = %q, want %q", latestVersion, "v0.0.13")
+	if latestInfo.Version != "v0.0.13" {
+		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.13")
 	}
-	if latestReleaseURL != "https://github.com/keelii/swaves/releases/tag/v0.0.13" {
-		t.Fatalf("latestReleaseURL = %q", latestReleaseURL)
+	if latestInfo.ReleaseURL != "https://github.com/keelii/swaves/releases/tag/v0.0.13" {
+		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
+	}
+	if !latestInfo.AutoUpdateEnabled {
+		t.Fatal("expected auto update to stay enabled when latest version is newer")
 	}
 }
 
@@ -44,7 +47,7 @@ func TestLoadLatestVersionInfoFallsBackWhenReleaseCheckFails(t *testing.T) {
 		checkLatestRelease = original
 	}()
 
-	latestVersion, latestReleaseURL := loadLatestVersionInfo(
+	latestInfo := loadLatestVersionInfo(
 		"v0.0.12",
 		"linux",
 		"amd64",
@@ -52,10 +55,41 @@ func TestLoadLatestVersionInfoFallsBackWhenReleaseCheckFails(t *testing.T) {
 		"https://github.com/keelii/swaves/releases/tag/v0.0.11",
 	)
 
-	if latestVersion != "v0.0.11" {
-		t.Fatalf("latestVersion = %q, want %q", latestVersion, "v0.0.11")
+	if latestInfo.Version != "v0.0.11" {
+		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.11")
 	}
-	if latestReleaseURL != "https://github.com/keelii/swaves/releases/tag/v0.0.11" {
-		t.Fatalf("latestReleaseURL = %q", latestReleaseURL)
+	if latestInfo.ReleaseURL != "https://github.com/keelii/swaves/releases/tag/v0.0.11" {
+		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
+	}
+	if !latestInfo.AutoUpdateEnabled {
+		t.Fatal("expected auto update to stay enabled when fallback version is older")
+	}
+}
+
+func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) {
+	original := checkLatestRelease
+	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+		return updater.CheckResult{
+			LatestVersion:    "v0.0.15",
+			LatestReleaseURL: "https://github.com/keelii/swaves/releases/tag/v0.0.15",
+		}, nil
+	}
+	defer func() {
+		checkLatestRelease = original
+	}()
+
+	latestInfo := loadLatestVersionInfo(
+		"v0.0.15",
+		"linux",
+		"amd64",
+		"v0.0.14",
+		"https://github.com/keelii/swaves/releases/tag/v0.0.14",
+	)
+
+	if latestInfo.Version != "v0.0.15" {
+		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.15")
+	}
+	if latestInfo.AutoUpdateEnabled {
+		t.Fatal("expected auto update to be disabled when current version already matches latest version")
 	}
 }
