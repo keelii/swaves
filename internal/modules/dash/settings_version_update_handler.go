@@ -55,9 +55,9 @@ func versionUpdateSupportState() (bool, string, updater.RuntimeInfo) {
 		return false, "Windows 暂不支持 daemon-mode 自动更新", updater.RuntimeInfo{}
 	}
 
-	runtimeInfo, err := updater.ReadRuntimeInfo()
+	runtimeInfo, err := updater.ReadActiveRuntimeInfo()
 	if err != nil {
-		return false, "当前未开启 daemon-mode=1，无法执行自动更新或本地安装包切换", updater.RuntimeInfo{}
+		return false, "当前 daemon-mode master 不可用，无法执行自动更新或本地安装包切换：" + err.Error(), updater.RuntimeInfo{}
 	}
 	return true, "", runtimeInfo
 }

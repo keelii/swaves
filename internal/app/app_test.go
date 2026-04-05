@@ -183,6 +183,19 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	if getResp.StatusCode != fiber.StatusMethodNotAllowed {
 		t.Fatalf("unexpected get /dash/import/parse-item status: %d", getResp.StatusCode)
 	}
+
+	legacyPostReq := httptest.NewRequest("POST", "/dash/import", strings.NewReader(url.Values{
+		"_csrf_token": []string{csrfToken},
+	}.Encode()))
+	legacyPostReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	legacyPostReq.Header.Set("Cookie", cookieKV)
+	legacyPostResp, err := swv.App.Test(legacyPostReq)
+	if err != nil {
+		t.Fatalf("legacy post import request failed: %v", err)
+	}
+	if legacyPostResp.StatusCode != fiber.StatusMethodNotAllowed {
+		t.Fatalf("unexpected post /dash/import status: %d", legacyPostResp.StatusCode)
+	}
 }
 
 func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {

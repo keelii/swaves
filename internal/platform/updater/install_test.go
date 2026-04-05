@@ -20,10 +20,18 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
+	oldCurrentExecutable := currentExecutable
+	oldProcessExecutable := processExecutable
 	runtimeInfoPath = func() string { return runtimePath }
-	defer func() { runtimeInfoPath = oldRuntimePath }()
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+		currentExecutable = oldCurrentExecutable
+		processExecutable = oldProcessExecutable
+	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
+	currentExecutable = func() (string, error) { return executablePath, nil }
+	processExecutable = func(pid int) (string, error) { return executablePath, nil }
 	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write old executable failed: %v", err)
 	}
@@ -102,10 +110,18 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
+	oldCurrentExecutable := currentExecutable
+	oldProcessExecutable := processExecutable
 	runtimeInfoPath = func() string { return runtimePath }
-	defer func() { runtimeInfoPath = oldRuntimePath }()
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+		currentExecutable = oldCurrentExecutable
+		processExecutable = oldProcessExecutable
+	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
+	currentExecutable = func() (string, error) { return executablePath, nil }
+	processExecutable = func(pid int) (string, error) { return executablePath, nil }
 	if err := os.WriteFile(executablePath, []byte("same-binary"), 0755); err != nil {
 		t.Fatalf("write executable failed: %v", err)
 	}
@@ -170,10 +186,18 @@ func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
+	oldCurrentExecutable := currentExecutable
+	oldProcessExecutable := processExecutable
 	runtimeInfoPath = func() string { return runtimePath }
-	defer func() { runtimeInfoPath = oldRuntimePath }()
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+		currentExecutable = oldCurrentExecutable
+		processExecutable = oldProcessExecutable
+	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
+	currentExecutable = func() (string, error) { return executablePath, nil }
+	processExecutable = func(pid int) (string, error) { return executablePath, nil }
 	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write old executable failed: %v", err)
 	}
@@ -196,7 +220,7 @@ func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing
 
 	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
 	archivePath := filepath.Join(tmpDir, archiveName)
-	archiveData := buildTarGzArchive(t, "swaves", []byte("new-binary"))
+	archiveData := buildTarGzArchive(t, expectedReleaseBinaryName(archiveName), []byte("new-binary"))
 	if err := os.WriteFile(archivePath, archiveData, 0644); err != nil {
 		t.Fatalf("write local archive failed: %v", err)
 	}
@@ -230,16 +254,87 @@ func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
 	}
 }
 
+func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	archivePath := filepath.Join(tmpDir, "swaves_v1.2.4_linux_amd64.tar.gz")
+	archiveData := buildTarGzArchiveEntries(t, []archiveEntry{
+		{name: "README.md", content: []byte("readme")},
+		{name: "swaves_v1.2.4_linux_amd64", content: []byte("new-binary")},
+	})
+	if err := os.WriteFile(archivePath, archiveData, 0644); err != nil {
+		t.Fatalf("write archive failed: %v", err)
+	}
+
+	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, "swaves_v1.2.4_linux_amd64")
+	if err != nil {
+		t.Fatalf("extractReleaseBinary failed: %v", err)
+	}
+	got, err := os.ReadFile(extractedPath)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if string(got) != "new-binary" {
+		t.Fatalf("unexpected extracted contents: %q", string(got))
+	}
+}
+
+func TestInstallLatestReleaseRejectsStaleRuntimeInfo(t *testing.T) {
+	tmpDir := t.TempDir()
+	runtimePath := filepath.Join(tmpDir, "runtime.json")
+	oldRuntimePath := runtimeInfoPath
+	oldCurrentExecutable := currentExecutable
+	oldProcessExecutable := processExecutable
+	oldProcessExists := processExists
+	runtimeInfoPath = func() string { return runtimePath }
+	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
+	processExecutable = func(pid int) (string, error) { return filepath.Join(tmpDir, "other-binary"), nil }
+	processExists = func(pid int) bool { return pid == 4321 }
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+		currentExecutable = oldCurrentExecutable
+		processExecutable = oldProcessExecutable
+		processExists = oldProcessExists
+	}()
+
+	executablePath := filepath.Join(tmpDir, "swaves")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write executable failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "other-binary"), []byte("other"), 0755); err != nil {
+		t.Fatalf("write other executable failed: %v", err)
+	}
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	_, err := Client{}.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	if err == nil || !strings.Contains(err.Error(), "active master process") {
+		t.Fatalf("expected active master process error, got %v", err)
+	}
+}
+
 func buildTarGzArchive(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+	return buildTarGzArchiveEntries(t, []archiveEntry{{name: name, content: content}})
+}
+
+type archiveEntry struct {
+	name    string
+	content []byte
+}
+
+func buildTarGzArchiveEntries(t *testing.T, entries []archiveEntry) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&buf)
 	tarWriter := tar.NewWriter(gzipWriter)
-	if err := tarWriter.WriteHeader(&tar.Header{Name: name, Mode: 0755, Size: int64(len(content))}); err != nil {
-		t.Fatalf("WriteHeader failed: %v", err)
-	}
-	if _, err := tarWriter.Write(content); err != nil {
-		t.Fatalf("Write archive contents failed: %v", err)
+	for _, entry := range entries {
+		if err := tarWriter.WriteHeader(&tar.Header{Name: entry.name, Mode: 0755, Size: int64(len(entry.content))}); err != nil {
+			t.Fatalf("WriteHeader failed: %v", err)
+		}
+		if _, err := tarWriter.Write(entry.content); err != nil {
+			t.Fatalf("Write archive contents failed: %v", err)
+		}
 	}
 	if err := tarWriter.Close(); err != nil {
 		t.Fatalf("Close tar writer failed: %v", err)

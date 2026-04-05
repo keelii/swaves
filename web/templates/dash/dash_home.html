@@ -150,10 +150,6 @@
     <div class="dashboard-number">{% if TotalLikes %}{{ TotalLikes }}{% else %}0{% endif %}</div>
   </section>
   <section class="dashboard-stat">
-    <div class="dashboard-label">应用版本</div>
-    <div class="dashboard-number">{{ AppVersion if AppVersion else "dev" }}</div>
-  </section>
-  <section class="dashboard-stat">
     <div class="dashboard-label">
       <span>文章总数</span>
       {{ sui.LinkIcon("plus", UrlFor('dash.posts.new'), attrs='aria-label="新建文章" data-title="新建文章"') }}

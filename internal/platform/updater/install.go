@@ -30,7 +30,6 @@ type InstallResult struct {
 var (
 	installMu     sync.Mutex
 	signalProcess = defaultSignalProcess
-	processExists = defaultProcessExists
 )
 
 func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
@@ -51,12 +50,9 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 		return result, fmt.Errorf("local release archive path is required")
 	}
 
-	runtimeInfo, err := ReadRuntimeInfo()
+	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
 		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process")
-	}
-	if !processExists(runtimeInfo.PID) {
-		return result, fmt.Errorf("master process is not running: pid=%d", runtimeInfo.PID)
 	}
 
 	version, err := validateLocalArchiveName(result.ArchiveName, goos, goarch)
@@ -71,7 +67,7 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	extractedPath, err := extractReleaseBinary(archivePath, tmpDir)
+	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(result.ArchiveName))
 	if err != nil {
 		return result, err
 	}
@@ -96,12 +92,9 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 	defer installMu.Unlock()
 
 	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
-	runtimeInfo, err := ReadRuntimeInfo()
+	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
 		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process")
-	}
-	if !processExists(runtimeInfo.PID) {
-		return result, fmt.Errorf("master process is not running: pid=%d", runtimeInfo.PID)
 	}
 
 	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
@@ -152,7 +145,7 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 		return result, err
 	}
 
-	extractedPath, err := extractReleaseBinary(archivePath, tmpDir)
+	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(check.Target.Archive.Name))
 	if err != nil {
 		return result, err
 	}
@@ -237,7 +230,7 @@ func verifyChecksumFile(archivePath string, checksumPath string) error {
 	return nil
 }
 
-func extractReleaseBinary(archivePath string, dstDir string) (string, error) {
+func extractReleaseBinary(archivePath string, dstDir string, expectedName string) (string, error) {
 	archiveFile, err := os.Open(archivePath)
 	if err != nil {
 		return "", fmt.Errorf("open archive failed: %w", err)
@@ -249,6 +242,11 @@ func extractReleaseBinary(archivePath string, dstDir string) (string, error) {
 		return "", fmt.Errorf("open gzip archive failed: %w", err)
 	}
 	defer func() { _ = gzipReader.Close() }()
+
+	expectedName = strings.TrimSpace(expectedName)
+	if expectedName == "" {
+		return "", fmt.Errorf("release binary name is required")
+	}
 
 	tarReader := tar.NewReader(gzipReader)
 	for {
@@ -264,7 +262,7 @@ func extractReleaseBinary(archivePath string, dstDir string) (string, error) {
 		}
 
 		name := filepath.Base(strings.TrimSpace(header.Name))
-		if name == "" || name == "." || name == string(filepath.Separator) {
+		if name == "" || name == "." || name == string(filepath.Separator) || name != expectedName {
 			continue
 		}
 		dstPath := filepath.Join(dstDir, name)
@@ -282,18 +280,7 @@ func extractReleaseBinary(archivePath string, dstDir string) (string, error) {
 		return dstPath, nil
 	}
 
-	return "", fmt.Errorf("no executable file found in archive")
-}
-
-func defaultProcessExists(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return process.Signal(syscall.Signal(0)) == nil
+	return "", fmt.Errorf("release binary %q not found in archive", expectedName)
 }
 
 func defaultSignalProcess(pid int) error {
@@ -341,4 +328,8 @@ func validateLocalArchiveName(archiveName string, goos string, goarch string) (s
 		return "", fmt.Errorf("invalid local archive name: %s", archiveName)
 	}
 	return version, nil
+}
+
+func expectedReleaseBinaryName(archiveName string) string {
+	return strings.TrimSuffix(filepath.Base(strings.TrimSpace(archiveName)), ".tar.gz")
 }

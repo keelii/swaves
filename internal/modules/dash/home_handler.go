@@ -2,7 +2,6 @@ package dash
 
 import (
 	"strings"
-	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/db"
 	"time"
 
@@ -81,7 +80,6 @@ func RenderDashView(c fiber.Ctx, view string, data fiber.Map, layout string) err
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 	data["_csrf_token_value"] = fiber.Locals[string](c, "CsrfToken")
 	data["NotificationUnreadCount"] = fiber.Locals[int](c, "DashNotificationUnreadCount")
-	data["AppVersion"] = buildinfo.Version
 
 	return c.Render(view, data)
 }
