@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/types"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ func newControllerP0TestApp(t *testing.T) SwavesApp {
 
 	dbPath := filepath.Join(t.TempDir(), "controller-p0.sqlite")
 	prepareInstalledAppDB(t, dbPath)
+	middleware.DashLoginRateLimitResetAll()
 	return NewApp(types.AppConfig{
 		SqliteFile: dbPath,
 		ListenAddr: ":0",

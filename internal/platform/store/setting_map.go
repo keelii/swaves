@@ -46,6 +46,10 @@ func InitSettings(gStore *GlobalStore) {
 }
 
 func ReloadSettings(gStore *GlobalStore) error {
+	if gStore == nil || gStore.IsClosed() {
+		return nil
+	}
+
 	m, err := db.LoadSettingsToMap(gStore.Model)
 	if err != nil {
 		logger.Error("error loading settings: %v", err)
