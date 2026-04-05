@@ -14,6 +14,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+var checkLatestRelease = updater.CheckLatestRelease
+
 func versionLabel(version string) string {
 	version = strings.TrimSpace(version)
 	if version == "" {
@@ -62,6 +64,26 @@ func versionUpdateSupportState() (bool, string, updater.RuntimeInfo) {
 	return true, "", runtimeInfo
 }
 
+func loadLatestVersionInfo(currentVersion string, goos string, goarch string, fallbackVersion string, fallbackReleaseURL string) (string, string) {
+	fallbackVersion = strings.TrimSpace(fallbackVersion)
+	fallbackReleaseURL = strings.TrimSpace(fallbackReleaseURL)
+
+	result, err := checkLatestRelease(currentVersion, goos, goarch)
+	if err != nil {
+		return fallbackVersion, fallbackReleaseURL
+	}
+
+	latestVersion := strings.TrimSpace(result.LatestVersion)
+	latestReleaseURL := strings.TrimSpace(result.LatestReleaseURL)
+	if latestVersion == "" {
+		latestVersion = fallbackVersion
+	}
+	if latestReleaseURL == "" {
+		latestReleaseURL = fallbackReleaseURL
+	}
+	return latestVersion, latestReleaseURL
+}
+
 func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 	settings, err := ListAllSettings(h.Model)
 	if err != nil {
@@ -83,6 +105,7 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 		latestVersion = notify.ParseAppUpdateVersion(latestNotification.AggregateKey)
 		latestReleaseURL = notify.ParseAppUpdateReleaseURL(latestNotification.AggregateKey)
 	}
+	latestVersion, latestReleaseURL = loadLatestVersionInfo(buildinfo.Version, runtime.GOOS, runtime.GOARCH, latestVersion, latestReleaseURL)
 
 	return h.RenderDashView(c, "dash/settings_version_update.html", fiber.Map{
 		"Title":                "版本更新",
