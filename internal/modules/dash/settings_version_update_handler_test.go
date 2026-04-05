@@ -93,3 +93,14 @@ func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) 
 		t.Fatal("expected auto update to be disabled when current version already matches latest version")
 	}
 }
+
+func TestBuildVersionUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *testing.T) {
+	got := buildVersionUpdateNotice(updater.InstallResult{
+		Installed:     true,
+		LatestVersion: "v0.0.17",
+	})
+	want := "已安装 v0.0.17，请手动重启服务后生效。"
+	if got != want {
+		t.Fatalf("buildVersionUpdateNotice() = %q, want %q", got, want)
+	}
+}

@@ -52,18 +52,21 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 		return result, fmt.Errorf("local release archive path is required")
 	}
 
-	runtimeInfo, err := ReadActiveRuntimeInfo()
-	if err != nil {
-		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
-	}
-
 	version, err := validateLocalArchiveName(result.ArchiveName, goos, goarch)
 	if err != nil {
 		return result, err
 	}
 	result.LatestVersion = version
 
-	tmpDir, err := os.MkdirTemp(filepath.Dir(runtimeInfo.Executable), ".swaves-upgrade-")
+	runtimeInfo, err := ReadActiveRuntimeInfo()
+	hasActiveMaster := err == nil
+
+	installTargetDir, err := installTargetDirectory(runtimeInfo, hasActiveMaster)
+	if err != nil {
+		return result, err
+	}
+
+	tmpDir, err := os.MkdirTemp(installTargetDir, ".swaves-upgrade-")
 	if err != nil {
 		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
 	}
@@ -76,20 +79,34 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 	if err := os.Chmod(extractedPath, 0755); err != nil {
 		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
 	}
-	rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
+
+	if hasActiveMaster {
+		rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
+		if err != nil {
+			return result, err
+		}
+		if err := signalProcess(runtimeInfo.PID); err != nil {
+			if rollbackErr := rollback(); rollbackErr != nil {
+				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
+			}
+			return result, fmt.Errorf("signal master restart failed: %w", err)
+		}
+
+		result.Installed = true
+		result.RestartedPID = runtimeInfo.PID
+		result.Reason = fmt.Sprintf("upgraded to %s", version)
+		return result, nil
+	}
+
+	targetPath, err := currentInstallExecutable()
 	if err != nil {
 		return result, err
 	}
-	if err := signalProcess(runtimeInfo.PID); err != nil {
-		if rollbackErr := rollback(); rollbackErr != nil {
-			return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
-		}
-		return result, fmt.Errorf("signal master restart failed: %w", err)
+	if _, err := replaceExecutableAtPathWithRollback(extractedPath, targetPath, filepath.Join(tmpDir, ".swaves-executable-backup")); err != nil {
+		return result, err
 	}
-
 	result.Installed = true
-	result.RestartedPID = runtimeInfo.PID
-	result.Reason = fmt.Sprintf("upgraded to %s", version)
+	result.Reason = fmt.Sprintf("installed %s, restart required", version)
 	return result, nil
 }
 
@@ -301,13 +318,32 @@ func defaultSignalProcess(pid int) error {
 	return process.Signal(syscall.SIGHUP)
 }
 
-func replaceExecutableWithRollback(nextPath string, runtimeInfo RuntimeInfo, backupPath string) (executableRollback, error) {
-	if err := ensureRuntimeInstallTarget(runtimeInfo); err != nil {
-		return nil, err
+func installTargetDirectory(runtimeInfo RuntimeInfo, hasActiveMaster bool) (string, error) {
+	if hasActiveMaster {
+		return filepath.Dir(runtimeInfo.Executable), nil
 	}
+	targetPath, err := currentInstallExecutable()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Dir(targetPath), nil
+}
 
+func currentInstallExecutable() (string, error) {
+	path, err := currentExecutable()
+	if err != nil {
+		return "", fmt.Errorf("resolve current executable failed: %w", err)
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", fmt.Errorf("current executable is empty")
+	}
+	return path, nil
+}
+
+func replaceExecutableAtPathWithRollback(nextPath string, targetPath string, backupPath string) (executableRollback, error) {
 	nextPath = strings.TrimSpace(nextPath)
-	targetPath := strings.TrimSpace(runtimeInfo.Executable)
+	targetPath = strings.TrimSpace(targetPath)
 	backupPath = strings.TrimSpace(backupPath)
 	if nextPath == "" || targetPath == "" || backupPath == "" {
 		return nil, fmt.Errorf("replace executable paths are required")
@@ -335,6 +371,13 @@ func replaceExecutableWithRollback(nextPath string, runtimeInfo RuntimeInfo, bac
 	}
 
 	return restore, nil
+}
+
+func replaceExecutableWithRollback(nextPath string, runtimeInfo RuntimeInfo, backupPath string) (executableRollback, error) {
+	if err := ensureRuntimeInstallTarget(runtimeInfo); err != nil {
+		return nil, err
+	}
+	return replaceExecutableAtPathWithRollback(nextPath, runtimeInfo.Executable, backupPath)
 }
 
 func ensureRuntimeInstallTarget(expected RuntimeInfo) error {

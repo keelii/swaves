@@ -255,6 +255,66 @@ func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
 	}
 }
 
+func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T) {
+	tmpDir := t.TempDir()
+	runtimePath := filepath.Join(tmpDir, "runtime.json")
+	oldRuntimePath := runtimeInfoPath
+	oldCurrentExecutable := currentExecutable
+	oldProcessExecutable := processExecutable
+	oldProcessExists := processExists
+	oldSignalProcess := signalProcess
+	runtimeInfoPath = func() string { return runtimePath }
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+		currentExecutable = oldCurrentExecutable
+		processExecutable = oldProcessExecutable
+		processExists = oldProcessExists
+		signalProcess = oldSignalProcess
+	}()
+
+	executablePath := filepath.Join(tmpDir, "swaves")
+	currentExecutable = func() (string, error) { return executablePath, nil }
+	processExecutable = func(pid int) (string, error) { return executablePath, nil }
+	processExists = func(pid int) bool { return false }
+	signalProcess = func(pid int) error {
+		t.Fatalf("signalProcess should not be called without daemon mode, got pid=%d", pid)
+		return nil
+	}
+
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write old executable failed: %v", err)
+	}
+
+	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
+	archivePath := filepath.Join(tmpDir, archiveName)
+	archiveData := buildTarGzArchive(t, expectedReleaseBinaryName(archiveName), []byte("new-binary"))
+	if err := os.WriteFile(archivePath, archiveData, 0644); err != nil {
+		t.Fatalf("write local archive failed: %v", err)
+	}
+
+	result, err := InstallLocalReleaseArchive(archiveName, archivePath, "v1.2.3", "linux", "amd64")
+	if err != nil {
+		t.Fatalf("InstallLocalReleaseArchive failed: %v", err)
+	}
+	if !result.Installed {
+		t.Fatal("expected Installed=true")
+	}
+	if result.RestartedPID != 0 {
+		t.Fatalf("RestartedPID = %d, want 0", result.RestartedPID)
+	}
+	if result.Reason != "installed v1.2.4, restart required" {
+		t.Fatalf("unexpected reason: %q", result.Reason)
+	}
+
+	gotBinary, err := os.ReadFile(executablePath)
+	if err != nil {
+		t.Fatalf("ReadFile executable failed: %v", err)
+	}
+	if string(gotBinary) != "new-binary" {
+		t.Fatalf("unexpected executable contents: %q", string(gotBinary))
+	}
+}
+
 func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	archivePath := filepath.Join(tmpDir, "swaves_v1.2.4_linux_amd64.tar.gz")

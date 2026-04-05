@@ -22,6 +22,15 @@ type latestVersionInfo struct {
 	AutoUpdateEnabled bool
 }
 
+type versionUpdateViewState struct {
+	AutoUpdateSupported       bool
+	AutoUpdateSupportMessage  string
+	ManualUpdateEnabled       bool
+	GlobalUpdateMessage       string
+	AutoUpdateUnavailableHint string
+	RuntimeInfo               updater.RuntimeInfo
+}
+
 func versionLabel(version string) string {
 	version = strings.TrimSpace(version)
 	if version == "" {
@@ -47,10 +56,16 @@ func firstSettingSectionCode(area SettingAreaView) string {
 
 func buildVersionUpdateNotice(result updater.InstallResult) string {
 	if result.Installed {
-		if strings.TrimSpace(result.LatestVersion) != "" {
+		if result.RestartedPID > 0 && strings.TrimSpace(result.LatestVersion) != "" {
 			return fmt.Sprintf("已开始切换到 %s，服务会自动重启到新版本。", versionLabel(result.LatestVersion))
 		}
-		return "已开始切换到新版本，服务会自动重启。"
+		if result.RestartedPID > 0 {
+			return "已开始切换到新版本，服务会自动重启。"
+		}
+		if strings.TrimSpace(result.LatestVersion) != "" {
+			return fmt.Sprintf("已安装 %s，请手动重启服务后生效。", versionLabel(result.LatestVersion))
+		}
+		return "安装包已写入当前可执行文件，请手动重启服务后生效。"
 	}
 	if strings.TrimSpace(result.Reason) != "" {
 		return result.Reason
@@ -58,16 +73,40 @@ func buildVersionUpdateNotice(result updater.InstallResult) string {
 	return "当前已是最新版本。"
 }
 
-func versionUpdateSupportState() (bool, string, updater.RuntimeInfo) {
+func versionUpdateSupportState(autoUpdateEnabled bool) versionUpdateViewState {
+	state := versionUpdateViewState{
+		ManualUpdateEnabled: runtime.GOOS != "windows",
+	}
+
 	if runtime.GOOS == "windows" {
-		return false, "Windows 暂不支持 daemon-mode 自动更新", updater.RuntimeInfo{}
+		state.AutoUpdateSupported = false
+		state.AutoUpdateSupportMessage = "Windows 暂不支持自动更新。"
+		state.GlobalUpdateMessage = "当前平台暂不支持自动更新；如需升级，请在服务器侧手动替换可执行文件。"
+		state.AutoUpdateUnavailableHint = "当前平台暂不支持自动更新。"
+		return state
 	}
 
 	runtimeInfo, err := updater.ReadActiveRuntimeInfo()
 	if err != nil {
-		return false, "当前 daemon-mode master 不可用，无法执行自动更新或本地安装包切换：" + err.Error(), updater.RuntimeInfo{}
+		state.AutoUpdateSupported = false
+		state.AutoUpdateSupportMessage = "daemon-mode 未启用，自动更新不可用。"
+		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新不可用；你仍可安装本地发布包，安装后手动重启服务。"
+		if autoUpdateEnabled {
+			state.AutoUpdateUnavailableHint = "启用 daemon-mode 后可自动下载并切换到新版本。"
+		} else {
+			state.AutoUpdateUnavailableHint = "当前已是最新版本；如需重装，可先启用 daemon-mode 或使用手动更新。"
+		}
+		return state
 	}
-	return true, "", runtimeInfo
+
+	state.AutoUpdateSupported = true
+	state.RuntimeInfo = runtimeInfo
+	if autoUpdateEnabled {
+		state.AutoUpdateUnavailableHint = "检测到新版本后，可直接自动下载并切换。"
+	} else {
+		state.AutoUpdateUnavailableHint = "当前已是最新版本。"
+	}
+	return state
 }
 
 func loadLatestVersionInfo(currentVersion string, goos string, goarch string, fallbackVersion string, fallbackReleaseURL string) latestVersionInfo {
@@ -108,8 +147,6 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 	settingAreas := buildSettingAreas(settings)
 	frontendArea := findSettingAreaByCode(settingAreas, settingAreaFrontend)
 	backendArea := findSettingAreaByCode(settingAreas, settingAreaBackend)
-	updateSupported, updateSupportMessage, runtimeInfo := versionUpdateSupportState()
-
 	latestVersion := ""
 	latestReleaseURL := ""
 	latestNotification, err := GetLatestNotificationByEventTypeService(h.Model, dashNotificationReceiver, dashNotificationEventAppUpdate)
@@ -121,21 +158,25 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 		latestReleaseURL = notify.ParseAppUpdateReleaseURL(latestNotification.AggregateKey)
 	}
 	latestInfo := loadLatestVersionInfo(buildinfo.Version, runtime.GOOS, runtime.GOARCH, latestVersion, latestReleaseURL)
+	viewState := versionUpdateSupportState(latestInfo.AutoUpdateEnabled)
 
 	return h.RenderDashView(c, "dash/settings_version_update.html", fiber.Map{
-		"Title":                "版本更新",
-		"FrontendArea":         frontendArea,
-		"BackendArea":          backendArea,
-		"FrontendFirstSection": firstSettingSectionCode(frontendArea),
-		"CurrentVersion":       versionLabel(buildinfo.Version),
-		"LatestVersion":        latestInfo.Version,
-		"LatestReleaseURL":     latestInfo.ReleaseURL,
-		"AutoUpdateEnabled":    updateSupported && latestInfo.AutoUpdateEnabled,
-		"UpdateSupported":      updateSupported,
-		"UpdateSupportMessage": updateSupportMessage,
-		"VersionUpdateNotice":  strings.TrimSpace(c.Query("notice")),
-		"VersionUpdateError":   strings.TrimSpace(c.Query("error")),
-		"VersionRuntimePID":    runtimeInfo.PID,
+		"Title":                     "版本更新",
+		"FrontendArea":              frontendArea,
+		"BackendArea":               backendArea,
+		"FrontendFirstSection":      firstSettingSectionCode(frontendArea),
+		"CurrentVersion":            versionLabel(buildinfo.Version),
+		"LatestVersion":             latestInfo.Version,
+		"LatestReleaseURL":          latestInfo.ReleaseURL,
+		"AutoUpdateEnabled":         viewState.AutoUpdateSupported && latestInfo.AutoUpdateEnabled,
+		"AutoUpdateSupported":       viewState.AutoUpdateSupported,
+		"AutoUpdateUnavailableHint": viewState.AutoUpdateUnavailableHint,
+		"ManualUpdateEnabled":       viewState.ManualUpdateEnabled,
+		"GlobalUpdateMessage":       viewState.GlobalUpdateMessage,
+		"VersionUpdateNotice":       strings.TrimSpace(c.Query("notice")),
+		"VersionUpdateError":        strings.TrimSpace(c.Query("error")),
+		"VersionUpdateAutoRefresh":  strings.TrimSpace(c.Query("refresh")) == "1",
+		"VersionRuntimePID":         viewState.RuntimeInfo.PID,
 	}, "")
 }
 
@@ -155,6 +196,12 @@ func (h *Handler) PostSettingsVersionAutoUpdateHandler(c fiber.Ctx) error {
 
 	return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 		"notice": buildVersionUpdateNotice(result),
+		"refresh": func() string {
+			if result.RestartedPID > 0 {
+				return "1"
+			}
+			return ""
+		}(),
 	})
 }
 
@@ -217,5 +264,11 @@ func (h *Handler) PostSettingsVersionManualUpdateHandler(c fiber.Ctx) error {
 
 	return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 		"notice": buildVersionUpdateNotice(result),
+		"refresh": func() string {
+			if result.RestartedPID > 0 {
+				return "1"
+			}
+			return ""
+		}(),
 	})
 }
