@@ -636,7 +636,7 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	if out.Len() == 0 {
 		t.Fatalf("expected non-empty render output")
 	}
-	if !strings.Contains(out.String(), `/static/favicon.svg`) {
+	if !strings.Contains(out.String(), `/static/favicon.svg?v=2`) {
 		t.Fatalf("expected favicon link in site layout")
 	}
 	if strings.Contains(out.String(), `/static/katex/katex.min.css`) {
@@ -655,7 +655,7 @@ func TestRenderSUILayoutIncludesFavicon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render sui layout failed: %v", err)
 	}
-	if !strings.Contains(out.String(), `/static/favicon.svg`) {
+	if !strings.Contains(out.String(), `/static/favicon.svg?v=2`) {
 		t.Fatalf("expected favicon link in sui layout")
 	}
 }
