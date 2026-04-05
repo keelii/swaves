@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
+	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
 	"swaves/internal/shared/helper"
 	"time"
 )
@@ -24,6 +27,8 @@ const (
 func jobMessage(message string) *string {
 	return &message
 }
+
+var checkLatestAppRelease = updater.CheckLatestRelease
 
 // DatabaseBackupJob 数据库备份任务
 func DatabaseBackupJob(reg *Registry) (*string, error) {
@@ -199,6 +204,30 @@ func DeleteExpiredEncryptedPostsJob(reg *Registry) (*string, error) {
 	}
 
 	return nil, nil
+}
+
+// CheckAppUpdateJob 检查当前 swaves 版本是否落后于最新稳定 release。
+func CheckAppUpdateJob(reg *Registry) (*string, error) {
+	if reg == nil || reg.DB == nil {
+		return nil, errors.New("reg.DB is nil")
+	}
+	if !buildinfo.IsReleaseVersion() {
+		return nil, nil
+	}
+
+	result, err := checkLatestAppRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return nil, err
+	}
+	if !result.HasUpgrade || result.Target == nil {
+		return nil, nil
+	}
+
+	nowUnix := time.Now().Unix()
+	if err := notify.CreateAppUpdateNotification(reg.DB, result.CurrentVersion, result.LatestVersion, result.LatestReleaseURL, nowUnix); err != nil {
+		return nil, err
+	}
+	return jobMessage(fmt.Sprintf("app update available: %s -> %s", result.CurrentVersion, result.LatestVersion)), nil
 }
 
 // ClearExpiredNotificationsJob 清理过期通知（updated_at < now-retention_days）

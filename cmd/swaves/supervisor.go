@@ -12,6 +12,7 @@ import (
 	"strings"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/proctitle"
+	"swaves/internal/platform/updater"
 	"syscall"
 	"time"
 )
@@ -69,6 +70,18 @@ func runSupervisor(cfg supervisorConfig) error {
 	if cfg.MasterTitle != "" {
 		proctitle.Set(cfg.MasterTitle)
 	}
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolve executable failed: %w", err)
+	}
+	if err := updater.WriteRuntimeInfo(updater.RuntimeInfo{
+		PID:        os.Getpid(),
+		Executable: execPath,
+	}); err != nil {
+		return err
+	}
+	defer func() { _ = updater.RemoveRuntimeInfo() }()
 
 	ln, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {

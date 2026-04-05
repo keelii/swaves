@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/updater"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -135,6 +137,98 @@ func TestRunUtilityCommandSetAdminPasswordHelp(t *testing.T) {
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("unexpected stderr: %q", stderr.String())
+	}
+}
+
+func TestRunUtilityCommandVersionFlag(t *testing.T) {
+	oldVersion := buildinfo.Version
+	oldCommit := buildinfo.Commit
+	oldBuildTime := buildinfo.BuildTime
+	buildinfo.Version = "v1.2.3"
+	buildinfo.Commit = "abc1234"
+	buildinfo.BuildTime = "2026-04-05T00:00:00Z"
+	defer func() {
+		buildinfo.Version = oldVersion
+		buildinfo.Commit = oldCommit
+		buildinfo.BuildTime = oldBuildTime
+	}()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"--version"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected --version to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "swaves v1.2.3") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+}
+
+func TestRunUtilityCommandVersionSubcommand(t *testing.T) {
+	oldVersion := buildinfo.Version
+	oldCommit := buildinfo.Commit
+	oldBuildTime := buildinfo.BuildTime
+	buildinfo.Version = "v2.0.0"
+	buildinfo.Commit = "def5678"
+	buildinfo.BuildTime = "2026-04-05T12:00:00Z"
+	defer func() {
+		buildinfo.Version = oldVersion
+		buildinfo.Commit = oldCommit
+		buildinfo.BuildTime = oldBuildTime
+	}()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"version"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected version to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "commit: def5678") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+}
+
+func TestRunUtilityCommandUpgradeCheck(t *testing.T) {
+	oldCheck := checkLatestRelease
+	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+		return updater.CheckResult{
+			CurrentVersion:   currentVersion,
+			LatestVersion:    "v1.2.4",
+			LatestReleaseURL: "https://github.com/keelii/swaves/releases/tag/v1.2.4",
+			HasUpgrade:       true,
+			Target: &updater.ReleaseTarget{
+				Archive: updater.ReleaseAsset{Name: "swaves_v1.2.4_linux_amd64.tar.gz"},
+			},
+			Reason: "upgrade available: v1.2.3 -> v1.2.4",
+		}, nil
+	}
+	defer func() { checkLatestRelease = oldCheck }()
+
+	oldVersion := buildinfo.Version
+	buildinfo.Version = "v1.2.3"
+	defer func() { buildinfo.Version = oldVersion }()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"upgrade", "--check"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected upgrade --check to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "status:  upgrade available") {
+		t.Fatalf("unexpected stdout: %q", out)
+	}
+	if !strings.Contains(out, "asset:   swaves_v1.2.4_linux_amd64.tar.gz") {
+		t.Fatalf("unexpected stdout: %q", out)
 	}
 }
 

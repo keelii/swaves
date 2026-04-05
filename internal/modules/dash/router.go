@@ -91,6 +91,7 @@ func RegisterRouter(
 	dashGroup.Post("/api/notifications/read", handler.PostNotificationReadAPIHandler).Name("dash.notifications.api.read")
 	dashGroup.Post("/api/notifications/read_all", handler.PostNotificationReadAllAPIHandler).Name("dash.notifications.api.read_all")
 	dashGroup.Post("/api/notifications/delete", handler.PostNotificationDeleteAPIHandler).Name("dash.notifications.api.delete")
+	dashGroup.Post("/api/app/upgrade", handler.PostAppUpgradeAPIHandler).Name("dash.app.api.upgrade")
 
 	dashGroup.Get("/tags", handler.GetTagListHandler).Name("dash.tags.list")
 	dashGroup.Get("/tags/new", handler.GetTagNewHandler).Name("dash.tags.new")

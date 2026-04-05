@@ -79,6 +79,11 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 		Func: ClearExpiredNotificationsJob,
 	})
 
+	RegisterJob("check_app_update", JobItem{
+		Kind: db.TaskInternal,
+		Func: CheckAppUpdateJob,
+	})
+
 	RegisterJob("remote_backup_data", JobItem{
 		Kind: db.TaskUser,
 		Func: PushSystemDataJob,
@@ -88,6 +93,15 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 		Code:        "clear_notifications",
 		Name:        "清理过期通知",
 		Description: "按消息通知设置中的保留天数清理过期通知",
+		Schedule:    "@daily",
+		Enabled:     1,
+		Kind:        db.TaskInternal,
+	})
+
+	ensureBuiltinTask(gStore.Model, db.Task{
+		Code:        "check_app_update",
+		Name:        "检查应用更新",
+		Description: "每天检查 swaves 是否有新的稳定版本可升级",
 		Schedule:    "@daily",
 		Enabled:     1,
 		Kind:        db.TaskInternal,

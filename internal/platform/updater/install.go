@@ -1,0 +1,251 @@
+package updater
+
+import (
+	"archive/tar"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"swaves/internal/shared/semverutil"
+	"sync"
+	"syscall"
+)
+
+type InstallResult struct {
+	CurrentVersion string
+	LatestVersion  string
+	ReleaseURL     string
+	ArchiveName    string
+	Installed      bool
+	RestartedPID   int
+	Reason         string
+}
+
+var (
+	installMu     sync.Mutex
+	signalProcess = defaultSignalProcess
+	processExists = defaultProcessExists
+)
+
+func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
+	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
+}
+
+func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
+	installMu.Lock()
+	defer installMu.Unlock()
+
+	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
+	runtimeInfo, err := ReadRuntimeInfo()
+	if err != nil {
+		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process")
+	}
+	if !processExists(runtimeInfo.PID) {
+		return result, fmt.Errorf("master process is not running: pid=%d", runtimeInfo.PID)
+	}
+
+	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
+	if err != nil {
+		return result, err
+	}
+	result.LatestVersion = check.LatestVersion
+	result.ReleaseURL = check.LatestReleaseURL
+	if check.Target == nil {
+		if strings.TrimSpace(goos) == "" {
+			goos = runtime.GOOS
+		}
+		if strings.TrimSpace(goarch) == "" {
+			goarch = runtime.GOARCH
+		}
+		return result, fmt.Errorf("automatic upgrade is not supported on %s/%s", goos, goarch)
+	}
+	result.ArchiveName = check.Target.Archive.Name
+
+	stableCurrent := semverutil.IsStable(currentVersion)
+	if stableCurrent {
+		cmp, err := semverutil.Compare(currentVersion, check.LatestVersion)
+		if err != nil {
+			return result, err
+		}
+		if cmp >= 0 {
+			result.Reason = check.Reason
+			return result, nil
+		}
+	}
+
+	tmpDir, err := os.MkdirTemp(filepath.Dir(runtimeInfo.Executable), ".swaves-upgrade-")
+	if err != nil {
+		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	archivePath := filepath.Join(tmpDir, check.Target.Archive.Name)
+	if err := c.downloadToFile(check.Target.Archive.DownloadURL, archivePath); err != nil {
+		return result, err
+	}
+
+	checksumPath := filepath.Join(tmpDir, check.Target.Checksum.Name)
+	if err := c.downloadToFile(check.Target.Checksum.DownloadURL, checksumPath); err != nil {
+		return result, err
+	}
+	if err := verifyChecksumFile(archivePath, checksumPath); err != nil {
+		return result, err
+	}
+
+	extractedPath, err := extractReleaseBinary(archivePath, tmpDir)
+	if err != nil {
+		return result, err
+	}
+	if err := os.Chmod(extractedPath, 0755); err != nil {
+		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
+	}
+	if err := os.Rename(extractedPath, runtimeInfo.Executable); err != nil {
+		return result, fmt.Errorf("replace executable failed: %w", err)
+	}
+	if err := signalProcess(runtimeInfo.PID); err != nil {
+		return result, fmt.Errorf("signal master restart failed: %w", err)
+	}
+
+	result.Installed = true
+	result.RestartedPID = runtimeInfo.PID
+	result.Reason = fmt.Sprintf("upgraded to %s", check.LatestVersion)
+	return result, nil
+}
+
+func (c Client) downloadToFile(rawURL string, dstPath string) error {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return fmt.Errorf("download url is required")
+	}
+
+	httpClient := c.HTTPClient
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/octet-stream")
+	req.Header.Set("User-Agent", "swaves/"+buildUserAgentVersion())
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed: status=%d url=%s", resp.StatusCode, rawURL)
+	}
+
+	file, err := os.Create(dstPath)
+	if err != nil {
+		return fmt.Errorf("create download file failed: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	if _, err := io.Copy(file, resp.Body); err != nil {
+		return fmt.Errorf("write download file failed: %w", err)
+	}
+	return nil
+}
+
+func verifyChecksumFile(archivePath string, checksumPath string) error {
+	checksumData, err := os.ReadFile(checksumPath)
+	if err != nil {
+		return fmt.Errorf("read checksum file failed: %w", err)
+	}
+	fields := strings.Fields(string(checksumData))
+	if len(fields) < 1 {
+		return fmt.Errorf("checksum file is empty")
+	}
+	expected := strings.ToLower(strings.TrimSpace(fields[0]))
+	if len(expected) != sha256.Size*2 {
+		return fmt.Errorf("checksum value is invalid")
+	}
+
+	archiveData, err := os.ReadFile(archivePath)
+	if err != nil {
+		return fmt.Errorf("read archive file failed: %w", err)
+	}
+	actual := sha256.Sum256(archiveData)
+	if hex.EncodeToString(actual[:]) != expected {
+		return fmt.Errorf("archive checksum mismatch")
+	}
+	return nil
+}
+
+func extractReleaseBinary(archivePath string, dstDir string) (string, error) {
+	archiveFile, err := os.Open(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("open archive failed: %w", err)
+	}
+	defer func() { _ = archiveFile.Close() }()
+
+	gzipReader, err := gzip.NewReader(archiveFile)
+	if err != nil {
+		return "", fmt.Errorf("open gzip archive failed: %w", err)
+	}
+	defer func() { _ = gzipReader.Close() }()
+
+	tarReader := tar.NewReader(gzipReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", fmt.Errorf("read tar archive failed: %w", err)
+		}
+		if header == nil || header.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		name := filepath.Base(strings.TrimSpace(header.Name))
+		if name == "" || name == "." || name == string(filepath.Separator) {
+			continue
+		}
+		dstPath := filepath.Join(dstDir, name)
+		out, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+		if err != nil {
+			return "", fmt.Errorf("create extracted binary failed: %w", err)
+		}
+		if _, err := io.Copy(out, tarReader); err != nil {
+			_ = out.Close()
+			return "", fmt.Errorf("write extracted binary failed: %w", err)
+		}
+		if err := out.Close(); err != nil {
+			return "", fmt.Errorf("close extracted binary failed: %w", err)
+		}
+		return dstPath, nil
+	}
+
+	return "", fmt.Errorf("no executable file found in archive")
+}
+
+func defaultProcessExists(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return process.Signal(syscall.Signal(0)) == nil
+}
+
+func defaultSignalProcess(pid int) error {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	return process.Signal(syscall.SIGHUP)
+}

@@ -4199,6 +4199,7 @@ const (
 	NotificationEventPostLike   = "post_like"
 	NotificationEventComment    = "comment"
 	NotificationEventTaskResult = "task_result"
+	NotificationEventAppUpdate  = "app_update"
 )
 
 type Notification struct {
@@ -4231,6 +4232,8 @@ func normalizeNotificationEventType(eventType string) string {
 		return NotificationEventComment
 	case NotificationEventTaskResult:
 		return NotificationEventTaskResult
+	case NotificationEventAppUpdate:
+		return NotificationEventAppUpdate
 	default:
 		return ""
 	}

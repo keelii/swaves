@@ -22,6 +22,7 @@ const (
 	defaultLikeAggregateMin   = 30
 	defaultNotificationRetain = 30
 	commentLinkKeyPrefix      = "comment_link:"
+	appUpdateKeyPrefix        = "app_update:"
 )
 
 func IsPostLikeNotificationEnabled() bool {
@@ -66,6 +67,40 @@ func BuildPostLikeAggregateKey(postID int64, nowUnix int64) string {
 	}
 	bucketStart := nowUnix - (nowUnix % windowSeconds)
 	return fmt.Sprintf("like:post:%d:bucket:%d", postID, bucketStart)
+}
+
+func BuildAppUpdateAggregateKey(version string, releaseURL string) string {
+	version = strings.TrimSpace(version)
+	releaseURL = strings.TrimSpace(releaseURL)
+	if releaseURL == "" {
+		return appUpdateKeyPrefix + version
+	}
+	return appUpdateKeyPrefix + version + ":" + url.QueryEscape(releaseURL)
+}
+
+func ParseAppUpdateReleaseURL(raw string) string {
+	text := strings.TrimSpace(raw)
+	if text == "" || !strings.HasPrefix(text, appUpdateKeyPrefix) {
+		return ""
+	}
+	payload := strings.TrimPrefix(text, appUpdateKeyPrefix)
+	splitAt := strings.Index(payload, ":")
+	if splitAt < 0 || splitAt >= len(payload)-1 {
+		return ""
+	}
+	releaseURL, err := url.QueryUnescape(payload[splitAt+1:])
+	if err != nil {
+		return ""
+	}
+	releaseURL = strings.TrimSpace(releaseURL)
+	if releaseURL == "" {
+		return ""
+	}
+	parsedURL, err := url.Parse(releaseURL)
+	if err != nil || parsedURL.Scheme != "https" || strings.TrimSpace(parsedURL.Host) == "" {
+		return ""
+	}
+	return releaseURL
 }
 
 func CreatePostLikeNotification(dbx *db.DB, post db.Post, likeCount int, nowUnix int64) error {
@@ -145,6 +180,34 @@ func CreateTaskResultNotification(dbx *db.DB, task db.Task, status string, messa
 		UpdatedAt: nowUnix,
 	}
 	_, err := db.CreateNotification(dbx, n)
+	return err
+}
+
+func CreateAppUpdateNotification(dbx *db.DB, currentVersion string, latestVersion string, releaseURL string, nowUnix int64) error {
+	currentVersion = strings.TrimSpace(currentVersion)
+	latestVersion = strings.TrimSpace(latestVersion)
+	releaseURL = strings.TrimSpace(releaseURL)
+	if latestVersion == "" {
+		return fmt.Errorf("latest version is required")
+	}
+
+	title := fmt.Sprintf("发现新版本：%s", latestVersion)
+	body := fmt.Sprintf("当前版本 %s，可升级到 %s。", currentVersion, latestVersion)
+	if currentVersion == "" {
+		body = fmt.Sprintf("可升级到 %s。", latestVersion)
+	}
+
+	n := &db.Notification{
+		Receiver:     db.NotificationReceiverDash,
+		EventType:    db.NotificationEventAppUpdate,
+		Level:        db.NotificationLevelInfo,
+		Title:        title,
+		Body:         body,
+		AggregateKey: BuildAppUpdateAggregateKey(latestVersion, releaseURL),
+		CreatedAt:    nowUnix,
+		UpdatedAt:    nowUnix,
+	}
+	_, err := db.CreateOrBumpNotificationByAggregateKey(dbx, n)
 	return err
 }
 

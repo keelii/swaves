@@ -197,6 +197,8 @@ const InitialSQL = `
 	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
 		('clear_notifications', '清理过期通知', '按保留天数清理过期通知', '@daily', 1, 0, strftime('%s','now'), strftime('%s','now'));
 	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
+		('check_app_update', '检查应用更新', '每天检查 swaves 是否有新的稳定版本可升级', '@daily', 1, 0, strftime('%s','now'), strftime('%s','now'));
+	INSERT OR IGNORE INTO ` + TableTasks + ` (code, name, description, schedule, enabled, kind, created_at, updated_at) VALUES
 		('remote_backup_data', '远程备份数据', '备份数据库到远程', '@daily', 1, 1, strftime('%s','now'), strftime('%s','now'));
 
 	CREATE TABLE IF NOT EXISTS ` + TableTaskRuns + ` (

@@ -9,9 +9,11 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/updater"
 	"swaves/internal/shared/types"
 
 	"golang.org/x/crypto/bcrypt"
@@ -50,6 +52,9 @@ var (
 	flagDemonMode    = flag.Int(flagDemonModeKey, defaultDaemonMode, flagDaemonModeUsage+" (deprecated alias)")
 	flagMaxFailures  = flag.Int(flagMaxFailuresKey, defaultMaxFailures, flagMaxFailuresUsage)
 )
+
+var checkLatestRelease = updater.CheckLatestRelease
+var installLatestRelease = updater.InstallLatestRelease
 
 type mainConfig struct {
 	AppConfig   types.AppConfig
@@ -117,6 +122,15 @@ func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool,
 	case "-h", "--help", "help":
 		_, _ = fmt.Fprint(stdout, cliUsage())
 		return true, 0
+	case "-v", "--version", "version":
+		if len(args) > 1 {
+			_, _ = fmt.Fprintf(stderr, "unexpected extra arguments for version: %s\n\n%s", strings.Join(args[1:], " "), versionUsage())
+			return true, 2
+		}
+		_, _ = fmt.Fprint(stdout, buildinfo.Summary())
+		return true, 0
+	case "upgrade":
+		return true, runUpgradeCommand(args[1:], stdout, stderr)
 	case "hash-password":
 		if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
 			_, _ = fmt.Fprint(stdout, hashPasswordUsage())
@@ -172,6 +186,89 @@ func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool,
 	default:
 		return false, 0
 	}
+}
+
+func runUpgradeCommand(args []string, stdout io.Writer, stderr io.Writer) int {
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+		_, _ = fmt.Fprint(stdout, upgradeUsage())
+		return 0
+	}
+
+	var checkOnly bool
+	fs := flag.NewFlagSet("swaves upgrade", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.BoolVar(&checkOnly, "check", false, "check latest stable release only")
+	if err := fs.Parse(args); err != nil {
+		_, _ = fmt.Fprintf(stderr, "%v\n\n%s", err, upgradeUsage())
+		return 2
+	}
+	if fs.NArg() > 0 {
+		_, _ = fmt.Fprintf(stderr, "unexpected extra arguments for upgrade: %s\n\n%s", strings.Join(fs.Args(), " "), upgradeUsage())
+		return 2
+	}
+	if !checkOnly {
+		result, err := installLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "upgrade failed: %v\n", err)
+			return 2
+		}
+		_, _ = fmt.Fprintf(stdout, "current: %s\n", fallbackVersionLabel(result.CurrentVersion))
+		_, _ = fmt.Fprintf(stdout, "latest:  %s\n", fallbackVersionLabel(result.LatestVersion))
+		if result.ArchiveName != "" {
+			_, _ = fmt.Fprintf(stdout, "asset:   %s\n", result.ArchiveName)
+		}
+		if result.Installed {
+			_, _ = fmt.Fprintf(stdout, "status:  upgraded\n")
+			_, _ = fmt.Fprintf(stdout, "master:  %d\n", result.RestartedPID)
+		} else {
+			_, _ = fmt.Fprintf(stdout, "status:  no-op\n")
+		}
+		if result.Reason != "" {
+			_, _ = fmt.Fprintf(stdout, "reason:  %s\n", result.Reason)
+		}
+		if result.ReleaseURL != "" {
+			_, _ = fmt.Fprintf(stdout, "release: %s\n", result.ReleaseURL)
+		}
+		return 0
+	}
+
+	result, err := checkLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "check latest release failed: %v\n", err)
+		return 2
+	}
+
+	_, _ = fmt.Fprintf(stdout, "current: %s\n", fallbackVersionLabel(result.CurrentVersion))
+	_, _ = fmt.Fprintf(stdout, "latest:  %s\n", fallbackVersionLabel(result.LatestVersion))
+	if result.Target != nil {
+		_, _ = fmt.Fprintf(stdout, "asset:   %s\n", result.Target.Archive.Name)
+	}
+
+	status := "up-to-date"
+	switch {
+	case result.Target == nil:
+		status = "unsupported"
+	case result.HasUpgrade:
+		status = "upgrade available"
+	case !result.CurrentVersionStable:
+		status = "non-release build"
+	}
+	_, _ = fmt.Fprintf(stdout, "status:  %s\n", status)
+	if strings.TrimSpace(result.Reason) != "" {
+		_, _ = fmt.Fprintf(stdout, "reason:  %s\n", result.Reason)
+	}
+	if strings.TrimSpace(result.LatestReleaseURL) != "" {
+		_, _ = fmt.Fprintf(stdout, "release: %s\n", result.LatestReleaseURL)
+	}
+	return 0
+}
+
+func fallbackVersionLabel(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return "unknown"
+	}
+	return version
 }
 
 func hashPassword(raw string) (string, error) {
@@ -366,6 +463,10 @@ func lookupTrimmedEnv(name string) (string, bool) {
 func cliUsage() string {
 	return strings.TrimSpace(`
 Usage:
+  swaves --version
+  swaves version
+  swaves upgrade
+  swaves upgrade --check
   swaves hash-password <raw-password>
   swaves set-admin-password <sqlite-file> <raw-password>
   swaves <sqlite-file> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>] [--daemon-mode=<0|1>] [--max-failures=<n>]
@@ -387,10 +488,35 @@ Notes:
   SWAVES_ENSURE_DEFAULT_SETTINGS=true only enables EnsureDefaultSettings when SWAVES_ENV=dev.
 
 Examples:
+  ./swaves --version
+  ./swaves version
+  ./swaves upgrade
+  ./swaves upgrade --check
   ./swaves hash-password admin
   ./swaves set-admin-password data.sqlite admin
   ./swaves data.sqlite --listen-addr=:3000
   SWAVES_SQLITE_FILE=data.sqlite SWAVES_LISTEN_ADDR=:3000 ./swaves
+`) + "\n"
+}
+
+func versionUsage() string {
+	return strings.TrimSpace(`
+Usage:
+  swaves --version
+  swaves version
+`) + "\n"
+}
+
+func upgradeUsage() string {
+	return strings.TrimSpace(`
+Usage:
+  swaves upgrade
+  swaves upgrade --check
+
+Notes:
+  upgrade --check only checks the latest stable GitHub release for the current platform.
+  upgrade requires daemon-mode=1 and an active master process.
+  upgrade only installs the latest stable GitHub release for the current platform.
 `) + "\n"
 }
 

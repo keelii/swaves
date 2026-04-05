@@ -13,9 +13,10 @@
     var navWidthLastSaved = parsePixels(appWindow && appWindow.getAttribute('data-nav-width-current'));
     var notificationsUnreadURL = String(cfg.notificationsUnreadURL || appWindow && appWindow.getAttribute('data-notifications-unread-url') || '').trim();
     var notificationsReadURL = String(cfg.notificationsReadURL || appWindow && appWindow.getAttribute('data-notifications-read-url') || '').trim();
-	    var notificationsReadAllURL = String(cfg.notificationsReadAllURL || appWindow && appWindow.getAttribute('data-notifications-read-all-url') || '').trim();
-	    var notificationsDeleteURL = String(cfg.notificationsDeleteURL || appWindow && appWindow.getAttribute('data-notifications-delete-url') || '').trim();
-	    var notificationsPollingTimer = null;
+    var notificationsReadAllURL = String(cfg.notificationsReadAllURL || appWindow && appWindow.getAttribute('data-notifications-read-all-url') || '').trim();
+    var notificationsDeleteURL = String(cfg.notificationsDeleteURL || appWindow && appWindow.getAttribute('data-notifications-delete-url') || '').trim();
+    var appUpgradeURL = String(cfg.appUpgradeURL || '').trim();
+    var notificationsPollingTimer = null;
 	    var notificationsPollingIntervalMs = 20000;
 	    var themeModePersisting = false;
 	    var themeModeQueued = null;
@@ -599,6 +600,14 @@
         return;
       }
 
+      var upgradeButton = actionCell.querySelector('[data-role="notification-upgrade"]');
+      if (upgradeButton) {
+        if (isRead) {
+          upgradeButton.setAttribute('hidden', '');
+        }
+        upgradeButton.disabled = false;
+      }
+
       var markReadButton = actionCell.querySelector('[data-role="notification-mark-read"]');
       if (markReadButton) {
         if (isRead) {
@@ -631,6 +640,48 @@
         statusWrap.innerHTML = '<span class="ui-badge draft">已读</span>';
       }
       setNotificationRowActions(row, true);
+    }
+
+    function requestNotificationUpgrade(id, row, triggerButton) {
+      if (!appUpgradeURL) {
+        return;
+      }
+      if (!isFinite(id) || id <= 0) {
+        return;
+      }
+      if (triggerButton) {
+        triggerButton.disabled = true;
+      }
+
+      window.sfetchJSON(appUpgradeURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: id }),
+      }).then(function(result) {
+        if (!result || !result.ok || !result.body || result.body.ok !== true) {
+          throw new Error(result && result.body && result.body.error || 'upgrade failed');
+        }
+        if (row && result.body.data && result.body.data.installed) {
+          markNotificationRowRead(row);
+        }
+        if (result.body.data && result.body.data.unread_count !== undefined && result.body.data.unread_count !== null) {
+          setNotificationUnreadCount(result.body.data.unread_count);
+        } else {
+          refreshNotificationUnreadCount();
+        }
+        window.alert(result.body.data && result.body.data.installed ? '已开始更新，服务将自动切换到新版本。' : (result.body.data && result.body.data.reason || '当前已是最新版本。'));
+      }).catch(function(error) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('start app upgrade failed', error);
+        }
+        window.alert(error && error.message ? error.message : '启动更新失败');
+      }).then(function() {
+        if (triggerButton) {
+          triggerButton.disabled = false;
+        }
+      });
     }
 
     function requestMarkNotificationRead(id, row, triggerButton) {
@@ -743,6 +794,18 @@
 	        syncThemeToggleButtons();
 	        event.preventDefault();
 	        return;
+      }
+
+      var upgradeButton = event.target.closest('[data-role="notification-upgrade"]');
+      if (upgradeButton) {
+        var upgradeID = parseInt(upgradeButton.getAttribute('data-id'), 10);
+        if (isNaN(upgradeID) || upgradeID <= 0) {
+          return;
+        }
+        var upgradeRow = upgradeButton.closest('[data-notification-row]');
+        requestNotificationUpgrade(upgradeID, upgradeRow, upgradeButton);
+        event.preventDefault();
+        return;
       }
 
       var markReadButton = event.target.closest('[data-role="notification-mark-read"]');

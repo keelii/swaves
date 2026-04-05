@@ -102,7 +102,7 @@ func TestBuildNotificationListItemsCommentURLFallback(t *testing.T) {
 			EventType:    dashNotificationEventPostLike,
 			AggregateKey: dashCommentLinkKeyPrefix + "99:" + url.QueryEscape("/posts/ignore#comment-99"),
 		},
-	}, defaultCommentURL)
+	}, defaultCommentURL, false)
 
 	if len(items) != 4 {
 		t.Fatalf("buildNotificationListItems len = %d, want 4", len(items))
@@ -147,7 +147,7 @@ func TestBuildNotificationListItemsCopiesTemplateFields(t *testing.T) {
 			ReadAt:         &readAt,
 			UpdatedAt:      updatedAt,
 		},
-	}, "/dash/comments")
+	}, "/dash/comments", false)
 
 	if len(items) != 1 {
 		t.Fatalf("buildNotificationListItems len = %d, want 1", len(items))
@@ -195,5 +195,26 @@ func TestParseNotificationIDRejectsInvalidJSONBody(t *testing.T) {
 	}
 	if resp.StatusCode != fiber.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
+	}
+}
+
+func TestBuildNotificationListItemsAppUpdateFields(t *testing.T) {
+	releaseURL := "https://github.com/keelii/swaves/releases/tag/v1.2.4"
+	items := buildNotificationListItems([]db.Notification{
+		{
+			ID:           7,
+			EventType:    dashNotificationEventAppUpdate,
+			AggregateKey: "app_update:v1.2.4:" + url.QueryEscape(releaseURL),
+		},
+	}, "/dash/comments", true)
+
+	if len(items) != 1 {
+		t.Fatalf("buildNotificationListItems len = %d, want 1", len(items))
+	}
+	if items[0].AppUpdateReleaseURL != releaseURL {
+		t.Fatalf("AppUpdateReleaseURL = %q, want %q", items[0].AppUpdateReleaseURL, releaseURL)
+	}
+	if !items[0].AppUpdateCanUpgrade {
+		t.Fatal("expected AppUpdateCanUpgrade=true")
 	}
 }

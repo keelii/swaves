@@ -4,7 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/updater"
 )
 
 func openJobTestDB(t *testing.T) *db.DB {
@@ -123,5 +125,50 @@ func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
 	}
 	if runs[0].Status != "success" {
 		t.Fatalf("task run status should be success, got %q", runs[0].Status)
+	}
+}
+
+func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
+	dbx := openJobTestDB(t)
+	oldCheck := checkLatestAppRelease
+	oldVersion := buildinfo.Version
+	oldCommit := buildinfo.Commit
+	oldBuildTime := buildinfo.BuildTime
+	buildinfo.Version = "v1.2.3"
+	buildinfo.Commit = "test"
+	buildinfo.BuildTime = "2026-04-05T00:00:00Z"
+	checkLatestAppRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+		return updater.CheckResult{
+			CurrentVersion:       currentVersion,
+			CurrentVersionStable: true,
+			LatestVersion:        "v1.2.4",
+			LatestReleaseURL:     "https://github.com/keelii/swaves/releases/tag/v1.2.4",
+			HasUpgrade:           true,
+			Target: &updater.ReleaseTarget{
+				Archive: updater.ReleaseAsset{Name: "swaves_v1.2.4_linux_amd64.tar.gz"},
+			},
+		}, nil
+	}
+	defer func() {
+		checkLatestAppRelease = oldCheck
+		buildinfo.Version = oldVersion
+		buildinfo.Commit = oldCommit
+		buildinfo.BuildTime = oldBuildTime
+	}()
+
+	msg, err := CheckAppUpdateJob(&Registry{DB: dbx})
+	if err != nil {
+		t.Fatalf("CheckAppUpdateJob failed: %v", err)
+	}
+	if msg == nil || *msg == "" {
+		t.Fatal("expected job message")
+	}
+
+	items, err := db.ListNotificationsByEventType(dbx, db.NotificationReceiverDash, db.NotificationEventAppUpdate, 10, 0)
+	if err != nil {
+		t.Fatalf("ListNotificationsByEventType failed: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("app update notification count = %d, want 1", len(items))
 	}
 }

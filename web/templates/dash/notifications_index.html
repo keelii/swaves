@@ -17,6 +17,7 @@
     {{ sui.Tab("点赞 " ~ notificationTabCounts["post_like"], href=UrlFor('dash.notifications.list', {"event_type":"post_like", "pageSize":pageSizeQuery}), active=(currentEventType == "post_like")) }}
     {{ sui.Tab("留言 " ~ notificationTabCounts["comment"], href=UrlFor('dash.notifications.list', {"event_type":"comment", "pageSize":pageSizeQuery}), active=(currentEventType == "comment")) }}
     {{ sui.Tab("任务 " ~ notificationTabCounts["task_result"], href=UrlFor('dash.notifications.list', {"event_type":"task_result", "pageSize":pageSizeQuery}), active=(currentEventType == "task_result")) }}
+    {{ sui.Tab("更新 " ~ notificationTabCounts["app_update"], href=UrlFor('dash.notifications.list', {"event_type":"app_update", "pageSize":pageSizeQuery}), active=(currentEventType == "app_update")) }}
   {{ sui.TabsEnd() }}
 {% endblock %}
 
@@ -69,6 +70,8 @@
               留言
             {% elif item.EventType == "task_result" %}
               任务
+            {% elif item.EventType == "app_update" %}
+              更新
             {% else %}
               {{ item.EventType }}
             {% endif %}
@@ -80,6 +83,9 @@
               {% if item.EventType == "comment" %}
                 {% set commentLink = item.CommentURL if item.CommentURL else UrlFor('dash.comments.list') %}
                 <a href="{{ commentLink }}"{% if item.CommentInNewTab %} target="_blank" rel="noopener noreferrer"{% endif %}>查看留言</a>
+              {% endif %}
+              {% if item.EventType == "app_update" and item.AppUpdateReleaseURL %}
+                <a href="{{ item.AppUpdateReleaseURL }}" target="_blank" rel="noopener noreferrer">发布说明</a>
               {% endif %}
             </div>
           </td>
@@ -95,6 +101,9 @@
           </td>
           <td>{{ item.UpdatedAt | relativeTime }}</td>
           <td data-role="notification-actions">
+            {% if item.EventType == "app_update" and item.AppUpdateCanUpgrade %}
+              {{ sui.IconAction("download", "立即更新", attrs='data-role="notification-upgrade" data-id="' ~ item.ID ~ '" data-title="立即更新"') }}
+            {% endif %}
             {{ sui.IconAction("square-check", "标记已读", attrs='data-role="notification-mark-read" data-id="' ~ item.ID ~ '" data-title="标记已读"' ~ (' hidden' if not isUnread else '')) }}
             {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-role="notification-delete" data-id="' ~ item.ID ~ '" data-title="删除"' ~ (' hidden' if isUnread else '')) }}
           </td>
