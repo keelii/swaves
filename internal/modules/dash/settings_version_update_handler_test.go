@@ -113,3 +113,15 @@ func TestBuildVersionUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *tes
 		t.Fatalf("buildVersionUpdateNotice() = %q, want %q", got, want)
 	}
 }
+
+func TestVersionUpdateSupportStateDisablesManualUpdateWithoutDaemon(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	state := versionUpdateSupportState(true)
+	if state.ManualUpdateEnabled {
+		t.Fatal("expected manual update to be disabled without daemon mode")
+	}
+	if state.AutoUpdateEnabled {
+		t.Fatal("expected auto update to be disabled without daemon mode")
+	}
+}

@@ -210,13 +210,6 @@
     word-break: break-all;
   }
 
-  .version-update-helper {
-    margin: 0;
-    font-size: 0.84rem;
-    line-height: 1.5;
-    color: var(--app-text-soft);
-  }
-
   @media (max-width: 1100px) {
     .settings-shell,
     .version-update-grid {
@@ -273,7 +266,7 @@
     {% endif %}
     {% if GlobalUpdateMessage %}
       <div class="version-update-banner">
-        {{ sui.Alert(GlobalUpdateMessage, kind="warning", title="更新方式", inline=true) }}
+        {{ sui.Alert(GlobalUpdateMessage, kind="warning", title="注意", inline=true) }}
       </div>
     {% endif %}
 
@@ -305,32 +298,22 @@
 
       <section class="settings-card">
         <header class="settings-card-header">
-          <h3 class="settings-card-title">自动更新</h3>
-          <p class="version-update-helper">{{ AutoUpdateUnavailableHint }}</p>
+          <h3 class="settings-card-title">更新方式</h3>
+          <p class="settings-card-desc">启用 daemon-mode 后可自动下载或上传安装包切换到新版本。手动安装包文件名需与 GitHub release 一致，例如 <code>swaves_v1.2.4_linux_amd64.tar.gz</code>。</p>
         </header>
         <div class="settings-card-body">
-          <form id="version-update-auto-form" method="post" action="{{ UrlFor('dash.settings.version_update.auto') }}">
-            {{ _csrf_token() }}
-            {{ sui.Button("自动更新", "primary", attrs='type="submit"' ~ (' disabled' if not AutoUpdateEnabled else '')) }}
-          </form>
-        </div>
-      </section>
-
-      <section class="settings-card">
-        <header class="settings-card-header">
-          <h3 class="settings-card-title">手动更新</h3>
-          <p class="settings-card-desc">上传本地安装包后直接替换当前可执行文件。若未启用 daemon-mode，安装完成后需要手动重启服务。</p>
-        </header>
-        <div class="settings-card-body">
-          <p class="version-update-helper">安装包文件名需与 GitHub release 一致，例如 <code>swaves_v1.2.4_linux_amd64.tar.gz</code>。</p>
-          <form id="version-update-manual-form" method="post" action="{{ UrlFor('dash.settings.version_update.manual') }}" enctype="multipart/form-data">
-            {{ _csrf_token() }}
-            <input id="version-update-archive" type="file" name="archive" accept=".tar.gz,application/gzip" hidden{% if not ManualUpdateEnabled %} disabled{% endif %}>
-            <div class="version-update-actions">
+          <div class="version-update-actions">
+            <form id="version-update-auto-form" method="post" action="{{ UrlFor('dash.settings.version_update.auto') }}">
+              {{ _csrf_token() }}
+              {{ sui.Button("自动更新", "primary", attrs='type="submit"' ~ (' disabled' if not AutoUpdateEnabled else '')) }}
+            </form>
+            <form id="version-update-manual-form" method="post" action="{{ UrlFor('dash.settings.version_update.manual') }}" enctype="multipart/form-data">
+              {{ _csrf_token() }}
+              <input id="version-update-archive" type="file" name="archive" accept=".tar.gz,application/gzip" hidden{% if not ManualUpdateEnabled %} disabled{% endif %}>
               {{ sui.Button("手动更新", "primary", attrs='type="button" data-role="version-update-manual-trigger"' ~ (' disabled' if not ManualUpdateEnabled else '')) }}
               <span id="version-update-file-name" class="version-update-file-name">未选择安装包</span>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </section>
     </div>

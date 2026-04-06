@@ -25,12 +25,10 @@ type latestVersionInfo struct {
 }
 
 type versionUpdateViewState struct {
-	AutoUpdateSupported       bool
-	AutoUpdateSupportMessage  string
-	ManualUpdateEnabled       bool
-	GlobalUpdateMessage       string
-	AutoUpdateUnavailableHint string
-	RuntimeInfo               updater.RuntimeInfo
+	AutoUpdateEnabled   bool
+	ManualUpdateEnabled bool
+	GlobalUpdateMessage string
+	RuntimePID          int
 }
 
 func versionLabel(version string) string {
@@ -76,38 +74,22 @@ func buildVersionUpdateNotice(result updater.InstallResult) string {
 }
 
 func versionUpdateSupportState(autoUpdateEnabled bool) versionUpdateViewState {
-	state := versionUpdateViewState{
-		ManualUpdateEnabled: runtime.GOOS != "windows",
-	}
+	state := versionUpdateViewState{}
 
 	if runtime.GOOS == "windows" {
-		state.AutoUpdateSupported = false
-		state.AutoUpdateSupportMessage = "Windows 暂不支持自动更新。"
-		state.GlobalUpdateMessage = "当前平台暂不支持自动更新；如需升级，请在服务器侧手动替换可执行文件。"
-		state.AutoUpdateUnavailableHint = "当前平台暂不支持自动更新。"
+		state.GlobalUpdateMessage = "当前平台暂不支持版本更新。"
 		return state
 	}
 
 	runtimeInfo, err := updater.ReadActiveRuntimeInfo()
 	if err != nil {
-		state.AutoUpdateSupported = false
-		state.AutoUpdateSupportMessage = "daemon-mode 未启用，自动更新不可用。"
-		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新不可用；你仍可安装本地发布包，安装后手动重启服务。"
-		if autoUpdateEnabled {
-			state.AutoUpdateUnavailableHint = "启用 daemon-mode 后可自动下载并切换到新版本。"
-		} else {
-			state.AutoUpdateUnavailableHint = "当前已是最新版本；如需重装，可先启用 daemon-mode 或使用手动更新。"
-		}
+		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新和手动更新都不可用。"
 		return state
 	}
 
-	state.AutoUpdateSupported = true
-	state.RuntimeInfo = runtimeInfo
-	if autoUpdateEnabled {
-		state.AutoUpdateUnavailableHint = "检测到新版本后，可直接自动下载并切换。"
-	} else {
-		state.AutoUpdateUnavailableHint = "当前已是最新版本。"
-	}
+	state.AutoUpdateEnabled = autoUpdateEnabled
+	state.ManualUpdateEnabled = true
+	state.RuntimePID = runtimeInfo.PID
 	return state
 }
 
@@ -167,23 +149,21 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 	viewState := versionUpdateSupportState(latestInfo.AutoUpdateEnabled)
 
 	return h.RenderDashView(c, "dash/settings_version_update.html", fiber.Map{
-		"Title":                     "版本更新",
-		"FrontendArea":              frontendArea,
-		"BackendArea":               backendArea,
-		"FrontendFirstSection":      firstSettingSectionCode(frontendArea),
-		"CurrentVersion":            versionLabel(buildinfo.Version),
-		"LatestVersion":             latestInfo.Version,
-		"LatestReleaseURL":          latestInfo.ReleaseURL,
-		"HasVersionUpdate":          latestInfo.HasVersionUpdate,
-		"AutoUpdateEnabled":         viewState.AutoUpdateSupported && latestInfo.AutoUpdateEnabled,
-		"AutoUpdateSupported":       viewState.AutoUpdateSupported,
-		"AutoUpdateUnavailableHint": viewState.AutoUpdateUnavailableHint,
-		"ManualUpdateEnabled":       viewState.ManualUpdateEnabled,
-		"GlobalUpdateMessage":       viewState.GlobalUpdateMessage,
-		"VersionUpdateNotice":       strings.TrimSpace(c.Query("notice")),
-		"VersionUpdateError":        strings.TrimSpace(c.Query("error")),
-		"VersionUpdateAutoRefresh":  strings.TrimSpace(c.Query("refresh")) == "1",
-		"VersionRuntimePID":         viewState.RuntimeInfo.PID,
+		"Title":                    "版本更新",
+		"FrontendArea":             frontendArea,
+		"BackendArea":              backendArea,
+		"FrontendFirstSection":     firstSettingSectionCode(frontendArea),
+		"CurrentVersion":           versionLabel(buildinfo.Version),
+		"LatestVersion":            latestInfo.Version,
+		"LatestReleaseURL":         latestInfo.ReleaseURL,
+		"HasVersionUpdate":         latestInfo.HasVersionUpdate,
+		"AutoUpdateEnabled":        viewState.AutoUpdateEnabled,
+		"ManualUpdateEnabled":      viewState.ManualUpdateEnabled,
+		"GlobalUpdateMessage":      viewState.GlobalUpdateMessage,
+		"VersionUpdateNotice":      strings.TrimSpace(c.Query("notice")),
+		"VersionUpdateError":       strings.TrimSpace(c.Query("error")),
+		"VersionUpdateAutoRefresh": strings.TrimSpace(c.Query("refresh")) == "1",
+		"VersionRuntimePID":        viewState.RuntimePID,
 	}, "")
 }
 
@@ -221,6 +201,12 @@ func (h *Handler) PostSettingsVersionManualUpdateHandler(c fiber.Ctx) error {
 		logger.Warn("[dash] manual update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "Windows 暂不支持 daemon-mode 自动更新",
+		})
+	}
+	if _, err := updater.ReadActiveRuntimeInfo(); err != nil {
+		logger.Warn("[dash] manual update blocked: ip=%s err=%v", c.IP(), err)
+		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
+			"error": "当前 daemon-mode master 不可用，无法执行手动更新：" + err.Error(),
 		})
 	}
 
