@@ -8,8 +8,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/shirou/gopsutil/v4/process"
 )
 
 type RuntimeInfo struct {
@@ -23,7 +21,6 @@ var runtimeInfoPath = defaultRuntimeInfoPath
 
 var (
 	processExists     = defaultProcessExists
-	processExecutable = defaultProcessExecutable
 	currentExecutable = os.Executable
 )
 
@@ -98,22 +95,6 @@ func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
 	if !processExists(info.PID) {
 		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d", info.PID)
 	}
-
-	currentPath, err := currentExecutable()
-	if err != nil {
-		return RuntimeInfo{}, fmt.Errorf("resolve current executable failed: %w", err)
-	}
-	if !sameExecutablePath(info.Executable, currentPath) {
-		return RuntimeInfo{}, fmt.Errorf("runtime info executable does not match current binary")
-	}
-
-	pidPath, err := processExecutable(info.PID)
-	if err != nil {
-		return RuntimeInfo{}, fmt.Errorf("read master process executable failed: %w", err)
-	}
-	if !sameExecutablePath(info.Executable, pidPath) {
-		return RuntimeInfo{}, fmt.Errorf("runtime info is stale: pid=%d executable changed", info.PID)
-	}
 	return info, nil
 }
 
@@ -126,51 +107,6 @@ func defaultProcessExists(pid int) bool {
 		return false
 	}
 	return proc.Signal(syscall.Signal(0)) == nil
-}
-
-func defaultProcessExecutable(pid int) (string, error) {
-	proc, err := process.NewProcess(int32(pid))
-	if err != nil {
-		return "", err
-	}
-	return proc.Exe()
-}
-
-func sameExecutablePath(pathA string, pathB string) bool {
-	left, err := normalizeExecutablePath(pathA)
-	if err != nil {
-		return false
-	}
-	right, err := normalizeExecutablePath(pathB)
-	if err != nil {
-		return false
-	}
-
-	leftInfo, err := os.Stat(left)
-	if err != nil {
-		return false
-	}
-	rightInfo, err := os.Stat(right)
-	if err != nil {
-		return false
-	}
-	return os.SameFile(leftInfo, rightInfo)
-}
-
-func normalizeExecutablePath(path string) (string, error) {
-	path = strings.TrimSpace(path)
-	if path == "" {
-		return "", fmt.Errorf("empty executable path")
-	}
-	resolved, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		resolved = path
-	}
-	absPath, err := filepath.Abs(resolved)
-	if err != nil {
-		return "", err
-	}
-	return absPath, nil
 }
 
 func RemoveRuntimeInfo() error {

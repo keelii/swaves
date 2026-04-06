@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"swaves/internal/platform/buildinfo"
+	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/updater"
 
@@ -19,6 +20,7 @@ var checkLatestRelease = updater.CheckLatestRelease
 type latestVersionInfo struct {
 	Version           string
 	ReleaseURL        string
+	HasVersionUpdate  bool
 	AutoUpdateEnabled bool
 }
 
@@ -116,10 +118,12 @@ func loadLatestVersionInfo(currentVersion string, goos string, goarch string, fa
 
 	result, err := checkLatestRelease(currentVersion, goos, goarch)
 	if err != nil {
+		hasVersionUpdate := currentVersion == "" || fallbackVersion == "" || fallbackVersion != currentVersion
 		return latestVersionInfo{
 			Version:           fallbackVersion,
 			ReleaseURL:        fallbackReleaseURL,
-			AutoUpdateEnabled: currentVersion == "" || fallbackVersion == "" || fallbackVersion != currentVersion,
+			HasVersionUpdate:  hasVersionUpdate,
+			AutoUpdateEnabled: hasVersionUpdate,
 		}
 	}
 
@@ -131,10 +135,12 @@ func loadLatestVersionInfo(currentVersion string, goos string, goarch string, fa
 	if latestReleaseURL == "" {
 		latestReleaseURL = fallbackReleaseURL
 	}
+	hasVersionUpdate := currentVersion == "" || latestVersion == "" || latestVersion != currentVersion
 	return latestVersionInfo{
 		Version:           latestVersion,
 		ReleaseURL:        latestReleaseURL,
-		AutoUpdateEnabled: currentVersion == "" || latestVersion == "" || latestVersion != currentVersion,
+		HasVersionUpdate:  hasVersionUpdate,
+		AutoUpdateEnabled: hasVersionUpdate,
 	}
 }
 
@@ -168,6 +174,7 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 		"CurrentVersion":            versionLabel(buildinfo.Version),
 		"LatestVersion":             latestInfo.Version,
 		"LatestReleaseURL":          latestInfo.ReleaseURL,
+		"HasVersionUpdate":          latestInfo.HasVersionUpdate,
 		"AutoUpdateEnabled":         viewState.AutoUpdateSupported && latestInfo.AutoUpdateEnabled,
 		"AutoUpdateSupported":       viewState.AutoUpdateSupported,
 		"AutoUpdateUnavailableHint": viewState.AutoUpdateUnavailableHint,
@@ -182,17 +189,21 @@ func (h *Handler) GetSettingsVersionUpdateHandler(c fiber.Ctx) error {
 
 func (h *Handler) PostSettingsVersionAutoUpdateHandler(c fiber.Ctx) error {
 	if runtime.GOOS == "windows" {
+		logger.Warn("[dash] auto update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "Windows 暂不支持 daemon-mode 自动更新",
 		})
 	}
 
+	logger.Info("[dash] auto update requested: ip=%s current=%s target=%s/%s", c.IP(), versionLabel(buildinfo.Version), runtime.GOOS, runtime.GOARCH)
 	result, err := updater.InstallLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
+		logger.Error("[dash] auto update failed: ip=%s current=%s err=%v", c.IP(), versionLabel(buildinfo.Version), err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": err.Error(),
 		})
 	}
+	logger.Info("[dash] auto update completed: ip=%s latest=%s installed=%t restarted_pid=%d", c.IP(), versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
 	return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 		"notice": buildVersionUpdateNotice(result),
@@ -207,6 +218,7 @@ func (h *Handler) PostSettingsVersionAutoUpdateHandler(c fiber.Ctx) error {
 
 func (h *Handler) PostSettingsVersionManualUpdateHandler(c fiber.Ctx) error {
 	if runtime.GOOS == "windows" {
+		logger.Warn("[dash] manual update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "Windows 暂不支持 daemon-mode 自动更新",
 		})
@@ -214,13 +226,16 @@ func (h *Handler) PostSettingsVersionManualUpdateHandler(c fiber.Ctx) error {
 
 	fileHeader, err := c.FormFile("archive")
 	if err != nil {
+		logger.Error("[dash] manual update read upload failed: ip=%s err=%v", c.IP(), err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "读取安装包失败：" + err.Error(),
 		})
 	}
+	logger.Info("[dash] manual update requested: ip=%s archive=%s size=%d current=%s", c.IP(), filepath.Base(fileHeader.Filename), fileHeader.Size, versionLabel(buildinfo.Version))
 
 	src, err := fileHeader.Open()
 	if err != nil {
+		logger.Error("[dash] manual update open upload failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "打开安装包失败：" + err.Error(),
 		})
@@ -229,6 +244,7 @@ func (h *Handler) PostSettingsVersionManualUpdateHandler(c fiber.Ctx) error {
 
 	tmpDir, err := os.MkdirTemp("", ".swaves-manual-upgrade-")
 	if err != nil {
+		logger.Error("[dash] manual update create temp dir failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "创建临时目录失败：" + err.Error(),
 		})
@@ -239,17 +255,20 @@ func (h *Handler) PostSettingsVersionManualUpdateHandler(c fiber.Ctx) error {
 	archivePath := filepath.Join(tmpDir, archiveName)
 	dst, err := os.Create(archivePath)
 	if err != nil {
+		logger.Error("[dash] manual update create temp archive failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "创建临时安装包失败：" + err.Error(),
 		})
 	}
 	if _, err = io.Copy(dst, src); err != nil {
 		_ = dst.Close()
+		logger.Error("[dash] manual update save upload failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "保存安装包失败：" + err.Error(),
 		})
 	}
 	if err = dst.Close(); err != nil {
+		logger.Error("[dash] manual update close temp archive failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": "关闭临时安装包失败：" + err.Error(),
 		})
@@ -257,10 +276,12 @@ func (h *Handler) PostSettingsVersionManualUpdateHandler(c fiber.Ctx) error {
 
 	result, err := updater.InstallLocalReleaseArchive(archiveName, archivePath, buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
+		logger.Error("[dash] manual update failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
 		return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 			"error": err.Error(),
 		})
 	}
+	logger.Info("[dash] manual update completed: ip=%s archive=%s latest=%s installed=%t restarted_pid=%d", c.IP(), archiveName, versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
 	return h.redirectToDashRoute(c, "dash.settings.version_update", nil, map[string]string{
 		"notice": buildVersionUpdateNotice(result),

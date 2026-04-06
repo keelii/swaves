@@ -22,17 +22,14 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
 	oldCurrentExecutable := currentExecutable
-	oldProcessExecutable := processExecutable
 	runtimeInfoPath = func() string { return runtimePath }
 	defer func() {
 		runtimeInfoPath = oldRuntimePath
 		currentExecutable = oldCurrentExecutable
-		processExecutable = oldProcessExecutable
 	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
 	currentExecutable = func() (string, error) { return executablePath, nil }
-	processExecutable = func(pid int) (string, error) { return executablePath, nil }
 	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write old executable failed: %v", err)
 	}
@@ -112,17 +109,14 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
 	oldCurrentExecutable := currentExecutable
-	oldProcessExecutable := processExecutable
 	runtimeInfoPath = func() string { return runtimePath }
 	defer func() {
 		runtimeInfoPath = oldRuntimePath
 		currentExecutable = oldCurrentExecutable
-		processExecutable = oldProcessExecutable
 	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
 	currentExecutable = func() (string, error) { return executablePath, nil }
-	processExecutable = func(pid int) (string, error) { return executablePath, nil }
 	if err := os.WriteFile(executablePath, []byte("same-binary"), 0755); err != nil {
 		t.Fatalf("write executable failed: %v", err)
 	}
@@ -188,17 +182,14 @@ func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
 	oldCurrentExecutable := currentExecutable
-	oldProcessExecutable := processExecutable
 	runtimeInfoPath = func() string { return runtimePath }
 	defer func() {
 		runtimeInfoPath = oldRuntimePath
 		currentExecutable = oldCurrentExecutable
-		processExecutable = oldProcessExecutable
 	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
 	currentExecutable = func() (string, error) { return executablePath, nil }
-	processExecutable = func(pid int) (string, error) { return executablePath, nil }
 	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write old executable failed: %v", err)
 	}
@@ -260,21 +251,18 @@ func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T)
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
 	oldCurrentExecutable := currentExecutable
-	oldProcessExecutable := processExecutable
 	oldProcessExists := processExists
 	oldSignalProcess := signalProcess
 	runtimeInfoPath = func() string { return runtimePath }
 	defer func() {
 		runtimeInfoPath = oldRuntimePath
 		currentExecutable = oldCurrentExecutable
-		processExecutable = oldProcessExecutable
 		processExists = oldProcessExists
 		signalProcess = oldSignalProcess
 	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
 	currentExecutable = func() (string, error) { return executablePath, nil }
-	processExecutable = func(pid int) (string, error) { return executablePath, nil }
 	processExists = func(pid int) bool { return false }
 	signalProcess = func(pid int) error {
 		t.Fatalf("signalProcess should not be called without daemon mode, got pid=%d", pid)
@@ -339,38 +327,74 @@ func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 	}
 }
 
-func TestInstallLatestReleaseRejectsStaleRuntimeInfo(t *testing.T) {
+func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
-	oldCurrentExecutable := currentExecutable
-	oldProcessExecutable := processExecutable
 	oldProcessExists := processExists
+	oldSignalProcess := signalProcess
 	runtimeInfoPath = func() string { return runtimePath }
-	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
-	processExecutable = func(pid int) (string, error) { return filepath.Join(tmpDir, "other-binary"), nil }
 	processExists = func(pid int) bool { return pid == 4321 }
 	defer func() {
 		runtimeInfoPath = oldRuntimePath
-		currentExecutable = oldCurrentExecutable
-		processExecutable = oldProcessExecutable
 		processExists = oldProcessExists
+		signalProcess = oldSignalProcess
 	}()
 
 	executablePath := filepath.Join(tmpDir, "swaves")
 	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write executable failed: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(tmpDir, "other-binary"), []byte("other"), 0755); err != nil {
-		t.Fatalf("write other executable failed: %v", err)
-	}
 	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
 		t.Fatalf("WriteRuntimeInfo failed: %v", err)
 	}
 
-	_, err := Client{}.InstallLatestRelease("v1.2.3", "linux", "amd64")
-	if err == nil || !strings.Contains(err.Error(), "active master process") {
-		t.Fatalf("expected active master process error, got %v", err)
+	var signaledPID atomic.Int64
+	signalProcess = func(pid int) error {
+		signaledPID.Store(int64(pid))
+		return nil
+	}
+
+	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
+	hash := sha256.Sum256(archiveData)
+	checksumData := []byte(hex.EncodeToString(hash[:]) + "  swaves_v1.2.4_linux_amd64.tar.gz\n")
+
+	client := Client{
+		BaseURL: "https://example.test/latest",
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			switch req.URL.String() {
+			case "https://example.test/latest":
+				body := fmt.Sprintf(`{
+					"tag_name":"v1.2.4",
+					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"published_at":"2026-04-05T00:00:00Z",
+					"draft":false,
+					"prerelease":false,
+					"assets":[
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
+					]
+				}`)
+				return newHTTPResponse(http.StatusOK, body), nil
+			case "https://example.test/archive":
+				return newBinaryResponse(http.StatusOK, archiveData), nil
+			case "https://example.test/archive.sha256":
+				return newBinaryResponse(http.StatusOK, checksumData), nil
+			default:
+				return newHTTPResponse(http.StatusNotFound, "not found"), nil
+			}
+		})},
+	}
+
+	result, err := client.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	if err != nil {
+		t.Fatalf("InstallLatestRelease failed: %v", err)
+	}
+	if !result.Installed {
+		t.Fatal("expected Installed=true")
+	}
+	if signaledPID.Load() != 4321 {
+		t.Fatalf("signal pid = %d, want 4321", signaledPID.Load())
 	}
 }
 
@@ -379,18 +403,15 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
 	oldCurrentExecutable := currentExecutable
-	oldProcessExecutable := processExecutable
 	oldProcessExists := processExists
 	oldSignalProcess := signalProcess
 	runtimeInfoPath = func() string { return runtimePath }
 	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
-	processExecutable = func(pid int) (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
 	processExists = func(pid int) bool { return pid == 4321 }
 	signalProcess = func(pid int) error { return errors.New("restart failed") }
 	defer func() {
 		runtimeInfoPath = oldRuntimePath
 		currentExecutable = oldCurrentExecutable
-		processExecutable = oldProcessExecutable
 		processExists = oldProcessExists
 		signalProcess = oldSignalProcess
 	}()
@@ -452,12 +473,10 @@ func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	oldRuntimePath := runtimeInfoPath
 	oldCurrentExecutable := currentExecutable
-	oldProcessExecutable := processExecutable
 	oldProcessExists := processExists
 	oldSignalProcess := signalProcess
 	runtimeInfoPath = func() string { return runtimePath }
 	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
-	processExecutable = func(pid int) (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
 	processExists = func(pid int) bool { return pid == 4321 || pid == 9999 }
 	signalCalled := false
 	signalProcess = func(pid int) error {
@@ -467,7 +486,6 @@ func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 	defer func() {
 		runtimeInfoPath = oldRuntimePath
 		currentExecutable = oldCurrentExecutable
-		processExecutable = oldProcessExecutable
 		processExists = oldProcessExists
 		signalProcess = oldSignalProcess
 	}()

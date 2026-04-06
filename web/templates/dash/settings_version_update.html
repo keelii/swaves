@@ -191,6 +191,10 @@
     word-break: break-word;
   }
 
+  .version-update-value.is-latest {
+    color: var(--app-badge-success-fg);
+  }
+
   .version-update-actions {
     display: flex;
     align-items: center;
@@ -293,7 +297,7 @@
             </div>
             <div class="version-update-item">
               <span class="version-update-label">最新版本</span>
-              <span class="version-update-value">{{ LatestVersion if LatestVersion else "暂未发现新版本" }}</span>
+              <span class="version-update-value{{ ' is-latest' if HasVersionUpdate else '' }}">{{ LatestVersion if LatestVersion else "暂未发现新版本" }}</span>
             </div>
           </div>
           <div class="version-update-summary">
