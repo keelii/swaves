@@ -202,13 +202,14 @@ func (h Handler) redirectNotFound(c fiber.Ctx) error {
 	}
 	returnURL = normalizeErrorReturnURL(returnURL)
 
-	c.Status(fiber.StatusNotFound)
-	return RenderUIView(c, "site/404.html", fiber.Map{
-		"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
-		"Pages":     ListPages(h.Model),
-		"ReturnURL": returnURL,
-		"ReqID":     requestid.FromContext(c),
-	}, "")
+	return c.Redirect().To(buildSiteErrorRedirectPath(c, getSitePath("/404")))
+	//c.Status(fiber.StatusNotFound)
+	//return RenderUIView(c, "site/404.html", fiber.Map{
+	//	"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
+	//	"Pages":     ListPages(h.Model),
+	//	"ReturnURL": returnURL,
+	//	"ReqID":     requestid.FromContext(c),
+	//}, "")
 }
 
 func (h Handler) redirectError(c fiber.Ctx) error {
@@ -249,22 +250,18 @@ func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error
 }
 
 func (h Handler) GetDate(c fiber.Ctx) error {
-	dt := c.Params("dob")
-	fmt.Println("===")
-	fmt.Println(dt)
-	fmt.Println("===")
 	return c.Send([]byte("ui home"))
 }
 
-func PageNotFound(c fiber.Ctx) error {
-	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
-	c.Status(fiber.StatusNotFound)
-	return RenderUIView(c, "site/404.html", fiber.Map{
-		"Title":     fmt.Sprintf("404 Not Found [%s]", "PageNotFound"),
-		"ReturnURL": returnURL,
-		"ReqID":     requestid.FromContext(c),
-	}, "")
-}
+//	func PageNotFound(c fiber.Ctx) error {
+//		returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
+//		c.Status(fiber.StatusNotFound)
+//		return RenderUIView(c, "site/404.html", fiber.Map{
+//			"Title":     fmt.Sprintf("404 Not Found [%s]", "PageNotFound"),
+//			"ReturnURL": returnURL,
+//			"ReqID":     requestid.FromContext(c),
+//		}, "")
+//	}
 func (h Handler) GetNotFound(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusNotFound)
