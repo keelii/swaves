@@ -11,10 +11,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterRouter(
-	app *fiber.App,
-	gStore *store.GlobalStore,
-) {
+func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashBasePath := share.GetDashUrl()
 
 	monitorStore := NewMonitorStore()

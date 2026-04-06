@@ -256,6 +256,15 @@ func (h Handler) GetDate(c fiber.Ctx) error {
 	return c.Send([]byte("ui home"))
 }
 
+func PageNotFound(c fiber.Ctx) error {
+	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
+	c.Status(fiber.StatusNotFound)
+	return RenderUIView(c, "site/404.html", fiber.Map{
+		"Title":     fmt.Sprintf("404 Not Found [%s]", "PageNotFound"),
+		"ReturnURL": returnURL,
+		"ReqID":     requestid.FromContext(c),
+	}, "")
+}
 func (h Handler) GetNotFound(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusNotFound)
