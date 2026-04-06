@@ -62,5 +62,8 @@ func CreateRedirectBatch(db *DB, redirects []Redirect) error {
 		return WrapInternalErr("CreateRedirectBatch.Commit", err)
 	}
 	tx = nil
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableRedirects, TableOpInsert)
+	}
 	return nil
 }

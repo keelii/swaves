@@ -28,21 +28,7 @@ func InitSettings(gStore *GlobalStore) {
 	if err := ReloadSettings(gStore); err != nil {
 		logger.Fatal("initial settings load failed: %v", err)
 	}
-
-	// 只注册一次回调
-	db.OnDatabaseChanged = func(tableName db.TableName, kind db.TableOp) {
-		if tableName != db.TableSettings {
-			return
-		}
-
-		if kind != db.TableOpInsert && kind != db.TableOpUpdate && kind != db.TableOpDelete {
-			return
-		}
-
-		if err := ReloadSettings(gStore); err != nil {
-			logger.Error("reload settings failed: %v", err)
-		}
-	}
+	registerDatabaseChangeHandler(gStore)
 }
 
 func ReloadSettings(gStore *GlobalStore) error {

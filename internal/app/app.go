@@ -19,6 +19,7 @@ import (
 	"swaves/internal/platform/view"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
+	"swaves/internal/shared/webutil"
 	webassets "swaves/web"
 
 	"github.com/gofiber/fiber/v3"
@@ -45,6 +46,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	}), dash.NewSessionStore(appCfg.SqliteFile))
 
 	store.InitSettings(globalStore)
+	store.InitRedirects(globalStore)
 	viewEngine, initURLResolver := newRuntimeViewEngine()
 
 	app := fiber.New(fiber.Config{
@@ -64,6 +66,12 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 
 			logger.Error("[http] method=%s code=%d msg=%s path=%s ip=%s referer=%s",
 				c.Method(), code, msg, c.Path(), c.IP(), c.Referer())
+
+			if code == fiber.StatusNotFound && (c.Method() == fiber.MethodGet || c.Method() == fiber.MethodHead) {
+				if redirect, ok := store.GetRedirect(c.Path()); ok {
+					return webutil.RedirectTo(c, redirect.To, redirect.Status)
+				}
+			}
 
 			if strings.HasPrefix(c.Path(), share.GetDashUrl()) {
 				return c.Status(code).SendString(msg)

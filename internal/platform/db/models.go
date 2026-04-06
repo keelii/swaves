@@ -3327,16 +3327,28 @@ func UpdateRedirect(db *DB, r *Redirect) error {
 	if r.Status == 0 {
 		r.Status = 301 // default
 	}
-	return Update(db, specRedirects, r.ID, map[string]interface{}{
+	if err := Update(db, specRedirects, r.ID, map[string]interface{}{
 		"from_path": r.From,
 		"to_path":   r.To,
 		"status":    r.Status,
 		"enabled":   r.Enabled,
-	})
+	}); err != nil {
+		return err
+	}
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableRedirects, TableOpUpdate)
+	}
+	return nil
 }
 
 func SoftDeleteRedirect(db *DB, id int64) error {
-	return Delete(db, specRedirects, id)
+	if err := Delete(db, specRedirects, id); err != nil {
+		return err
+	}
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableRedirects, TableOpDelete)
+	}
+	return nil
 }
 
 func HardDeleteRedirect(db *DB, id int64) error {
@@ -3344,7 +3356,13 @@ func HardDeleteRedirect(db *DB, id int64) error {
 }
 
 func RestoreRedirect(db *DB, id int64) error {
-	return Restore(db, specRedirects, id)
+	if err := Restore(db, specRedirects, id); err != nil {
+		return err
+	}
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableRedirects, TableOpUpdate)
+	}
+	return nil
 }
 
 func ListRedirects(db *DB, limit, offset int) ([]Redirect, int, error) {
@@ -3415,6 +3433,9 @@ func CreateRedirect(db *DB, r *Redirect) (int64, error) {
 		return 0, WrapInternalErr("CreateRedirect", err)
 	}
 	r.ID = id
+	if OnDatabaseChanged != nil {
+		OnDatabaseChanged(TableRedirects, TableOpInsert)
+	}
 	return id, nil
 }
 
@@ -3942,6 +3963,33 @@ func DeleteHttpErrorLog(db *DB, id int64) error {
 }
 
 var AppSettings atomic.Value // map[string]string
+
+// LoadRedirectsToMap 从 redirects 表加载 from_path -> redirect 映射，仅包含启用规则
+func LoadRedirectsToMap(db *DB) (map[string]Redirect, error) {
+	results, err := Read(db, specRedirects, ReadOptions{
+		SelectFields: "id, from_path, to_path, COALESCE(status, 301), COALESCE(enabled, 1), created_at, updated_at, deleted_at",
+		WhereClause:  "enabled=1",
+		OrderBy:      "",
+		WhereArgs:    nil,
+		Limit:        0,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		r, err := scanRedirect(rows)
+		if err != nil {
+			return nil, WrapInternalErr("LoadRedirectsToMap.Scan", err)
+		}
+		return r, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("LoadRedirectsToMap", err)
+	}
+
+	redirectsMap := make(map[string]Redirect, len(results))
+	for _, v := range results {
+		redirect := v.(Redirect)
+		redirectsMap[redirect.From] = redirect
+	}
+	return redirectsMap, nil
+}
 
 // LoadSettingsToMap 从 settings 表加载 code -> value 映射
 func LoadSettingsToMap(db *DB) (map[string]string, error) {

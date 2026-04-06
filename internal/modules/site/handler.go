@@ -196,6 +196,12 @@ func buildSiteErrorRedirectPath(c fiber.Ctx, targetPath string) string {
 }
 
 func (h Handler) redirectNotFound(c fiber.Ctx) error {
+	if c.Method() == fiber.MethodGet || c.Method() == fiber.MethodHead {
+		if redirect, ok := store.GetRedirect(c.Path()); ok {
+			return webutil.RedirectTo(c, redirect.To, redirect.Status)
+		}
+	}
+
 	returnURL := strings.TrimSpace(c.Query("returnUrl"))
 	if returnURL == "" {
 		returnURL = strings.TrimSpace(c.OriginalURL())
