@@ -61,8 +61,8 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 				msg = err.Error()
 			}
 
-			logger.Error("[http] code=%d msg=%s path=%s ip=%s referer=%s",
-				code, msg, c.Path(), c.IP(), c.Referer())
+			logger.Error("[http] method=%s code=%d msg=%s path=%s ip=%s referer=%s",
+				c.Method(), code, msg, c.Path(), c.IP(), c.Referer())
 			return c.Status(code).SendString(msg)
 		},
 	})
