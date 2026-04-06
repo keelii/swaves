@@ -4,4 +4,5 @@ testdata
 data.*
 *.gz
 backups
+.gocache
 .DS_Store
