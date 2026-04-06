@@ -9,6 +9,8 @@ import (
 	"swaves/internal/modules/site"
 	"swaves/internal/platform/db"
 	"swaves/internal/shared/types"
+
+	"github.com/gofiber/fiber/v3"
 )
 
 func TestRenderDashCategoriesIndexWithMissingCounts(t *testing.T) {
@@ -283,6 +285,66 @@ func TestRenderDashAssetsIndexWithItems(t *testing.T) {
 	}
 	if strings.Contains(rendered, "暂无资源") {
 		t.Fatalf("expected non-empty asset table, got: %s", rendered)
+	}
+}
+
+func TestRenderStatusMainPaginationFallsBackToRouteContext(t *testing.T) {
+	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	app := fiber.New()
+	app.Get("/assets", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	}).Name("dash.assets.list")
+	initURLResolver(app)
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/include/status_main_pagination.html", map[string]any{
+		"Pager":     types.Pagination{Page: 2, Num: 3, Total: 25, PageSize: 10},
+		"RouteName": "dash.assets.list",
+		"Query":     map[string]string{"kind": "image", "pageSize": "10"},
+	})
+	if err != nil {
+		t.Fatalf("render status main pagination failed: %v", err)
+	}
+	rendered := out.String()
+	if !strings.Contains(rendered, `&#x2f;assets?kind=image&amp;page=1&amp;pageSize=10`) {
+		t.Fatalf("expected pagination prev link to use route context, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, `&#x2f;assets?kind=image&amp;page=3&amp;pageSize=10`) {
+		t.Fatalf("expected pagination next link to use route context, got: %s", rendered)
+	}
+}
+
+func TestRenderPaginationFallsBackToRouteContext(t *testing.T) {
+	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	app := fiber.New()
+	app.Get("/logs", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	}).Name("dash.http_error_logs.list")
+	initURLResolver(app)
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/include/pagination.html", map[string]any{
+		"Pager":     types.Pagination{Page: 2, Num: 3, Total: 25, PageSize: 10},
+		"RouteName": "dash.http_error_logs.list",
+		"Query":     map[string]string{"pageSize": "10"},
+	})
+	if err != nil {
+		t.Fatalf("render pagination failed: %v", err)
+	}
+	rendered := out.String()
+	if !strings.Contains(rendered, `&#x2f;logs?page=1&amp;pageSize=10`) {
+		t.Fatalf("expected pagination prev link to use route context, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, `&#x2f;logs?page=3&amp;pageSize=10`) {
+		t.Fatalf("expected pagination next link to use route context, got: %s", rendered)
 	}
 }
 

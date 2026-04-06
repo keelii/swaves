@@ -39,6 +39,10 @@ func InstallLatestRelease(currentVersion string, goos string, goarch string) (In
 	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
 }
 
+func InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
+	return DefaultClient().InstallLatestReleaseCLI(currentVersion, goos, goarch)
+}
+
 func InstallLocalReleaseArchive(archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
 	installMu.Lock()
 	defer installMu.Unlock()
@@ -241,6 +245,104 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 	result.RestartedPID = runtimeInfo.PID
 	result.Reason = fmt.Sprintf("upgraded to %s", check.LatestVersion)
 	logger.Info("[update] auto install success: version=%s restarted_pid=%d", versionLabel(result.LatestVersion), result.RestartedPID)
+	return result, nil
+}
+
+func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
+	installMu.Lock()
+	defer installMu.Unlock()
+
+	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
+	logger.Info("[update] cli install start: current=%s target=%s/%s", versionLabel(result.CurrentVersion), goos, goarch)
+
+	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
+	if err != nil {
+		logger.Error("[update] cli install release check failed: current=%s target=%s/%s err=%v", versionLabel(result.CurrentVersion), goos, goarch, err)
+		return result, err
+	}
+	result.LatestVersion = check.LatestVersion
+	result.ReleaseURL = check.LatestReleaseURL
+	logger.Info("[update] cli install release check result: latest=%s archive=%s reason=%s", versionLabel(result.LatestVersion), func() string {
+		if check.Target == nil {
+			return ""
+		}
+		return check.Target.Archive.Name
+	}(), strings.TrimSpace(check.Reason))
+	if check.Target == nil {
+		if strings.TrimSpace(goos) == "" {
+			goos = runtime.GOOS
+		}
+		if strings.TrimSpace(goarch) == "" {
+			goarch = runtime.GOARCH
+		}
+		logger.Warn("[update] cli install unsupported target: target=%s/%s", goos, goarch)
+		return result, fmt.Errorf("automatic upgrade is not supported on %s/%s", goos, goarch)
+	}
+	result.ArchiveName = check.Target.Archive.Name
+
+	stableCurrent := semverutil.IsStable(currentVersion)
+	if stableCurrent {
+		cmp, err := semverutil.Compare(currentVersion, check.LatestVersion)
+		if err != nil {
+			logger.Error("[update] cli install semver compare failed: current=%s latest=%s err=%v", currentVersion, check.LatestVersion, err)
+			return result, err
+		}
+		if cmp >= 0 {
+			result.Reason = check.Reason
+			logger.Info("[update] cli install skipped: current=%s latest=%s reason=%s", versionLabel(result.CurrentVersion), versionLabel(result.LatestVersion), strings.TrimSpace(result.Reason))
+			return result, nil
+		}
+	}
+
+	targetPath, err := currentInstallExecutable()
+	if err != nil {
+		logger.Error("[update] cli install resolve current executable failed: err=%v", err)
+		return result, err
+	}
+
+	tmpDir, err := os.MkdirTemp(filepath.Dir(targetPath), ".swaves-upgrade-")
+	if err != nil {
+		logger.Error("[update] cli install create temp dir failed: target=%s err=%v", targetPath, err)
+		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	archivePath := filepath.Join(tmpDir, check.Target.Archive.Name)
+	logger.Info("[update] cli install downloading archive: url=%s dst=%s", check.Target.Archive.DownloadURL, archivePath)
+	if err := c.downloadToFile(check.Target.Archive.DownloadURL, archivePath); err != nil {
+		logger.Error("[update] cli install download archive failed: url=%s err=%v", check.Target.Archive.DownloadURL, err)
+		return result, err
+	}
+
+	checksumPath := filepath.Join(tmpDir, check.Target.Checksum.Name)
+	logger.Info("[update] cli install downloading checksum: url=%s dst=%s", check.Target.Checksum.DownloadURL, checksumPath)
+	if err := c.downloadToFile(check.Target.Checksum.DownloadURL, checksumPath); err != nil {
+		logger.Error("[update] cli install download checksum failed: url=%s err=%v", check.Target.Checksum.DownloadURL, err)
+		return result, err
+	}
+	if err := verifyChecksumFile(archivePath, checksumPath); err != nil {
+		logger.Error("[update] cli install checksum verify failed: archive=%s checksum=%s err=%v", archivePath, checksumPath, err)
+		return result, err
+	}
+
+	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(check.Target.Archive.Name))
+	if err != nil {
+		logger.Error("[update] cli install extract failed: archive=%s err=%v", archivePath, err)
+		return result, err
+	}
+	if err := os.Chmod(extractedPath, 0755); err != nil {
+		logger.Error("[update] cli install chmod failed: path=%s err=%v", extractedPath, err)
+		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
+	}
+	logger.Info("[update] cli install replacing current executable: target=%s", targetPath)
+	if _, err := replaceExecutableAtPathWithRollback(extractedPath, targetPath, filepath.Join(tmpDir, ".swaves-executable-backup")); err != nil {
+		logger.Error("[update] cli install replace current executable failed: target=%s err=%v", targetPath, err)
+		return result, err
+	}
+
+	result.Installed = true
+	result.Reason = fmt.Sprintf("installed %s to current executable", check.LatestVersion)
+	logger.Info("[update] cli install success: version=%s target=%s", versionLabel(result.LatestVersion), targetPath)
 	return result, nil
 }
 

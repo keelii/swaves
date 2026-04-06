@@ -232,6 +232,45 @@ func TestRunUtilityCommandUpgradeCheck(t *testing.T) {
 	}
 }
 
+func TestRunUtilityCommandUpgradeInstallsCurrentExecutableWithoutMaster(t *testing.T) {
+	oldInstall := installLatestRelease
+	installLatestRelease = func(currentVersion string, goos string, goarch string) (updater.InstallResult, error) {
+		return updater.InstallResult{
+			CurrentVersion: currentVersion,
+			LatestVersion:  "v1.2.4",
+			ArchiveName:    "swaves_v1.2.4_linux_amd64.tar.gz",
+			Installed:      true,
+			Reason:         "installed v1.2.4 to current executable",
+		}, nil
+	}
+	defer func() { installLatestRelease = oldInstall }()
+
+	oldVersion := buildinfo.Version
+	buildinfo.Version = "v1.2.3"
+	defer func() { buildinfo.Version = oldVersion }()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"upgrade"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected upgrade to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+
+	out := stdout.String()
+	if !strings.Contains(out, "status:  upgraded") {
+		t.Fatalf("unexpected stdout: %q", out)
+	}
+	if strings.Contains(out, "master:") {
+		t.Fatalf("unexpected master line in stdout: %q", out)
+	}
+	if !strings.Contains(out, "reason:  installed v1.2.4 to current executable") {
+		t.Fatalf("unexpected stdout: %q", out)
+	}
+}
+
 func TestRunUtilityCommandTopLevelHelp(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

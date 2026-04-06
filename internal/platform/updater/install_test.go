@@ -303,6 +303,70 @@ func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T)
 	}
 }
 
+func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldCurrentExecutable := currentExecutable
+	defer func() { currentExecutable = oldCurrentExecutable }()
+
+	executablePath := filepath.Join(tmpDir, "swaves")
+	currentExecutable = func() (string, error) { return executablePath, nil }
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write executable failed: %v", err)
+	}
+
+	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
+	hash := sha256.Sum256(archiveData)
+	checksumData := []byte(hex.EncodeToString(hash[:]) + "  swaves_v1.2.4_linux_amd64.tar.gz\n")
+	client := Client{
+		BaseURL: "https://example.test/latest",
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			switch req.URL.String() {
+			case "https://example.test/latest":
+				body := `{
+					"tag_name":"v1.2.4",
+					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"published_at":"2026-04-05T00:00:00Z",
+					"draft":false,
+					"prerelease":false,
+					"assets":[
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
+						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
+					]
+				}`
+				return newHTTPResponse(http.StatusOK, body), nil
+			case "https://example.test/archive":
+				return newBinaryResponse(http.StatusOK, archiveData), nil
+			case "https://example.test/archive.sha256":
+				return newBinaryResponse(http.StatusOK, checksumData), nil
+			default:
+				return newHTTPResponse(http.StatusNotFound, "not found"), nil
+			}
+		})},
+	}
+
+	result, err := client.InstallLatestReleaseCLI("v1.2.3", "linux", "amd64")
+	if err != nil {
+		t.Fatalf("InstallLatestReleaseCLI failed: %v", err)
+	}
+	if !result.Installed {
+		t.Fatal("expected Installed=true")
+	}
+	if result.RestartedPID != 0 {
+		t.Fatalf("RestartedPID = %d, want 0", result.RestartedPID)
+	}
+	if result.Reason != "installed v1.2.4 to current executable" {
+		t.Fatalf("unexpected reason: %q", result.Reason)
+	}
+
+	gotBinary, err := os.ReadFile(executablePath)
+	if err != nil {
+		t.Fatalf("ReadFile executable failed: %v", err)
+	}
+	if string(gotBinary) != "new-binary" {
+		t.Fatalf("unexpected executable contents: %q", string(gotBinary))
+	}
+}
+
 func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	archivePath := filepath.Join(tmpDir, "swaves_v1.2.4_linux_amd64.tar.gz")

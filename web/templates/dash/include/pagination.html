@@ -1,6 +1,12 @@
 <nav aria-label="分页导航" class="pagination">
-  {% set pagerRouteName = PagerRouteName %}
-  {% set pagerQuery = PagerQuery %}
+  {% set pagerRouteName = RouteName if RouteName is defined else "" %}
+  {% if PagerRouteName is defined %}
+    {% set pagerRouteName = PagerRouteName %}
+  {% endif %}
+  {% set pagerQuery = Query if Query is defined else {} %}
+  {% if PagerQuery is defined %}
+    {% set pagerQuery = PagerQuery %}
+  {% endif %}
   {% set pagerQuery = dict(pagerQuery, pageSize=Pager.PageSize) %}
   {% set pagerEnabled = pagerRouteName != "" %}
   <div class="inline-flex items-center gap-4">

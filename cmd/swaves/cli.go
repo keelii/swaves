@@ -54,7 +54,7 @@ var (
 )
 
 var checkLatestRelease = updater.CheckLatestRelease
-var installLatestRelease = updater.InstallLatestRelease
+var installLatestRelease = updater.InstallLatestReleaseCLI
 
 type mainConfig struct {
 	AppConfig   types.AppConfig
@@ -217,7 +217,9 @@ func runUpgradeCommand(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		if result.Installed {
 			_, _ = fmt.Fprintf(stdout, "status:  upgraded\n")
-			_, _ = fmt.Fprintf(stdout, "master:  %d\n", result.RestartedPID)
+			if result.RestartedPID > 0 {
+				_, _ = fmt.Fprintf(stdout, "master:  %d\n", result.RestartedPID)
+			}
 		} else {
 			_, _ = fmt.Fprintf(stdout, "status:  no-op\n")
 		}
@@ -521,11 +523,10 @@ Usage:
   swaves upgrade
   swaves upgrade --check
 
-Notes:
-  upgrade --check only checks the latest stable GitHub release for the current platform.
-  upgrade requires daemon-mode=1 and an active master process.
-  upgrade only installs the latest stable GitHub release for the current platform.
-`) + "\n"
+	Notes:
+	  upgrade --check only checks the latest stable GitHub release for the current platform.
+	  upgrade downloads the latest stable GitHub release for the current platform and replaces the current executable.
+	`) + "\n"
 }
 
 func hashPasswordUsage() string {
