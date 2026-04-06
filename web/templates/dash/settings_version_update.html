@@ -106,15 +106,6 @@
     background: var(--app-bg);
   }
 
-  .version-update-summary {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: calc(var(--app-spacing) * 0.75);
-    font-size: 0.84rem;
-    color: var(--app-text-soft);
-  }
-
   .version-update-pill {
     display: inline-flex;
     align-items: center;
@@ -183,6 +174,9 @@
   .version-update-label {
     color: var(--app-text-soft);
     font-size: 0.84rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .version-update-value {
@@ -287,38 +281,34 @@
       <section class="settings-card is-emphasis">
         <header class="settings-card-header">
           <h3 class="settings-card-title">版本信息</h3>
-          <p class="settings-card-desc">当前页面只负责 stable release 更新，不安装 dev 版本。</p>
+          <p class="settings-card-desc">当前页面只负责 stable release 更新。</p>
         </header>
         <div class="settings-card-body">
           <div class="version-update-grid">
             <div class="version-update-item">
-              <span class="version-update-label">当前版本</span>
+              <div class="version-update-label">
+                <span>当前版本</span>
+                {% if VersionRuntimePID > 0 %}<span>master pid: {{ VersionRuntimePID }}</span>{% endif %}
+              </div>
               <span class="version-update-value">{{ CurrentVersion }}</span>
             </div>
             <div class="version-update-item">
-              <span class="version-update-label">最新版本</span>
+              <div class="version-update-label">
+                <span class="version-update-label">最新版本</span>
+                {% if LatestReleaseURL %}<a href="{{ LatestReleaseURL }}" target="_blank" rel="noopener noreferrer">发布说明</a>{% endif %}
+              </div>
               <span class="version-update-value{{ ' is-latest' if HasVersionUpdate else '' }}">{{ LatestVersion if LatestVersion else "暂未发现新版本" }}</span>
             </div>
           </div>
-          <div class="version-update-summary">
-            <span class="version-update-pill">{{ "daemon-mode 已开启" if AutoUpdateSupported else "daemon-mode 未启用" }}</span>
-            {% if VersionRuntimePID > 0 %}
-              <span>master pid: {{ VersionRuntimePID }}</span>
-            {% endif %}
-          </div>
-          {% if LatestReleaseURL %}
-            <div class="version-update-meta"><a href="{{ LatestReleaseURL }}" target="_blank" rel="noopener noreferrer">查看 GitHub 发布说明</a></div>
-          {% endif %}
         </div>
       </section>
 
       <section class="settings-card">
         <header class="settings-card-header">
           <h3 class="settings-card-title">自动更新</h3>
-          <p class="settings-card-desc">仅在 daemon-mode 可用且发现新版本时启用，适合稳定版本的一键切换。</p>
+          <p class="version-update-helper">{{ AutoUpdateUnavailableHint }}</p>
         </header>
         <div class="settings-card-body">
-          <p class="version-update-helper">{{ AutoUpdateUnavailableHint }}</p>
           <form id="version-update-auto-form" method="post" action="{{ UrlFor('dash.settings.version_update.auto') }}">
             {{ _csrf_token() }}
             {{ sui.Button("自动更新", "primary", attrs='type="submit"' ~ (' disabled' if not AutoUpdateEnabled else '')) }}

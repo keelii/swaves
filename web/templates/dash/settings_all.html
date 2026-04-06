@@ -122,21 +122,7 @@
   }
 
   .settings-card.is-muted {
-    position: relative;
-    border-color: transparent;
-  }
-
-  .settings-card.is-muted::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    background:
-      repeating-linear-gradient(90deg, var(--app-border) 0 6px, transparent 6px 11px) left 12px top / calc(100% - 24px) 1px no-repeat,
-      repeating-linear-gradient(90deg, var(--app-border) 0 6px, transparent 6px 11px) left 12px bottom / calc(100% - 24px) 1px no-repeat,
-      repeating-linear-gradient(180deg, var(--app-border) 0 6px, transparent 6px 11px) left top 12px / 1px calc(100% - 24px) no-repeat,
-      repeating-linear-gradient(180deg, var(--app-border) 0 6px, transparent 6px 11px) right top 12px / 1px calc(100% - 24px) no-repeat;
+    border-color: var(--app-border);
   }
 
   .settings-card.is-muted .settings-card-title,
