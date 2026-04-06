@@ -202,14 +202,13 @@ func (h Handler) redirectNotFound(c fiber.Ctx) error {
 	}
 	returnURL = normalizeErrorReturnURL(returnURL)
 
-	return c.Redirect().To(buildSiteErrorRedirectPath(c, getSitePath("/404")))
-	//c.Status(fiber.StatusNotFound)
-	//return RenderUIView(c, "site/404.html", fiber.Map{
-	//	"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
-	//	"Pages":     ListPages(h.Model),
-	//	"ReturnURL": returnURL,
-	//	"ReqID":     requestid.FromContext(c),
-	//}, "")
+	c.Status(fiber.StatusNotFound)
+	return RenderUIView(c, "site/404.html", fiber.Map{
+		"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
+		"Pages":     ListPages(h.Model),
+		"ReturnURL": returnURL,
+		"ReqID":     requestid.FromContext(c),
+	}, "")
 }
 
 func (h Handler) redirectError(c fiber.Ctx) error {
@@ -290,9 +289,11 @@ func (h Handler) GetHome(c fiber.Ctx) error {
 	h.trackSiteUV(c)
 
 	return RenderUIView(c, "site/home.html", fiber.Map{
-		"Articles": articles,
-		"Pages":    ListPages(h.Model),
-		"Pager":    pager,
+		"Title":        buildPageTitle(""),
+		"CanonicalURL": absoluteSiteURL(c, share.GetBasePath()),
+		"Articles":     articles,
+		"Pages":        ListPages(h.Model),
+		"Pager":        pager,
 	}, "")
 }
 func (h Handler) GetRaw(c fiber.Ctx) error {
@@ -350,6 +351,9 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
 	return RenderUIView(c, "site/post.html", fiber.Map{
+		"Title":                  buildPageTitle(post.Post.Title),
+		"CanonicalURL":           absoluteSiteURL(c, share.GetPostUrl(post.Post)),
+		"MetaDescription":        excerptFromHTML(post.HTML, 160),
 		"Post":                   post,
 		"ReadUV":                 readUV,
 		"LikeCount":              likeCount,
@@ -446,6 +450,9 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 
 	return RenderUIView(c, "site/post.html", fiber.Map{
+		"Title":                  buildPageTitle(post.Post.Title),
+		"CanonicalURL":           absoluteSiteURL(c, share.GetPostUrl(post.Post)),
+		"MetaDescription":        excerptFromHTML(post.HTML, 160),
 		"Post":                   post,
 		"ReadUV":                 readUV,
 		"LikeCount":              likeCount,
@@ -486,10 +493,11 @@ func (h Handler) GetCategoryIndex(c fiber.Ctx) error {
 	pages := ListPages(h.Model)
 	h.trackSiteUV(c)
 	return RenderUIView(c, "site/list.html", fiber.Map{
-		"Title":      "Categories",
-		"Pages":      pages,
-		"List":       categories,
-		"IsCategory": true,
+		"Title":        buildPageTitle("Categories"),
+		"CanonicalURL": absoluteSiteURL(c, share.GetCategoryPrefix()),
+		"Pages":        pages,
+		"List":         categories,
+		"IsCategory":   true,
 	}, "")
 }
 func (h Handler) GetTagIndex(c fiber.Ctx) error {
@@ -501,9 +509,10 @@ func (h Handler) GetTagIndex(c fiber.Ctx) error {
 
 	h.trackSiteUV(c)
 	return RenderUIView(c, "site/list.html", fiber.Map{
-		"Title": "Tags",
-		"Pages": ListPages(h.Model),
-		"List":  tags,
+		"Title":        buildPageTitle("Tags"),
+		"CanonicalURL": absoluteSiteURL(c, share.GetTagPrefix()),
+		"Pages":        ListPages(h.Model),
+		"List":         tags,
 	}, "")
 }
 func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
@@ -519,11 +528,14 @@ func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
 
 	return RenderUIView(c, "site/detail.html", fiber.Map{
-		"IsCategory": true,
-		"Entity":     category,
-		"List":       posts,
-		"ListPage":   share.GetCategoryPrefix(),
-		"Pages":      ListPages(h.Model),
+		"Title":           buildPageTitle(category.Name),
+		"CanonicalURL":    absoluteSiteURL(c, category.PermLink),
+		"MetaDescription": strings.TrimSpace(category.Description),
+		"IsCategory":      true,
+		"Entity":          category,
+		"List":            posts,
+		"ListPage":        share.GetCategoryPrefix(),
+		"Pages":           ListPages(h.Model),
 	}, "")
 }
 func (h Handler) GetTagDetail(c fiber.Ctx) error {
@@ -539,11 +551,14 @@ func (h Handler) GetTagDetail(c fiber.Ctx) error {
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
 
 	return RenderUIView(c, "site/detail.html", fiber.Map{
-		"IsTag":    true,
-		"Entity":   tag,
-		"List":     posts,
-		"ListPage": share.GetTagPrefix(),
-		"Pages":    ListPages(h.Model),
+		"Title":           buildPageTitle(tag.Name),
+		"CanonicalURL":    absoluteSiteURL(c, tag.PermLink),
+		"MetaDescription": "",
+		"IsTag":           true,
+		"Entity":          tag,
+		"List":            posts,
+		"ListPage":        share.GetTagPrefix(),
+		"Pages":           ListPages(h.Model),
 	}, "")
 }
 

@@ -8,6 +8,7 @@ import (
 	dash "swaves/internal/modules/dash"
 	"swaves/internal/modules/site"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/store"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -703,6 +704,53 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	}
 	if strings.Contains(out.String(), `/static/katex/katex.min.css`) {
 		t.Fatalf("expected site layout not to include math assets by default")
+	}
+}
+
+func TestRenderSiteLayoutUsesSiteTitleFallback(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	previous, _ := store.Settings.Load().(map[string]string)
+	restore := map[string]string{}
+	for key, value := range previous {
+		restore[key] = value
+	}
+	store.Settings.Store(map[string]string{"site_title": "Example Site"})
+	defer store.Settings.Store(restore)
+
+	var out bytes.Buffer
+	if err := view.Render(&out, "site/layout/layout.html", map[string]any{}); err != nil {
+		t.Fatalf("render site layout failed: %v", err)
+	}
+	if !strings.Contains(out.String(), "<title>Example Site</title>") {
+		t.Fatalf("expected site title fallback, got %s", out.String())
+	}
+}
+
+func TestRenderSiteLayoutIncludesCanonicalAndDescription(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "site/layout/layout.html", map[string]any{
+		"Title":           "Hello",
+		"CanonicalURL":    "https://example.com/hello",
+		"MetaDescription": "Hello description",
+	})
+	if err != nil {
+		t.Fatalf("render site layout failed: %v", err)
+	}
+	html := out.String()
+	if !strings.Contains(html, `rel="canonical"`) || !strings.Contains(html, `example.com`) {
+		t.Fatalf("expected canonical tag, got %s", html)
+	}
+	if !strings.Contains(html, `<meta name="description" content="Hello description"/>`) {
+		t.Fatalf("expected description meta tag, got %s", html)
 	}
 }
 

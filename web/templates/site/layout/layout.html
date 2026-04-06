@@ -2,10 +2,16 @@
 <html lang="{{ Settings("language") }}">
 <head>
   {% set pageTitle = Title %}
+  {% if not pageTitle %}
+    {% set pageTitle = Settings("site_title") %}
+  {% endif %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ pageTitle }}</title>
   {% include "site/include/meta.html" %}
+  {% if CanonicalURL %}
+    <link rel="canonical" href="{{ CanonicalURL }}">
+  {% endif %}
   {% include "include/favicon.html" %}
   <link rel="stylesheet" href="/static/site/tufte-css/tufte.min.css">
   <link rel="stylesheet" href="/static/site/style.css">
@@ -14,6 +20,7 @@
   {% if Settings("ga4_id") %}
     {% include "site/include/ga.html" %}
   {% endif %}
+  {% block head_extra %}{% endblock %}
 </head>
 <body>
   <main>
