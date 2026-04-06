@@ -9,6 +9,7 @@ import (
 
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
 )
 
 func openNotifyTestDB(t *testing.T) *db.DB {
@@ -79,7 +80,7 @@ func TestCreateAppUpdateNotificationUsesAggregateKey(t *testing.T) {
 	dbx := openNotifyTestDB(t)
 	nowUnix := int64(1700002000)
 
-	if err := CreateAppUpdateNotification(dbx, "v1.2.3", "v1.2.4", "https://github.com/keelii/swaves/releases/tag/v1.2.4", nowUnix); err != nil {
+	if err := CreateAppUpdateNotification(dbx, "v1.2.3", "v1.2.4", updater.ReleaseTagURL("v1.2.4"), nowUnix); err != nil {
 		t.Fatalf("CreateAppUpdateNotification failed: %v", err)
 	}
 
@@ -90,14 +91,14 @@ func TestCreateAppUpdateNotificationUsesAggregateKey(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("app update notification count = %d, want 1", len(items))
 	}
-	if items[0].AggregateKey != BuildAppUpdateAggregateKey("v1.2.4", "https://github.com/keelii/swaves/releases/tag/v1.2.4") {
+	if items[0].AggregateKey != BuildAppUpdateAggregateKey("v1.2.4", updater.ReleaseTagURL("v1.2.4")) {
 		t.Fatalf("unexpected aggregate key: %q", items[0].AggregateKey)
 	}
 }
 
 func TestParseAppUpdateReleaseURL(t *testing.T) {
-	raw := BuildAppUpdateAggregateKey("v1.2.4", "https://github.com/keelii/swaves/releases/tag/v1.2.4")
-	if got := ParseAppUpdateReleaseURL(raw); got != "https://github.com/keelii/swaves/releases/tag/v1.2.4" {
+	raw := BuildAppUpdateAggregateKey("v1.2.4", updater.ReleaseTagURL("v1.2.4"))
+	if got := ParseAppUpdateReleaseURL(raw); got != updater.ReleaseTagURL("v1.2.4") {
 		t.Fatalf("ParseAppUpdateReleaseURL = %q", got)
 	}
 	if got := ParseAppUpdateReleaseURL(BuildAppUpdateAggregateKey("v1.2.4", "")); got != "" {
@@ -106,7 +107,7 @@ func TestParseAppUpdateReleaseURL(t *testing.T) {
 }
 
 func TestParseAppUpdateVersion(t *testing.T) {
-	if got := ParseAppUpdateVersion(BuildAppUpdateAggregateKey("v1.2.4", "https://github.com/keelii/swaves/releases/tag/v1.2.4")); got != "v1.2.4" {
+	if got := ParseAppUpdateVersion(BuildAppUpdateAggregateKey("v1.2.4", updater.ReleaseTagURL("v1.2.4"))); got != "v1.2.4" {
 		t.Fatalf("ParseAppUpdateVersion = %q", got)
 	}
 	if got := ParseAppUpdateVersion("app_update:dev"); got != "" {

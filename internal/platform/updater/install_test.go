@@ -61,7 +61,7 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 			case "https://example.test/latest":
 				body := fmt.Sprintf(`{
 					"tag_name":"v1.2.4",
-					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"html_url":"%s",
 					"published_at":"2026-04-05T00:00:00Z",
 					"draft":false,
 					"prerelease":false,
@@ -69,7 +69,7 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
 					]
-				}`)
+				}`, ReleaseTagURL("v1.2.4"))
 				return newHTTPResponse(http.StatusOK, body), nil
 			case "https://example.test/archive":
 				return newBinaryResponse(http.StatusOK, archiveData), nil
@@ -142,9 +142,9 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 			if req.URL.String() != "https://example.test/latest" {
 				return newHTTPResponse(http.StatusNotFound, "not found"), nil
 			}
-			body := `{
+			body := fmt.Sprintf(`{
 				"tag_name":"v1.2.4",
-				"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+				"html_url":"%s",
 				"published_at":"2026-04-05T00:00:00Z",
 				"draft":false,
 				"prerelease":false,
@@ -152,7 +152,7 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 					{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
 					{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
 				]
-			}`
+			}`, ReleaseTagURL("v1.2.4"))
 			return newHTTPResponse(http.StatusOK, body), nil
 		})},
 	}
@@ -322,9 +322,9 @@ func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testin
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.String() {
 			case "https://example.test/latest":
-				body := `{
+				body := fmt.Sprintf(`{
 					"tag_name":"v1.2.4",
-					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"html_url":"%s",
 					"published_at":"2026-04-05T00:00:00Z",
 					"draft":false,
 					"prerelease":false,
@@ -332,7 +332,7 @@ func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testin
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
 					]
-				}`
+				}`, ReleaseTagURL("v1.2.4"))
 				return newHTTPResponse(http.StatusOK, body), nil
 			case "https://example.test/archive":
 				return newBinaryResponse(http.StatusOK, archiveData), nil
@@ -430,7 +430,7 @@ func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(
 			case "https://example.test/latest":
 				body := fmt.Sprintf(`{
 					"tag_name":"v1.2.4",
-					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"html_url":"%s",
 					"published_at":"2026-04-05T00:00:00Z",
 					"draft":false,
 					"prerelease":false,
@@ -438,7 +438,7 @@ func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
 					]
-				}`)
+				}`, ReleaseTagURL("v1.2.4"))
 				return newHTTPResponse(http.StatusOK, body), nil
 			case "https://example.test/archive":
 				return newBinaryResponse(http.StatusOK, archiveData), nil
@@ -496,9 +496,9 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.String() {
 			case "https://example.test/latest":
-				body := `{
+				body := fmt.Sprintf(`{
 					"tag_name":"v1.2.4",
-					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"html_url":"%s",
 					"published_at":"2026-04-05T00:00:00Z",
 					"draft":false,
 					"prerelease":false,
@@ -506,7 +506,7 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
 					]
-				}`
+				}`, ReleaseTagURL("v1.2.4"))
 				return newHTTPResponse(http.StatusOK, body), nil
 			case "https://example.test/archive":
 				return newBinaryResponse(http.StatusOK, archiveData), nil
@@ -570,9 +570,9 @@ func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.String() {
 			case "https://example.test/latest":
-				body := `{
+				body := fmt.Sprintf(`{
 					"tag_name":"v1.2.4",
-					"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+					"html_url":"%s",
 					"published_at":"2026-04-05T00:00:00Z",
 					"draft":false,
 					"prerelease":false,
@@ -580,7 +580,7 @@ func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/archive"},
 						{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/archive.sha256"}
 					]
-				}`
+				}`, ReleaseTagURL("v1.2.4"))
 				return newHTTPResponse(http.StatusOK, body), nil
 			case "https://example.test/archive":
 				if err := WriteRuntimeInfo(RuntimeInfo{PID: 9999, Executable: executablePath}); err != nil {

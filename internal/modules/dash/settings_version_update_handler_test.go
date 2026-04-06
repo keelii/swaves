@@ -12,7 +12,7 @@ func TestLoadLatestVersionInfoPrefersFreshReleaseCheck(t *testing.T) {
 	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
 		return updater.CheckResult{
 			LatestVersion:    "v0.0.13",
-			LatestReleaseURL: "https://github.com/keelii/swaves/releases/tag/v0.0.13",
+			LatestReleaseURL: updater.ReleaseTagURL("v0.0.13"),
 		}, nil
 	}
 	defer func() {
@@ -24,13 +24,13 @@ func TestLoadLatestVersionInfoPrefersFreshReleaseCheck(t *testing.T) {
 		"linux",
 		"amd64",
 		"v0.0.11",
-		"https://github.com/keelii/swaves/releases/tag/v0.0.11",
+		updater.ReleaseTagURL("v0.0.11"),
 	)
 
 	if latestInfo.Version != "v0.0.13" {
 		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.13")
 	}
-	if latestInfo.ReleaseURL != "https://github.com/keelii/swaves/releases/tag/v0.0.13" {
+	if latestInfo.ReleaseURL != updater.ReleaseTagURL("v0.0.13") {
 		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
 	}
 	if !latestInfo.HasVersionUpdate {
@@ -55,13 +55,13 @@ func TestLoadLatestVersionInfoFallsBackWhenReleaseCheckFails(t *testing.T) {
 		"linux",
 		"amd64",
 		"v0.0.11",
-		"https://github.com/keelii/swaves/releases/tag/v0.0.11",
+		updater.ReleaseTagURL("v0.0.11"),
 	)
 
 	if latestInfo.Version != "v0.0.11" {
 		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.11")
 	}
-	if latestInfo.ReleaseURL != "https://github.com/keelii/swaves/releases/tag/v0.0.11" {
+	if latestInfo.ReleaseURL != updater.ReleaseTagURL("v0.0.11") {
 		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
 	}
 	if !latestInfo.HasVersionUpdate {
@@ -77,7 +77,7 @@ func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) 
 	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
 		return updater.CheckResult{
 			LatestVersion:    "v0.0.15",
-			LatestReleaseURL: "https://github.com/keelii/swaves/releases/tag/v0.0.15",
+			LatestReleaseURL: updater.ReleaseTagURL("v0.0.15"),
 		}, nil
 	}
 	defer func() {
@@ -89,7 +89,7 @@ func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) 
 		"linux",
 		"amd64",
 		"v0.0.14",
-		"https://github.com/keelii/swaves/releases/tag/v0.0.14",
+		updater.ReleaseTagURL("v0.0.14"),
 	)
 
 	if latestInfo.Version != "v0.0.15" {

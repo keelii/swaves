@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 )
@@ -9,9 +10,9 @@ func TestCheckLatestReleaseFindsStableUpgrade(t *testing.T) {
 	client := Client{
 		BaseURL: "https://example.test/latest",
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{
+			body := fmt.Sprintf(`{
 				"tag_name":"v1.2.4",
-				"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+				"html_url":"%s",
 				"published_at":"2026-04-05T00:00:00Z",
 				"draft":false,
 				"prerelease":false,
@@ -19,7 +20,7 @@ func TestCheckLatestReleaseFindsStableUpgrade(t *testing.T) {
 					{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz"},
 					{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz.sha256"}
 				]
-			}`
+			}`, ReleaseTagURL("v1.2.4"))
 			return newHTTPResponse(http.StatusOK, body), nil
 		})},
 	}
@@ -43,9 +44,9 @@ func TestCheckLatestReleaseSkipsNonReleaseCurrentVersion(t *testing.T) {
 	client := Client{
 		BaseURL: "https://example.test/latest",
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{
+			body := fmt.Sprintf(`{
 				"tag_name":"v1.2.4",
-				"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4",
+				"html_url":"%s",
 				"published_at":"2026-04-05T00:00:00Z",
 				"draft":false,
 				"prerelease":false,
@@ -53,7 +54,7 @@ func TestCheckLatestReleaseSkipsNonReleaseCurrentVersion(t *testing.T) {
 					{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz"},
 					{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz.sha256"}
 				]
-			}`
+			}`, ReleaseTagURL("v1.2.4"))
 			return newHTTPResponse(http.StatusOK, body), nil
 		})},
 	}
@@ -77,14 +78,14 @@ func TestCheckLatestReleaseRejectsPrereleaseTag(t *testing.T) {
 	client := Client{
 		BaseURL: "https://example.test/latest",
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{
+			body := fmt.Sprintf(`{
 				"tag_name":"v1.2.4-rc.1",
-				"html_url":"https://github.com/keelii/swaves/releases/tag/v1.2.4-rc.1",
+				"html_url":"%s",
 				"published_at":"2026-04-05T00:00:00Z",
 				"draft":false,
 				"prerelease":true,
 				"assets":[]
-			}`
+			}`, ReleaseTagURL("v1.2.4-rc.1"))
 			return newHTTPResponse(http.StatusOK, body), nil
 		})},
 	}

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/updater"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -207,7 +208,7 @@ func TestBuildNotificationListItemsAppUpdateFields(t *testing.T) {
 		{
 			ID:           7,
 			EventType:    dashNotificationEventAppUpdate,
-			AggregateKey: "app_update:v1.2.4:" + url.QueryEscape("https://github.com/keelii/swaves/releases/tag/v1.2.4"),
+			AggregateKey: "app_update:v1.2.4:" + url.QueryEscape(updater.ReleaseTagURL("v1.2.4")),
 		},
 	}, "/dash/comments", pageURL)
 

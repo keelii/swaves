@@ -10,7 +10,11 @@ import (
 	"time"
 )
 
-const defaultLatestReleaseURL = "https://api.github.com/repos/keelii/swaves/releases/latest"
+const (
+	GitHubRepositoryURL     = "https://github.com/keelii/swaves"
+	gitHubRepositoryAPIURL  = "https://api.github.com/repos/keelii/swaves"
+	defaultLatestReleaseURL = gitHubRepositoryAPIURL + "/releases/latest"
+)
 
 type ReleaseAsset struct {
 	Name        string
@@ -183,6 +187,14 @@ func (c Client) LatestStableRelease() (ReleaseInfo, error) {
 
 func ReleaseArchiveName(version string, goos string, goarch string) string {
 	return fmt.Sprintf("swaves_%s_%s_%s.tar.gz", strings.TrimSpace(version), strings.TrimSpace(goos), strings.TrimSpace(goarch))
+}
+
+func ReleaseTagURL(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return GitHubRepositoryURL + "/releases"
+	}
+	return GitHubRepositoryURL + "/releases/tag/" + version
 }
 
 func matchReleaseTarget(release ReleaseInfo, goos string, goarch string) *ReleaseTarget {

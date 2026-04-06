@@ -142,7 +142,7 @@ func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
 			CurrentVersion:       currentVersion,
 			CurrentVersionStable: true,
 			LatestVersion:        "v1.2.4",
-			LatestReleaseURL:     "https://github.com/keelii/swaves/releases/tag/v1.2.4",
+			LatestReleaseURL:     updater.ReleaseTagURL("v1.2.4"),
 			HasUpgrade:           true,
 			Target: &updater.ReleaseTarget{
 				Archive: updater.ReleaseAsset{Name: "swaves_v1.2.4_linux_amd64.tar.gz"},
