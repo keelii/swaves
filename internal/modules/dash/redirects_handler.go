@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
@@ -12,8 +13,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// Redirects
-func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
+func (h *Handler) renderRedirectList(c fiber.Ctx, errMsg string, notice string) error {
 	pager := middleware.GetPagination(c)
 
 	redirects, err := ListRedirects(h.Model, &pager)
@@ -25,7 +25,14 @@ func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
 		"Title":     "Redirects",
 		"Redirects": redirects,
 		"Pager":     pager,
+		"Error":     strings.TrimSpace(errMsg),
+		"Notice":    strings.TrimSpace(notice),
 	}, "")
+}
+
+// Redirects
+func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
+	return h.renderRedirectList(c, c.Query("error"), c.Query("notice"))
 }
 
 type redirectTargetOptionView struct {
@@ -148,6 +155,28 @@ func (h *Handler) PostCreateRedirectHandler(c fiber.Ctx) error {
 	}
 
 	return h.redirectToDashRoute(c, "dash.redirects.list", nil, nil)
+}
+
+func (h *Handler) PostImportRedirectHandler(c fiber.Ctx) error {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return h.renderRedirectList(c, "请选择要导入的 CSV 文件", "")
+	}
+
+	src, err := fileHeader.Open()
+	if err != nil {
+		return h.renderRedirectList(c, "打开导入文件失败: "+err.Error(), "")
+	}
+	defer src.Close()
+
+	imported, err := ImportRedirectCSVService(h.Model, src)
+	if err != nil {
+		return h.renderRedirectList(c, err.Error(), "")
+	}
+
+	return h.redirectToDashRoute(c, "dash.redirects.list", nil, map[string]string{
+		"notice": fmt.Sprintf("成功导入 %d 条重定向规则", imported),
+	})
 }
 
 func (h *Handler) GetRedirectEditHandler(c fiber.Ctx) error {

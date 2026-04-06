@@ -2,9 +2,7 @@
 {% if not description %}
   {% set description = Settings('site_desc') %}
 {% endif %}
-{% if description %}<meta name="description" content="{{ description }}"/>{% endif %}
-{% set keywords = MetaKeywords %}
-{% if not keywords %}
-  {% set keywords = Settings('site_keywords') %}
-{% endif %}
-{% if keywords %}<meta name="keywords" content="{{ keywords }}"/>{% endif %}
+  {% if description %}<meta name="description" content="{{ description }}"/>{% endif %}
+{% set keywords = MetaKeywords %}{% if not keywords %}{% set keywords = Settings('site_keywords') %}{% endif %}
+  {% if keywords %}<meta name="keywords" content="{{ keywords }}"/>{% endif %}
+  {% if CanonicalURL %}<link rel="canonical" href="{{ CanonicalURL | safe }}">{% endif %}

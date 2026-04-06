@@ -157,7 +157,7 @@ func TestSiteControllerP0_HomePostAndNotFound(t *testing.T) {
 		missingResp,
 		fiber.StatusNotFound,
 		"页面找不到",
-		"返回首页",
+		">首页</a>",
 	)
 }
 

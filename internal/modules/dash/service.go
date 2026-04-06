@@ -581,40 +581,9 @@ func findPostRedirectSourceConflicts(dbx *db.DB, fromPath string) (string, strin
 }
 
 func CreateRedirectService(dbx *db.DB, in CreateRedirectInput) error {
-	in.From = normalizeRedirectPath(in.From)
-	in.To = normalizeRedirectPath(in.To)
-
-	if in.From == "" || in.To == "" {
-		return errors.New("from and to required")
-	}
-
-	conflictPath, conflictSlug, err := findPostRedirectSourceConflicts(dbx, in.From)
+	in, err := validateRedirectCreateInput(dbx, in)
 	if err != nil {
 		return err
-	}
-	if conflictPath != "" {
-		return fmt.Errorf("来源路径与已发布内容地址冲突：%s", conflictPath)
-	}
-	if conflictSlug != "" {
-		return fmt.Errorf("来源路径与文章 slug 冲突：%s", conflictSlug)
-	}
-
-	// 检查 from 和 to 是否相同
-	if in.From == in.To {
-		return errors.New("from 和 to 不能相同")
-	}
-
-	if in.Status != 301 && in.Status != 302 {
-		return errors.New("status must be 301 or 302")
-	}
-
-	// 检查是否存在循环重定向
-	if err := checkRedirectCycle(dbx, in.From, in.To); err != nil {
-		return err
-	}
-
-	if in.Enabled != 0 && in.Enabled != 1 {
-		return errors.New("enabled must be 0 or 1")
 	}
 
 	r := &db.Redirect{
@@ -639,11 +608,11 @@ func UpdateRedirectService(dbx *db.DB, id int64, in UpdateRedirectInput) error {
 
 	r.From = in.From
 	r.To = in.To
-	if in.Status != 301 && in.Status != 302 {
-		return errors.New("status must be 301 or 302")
+	if err := validateRedirectStatus(in.Status); err != nil {
+		return err
 	}
-	if in.Enabled != 0 && in.Enabled != 1 {
-		return errors.New("enabled must be 0 or 1")
+	if err := validateRedirectEnabled(in.Enabled); err != nil {
+		return err
 	}
 	r.Status = in.Status
 	r.Enabled = in.Enabled

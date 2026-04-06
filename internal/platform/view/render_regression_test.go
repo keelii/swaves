@@ -452,6 +452,33 @@ func TestRenderDashRedirectsNewShowsTargetPicker(t *testing.T) {
 	}
 }
 
+func TestRenderDashRedirectsIndexShowsImportAction(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/redirects_index.html", map[string]any{
+		"Redirects": []db.Redirect{},
+		"Pager":     types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 10},
+	})
+	if err != nil {
+		t.Fatalf("render redirects_index failed: %v", err)
+	}
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "导入重定向") {
+		t.Fatalf("expected import action button in redirects_index")
+	}
+	if !strings.Contains(rendered, `id="redirect-import-form"`) {
+		t.Fatalf("expected import form in redirects_index")
+	}
+	if !strings.Contains(rendered, `id="redirect-import-file"`) {
+		t.Fatalf("expected import file input in redirects_index")
+	}
+}
+
 func TestRenderDashRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {

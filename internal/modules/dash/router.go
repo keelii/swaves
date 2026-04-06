@@ -114,6 +114,7 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashGroup.Get("/redirects", handler.GetRedirectListHandler).Name("dash.redirects.list")
 	dashGroup.Get("/redirects/new", handler.GetRedirectNewHandler).Name("dash.redirects.new")
 	dashGroup.Post("/redirects/new", handler.PostCreateRedirectHandler).Name("dash.redirects.create")
+	dashGroup.Post("/redirects/import", handler.PostImportRedirectHandler).Name("dash.redirects.import")
 	dashGroup.Get("/redirects/:id/edit", handler.GetRedirectEditHandler).Name("dash.redirects.edit")
 	dashGroup.Post("/redirects/:id/edit", handler.PostUpdateRedirectHandler).Name("dash.redirects.update")
 	dashGroup.Post("/redirects/:id/delete", handler.PostDeleteRedirectHandler).Name("dash.redirects.delete")

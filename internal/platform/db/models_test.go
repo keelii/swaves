@@ -794,7 +794,7 @@ func TestEncryptedPostLifecycle(t *testing.T) {
 
 func TestRedirectLifecycle(t *testing.T) {
 	db := openTestDB(t)
-	r := &Redirect{From: "/old-" + uniqueValue("r"), To: "/new"}
+	r := &Redirect{From: "/old-" + uniqueValue("r"), To: "/new", Enabled: 1}
 	if _, err := CreateRedirect(db, r); err != nil {
 		t.Fatalf("CreateRedirect failed: %v", err)
 	}

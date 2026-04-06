@@ -3402,9 +3402,6 @@ func CreateRedirect(db *DB, r *Redirect) (int64, error) {
 	if r.Status == 0 {
 		r.Status = 301 // default
 	}
-	if r.Enabled == 0 {
-		r.Enabled = 1 // default
-	}
 
 	id, err := Create(db, specRedirects, map[string]interface{}{
 		"from_path":  r.From,

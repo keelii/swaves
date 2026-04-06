@@ -5,6 +5,11 @@
 {% set OperationTableID = "redirects-table" %}
 {% block page_actions %}
   {{ sui.LinkButton("新建重定向", "primary", href=UrlFor('dash.redirects.new')) }}
+  {{ sui.Button("导入重定向", "outline", attrs='type="button" id="redirect-import-trigger"') }}
+  <form id="redirect-import-form" method="post" action="{{ UrlFor('dash.redirects.import') }}" enctype="multipart/form-data" style="display:none;">
+    {{ _csrf_token() }}
+    <input id="redirect-import-file" type="file" name="file" accept=".csv,text/csv">
+  </form>
 {% endblock %}
 
 {% block operation_left %}
@@ -17,6 +22,16 @@
 {% endblock %}
 
 {% block content %}
+{% if Error %}
+  <div class="app-px app-pb">
+    {{ sui.Alert(Error, kind="danger", title="导入失败", inline=true) }}
+  </div>
+{% endif %}
+{% if Notice %}
+  <div class="app-px app-pb">
+    {{ sui.Alert(Notice, kind="success", title="操作成功", inline=true) }}
+  </div>
+{% endif %}
 {% if Redirects|length > 0 %}
   <div class="data-table-wrap">
     <table id="redirects-table" class="data-table" aria-label="重定向列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.redirects.api.batch_delete') }}">
@@ -75,4 +90,26 @@
     {{ sui.EmptyState("暂无重定向规则") }}
   </div>
 {% endif %}
+
+<script>
+  (function () {
+    var trigger = document.getElementById('redirect-import-trigger');
+    var input = document.getElementById('redirect-import-file');
+    var form = document.getElementById('redirect-import-form');
+    if (!trigger || !input || !form) {
+      return;
+    }
+
+    trigger.addEventListener('click', function () {
+      input.click();
+    });
+
+    input.addEventListener('change', function () {
+      if (!input.files || input.files.length === 0) {
+        return;
+      }
+      form.submit();
+    });
+  })();
+</script>
 {% endblock %}
