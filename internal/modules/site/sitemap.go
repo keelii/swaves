@@ -2,13 +2,14 @@ package site
 
 import (
 	"encoding/xml"
+	"io/fs"
 	"sort"
-	"strings"
 	"time"
 
 	"swaves/internal/platform/db"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
+	webassets "swaves/web"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -118,15 +119,10 @@ func (h Handler) GetSitemap(c fiber.Ctx) error {
 }
 
 func (h Handler) GetRobots(c fiber.Ctx) error {
-	sitemapURL := absoluteSiteURL(c, getSitePath("/sitemap.xml"))
-	body := strings.Join([]string{
-		"User-agent: *",
-		"Allow: /",
-		"",
-		"Sitemap: " + sitemapURL,
-		"",
-	}, "\n")
-
+	body, err := fs.ReadFile(webassets.StaticFS(), "robots.txt")
+	if err != nil {
+		return err
+	}
 	c.Set(fiber.HeaderContentType, "text/plain; charset=utf-8")
-	return c.SendString(body)
+	return c.Send(body)
 }

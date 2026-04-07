@@ -29,7 +29,7 @@ type systemUpdateViewState struct {
 	ManualUpdateEnabled bool
 	RestartEnabled      bool
 	GlobalUpdateMessage string
-	RuntimePID          int
+	SystemRuntimePID    int
 }
 
 func versionLabel(version string) string {
@@ -91,7 +91,7 @@ func systemUpdateSupportState(autoUpdateEnabled bool) systemUpdateViewState {
 	state.AutoUpdateEnabled = autoUpdateEnabled
 	state.ManualUpdateEnabled = true
 	state.RestartEnabled = true
-	state.RuntimePID = runtimeInfo.PID
+	state.SystemRuntimePID = runtimeInfo.PID
 	return state
 }
 
@@ -166,7 +166,7 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 		"SystemUpdateNotice":      strings.TrimSpace(c.Query("notice")),
 		"SystemUpdateError":       strings.TrimSpace(c.Query("error")),
 		"SystemUpdateAutoRefresh": strings.TrimSpace(c.Query("refresh")) == "1",
-		"VersionRuntimePID":       viewState.RuntimePID,
+		"SystemRuntimePID":        viewState.SystemRuntimePID,
 	}, "")
 }
 

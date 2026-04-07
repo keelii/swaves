@@ -13,6 +13,7 @@ import (
 //go:embed static/favicon.svg
 //go:embed static/dash/main.js
 //go:embed static/dash/style.css
+//go:embed static/robots.txt
 //go:embed static/site/main.js
 //go:embed static/site/style.css
 //go:embed static/site/tufte-css/tufte.min.css

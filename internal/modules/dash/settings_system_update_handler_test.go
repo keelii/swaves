@@ -34,7 +34,7 @@ func TestLoadLatestVersionInfoPrefersFreshReleaseCheck(t *testing.T) {
 		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
 	}
 	if !latestInfo.HasSystemUpdate {
-		t.Fatal("expected version update to be detected when latest version is newer")
+		t.Fatal("expected system update to be detected when latest version is newer")
 	}
 	if !latestInfo.AutoUpdateEnabled {
 		t.Fatal("expected auto update to stay enabled when latest version is newer")
@@ -65,7 +65,7 @@ func TestLoadLatestVersionInfoFallsBackWhenReleaseCheckFails(t *testing.T) {
 		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
 	}
 	if !latestInfo.HasSystemUpdate {
-		t.Fatal("expected version update to stay detected when fallback version differs from current version")
+		t.Fatal("expected system update to stay detected when fallback version differs from current version")
 	}
 	if !latestInfo.AutoUpdateEnabled {
 		t.Fatal("expected auto update to stay enabled when fallback version is older")
@@ -96,7 +96,7 @@ func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) 
 		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.15")
 	}
 	if latestInfo.HasSystemUpdate {
-		t.Fatal("expected version update to be disabled when current version already matches latest version")
+		t.Fatal("expected system update to be disabled when current version already matches latest version")
 	}
 	if latestInfo.AutoUpdateEnabled {
 		t.Fatal("expected auto update to be disabled when current version already matches latest version")

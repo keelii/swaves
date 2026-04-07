@@ -2,6 +2,7 @@ package site
 
 import (
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
+	webassets "swaves/web"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -113,8 +115,12 @@ func TestGetSitemapIncludesPublishedContentURLs(t *testing.T) {
 	}
 }
 
-func TestGetRobotsIncludesSitemapDirective(t *testing.T) {
+func TestGetRobotsReturnsEmbeddedStaticFile(t *testing.T) {
 	dbx := newSiteTestDB(t)
+	expected, err := fs.ReadFile(webassets.StaticFS(), "robots.txt")
+	if err != nil {
+		t.Fatalf("read embedded robots failed: %v", err)
+	}
 
 	app := fiber.New()
 	handler := Handler{Model: dbx}
@@ -134,10 +140,10 @@ func TestGetRobotsIncludesSitemapDirective(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("unexpected status: %d body=%s", resp.StatusCode, text)
 	}
-	if !strings.Contains(text, "User-agent: *") {
-		t.Fatalf("expected robots user-agent directive, got %s", text)
+	if text != string(expected) {
+		t.Fatalf("unexpected robots body: %s", text)
 	}
-	if !strings.Contains(text, "Sitemap: https://example.com/sitemap.xml") {
-		t.Fatalf("expected robots sitemap directive, got %s", text)
+	if !strings.Contains(text, "User-agent: GPTBot") {
+		t.Fatalf("expected AI crawler directive, got %s", text)
 	}
 }
