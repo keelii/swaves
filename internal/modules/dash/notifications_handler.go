@@ -214,9 +214,9 @@ func (h *Handler) GetNotificationListHandler(c fiber.Ctx) error {
 	if strings.TrimSpace(commentListURL) == "" {
 		return fmt.Errorf("resolve route failed: dash.comments.list")
 	}
-	appUpdatePageURL := h.dashRouteURL(c, "dash.settings.version_update", nil, nil)
+	appUpdatePageURL := h.dashRouteURL(c, "dash.settings.system_update", nil, nil)
 	if appUpdatePageURL == "" {
-		return fmt.Errorf("resolve route failed: dash.settings.version_update")
+		return fmt.Errorf("resolve route failed: dash.settings.system_update")
 	}
 	notificationItems := buildNotificationListItems(notifications, commentListURL, appUpdatePageURL)
 

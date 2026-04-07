@@ -203,7 +203,7 @@ func TestParseNotificationIDRejectsInvalidJSONBody(t *testing.T) {
 }
 
 func TestBuildNotificationListItemsAppUpdateFields(t *testing.T) {
-	pageURL := "/dash/settings/version-update"
+	pageURL := "/dash/settings/system-update"
 	items := buildNotificationListItems([]db.Notification{
 		{
 			ID:           7,

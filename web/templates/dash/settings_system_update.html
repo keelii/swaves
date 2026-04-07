@@ -32,7 +32,7 @@
     background: var(--app-panel-bg);
   }
 
-  .version-update-banner {
+  .system-update-banner {
     margin-bottom: var(--app-spacing);
   }
 
@@ -106,7 +106,7 @@
     background: var(--app-bg);
   }
 
-  .version-update-pill {
+  .system-update-pill {
     display: inline-flex;
     align-items: center;
     min-height: 24px;
@@ -156,13 +156,13 @@
     gap: calc(var(--app-spacing) * 0.9);
   }
 
-  .version-update-grid {
+  .system-update-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--app-spacing);
   }
 
-  .version-update-item {
+  .system-update-item {
     display: grid;
     gap: calc(var(--app-spacing) * 0.3);
     padding: calc(var(--app-spacing) * 0.8);
@@ -171,7 +171,7 @@
     background: var(--app-panel-bg);
   }
 
-  .version-update-label {
+  .system-update-label {
     color: var(--app-text-soft);
     font-size: 0.84rem;
     display: flex;
@@ -179,40 +179,40 @@
     align-items: center;
   }
 
-  .version-update-value {
+  .system-update-value {
     font-size: 1.05rem;
     font-weight: 600;
     word-break: break-word;
   }
 
-  .version-update-value.is-latest {
+  .system-update-value.is-latest {
     color: var(--app-badge-success-fg);
   }
 
-  .version-update-actions {
+  .system-update-actions {
     display: flex;
     align-items: center;
     gap: var(--app-spacing);
     flex-wrap: wrap;
   }
 
-  .version-update-status,
-  .version-update-meta {
+  .system-update-status,
+  .system-update-meta {
     font-size: 0.84rem;
     line-height: 1.5;
     color: var(--app-text-soft);
     word-break: break-word;
   }
 
-  .version-update-meta code,
-  .version-update-file-name {
+  .system-update-meta code,
+  .system-update-file-name {
     color: var(--app-text-soft);
     word-break: break-all;
   }
 
   @media (max-width: 1100px) {
     .settings-shell,
-    .version-update-grid {
+    .system-update-grid {
       grid-template-columns: 1fr;
     }
 
@@ -227,7 +227,7 @@
     {% if frontendArea.Code and frontendFirstSection %}
       {{ sui.Tab(frontendArea.Label, href=UrlFor('dash.settings.all', area=frontendArea.Code, section=frontendFirstSection), active=false) }}
     {% endif %}
-    {{ sui.Tab("后台", href=UrlFor('dash.settings.version_update'), active=true) }}
+    {{ sui.Tab("后台", href=UrlFor('dash.settings.system_update'), active=true) }}
   {{ sui.TabsEnd() }}
 </div>
 
@@ -243,9 +243,9 @@
           </span>
         </a>
       {% endfor %}
-      <a class="settings-section-link is-active" href="{{ UrlFor('dash.settings.version_update') }}" aria-current="page">
-        <span class="settings-section-link-title">版本更新</span>
-        <span class="settings-section-link-desc">查看当前版本，执行自动更新或安装本地发布包。</span>
+      <a class="settings-section-link is-active" href="{{ UrlFor('dash.settings.system_update') }}" aria-current="page">
+        <span class="settings-section-link-title">系统更新</span>
+        <span class="settings-section-link-desc">查看当前版本，执行自动更新、安装本地发布包或手动重启服务。</span>
         <span class="settings-section-link-meta">
           <span class="settings-section-link-count">应用</span>
         </span>
@@ -254,18 +254,18 @@
   </aside>
 
   <div class="settings-main">
-    {% if VersionUpdateError %}
-      <div class="version-update-banner">
-        {{ sui.Alert(VersionUpdateError, kind="danger", title="更新失败", inline=true) }}
+    {% if SystemUpdateError %}
+      <div class="system-update-banner">
+        {{ sui.Alert(SystemUpdateError, kind="danger", title="更新失败", inline=true) }}
       </div>
     {% endif %}
-    {% if VersionUpdateNotice %}
-      <div class="version-update-banner">
-        {{ sui.Alert(VersionUpdateNotice, kind="success", title="更新状态", inline=true) }}
+    {% if SystemUpdateNotice %}
+      <div class="system-update-banner">
+        {{ sui.Alert(SystemUpdateNotice, kind="success", title="更新状态", inline=true) }}
       </div>
     {% endif %}
     {% if GlobalUpdateMessage %}
-      <div class="version-update-banner">
+      <div class="system-update-banner">
         {{ sui.Alert(GlobalUpdateMessage, kind="warning", title="注意", inline=true) }}
       </div>
     {% endif %}
@@ -273,24 +273,24 @@
     <div class="settings-card-list">
       <section class="settings-card is-emphasis">
         <header class="settings-card-header">
-          <h3 class="settings-card-title">版本信息</h3>
+          <h3 class="settings-card-title">系统信息</h3>
           <p class="settings-card-desc">当前页面只负责 stable release 更新。</p>
         </header>
         <div class="settings-card-body">
-          <div class="version-update-grid">
-            <div class="version-update-item">
-              <div class="version-update-label">
+          <div class="system-update-grid">
+            <div class="system-update-item">
+              <div class="system-update-label">
                 <span>当前版本</span>
                 {% if VersionRuntimePID > 0 %}<span>pid: {{ VersionRuntimePID }}</span>{% endif %}
               </div>
-              <span class="version-update-value">{{ CurrentVersion }}</span>
+              <span class="system-update-value">{{ CurrentVersion }}</span>
             </div>
-            <div class="version-update-item">
-              <div class="version-update-label">
-                <span class="version-update-label">最新版本</span>
+            <div class="system-update-item">
+              <div class="system-update-label">
+                <span class="system-update-label">最新版本</span>
                 {% if LatestReleaseURL %}<a href="{{ LatestReleaseURL }}" target="_blank" rel="noopener noreferrer">发布说明</a>{% endif %}
               </div>
-              <span class="version-update-value{{ ' is-latest' if HasVersionUpdate else '' }}">{{ LatestVersion if LatestVersion else "暂未发现新版本" }}</span>
+              <span class="system-update-value{{ ' is-latest' if HasSystemUpdate else '' }}">{{ LatestVersion if LatestVersion else "暂未发现新版本" }}</span>
             </div>
           </div>
         </div>
@@ -298,20 +298,34 @@
 
       <section class="settings-card">
         <header class="settings-card-header">
-          <h3 class="settings-card-title">更新方式</h3>
+          <h3 class="settings-card-title">系统操作</h3>
           <p class="settings-card-desc">启用 daemon-mode 后可自动下载或上传安装包切换到新版本。手动安装包文件名需与 GitHub release 一致，例如 <code>swaves_v1.2.4_linux_amd64.tar.gz</code>。</p>
         </header>
         <div class="settings-card-body">
-          <div class="version-update-actions">
-            <form id="version-update-auto-form" method="post" action="{{ UrlFor('dash.settings.version_update.auto') }}">
+          <div class="system-update-actions">
+            <form id="system-update-auto-form" method="post" action="{{ UrlFor('dash.settings.system_update.auto') }}">
               {{ _csrf_token() }}
               {{ sui.Button("自动更新", "primary", attrs='type="submit"' ~ (' disabled' if not AutoUpdateEnabled else '')) }}
             </form>
-            <form id="version-update-manual-form" method="post" action="{{ UrlFor('dash.settings.version_update.manual') }}" enctype="multipart/form-data">
+            <form id="system-update-manual-form" method="post" action="{{ UrlFor('dash.settings.system_update.manual') }}" enctype="multipart/form-data">
               {{ _csrf_token() }}
-              <input id="version-update-archive" type="file" name="archive" accept=".tar.gz,application/gzip" hidden{% if not ManualUpdateEnabled %} disabled{% endif %}>
-              {{ sui.Button("手动更新", "primary", attrs='type="button" data-role="version-update-manual-trigger"' ~ (' disabled' if not ManualUpdateEnabled else '')) }}
-              <span id="version-update-file-name" class="version-update-file-name">未选择安装包</span>
+              <input id="system-update-archive" type="file" name="archive" accept=".tar.gz,application/gzip" hidden{% if not ManualUpdateEnabled %} disabled{% endif %}>
+              {{ sui.Button("手动更新", "outline", attrs='type="button" data-role="system-update-manual-trigger"' ~ (' disabled' if not ManualUpdateEnabled else '')) }}
+              <span id="system-update-file-name" class="system-update-file-name">未选择安装包</span>
+            </form>
+          </div>
+        </div>
+      </section>
+      <section class="settings-card">
+        <header class="settings-card-header">
+          <h3 class="settings-card-title">系统重启</h3>
+          <p class="settings-card-desc">更改了系统配置需要重启的，可以手动操作，流量无损。</p>
+        </header>
+        <div class="settings-card-body">
+          <div class="system-update-actions">
+            <form id="system-update-restart-form" method="post" action="{{ UrlFor('dash.settings.system_update.restart') }}">
+              {{ _csrf_token() }}
+              {{ sui.Button("系统重启", "danger", attrs='type="submit"' ~ (' disabled' if not RestartEnabled else '')) }}
             </form>
           </div>
         </div>
@@ -324,9 +338,9 @@
   (function() {
     var currentVersion = {{ CurrentVersion | tojson }};
     var latestVersion = {{ LatestVersion | tojson }};
-    var versionNotice = {{ VersionUpdateNotice | tojson }};
-    var versionAutoRefresh = {{ VersionUpdateAutoRefresh | tojson }};
-    if (versionAutoRefresh && versionNotice && currentVersion && latestVersion && currentVersion !== latestVersion) {
+    var versionNotice = {{ SystemUpdateNotice | tojson }};
+    var versionAutoRefresh = {{ SystemUpdateAutoRefresh | tojson }};
+    if (versionAutoRefresh && versionNotice) {
       var refreshURL = window.location.pathname;
       window.setTimeout(function() {
         var attempts = 0;
@@ -353,10 +367,10 @@
       }, 1000);
     }
 
-    var triggers = document.querySelectorAll('[data-role="version-update-manual-trigger"]');
-    var input = document.getElementById('version-update-archive');
-    var form = document.getElementById('version-update-manual-form');
-    var fileName = document.getElementById('version-update-file-name');
+    var triggers = document.querySelectorAll('[data-role="system-update-manual-trigger"]');
+    var input = document.getElementById('system-update-archive');
+    var form = document.getElementById('system-update-manual-form');
+    var fileName = document.getElementById('system-update-file-name');
     if (!triggers || triggers.length === 0 || !input || !form || !fileName) {
       return;
     }

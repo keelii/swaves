@@ -89,9 +89,10 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashGroup.Post("/api/notifications/read_all", handler.PostNotificationReadAllAPIHandler).Name("dash.notifications.api.read_all")
 	dashGroup.Post("/api/notifications/delete", handler.PostNotificationDeleteAPIHandler).Name("dash.notifications.api.delete")
 	dashGroup.Post("/api/notifications/batch-delete", handler.PostNotificationBatchDeleteAPIHandler).Name("dash.notifications.api.batch_delete")
-	dashGroup.Get("/settings/version-update", handler.GetSettingsVersionUpdateHandler).Name("dash.settings.version_update")
-	dashGroup.Post("/settings/version-update/auto", handler.PostSettingsVersionAutoUpdateHandler).Name("dash.settings.version_update.auto")
-	dashGroup.Post("/settings/version-update/manual", handler.PostSettingsVersionManualUpdateHandler).Name("dash.settings.version_update.manual")
+	dashGroup.Get("/settings/system-update", handler.GetSettingsSystemUpdateHandler).Name("dash.settings.system_update")
+	dashGroup.Post("/settings/system-update/auto", handler.PostSettingsSystemAutoUpdateHandler).Name("dash.settings.system_update.auto")
+	dashGroup.Post("/settings/system-update/manual", handler.PostSettingsSystemManualUpdateHandler).Name("dash.settings.system_update.manual")
+	dashGroup.Post("/settings/system-update/restart", handler.PostSettingsSystemRestartHandler).Name("dash.settings.system_update.restart")
 
 	dashGroup.Get("/tags", handler.GetTagListHandler).Name("dash.tags.list")
 	dashGroup.Get("/tags/new", handler.GetTagNewHandler).Name("dash.tags.new")

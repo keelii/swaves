@@ -33,7 +33,7 @@ func TestLoadLatestVersionInfoPrefersFreshReleaseCheck(t *testing.T) {
 	if latestInfo.ReleaseURL != updater.ReleaseTagURL("v0.0.13") {
 		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
 	}
-	if !latestInfo.HasVersionUpdate {
+	if !latestInfo.HasSystemUpdate {
 		t.Fatal("expected version update to be detected when latest version is newer")
 	}
 	if !latestInfo.AutoUpdateEnabled {
@@ -64,7 +64,7 @@ func TestLoadLatestVersionInfoFallsBackWhenReleaseCheckFails(t *testing.T) {
 	if latestInfo.ReleaseURL != updater.ReleaseTagURL("v0.0.11") {
 		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
 	}
-	if !latestInfo.HasVersionUpdate {
+	if !latestInfo.HasSystemUpdate {
 		t.Fatal("expected version update to stay detected when fallback version differs from current version")
 	}
 	if !latestInfo.AutoUpdateEnabled {
@@ -95,7 +95,7 @@ func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) 
 	if latestInfo.Version != "v0.0.15" {
 		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.15")
 	}
-	if latestInfo.HasVersionUpdate {
+	if latestInfo.HasSystemUpdate {
 		t.Fatal("expected version update to be disabled when current version already matches latest version")
 	}
 	if latestInfo.AutoUpdateEnabled {
@@ -103,25 +103,28 @@ func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) 
 	}
 }
 
-func TestBuildVersionUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *testing.T) {
-	got := buildVersionUpdateNotice(updater.InstallResult{
+func TestBuildSystemUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *testing.T) {
+	got := buildSystemUpdateNotice(updater.InstallResult{
 		Installed:     true,
 		LatestVersion: "v0.0.17",
 	})
 	want := "已安装 v0.0.17，请手动重启服务后生效。"
 	if got != want {
-		t.Fatalf("buildVersionUpdateNotice() = %q, want %q", got, want)
+		t.Fatalf("buildSystemUpdateNotice() = %q, want %q", got, want)
 	}
 }
 
-func TestVersionUpdateSupportStateDisablesManualUpdateWithoutDaemon(t *testing.T) {
+func TestSystemUpdateSupportStateDisablesManualUpdateWithoutDaemon(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
-	state := versionUpdateSupportState(true)
+	state := systemUpdateSupportState(true)
 	if state.ManualUpdateEnabled {
 		t.Fatal("expected manual update to be disabled without daemon mode")
 	}
 	if state.AutoUpdateEnabled {
 		t.Fatal("expected auto update to be disabled without daemon mode")
+	}
+	if state.RestartEnabled {
+		t.Fatal("expected restart to be disabled without daemon mode")
 	}
 }

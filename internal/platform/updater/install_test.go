@@ -104,6 +104,44 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 	}
 }
 
+func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
+	tmpDir := t.TempDir()
+	runtimePath := filepath.Join(tmpDir, "runtime.json")
+	oldRuntimePath := runtimeInfoPath
+	runtimeInfoPath = func() string { return runtimePath }
+	defer func() {
+		runtimeInfoPath = oldRuntimePath
+	}()
+
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: filepath.Join(tmpDir, "swaves")}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	oldProcessExists := processExists
+	oldSignalProcess := signalProcess
+	processExists = func(pid int) bool { return pid == 4321 }
+	var signaledPID atomic.Int64
+	signalProcess = func(pid int) error {
+		signaledPID.Store(int64(pid))
+		return nil
+	}
+	defer func() {
+		processExists = oldProcessExists
+		signalProcess = oldSignalProcess
+	}()
+
+	pid, err := RestartActiveRuntime()
+	if err != nil {
+		t.Fatalf("RestartActiveRuntime failed: %v", err)
+	}
+	if pid != 4321 {
+		t.Fatalf("RestartActiveRuntime pid = %d, want 4321", pid)
+	}
+	if signaledPID.Load() != 4321 {
+		t.Fatalf("signal pid = %d, want 4321", signaledPID.Load())
+	}
+}
+
 func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")

@@ -39,6 +39,17 @@ func InstallLatestRelease(currentVersion string, goos string, goarch string) (In
 	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
 }
 
+func RestartActiveRuntime() (int, error) {
+	runtimeInfo, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		return 0, err
+	}
+	if err := signalProcess(runtimeInfo.PID); err != nil {
+		return 0, fmt.Errorf("signal master restart failed: %w", err)
+	}
+	return runtimeInfo.PID, nil
+}
+
 func InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestReleaseCLI(currentVersion, goos, goarch)
 }

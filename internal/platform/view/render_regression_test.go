@@ -505,6 +505,44 @@ func TestRenderDashRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 	}
 }
 
+func TestRenderDashSettingsSystemUpdateShowsRestartAction(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/settings_system_update.html", map[string]any{
+		"FrontendArea": dash.SettingAreaView{},
+		"BackendArea": dash.SettingAreaView{
+			Code: "backend",
+			Sections: []dash.SettingSectionView{
+				{Code: "general", Label: "常规", Description: "desc", SettingCount: 1},
+			},
+		},
+		"CurrentVersion":      "v1.0.0",
+		"LatestVersion":       "v1.0.1",
+		"HasSystemUpdate":     true,
+		"AutoUpdateEnabled":   true,
+		"ManualUpdateEnabled": true,
+		"RestartEnabled":      true,
+	})
+	if err != nil {
+		t.Fatalf("render settings_system_update failed: %v", err)
+	}
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "系统更新") {
+		t.Fatalf("expected system update label in settings_system_update")
+	}
+	if !strings.Contains(rendered, "系统重启") {
+		t.Fatalf("expected restart button in settings_system_update")
+	}
+	if !strings.Contains(rendered, "system-update-restart-form") {
+		t.Fatalf("expected restart form in settings_system_update")
+	}
+}
+
 func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
