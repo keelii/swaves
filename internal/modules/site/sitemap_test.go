@@ -143,7 +143,7 @@ func TestGetRobotsReturnsEmbeddedStaticFile(t *testing.T) {
 	if text != string(expected) {
 		t.Fatalf("unexpected robots body: %s", text)
 	}
-	if !strings.Contains(text, "User-agent: GPTBot") {
-		t.Fatalf("expected AI crawler directive, got %s", text)
+	if !strings.Contains(text, "User-agent: *") {
+		t.Fatalf("expected default robots directive, got %s", text)
 	}
 }
