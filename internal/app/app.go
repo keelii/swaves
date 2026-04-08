@@ -76,8 +76,8 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 				}
 			}
 
-			logger.Error("[http] method=%s code=%d msg=%s path=%s ip=%s referer=%s",
-				c.Method(), code, msg, c.Path(), c.IP(), c.Referer())
+			logger.Error("[http] method=%s code=%d msg=%s path=%s ip=%s referer=%s ua=%s",
+				c.Method(), code, msg, c.Path(), c.IP(), c.Referer(), c.UserAgent())
 
 			if strings.HasPrefix(c.Path(), share.GetDashUrl()) {
 				return c.Status(code).SendString(msg)
