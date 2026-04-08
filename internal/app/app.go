@@ -70,14 +70,14 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 				msg = err.Error()
 			}
 
-			logger.Error("[http] method=%s code=%d msg=%s path=%s ip=%s referer=%s",
-				c.Method(), code, msg, c.Path(), c.IP(), c.Referer())
-
 			if code == fiber.StatusNotFound && (c.Method() == fiber.MethodGet || c.Method() == fiber.MethodHead) {
 				if redirect, ok := store.GetRedirect(c.Path()); ok {
 					return webutil.RedirectTo(c, redirect.To, redirect.Status)
 				}
 			}
+
+			logger.Error("[http] method=%s code=%d msg=%s path=%s ip=%s referer=%s",
+				c.Method(), code, msg, c.Path(), c.IP(), c.Referer())
 
 			if strings.HasPrefix(c.Path(), share.GetDashUrl()) {
 				return c.Status(code).SendString(msg)
