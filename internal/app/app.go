@@ -54,6 +54,12 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		CaseSensitive: true,
 		Views:         viewEngine,
 		BodyLimit:     10 * 1024 * 1024, // 10MB
+		ProxyHeader:   fiber.HeaderXForwardedFor,
+		TrustProxy:    true,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Loopback: true,
+		},
+		EnableIPValidation: true,
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			msg := "Internal Server Error"

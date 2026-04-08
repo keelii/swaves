@@ -455,6 +455,7 @@ function postUIStateSetting(url, code, value) {
   body.set("value", String(value == null ? "" : value));
   return window.sfetchJSON(targetURL, {
     method: "POST",
+    keepalive: true,
     headers: {
       "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
     },

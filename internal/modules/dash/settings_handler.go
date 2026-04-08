@@ -927,6 +927,9 @@ func (h *Handler) postUpdateDashNavWidthSettingAPIHandler(c fiber.Ctx, rawValue 
 			"error": "保存导航栏宽度失败，请稍后重试",
 		})
 	}
+	if err := store.ReloadSettings(&store.GlobalStore{Model: h.Model}); err != nil {
+		logger.Warn("[settings] reload settings cache failed after %s update: err=%v", settingCodeDashNavWidth, err)
+	}
 
 	return c.JSON(fiber.Map{
 		"ok": true,
@@ -966,6 +969,9 @@ func (h *Handler) postUpdateThemeModeSettingAPIHandler(c fiber.Ctx, rawValue str
 			"error": "保存界面模式失败，请稍后重试",
 		})
 	}
+	if err := store.ReloadSettings(&store.GlobalStore{Model: h.Model}); err != nil {
+		logger.Warn("[settings] reload settings cache failed after %s update: err=%v", settingCodeThemeMode, err)
+	}
 
 	return c.JSON(fiber.Map{
 		"ok": true,
@@ -1004,6 +1010,9 @@ func (h *Handler) postUpdateBoolSettingAPIHandler(c fiber.Ctx, code string, name
 			"ok":    false,
 			"error": "保存" + name + "失败，请稍后重试",
 		})
+	}
+	if err := store.ReloadSettings(&store.GlobalStore{Model: h.Model}); err != nil {
+		logger.Warn("[settings] reload settings cache failed after %s update: err=%v", code, err)
 	}
 
 	return c.JSON(fiber.Map{

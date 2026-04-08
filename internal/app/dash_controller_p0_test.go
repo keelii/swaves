@@ -310,6 +310,45 @@ func TestDashControllerP0_ThemeModeSettingAppliesToRenderedPage(t *testing.T) {
 	}
 }
 
+func TestDashControllerP0_MenuCollapsedSettingAppliesToRenderedPage(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+	csrfToken, cookieKV, _ := fetchCSRFToken(
+		t,
+		swv,
+		"/dash/posts/new",
+		cookieKV,
+		`data-role="toggle-menu-collapse"`,
+	)
+
+	form := url.Values{}
+	form.Set("code", "dash_full_main_open")
+	form.Set("value", "1")
+
+	resp := requestControllerP0(t, swv, fiber.MethodPost, "/dash/api/settings/dash-ui", form, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("unexpected menu collapsed update status: %d body=%q", resp.StatusCode, readResponseBody(t, resp))
+	}
+
+	menuSetting, err := db.GetSettingByCode(swv.Store.Model, "dash_full_main_open")
+	if err != nil {
+		t.Fatalf("GetSettingByCode(dash_full_main_open) failed: %v", err)
+	}
+	if menuSetting.Value != "1" {
+		t.Fatalf("expected menu collapsed setting updated to 1, got %q", menuSetting.Value)
+	}
+
+	renderResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/posts/new", nil, cookieKV, nil)
+	renderBody := assertTemplateRendered(t, renderResp, fiber.StatusOK, `data-role="toggle-menu-collapse"`)
+	if !strings.Contains(renderBody, `class="app-window menu-collapsed"`) {
+		t.Fatalf("expected rendered page to keep menu collapsed, body=%q", renderBody)
+	}
+}
+
 func TestDashControllerP0_PostLifecycle(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()

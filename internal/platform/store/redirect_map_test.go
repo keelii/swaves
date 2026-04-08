@@ -23,3 +23,23 @@ func TestIsRedirectEmptyTracksStoredMap(t *testing.T) {
 		t.Fatalf("expected redirect map to be non-empty")
 	}
 }
+
+func TestGetRedirectMatchesTrailingSlashLookup(t *testing.T) {
+	storeRedirectMap(map[string]RedirectRule{
+		"/2018/08/12/fuzzy-finder-full-guide": {
+			To:     "/fuzzy-finder-full-guide",
+			Status: 301,
+		},
+	})
+
+	redirect, ok := GetRedirect("/2018/08/12/fuzzy-finder-full-guide/")
+	if !ok {
+		t.Fatalf("expected trailing slash lookup to match canonical redirect path")
+	}
+	if redirect.To != "/fuzzy-finder-full-guide" {
+		t.Fatalf("unexpected redirect target: got=%q", redirect.To)
+	}
+	if redirect.Status != 301 {
+		t.Fatalf("unexpected redirect status: got=%d", redirect.Status)
+	}
+}

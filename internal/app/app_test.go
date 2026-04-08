@@ -258,6 +258,32 @@ func TestDashLoginRateLimitInProduction(t *testing.T) {
 	}
 }
 
+func TestAppTrustsLoopbackProxyHeaderForClientIP(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "proxy-ip.sqlite")
+	prepareInstalledAppDB(t, dbPath)
+
+	swv := NewApp(types.AppConfig{
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
+	})
+	defer swv.Shutdown()
+
+	appConfig := swv.App.Config()
+	if got := appConfig.ProxyHeader; got != fiber.HeaderXForwardedFor {
+		t.Fatalf("ProxyHeader = %q, want %q", got, fiber.HeaderXForwardedFor)
+	}
+	if !appConfig.TrustProxy {
+		t.Fatal("TrustProxy = false, want true")
+	}
+	if !appConfig.TrustProxyConfig.Loopback {
+		t.Fatal("TrustProxyConfig.Loopback = false, want true")
+	}
+	if !appConfig.EnableIPValidation {
+		t.Fatal("EnableIPValidation = false, want true")
+	}
+}
+
 func TestDashLoginRateLimitSkippedOutsideProduction(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "login-rate-limit-dev.sqlite")
 	prepareInstalledAppDB(t, dbPath)

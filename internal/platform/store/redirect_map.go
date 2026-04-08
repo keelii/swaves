@@ -3,6 +3,7 @@ package store
 import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/shared/pathutil"
 	"sync/atomic"
 )
 
@@ -101,6 +102,16 @@ func GetRedirect(path string) (RedirectRule, bool) {
 	}
 
 	redirect, exists := m[path]
+	if exists {
+		return redirect, true
+	}
+
+	normalizedPath := normalizeRedirectLookupPath(path)
+	if normalizedPath == "" || normalizedPath == path {
+		return RedirectRule{}, false
+	}
+
+	redirect, exists = m[normalizedPath]
 	return redirect, exists
 }
 
@@ -115,4 +126,12 @@ func GetRedirectMap() map[string]RedirectRule {
 
 func IsRedirectEmpty() bool {
 	return redirectEmpty.Load()
+}
+
+func normalizeRedirectLookupPath(path string) string {
+	path = pathutil.JoinAbsolute(path)
+	if path == "/" {
+		return ""
+	}
+	return path
 }
