@@ -1,0 +1,505 @@
+package dash
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
+	"swaves/internal/platform/db"
+	"swaves/internal/platform/logger"
+	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
+	"time"
+
+	"github.com/gofiber/fiber/v3"
+	_ "github.com/mattn/go-sqlite3"
+)
+
+const (
+	defaultRestoreBackupDir   = "backups"
+	restoreConfirmationText   = "RESTORE"
+	restoreSignalDelay        = 200 * time.Millisecond
+	restoreUploadFormField    = "file"
+	restoreBackupFileFormKey  = "backup_file"
+	restoreConfirmFormKey     = "confirm_text"
+	restoreStatusRefreshQuery = "refresh"
+)
+
+type restoreBackupFile struct {
+	Name       string
+	Size       int64
+	ModifiedAt string
+	Path       string
+}
+
+type restoreSupportState struct {
+	Enabled bool
+	Message string
+}
+
+func (h *Handler) GetExportHandler(c fiber.Ctx) error {
+	return h.renderExportView(c, nil)
+}
+
+func (h *Handler) GetExportRestoreStatusHandler(c fiber.Ctx) error {
+	status, err := updater.ReadRestoreStatus()
+	if err != nil {
+		logger.Error("[restore] read status failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":    false,
+			"error": err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"ok":         true,
+		"status":     status.State,
+		"label":      restoreStatusLabel(status.State),
+		"message":    status.Message,
+		"updated_at": status.UpdatedAt,
+		"active":     isRestoreStatusActive(status.State),
+	})
+}
+
+func (h *Handler) PostExportRestoreLocalHandler(c fiber.Ctx) error {
+	if err := requireRestoreConfirmation(c); err != nil {
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	sourceName := filepath.Base(strings.TrimSpace(c.FormValue(restoreBackupFileFormKey)))
+	if sourceName == "" {
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": "请选择一个本地备份文件。",
+		})
+	}
+
+	sourcePath, err := findLocalRestoreSource(sourceName)
+	if err != nil {
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	if err := h.enqueueRestore(sourcePath); err != nil {
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		"notice":  "数据库恢复任务已提交，服务即将重启。",
+		"refresh": "1",
+	})
+}
+
+func (h *Handler) PostExportRestoreUploadHandler(c fiber.Ctx) error {
+	if err := requireRestoreConfirmation(c); err != nil {
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	fileHeader, err := c.FormFile(restoreUploadFormField)
+	if err != nil {
+		statusCode := fiber.StatusBadRequest
+		if errors.Is(err, fiber.ErrRequestEntityTooLarge) || strings.Contains(strings.ToLower(err.Error()), "request entity too large") {
+			statusCode = fiber.StatusRequestEntityTooLarge
+		}
+		message := "读取上传文件失败：" + err.Error()
+		if statusCode == fiber.StatusRequestEntityTooLarge {
+			message = "上传文件过大，当前请求体大小限制为 10MB，请优先使用服务器本地备份恢复。"
+		}
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": message,
+		})
+	}
+
+	sourcePath, err := h.saveRestoreUpload(fileHeader)
+	if err != nil {
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	if err := h.enqueueRestore(sourcePath); err != nil {
+		_ = os.Remove(sourcePath)
+		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		"notice":  "数据库恢复任务已提交，服务即将重启。",
+		"refresh": "1",
+	})
+}
+
+func (h *Handler) renderExportView(c fiber.Ctx, extra fiber.Map) error {
+	viewData, err := buildExportViewData(c)
+	if err != nil {
+		return err
+	}
+	for key, value := range extra {
+		viewData[key] = value
+	}
+	return RenderDashView(c, "dash/export.html", viewData, "")
+}
+
+func buildExportViewData(c fiber.Ctx) (fiber.Map, error) {
+	restoreStatus, err := updater.ReadRestoreStatus()
+	if err != nil {
+		return nil, err
+	}
+
+	restoreSupport := getRestoreSupportState()
+	backupFiles, backupDir, backupErr := listLocalRestoreBackups()
+	updatedAt := ""
+	if restoreStatus.UpdatedAt > 0 {
+		updatedAt = time.Unix(restoreStatus.UpdatedAt, 0).Format("2006-01-02 15:04:05")
+	}
+
+	statusAPIURL, _ := c.GetRouteURL("dash.export.restore.status", fiber.Map{})
+
+	viewData := fiber.Map{
+		"Title":                "数据库备份与恢复",
+		"Notice":               strings.TrimSpace(c.Query("notice")),
+		"Error":                strings.TrimSpace(c.Query("error")),
+		"RestoreEnabled":       restoreSupport.Enabled,
+		"RestoreMessage":       restoreSupport.Message,
+		"RestoreStatus":        restoreStatus.State,
+		"RestoreStatusKind":    restoreStatusKind(restoreStatus.State),
+		"RestoreStatusLabel":   restoreStatusLabel(restoreStatus.State),
+		"RestoreStatusMessage": strings.TrimSpace(restoreStatus.Message),
+		"RestoreStatusUpdated": updatedAt,
+		"RestoreAutoRefresh": isRestoreStatusActive(restoreStatus.State) ||
+			strings.TrimSpace(c.Query(restoreStatusRefreshQuery)) == "1",
+		"RestoreStatusAPIURL": statusAPIURL,
+		"LocalBackupFiles":    backupFiles,
+		"LocalBackupDir":      backupDir,
+	}
+	if backupErr != nil {
+		viewData["BackupListError"] = backupErr.Error()
+	}
+	return viewData, nil
+}
+
+func getRestoreSupportState() restoreSupportState {
+	if runtime.GOOS == "windows" {
+		return restoreSupportState{
+			Message: "Windows 暂不支持数据库恢复。",
+		}
+	}
+	if _, err := updater.ReadActiveRuntimeInfo(); err != nil {
+		return restoreSupportState{
+			Message: "daemon-mode 未启用时，数据库恢复不可用。",
+		}
+	}
+	return restoreSupportState{Enabled: true}
+}
+
+func listLocalRestoreBackups() ([]restoreBackupFile, string, error) {
+	backupDir := resolveRestoreBackupDir(store.GetSetting("backup_local_dir"))
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return []restoreBackupFile{}, backupDir, nil
+		}
+		return nil, backupDir, fmt.Errorf("读取本地备份目录失败：%w", err)
+	}
+
+	backups := make([]restoreBackupFile, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".sqlite") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return nil, backupDir, fmt.Errorf("读取备份文件信息失败：%w", err)
+		}
+		backups = append(backups, restoreBackupFile{
+			Name:       entry.Name(),
+			Size:       info.Size(),
+			ModifiedAt: info.ModTime().Format("2006-01-02 15:04:05"),
+			Path:       filepath.Join(backupDir, entry.Name()),
+		})
+	}
+
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].ModifiedAt > backups[j].ModifiedAt
+	})
+	return backups, backupDir, nil
+}
+
+func resolveRestoreBackupDir(dir string) string {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		dir = defaultRestoreBackupDir
+	}
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return dir
+	}
+	return filepath.Join(wd, dir)
+}
+
+func findLocalRestoreSource(name string) (string, error) {
+	backups, _, err := listLocalRestoreBackups()
+	if err != nil {
+		return "", err
+	}
+	for _, backup := range backups {
+		if backup.Name == name {
+			return backup.Path, nil
+		}
+	}
+	return "", fmt.Errorf("未找到选中的本地备份文件：%s", name)
+}
+
+func requireRestoreConfirmation(c fiber.Ctx) error {
+	if strings.TrimSpace(c.FormValue(restoreConfirmFormKey)) != restoreConfirmationText {
+		return fmt.Errorf("请输入 %s 确认恢复数据库。", restoreConfirmationText)
+	}
+	return nil
+}
+
+func (h *Handler) enqueueRestore(sourcePath string) error {
+	supportState := getRestoreSupportState()
+	if !supportState.Enabled {
+		return errors.New(supportState.Message)
+	}
+
+	if err := validateRestoreSQLiteFile(sourcePath); err != nil {
+		return err
+	}
+	if err := createRestoreSafetyBackup(h.Model); err != nil {
+		return err
+	}
+
+	status, err := updater.ReadRestoreStatus()
+	if err != nil {
+		return err
+	}
+	if isRestoreStatusActive(status.State) {
+		return fmt.Errorf("已有数据库恢复任务正在执行，请稍后再试")
+	}
+
+	if err := updater.WriteRestoreRequest(updater.RestoreRequest{Source: sourcePath}); err != nil {
+		return err
+	}
+	if err := updater.WriteRestoreStatus(updater.RestoreStatus{
+		State:   updater.RestoreStatusPending,
+		Message: "恢复任务已提交，等待 master 处理。",
+	}); err != nil {
+		return err
+	}
+
+	go triggerQueuedRestore()
+	return nil
+}
+
+func createRestoreSafetyBackup(model *db.DB) error {
+	backupDir := resolveRestoreBackupDir(store.GetSetting("backup_local_dir"))
+	_, err := db.ExportSQLiteWithHash(model, backupDir)
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "无需重复导出") {
+		return nil
+	}
+	return fmt.Errorf("创建恢复前备份失败：%w", err)
+}
+
+func validateRestoreSQLiteFile(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return fmt.Errorf("恢复文件路径不能为空")
+	}
+	if !strings.HasSuffix(strings.ToLower(path), ".sqlite") {
+		return fmt.Errorf("仅支持恢复 .sqlite 文件")
+	}
+
+	header := make([]byte, 16)
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("打开恢复文件失败：%w", err)
+	}
+	if _, err := io.ReadFull(file, header); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("读取恢复文件头失败：%w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("关闭恢复文件失败：%w", err)
+	}
+	if string(header) != "SQLite format 3\x00" {
+		return fmt.Errorf("恢复文件不是有效的 SQLite 数据库")
+	}
+
+	database, err := openReadOnlySQLite(path)
+	if err != nil {
+		return fmt.Errorf("打开恢复数据库失败：%w", err)
+	}
+	defer func() { _ = database.Close() }()
+
+	var integrity string
+	if err := database.QueryRow("PRAGMA integrity_check").Scan(&integrity); err != nil {
+		return fmt.Errorf("校验恢复数据库失败：%w", err)
+	}
+	if strings.TrimSpace(strings.ToLower(integrity)) != "ok" {
+		return fmt.Errorf("恢复数据库完整性校验失败：%s", integrity)
+	}
+
+	rows, err := database.Query("SELECT name FROM sqlite_master WHERE type='table'")
+	if err != nil {
+		return fmt.Errorf("读取恢复数据库表结构失败：%w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	requiredTables := map[string]bool{
+		"posts":      false,
+		"settings":   false,
+		"categories": false,
+		"tags":       false,
+		"comments":   false,
+		"assets":     false,
+		"sessions":   false,
+	}
+
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return fmt.Errorf("读取恢复数据库表失败：%w", err)
+		}
+		if _, ok := requiredTables[name]; ok {
+			requiredTables[name] = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("遍历恢复数据库表失败：%w", err)
+	}
+	for table, ok := range requiredTables {
+		if !ok {
+			return fmt.Errorf("恢复数据库缺少必要数据表：%s", table)
+		}
+	}
+	return nil
+}
+
+func openReadOnlySQLite(path string) (*sql.DB, error) {
+	uri := url.URL{Scheme: "file", Path: path}
+	query := uri.Query()
+	query.Set("mode", "ro")
+	query.Set("_busy_timeout", "5000")
+	uri.RawQuery = query.Encode()
+	return sql.Open("sqlite3", uri.String())
+}
+
+func (h *Handler) saveRestoreUpload(fileHeader *multipart.FileHeader) (string, error) {
+	src, err := fileHeader.Open()
+	if err != nil {
+		return "", fmt.Errorf("打开上传文件失败：%w", err)
+	}
+	defer func() { _ = src.Close() }()
+
+	name := filepath.Base(fileHeader.Filename)
+	if !strings.HasSuffix(strings.ToLower(name), ".sqlite") {
+		return "", fmt.Errorf("仅支持上传 .sqlite 文件")
+	}
+
+	dbPath := strings.TrimSpace(h.Model.DSN)
+	if dbPath == "" {
+		return "", fmt.Errorf("无法定位当前数据库文件")
+	}
+
+	tmpDir := filepath.Dir(dbPath)
+	if tmpDir == "" {
+		tmpDir = "."
+	}
+	tmpFile, err := os.CreateTemp(tmpDir, ".swaves-restore-*.sqlite")
+	if err != nil {
+		return "", fmt.Errorf("创建上传临时文件失败：%w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = os.Remove(tmpFile.Name())
+		}
+	}()
+
+	if _, err = io.Copy(tmpFile, src); err != nil {
+		_ = tmpFile.Close()
+		return "", fmt.Errorf("保存上传文件失败：%w", err)
+	}
+	if err = tmpFile.Close(); err != nil {
+		return "", fmt.Errorf("关闭上传文件失败：%w", err)
+	}
+	return tmpFile.Name(), nil
+}
+
+func triggerQueuedRestore() {
+	time.Sleep(restoreSignalDelay)
+
+	pid, err := updater.RestartActiveRuntime()
+	if err != nil {
+		logger.Error("[restore] signal master failed: %v", err)
+		_ = updater.RemoveRestoreRequest()
+		_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+			State:   updater.RestoreStatusFailed,
+			Message: "通知 master 执行恢复失败：" + err.Error(),
+		})
+		return
+	}
+	logger.Info("[restore] restore signal sent to master pid=%d", pid)
+}
+
+func restoreStatusLabel(status string) string {
+	switch status {
+	case updater.RestoreStatusPending:
+		return "等待执行"
+	case updater.RestoreStatusStoppingWorker:
+		return "停止旧进程"
+	case updater.RestoreStatusReplacingDB:
+		return "替换数据库"
+	case updater.RestoreStatusStartingWorker:
+		return "启动新进程"
+	case updater.RestoreStatusSuccess:
+		return "恢复成功"
+	case updater.RestoreStatusRolledBack:
+		return "已回滚"
+	case updater.RestoreStatusFailed:
+		return "恢复失败"
+	default:
+		return "空闲"
+	}
+}
+
+func isRestoreStatusActive(status string) bool {
+	switch status {
+	case updater.RestoreStatusPending, updater.RestoreStatusStoppingWorker, updater.RestoreStatusReplacingDB, updater.RestoreStatusStartingWorker:
+		return true
+	default:
+		return false
+	}
+}
+
+func restoreStatusKind(status string) string {
+	switch status {
+	case updater.RestoreStatusFailed, updater.RestoreStatusRolledBack:
+		return "danger"
+	case updater.RestoreStatusSuccess:
+		return "success"
+	case updater.RestoreStatusPending, updater.RestoreStatusStoppingWorker, updater.RestoreStatusReplacingDB, updater.RestoreStatusStartingWorker:
+		return "info"
+	default:
+		return "info"
+	}
+}

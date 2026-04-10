@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/logger"
@@ -32,6 +34,7 @@ const (
 type supervisorConfig struct {
 	DaemonMode      bool
 	ListenAddr      string
+	SqliteFile      string
 	MaxFailures     int
 	ReadyTimeout    time.Duration
 	ShutdownTimeout time.Duration
@@ -98,16 +101,30 @@ func runSupervisor(cfg supervisorConfig) error {
 			switch sig {
 			case syscall.SIGHUP:
 				logger.Info("[master] restart requested by signal: %s", sig)
-				next, err := spawnWorker(ln, cfg)
-				if err != nil {
-					logger.Error("[master] restart worker failed: %v", err)
-					continue
+				restoreRequest, restoreErr := updater.ReadRestoreRequest()
+				switch {
+				case restoreErr == nil:
+					next, err := restoreWorkerProcess(ln, active, cfg, restoreRequest)
+					if err != nil {
+						logger.Error("[master] restore worker failed: %v", err)
+						continue
+					}
+					active = next
+					failures = 0
+				case errors.Is(restoreErr, updater.ErrRestoreRequestNotFound):
+					next, err := spawnWorker(ln, cfg)
+					if err != nil {
+						logger.Error("[master] restart worker failed: %v", err)
+						continue
+					}
+					if err := stopWorkerProcess(active, cfg.ShutdownTimeout); err != nil {
+						logger.Error("[master] stop previous worker failed: %v", err)
+					}
+					active = next
+					failures = 0
+				default:
+					logger.Error("[master] read restore request failed: %v", restoreErr)
 				}
-				if err := stopWorkerProcess(active, cfg.ShutdownTimeout); err != nil {
-					logger.Error("[master] stop previous worker failed: %v", err)
-				}
-				active = next
-				failures = 0
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Info("[master] shutdown requested by signal: %s", sig)
 				return stopWorkerProcess(active, cfg.ShutdownTimeout)
@@ -290,4 +307,192 @@ func listenerFile(listener net.Listener) (*os.File, error) {
 		return nil, fmt.Errorf("duplicate listener fd failed: %w", err)
 	}
 	return file, nil
+}
+
+func restoreWorkerProcess(listener net.Listener, active *workerProcess, cfg supervisorConfig, request updater.RestoreRequest) (*workerProcess, error) {
+	defer cleanupRestoreSource(request.Source)
+
+	if cfg.SqliteFile == "" {
+		_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+			State:   updater.RestoreStatusFailed,
+			Message: "restore failed: sqlite file is required",
+		})
+		_ = updater.RemoveRestoreRequest()
+		return nil, fmt.Errorf("sqlite file is required for restore")
+	}
+
+	_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+		State:   updater.RestoreStatusStoppingWorker,
+		Message: "旧 worker 正在停止。",
+	})
+	if err := stopWorkerProcess(active, cfg.ShutdownTimeout); err != nil {
+		_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+			State:   updater.RestoreStatusFailed,
+			Message: "停止旧 worker 失败: " + err.Error(),
+		})
+		_ = updater.RemoveRestoreRequest()
+		return nil, err
+	}
+
+	_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+		State:   updater.RestoreStatusReplacingDB,
+		Message: "正在替换数据库文件。",
+	})
+	rollbackPath, err := replaceSQLiteDatabase(cfg.SqliteFile, request.Source)
+	if err != nil {
+		_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+			State:   updater.RestoreStatusFailed,
+			Message: "替换数据库失败: " + err.Error(),
+		})
+		_ = updater.RemoveRestoreRequest()
+		next, restartErr := spawnWorker(listener, cfg)
+		if restartErr != nil {
+			return nil, fmt.Errorf("replace database failed: %w (restart old worker failed: %v)", err, restartErr)
+		}
+		return next, nil
+	}
+
+	_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+		State:   updater.RestoreStatusStartingWorker,
+		Message: "正在启动新 worker。",
+	})
+	next, err := spawnWorker(listener, cfg)
+	if err == nil {
+		_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+			State:   updater.RestoreStatusSuccess,
+			Message: "数据库恢复成功，服务已切换到新 worker。",
+		})
+		_ = updater.RemoveRestoreRequest()
+		if rollbackPath != "" {
+			_ = os.Remove(rollbackPath)
+		}
+		return next, nil
+	}
+
+	if rollbackErr := rollbackSQLiteDatabase(cfg.SqliteFile, rollbackPath); rollbackErr != nil {
+		_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+			State:   updater.RestoreStatusFailed,
+			Message: "恢复新数据库失败且回滚失败: " + rollbackErr.Error(),
+		})
+		_ = updater.RemoveRestoreRequest()
+		return nil, fmt.Errorf("start restored worker failed: %w (rollback failed: %v)", err, rollbackErr)
+	}
+
+	fallback, restartErr := spawnWorker(listener, cfg)
+	if restartErr != nil {
+		_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+			State:   updater.RestoreStatusFailed,
+			Message: "恢复新数据库失败，且回滚后的 worker 启动失败: " + restartErr.Error(),
+		})
+		_ = updater.RemoveRestoreRequest()
+		return nil, fmt.Errorf("start restored worker failed: %w (restart rolled back worker failed: %v)", err, restartErr)
+	}
+
+	_ = updater.WriteRestoreStatus(updater.RestoreStatus{
+		State:   updater.RestoreStatusRolledBack,
+		Message: "新数据库启动失败，已回滚到旧数据库。",
+	})
+	_ = updater.RemoveRestoreRequest()
+	return fallback, nil
+}
+
+func cleanupRestoreSource(sourcePath string) {
+	base := filepath.Base(strings.TrimSpace(sourcePath))
+	if !strings.HasPrefix(base, ".swaves-restore-") {
+		return
+	}
+	_ = os.Remove(sourcePath)
+}
+
+func replaceSQLiteDatabase(targetPath string, sourcePath string) (string, error) {
+	targetPath = strings.TrimSpace(targetPath)
+	sourcePath = strings.TrimSpace(sourcePath)
+	if targetPath == "" {
+		return "", fmt.Errorf("target database path is required")
+	}
+	if sourcePath == "" {
+		return "", fmt.Errorf("restore source path is required")
+	}
+
+	if err := removeSQLiteRuntimeFiles(targetPath); err != nil {
+		return "", err
+	}
+
+	targetDir := filepath.Dir(targetPath)
+	if targetDir == "" {
+		targetDir = "."
+	}
+	stagedPath := filepath.Join(targetDir, fmt.Sprintf(".swaves-restore-stage-%d.sqlite", time.Now().UnixNano()))
+	if err := copyFile(sourcePath, stagedPath); err != nil {
+		return "", fmt.Errorf("stage restore database failed: %w", err)
+	}
+
+	rollbackPath := filepath.Join(targetDir, fmt.Sprintf(".swaves-restore-backup-%d.sqlite", time.Now().UnixNano()))
+	renamedOld := false
+	defer func() {
+		if !renamedOld {
+			_ = os.Remove(stagedPath)
+		}
+	}()
+
+	if err := os.Rename(targetPath, rollbackPath); err != nil {
+		return "", fmt.Errorf("backup current database failed: %w", err)
+	}
+	renamedOld = true
+	if err := os.Rename(stagedPath, targetPath); err != nil {
+		_ = os.Rename(rollbackPath, targetPath)
+		return "", fmt.Errorf("activate restored database failed: %w", err)
+	}
+	return rollbackPath, nil
+}
+
+func rollbackSQLiteDatabase(targetPath string, rollbackPath string) error {
+	if rollbackPath == "" {
+		return fmt.Errorf("rollback database path is required")
+	}
+	if err := removeSQLiteRuntimeFiles(targetPath); err != nil {
+		return err
+	}
+	if err := os.Remove(targetPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove failed restore database failed: %w", err)
+	}
+	if err := os.Rename(rollbackPath, targetPath); err != nil {
+		return fmt.Errorf("restore original database failed: %w", err)
+	}
+	return nil
+}
+
+func removeSQLiteRuntimeFiles(targetPath string) error {
+	for _, suffix := range []string{"-wal", "-shm"} {
+		path := targetPath + suffix
+		err := os.Remove(path)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove sqlite runtime file failed: %w", err)
+		}
+	}
+	return nil
+}
+
+func copyFile(srcPath string, dstPath string) error {
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = src.Close() }()
+
+	info, err := src.Stat()
+	if err != nil {
+		return err
+	}
+
+	dst, err := os.OpenFile(dstPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dst.Close() }()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return err
+	}
+	return dst.Close()
 }

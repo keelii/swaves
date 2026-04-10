@@ -26,6 +26,7 @@ import (
 
 type DB struct {
 	*sql.DB
+	DSN string
 }
 
 type Options struct {
@@ -64,7 +65,7 @@ func OpenWithError(opts Options) (*DB, error) {
 		return nil, WrapInternalErr("Open.pragma", err)
 	}
 
-	conn := &DB{DB: sqlDB}
+	conn := &DB{DB: sqlDB, DSN: opts.DSN}
 
 	if r2 := InitDatabase(conn); r2 != nil {
 		_ = conn.Close()

@@ -183,6 +183,9 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 
 	dashGroup.Get("/export", handler.GetExportHandler).Name("dash.export.show")
 	dashGroup.Get("/export/download", handler.GetExportDownloadHandler).Name("dash.export.download")
+	dashGroup.Get("/export/restore/status", handler.GetExportRestoreStatusHandler).Name("dash.export.restore.status")
+	dashGroup.Post("/export/restore/local", handler.PostExportRestoreLocalHandler).Name("dash.export.restore.local")
+	dashGroup.Post("/export/restore/upload", handler.PostExportRestoreUploadHandler).Name("dash.export.restore.upload")
 
 	dashGroup.Get("/dev/ui-components", handler.GetDevUIComponentsHandler).Name("dash.dev.ui_components")
 }

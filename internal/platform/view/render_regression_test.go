@@ -377,6 +377,47 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 	}
 }
 
+func TestRenderDashExportShowsRestoreControls(t *testing.T) {
+	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	app := fiber.New()
+	app.Get("/dash/export/download", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.download")
+	app.Get("/dash/export/restore/status", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.restore.status")
+	app.Post("/dash/export/restore/local", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.restore.local")
+	app.Post("/dash/export/restore/upload", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.restore.upload")
+	initURLResolver(app)
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/export.html", map[string]any{
+		"RestoreStatusLabel":  "空闲",
+		"RestoreStatusKind":   "info",
+		"RestoreStatus":       "idle",
+		"RestoreEnabled":      true,
+		"RestoreStatusAPIURL": "/dash/export/restore/status",
+		"LocalBackupDir":      "backups",
+		"LocalBackupFiles": []map[string]any{
+			{"Name": "2026-04-08.sqlite", "ModifiedAt": "2026-04-08 10:00:00", "Size": 1024},
+		},
+	})
+	if err != nil {
+		t.Fatalf("render export failed: %v", err)
+	}
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "数据库恢复") {
+		t.Fatalf("expected restore section in export view")
+	}
+	if !strings.Contains(rendered, `name="backup_file"`) {
+		t.Fatalf("expected local restore select in export view")
+	}
+	if !strings.Contains(rendered, `data-restore-dropzone`) {
+		t.Fatalf("expected upload restore dropzone in export view")
+	}
+}
+
 func TestRenderDashHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {

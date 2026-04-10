@@ -453,12 +453,6 @@ func (h *Handler) GetDevUIComponentsHandler(c fiber.Ctx) error {
 }
 
 // Export
-func (h *Handler) GetExportHandler(c fiber.Ctx) error {
-	return RenderDashView(c, "dash/export.html", fiber.Map{
-		"Title": "导出数据库",
-	}, "")
-}
-
 func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 生成导出文件名（包含时间戳）
 	name := strings.ToLower(c.App().Config().AppName) + "_export"
@@ -468,10 +462,9 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 创建临时目录
 	tmpDir, err := os.MkdirTemp(os.TempDir(), name+"-")
 	if err != nil {
-		return RenderDashView(c, "dash/export.html", fiber.Map{
-			"Title": "导出数据库",
+		return h.renderExportView(c, fiber.Map{
 			"Error": "Failed to create export directory: " + err.Error(),
-		}, "")
+		})
 	}
 	cleanupTmpDir := func() {
 		if removeErr := os.RemoveAll(tmpDir); removeErr != nil {
@@ -483,10 +476,9 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	result, err := db.ExportSQLiteWithHash(h.Model, tmpDir)
 	if err != nil {
 		cleanupTmpDir()
-		return RenderDashView(c, "dash/export.html", fiber.Map{
-			"Title": "导出数据库",
+		return h.renderExportView(c, fiber.Map{
 			"Error": "Failed to export database: " + err.Error(),
-		}, "")
+		})
 	}
 
 	// 返回文件下载（从完整路径中提取文件名）
@@ -497,10 +489,9 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	stream, err := openCleanupFileStream(result.File, cleanupTmpDir)
 	if err != nil {
 		cleanupTmpDir()
-		return RenderDashView(c, "dash/export.html", fiber.Map{
-			"Title": "导出数据库",
+		return h.renderExportView(c, fiber.Map{
 			"Error": "Failed to open export file: " + err.Error(),
-		}, "")
+		})
 	}
 	return c.SendStream(stream)
 }

@@ -92,6 +92,7 @@ func runCLI(args []string, stdout io.Writer, stderr io.Writer) int {
 	if err := runSupervisor(supervisorConfig{
 		DaemonMode:  cfg.DaemonMode,
 		ListenAddr:  cfg.AppConfig.ListenAddr,
+		SqliteFile:  cfg.AppConfig.SqliteFile,
 		MaxFailures: cfg.MaxFailures,
 		Args:        args,
 		Worker: func() error {

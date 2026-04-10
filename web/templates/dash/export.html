@@ -8,6 +8,11 @@
     gap: var(--app-gap-4);
   }
 
+  .export-card {
+    display: grid;
+    gap: var(--app-gap-4);
+  }
+
   .export-title {
     margin: 0;
     display: inline-flex;
@@ -16,12 +21,11 @@
   }
 
   .export-desc {
-    margin-top: var(--app-gap-3);
+    margin: 0;
     color: var(--app-text-soft);
   }
 
   .export-actions {
-    margin-top: var(--app-gap-3);
     display: flex;
     align-items: center;
     gap: var(--app-gap-3);
@@ -34,7 +38,7 @@
   }
 
   .export-list {
-    margin: var(--app-gap-2) 0 0 0;
+    margin: 0;
     padding-left: var(--app-gap-4);
   }
 
@@ -43,36 +47,315 @@
     color: var(--app-text-soft);
   }
 
-  .export-list li:last-child {
-    margin-bottom: 0;
+  .restore-grid {
+    display: grid;
+    gap: var(--app-gap-4);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .restore-panel {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    padding: var(--app-gap-4);
+    display: grid;
+    gap: var(--app-gap-3);
+    background: var(--app-surface);
+  }
+
+  .restore-panel h4 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .restore-status {
+    display: grid;
+    gap: var(--app-gap-2);
+  }
+
+  .restore-status-meta {
+    color: var(--app-text-soft);
+    font-size: 0.82rem;
+  }
+
+  .restore-dropzone {
+    position: relative;
+    border: 1px dashed var(--app-border-strong);
+    border-radius: var(--app-radius-lg);
+    min-height: 160px;
+    padding: var(--app-gap-4);
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--app-surface) 96%, var(--app-accent) 4%), var(--app-surface));
+    transition: border-color 0.18s ease, background 0.18s ease;
+    cursor: pointer;
+  }
+
+  .restore-dropzone.dragover {
+    border-color: var(--app-accent);
+    background: color-mix(in srgb, var(--app-surface) 88%, var(--app-accent) 12%);
+  }
+
+  .restore-dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .restore-dropzone-text {
+    display: grid;
+    gap: var(--app-gap-2);
+    text-align: center;
+    color: var(--app-text-soft);
+  }
+
+  .restore-file-meta {
+    font-size: 0.82rem;
+    color: var(--app-text-soft);
+  }
+
+  .restore-inline-form {
+    display: grid;
+    gap: var(--app-gap-3);
+  }
+
+  .restore-select-hint {
+    color: var(--app-text-soft);
+    font-size: 0.82rem;
+  }
+
+  .restore-disabled {
+    opacity: 0.68;
   }
 </style>
 
 <div class="export-page">
-  <div class="card">
-    <h3 class="export-title">
-      数据库导出
-      <span class="ui-pill">SQLite</span>
-    </h3>
-    <p class="export-desc">
-      导出当前数据库为 SQLite 文件，可用于备份、迁移或离线归档。
-    </p>
+  {% if Notice %}
+    {{ sui.Alert(Notice, "success", "操作完成") }}
+  {% endif %}
+  {% if Error %}
+    {{ sui.Alert(Error, "danger", "操作失败") }}
+  {% endif %}
+
+  <div class="card export-card">
+    <div>
+      <h3 class="export-title">
+        数据库导出
+        <span class="ui-pill">SQLite</span>
+      </h3>
+      <p class="export-desc">导出当前数据库为 SQLite 文件，可用于备份、迁移或离线归档。</p>
+    </div>
     <div class="export-actions">
       {{ sui.LinkButton("导出数据库", "primary", href=UrlFor('dash.export.download')) }}
       <span class="export-tip">文件将保存到浏览器默认下载目录，文件名包含时间戳。</span>
     </div>
   </div>
 
-  <div role="alert" data-variant="warning">
+  <div class="card export-card">
     <div>
-      <strong>导出说明</strong>
-      <ul class="export-list">
-        <li>导出的文件包含文章、标签、分类、设置等全部数据。</li>
-        <li>文件格式为 SQLite 数据库文件（.sqlite）。</li>
-        <li>导出文件可用于在其他 Swaves 实例恢复数据。</li>
-        <li>导出过程可能持续数秒，请等待下载完成。</li>
-      </ul>
+      <h3 class="export-title">
+        数据库恢复
+        <span class="ui-pill">{{ RestoreStatusLabel }}</span>
+      </h3>
+      <p class="export-desc">恢复会替换当前 `data.sqlite`，并通过 daemon master 停旧 worker、替换数据库后再拉起新 worker。</p>
+    </div>
+
+    <div class="restore-status" data-restore-status-panel data-status-url="{{ RestoreStatusAPIURL }}" data-auto-refresh="{% if RestoreAutoRefresh %}1{% else %}0{% endif %}">
+      {% if RestoreMessage %}
+        {{ sui.Alert(RestoreMessage, "warning", "恢复限制") }}
+      {% endif %}
+      {% if RestoreStatusMessage %}
+        {{ sui.Alert(RestoreStatusMessage, RestoreStatusKind, "当前状态", inline=true, attrs='data-restore-status-message') }}
+      {% else %}
+        <div class="restore-status-meta" data-restore-status-message>当前没有恢复任务。</div>
+      {% endif %}
+      <div class="restore-status-meta">
+        状态：<strong data-restore-status-label>{{ RestoreStatusLabel }}</strong>
+        {% if RestoreStatusUpdated %}
+          <span data-restore-status-updated> · 最后更新 {{ RestoreStatusUpdated }}</span>
+        {% else %}
+          <span data-restore-status-updated></span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div role="alert" data-variant="warning">
+      <div>
+        <strong>恢复说明</strong>
+        <ul class="export-list">
+          <li>恢复前会先在本地备份目录生成一份兜底备份，便于回滚。</li>
+          <li>恢复期间会有短暂不可用窗口，不保证无缝切换。</li>
+          <li>恢复成功后，当前登录态可能失效，需要重新登录属于正常现象。</li>
+          <li>上传恢复仍受当前请求体大小限制，大文件请优先使用服务器本地备份恢复。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="restore-grid{% if not RestoreEnabled %} restore-disabled{% endif %}">
+      <div class="restore-panel">
+        <h4>从服务器本地备份恢复</h4>
+        <p class="export-desc">读取本地备份目录中的 SQLite 快照，适合自动备份后的快速回滚。</p>
+        {% if BackupListError %}
+          {{ sui.Alert(BackupListError, "danger", "读取备份失败", inline=true) }}
+        {% endif %}
+        <form class="restore-inline-form" method="post" action="{{ UrlFor('dash.export.restore.local') }}">
+          <div class="ui-field">
+            <div class="ui-field-head">
+              <div class="ui-field-label">本地备份文件</div>
+            </div>
+            <div class="ui-field-control">
+              <select class="ui-input" name="backup_file"{% if not RestoreEnabled %} disabled{% endif %}>
+                {% if LocalBackupFiles | length == 0 %}
+                  <option value="">暂无可用的本地备份</option>
+                {% else %}
+                  {% for file in LocalBackupFiles %}
+                    <option value="{{ file.Name }}">{{ file.Name }} · {{ file.ModifiedAt }} · {{ file.Size }} bytes</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+          </div>
+          <div class="restore-select-hint">目录：{{ LocalBackupDir }}</div>
+          <div class="ui-field">
+            <div class="ui-field-head">
+              <div class="ui-field-label">确认文本</div>
+            </div>
+            <div class="ui-field-control">
+              <input class="ui-input" type="text" name="confirm_text" placeholder="输入 RESTORE"{% if not RestoreEnabled %} disabled{% endif %}>
+            </div>
+            <div class="ui-field-help">输入 RESTORE 后才会执行恢复。</div>
+          </div>
+          <div class="export-actions">
+            <button class="ui-btn danger" type="submit"{% if LocalBackupFiles | length == 0 or not RestoreEnabled %} disabled{% endif %}>
+              <span class="ui-btn-label">从选中文件恢复</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="restore-panel">
+        <h4>上传本地 SQLite 文件恢复</h4>
+        <p class="export-desc">把本地备份文件上传到服务器后恢复，适合手工迁移或跨机器恢复。</p>
+        <form class="restore-inline-form" method="post" action="{{ UrlFor('dash.export.restore.upload') }}" enctype="multipart/form-data">
+          <label class="restore-dropzone" data-restore-dropzone>
+            <input type="file" name="file" accept=".sqlite,application/x-sqlite3,application/vnd.sqlite3"{% if not RestoreEnabled %} disabled{% endif %} data-restore-file-input>
+            <div class="restore-dropzone-text">
+              <strong data-restore-file-name>拖拽 SQLite 文件到这里，或点击选择</strong>
+              <span data-restore-file-size>仅支持 `.sqlite` 文件。</span>
+            </div>
+          </label>
+          <div class="ui-field">
+            <div class="ui-field-head">
+              <div class="ui-field-label">确认文本</div>
+            </div>
+            <div class="ui-field-control">
+              <input class="ui-input" type="text" name="confirm_text" placeholder="输入 RESTORE"{% if not RestoreEnabled %} disabled{% endif %}>
+            </div>
+            <div class="ui-field-help">输入 RESTORE 后才会执行恢复。</div>
+          </div>
+          <div class="export-actions">
+            <button class="ui-btn danger" type="submit"{% if not RestoreEnabled %} disabled{% endif %}>
+              <span class="ui-btn-label">上传并恢复</span>
+            </button>
+            <span class="restore-file-meta">建议优先使用本地备份目录恢复，上传更适合跨机器迁移。</span>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    var dropzones = document.querySelectorAll("[data-restore-dropzone]");
+    dropzones.forEach(function (dropzone) {
+      var input = dropzone.querySelector("[data-restore-file-input]");
+      var nameEl = dropzone.querySelector("[data-restore-file-name]");
+      var sizeEl = dropzone.querySelector("[data-restore-file-size]");
+      if (!input || !nameEl || !sizeEl) {
+        return;
+      }
+
+      function renderFile(file) {
+        if (!file) {
+          nameEl.textContent = "拖拽 SQLite 文件到这里，或点击选择";
+          sizeEl.textContent = "仅支持 `.sqlite` 文件。";
+          return;
+        }
+        nameEl.textContent = file.name;
+        sizeEl.textContent = "大小 " + file.size + " bytes";
+      }
+
+      input.addEventListener("change", function () {
+        renderFile(input.files && input.files[0] ? input.files[0] : null);
+      });
+
+      ["dragenter", "dragover"].forEach(function (eventName) {
+        dropzone.addEventListener(eventName, function (event) {
+          event.preventDefault();
+          dropzone.classList.add("dragover");
+        });
+      });
+
+      ["dragleave", "drop"].forEach(function (eventName) {
+        dropzone.addEventListener(eventName, function (event) {
+          event.preventDefault();
+          dropzone.classList.remove("dragover");
+        });
+      });
+
+      dropzone.addEventListener("drop", function (event) {
+        if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) {
+          return;
+        }
+        input.files = event.dataTransfer.files;
+        renderFile(event.dataTransfer.files[0]);
+      });
+    });
+
+    var panel = document.querySelector("[data-restore-status-panel]");
+    if (!panel || panel.getAttribute("data-auto-refresh") !== "1") {
+      return;
+    }
+
+    var statusURL = panel.getAttribute("data-status-url");
+    var labelEl = panel.querySelector("[data-restore-status-label]");
+    var messageEl = panel.querySelector("[data-restore-status-message]");
+    var updatedEl = panel.querySelector("[data-restore-status-updated]");
+
+    function pollStatus() {
+      fetch(statusURL, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (!result || !result.ok) {
+            return;
+          }
+          if (labelEl) {
+            labelEl.textContent = result.label || result.status || "";
+          }
+          if (messageEl) {
+            messageEl.textContent = result.message || "恢复任务正在执行。";
+          }
+          if (updatedEl) {
+            if (result.updated_at) {
+              var dt = new Date(result.updated_at * 1000);
+              updatedEl.textContent = " · 最后更新 " + dt.toLocaleString();
+            } else {
+              updatedEl.textContent = "";
+            }
+          }
+          if (!result.active) {
+            window.location.reload();
+            return;
+          }
+          window.setTimeout(pollStatus, 1500);
+        })
+        .catch(function () {
+          window.setTimeout(pollStatus, 1500);
+        });
+    }
+
+    window.setTimeout(pollStatus, 1500);
+  })();
+</script>
 {% endblock %}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -168,3 +169,70 @@ type fakeListener struct{}
 func (fakeListener) Accept() (net.Conn, error) { return nil, errors.New("not implemented") }
 func (fakeListener) Close() error              { return nil }
 func (fakeListener) Addr() net.Addr            { return &net.TCPAddr{} }
+
+func TestReplaceSQLiteDatabaseReplacesTargetAndCleansRuntimeFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	targetPath := filepath.Join(tmpDir, "data.sqlite")
+	sourcePath := filepath.Join(tmpDir, "restore.sqlite")
+	if err := os.WriteFile(targetPath, []byte("old"), 0o644); err != nil {
+		t.Fatalf("WriteFile target failed: %v", err)
+	}
+	if err := os.WriteFile(sourcePath, []byte("new"), 0o644); err != nil {
+		t.Fatalf("WriteFile source failed: %v", err)
+	}
+	if err := os.WriteFile(targetPath+"-wal", []byte("wal"), 0o644); err != nil {
+		t.Fatalf("WriteFile wal failed: %v", err)
+	}
+	if err := os.WriteFile(targetPath+"-shm", []byte("shm"), 0o644); err != nil {
+		t.Fatalf("WriteFile shm failed: %v", err)
+	}
+
+	rollbackPath, err := replaceSQLiteDatabase(targetPath, sourcePath)
+	if err != nil {
+		t.Fatalf("replaceSQLiteDatabase failed: %v", err)
+	}
+
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("ReadFile target failed: %v", err)
+	}
+	if string(data) != "new" {
+		t.Fatalf("unexpected target contents=%q", string(data))
+	}
+	if _, err := os.Stat(targetPath + "-wal"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected wal file removed, got err=%v", err)
+	}
+	if _, err := os.Stat(targetPath + "-shm"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected shm file removed, got err=%v", err)
+	}
+	if _, err := os.Stat(rollbackPath); err != nil {
+		t.Fatalf("expected rollback path to exist: %v", err)
+	}
+}
+
+func TestRollbackSQLiteDatabaseRestoresOriginalFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	targetPath := filepath.Join(tmpDir, "data.sqlite")
+	rollbackPath := filepath.Join(tmpDir, "backup.sqlite")
+	if err := os.WriteFile(targetPath, []byte("new"), 0o644); err != nil {
+		t.Fatalf("WriteFile target failed: %v", err)
+	}
+	if err := os.WriteFile(rollbackPath, []byte("old"), 0o644); err != nil {
+		t.Fatalf("WriteFile rollback failed: %v", err)
+	}
+
+	if err := rollbackSQLiteDatabase(targetPath, rollbackPath); err != nil {
+		t.Fatalf("rollbackSQLiteDatabase failed: %v", err)
+	}
+
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("ReadFile target failed: %v", err)
+	}
+	if string(data) != "old" {
+		t.Fatalf("unexpected target contents=%q", string(data))
+	}
+	if _, err := os.Stat(rollbackPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected rollback path removed, got err=%v", err)
+	}
+}
