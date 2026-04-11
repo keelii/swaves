@@ -118,6 +118,45 @@ func TestCreateRedirectServiceRejectsPostSlugAsSource(t *testing.T) {
 	}
 }
 
+func TestCreateRedirectServiceAllowsWildcardDateSlugPattern(t *testing.T) {
+	dbx := newRedirectValidationTestDB(t)
+
+	err := CreateRedirectService(dbx, CreateRedirectInput{
+		From:    "/*/*/*/{slug}",
+		To:      "/{slug}",
+		Status:  301,
+		Enabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("create wildcard redirect should succeed: %v", err)
+	}
+
+	redirect, err := db.GetRedirectByFrom(dbx, "/*/*/*/{slug}")
+	if err != nil {
+		t.Fatalf("expected wildcard redirect to be created: %v", err)
+	}
+	if redirect.To != "/{slug}" {
+		t.Fatalf("unexpected wildcard redirect target: got=%q", redirect.To)
+	}
+}
+
+func TestCreateRedirectServiceRejectsUndefinedTargetVariable(t *testing.T) {
+	dbx := newRedirectValidationTestDB(t)
+
+	err := CreateRedirectService(dbx, CreateRedirectInput{
+		From:    "/*/*/*/{slug}",
+		To:      "/{missing}",
+		Status:  301,
+		Enabled: 1,
+	})
+	if err == nil {
+		t.Fatal("expected undefined target variable error")
+	}
+	if !strings.Contains(err.Error(), "undefined") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestCreateRedirectServiceRejectsInvalidStatusAndEnabled(t *testing.T) {
 	dbx := newRedirectValidationTestDB(t)
 

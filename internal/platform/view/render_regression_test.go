@@ -606,6 +606,27 @@ func TestRenderDashRedirectsNewShowsTargetPicker(t *testing.T) {
 	if !strings.Contains(rendered, "redirect-target-picker-choose") {
 		t.Fatalf("expected target picker choose button in redirects_new")
 	}
+	if !strings.Contains(rendered, "redirect-target-picker-empty") {
+		t.Fatalf("expected target picker empty state in redirects_new")
+	}
+	if !strings.Contains(rendered, "redirect-target-input-group") {
+		t.Fatalf("expected target picker trigger layout classes in redirects_new")
+	}
+	dialogStart := strings.Index(rendered, `id="redirect-target-picker-dialog"`)
+	if dialogStart < 0 {
+		t.Fatalf("expected target picker dialog markup in redirects_new")
+	}
+	dialogEnd := dialogStart + 2000
+	if dialogEnd > len(rendered) {
+		dialogEnd = len(rendered)
+	}
+	dialogSnippet := rendered[dialogStart:dialogEnd]
+	if strings.Contains(dialogSnippet, `data-role="ui-dialog-cancel"`) {
+		t.Fatalf("expected target picker dialog without footer close button")
+	}
+	if !strings.Contains(dialogSnippet, `data-role="ui-dialog-close"`) {
+		t.Fatalf("expected target picker dialog with header close button")
+	}
 }
 
 func TestRenderDashRedirectsIndexShowsImportAction(t *testing.T) {

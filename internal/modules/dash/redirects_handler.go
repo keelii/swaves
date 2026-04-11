@@ -219,7 +219,17 @@ func (h *Handler) PostUpdateRedirectHandler(c fiber.Ctx) error {
 	}
 
 	if err := UpdateRedirectService(h.Model, id, in); err != nil {
-		return err
+		return RenderDashView(c, "dash/redirects_edit.html", fiber.Map{
+			"Title": "Edit Redirect",
+			"Error": err.Error(),
+			"Redirect": &db.Redirect{
+				ID:      id,
+				From:    in.From,
+				To:      in.To,
+				Status:  in.Status,
+				Enabled: in.Enabled,
+			},
+		}, "")
 	}
 
 	return h.redirectToDashRoute(c, "dash.redirects.list", nil, nil)

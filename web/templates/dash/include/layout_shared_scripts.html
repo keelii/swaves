@@ -1104,12 +1104,28 @@
       }
     }
 
+    function syncDialogOpenState() {
+      var hasOpenDialog = !!document.querySelector('.ui-dialog-backdrop:not([hidden])');
+      if (hasOpenDialog) {
+        appWindow.setAttribute('data-dialog-open', '1');
+        if (document.body) {
+          document.body.setAttribute('data-dialog-open', '1');
+        }
+        return;
+      }
+      appWindow.removeAttribute('data-dialog-open');
+      if (document.body) {
+        document.body.removeAttribute('data-dialog-open');
+      }
+    }
+
     function openDialog(id, opener) {
       var backdrop = findDialogBackdropById(id);
       if (!backdrop) {
         return false;
       }
       backdrop.removeAttribute('hidden');
+      syncDialogOpenState();
       try {
         dialogOpeners.set(backdrop, opener || document.activeElement);
       } catch (err) {
@@ -1150,6 +1166,7 @@
         return false;
       }
       backdrop.setAttribute('hidden', '');
+      syncDialogOpenState();
       restoreDialogOpenerFocus(backdrop);
       return true;
     }
@@ -1161,9 +1178,12 @@
       }
       var backdrop = dialogs[dialogs.length - 1];
       backdrop.setAttribute('hidden', '');
+      syncDialogOpenState();
       restoreDialogOpenerFocus(backdrop);
       return true;
     }
+
+    syncDialogOpenState();
 
     window.DashAppUI = window.DashAppUI || {};
     window.DashAppUI.dialog = {

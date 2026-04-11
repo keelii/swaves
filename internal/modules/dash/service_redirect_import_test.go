@@ -74,3 +74,28 @@ func TestImportRedirectCSVServiceRejectsInvalidFieldCount(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestImportRedirectCSVServiceImportsPatternRows(t *testing.T) {
+	dbx := newRedirectValidationTestDB(t)
+
+	csvData := strings.Join([]string{
+		"from,to,status,enabled",
+		"/*/*/*/{slug},/{slug},301,1",
+	}, "\n")
+
+	count, err := ImportRedirectCSVService(dbx, strings.NewReader(csvData))
+	if err != nil {
+		t.Fatalf("import pattern redirects failed: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("unexpected imported count: got %d want 1", count)
+	}
+
+	redirect, err := db.GetRedirectByFrom(dbx, "/*/*/*/{slug}")
+	if err != nil {
+		t.Fatalf("expected imported pattern redirect: %v", err)
+	}
+	if redirect.To != "/{slug}" {
+		t.Fatalf("unexpected imported pattern redirect target: %+v", redirect)
+	}
+}

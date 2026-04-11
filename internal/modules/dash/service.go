@@ -11,6 +11,7 @@ import (
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/md"
 	"swaves/internal/shared/pathutil"
+	"swaves/internal/shared/redirect_rule"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
 	"time"
@@ -113,6 +114,17 @@ func findRedirectConflictsForPostSlug(dbx *db.DB, slug string) (string, string, 
 		fromPath := normalizeRedirectPath(redirect.From)
 		if fromPath == slugPath {
 			return fromPath, "", nil
+		}
+		if redirect_rule.HasPattern(fromPath) {
+			rule, err := redirect_rule.Compile(fromPath, redirect.To)
+			if err == nil {
+				if _, matched := rule.Match(slugPath); matched {
+					return fromPath, "", nil
+				}
+				if _, matched := rule.Match(pathutil.JoinAbsolute(slugPath, "__swaves_conflict_probe__")); matched {
+					return "", fromPath, nil
+				}
+			}
 		}
 		if strings.HasPrefix(fromPath, slugDirPrefix) {
 			return "", fromPath, nil
@@ -521,6 +533,13 @@ func ListRedirects(dbx *db.DB, pager *types.Pagination) ([]db.Redirect, error) {
 
 // checkRedirectCycle 检查是否存在循环重定向
 func checkRedirectCycle(dbx *db.DB, fromPath, toPath string) error {
+	if redirect_rule.HasPattern(fromPath) || redirect_rule.HasPattern(toPath) {
+		if fromPath == toPath {
+			return errors.New("from 和 to 不能相同")
+		}
+		return nil
+	}
+
 	visited := make(map[string]bool)
 	current := toPath
 	maxDepth := 100 // 防止无限循环，设置最大深度
@@ -579,6 +598,16 @@ func findPostRedirectSourceConflicts(dbx *db.DB, fromPath string) (string, strin
 		return "", "", nil
 	}
 	slugCandidate := extractPathSingleSlug(fromPath)
+	var patternRule redirect_rule.Rule
+	var patternEnabled bool
+	if redirect_rule.HasPattern(fromPath) {
+		rule, err := redirect_rule.Compile(fromPath, "/")
+		if err != nil {
+			return "", "", err
+		}
+		patternRule = rule
+		patternEnabled = true
+	}
 
 	page := 1
 	for {
@@ -596,14 +625,25 @@ func findPostRedirectSourceConflicts(dbx *db.DB, fromPath string) (string, strin
 				continue
 			}
 
-			if slugCandidate != "" && strings.TrimSpace(item.Post.Slug) == slugCandidate {
+			postSlug := strings.TrimSpace(item.Post.Slug)
+			if slugCandidate != "" && postSlug == slugCandidate {
 				return "", slugCandidate, nil
+			}
+			if patternEnabled && postSlug != "" {
+				if _, matched := patternRule.Match(pathutil.JoinAbsolute(postSlug)); matched {
+					return "", postSlug, nil
+				}
 			}
 
 			if item.Post.Status == "published" {
 				postURL := normalizeRedirectPath(share.GetPostUrl(*item.Post))
 				if postURL == fromPath {
 					return postURL, "", nil
+				}
+				if patternEnabled {
+					if _, matched := patternRule.Match(postURL); matched {
+						return postURL, "", nil
+					}
 				}
 			}
 		}
@@ -643,14 +683,13 @@ func UpdateRedirectService(dbx *db.DB, id int64, in UpdateRedirectInput) error {
 		return err
 	}
 
+	in, err = validateRedirectUpdateInput(dbx, id, in)
+	if err != nil {
+		return err
+	}
+
 	r.From = in.From
 	r.To = in.To
-	if err := validateRedirectStatus(in.Status); err != nil {
-		return err
-	}
-	if err := validateRedirectEnabled(in.Enabled); err != nil {
-		return err
-	}
 	r.Status = in.Status
 	r.Enabled = in.Enabled
 

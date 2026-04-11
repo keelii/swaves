@@ -233,6 +233,30 @@ func TestSiteControllerP0_NotFoundUsesRedirectMapForSingleSlugPath(t *testing.T)
 	}
 }
 
+func TestSiteControllerP0_NotFoundUsesRedirectPatternMap(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	redirect := &db.Redirect{
+		From:    "/*/*/*/{slug}",
+		To:      "/{slug}",
+		Status:  301,
+		Enabled: 1,
+	}
+	if _, err := db.CreateRedirect(swv.Store.Model, redirect); err != nil {
+		t.Fatalf("create pattern redirect failed: %v", err)
+	}
+
+	resp := requestControllerP0(t, swv, fiber.MethodGet, "/2019/01/01/political-correctness", nil, "", nil)
+	if resp.StatusCode != fiber.StatusMovedPermanently {
+		t.Fatalf("unexpected redirect status: got=%d want=%d", resp.StatusCode, fiber.StatusMovedPermanently)
+	}
+	location := strings.TrimSpace(resp.Header.Get("Location"))
+	if location != "/political-correctness" {
+		t.Fatalf("unexpected redirect location: got=%q want=%q", location, "/political-correctness")
+	}
+}
+
 func TestSiteControllerP0_LikeActionJSONToggle(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"swaves/internal/platform/db"
+	"swaves/internal/shared/redirect_rule"
 )
 
 var redirectImportHeaders = []string{"from", "to", "status", "enabled"}
@@ -32,6 +33,9 @@ func validateRedirectCreateInput(dbx *db.DB, in CreateRedirectInput) (CreateRedi
 
 	if in.From == "" || in.To == "" {
 		return in, errors.New("from and to required")
+	}
+	if _, err := redirect_rule.Compile(in.From, in.To); err != nil {
+		return in, err
 	}
 
 	conflictPath, conflictSlug, err := findPostRedirectSourceConflicts(dbx, in.From)
@@ -66,6 +70,52 @@ func validateRedirectCreateInput(dbx *db.DB, in CreateRedirectInput) (CreateRedi
 		return in, err
 	}
 
+	return in, nil
+}
+
+func validateRedirectUpdateInput(dbx *db.DB, id int64, in UpdateRedirectInput) (UpdateRedirectInput, error) {
+	in.From = normalizeRedirectPath(in.From)
+	in.To = normalizeRedirectPath(in.To)
+
+	if in.From == "" || in.To == "" {
+		return in, errors.New("from and to required")
+	}
+	if _, err := redirect_rule.Compile(in.From, in.To); err != nil {
+		return in, err
+	}
+
+	conflictPath, conflictSlug, err := findPostRedirectSourceConflicts(dbx, in.From)
+	if err != nil {
+		return in, err
+	}
+	if conflictPath != "" {
+		return in, fmt.Errorf("来源路径与已发布内容地址冲突：%s", conflictPath)
+	}
+	if conflictSlug != "" {
+		return in, fmt.Errorf("来源路径与文章 slug 冲突：%s", conflictSlug)
+	}
+
+	if in.From == in.To {
+		return in, errors.New("from 和 to 不能相同")
+	}
+	if err := validateRedirectStatus(in.Status); err != nil {
+		return in, err
+	}
+	if err := validateRedirectEnabled(in.Enabled); err != nil {
+		return in, err
+	}
+
+	existing, err := db.GetRedirectByFrom(dbx, in.From)
+	if err == nil && existing.ID != id {
+		return in, fmt.Errorf("来源路径已存在重定向：%s", in.From)
+	}
+	if err != nil && !db.IsErrNotFound(err) {
+		return in, err
+	}
+
+	if err := checkRedirectCycle(dbx, in.From, in.To); err != nil {
+		return in, err
+	}
 	return in, nil
 }
 

@@ -26,10 +26,10 @@
     {{ sui.Field("来源路径", sui.Input(id="redirect-from", name="from", value=source_value, placeholder="/old-path", attrs="required"), id="redirect-from", required=true) }}
 
     {% set targetControl %}
-      <span style="display:flex;align-items:center;gap:8px;">
-        {{ sui.Input(id="redirect-to-path", name="to", value=target_value, placeholder="/new-path", attrs='required style="flex:1;"') }}
+      <span class="redirect-target-input-group">
+        {{ sui.Input(id="redirect-to-path", name="to", value=target_value, placeholder="/new-path", attrs='required') }}
         {% if show_target_picker %}
-          {{ sui.Button("选择 URL", "outline", attrs='type="button" id="redirect-target-picker-open"') }}
+          {{ sui.Button("选择 URL", "outline", attrs='type="button" id="redirect-target-picker-open" aria-haspopup="dialog"') }}
         {% endif %}
       </span>
     {% endset %}
@@ -51,64 +51,123 @@
   {% call sui.Dialog(
     "redirect-target-picker-dialog",
     "选择文章 URL",
-    actions=(sui.Button("关闭", "outline", attrs='type="button" data-role="ui-dialog-cancel"')),
     open=false
   ) %}
-    <div class="ui-form">
-      {{ sui.Input(id="redirect-target-picker-search", type="search", placeholder="按标题或 URL 过滤") }}
-      <div style="max-height: 40em; overflow-y: auto;">
-        <ul style="margin: 0; padding: 0; list-style: none;" id="redirect-target-picker-body">
+    <div class="redirect-target-picker">
+      <div class="redirect-target-picker-toolbar">
+        {{ sui.Input(id="redirect-target-picker-search", type="search", placeholder="按标题或 URL 过滤", attrs='autocomplete="off" spellcheck="false"') }}
+      </div>
+      <div class="redirect-target-picker-list-wrap">
+        <ul class="redirect-target-picker-list" id="redirect-target-picker-body">
           {% for option in target_options %}
-            <li style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--app-border);" data-target-row data-search-text="{{ option.KindLabel }} {{ option.Title }} {{ option.URL }}">
-              <div>
-                <div>{{ option.Title }}</div>
-                <div style="color: var(--app-text-soft);"><code>{{ option.URL }}</code></div>
+            <li class="redirect-target-picker-item" data-target-row data-search-text="{{ option.KindLabel }} {{ option.Title }} {{ option.URL }}">
+              <div class="redirect-target-picker-item-main">
+                <div class="redirect-target-picker-item-title">{{ option.Title }}</div>
+                <div class="redirect-target-picker-item-meta">
+                  <span class="redirect-target-picker-item-kind">{{ option.KindLabel }}</span>
+                  <code>{{ option.URL }}</code>
+                </div>
               </div>
-              {{ sui.Button("使用", "outline", attrs='type="button" class="redirect-target-picker-choose" data-target-url="' ~ option.URL ~ '"') }}
+              {{ sui.Button("使用", "outline", attrs='type="button" data-role="redirect-target-picker-choose" data-target-url="' ~ option.URL ~ '" aria-label="使用 ' ~ option.Title ~ '（' ~ option.URL ~ '）"') }}
             </li>
           {% endfor %}
         </ul>
+        <div class="redirect-target-picker-empty" id="redirect-target-picker-empty" hidden>没有匹配的文章 URL，试试别的关键词。</div>
       </div>
     </div>
   {% endcall %}
 
   <script>
-  document.addEventListener('DOMContentLoaded', function() {
+  (function() {
+    function initRedirectTargetPicker() {
     var dialog = document.getElementById('redirect-target-picker-dialog');
     var search = document.getElementById('redirect-target-picker-search');
     var toInput = document.getElementById('redirect-to-path');
     var body = document.getElementById('redirect-target-picker-body');
     var openButton = document.getElementById('redirect-target-picker-open');
-    var dialogAPI = window.DashAppUI.dialog;
+    var emptyState = document.getElementById('redirect-target-picker-empty');
+    var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
 
     if (!dialog || !search || !toInput || !body) {
       return;
     }
+    if (dialog.getAttribute('data-picker-bound') === '1') {
+      return;
+    }
+    dialog.setAttribute('data-picker-bound', '1');
 
     function getRows() {
       return body.querySelectorAll('[data-target-row]');
     }
 
     function openPickerDialog() {
-      return dialogAPI.open('redirect-target-picker-dialog');
+      if (dialogAPI && typeof dialogAPI.open === 'function') {
+        return dialogAPI.open('redirect-target-picker-dialog', openButton || null);
+      }
+      dialog.removeAttribute('hidden');
+      return true;
     }
 
     function closePickerDialog() {
-      dialogAPI.close('redirect-target-picker-dialog');
+      if (dialogAPI && typeof dialogAPI.close === 'function') {
+        return dialogAPI.close('redirect-target-picker-dialog');
+      }
+      dialog.setAttribute('hidden', '');
+      return true;
+    }
+
+    function updateEmptyState(visibleCount) {
+      if (!emptyState) {
+        return;
+      }
+      if (visibleCount > 0) {
+        emptyState.setAttribute('hidden', '');
+        return;
+      }
+      emptyState.removeAttribute('hidden');
+    }
+
+    function dispatchInputEvent(target, eventName) {
+      if (!target || typeof target.dispatchEvent !== 'function') {
+        return;
+      }
+      target.dispatchEvent(new Event(eventName, { bubbles: true }));
+    }
+
+    function applyTargetURL(targetURL) {
+      toInput.value = targetURL;
+      dispatchInputEvent(toInput, 'input');
+      dispatchInputEvent(toInput, 'change');
+      closePickerDialog();
+      if (typeof toInput.focus === 'function') {
+        toInput.focus();
+      }
+      if (typeof toInput.setSelectionRange === 'function') {
+        var end = toInput.value.length;
+        toInput.setSelectionRange(end, end);
+      }
     }
 
     function filterRows() {
       var keyword = (search.value || '').trim().toLowerCase();
+      var rows = getRows();
+      var visibleCount = 0;
 
-      getRows().forEach(function(row) {
+      for (var i = 0; i < rows.length; i += 1) {
+        var row = rows[i];
         if (!keyword) {
           row.hidden = false;
-          return;
+          visibleCount += 1;
+          continue;
         }
 
         var text = (row.getAttribute('data-search-text') || row.textContent || '').toLowerCase();
         row.hidden = text.indexOf(keyword) < 0;
-      });
+        if (!row.hidden) {
+          visibleCount += 1;
+        }
+      }
+      updateEmptyState(visibleCount);
     }
 
     if (openButton) {
@@ -124,23 +183,30 @@
       });
     }
 
-    document.addEventListener('click', function(event) {
-      var button = event.target.closest('.redirect-target-picker-choose');
-      if (!button) {
+    body.addEventListener('click', function(event) {
+      var button = event.target && event.target.closest ? event.target.closest('[data-role="redirect-target-picker-choose"]') : null;
+      if (!button || !body.contains(button)) {
         return;
       }
 
+      event.preventDefault();
       var targetURL = (button.getAttribute('data-target-url') || '').trim();
       if (!targetURL) {
         return;
       }
-      toInput.value = targetURL;
-      closePickerDialog();
+      applyTargetURL(targetURL);
     });
 
     search.addEventListener('input', filterRows);
     search.addEventListener('search', filterRows);
     filterRows();
-  });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initRedirectTargetPicker, { once: true });
+      return;
+    }
+    initRedirectTargetPicker();
+  })();
   </script>
 {% endif %}
