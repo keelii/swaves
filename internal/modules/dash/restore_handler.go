@@ -14,8 +14,10 @@ import (
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/middleware"
 	"swaves/internal/platform/store"
 	"swaves/internal/platform/updater"
+	"swaves/internal/shared/types"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -24,18 +26,16 @@ import (
 
 const (
 	defaultRestoreBackupDir   = "backups"
-	restoreConfirmationText   = "RESTORE"
 	restoreSignalDelay        = 200 * time.Millisecond
 	restoreUploadFormField    = "file"
 	restoreBackupFileFormKey  = "backup_file"
-	restoreConfirmFormKey     = "confirm_text"
 	restoreStatusRefreshQuery = "refresh"
 )
 
 type restoreBackupFile struct {
 	Name       string
 	Size       int64
-	ModifiedAt string
+	ModifiedAt int64
 	Path       string
 }
 
@@ -45,10 +45,16 @@ type restoreSupportState struct {
 }
 
 func (h *Handler) GetExportHandler(c fiber.Ctx) error {
-	return h.renderExportView(c, nil)
+	return h.redirectToDashRoute(c, "dash.import.show", nil, map[string]string{
+		"tab": importExportTabExport,
+	})
 }
 
-func (h *Handler) GetExportRestoreStatusHandler(c fiber.Ctx) error {
+func (h *Handler) GetBackupRestoreHandler(c fiber.Ctx) error {
+	return h.renderBackupRestoreView(c, nil)
+}
+
+func (h *Handler) GetBackupRestoreStatusHandler(c fiber.Ctx) error {
 	status, err := updater.ReadRestoreStatus()
 	if err != nil {
 		logger.Error("[restore] read status failed: %v", err)
@@ -68,45 +74,33 @@ func (h *Handler) GetExportRestoreStatusHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) PostExportRestoreLocalHandler(c fiber.Ctx) error {
-	if err := requireRestoreConfirmation(c); err != nil {
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	sourceName := filepath.Base(strings.TrimSpace(c.FormValue(restoreBackupFileFormKey)))
 	if sourceName == "" {
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 			"error": "请选择一个本地备份文件。",
 		})
 	}
 
 	sourcePath, err := findLocalRestoreSource(sourceName)
 	if err != nil {
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
 	if err := h.enqueueRestore(sourcePath); err != nil {
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
-	return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 		"notice":  "数据库恢复任务已提交，服务即将重启。",
 		"refresh": "1",
 	})
 }
 
 func (h *Handler) PostExportRestoreUploadHandler(c fiber.Ctx) error {
-	if err := requireRestoreConfirmation(c); err != nil {
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	fileHeader, err := c.FormFile(restoreUploadFormField)
 	if err != nil {
 		statusCode := fiber.StatusBadRequest
@@ -117,59 +111,91 @@ func (h *Handler) PostExportRestoreUploadHandler(c fiber.Ctx) error {
 		if statusCode == fiber.StatusRequestEntityTooLarge {
 			message = "上传文件过大，当前请求体大小限制为 10MB，请优先使用服务器本地备份恢复。"
 		}
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 			"error": message,
 		})
 	}
 
 	sourcePath, err := h.saveRestoreUpload(fileHeader)
 	if err != nil {
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
 	if err := h.enqueueRestore(sourcePath); err != nil {
 		_ = os.Remove(sourcePath)
-		return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
-	return h.redirectToDashRoute(c, "dash.export.show", nil, map[string]string{
+	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 		"notice":  "数据库恢复任务已提交，服务即将重启。",
 		"refresh": "1",
 	})
 }
 
-func (h *Handler) renderExportView(c fiber.Ctx, extra fiber.Map) error {
-	viewData, err := buildExportViewData(c)
+func (h *Handler) PostBackupRestoreDeleteHandler(c fiber.Ctx) error {
+	status, err := updater.ReadRestoreStatus()
+	if err != nil {
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
+			"error": "读取恢复状态失败：" + err.Error(),
+		})
+	}
+	if isRestoreStatusActive(status.State) {
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
+			"error": "恢复任务执行中，暂时不能删除本地备份文件。",
+		})
+	}
+
+	sourceName := filepath.Base(strings.TrimSpace(c.FormValue(restoreBackupFileFormKey)))
+	if sourceName == "" {
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
+			"error": "请选择要删除的本地备份文件。",
+		})
+	}
+	if err := deleteLocalRestoreBackup(sourceName); err != nil {
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
+		"notice": "本地备份文件已删除。",
+	})
+}
+
+func (h *Handler) renderBackupRestoreView(c fiber.Ctx, extra fiber.Map) error {
+	viewData, err := buildBackupRestoreViewData(c)
 	if err != nil {
 		return err
 	}
 	for key, value := range extra {
 		viewData[key] = value
 	}
-	return RenderDashView(c, "dash/export.html", viewData, "")
+	return RenderDashView(c, "dash/backup_restore.html", viewData, "")
 }
 
-func buildExportViewData(c fiber.Ctx) (fiber.Map, error) {
+func buildBackupRestoreViewData(c fiber.Ctx) (fiber.Map, error) {
 	restoreStatus, err := updater.ReadRestoreStatus()
 	if err != nil {
 		return nil, err
 	}
 
 	restoreSupport := getRestoreSupportState()
+	pager := middleware.GetPagination(c)
 	backupFiles, backupDir, backupErr := listLocalRestoreBackups()
+	backupFiles = paginateRestoreBackups(backupFiles, &pager)
 	updatedAt := ""
 	if restoreStatus.UpdatedAt > 0 {
 		updatedAt = time.Unix(restoreStatus.UpdatedAt, 0).Format("2006-01-02 15:04:05")
 	}
 
-	statusAPIURL, _ := c.GetRouteURL("dash.export.restore.status", fiber.Map{})
+	statusAPIURL, _ := c.GetRouteURL("dash.backup_restore.status", fiber.Map{})
 
 	viewData := fiber.Map{
-		"Title":                "数据库备份与恢复",
+		"Title":                "备份恢复",
 		"Notice":               strings.TrimSpace(c.Query("notice")),
 		"Error":                strings.TrimSpace(c.Query("error")),
 		"RestoreEnabled":       restoreSupport.Enabled,
@@ -184,6 +210,7 @@ func buildExportViewData(c fiber.Ctx) (fiber.Map, error) {
 		"RestoreStatusAPIURL": statusAPIURL,
 		"LocalBackupFiles":    backupFiles,
 		"LocalBackupDir":      backupDir,
+		"Pager":               pager,
 	}
 	if backupErr != nil {
 		viewData["BackupListError"] = backupErr.Error()
@@ -227,7 +254,7 @@ func listLocalRestoreBackups() ([]restoreBackupFile, string, error) {
 		backups = append(backups, restoreBackupFile{
 			Name:       entry.Name(),
 			Size:       info.Size(),
-			ModifiedAt: info.ModTime().Format("2006-01-02 15:04:05"),
+			ModifiedAt: info.ModTime().Unix(),
 			Path:       filepath.Join(backupDir, entry.Name()),
 		})
 	}
@@ -236,6 +263,40 @@ func listLocalRestoreBackups() ([]restoreBackupFile, string, error) {
 		return backups[i].ModifiedAt > backups[j].ModifiedAt
 	})
 	return backups, backupDir, nil
+}
+
+func paginateRestoreBackups(backups []restoreBackupFile, pager *types.Pagination) []restoreBackupFile {
+	if pager == nil {
+		return backups
+	}
+
+	pager.Total = len(backups)
+	if pager.PageSize <= 0 {
+		pager.PageSize = 10
+	}
+	if pager.Total == 0 {
+		pager.Page = 1
+		pager.Num = 0
+		return []restoreBackupFile{}
+	}
+
+	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	if pager.Page <= 0 {
+		pager.Page = 1
+	}
+	if pager.Page > pager.Num {
+		pager.Page = pager.Num
+	}
+
+	start := (pager.Page - 1) * pager.PageSize
+	if start >= len(backups) {
+		return []restoreBackupFile{}
+	}
+	end := start + pager.PageSize
+	if end > len(backups) {
+		end = len(backups)
+	}
+	return backups[start:end]
 }
 
 func resolveRestoreBackupDir(dir string) string {
@@ -266,9 +327,16 @@ func findLocalRestoreSource(name string) (string, error) {
 	return "", fmt.Errorf("未找到选中的本地备份文件：%s", name)
 }
 
-func requireRestoreConfirmation(c fiber.Ctx) error {
-	if strings.TrimSpace(c.FormValue(restoreConfirmFormKey)) != restoreConfirmationText {
-		return fmt.Errorf("请输入 %s 确认恢复数据库。", restoreConfirmationText)
+func deleteLocalRestoreBackup(name string) error {
+	sourcePath, err := findLocalRestoreSource(name)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(sourcePath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("未找到选中的本地备份文件：%s", name)
+		}
+		return fmt.Errorf("删除本地备份文件失败：%w", err)
 	}
 	return nil
 }
@@ -374,6 +442,16 @@ func validateRestoreSQLiteFile(path string) error {
 		"assets":     false,
 		"sessions":   false,
 	}
+	requiredTableNames := map[string]string{
+		string(db.TablePosts):      "posts",
+		string(db.TableSettings):   "settings",
+		string(db.TableCategories): "categories",
+		string(db.TableTags):       "tags",
+		string(db.TableComments):   "comments",
+		string(db.TableAssets):     "assets",
+		string(db.TableSessions):   "sessions",
+	}
+	foundRequiredTables := map[string]string{}
 
 	for rows.Next() {
 		var name string
@@ -382,6 +460,12 @@ func validateRestoreSQLiteFile(path string) error {
 		}
 		if _, ok := requiredTables[name]; ok {
 			requiredTables[name] = true
+			foundRequiredTables[name] = name
+			continue
+		}
+		if logicalName, ok := requiredTableNames[name]; ok {
+			requiredTables[logicalName] = true
+			foundRequiredTables[logicalName] = name
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -392,7 +476,43 @@ func validateRestoreSQLiteFile(path string) error {
 			return fmt.Errorf("恢复数据库缺少必要数据表：%s", table)
 		}
 	}
+	if err := validateRestoreSettingsData(database, foundRequiredTables["settings"]); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateRestoreSettingsData(database *sql.DB, tableName string) error {
+	if database == nil {
+		return fmt.Errorf("恢复数据库连接不能为空")
+	}
+	if tableName == "" {
+		return fmt.Errorf("恢复数据库缺少必要数据表：settings")
+	}
+
+	quotedTable := quoteSQLiteIdentifier(tableName)
+
+	var count int
+	if err := database.QueryRow("SELECT COUNT(1) FROM " + quotedTable).Scan(&count); err != nil {
+		return fmt.Errorf("读取恢复数据库配置失败：%w", err)
+	}
+	if count == 0 {
+		return fmt.Errorf("恢复数据库未完成初始化，缺少必要配置数据：settings")
+	}
+
+	var passwordCount int
+	if err := database.QueryRow("SELECT COUNT(1) FROM "+quotedTable+" WHERE code = ?", "dash_password").Scan(&passwordCount); err != nil {
+		return fmt.Errorf("读取恢复数据库配置项失败：%w", err)
+	}
+	if passwordCount == 0 {
+		return fmt.Errorf("恢复数据库缺少必要配置项：dash_password")
+	}
+
+	return nil
+}
+
+func quoteSQLiteIdentifier(name string) string {
+	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 }
 
 func openReadOnlySQLite(path string) (*sql.DB, error) {

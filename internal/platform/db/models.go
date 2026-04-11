@@ -925,11 +925,12 @@ type LikePostRank struct {
 }
 
 type LikeContentRank struct {
-	PostID int64
-	Title  string
-	Slug   string
-	Kind   PostKind
-	Likes  int
+	PostID      int64
+	Title       string
+	Slug        string
+	Kind        PostKind
+	PublishedAt int64
+	Likes       int
 }
 
 type LikeCategoryRank struct {
@@ -1335,7 +1336,7 @@ func ListTopLikedContents(db *DB, limit int) ([]LikeContentRank, error) {
 	}
 
 	rows, err := db.Query(
-		`SELECT p.id, p.title, p.slug, p.kind, COUNT(*) AS likes
+		`SELECT p.id, p.title, p.slug, p.kind, p.published_at, COUNT(*) AS likes
 		FROM `+string(TableLikes)+` AS l
 		INNER JOIN `+string(TablePosts)+` AS p
 			ON p.id = l.entity_id
@@ -1355,7 +1356,7 @@ func ListTopLikedContents(db *DB, limit int) ([]LikeContentRank, error) {
 	res := make([]LikeContentRank, 0, limit)
 	for rows.Next() {
 		var item LikeContentRank
-		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.Kind, &item.Likes); err != nil {
+		if err = rows.Scan(&item.PostID, &item.Title, &item.Slug, &item.Kind, &item.PublishedAt, &item.Likes); err != nil {
 			return nil, WrapInternalErr("ListTopLikedContents.Scan", err)
 		}
 		res = append(res, item)
@@ -2091,6 +2092,7 @@ type PostQueryOptions struct {
 	Kind        *PostKind // nil 表示不限类型
 	TagID       int64     // 0 表示不限标签
 	CategoryID  int64     // 0 表示不限分类
+	CategoryIDs []int64   // 优先于 CategoryID，用于按多个分类过滤
 	Pager       *types.Pagination
 	WithContent bool // 是否查询 content 字段
 }
@@ -2116,7 +2118,19 @@ func listPostsFilterClause(opts *PostQueryOptions) (clause string, args []interf
 		clause += ` AND id IN (SELECT post_id FROM ` + string(TablePostTags) + ` WHERE tag_id=? AND deleted_at IS NULL)`
 		args = append(args, opts.TagID)
 	}
-	if opts.CategoryID != 0 {
+	if len(opts.CategoryIDs) > 0 {
+		placeholders := make([]string, 0, len(opts.CategoryIDs))
+		for _, categoryID := range opts.CategoryIDs {
+			if categoryID <= 0 {
+				continue
+			}
+			placeholders = append(placeholders, "?")
+			args = append(args, categoryID)
+		}
+		if len(placeholders) > 0 {
+			clause += ` AND id IN (SELECT post_id FROM ` + string(TablePostCategories) + ` WHERE category_id IN (` + strings.Join(placeholders, ",") + `) AND deleted_at IS NULL)`
+		}
+	} else if opts.CategoryID != 0 {
 		clause += ` AND id IN (SELECT post_id FROM ` + string(TablePostCategories) + ` WHERE category_id=? AND deleted_at IS NULL)`
 		args = append(args, opts.CategoryID)
 	}

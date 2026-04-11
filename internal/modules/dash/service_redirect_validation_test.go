@@ -147,3 +147,57 @@ func TestCreateRedirectServiceRejectsInvalidStatusAndEnabled(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestCreatePostServiceRejectsRedirectSourceConflict(t *testing.T) {
+	dbx := newRedirectValidationTestDB(t)
+
+	if _, err := db.CreateRedirect(dbx, &db.Redirect{
+		From:    "/conflict-post",
+		To:      "/new-conflict-post",
+		Status:  301,
+		Enabled: 1,
+	}); err != nil {
+		t.Fatalf("create redirect failed: %v", err)
+	}
+
+	_, err := CreatePostService(dbx, CreatePostInput{
+		Title:   "Conflict Post",
+		Slug:    "conflict-post",
+		Content: "hello",
+		Status:  "draft",
+		Kind:    db.PostKindPost,
+	})
+	if err == nil {
+		t.Fatal("expected redirect source conflict error")
+	}
+	if !strings.Contains(err.Error(), "文章 slug 与重定向来源冲突") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCreatePostServiceRejectsRedirectDirectoryConflict(t *testing.T) {
+	dbx := newRedirectValidationTestDB(t)
+
+	if _, err := db.CreateRedirect(dbx, &db.Redirect{
+		From:    "/conflict-dir/history",
+		To:      "/archive/conflict-dir",
+		Status:  302,
+		Enabled: 1,
+	}); err != nil {
+		t.Fatalf("create redirect failed: %v", err)
+	}
+
+	_, err := CreatePostService(dbx, CreatePostInput{
+		Title:   "Directory Conflict Post",
+		Slug:    "conflict-dir",
+		Content: "hello",
+		Status:  "draft",
+		Kind:    db.PostKindPost,
+	})
+	if err == nil {
+		t.Fatal("expected redirect directory conflict error")
+	}
+	if !strings.Contains(err.Error(), "文章 slug 与重定向目录冲突") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

@@ -116,6 +116,10 @@
     width: 36px;
   }
 
+
+  .data-table .dashboard-value-col:last-child {
+    text-align: right;
+  }
   .dashboard-value-col {
     width: 64px;
     text-align: right;
@@ -248,7 +252,7 @@
             {% for likedContent in TopLikedContents %}{% set idx = loop.index0 %}{% set item = likedContent %}
               <tr>
                 <td>{{ idx + 1 }}</td>
-                <td>{{ item.Title }}</td>
+                <td><a href="{{ GetPostUrl(item) }}" target="_blank" rel="noopener">{{ item.Title }}</a></td>
                 <td class="dashboard-value-col">{{ item.Likes }}</td>
               </tr>
             {% endfor %}

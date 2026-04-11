@@ -6,6 +6,7 @@ import (
 
 	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/store"
 	"swaves/internal/platform/updater"
 )
 
@@ -46,6 +47,23 @@ func mustCreateTask(t *testing.T, dbx *db.DB, code string, kind db.TaskKind) db.
 		t.Fatalf("CreateTask failed: %v", err)
 	}
 	return task
+}
+
+func withTaskSettings(t *testing.T, settings map[string]string) {
+	t.Helper()
+	prev := store.GetSettingMap()
+	clonedPrev := make(map[string]string, len(prev))
+	for key, value := range prev {
+		clonedPrev[key] = value
+	}
+	next := make(map[string]string, len(settings))
+	for key, value := range settings {
+		next[key] = value
+	}
+	store.Settings.Store(next)
+	t.Cleanup(func() {
+		store.Settings.Store(clonedPrev)
+	})
 }
 
 func TestExecuteTaskNoOpDoesNotUpdateTaskStatus(t *testing.T) {
@@ -125,6 +143,54 @@ func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
 	}
 	if runs[0].Status != "success" {
 		t.Fatalf("task run status should be success, got %q", runs[0].Status)
+	}
+}
+
+func TestExecuteTaskSkipsDisabledRemoteBackup(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task, err := db.GetTaskByCode(dbx, "remote_backup_data")
+	if err != nil {
+		t.Fatalf("GetTaskByCode failed: %v", err)
+	}
+	withTaskSettings(t, map[string]string{"sync_push_enabled": "0"})
+
+	called := false
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: func(_ *Registry) (*string, error) {
+					called = true
+					msg := "should not run"
+					return &msg, nil
+				},
+			},
+		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, *task)
+
+	if called {
+		t.Fatal("remote backup task should not execute when sync_push_enabled is disabled")
+	}
+	gotTask, err := db.GetTaskByCode(dbx, task.Code)
+	if err != nil {
+		t.Fatalf("GetTaskByCode failed: %v", err)
+	}
+	if gotTask.LastRunAt != nil {
+		t.Fatalf("LastRunAt should stay nil for disabled remote backup, got %v", *gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "" {
+		t.Fatalf("LastStatus should stay empty for disabled remote backup, got %q", gotTask.LastStatus)
+	}
+
+	runs, err := db.ListTaskRuns(dbx, task.Code, "", 100)
+	if err != nil {
+		t.Fatalf("ListTaskRuns failed: %v", err)
+	}
+	if len(runs) != 0 {
+		t.Fatalf("expected no task runs for disabled remote backup, got %d", len(runs))
 	}
 }
 

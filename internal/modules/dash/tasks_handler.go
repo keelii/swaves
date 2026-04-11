@@ -18,15 +18,17 @@ func (h *Handler) GetTaskListHandler(c fiber.Ctx) error {
 	}
 
 	return RenderDashView(c, "dash/tasks_index.html", fiber.Map{
-		"Title": "Tasks",
-		"Tasks": tasks,
-		"Pager": pager,
+		"Title":              "Tasks",
+		"Tasks":              tasks,
+		"Pager":              pager,
+		"TaskScheduleLabels": buildTaskScheduleLabels(tasks),
 	}, "")
 }
 
 func (h *Handler) GetTaskNewHandler(c fiber.Ctx) error {
 	return RenderDashView(c, "dash/tasks_new.html", fiber.Map{
-		"Title": "New Task",
+		"Title":               "New Task",
+		"TaskScheduleOptions": taskScheduleOptions(),
 	}, "")
 }
 
@@ -66,8 +68,9 @@ func (h *Handler) GetTaskEditHandler(c fiber.Ctx) error {
 	}
 
 	return RenderDashView(c, "dash/tasks_edit.html", fiber.Map{
-		"Title": "Edit Task",
-		"Task":  task,
+		"Title":               "Edit Task",
+		"Task":                task,
+		"TaskScheduleOptions": taskScheduleOptions(),
 	}, "")
 }
 

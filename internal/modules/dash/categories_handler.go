@@ -10,6 +10,99 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+func sumCategoryPostCountsWithDescendants(allCategories []db.Category, directCounts map[int64]int, targetIDs []int64) map[int64]int {
+	result := make(map[int64]int, len(targetIDs))
+	if len(targetIDs) == 0 {
+		return result
+	}
+
+	childrenByParent := make(map[int64][]int64, len(allCategories))
+	for _, category := range allCategories {
+		childrenByParent[category.ParentID] = append(childrenByParent[category.ParentID], category.ID)
+	}
+
+	memo := make(map[int64]int, len(allCategories))
+	visiting := make(map[int64]bool, len(allCategories))
+	var countCategoryTree func(id int64) int
+	countCategoryTree = func(id int64) int {
+		if cached, ok := memo[id]; ok {
+			return cached
+		}
+		if visiting[id] {
+			return directCounts[id]
+		}
+
+		visiting[id] = true
+		total := directCounts[id]
+		for _, childID := range childrenByParent[id] {
+			total += countCategoryTree(childID)
+		}
+		visiting[id] = false
+		memo[id] = total
+		return total
+	}
+
+	for _, id := range targetIDs {
+		result[id] = countCategoryTree(id)
+	}
+	return result
+}
+
+func collectCategorySelfAndDescendantIDs(allCategories []db.Category, rootID int64) []int64 {
+	if rootID <= 0 {
+		return []int64{}
+	}
+
+	childrenByParent := make(map[int64][]int64, len(allCategories))
+	exists := false
+	for _, category := range allCategories {
+		childrenByParent[category.ParentID] = append(childrenByParent[category.ParentID], category.ID)
+		if category.ID == rootID {
+			exists = true
+		}
+	}
+	if !exists {
+		return []int64{}
+	}
+
+	result := make([]int64, 0, len(allCategories))
+	stack := []int64{rootID}
+	visited := make(map[int64]bool, len(allCategories))
+	for len(stack) > 0 {
+		last := len(stack) - 1
+		id := stack[last]
+		stack = stack[:last]
+		if visited[id] {
+			continue
+		}
+		visited[id] = true
+		result = append(result, id)
+		children := childrenByParent[id]
+		for i := len(children) - 1; i >= 0; i-- {
+			stack = append(stack, children[i])
+		}
+	}
+	return result
+}
+
+func countCategoryPostsWithDescendants(dbx *db.DB, allCategories []db.Category, targetIDs []int64) (map[int64]int, error) {
+	if len(targetIDs) == 0 {
+		return map[int64]int{}, nil
+	}
+
+	allCategoryIDs := make([]int64, 0, len(allCategories))
+	for _, category := range allCategories {
+		allCategoryIDs = append(allCategoryIDs, category.ID)
+	}
+
+	directCounts, err := db.CountPostsByCategories(dbx, allCategoryIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return sumCategoryPostCountsWithDescendants(allCategories, directCounts, targetIDs), nil
+}
+
 // Categories
 func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
@@ -44,7 +137,7 @@ func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
 	for i, cat := range categories {
 		categoryIDs[i] = cat.ID
 	}
-	postCounts, err := db.CountPostsByCategories(h.Model, categoryIDs)
+	postCounts, err := countCategoryPostsWithDescendants(h.Model, allCategories, categoryIDs)
 	if err != nil {
 		return err
 	}

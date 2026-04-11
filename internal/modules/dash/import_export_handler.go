@@ -45,16 +45,29 @@ func defaultImportPager() types.Pagination {
 
 func renderImportView(c fiber.Ctx, data fiber.Map) error {
 	viewData := fiber.Map{
-		"Title":          "Import Markdown",
-		"ImportingItems": []PreviewPostItem{},
-		"ImportingTotal": 0,
-		"Pager":          defaultImportPager(),
-		"AllCategories":  []db.Category{},
+		"Title":           "导入导出",
+		"ImportExportTab": importExportTabImport,
+		"ImportingItems":  []PreviewPostItem{},
+		"ImportingTotal":  0,
+		"Pager":           defaultImportPager(),
+		"AllCategories":   []db.Category{},
 	}
 	for k, v := range data {
 		viewData[k] = v
 	}
 	return RenderDashView(c, "dash/import.html", viewData, "")
+}
+
+const (
+	importExportTabImport = "import"
+	importExportTabExport = "export"
+)
+
+func resolveImportExportTab(raw string) string {
+	if strings.TrimSpace(raw) == importExportTabExport {
+		return importExportTabExport
+	}
+	return importExportTabImport
 }
 
 func readImportParseOptions(c fiber.Ctx) importParseOptions {
@@ -178,6 +191,13 @@ func readImportParseOptions(c fiber.Ctx) importParseOptions {
 }
 
 func (h *Handler) GetImportHandler(c fiber.Ctx) error {
+	if resolveImportExportTab(c.Query("tab")) == importExportTabExport {
+		return renderImportView(c, fiber.Map{
+			"Title":           "导入导出",
+			"ImportExportTab": importExportTabExport,
+		})
+	}
+
 	pager := middleware.GetPagination(c)
 	importingItems, err := ListImportingPreviewItemsService(h.Model, &pager)
 	if err != nil {
@@ -203,11 +223,12 @@ func (h *Handler) GetImportHandler(c fiber.Ctx) error {
 	}
 
 	return renderImportView(c, fiber.Map{
-		"Title":          "Import Markdown",
-		"ImportingItems": importingItems,
-		"ImportingTotal": pager.Total,
-		"Pager":          pager,
-		"AllCategories":  allCategories,
+		"Title":           "导入导出",
+		"ImportExportTab": importExportTabImport,
+		"ImportingItems":  importingItems,
+		"ImportingTotal":  pager.Total,
+		"Pager":           pager,
+		"AllCategories":   allCategories,
 	})
 }
 
@@ -462,8 +483,9 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 创建临时目录
 	tmpDir, err := os.MkdirTemp(os.TempDir(), name+"-")
 	if err != nil {
-		return h.renderExportView(c, fiber.Map{
-			"Error": "Failed to create export directory: " + err.Error(),
+		return renderImportView(c, fiber.Map{
+			"ImportExportTab": importExportTabExport,
+			"Error":           "Failed to create export directory: " + err.Error(),
 		})
 	}
 	cleanupTmpDir := func() {
@@ -476,8 +498,9 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	result, err := db.ExportSQLiteWithHash(h.Model, tmpDir)
 	if err != nil {
 		cleanupTmpDir()
-		return h.renderExportView(c, fiber.Map{
-			"Error": "Failed to export database: " + err.Error(),
+		return renderImportView(c, fiber.Map{
+			"ImportExportTab": importExportTabExport,
+			"Error":           "Failed to export database: " + err.Error(),
 		})
 	}
 
@@ -489,8 +512,9 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	stream, err := openCleanupFileStream(result.File, cleanupTmpDir)
 	if err != nil {
 		cleanupTmpDir()
-		return h.renderExportView(c, fiber.Map{
-			"Error": "Failed to open export file: " + err.Error(),
+		return renderImportView(c, fiber.Map{
+			"ImportExportTab": importExportTabExport,
+			"Error":           "Failed to open export file: " + err.Error(),
 		})
 	}
 	return c.SendStream(stream)

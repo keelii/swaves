@@ -3,21 +3,74 @@
 {% set importingItems = ImportingItems %}
 {% set importingTotal = ImportingTotal %}
 {% set pager = Pager %}
+{% set importExportTab = ImportExportTab %}
 {% block page_actions %}
-  {{ sui.Button("导入", "primary", attrs='type="submit" form="form"') }}
+  {% if importExportTab == "import" %}
+    {{ sui.Button("导入", "primary", attrs='type="submit" form="form"') }}
+  {% elif importExportTab == "export" %}
+    {{ sui.LinkButton("导出数据库", "primary", href=UrlFor('dash.export.download')) }}
+  {% endif %}
 {% endblock %}
 {% block status_main_center %}
-  {% if importingTotal > 0 %}
+  {% if importExportTab == "import" and importingTotal > 0 %}
     <span>待确认 {{ importingTotal }} 条</span>
   {% endif %}
 {% endblock %}
 {% block status_main_right %}
-  {% if pager.Num > 1 %}
+  {% if importExportTab == "import" and pager.Num > 1 %}
     {{ sui.Pager(current=pager.Page, total=pager.Num, href_prefix=UrlFor('dash.import.show', {"pageSize":pager.PageSize})) }}
   {% endif %}
 {% endblock %}
 {% block content %}
 <style>
+  .import-export-tabs {
+    margin-bottom: var(--app-gap-4);
+  }
+
+  .export-page {
+    display: grid;
+    gap: var(--app-gap-4);
+  }
+
+  .export-card {
+    display: grid;
+    gap: var(--app-gap-4);
+  }
+
+  .export-title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-gap-2);
+  }
+
+  .export-desc {
+    margin: 0;
+    color: var(--app-text-soft);
+  }
+
+  .export-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--app-gap-3);
+    flex-wrap: wrap;
+  }
+
+  .export-tip {
+    font-size: 0.82rem;
+    color: var(--app-text-soft);
+  }
+
+  .export-list {
+    margin: 0;
+    padding-left: var(--app-gap-4);
+  }
+
+  .export-list li {
+    margin-bottom: var(--app-gap-2);
+    color: var(--app-text-soft);
+  }
+
   .import-config-card {
     display: grid;
     gap: var(--app-gap-3);
@@ -221,6 +274,21 @@
   }
 </style>
 
+<div class="import-export-tabs">
+  {{ sui.TabsStart("导入导出") }}
+    {{ sui.Tab("导入", UrlFor('dash.import.show'), active=importExportTab == "import") }}
+    {{ sui.Tab("导出", UrlFor('dash.import.show', {"tab":"export"}), active=importExportTab == "export") }}
+  {{ sui.TabsEnd() }}
+</div>
+
+{% if importExportTab == "export" %}
+<div class="export-page">
+  {% if Error %}
+    {{ sui.Alert(Error, "danger", "操作失败") }}
+  {% endif %}
+  {% include "dash/include/database_export_panel.html" %}
+</div>
+{% else %}
 {% set errorMessage = Error %}
 {% set successMessage = Success %}
 {% set allCategories = AllCategories %}
@@ -1697,4 +1765,5 @@ document.addEventListener('DOMContentLoaded', function() {
   syncEditSummaryByRows('warning');
 });
 </script>
+{% endif %}
 {% endblock %}

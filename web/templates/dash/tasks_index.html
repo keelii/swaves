@@ -41,7 +41,7 @@
             <td>{{ task.Code }}</td>
             <td>{{ task.Name }}</td>
             <td>{% if task.Description %}{{ task.Description }}{% else %}-{% endif %}</td>
-            <td>{{ task.Schedule }}</td>
+            <td>{{ TaskScheduleLabels[task.ID] }}</td>
             <td>
               {% if task.Enabled == 1 %}
                 <span class="ui-badge success">启用</span>

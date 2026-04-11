@@ -68,7 +68,16 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 		opts.TagID = *tagID
 	}
 	if categoryID != nil {
-		opts.CategoryID = *categoryID
+		allCategories, err := GetAllCategoriesFlat(h.Model)
+		if err != nil {
+			return err
+		}
+		categoryIDs := collectCategorySelfAndDescendantIDs(allCategories, *categoryID)
+		if len(categoryIDs) > 0 {
+			opts.CategoryIDs = categoryIDs
+		} else {
+			opts.CategoryID = *categoryID
+		}
 	}
 	var posts []db.PostWithRelation
 	var err error

@@ -95,12 +95,49 @@ func GetAllTags(dbx *db.DB) ([]db.Tag, error) {
 	return res, nil
 }
 
+func findRedirectConflictsForPostSlug(dbx *db.DB, slug string) (string, string, error) {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return "", "", nil
+	}
+
+	slugPath := pathutil.JoinAbsolute(share.GetBasePath(), slug)
+	slugDirPrefix := slugPath + "/"
+
+	redirects, _, err := db.ListRedirects(dbx, 0, 0)
+	if err != nil {
+		return "", "", err
+	}
+
+	for _, redirect := range redirects {
+		fromPath := normalizeRedirectPath(redirect.From)
+		if fromPath == slugPath {
+			return fromPath, "", nil
+		}
+		if strings.HasPrefix(fromPath, slugDirPrefix) {
+			return "", fromPath, nil
+		}
+	}
+
+	return "", "", nil
+}
+
 func CreatePostService(dbx *db.DB, in CreatePostInput) (int64, error) {
 	if in.Title == "" || in.Slug == "" {
 		return 0, errors.New("title and slug required")
 	}
 	if !helper.IsSlug(in.Slug) {
 		return 0, errSlugInvalid("001", in.Slug)
+	}
+	conflictSource, conflictDirectory, err := findRedirectConflictsForPostSlug(dbx, in.Slug)
+	if err != nil {
+		return 0, err
+	}
+	if conflictSource != "" {
+		return 0, fmt.Errorf("文章 slug 与重定向来源冲突：%s", conflictSource)
+	}
+	if conflictDirectory != "" {
+		return 0, fmt.Errorf("文章 slug 与重定向目录冲突：%s", conflictDirectory)
 	}
 
 	if strings.TrimSpace(in.Content) == "" {

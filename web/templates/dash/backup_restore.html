@@ -1,0 +1,208 @@
+{% extends "dash/layout/layout_list.html" %}
+{% import "dash/include/ui.html" as sui %}
+{% set OperationTableID = "backup-restore-table" %}
+{% block page_actions %}{% endblock %}
+{% block operation_multiselect %}{% endblock %}
+{% block status_main_left %}
+  {% if RouteName %}
+    <span>{{ RouteName }}</span>
+  {% endif %}
+{% endblock %}
+{% block status_main_right %}
+  {% if Pager.Num > 1 %}
+    {% set PagerRouteName = "dash.backup_restore.show" %}
+    {% include "dash/include/status_main_pagination.html" %}
+  {% endif %}
+{% endblock %}
+{% block app_header %}
+  <div class="app-px app-pt">
+    {% if Notice %}
+      {{ sui.Alert(Notice, "success", "操作完成") }}
+    {% endif %}
+    {% if Error %}
+      {{ sui.Alert(Error, "danger", "操作失败") }}
+    {% endif %}
+    <div data-restore-status-panel data-status-url="{{ RestoreStatusAPIURL }}" data-auto-refresh="{% if RestoreAutoRefresh %}1{% else %}0{% endif %}" hidden>
+      <span data-restore-status-message>{{ RestoreStatusMessage }}</span>
+      <span data-restore-status-label>{{ RestoreStatusLabel }}</span>
+      <span data-restore-status-updated>{{ RestoreStatusUpdated }}</span>
+    </div>
+    <form method="post" action="{{ UrlFor('dash.backup_restore.upload') }}" enctype="multipart/form-data" data-restore-upload-form>
+      {{ _csrf_token() }}
+      {{ sui.FileUpload(
+        id="backup-restore-file",
+        name="file",
+        label="上传本地 SQLite 文件恢复",
+        accept=".sqlite",
+        attrs=(not RestoreEnabled and 'disabled' or '')
+      ) }}
+    </form>
+  </div>
+{% endblock %}
+{% block content %}
+
+<style>
+  .app-operation {display:none;}
+</style>
+
+{% if BackupListError %}
+  <div class="app-px app-pb">
+    {{ sui.Alert(BackupListError, "danger", "读取备份失败", inline=true) }}
+  </div>
+{% endif %}
+
+<div class="app-px app-px">
+  <h3>从本地备份中选取文件恢复</h3>
+</div>
+
+<div class="data-table-wrap">
+  {% if LocalBackupFiles | length > 0 %}
+    <table id="backup-restore-table" class="data-table" data-role="data-table" aria-label="本地备份文件列表">
+      <thead>
+        <tr>
+          <th>文件名</th>
+          <th>更新时间</th>
+          <th>大小</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for file in LocalBackupFiles %}
+          <tr>
+            <td>{{ file.Name }}</td>
+            <td>{{ file.ModifiedAt | relativeTime }}</td>
+            <td>{{ file.Size | humanSize }}</td>
+            <td>
+              <div class="cell-actions">
+                <form method="post" action="{{ UrlFor('dash.backup_restore.local') }}" data-confirm-title="确认恢复" data-confirm-message="确定使用这个本地备份恢复数据库吗？当前数据库会被替换。">
+                  {{ _csrf_token() }}
+                  <input type="hidden" name="backup_file" value="{{ file.Name }}">
+                  {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复"', button_type="submit", disabled=not RestoreEnabled) }}
+                </form>
+                <form method="post" action="{{ UrlFor('dash.backup_restore.delete') }}" data-confirm-title="确认删除" data-confirm-message="确定删除这个本地备份文件吗？此操作不可恢复。">
+                  {{ _csrf_token() }}
+                  <input type="hidden" name="backup_file" value="{{ file.Name }}">
+                  {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-title="删除"', button_type="submit", disabled=not RestoreEnabled) }}
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="app-px">
+      {{ sui.EmptyState("暂无可用的本地备份") }}
+    </div>
+  {% endif %}
+</div>
+
+{% call sui.Dialog(
+  "backup-restore-confirm-dialog",
+  "确认操作",
+  actions=(
+    sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("确认", "primary", attrs='type="button" id="backup-restore-confirm-ok"')
+  ),
+  open=false
+) %}
+  <p id="backup-restore-confirm-message"></p>
+{% endcall %}
+
+<script>
+  (function () {
+    function askRestoreConfirm(message, title, opener) {
+      var confirmAPI = window.DashAppUI && window.DashAppUI.confirm;
+      if (confirmAPI && typeof confirmAPI.ask === "function") {
+        return confirmAPI.ask({
+          dialogId: "backup-restore-confirm-dialog",
+          title: title || "确认操作",
+          message: message || "",
+          messageSelector: "#backup-restore-confirm-message",
+          okSelector: "#backup-restore-confirm-ok",
+          opener: opener || null
+        });
+      }
+      return Promise.resolve(window.confirm(message || ""));
+    }
+
+    var uploadForm = document.querySelector("[data-restore-upload-form]");
+    if (uploadForm) {
+      var fileInput = uploadForm.querySelector('input[type="file"][name="file"]');
+      if (fileInput && !fileInput.disabled) {
+        fileInput.addEventListener("change", function () {
+          if (!fileInput.files || fileInput.files.length === 0) {
+            return;
+          }
+          askRestoreConfirm("确定使用这个 SQLite 文件恢复数据库吗？当前数据库会被替换。", "确认恢复", fileInput).then(function (confirmed) {
+            if (!confirmed) {
+              fileInput.value = "";
+              return;
+            }
+            uploadForm.submit();
+          });
+        });
+      }
+    }
+
+    document.addEventListener("submit", function (event) {
+      var form = event.target && event.target.closest ? event.target.closest("form[data-confirm-message]") : null;
+      if (!form || form.dataset.confirmed === "1") {
+        return;
+      }
+      event.preventDefault();
+      askRestoreConfirm(form.getAttribute("data-confirm-message"), form.getAttribute("data-confirm-title"), event.submitter || null).then(function (confirmed) {
+        if (!confirmed) {
+          return;
+        }
+        form.dataset.confirmed = "1";
+        form.submit();
+      });
+    });
+
+    var panel = document.querySelector("[data-restore-status-panel]");
+    if (!panel || panel.getAttribute("data-auto-refresh") !== "1") {
+      return;
+    }
+
+    var statusURL = panel.getAttribute("data-status-url");
+    var labelEl = panel.querySelector("[data-restore-status-label]");
+    var messageEl = panel.querySelector("[data-restore-status-message]");
+    var updatedEl = panel.querySelector("[data-restore-status-updated]");
+
+    function pollStatus() {
+      fetch(statusURL, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (!result || !result.ok) {
+            return;
+          }
+          if (labelEl) {
+            labelEl.textContent = result.label || result.status || "";
+          }
+          if (messageEl) {
+            messageEl.textContent = result.message || "恢复任务正在执行。";
+          }
+          if (updatedEl) {
+            if (result.updated_at) {
+              var dt = new Date(result.updated_at * 1000);
+              updatedEl.textContent = " · 最后更新 " + dt.toLocaleString();
+            } else {
+              updatedEl.textContent = "";
+            }
+          }
+          if (!result.active) {
+            window.location.reload();
+            return;
+          }
+          window.setTimeout(pollStatus, 1500);
+        })
+        .catch(function () {
+          window.setTimeout(pollStatus, 1500);
+        });
+    }
+
+    window.setTimeout(pollStatus, 1500);
+  })();
+</script>
+{% endblock %}

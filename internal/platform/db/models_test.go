@@ -363,6 +363,17 @@ func TestListPostsFiltersAndRelations(t *testing.T) {
 	if byCategory[0].Category == nil || byCategory[0].Category.ID != cat2.ID {
 		t.Fatalf("expected category %d", cat2.ID)
 	}
+
+	byCategoryIDs, err := ListPosts(db, &PostQueryOptions{
+		CategoryIDs: []int64{cat1.ID, cat2.ID},
+		Pager:       &types.Pagination{Page: 1, PageSize: 20},
+	})
+	if err != nil {
+		t.Fatalf("ListPosts by category ids failed: %v", err)
+	}
+	if len(byCategoryIDs) != 2 {
+		t.Fatalf("expected 2 posts by category ids, got %d", len(byCategoryIDs))
+	}
 }
 
 func TestListPostsBySearch(t *testing.T) {
@@ -2485,6 +2496,9 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 
 	if topLiked[0].PostID != post.ID || topLiked[0].Likes != 2 || topLiked[0].Kind != PostKindPost {
 		t.Fatalf("unexpected top liked row 0: %+v", topLiked[0])
+	}
+	if topLiked[0].PublishedAt != post.PublishedAt {
+		t.Fatalf("unexpected top liked row 0 published_at: got %d want %d", topLiked[0].PublishedAt, post.PublishedAt)
 	}
 	if topLiked[1].PostID != page.ID || topLiked[1].Likes != 1 || topLiked[1].Kind != PostKindPage {
 		t.Fatalf("unexpected top liked row 1: %+v", topLiked[1])

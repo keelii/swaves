@@ -7,6 +7,7 @@
 {% set task_code = "" %}
 {% set schedule_value = "@daily" %}
 {% set description_value = "" %}
+{% set task_schedule_options = TaskScheduleOptions %}
 
 {% if task %}
   {% set enabled_checked = task.Enabled == 1 %}
@@ -53,11 +54,9 @@
 
     {% set schedulePresetControl %}
       <select class="ui-select" id="schedule-preset">
-        <option value="@hourly"{% if selected_preset == "@hourly" %} selected{% endif %}>每小时</option>
-        <option value="@daily"{% if selected_preset == "@daily" %} selected{% endif %}>每天</option>
-        <option value="@weekly"{% if selected_preset == "@weekly" %} selected{% endif %}>每周</option>
-        <option value="@monthly"{% if selected_preset == "@monthly" %} selected{% endif %}>每月</option>
-        <option value="@yearly"{% if selected_preset == "@yearly" %} selected{% endif %}>每年</option>
+        {% for option in task_schedule_options %}
+          <option value="{{ option.Value }}"{% if selected_preset == option.Value %} selected{% endif %}>{{ option.Label }}</option>
+        {% endfor %}
         <option value="__custom__"{% if selected_preset == "__custom__" %} selected{% endif %}>自定义</option>
       </select>
     {% endset %}

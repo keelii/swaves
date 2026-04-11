@@ -395,7 +395,7 @@ svg rect:focus {
 .ui-file-upload {
   display: flex;
   flex-direction: column;
-  gap: var(--app-gap-3);
+  /*gap: var(--app-gap-3);*/
 }
 
 .ui-file-dropzone {

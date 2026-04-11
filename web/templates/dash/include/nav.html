@@ -40,6 +40,11 @@
       <span class="nav-item-icon">{{ LucideIcon("import", 16) }}</span>
       <span class="nav-item-text">导入导出</span>
     </a>
+    {% set backupRestoreActive = UrlIs('dash.backup_restore.show') or UrlIs('dash.backup_restore.status') or UrlIs('dash.backup_restore.local') or UrlIs('dash.backup_restore.upload') %}
+    <a class="nav-item{% if backupRestoreActive %} active{% endif %}" href="{{ UrlFor('dash.backup_restore.show') }}"{% if backupRestoreActive %} aria-current="page"{% endif %}>
+      <span class="nav-item-icon">{{ LucideIcon("database", 16) }}</span>
+      <span class="nav-item-text">备份恢复</span>
+    </a>
     <a class="nav-item{% if UrlIs('dash.trash.list') %} active{% endif %}" href="{{ UrlFor('dash.trash.list') }}"{% if UrlIs('dash.trash.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("trash", 16) }}</span>
       <span class="nav-item-text">回收站</span>

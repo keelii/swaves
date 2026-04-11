@@ -1253,6 +1253,10 @@
 
       var dropzone = event.target.closest('[data-role="ui-file-dropzone"]');
       if (dropzone) {
+        var directInput = event.target.closest('[data-role="ui-file-input"]');
+        if (directInput) {
+          return;
+        }
         var root = closestUploadRoot(dropzone);
         if (root) {
           var input = root.querySelector('[data-role="ui-file-input"]');

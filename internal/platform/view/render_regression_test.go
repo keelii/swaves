@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	dash "swaves/internal/modules/dash"
 	"swaves/internal/modules/site"
@@ -377,44 +378,102 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 	}
 }
 
-func TestRenderDashExportShowsRestoreControls(t *testing.T) {
+func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
 
 	app := fiber.New()
-	app.Get("/dash/export/download", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.download")
-	app.Get("/dash/export/restore/status", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.restore.status")
-	app.Post("/dash/export/restore/local", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.restore.local")
-	app.Post("/dash/export/restore/upload", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.restore.upload")
+	app.Get("/dash/backup-restore", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.show")
+	app.Get("/dash/backup-restore/status", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.status")
+	app.Post("/dash/backup-restore/local", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.local")
+	app.Post("/dash/backup-restore/upload", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.upload")
+	app.Post("/dash/backup-restore/delete", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.delete")
 	initURLResolver(app)
 
 	var out bytes.Buffer
-	err := view.Render(&out, "dash/export.html", map[string]any{
+	err := view.Render(&out, "dash/backup_restore.html", map[string]any{
 		"RestoreStatusLabel":  "空闲",
 		"RestoreStatusKind":   "info",
 		"RestoreStatus":       "idle",
 		"RestoreEnabled":      true,
-		"RestoreStatusAPIURL": "/dash/export/restore/status",
+		"RestoreStatusAPIURL": "/dash/backup-restore/status",
 		"LocalBackupDir":      "backups",
+		"Pager":               types.Pagination{Page: 1, PageSize: 10, Num: 2, Total: 11},
 		"LocalBackupFiles": []map[string]any{
-			{"Name": "2026-04-08.sqlite", "ModifiedAt": "2026-04-08 10:00:00", "Size": 1024},
+			{"Name": "2026-04-08.sqlite", "ModifiedAt": time.Now().Add(-2 * time.Hour).Unix(), "Size": 1024},
 		},
 	})
 	if err != nil {
-		t.Fatalf("render export failed: %v", err)
+		t.Fatalf("render backup_restore failed: %v", err)
 	}
 
 	rendered := out.String()
-	if !strings.Contains(rendered, "数据库恢复") {
-		t.Fatalf("expected restore section in export view")
+	if !strings.Contains(rendered, "本地备份文件列表") {
+		t.Fatalf("expected local restore section in backup restore view")
 	}
-	if !strings.Contains(rendered, `name="backup_file"`) {
-		t.Fatalf("expected local restore select in export view")
+	if !strings.Contains(rendered, `data-title="恢复"`) {
+		t.Fatalf("expected backup restore action in backup restore view")
 	}
-	if !strings.Contains(rendered, `data-restore-dropzone`) {
-		t.Fatalf("expected upload restore dropzone in export view")
+	if !strings.Contains(rendered, `确定删除这个本地备份文件吗`) {
+		t.Fatalf("expected backup delete action in backup restore view")
+	}
+	if strings.Contains(rendered, "从选中文件恢复") {
+		t.Fatalf("expected selected backup restore button removed from backup restore view")
+	}
+	if !strings.Contains(rendered, `data-role="ui-file-upload"`) {
+		t.Fatalf("expected standard file upload component in backup restore view")
+	}
+	if !strings.Contains(rendered, `backup-restore-confirm-dialog`) {
+		t.Fatalf("expected sui confirm dialog in backup restore view")
+	}
+	if !strings.Contains(rendered, `aria-label="分页"`) {
+		t.Fatalf("expected backup restore pagination link in backup restore view")
+	}
+	if strings.Contains(rendered, "上传并恢复") {
+		t.Fatalf("expected upload restore button removed from backup restore view")
+	}
+	if !strings.Contains(rendered, "1 KB") {
+		t.Fatalf("expected human readable backup size in backup restore view")
+	}
+	if !strings.Contains(rendered, "小时前") {
+		t.Fatalf("expected relative backup modified time in backup restore view")
+	}
+	if strings.Contains(rendered, `name="confirm_text"`) {
+		t.Fatalf("expected backup restore view to remove confirm text input")
+	}
+}
+
+func TestRenderDashImportShowsExportTab(t *testing.T) {
+	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	app := fiber.New()
+	app.Get("/dash/import", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.import.show")
+	app.Get("/dash/export/download", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.download")
+	initURLResolver(app)
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/import.html", map[string]any{
+		"ImportExportTab": "export",
+		"ImportingItems":  []dash.PreviewPostItem{},
+		"ImportingTotal":  0,
+		"Pager":           types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 20},
+		"AllCategories":   []db.Category{},
+	})
+	if err != nil {
+		t.Fatalf("render import export tab failed: %v", err)
+	}
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "导入导出") {
+		t.Fatalf("expected import/export tabs heading")
+	}
+	if !strings.Contains(rendered, "数据库导出") {
+		t.Fatalf("expected export panel in import export tab")
 	}
 }
 

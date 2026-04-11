@@ -1,9 +1,13 @@
 package dash
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
+	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
+	"swaves/internal/shared/types"
 	"testing"
 	"time"
 )
@@ -73,5 +77,114 @@ func TestListLocalRestoreBackups(t *testing.T) {
 	}
 	if backups[0].Name != "2026-04-02_new.sqlite" {
 		t.Fatalf("expected newest backup first, got %q", backups[0].Name)
+	}
+}
+
+func TestDeleteLocalRestoreBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	restore := map[string]string{}
+	if current, ok := store.Settings.Load().(map[string]string); ok {
+		for key, value := range current {
+			restore[key] = value
+		}
+	}
+	t.Cleanup(func() {
+		store.Settings.Store(restore)
+	})
+	store.Settings.Store(map[string]string{"backup_local_dir": tmpDir})
+
+	targetPath := filepath.Join(tmpDir, "2026-04-10.sqlite")
+	if err := os.WriteFile(targetPath, []byte("backup"), 0o644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	if err := deleteLocalRestoreBackup("2026-04-10.sqlite"); err != nil {
+		t.Fatalf("deleteLocalRestoreBackup failed: %v", err)
+	}
+	if _, err := os.Stat(targetPath); !os.IsNotExist(err) {
+		t.Fatalf("expected backup file removed, stat err=%v", err)
+	}
+}
+
+func TestValidateRestoreSQLiteFileAcceptsPrefixedTables(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "restore.sqlite")
+
+	database, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = database.Close()
+	})
+
+	requiredTables := []string{
+		string(db.TablePosts),
+		string(db.TableSettings),
+		string(db.TableCategories),
+		string(db.TableTags),
+		string(db.TableComments),
+		string(db.TableAssets),
+		string(db.TableSessions),
+	}
+	for _, table := range requiredTables {
+		if _, err := database.Exec("CREATE TABLE " + table + " (id INTEGER PRIMARY KEY)"); err != nil {
+			t.Fatalf("create table %s failed: %v", table, err)
+		}
+	}
+
+	if err := validateRestoreSQLiteFile(dbPath); err != nil {
+		t.Fatalf("validateRestoreSQLiteFile failed: %v", err)
+	}
+}
+
+func TestValidateRestoreSQLiteFileReportsLogicalTableName(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "restore-missing.sqlite")
+
+	database, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = database.Close()
+	})
+
+	requiredTables := []string{
+		string(db.TableSettings),
+		string(db.TableCategories),
+		string(db.TableTags),
+		string(db.TableComments),
+		string(db.TableAssets),
+		string(db.TableSessions),
+	}
+	for _, table := range requiredTables {
+		if _, err := database.Exec("CREATE TABLE " + table + " (id INTEGER PRIMARY KEY)"); err != nil {
+			t.Fatalf("create table %s failed: %v", table, err)
+		}
+	}
+
+	err = validateRestoreSQLiteFile(dbPath)
+	if err == nil {
+		t.Fatal("expected validateRestoreSQLiteFile to fail when posts table is missing")
+	}
+	if !strings.Contains(err.Error(), "posts") {
+		t.Fatalf("expected logical missing table name in error, got %v", err)
+	}
+}
+
+func TestPaginateRestoreBackups(t *testing.T) {
+	backups := []restoreBackupFile{
+		{Name: "a.sqlite"},
+		{Name: "b.sqlite"},
+		{Name: "c.sqlite"},
+	}
+	pager := types.Pagination{Page: 2, PageSize: 2}
+
+	got := paginateRestoreBackups(backups, &pager)
+
+	if pager.Total != 3 || pager.Num != 2 || pager.Page != 2 {
+		t.Fatalf("unexpected pager after paginate: %#v", pager)
+	}
+	if len(got) != 1 || got[0].Name != "c.sqlite" {
+		t.Fatalf("unexpected paged backups: %#v", got)
 	}
 }

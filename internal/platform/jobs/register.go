@@ -2,6 +2,7 @@ package job
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
@@ -153,6 +154,9 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		logger.Warn("[task] registry not initialized for task: %s", t.Code)
 		return
 	}
+	if shouldSkipTaskExecution(t) {
+		return
+	}
 
 	startAt := time.Now()
 	jobItem, ok := reg.jobs[t.Code]
@@ -226,6 +230,34 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	if _, createErr := db.CreateTaskRun(dbx, taskRun); createErr != nil {
 		logger.Error("[task] create task run failed code=%s status=%s: %v", t.Code, status, createErr)
 		return
+	}
+}
+
+func shouldSkipTaskExecution(t db.Task) bool {
+	if t.Code != "remote_backup_data" {
+		return false
+	}
+	settings := store.GetSettingMap()
+	if len(settings) == 0 {
+		return false
+	}
+	return !parseTaskBoolSetting(settings["sync_push_enabled"])
+}
+
+func parseTaskBoolSetting(raw string) bool {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	if value == "" {
+		return false
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err == nil {
+		return parsed
+	}
+	switch value {
+	case "1", "yes", "on":
+		return true
+	default:
+		return false
 	}
 }
 
