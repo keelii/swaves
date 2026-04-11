@@ -516,11 +516,16 @@ func quoteSQLiteIdentifier(name string) string {
 }
 
 func openReadOnlySQLite(path string) (*sql.DB, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolve restore database path failed: %w", err)
+	}
 	uri := url.URL{Scheme: "file", Path: path}
 	query := uri.Query()
 	query.Set("mode", "ro")
 	query.Set("_busy_timeout", "5000")
 	uri.RawQuery = query.Encode()
+	uri.Path = absPath
 	return sql.Open("sqlite3", uri.String())
 }
 

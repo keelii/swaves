@@ -71,7 +71,7 @@
             <td>{{ file.Size | humanSize }}</td>
             <td>
               <div class="cell-actions">
-                <form method="post" action="{{ UrlFor('dash.backup_restore.local') }}" data-confirm-title="确认恢复" data-confirm-message="确定使用这个本地备份恢复数据库吗？当前数据库会被替换。">
+                <form method="post" action="{{ UrlFor('dash.backup_restore.local') }}" data-confirm-title="确认恢复" data-confirm-message="确定使用这个本地备份恢复数据库吗？当前数据库会被替换，注意管理后密码也会恢复。">
                   {{ _csrf_token() }}
                   <input type="hidden" name="backup_file" value="{{ file.Name }}">
                   {{ sui.IconAction("undo", "恢复", attrs='data-title="恢复"', button_type="submit", disabled=not RestoreEnabled) }}
@@ -131,7 +131,7 @@
           if (!fileInput.files || fileInput.files.length === 0) {
             return;
           }
-          askRestoreConfirm("确定使用这个 SQLite 文件恢复数据库吗？当前数据库会被替换。", "确认恢复", fileInput).then(function (confirmed) {
+          askRestoreConfirm("确定使用这个 SQLite 文件恢复数据库吗？当前数据库会被替换，注意管理后密码也会恢复。", "确认恢复", fileInput).then(function (confirmed) {
             if (!confirmed) {
               fileInput.value = "";
               return;

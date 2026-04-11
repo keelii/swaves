@@ -11,7 +11,7 @@
   <div class="nav-section">
     <div class="nav-section-title">内容</div>
     <a class="nav-item{% if UrlIs('dash.posts.list') %} active{% endif %}" href="{{ UrlFor('dash.posts.list') }}"{% if UrlIs('dash.posts.list') %} aria-current="page"{% endif %}>
-      <span class="nav-item-icon">{{ LucideIcon("list", 16) }}</span>
+      <span class="nav-item-icon">{{ LucideIcon("newspaper", 16) }}</span>
       <span class="nav-item-text">文章列表</span>
     </a>
     <a class="nav-item{% if UrlIs('dash.assets.list') %} active{% endif %}" href="{{ UrlFor('dash.assets.list') }}"{% if UrlIs('dash.assets.list') %} aria-current="page"{% endif %}>
@@ -32,7 +32,7 @@
   <div class="nav-section">
     <div class="nav-section-title">高级</div>
     <a class="nav-item{% if UrlIs('dash.categories.list') %} active{% endif %}" href="{{ UrlFor('dash.categories.list') }}"{% if UrlIs('dash.categories.list') %} aria-current="page"{% endif %}>
-      <span class="nav-item-icon">{{ LucideIcon("database", 16) }}</span>
+      <span class="nav-item-icon">{{ LucideIcon("list", 16) }}</span>
       <span class="nav-item-text">数据列表</span>
     </a>
     {% set importExportActive = UrlIs('dash.import.show') or UrlIs('dash.import.submit') or UrlIs('dash.export.show') or UrlIs('dash.export.download') %}

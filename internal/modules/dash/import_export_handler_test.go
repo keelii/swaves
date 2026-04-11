@@ -127,9 +127,16 @@ func TestValidateRestoreSQLiteFileAcceptsPrefixedTables(t *testing.T) {
 		string(db.TableSessions),
 	}
 	for _, table := range requiredTables {
-		if _, err := database.Exec("CREATE TABLE " + table + " (id INTEGER PRIMARY KEY)"); err != nil {
+		createSQL := "CREATE TABLE " + table + " (id INTEGER PRIMARY KEY)"
+		if table == string(db.TableSettings) {
+			createSQL = "CREATE TABLE " + table + " (id INTEGER PRIMARY KEY, code TEXT)"
+		}
+		if _, err := database.Exec(createSQL); err != nil {
 			t.Fatalf("create table %s failed: %v", table, err)
 		}
+	}
+	if _, err := database.Exec("INSERT INTO " + string(db.TableSettings) + " (id, code) VALUES (1, 'dash_password')"); err != nil {
+		t.Fatalf("insert settings row failed: %v", err)
 	}
 
 	if err := validateRestoreSQLiteFile(dbPath); err != nil {
@@ -186,5 +193,43 @@ func TestPaginateRestoreBackups(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].Name != "c.sqlite" {
 		t.Fatalf("unexpected paged backups: %#v", got)
+	}
+}
+
+func TestOpenReadOnlySQLiteAcceptsRelativePath(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "relative.sqlite")
+
+	database, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	if _, err := database.Exec("CREATE TABLE t_settings (id INTEGER PRIMARY KEY, code TEXT)"); err != nil {
+		t.Fatalf("create table failed: %v", err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Chdir failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(wd)
+	})
+
+	readOnlyDB, err := openReadOnlySQLite("relative.sqlite")
+	if err != nil {
+		t.Fatalf("openReadOnlySQLite failed: %v", err)
+	}
+	defer func() { _ = readOnlyDB.Close() }()
+
+	var count int
+	if err := readOnlyDB.QueryRow("SELECT COUNT(1) FROM t_settings").Scan(&count); err != nil {
+		t.Fatalf("QueryRow failed: %v", err)
 	}
 }
