@@ -6,19 +6,11 @@
     }
 
     function openDialog(id, opener) {
-      var dialog = window.DashAppUI && window.DashAppUI.dialog;
-      if (!dialog || typeof dialog.open !== 'function') {
-        return false;
-      }
-      return dialog.open(id, opener);
+      return window.DashAppUI.dialog.open(id, opener);
     }
 
     function closeDialog(id) {
-      var dialog = window.DashAppUI && window.DashAppUI.dialog;
-      if (!dialog || typeof dialog.close !== 'function') {
-        return false;
-      }
-      return dialog.close(id);
+      return window.DashAppUI.dialog.close(id);
     }
 
     var multiselectConfirmDialog = document.getElementById('multiselect-confirm-dialog');
@@ -85,7 +77,7 @@
         if (multiselectConfirmResolver) {
           resolveMultiselectConfirm(false);
         }
-        multiselectConfirmMessage.textContent = String(message || '');
+        multiselectConfirmMessage.textContent = message || '';
         if (!openDialog('multiselect-confirm-dialog')) {
           resolve(window.confirm(message));
           return;
@@ -112,7 +104,7 @@
       var toggle = document.querySelector('[data-role="toggle-multiselect"][data-target-table="' + tableId + '"]');
       var statusCount = document.querySelector('[data-role="multiselect-selected-count"][data-target-table="' + tableId + '"]');
       var batchDelete = document.querySelector('[data-role="multiselect-batch-delete"][data-target-table="' + tableId + '"]');
-      var batchDeleteAPI = String(table.getAttribute('data-batch-delete-url') || '').trim();
+      var batchDeleteAPI = (table.getAttribute('data-batch-delete-url') || '').trim();
 
       function selectedRowCheckboxes() {
         return table.querySelectorAll('tbody .cell-checkbox:checked');
@@ -152,7 +144,7 @@
           return 0;
         }
 
-        var action = String(form.action || '');
+        var action = form.action || '';
         var matched = action.match(/\/(\d+)\/delete(?:[/?#]|$)/);
         if (!matched || !matched[1]) {
           matched = action.match(/\/(\d+)(?:[/?#]|$)/);
@@ -194,7 +186,7 @@
 
         return items.slice(0, limit).map(function(item) {
           var id = parsePositiveInt(item && item.id);
-          var text = item && item[key] ? String(item[key]) : '';
+          var text = item && item[key] ? item[key] : '';
 
           if (!text) {
             return '';
@@ -239,7 +231,7 @@
               return;
             }
 
-            var method = String(form.getAttribute('method') || 'POST').toUpperCase();
+            var method = (form.getAttribute('method') || 'POST').toUpperCase();
             var formData = new FormData(form);
             var send = window.sfetch(form.action, { method: method, body: formData });
 
@@ -250,9 +242,7 @@
               successCount += 1;
               row.remove();
             }).catch(function(err) {
-              if (window.console && typeof window.console.warn === 'function') {
-                window.console.warn('legacy batch delete failed', err);
-              }
+              console.warn('legacy batch delete failed', err);
               failedCount += 1;
             });
           });
@@ -336,9 +326,7 @@
             message: buildBatchDeleteMessage(body, deletedCount, failedCount),
           };
         }).catch(function(err) {
-          if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('api batch delete failed', err);
-          }
+          console.warn('api batch delete failed', err);
           return {
             successCount: 0,
             failedCount: rows.length,
@@ -433,12 +421,10 @@
             runDelete.then(function(result) {
               var successCount = result && typeof result.successCount === 'number' ? result.successCount : 0;
               var failedCount = result && typeof result.failedCount === 'number' ? result.failedCount : 0;
-              var message = result && result.message ? String(result.message) : buildBatchDeleteMessage(null, successCount, failedCount);
+              var message = result && result.message ? result.message : buildBatchDeleteMessage(null, successCount, failedCount);
 
               if (successCount > 0 || failedCount > 0) {
-                if (typeof notify === 'function') {
-                  notify(message, '批量删除');
-                }
+                notify(message, '批量删除');
               }
 
               document.dispatchEvent(new CustomEvent('dash:batch-delete:done', {

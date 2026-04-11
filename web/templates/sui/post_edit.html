@@ -88,12 +88,12 @@
         }
         var text = "";
         if (titleInput) {
-          text += String(titleInput.value || "") + "\n";
+          text += (titleInput.value || "") + "\n";
         }
         if (typeof nextMarkdown === "string") {
           text += nextMarkdown;
         } else if (textarea) {
-          text += String(textarea.value || "");
+          text += textarea.value || "";
         }
         text = text.replace(/\s+/g, "").trim();
         wordCount.textContent = "字数 " + text.length;
@@ -103,7 +103,7 @@
         if (!titleInput || !slugInput || !slugAPIURL) {
           return;
         }
-        var name = String(titleInput.value || "").trim();
+        var name = (titleInput.value || "").trim();
         if (!name) {
           slugInput.value = "";
           return;
@@ -124,12 +124,10 @@
             return;
           }
           if (json && json.data) {
-            slugInput.value = String(json.data);
+            slugInput.value = json.data;
           }
         }).catch(function(err) {
-          if (window.console && typeof window.console.warn === "function") {
-            window.console.warn("slug sync failed", err);
-          }
+          console.warn("slug sync failed", err);
         });
       }
 

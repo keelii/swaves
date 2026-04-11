@@ -209,11 +209,11 @@ document.addEventListener('DOMContentLoaded', function() {
   uploadError = {{ defaultProviderError | tojson }};
 
   function getDialogAPI() {
-    return window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
+    return window.DashAppUI.dialog;
   }
 
   function getConfirmAPI() {
-    return window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
+    return window.DashAppUI.confirm;
   }
 
   function removeAssetRows(ids) {
@@ -233,8 +233,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function showAssetNotice(message, title) {
-    var heading = String(title || '提示');
-    var text = String(message || '');
+    var heading = title || '提示';
+    var text = message || '';
     var titleNode = alertDialog ? alertDialog.querySelector('.ui-dialog-title') : null;
     var dialogAPI = getDialogAPI();
 
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (alertMessage) {
       alertMessage.textContent = text;
     }
-    if (!(dialogAPI && typeof dialogAPI.open === 'function' && dialogAPI.open('asset-alert-dialog'))) {
+    if (!dialogAPI.open('asset-alert-dialog')) {
       notify(text, heading, {
         variant: 'warning',
       });
@@ -260,19 +260,16 @@ document.addEventListener('DOMContentLoaded', function() {
   function askConfirm(message, title) {
     var confirmAPI = getConfirmAPI();
 
-    message = String(message || '');
-    title = String(title || '确认操作');
+    message = message || '';
+    title = title || '确认操作';
 
-    if (confirmAPI && typeof confirmAPI.ask === 'function') {
-      return confirmAPI.ask({
+    return confirmAPI.ask({
         dialogId: 'asset-confirm-dialog',
         title: title,
         message: message,
         messageSelector: '#asset-confirm-message',
         okSelector: '#asset-confirm-ok',
       });
-    }
-    return Promise.resolve(window.confirm(message));
   }
 
   function setUploading(working) {
@@ -282,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function uploadSingleFile(file) {
     var fd = new FormData();
-    var remark = String(uploadRemark.value || '').trim();
+    var remark = (uploadRemark.value || '').trim();
 
     fd.append('file', file);
     if (remark) {
@@ -302,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function compactErrorMessage(message) {
-    var text = String(message || '').replace(/\s+/g, ' ').trim();
+    var text = (message || '').replace(/\s+/g, ' ').trim();
     if (!text) {
       return '上传失败';
     }
@@ -429,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function markdownImage(url, name) {
-    var alt = String(name || '').trim();
+    var alt = (name || '').trim();
 
     alt = alt.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
     return '![' + alt + '](' + url + ')';
@@ -451,9 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
       copyToClipboard(copyURLButton.getAttribute('data-url') || '').then(function() {
         showAssetNotice('已复制链接');
       }).catch(function(err) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('copy url failed', err);
-        }
+        console.warn('copy url failed', err);
         showAssetNotice('复制失败');
       });
       return;
@@ -467,9 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
       )).then(function() {
         showAssetNotice('已复制 Markdown');
       }).catch(function(err) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('copy markdown failed', err);
-        }
+        console.warn('copy markdown failed', err);
         showAssetNotice('复制失败');
       });
       return;

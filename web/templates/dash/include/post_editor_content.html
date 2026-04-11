@@ -141,24 +141,16 @@
     }
 
     function showInitialToast(kind, title, message) {
-      var text = String(message || "");
-      var toastAPI;
+      var text = message || "";
       if (!text) {
         return;
       }
-      toastAPI = window.DashAppUI && window.DashAppUI.toast;
-      if (toastAPI && typeof toastAPI.show === "function") {
-        toastAPI.show({
-          kind: kind,
-          title: title,
-          message: text,
-          duration: 5000
-        });
-        return;
-      }
-      if (typeof notify === "function") {
-        notify(text, title, { variant: kind });
-      }
+      window.DashAppUI.toast.show({
+        kind: kind,
+        title: title,
+        message: text,
+        duration: 5000
+      });
     }
 
     if (initialNotice) {
@@ -184,7 +176,7 @@
     }
 
     function normalizeTOCAnchor(href) {
-      var text = String(href || "").trim();
+      var text = (href || "").trim();
       if (text.charAt(0) === "#") {
         text = text.slice(1);
       }
@@ -212,7 +204,7 @@
     }
 
     function buildHeadingAnchorID(text) {
-      var source = String(text == null ? "" : text).trim().replace(/ /g, "-");
+      var source = (text == null ? "" : text).trim().replace(/ /g, "-");
       var out = "";
       for (var i = 0; i < source.length; i += 1) {
         var char = source.charAt(i);
@@ -264,7 +256,7 @@
         }
 
         if (targetEntry) {
-          link.setAttribute("data-heading-index", String(targetEntry.index));
+          link.setAttribute("data-heading-index", targetEntry.index);
         } else {
           link.removeAttribute("data-heading-index");
         }
@@ -350,12 +342,12 @@
       }
       var text = "";
       if (titleInput) {
-        text += String(titleInput.value || "") + "\n";
+        text += (titleInput.value || "") + "\n";
       }
       if (typeof nextMarkdown === "string") {
         text += nextMarkdown;
       } else if (textarea) {
-        text += String(textarea.value || "");
+        text += textarea.value || "";
       }
       text = text.replace(/\s+/g, "").trim();
       wordCount.textContent = "字数 " + text.length;
@@ -402,7 +394,7 @@
       }
 
       if (minHeight > 0) {
-        textarea.style.minHeight = String(minHeight) + "px";
+        textarea.style.minHeight = minHeight + "px";
       } else {
         textarea.style.minHeight = "";
       }
@@ -412,7 +404,7 @@
       if (nextHeight < minHeight) {
         nextHeight = minHeight;
       }
-      textarea.style.height = String(nextHeight) + "px";
+      textarea.style.height = nextHeight + "px";
     }
 
     function syncTextareaFromEditor() {
@@ -420,7 +412,7 @@
         return;
       }
       try {
-        textarea.value = String(window.__seditor.getMarkdown() || "");
+        textarea.value = window.__seditor.getMarkdown() || "";
       } catch (error) {
         // Ignore sync failures and keep previous textarea value.
       }
@@ -430,7 +422,7 @@
       if (!textarea || !window.__seditor || typeof window.__seditor.setMarkdown !== "function") {
         return;
       }
-      window.__seditor.setMarkdown(String(textarea.value || ""));
+      window.__seditor.setMarkdown(textarea.value || "");
     }
 
     function postUIStateSetting(code, value) {
@@ -470,16 +462,12 @@
       postUIStateSetting("dash_post_editor_source_mode", value).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : "unknown error";
-          if (window.console && typeof window.console.warn === "function") {
-            window.console.warn("save source mode failed: value=" + value + " message=" + message);
-          }
+          console.warn("save source mode failed: value=" + value + " message=" + message);
           return;
         }
         sourceModeLastSaved = value;
       }).catch(function(error) {
-        if (window.console && typeof window.console.warn === "function") {
-          window.console.warn("save source mode request failed", error);
-        }
+        console.warn("save source mode request failed", error);
       }).then(function() {
         sourceModePersisting = false;
         if (sourceModeQueued !== null && sourceModeQueued !== value) {
@@ -536,7 +524,7 @@
         return;
       }
 
-      var name = String(titleInput.value || "").trim();
+      var name = (titleInput.value || "").trim();
       if (!name) {
         slugInput.value = "";
         return;
@@ -558,12 +546,10 @@
           return;
         }
         if (json && json.data) {
-          slugInput.value = String(json.data);
+          slugInput.value = json.data;
         }
         }).catch(function(err) {
-          if (window.console && typeof window.console.warn === "function") {
-            window.console.warn("slug sync failed", err);
-          }
+          console.warn("slug sync failed", err);
         });
       }
 
@@ -597,16 +583,12 @@
       postUIStateSetting("dash_post_editor_toc_open", value).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : "unknown error";
-          if (window.console && typeof window.console.warn === "function") {
-            window.console.warn("save toc open state failed: value=" + value + " message=" + message);
-          }
+          console.warn("save toc open state failed: value=" + value + " message=" + message);
           return;
         }
         tocOpenLastSaved = value;
       }).catch(function(error) {
-        if (window.console && typeof window.console.warn === "function") {
-          window.console.warn("save toc open state request failed", error);
-        }
+        console.warn("save toc open state request failed", error);
       }).then(function() {
         tocOpenPersisting = false;
         if (tocOpenQueued !== null && tocOpenQueued !== value) {
@@ -658,7 +640,7 @@
         return;
       }
 
-      var source = String(markdown || "").trim();
+      var source = (markdown || "").trim();
       if (!source) {
         tocBody.innerHTML = "";
         setTOCAvailable(false);
@@ -679,7 +661,7 @@
           setTOCAvailable(false);
           return;
         }
-        var tocHTML = String(result.body.data || "").trim();
+        var tocHTML = (result.body.data || "").trim();
         if (!tocHTML) {
           tocBody.innerHTML = "";
           setTOCAvailable(false);
@@ -693,9 +675,7 @@
         syncTOCHeadingMapping();
         setTOCAvailable(true);
       }).catch(function(err) {
-        if (window.console && typeof window.console.warn === "function") {
-          window.console.warn("toc render failed", err);
-        }
+        console.warn("toc render failed", err);
         if (seq !== tocSyncSeq) {
           return;
         }
@@ -705,7 +685,7 @@
     }
 
     function scheduleTOCSync(nextMarkdown) {
-      tocLatestMarkdown = typeof nextMarkdown === "string" ? nextMarkdown : String(textarea && textarea.value || "");
+      tocLatestMarkdown = typeof nextMarkdown === "string" ? nextMarkdown : ((textarea && textarea.value) || "");
       if (tocSyncTimer) {
         window.clearTimeout(tocSyncTimer);
       }
@@ -722,7 +702,7 @@
     }
 
     if (tocBody) {
-      var initialTOCHTML = String(tocBody.innerHTML || "").trim();
+      var initialTOCHTML = (tocBody.innerHTML || "").trim();
       if (initialTOCHTML) {
         var initialToggle = tocBody.querySelector(".toc-toggle");
         if (initialToggle && initialToggle.parentNode) {

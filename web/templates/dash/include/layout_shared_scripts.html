@@ -4,17 +4,17 @@
     var cfg = window.cfg || {};
     var navResizer = document.querySelector('[data-role="nav-resizer"]');
     var navPanel = document.querySelector('.app-nav');
-    var uiStateSaveURL = String(cfg.uiStateSaveURL || cfg.navWidthSaveURL || appWindow && appWindow.getAttribute('data-ui-state-save-url') || '').trim();
+    var uiStateSaveURL = (cfg.uiStateSaveURL || cfg.navWidthSaveURL || appWindow && appWindow.getAttribute('data-ui-state-save-url') || '').trim();
     var menuCollapsedPersisting = false;
     var menuCollapsedQueued = null;
     var menuCollapsedLastSaved = appWindow && (appWindow.classList.contains('menu-collapsed') || appWindow.classList.contains('full-main')) ? '1' : '0';
     var navWidthPersisting = false;
     var navWidthQueued = null;
     var navWidthLastSaved = parsePixels(appWindow && appWindow.getAttribute('data-nav-width-current'));
-    var notificationsUnreadURL = String(cfg.notificationsUnreadURL || appWindow && appWindow.getAttribute('data-notifications-unread-url') || '').trim();
-    var notificationsReadURL = String(cfg.notificationsReadURL || appWindow && appWindow.getAttribute('data-notifications-read-url') || '').trim();
-    var notificationsReadAllURL = String(cfg.notificationsReadAllURL || appWindow && appWindow.getAttribute('data-notifications-read-all-url') || '').trim();
-    var notificationsDeleteURL = String(cfg.notificationsDeleteURL || appWindow && appWindow.getAttribute('data-notifications-delete-url') || '').trim();
+    var notificationsUnreadURL = (cfg.notificationsUnreadURL || appWindow && appWindow.getAttribute('data-notifications-unread-url') || '').trim();
+    var notificationsReadURL = (cfg.notificationsReadURL || appWindow && appWindow.getAttribute('data-notifications-read-url') || '').trim();
+    var notificationsReadAllURL = (cfg.notificationsReadAllURL || appWindow && appWindow.getAttribute('data-notifications-read-all-url') || '').trim();
+    var notificationsDeleteURL = (cfg.notificationsDeleteURL || appWindow && appWindow.getAttribute('data-notifications-delete-url') || '').trim();
     var notificationsPollingTimer = null;
 	    var notificationsPollingIntervalMs = 20000;
 	    var themeModePersisting = false;
@@ -149,7 +149,7 @@
       if (!text) {
         return '';
       }
-      return String(text).trim();
+      return text.trim();
     }
 
     function setDescribedBy(target) {
@@ -270,9 +270,9 @@
       var limits = getNavWidthMinMax();
       var clamped = clampNumber(width, limits.min, limits.max);
       appWindow.style.setProperty('--app-pane-nav-width', clamped + 'px');
-      appWindow.setAttribute('data-nav-width-current', String(clamped));
+      appWindow.setAttribute('data-nav-width-current', clamped);
       if (navResizer) {
-        navResizer.setAttribute('aria-valuenow', String(clamped));
+        navResizer.setAttribute('aria-valuenow', clamped);
       }
     }
 
@@ -305,16 +305,12 @@
       postUIStateSetting('dash_nav_width', width).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
-          if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('save nav width failed: width=' + width + ' message=' + message);
-          }
+          console.warn('save nav width failed: width=' + width + ' message=' + message);
           return;
         }
         navWidthLastSaved = width;
       }).catch(function(error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save nav width request failed', error);
-        }
+        console.warn('save nav width request failed', error);
       }).then(function() {
         navWidthPersisting = false;
         if (navWidthQueued !== null) {
@@ -332,8 +328,8 @@
       navPanel.style.minWidth = limits.min + 'px';
       navPanel.style.maxWidth = limits.max + 'px';
       if (navResizer) {
-        navResizer.setAttribute('aria-valuemin', String(limits.min));
-        navResizer.setAttribute('aria-valuemax', String(limits.max));
+        navResizer.setAttribute('aria-valuemin', limits.min);
+        navResizer.setAttribute('aria-valuemax', limits.max);
       }
 
       var initial = parsePixels(appWindow.getAttribute('data-nav-width-current'));
@@ -401,16 +397,12 @@
       postUIStateSetting('dash_full_main_open', value).then(function(result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
           var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
-          if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('save menu-collapsed state failed: value=' + value + ' message=' + message);
-          }
+          console.warn('save menu-collapsed state failed: value=' + value + ' message=' + message);
           return;
         }
         menuCollapsedLastSaved = value;
       }).catch(function(error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save menu-collapsed state request failed', error);
-        }
+        console.warn('save menu-collapsed state request failed', error);
       }).then(function() {
         menuCollapsedPersisting = false;
         if (menuCollapsedQueued !== null && menuCollapsedQueued !== value) {
@@ -449,7 +441,7 @@
     }
 
 	    function normalizeThemeMode(mode) {
-	      var value = String(mode || '').trim().toLowerCase();
+	      var value = (mode || '').trim().toLowerCase();
 	      if (value === 'dark' || value === 'light') {
 	        return value;
 	      }
@@ -487,16 +479,12 @@
 	      postUIStateSetting('mode', value).then(function(result) {
 	        if (!result || !result.ok || (result.body && result.body.ok === false)) {
 	          var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
-	          if (window.console && typeof window.console.warn === 'function') {
-	            window.console.warn('save theme mode failed: value=' + value + ' message=' + message);
-	          }
+	          console.warn('save theme mode failed: value=' + value + ' message=' + message);
 	          return;
 	        }
 	        themeModeLastSaved = value;
 	      }).catch(function(error) {
-	        if (window.console && typeof window.console.warn === 'function') {
-	          window.console.warn('save theme mode request failed', error);
-	        }
+	        console.warn('save theme mode request failed', error);
 	      }).then(function() {
 	        themeModePersisting = false;
 	        if (themeModeQueued !== null && themeModeQueued !== value) {
@@ -554,7 +542,7 @@
           badge.setAttribute('hidden', '');
           return;
         }
-        badge.textContent = String(count);
+        badge.textContent = count;
         badge.removeAttribute('hidden');
       });
       setNotificationNavIconState(hasUnread);
@@ -583,9 +571,7 @@
         var data = result.body.data || {};
         setNotificationUnreadCount(data.unread_count);
       }).catch(function(error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('load notification unread count failed', error);
-        }
+        console.warn('load notification unread count failed', error);
       });
     }
 
@@ -675,9 +661,7 @@
         if (triggerButton) {
           triggerButton.disabled = false;
         }
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('mark notification read failed', error);
-        }
+        console.warn('mark notification read failed', error);
       }).then(function() {
         if (row) {
           row.removeAttribute('data-notification-reading');
@@ -785,9 +769,7 @@
           setNotificationUnreadCount(unreadCount);
         }).catch(function(error) {
           markAllButton.disabled = false;
-          if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('mark all notifications read failed', error);
-          }
+          console.warn('mark all notifications read failed', error);
         });
         event.preventDefault();
         return;
@@ -830,9 +812,7 @@
           }
         }).catch(function(error) {
           deleteButton.disabled = false;
-          if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('delete notification failed', error);
-          }
+          console.warn('delete notification failed', error);
         });
         event.preventDefault();
         return;
@@ -1194,14 +1174,14 @@
 
     function askDialogConfirm(opts) {
       var options = opts || {};
-      var dialogID = String(options.dialogId || '').trim();
-      var message = String(options.message || '');
-      var title = String(options.title || '');
+      var dialogID = (options.dialogId || '').trim();
+      var message = options.message || '';
+      var title = options.title || '';
       var opener = options.opener || null;
-      var okSelector = String(options.okSelector || '[data-role~="ui-confirm-ok"], [data-role~="ui-dialog-confirm"]').trim();
-      var cancelSelector = String(options.cancelSelector || '[data-role~="ui-dialog-close"], [data-role~="ui-dialog-cancel"]').trim();
-      var titleSelector = String(options.titleSelector || '.ui-dialog-title').trim();
-      var messageSelector = String(options.messageSelector || '').trim();
+      var okSelector = (options.okSelector || '[data-role~="ui-confirm-ok"], [data-role~="ui-dialog-confirm"]').trim();
+      var cancelSelector = (options.cancelSelector || '[data-role~="ui-dialog-close"], [data-role~="ui-dialog-cancel"]').trim();
+      var titleSelector = (options.titleSelector || '.ui-dialog-title').trim();
+      var messageSelector = (options.messageSelector || '').trim();
 
       if (!dialogID) {
         return Promise.resolve(window.confirm(message));

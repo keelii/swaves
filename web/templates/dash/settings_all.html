@@ -537,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var basePathContainer = document.querySelector('[data-setting-code="base_path"]');
 
   function normalizeLower(raw) {
-    raw = String(raw || '').trim().toLowerCase();
+    raw = (raw || '').trim().toLowerCase();
     return raw;
   }
 
@@ -546,13 +546,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!field) {
       return '';
     }
-    return String(field.value || '').trim();
+    return (field.value || '').trim();
   }
 
   function readChoiceValue(name) {
     var checked = document.querySelector('[name="' + name + '"]:checked');
     if (checked) {
-      return String(checked.value || '').trim();
+      return (checked.value || '').trim();
     }
     return readFieldValue(name);
   }
@@ -576,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    note = String(options.note || '').trim();
+    note = (options.note || '').trim();
     if (!note) {
       noteEl.textContent = '';
       noteEl.hidden = true;
@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     card.setAttribute('data-collapsible', '1');
-    manualState = String(card.getAttribute('data-card-manual') || '').trim();
+    manualState = (card.getAttribute('data-card-manual') || '').trim();
     if (options.emphasis) {
       collapsed = false;
     } else if (manualState === 'expanded') {
@@ -712,9 +712,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
       event.preventDefault();
       options = {
-        setting_post_url_prefix: String(button.getAttribute('data-prefix') || ''),
-        setting_post_url_name: String(button.getAttribute('data-name') || ''),
-        setting_post_url_ext: String(button.getAttribute('data-ext') || ''),
+        setting_post_url_prefix: button.getAttribute('data-prefix') || '',
+        setting_post_url_name: button.getAttribute('data-name') || '',
+        setting_post_url_ext: button.getAttribute('data-ext') || '',
       };
 
       Object.keys(options).forEach(function(code) {
@@ -743,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   function normalizePrefixLiteral(raw) {
-    raw = String(raw || '').trim();
+    raw = (raw || '').trim();
     raw = raw.replace(/^\/+|\/+$/g, '');
     if (!raw) {
       return '/';
@@ -768,8 +768,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelectorAll('[data-prefix-default]').forEach(function(input) {
-      var sourceCode = String(input.getAttribute('data-prefix-source-code') || '').trim();
-      var prefixText = String(input.getAttribute('data-prefix-default') || '').trim() || '/';
+      var sourceCode = (input.getAttribute('data-prefix-source-code') || '').trim();
+      var prefixText = (input.getAttribute('data-prefix-default') || '').trim() || '/';
       var prefixGroup;
       var prefixNode;
 
@@ -842,7 +842,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    targetID = String(button.getAttribute('data-target-id') || '').trim();
+    targetID = (button.getAttribute('data-target-id') || '').trim();
     if (!targetID) {
       return;
     }
@@ -852,7 +852,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    isPassword = String(input.getAttribute('type') || '').toLowerCase() === 'password';
+    isPassword = (input.getAttribute('type') || '').toLowerCase() === 'password';
     if (isPassword) {
       input.setAttribute('type', 'text');
       button.textContent = button.getAttribute('data-hide-text') || '隐藏';

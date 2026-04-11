@@ -51,6 +51,7 @@ func RunLocalBackupNow(dbx *db.DB) (*string, error) {
 
 func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, error) {
 	backupDir := resolveBackupDir(cfg.Dir)
+	logger.Info("[backup] local backup start: dir=%s interval=%s max_count=%d check_interval=%t", backupDir, cfg.Interval, cfg.MaxCount, checkInterval)
 
 	if err := helper.EnsureDir(backupDir, 0755); err != nil {
 		return nil, fmt.Errorf("无法创建备份目录 %s: %w", backupDir, err)
@@ -65,7 +66,9 @@ func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*str
 			elapsed := time.Since(latestAt)
 			if elapsed < cfg.Interval {
 				remain := (cfg.Interval - elapsed).Round(time.Second)
-				return jobMessage(fmt.Sprintf("skip local backup: interval=%s remaining=%s", cfg.Interval, remain)), nil
+				message := fmt.Sprintf("skip local backup: interval=%s remaining=%s", cfg.Interval, remain)
+				logger.Info("[backup] local backup skipped: dir=%s reason=%s", backupDir, message)
+				return jobMessage(message), nil
 			}
 		}
 	}
@@ -73,17 +76,22 @@ func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*str
 	result, err := db.ExportSQLiteWithHash(dbx, backupDir)
 	if err != nil {
 		if strings.Contains(err.Error(), "无需重复导出") {
+			logger.Info("[backup] local backup skipped: dir=%s reason=%s", backupDir, err.Error())
 			return jobMessage(err.Error()), nil
 		}
+		logger.Error("[backup] local backup export failed: dir=%s err=%v", backupDir, err)
 		return nil, err
 	}
 
 	removedCount, err := pruneLocalBackupFiles(backupDir, cfg.MaxCount)
 	if err != nil {
+		logger.Error("[backup] local backup prune failed: dir=%s err=%v", backupDir, err)
 		return nil, fmt.Errorf("本地备份完成但清理旧备份失败: %w", err)
 	}
 
-	return jobMessage(fmt.Sprintf("%v, dir=%s, pruned=%d", result, backupDir, removedCount)), nil
+	message := fmt.Sprintf("%v, dir=%s, pruned=%d", result, backupDir, removedCount)
+	logger.Info("[backup] local backup completed: %s", message)
+	return jobMessage(message), nil
 }
 
 type localBackupConfig struct {

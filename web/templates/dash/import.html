@@ -511,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function readControlValue(selector, fallbackValue) {
     var element = qs(selector, form);
-    return String((element && element.value) || fallbackValue || '');
+    return (element && element.value) || fallbackValue || '';
   }
 
   function rowField(rowEl, fieldName) {
@@ -528,7 +528,7 @@ document.addEventListener('DOMContentLoaded', function() {
       nextPage = 1;
     }
     var url = new URL(window.location.href);
-    url.searchParams.set('page', String(nextPage));
+    url.searchParams.set('page', nextPage);
     return url.pathname + url.search;
   }
 
@@ -583,7 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function splitCSV(raw) {
-    var value = String(raw || '');
+    var value = raw || '';
     var seen = {};
     var list = [];
 
@@ -633,9 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       fileInput.files = dt.files;
     } catch (err) {
-      if (window.console && typeof window.console.warn === 'function') {
-        window.console.warn('set input files failed', err);
-      }
+      console.warn('set input files failed', err);
     }
   }
 
@@ -689,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return null;
     }
 
-    rowEl.setAttribute('data-post-id', String(item.post_id));
+    rowEl.setAttribute('data-post-id', item.post_id);
     rowField(rowEl, 'post_id').value = item.post_id;
     rowField(rowEl, 'filename').value = item.filename;
     rowField(rowEl, 'created_at_unix').value = item.created_at_unix;
@@ -768,9 +766,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     select.value = selected;
-    if (String(select.value || '') !== selected) {
+    if ((select.value || '') !== selected) {
       select.selectedIndex = 0;
-      selected = String(select.value || '');
+      selected = select.value || '';
     }
 
     categoryList = splitCSV(categoriesInput ? categoriesInput.value : '');
@@ -780,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     select.onchange = function() {
-      var value = String(select.value || '').trim();
+      var value = (select.value || '').trim();
       var list = splitCSV(categoriesInput ? categoriesInput.value : '');
       list = appendUnique(list, value);
       if (categoriesInput) {
@@ -791,7 +789,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function normalizeSummaryKind(variant) {
-    var key = String(variant || '').trim().toLowerCase();
+    var key = (variant || '').trim().toLowerCase();
     if (key === 'success') {
       return 'success';
     }
@@ -806,7 +804,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function setEditSummary(text, variant) {
     var kind = normalizeSummaryKind(variant);
-    var message = String(text || '');
+    var message = text || '';
 
     if (editSummaryBody) {
       editSummaryBody.textContent = message;
@@ -863,7 +861,7 @@ document.addEventListener('DOMContentLoaded', function() {
       cell.textContent = text;
     }
     if (detailEl) {
-      detailEl.textContent = String(detail || '');
+      detailEl.textContent = detail || '';
       detailEl.hidden = !detail;
     }
     setRetryVisible(rowEl, !!allowRetry);
@@ -879,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function parseConfirmAllFailure(raw) {
-    var text = String(raw || '').trim();
+    var text = (raw || '').trim();
     var match;
 
     if (!text) {
@@ -893,8 +891,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     return {
       postID: Number(match[1] || 0),
-      title: String(match[2] || ''),
-      error: String(match[3] || text)
+      title: match[2] || '',
+      error: match[3] || text
     };
   }
 
@@ -924,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    rowEl.setAttribute('data-post-id', String(item.post_id));
+    rowEl.setAttribute('data-post-id', item.post_id);
     rowField(rowEl, 'post_id').value = item.post_id;
     rowField(rowEl, 'filename').value = item.filename;
     rowField(rowEl, 'created_at_unix').value = item.created_at_unix;
@@ -1053,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function readField(rowEl, fieldName) {
     var field = rowField(rowEl, fieldName);
-    return String((field && field.value) || '').trim();
+    return ((field && field.value) || '').trim();
   }
 
   function readCheckedValue(rowEl, fieldName, fallbackValue) {
@@ -1061,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!value || value.value == null || value.value === '') {
       return fallbackValue || '';
     }
-    return String(value.value);
+    return value.value;
   }
 
   function buildConfirmPayload(rowEl) {
@@ -1155,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     statusCell = qs('[data-import-edit-status]', rowEl);
-    if (statusCell && String(statusCell.getAttribute('data-state') || '') === 'running') {
+    if (statusCell && (statusCell.getAttribute('data-state') || '') === 'running') {
       return;
     }
     setRowStatus(rowEl, 'pending', '已修改，待保存');
@@ -1410,18 +1408,14 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    confirmAPI = window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
-    if (confirmAPI && typeof confirmAPI.ask === 'function') {
-      confirmed = await confirmAPI.ask({
+    confirmAPI = window.DashAppUI.confirm;
+    confirmed = await confirmAPI.ask({
         dialogId: 'import-cancel-dialog',
         title: '确认取消',
         message: '将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？',
         opener: this,
         okSelector: '#import-cancel-confirm-btn',
       });
-    } else {
-      confirmed = window.confirm('将删除所有“导入中”状态的临时文章，且无法恢复。确定继续吗？');
-    }
 
     if (!confirmed) {
       return;

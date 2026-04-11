@@ -326,9 +326,9 @@
 
       chartsEl.innerHTML = charts.map(function(chart) {
         var metric = chart && chart.metric ? chart.metric : {};
-        var title = String(metric.label || metric.Label || chart.title || '指标');
-        var unit = String(metric.unit || metric.Unit || chart.unit || '');
-        var svg = chart && chart.svg ? String(chart.svg) : '<div class="monitor-card-sub">暂无图表</div>';
+        var title = metric.label || metric.Label || chart.title || '指标';
+        var unit = metric.unit || metric.Unit || chart.unit || '';
+        var svg = chart && chart.svg ? chart.svg : '<div class="monitor-card-sub">暂无图表</div>';
         return '<div class="monitor-chart-card">' +
           '<div class="monitor-chart-head">' +
             '<div class="monitor-chart-title">' + title + '</div>' +
@@ -381,8 +381,8 @@
               return text;
             }
           }
-          var label = String(hitbox.getAttribute('data-label') || '').trim();
-          var uv = String(hitbox.getAttribute('data-uv') || '0');
+          var label = (hitbox.getAttribute('data-label') || '').trim();
+          var uv = hitbox.getAttribute('data-uv') || '0';
           return label ? (label + ' - ' + uv) : uv;
         },
         getIndex: function(hitbox) {

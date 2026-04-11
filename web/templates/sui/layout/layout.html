@@ -215,7 +215,7 @@
       if (!text) {
         return '';
       }
-      return String(text).trim();
+      return text.trim();
     }
 
     function setDescribedBy(target) {
@@ -337,7 +337,7 @@
       var clamped = clampNumber(width, limits.min, limits.max);
       appWindow.style.setProperty('--app-pane-nav-width', clamped + 'px');
       if (navResizer) {
-        navResizer.setAttribute('aria-valuenow', String(clamped));
+        navResizer.setAttribute('aria-valuenow', clamped);
       }
     }
 
@@ -351,20 +351,16 @@
         var limits = getNavWidthMinMax();
         return clampNumber(parsed, limits.min, limits.max);
       } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('read nav width state failed', error);
-        }
+        console.warn('read nav width state failed', error);
         return null;
       }
     }
 
     function saveNavWidthState(width) {
       try {
-        window.localStorage.setItem(navWidthStorageKey, String(width));
+        window.localStorage.setItem(navWidthStorageKey, width);
       } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save nav width state failed', error);
-        }
+        console.warn('save nav width state failed', error);
       }
     }
 
@@ -377,8 +373,8 @@
       navPanel.style.minWidth = limits.min + 'px';
       navPanel.style.maxWidth = limits.max + 'px';
       if (navResizer) {
-        navResizer.setAttribute('aria-valuemin', String(limits.min));
-        navResizer.setAttribute('aria-valuemax', String(limits.max));
+        navResizer.setAttribute('aria-valuemin', limits.min);
+        navResizer.setAttribute('aria-valuemax', limits.max);
       }
 
       var stored = loadNavWidthState();
@@ -415,9 +411,7 @@
       try {
         return window.localStorage.getItem(fullMainStorageKey) === '1';
       } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('read full-main state failed', error);
-        }
+        console.warn('read full-main state failed', error);
         return false;
       }
     }
@@ -426,9 +420,7 @@
       try {
         window.localStorage.setItem(fullMainStorageKey, enabled ? '1' : '0');
       } catch (error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save full-main state failed', error);
-        }
+        console.warn('save full-main state failed', error);
       }
     }
 
@@ -466,7 +458,7 @@
       if (!input) {
         return '';
       }
-      return String(input.value || '').trim();
+      return (input.value || '').trim();
     }
 
     function postUIStateSetting(code, value) {
@@ -475,8 +467,8 @@
       }
 
       var body = new URLSearchParams();
-      body.set('code', String(code == null ? '' : code));
-      body.set('value', String(value == null ? '' : value));
+      body.set('code', code == null ? '' : code);
+      body.set('value', value == null ? '' : value);
 
       var headers = {
         'Accept': 'application/json',
@@ -494,7 +486,7 @@
         body: body.toString()
       }).then(function(response) {
         return response.text().then(function(raw) {
-          var text = String(raw || '').trim();
+          var text = (raw || '').trim();
           var parsed = null;
           if (text) {
             try {
@@ -514,7 +506,7 @@
     }
 
     function normalizeThemeMode(mode) {
-      var value = String(mode || '').trim().toLowerCase();
+      var value = (mode || '').trim().toLowerCase();
       if (value === 'dark' || value === 'light') {
         return value;
       }
@@ -552,16 +544,12 @@
       postUIStateSetting('mode', value).then(function(result) {
         if (!result || !result.ok || (result.body && result.body.ok === false)) {
           var message = result && result.body && result.body.error ? result.body.error : 'unknown error';
-          if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn('save theme mode failed: value=' + value + ' message=' + message);
-          }
+          console.warn('save theme mode failed: value=' + value + ' message=' + message);
           return;
         }
         themeModeLastSaved = value;
       }).catch(function(error) {
-        if (window.console && typeof window.console.warn === 'function') {
-          window.console.warn('save theme mode request failed', error);
-        }
+        console.warn('save theme mode request failed', error);
       }).then(function() {
         themeModePersisting = false;
         if (themeModeQueued !== null && themeModeQueued !== value) {

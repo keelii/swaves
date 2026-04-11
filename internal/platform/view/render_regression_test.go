@@ -328,7 +328,7 @@ func TestRenderDashPostsNewShowsError(t *testing.T) {
 	if !strings.Contains(rendered, "slug already exists") {
 		t.Fatalf("expected post editor error message rendered, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `toastAPI.show({`) {
+	if !strings.Contains(rendered, `window.DashAppUI.toast.show({`) {
 		t.Fatalf("expected post editor to use sui toast api, got: %s", rendered)
 	}
 	if !strings.Contains(rendered, `"保存失败"`) {

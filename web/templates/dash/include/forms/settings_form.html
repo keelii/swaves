@@ -215,14 +215,14 @@
       return;
     }
     button.addEventListener('click', function() {
-      var isPassword = String(input.getAttribute('type') || '').toLowerCase() === 'password';
+      var isPassword = (input.getAttribute('type') || '').toLowerCase() === 'password';
       input.setAttribute('type', isPassword ? 'text' : 'password');
       button.textContent = isPassword ? '隐藏' : '显示';
     });
   }
 
   function parseOptionItems(raw) {
-    var text = String(raw || '').trim();
+    var text = (raw || '').trim();
     if (!text) {
       return [];
     }
@@ -267,9 +267,9 @@
     }
     var field = defaultContainer.querySelector('[name="default_option_value"]');
     if (field) {
-      return String(field.value || '');
+      return field.value || '';
     }
-    return String(defaultContainer.getAttribute('data-current-value') || '');
+    return defaultContainer.getAttribute('data-current-value') || '';
   }
 
   function renderDefaultOptionControl() {
@@ -340,7 +340,7 @@
       return;
     }
 
-    var currentType = String(typeSelect.value || '').toLowerCase();
+    var currentType = (typeSelect.value || '').toLowerCase();
     var shouldMask = currentType === 'password' || currentType === 'secret';
     var inputType = shouldMask ? 'password' : resolveValueInputType(currentType);
     newValueInput.setAttribute('type', inputType);
@@ -370,7 +370,7 @@
 
   if (rangeInput && rangeOutput) {
     var syncRangeOutput = function() {
-      rangeOutput.textContent = String(rangeInput.value || '');
+      rangeOutput.textContent = rangeInput.value || '';
     };
     rangeInput.addEventListener('input', syncRangeOutput);
     syncRangeOutput();

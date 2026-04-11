@@ -115,18 +115,15 @@
 <script>
   (function () {
     function askRestoreConfirm(message, title, opener) {
-      var confirmAPI = window.DashAppUI && window.DashAppUI.confirm;
-      if (confirmAPI && typeof confirmAPI.ask === "function") {
-        return confirmAPI.ask({
-          dialogId: "backup-restore-confirm-dialog",
-          title: title || "确认操作",
-          message: message || "",
-          messageSelector: "#backup-restore-confirm-message",
-          okSelector: "#backup-restore-confirm-ok",
-          opener: opener || null
-        });
-      }
-      return Promise.resolve(window.confirm(message || ""));
+      var confirmAPI = window.DashAppUI.confirm;
+      return confirmAPI.ask({
+        dialogId: "backup-restore-confirm-dialog",
+        title: title || "确认操作",
+        message: message || "",
+        messageSelector: "#backup-restore-confirm-message",
+        okSelector: "#backup-restore-confirm-ok",
+        opener: opener || null
+      });
     }
 
     var uploadForm = document.querySelector("[data-restore-upload-form]");

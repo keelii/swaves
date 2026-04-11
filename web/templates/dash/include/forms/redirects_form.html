@@ -79,7 +79,7 @@
     var toInput = document.getElementById('redirect-to-path');
     var body = document.getElementById('redirect-target-picker-body');
     var openButton = document.getElementById('redirect-target-picker-open');
-    var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
+    var dialogAPI = window.DashAppUI.dialog;
 
     if (!dialog || !search || !toInput || !body) {
       return;
@@ -90,20 +90,15 @@
     }
 
     function openPickerDialog() {
-      if (dialogAPI && typeof dialogAPI.open === 'function') {
-        return dialogAPI.open('redirect-target-picker-dialog');
-      }
-      return false;
+      return dialogAPI.open('redirect-target-picker-dialog');
     }
 
     function closePickerDialog() {
-      if (dialogAPI && typeof dialogAPI.close === 'function') {
-        dialogAPI.close('redirect-target-picker-dialog');
-      }
+      dialogAPI.close('redirect-target-picker-dialog');
     }
 
     function filterRows() {
-      var keyword = String(search.value || '').trim().toLowerCase();
+      var keyword = (search.value || '').trim().toLowerCase();
 
       getRows().forEach(function(row) {
         if (!keyword) {
@@ -111,7 +106,7 @@
           return;
         }
 
-        var text = String(row.getAttribute('data-search-text') || row.textContent || '').toLowerCase();
+        var text = (row.getAttribute('data-search-text') || row.textContent || '').toLowerCase();
         row.hidden = text.indexOf(keyword) < 0;
       });
     }
@@ -135,7 +130,7 @@
         return;
       }
 
-      var targetURL = String(button.getAttribute('data-target-url') || '').trim();
+      var targetURL = (button.getAttribute('data-target-url') || '').trim();
       if (!targetURL) {
         return;
       }

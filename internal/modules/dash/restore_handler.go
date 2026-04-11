@@ -145,6 +145,7 @@ func (h *Handler) PostBackupRestoreDeleteHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) PostBackupRestoreBackupNowHandler(c fiber.Ctx) error {
+	logger.Info("[backup] manual local backup requested: ip=%s", c.IP())
 	message, err := job.RunLocalBackupNow(h.Model)
 	if err != nil {
 		logger.Error("[backup] run local backup now failed: %v", err)
@@ -155,6 +156,7 @@ func (h *Handler) PostBackupRestoreBackupNowHandler(c fiber.Ctx) error {
 	if message != nil && strings.TrimSpace(*message) != "" {
 		notice = strings.TrimSpace(*message)
 	}
+	logger.Info("[backup] manual local backup completed: ip=%s message=%s", c.IP(), notice)
 	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, nil, notice)
 }
 

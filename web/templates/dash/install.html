@@ -306,13 +306,13 @@
 
     document.querySelectorAll('[data-range-value]').forEach(function(input) {
       var output = input.parentElement && input.parentElement.querySelector('.range-value');
-      var unit = String(input.getAttribute('data-unit') || '');
+      var unit = input.getAttribute('data-unit') || '';
 
       function syncRange() {
         if (!output) {
           return;
         }
-        output.textContent = String(input.value || '') + unit;
+        output.textContent = (input.value || '') + unit;
       }
 
       input.addEventListener('input', syncRange);
@@ -326,14 +326,14 @@
           return;
         }
 
-        var isPassword = String(input.getAttribute('type') || '').toLowerCase() === 'password';
+        var isPassword = (input.getAttribute('type') || '').toLowerCase() === 'password';
         input.setAttribute('type', isPassword ? 'text' : 'password');
         button.textContent = isPassword ? button.getAttribute('data-hide-text') : button.getAttribute('data-show-text');
       });
     });
 
     function normalizePrefixLiteral(raw) {
-      raw = String(raw || '').trim();
+      raw = (raw || '').trim();
       raw = raw.replace(/^\/+|\/+$/g, '');
       if (!raw) {
         return '/';
@@ -353,19 +353,19 @@
       if (!installForm) {
         return '';
       }
-      return String(installForm.getAttribute('data-preview-' + name) || '').trim();
+      return (installForm.getAttribute('data-preview-' + name) || '').trim();
     }
 
     function readFieldValue(name, fallbackValue) {
       var field = document.querySelector('[name="' + name + '"]');
       if (!field) {
-        return String(fallbackValue || '').trim();
+        return (fallbackValue || '').trim();
       }
-      return String(field.value || '').trim();
+      return (field.value || '').trim();
     }
 
     function splitPathSegments(raw) {
-      raw = String(raw || '').trim();
+      raw = (raw || '').trim();
       if (!raw) {
         return [];
       }
@@ -373,7 +373,7 @@
       return raw
         .split('/')
         .map(function(part) {
-          return String(part || '').trim();
+          return (part || '').trim();
         })
         .filter(function(part) {
           return part !== '';
@@ -410,7 +410,7 @@
       postName = postName.split('{slug}').join('hello-world');
       postName = postName.split('{id}').join('123');
       postName = postName.split('{title}').join('my-first-post');
-      if (!String(postName || '').trim()) {
+      if (!(postName || '').trim()) {
         postName = 'hello-world';
       }
 
@@ -442,8 +442,8 @@
       var basePrefix = normalizePrefixLiteral(baseInput ? baseInput.value : '');
 
       document.querySelectorAll('[data-prefix-default]').forEach(function(input) {
-        var sourceCode = String(input.getAttribute('data-prefix-source-code') || '').trim();
-        var prefixText = String(input.getAttribute('data-prefix-default') || '').trim() || '/';
+        var sourceCode = (input.getAttribute('data-prefix-source-code') || '').trim();
+        var prefixText = (input.getAttribute('data-prefix-default') || '').trim() || '/';
         var prefixGroup = input.closest('.ui-input-prefix-group');
         var prefixNode;
 

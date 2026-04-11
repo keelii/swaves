@@ -28,6 +28,8 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - Register helpers directly via `env.AddFilter`/`env.AddFunction`.
 - Use template-root-relative paths with explicit `.html` suffix.
 - Prefer `include` without `with`; included templates should read needed values directly from current context when feasible.
+- Frontend templates should trust the shared admin runtime baseline: do not add repetitive existence guards around required APIs such as `console.warn`, `notify`, or `window.DashAppUI.{toast,dialog,confirm}` at call sites.
+- Avoid meaningless defensive coercion in template scripts (for example `String(message || '')`) when the value is already known text or comes from the current UI flow; keep normalization only where unknown external input is actually being sanitized.
 
 3) Data and workflow discipline:
 - Keep settings/prefix semantics stable.
