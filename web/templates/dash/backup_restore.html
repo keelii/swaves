@@ -2,7 +2,12 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "backup-restore-table" %}
-{% block page_actions %}{% endblock %}
+{% block page_actions %}
+  <form method="post" action="{{ UrlFor('dash.backup_restore.backup') }}">
+    {{ _csrf_token() }}
+    {{ sui.Button("立即执行本地备份", "outline", attrs='type="submit"') }}
+  </form>
+{% endblock %}
 {% block operation_left %}
   <div>
     <strong>从本地备份中选取文件恢复</strong>

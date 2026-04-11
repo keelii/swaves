@@ -46,7 +46,7 @@
 
     function getNavWidthMinMax() {
       if (!navPanel) {
-        return { min: 150, max: 480 };
+        return { min: {{ DashNavWidthMin() }}, max: {{ DashNavWidthMax() }} };
       }
 
       var minAttr = parsePixels(navPanel.getAttribute('data-nav-min-width'));
@@ -64,10 +64,10 @@
       }
 
       if (minWidth === null) {
-        minWidth = 150;
+        minWidth = {{ DashNavWidthMin() }};
       }
       if (maxWidth === null) {
-        maxWidth = 480;
+        maxWidth = {{ DashNavWidthMax() }};
       }
 
       if (maxWidth < minWidth) {

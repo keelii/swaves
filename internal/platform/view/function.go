@@ -6,6 +6,7 @@ import (
 	HTML "html"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/helper"
@@ -303,6 +304,12 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 	})
 	env.AddFunction("GetDashUrl", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		return value.FromString(share.GetDashUrl()), nil
+	})
+	env.AddFunction("DashNavWidthMin", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		return value.FromString(strconv.Itoa(config.DashNavWidthMin)), nil
+	})
+	env.AddFunction("DashNavWidthMax", func(_ *minijinja.State, _ []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		return value.FromString(strconv.Itoa(config.DashNavWidthMax)), nil
 	})
 	env.AddFunction("GetTagUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {

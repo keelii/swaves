@@ -1,7 +1,9 @@
 package job
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"swaves/internal/platform/buildinfo"
@@ -191,6 +193,58 @@ func TestExecuteTaskSkipsDisabledRemoteBackup(t *testing.T) {
 	}
 	if len(runs) != 0 {
 		t.Fatalf("expected no task runs for disabled remote backup, got %d", len(runs))
+	}
+}
+
+func TestRunLocalBackupNowBypassesInterval(t *testing.T) {
+	dbx := openJobTestDB(t)
+	backupDir := t.TempDir()
+	withTaskSettings(t, map[string]string{
+		"backup_local_dir":          backupDir,
+		"backup_local_interval_min": "1440",
+		"backup_local_max_count":    "30",
+	})
+
+	first, err := RunLocalBackupNow(dbx)
+	if err != nil {
+		t.Fatalf("RunLocalBackupNow first failed: %v", err)
+	}
+	if first == nil || strings.TrimSpace(*first) == "" {
+		t.Fatal("RunLocalBackupNow first should return message")
+	}
+
+	if _, err := db.CreateTag(dbx, &db.Tag{Name: "tag-1", Slug: "tag-1"}); err != nil {
+		t.Fatalf("CreateTag failed: %v", err)
+	}
+
+	scheduled, err := DatabaseBackupJob(&Registry{DB: dbx})
+	if err != nil {
+		t.Fatalf("DatabaseBackupJob failed: %v", err)
+	}
+	if scheduled == nil || !strings.Contains(*scheduled, "skip local backup: interval=") {
+		t.Fatalf("expected scheduled backup to skip by interval, got %v", scheduled)
+	}
+
+	second, err := RunLocalBackupNow(dbx)
+	if err != nil {
+		t.Fatalf("RunLocalBackupNow second failed: %v", err)
+	}
+	if second == nil || strings.Contains(*second, "skip local backup: interval=") {
+		t.Fatalf("RunLocalBackupNow second should bypass interval, got %v", second)
+	}
+
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+	sqliteCount := 0
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".sqlite") {
+			sqliteCount++
+		}
+	}
+	if sqliteCount != 2 {
+		t.Fatalf("expected 2 sqlite backups, got %d", sqliteCount)
 	}
 }
 

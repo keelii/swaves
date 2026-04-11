@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"swaves/internal/platform/db"
+	job "swaves/internal/platform/jobs"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/platform/store"
@@ -163,6 +164,24 @@ func (h *Handler) PostBackupRestoreDeleteHandler(c fiber.Ctx) error {
 
 	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
 		"notice": "本地备份文件已删除。",
+	})
+}
+
+func (h *Handler) PostBackupRestoreBackupNowHandler(c fiber.Ctx) error {
+	message, err := job.RunLocalBackupNow(h.Model)
+	if err != nil {
+		logger.Error("[backup] run local backup now failed: %v", err)
+		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
+			"error": "立即执行本地备份失败：" + err.Error(),
+		})
+	}
+
+	notice := "本地备份已完成。"
+	if message != nil && strings.TrimSpace(*message) != "" {
+		notice = strings.TrimSpace(*message)
+	}
+	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
+		"notice": notice,
 	})
 }
 

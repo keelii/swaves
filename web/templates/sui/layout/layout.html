@@ -6,7 +6,7 @@
 
 {% block body %}
 <div class="app-window">
-  <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="100" data-nav-max-width="480">
+  <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="{{ DashNavWidthMin() }}" data-nav-max-width="{{ DashNavWidthMax() }}">
     <div class="app-panel-toolbar">
       {% block window_toolbar_left %}{% endblock %}
     </div>
@@ -116,7 +116,7 @@
 
     function getNavWidthMinMax() {
       if (!navPanel) {
-        return { min: 180, max: 480 };
+        return { min: {{ DashNavWidthMin() }}, max: {{ DashNavWidthMax() }} };
       }
 
       var minAttr = parsePixels(navPanel.getAttribute('data-nav-min-width'));
@@ -134,10 +134,10 @@
       }
 
       if (minWidth === null) {
-        minWidth = 180;
+        minWidth = {{ DashNavWidthMin() }};
       }
       if (maxWidth === null) {
-        maxWidth = 480;
+        maxWidth = {{ DashNavWidthMax() }};
       }
 
       if (maxWidth < minWidth) {

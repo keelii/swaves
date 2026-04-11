@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/store"
@@ -63,8 +64,6 @@ type settingCardMeta struct {
 }
 
 const (
-	dashNavWidthMin          = 150
-	dashNavWidthMax          = 480
 	settingCodeDashNavWidth  = "dash_nav_width"
 	settingCodeDashMenuState = "dash_full_main_open"
 	settingCodeDashEditorTOC = "dash_post_editor_toc_open"
@@ -912,11 +911,11 @@ func (h *Handler) postUpdateDashNavWidthSettingAPIHandler(c fiber.Ctx, rawValue 
 		})
 	}
 
-	if width < dashNavWidthMin || width > dashNavWidthMax {
+	if width < config.DashNavWidthMin || width > config.DashNavWidthMax {
 		logger.Warn("[settings] update dash_nav_width failed: out of range value=%d", width)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,
-			"error": "导航栏宽度必须在 150 到 480 之间",
+			"error": fmt.Sprintf("导航栏宽度必须在 %d 到 %d 之间", config.DashNavWidthMin, config.DashNavWidthMax),
 		})
 	}
 

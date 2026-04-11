@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"regexp"
-	"swaves/internal/shared/helper"
 )
 
 func jsonStringify(v interface{}) string {
@@ -61,9 +60,23 @@ var PostUrlExtValidatorJSON = jsonStringify(PostUrlExtValidator)
 //	"required": true,
 //	"pattern":  PostUrlNameRegexp.String(),
 //}
-//var PostUrlNameValidatorJSON = helper.JSONStringify(PostUrlNameValidator)
+//var PostUrlNameValidatorJSON = jsonStringify(PostUrlNameValidator)
 
 var DashPasswordValidator = CondProduction(map[string]interface{}{
 	"minlength": 6,
 }, map[string]interface{}{})
-var DashPasswordValidatorJSON = helper.JSONStringify(DashPasswordValidator)
+var DashPasswordValidatorJSON = jsonStringify(DashPasswordValidator)
+
+const (
+	DashNavWidthMin  = 100
+	DashNavWidthMax  = 480
+	DashNavWidthStep = 5
+)
+
+var DashNavWidthValidator = map[string]interface{}{
+	"min":  DashNavWidthMin,
+	"max":  DashNavWidthMax,
+	"step": DashNavWidthStep,
+}
+
+var DashNavWidthValidatorJSON = jsonStringify(DashNavWidthValidator)

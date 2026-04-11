@@ -37,25 +37,40 @@ func DatabaseBackupJob(reg *Registry) (*string, error) {
 	}
 
 	cfg := loadLocalBackupConfig(reg)
+	return runLocalBackup(reg.DB, cfg, true)
+}
+
+func RunLocalBackupNow(dbx *db.DB) (*string, error) {
+	if dbx == nil {
+		return nil, errors.New("db is nil")
+	}
+
+	cfg := loadLocalBackupConfig(&Registry{})
+	return runLocalBackup(dbx, cfg, false)
+}
+
+func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, error) {
 	backupDir := resolveBackupDir(cfg.Dir)
 
 	if err := helper.EnsureDir(backupDir, 0755); err != nil {
 		return nil, fmt.Errorf("无法创建备份目录 %s: %w", backupDir, err)
 	}
 
-	latestAt, err := latestLocalBackupAt(backupDir)
-	if err != nil {
-		return nil, fmt.Errorf("读取本地备份目录失败: %w", err)
-	}
-	if !latestAt.IsZero() && cfg.Interval > 0 {
-		elapsed := time.Since(latestAt)
-		if elapsed < cfg.Interval {
-			remain := (cfg.Interval - elapsed).Round(time.Second)
-			return jobMessage(fmt.Sprintf("skip local backup: interval=%s remaining=%s", cfg.Interval, remain)), nil
+	if checkInterval {
+		latestAt, err := latestLocalBackupAt(backupDir)
+		if err != nil {
+			return nil, fmt.Errorf("读取本地备份目录失败: %w", err)
+		}
+		if !latestAt.IsZero() && cfg.Interval > 0 {
+			elapsed := time.Since(latestAt)
+			if elapsed < cfg.Interval {
+				remain := (cfg.Interval - elapsed).Round(time.Second)
+				return jobMessage(fmt.Sprintf("skip local backup: interval=%s remaining=%s", cfg.Interval, remain)), nil
+			}
 		}
 	}
 
-	result, err := db.ExportSQLiteWithHash(reg.DB, backupDir)
+	result, err := db.ExportSQLiteWithHash(dbx, backupDir)
 	if err != nil {
 		if strings.Contains(err.Error(), "无需重复导出") {
 			return jobMessage(err.Error()), nil

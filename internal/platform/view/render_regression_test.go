@@ -387,6 +387,7 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	app := fiber.New()
 	app.Get("/dash/backup-restore", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.show")
 	app.Get("/dash/backup-restore/status", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.status")
+	app.Post("/dash/backup-restore/backup", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.backup")
 	app.Post("/dash/backup-restore/local", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.local")
 	app.Post("/dash/backup-restore/upload", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.upload")
 	app.Post("/dash/backup-restore/delete", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.delete")
@@ -412,6 +413,9 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	rendered := out.String()
 	if !strings.Contains(rendered, "本地备份文件列表") {
 		t.Fatalf("expected local restore section in backup restore view")
+	}
+	if !strings.Contains(rendered, "立即执行本地备份") {
+		t.Fatalf("expected local backup action in backup restore view")
 	}
 	if !strings.Contains(rendered, `data-title="恢复"`) {
 		t.Fatalf("expected backup restore action in backup restore view")
