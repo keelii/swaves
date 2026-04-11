@@ -448,15 +448,25 @@ svg rect:focus {
   display: flex;
 }
 
-.ui-file-item {
+.ui-file-item-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--app-gap-4);
+  flex-direction: column;
+  gap: var(--app-gap-1);
   padding: 8px 10px;
   border-radius: var(--app-radius);
   border: var(--app-border-width) solid var(--app-border);
   background: var(--app-surface-muted-bg);
+}
+
+.ui-file-item-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--app-gap-4);
+  min-width: 0;
 }
 
 .ui-file-item-name {

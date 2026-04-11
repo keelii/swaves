@@ -288,6 +288,9 @@ func TestRenderDashAssetsIndexWithItems(t *testing.T) {
 	if strings.Contains(rendered, "暂无资源") {
 		t.Fatalf("expected non-empty asset table, got: %s", rendered)
 	}
+	if !strings.Contains(rendered, `data-role="ui-file-upload"`) {
+		t.Fatalf("expected assets page to use standard file upload component, got: %s", rendered)
+	}
 }
 
 func TestRenderStatusMainPaginationFallsBackToRouteContext(t *testing.T) {
@@ -375,6 +378,9 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 	}
 	if !strings.Contains(rendered, `data-import-row-retry-btn`) {
 		t.Fatalf("expected import retry button markup")
+	}
+	if !strings.Contains(rendered, `data-role="ui-file-upload"`) {
+		t.Fatalf("expected import page to use standard file upload component")
 	}
 }
 

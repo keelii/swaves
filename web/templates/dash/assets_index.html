@@ -34,21 +34,26 @@
 {% endblock %}
 
 {% block app_header %}
-  <section class="asset-upload">
-    <input type="file" id="asset-drop-input" style="display:none;" multiple>
-    <div
-            id="asset-dropzone"
-            class="asset-upload-dropzone"
-            data-upload-ready="{% if defaultProviderReady %}1{% else %}0{% endif %}"
-            data-upload-error="{{ defaultProviderError }}"
-    >
-      <p class="asset-upload-title">拖拽文件到这里上传</p>
-      <p class="asset-upload-subtitle">或点击此区域选择文件（确认后会立即上传）</p>
-      <p class="asset-upload-status{% if not defaultProviderReady %} error{% endif %}" id="asset-upload-status">
-        当前默认服务：{{ assetProviderLabelMap[defaultProvider] }}
-        {% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
-      </p>
-      <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
+  <section id="asset-upload-root" class="asset-upload">
+    {{ sui.FileUpload(
+      id="asset-drop-input",
+      name="files",
+      label="上传资源文件",
+      multiple=true,
+      attrs=(not defaultProviderReady and 'disabled' or '')
+    ) }}
+    <div class="asset-upload-status" id="asset-upload-status">
+      <div class="ui-alert {% if defaultProviderReady %}info{% else %}danger{% endif %} inline" role="status">
+        <div class="ui-alert-title">{% if defaultProviderReady %}上传说明{% else %}上传不可用{% endif %}</div>
+        <div class="ui-alert-body">
+          <div class="asset-upload-alert-row" id="asset-upload-provider-text">
+            当前默认服务：{{ assetProviderLabelMap[defaultProvider] }}{% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
+          </div>
+          <div class="asset-upload-alert-row">
+            <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -60,50 +65,17 @@
     margin: var(--app-spacing) var(--app-spacing) 0;
   }
 
-  .asset-upload-dropzone {
-    border: 2px dashed var(--app-border);
-    border-radius: var(--app-radius-md);
-    background: var(--app-surface-muted-bg);
-    min-height: 180px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--app-spacing);
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
-  }
-
-  .asset-upload-dropzone.dragover {
-    border-color: var(--app-brand-border);
-    background: var(--app-color-info-bg);
-  }
-
-  .asset-upload-dropzone.is-uploading {
+  .asset-upload.is-uploading .ui-file-dropzone {
     cursor: progress;
     opacity: 0.7;
   }
 
-  .asset-upload-title {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-  }
-
-  .asset-upload-subtitle {
-    margin: 0;
-    color: var(--app-text-soft);
-  }
-
   .asset-upload-status {
-    margin: 0;
-    color: var(--app-text-soft);
-    font-size: 0.875rem;
+    margin-top: var(--app-gap-2);
   }
 
-  .asset-upload-status.error {
-    color: var(--app-danger-fg);
+  .asset-upload-alert-row {
+    margin-top: var(--app-gap-2);
   }
 
   .asset-upload-tip {
@@ -112,7 +84,6 @@
   }
 
   .asset-upload-remark {
-    margin-top: var(--app-spacing);
     width: min(560px, 100%);
   }
 
@@ -148,8 +119,8 @@
   }
 
   @media (max-width: 960px) {
-    .asset-upload-dropzone {
-      min-height: 150px;
+    .asset-upload {
+      margin-inline: var(--app-spacing);
     }
   }
 </style>
@@ -237,26 +208,27 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   var assetAPIBase = {{ UrlFor('dash.assets.api.list') | tojson }};
-  var dropzone = document.getElementById('asset-dropzone');
+  var uploadRoot = document.getElementById('asset-upload-root');
   var fileInput = document.getElementById('asset-drop-input');
   var uploadRemark = document.getElementById('asset-upload-remark');
   var uploadStatus = document.getElementById('asset-upload-status');
+  var uploadStatusText = document.getElementById('asset-upload-status-text');
+  var uploadProviderText = document.getElementById('asset-upload-provider-text');
   var alertDialog = document.getElementById('asset-alert-dialog');
   var alertMessage = document.getElementById('asset-alert-message');
   var isUploading = false;
   var uploadReady;
   var uploadError;
   var uploadStatusBaseText;
-  var uploadStatusBaseIsError;
 
-  if (!dropzone || !fileInput || !uploadRemark || !uploadStatus) {
+  if (!uploadRoot || !fileInput || !uploadRemark || !uploadStatus || !uploadStatusText || !uploadProviderText) {
     return;
   }
 
-  uploadReady = String(dropzone.getAttribute('data-upload-ready') || '') === '1';
-  uploadError = String(dropzone.getAttribute('data-upload-error') || '').trim();
-  uploadStatusBaseText = String(uploadStatus.textContent || '').replace(/\s+/g, ' ').trim();
-  uploadStatusBaseIsError = uploadStatus.classList.contains('error');
+  uploadReady = {{ defaultProviderReady | tojson }};
+  uploadError = {{ defaultProviderError | tojson }};
+  uploadStatusBaseText = String(uploadStatusText.textContent || '').replace(/\s+/g, ' ').trim();
+  var uploadProviderBaseText = String(uploadProviderText.textContent || '').replace(/\s+/g, ' ').trim();
 
   function getDialogAPI() {
     return window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
@@ -327,15 +299,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function setUploading(working, text) {
     isUploading = working;
-    dropzone.classList.toggle('is-uploading', working);
+    uploadRoot.classList.toggle('is-uploading', working);
     if (text) {
-      uploadStatus.textContent = text;
-      uploadStatus.classList.remove('error');
+      uploadStatusText.textContent = text;
+      uploadProviderText.textContent = '';
       return;
     }
     if (!working) {
-      uploadStatus.textContent = uploadStatusBaseText;
-      uploadStatus.classList.toggle('error', uploadStatusBaseIsError);
+      uploadStatusText.textContent = uploadStatusBaseText;
+      uploadProviderText.textContent = uploadProviderBaseText;
     }
   }
 
@@ -495,63 +467,9 @@ document.addEventListener('DOMContentLoaded', function() {
     return '![' + alt + '](' + url + ')';
   }
 
-  function openFilePicker() {
-    if (!uploadReady) {
-      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
-      return;
-    }
-
-    if (isUploading) {
-      return;
-    }
-    fileInput.click();
-  }
-
-  dropzone.addEventListener('click', function() {
-    openFilePicker();
-  });
-
   fileInput.addEventListener('change', function() {
     handleFiles(fileInput.files);
     fileInput.value = '';
-  });
-
-  ['dragenter', 'dragover'].forEach(function(eventName) {
-    dropzone.addEventListener(eventName, function(event) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!isUploading) {
-        dropzone.classList.add('dragover');
-      }
-    });
-  });
-
-  ['dragleave', 'dragend', 'drop'].forEach(function(eventName) {
-    dropzone.addEventListener(eventName, function(event) {
-      event.preventDefault();
-      event.stopPropagation();
-      dropzone.classList.remove('dragover');
-    });
-  });
-
-  dropzone.addEventListener('drop', function(event) {
-    var dt;
-
-    if (!uploadReady) {
-      showAssetNotice(uploadError || '上传服务配置不完整，请先到设置里完成配置');
-      return;
-    }
-
-    if (isUploading) {
-      return;
-    }
-
-    dt = event.dataTransfer;
-    if (!dt || !dt.files || !dt.files.length) {
-      return;
-    }
-
-    handleFiles(dt.files);
   });
 
   document.addEventListener('click', function(event) {

@@ -117,51 +117,13 @@
   .import-upload {
     margin-bottom: var(--app-gap-2);
   }
-  .import-item-content {
-    max-width: 30em;
-  }
 
-  .import-dropzone {
-    border: 2px dashed var(--app-border);
-    border-radius: var(--app-radius-md);
-    background: var(--app-panel-bg);
-    min-height: 140px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--app-gap-2);
-    text-align: center;
-    cursor: pointer;
-    padding: var(--app-spacing);
-    transition: border-color 0.15s ease, background-color 0.15s ease;
-  }
-
-  .import-dropzone.dragover {
-    border-color: var(--app-brand-border);
-    background: var(--app-surface-muted-bg);
-  }
-
-  .import-dropzone.is-disabled {
+  .import-upload.is-disabled .ui-file-dropzone {
     cursor: not-allowed;
     opacity: 0.65;
   }
-
-  .import-drop-title {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-  }
-
-  .import-drop-subtitle {
-    margin: 0;
-    color: var(--app-text-soft);
-  }
-
-  .import-drop-status {
-    margin: 0;
-    color: var(--app-text-soft);
-    font-size: 0.875rem;
+  .import-item-content {
+    max-width: 30em;
   }
 
   .import-edit-actions {
@@ -304,13 +266,16 @@
 <div class="card import-config-card">
 <form id="form" method="post" action="{{ UrlFor('dash.import.submit') }}" enctype="multipart/form-data">
   {{ _csrf_token() }}
-  <section class="app-mb import-upload">
-    <input type="file" id="import-files-input" name="files" accept=".md,.markdown,text/markdown" multiple required hidden>
-    <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖拽 Markdown 文件">
-      <p class="import-drop-title">拖拽 Markdown 文件到这里导入</p>
-      <p class="import-drop-subtitle">或点击此区域选择文件（支持多选）</p>
-      <p id="import-drop-status" class="import-drop-status">当前未选择文件</p>
-    </div>
+  <section id="import-upload-root" class="app-mb import-upload">
+    {{ sui.FileUpload(
+      id="import-files-input",
+      name="files",
+      label="上传 Markdown 文件",
+      accept=".md,.markdown,text/markdown",
+      multiple=true,
+      help="支持多选，拖拽或点击选择后可直接开始导入。",
+      attrs='required'
+    ) }}
   </section>
   <div class="app-mb import-config-help">
     {% set frontmatterExample %}
@@ -487,8 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var form = document.getElementById('form');
   var fileInput = document.getElementById('import-files-input');
-  var dropzone = document.getElementById('import-dropzone');
-  var dropStatus = document.getElementById('import-drop-status');
+  var uploadRoot = document.getElementById('import-upload-root');
   var editPanel = document.getElementById('import-edit-panel');
   var editSummary = document.getElementById('import-edit-summary');
   var editSummaryBody;
@@ -508,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var isConfirming = false;
   var isCancelling = false;
 
-  if (!form || !fileInput || !dropzone || !dropStatus || !editPanel || !editSummary || !editTableWrap ||
+  if (!form || !fileInput || !uploadRoot || !editPanel || !editSummary || !editTableWrap ||
       !editEmptyState || !editRows || !confirmBtn || !cancelBtn || !cancelConfirmBtn || !rowTemplate ||
       !toggleImportStatusBtn) {
     return;
@@ -674,19 +638,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  function renderSelectedFiles() {
-    if (selectedFiles.length === 0) {
-      dropStatus.textContent = '当前未选择文件';
-      return;
-    }
-
-    dropStatus.textContent = '已选择 ' + selectedFiles.length + ' 个文件';
-  }
-
   function setSelectedFiles(files) {
     selectedFiles = Array.from(files || []);
     setInputFiles(selectedFiles);
-    renderSelectedFiles();
   }
 
   function normalizeItem(raw) {
@@ -1275,60 +1229,8 @@ document.addEventListener('DOMContentLoaded', function() {
     hide('#tag_field_container');
   });
 
-  function openFilePicker() {
-    if (isParsing || isConfirming || isCancelling) {
-      return;
-    }
-    fileInput.click();
-  }
-
-  dropzone.addEventListener('click', function() {
-    openFilePicker();
-  });
-
-  dropzone.addEventListener('keydown', function(event) {
-    if (event.key !== 'Enter' && event.key !== ' ') {
-      return;
-    }
-    event.preventDefault();
-    openFilePicker();
-  });
-
   fileInput.addEventListener('change', function() {
     setSelectedFiles(fileInput.files);
-  });
-
-  ['dragenter', 'dragover'].forEach(function(eventName) {
-    dropzone.addEventListener(eventName, function(event) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (isParsing || isConfirming || isCancelling) {
-        return;
-      }
-      dropzone.classList.add('dragover');
-    });
-  });
-
-  ['dragleave', 'dragend', 'drop'].forEach(function(eventName) {
-    dropzone.addEventListener(eventName, function(event) {
-      event.preventDefault();
-      event.stopPropagation();
-      dropzone.classList.remove('dragover');
-    });
-  });
-
-  dropzone.addEventListener('drop', function(event) {
-    var dt;
-
-    if (isParsing || isConfirming || isCancelling) {
-      return;
-    }
-
-    dt = event.dataTransfer;
-    if (!dt || !dt.files || dt.files.length === 0) {
-      return;
-    }
-    setSelectedFiles(dt.files);
   });
 
   toggleImportStatusBtn.addEventListener('click', function() {
@@ -1453,7 +1355,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     isCancelling = true;
-    dropzone.classList.add('is-disabled');
+    uploadRoot.classList.add('is-disabled');
     setDisabled(editPanel, true);
     cancelConfirmBtn.disabled = true;
 
@@ -1494,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', function() {
       setDisabled(editPanel, false);
       cancelConfirmBtn.disabled = false;
       if (!isParsing && !isConfirming) {
-        dropzone.classList.remove('is-disabled');
+        uploadRoot.classList.remove('is-disabled');
       }
     }
   }
@@ -1551,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     isConfirming = true;
-    dropzone.classList.add('is-disabled');
+    uploadRoot.classList.add('is-disabled');
     setDisabled(editPanel, true);
 
     try {
@@ -1658,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', function() {
       setDisabled(editPanel, false);
       isConfirming = false;
       if (!isParsing && !isCancelling) {
-        dropzone.classList.remove('is-disabled');
+        uploadRoot.classList.remove('is-disabled');
       }
     }
   });
@@ -1690,7 +1592,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     options = collectOptions();
     isParsing = true;
-    dropzone.classList.add('is-disabled');
+    uploadRoot.classList.add('is-disabled');
     ensureEditPanelVisible();
     setEditSummary('开始逐个导入文件（临时状态：导入中）...', 'warning');
     setDisabled(form, true);
@@ -1730,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setDisabled(form, false);
     isParsing = false;
     if (!isConfirming && !isCancelling) {
-      dropzone.classList.remove('is-disabled');
+      uploadRoot.classList.remove('is-disabled');
     }
 
     if (successCount > 0 && failCount === 0) {
@@ -1761,7 +1663,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initCategorySelect(rowEl);
   });
   selectedFiles = selectedFilesFromInput();
-  renderSelectedFiles();
   syncEditSummaryByRows('warning');
 });
 </script>

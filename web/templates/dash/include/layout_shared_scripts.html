@@ -1506,10 +1506,12 @@
         return;
       }
       listEl.classList.add('has-files');
+      var list = document.createElement('ul');
+      list.className = 'ui-file-item-list';
       for (var i = 0; i < files.length; i++) {
         var file = files[i];
-        var item = document.createElement('div');
-        item.className = 'ui-file-item';
+        var row = document.createElement('li');
+        row.className = 'ui-file-item-row';
 
         var name = document.createElement('div');
         name.className = 'ui-file-item-name';
@@ -1519,10 +1521,11 @@
         meta.className = 'ui-file-item-meta';
         meta.textContent = file && typeof file.size === 'number' ? formatBytes(file.size) : '';
 
-        item.appendChild(name);
-        item.appendChild(meta);
-        listEl.appendChild(item);
+        row.appendChild(name);
+        row.appendChild(meta);
+        list.appendChild(row);
       }
+      listEl.appendChild(list);
     }
 
     function closestUploadRoot(target) {
@@ -1697,14 +1700,31 @@
       if (!files || files.length === 0) {
         return;
       }
+      var input = root.querySelector('[data-role="ui-file-input"]');
       var listEl = root.querySelector('[data-role="ui-file-list"]');
-      renderFileList(listEl, files);
-      window.DashAppUI.toast.show({
-        kind: 'info',
-        title: '拖拽已读取',
-        message: '浏览器可能不允许直接写入 input.files；此处仅展示文件列表（示例）。',
-        duration: 3200,
-      });
+      var assigned = false;
+      if (input && typeof DataTransfer === 'function') {
+        try {
+          var dt = new DataTransfer();
+          Array.from(files).forEach(function(file) {
+            dt.items.add(file);
+          });
+          input.files = dt.files;
+          assigned = true;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (error) {
+          assigned = false;
+        }
+      }
+      if (!assigned) {
+        renderFileList(listEl, files);
+        window.DashAppUI.toast.show({
+          kind: 'info',
+          title: '拖拽已读取',
+          message: '浏览器可能不允许直接写入 input.files；此处仅展示文件列表（示例）。',
+          duration: 3200,
+        });
+      }
     }, true);
 
     document.addEventListener('pointerover', function(event) {
