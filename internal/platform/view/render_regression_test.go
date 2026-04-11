@@ -416,6 +416,9 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	if !strings.Contains(rendered, `data-title="恢复"`) {
 		t.Fatalf("expected backup restore action in backup restore view")
 	}
+	if !strings.Contains(rendered, `class="cell-checkbox ui-checkbox"`) {
+		t.Fatalf("expected backup restore multiselect checkboxes in backup restore view")
+	}
 	if !strings.Contains(rendered, `确定删除这个本地备份文件吗`) {
 		t.Fatalf("expected backup delete action in backup restore view")
 	}

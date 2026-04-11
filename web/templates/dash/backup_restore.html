@@ -1,12 +1,12 @@
 {% extends "dash/layout/layout_list.html" %}
+{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "backup-restore-table" %}
 {% block page_actions %}{% endblock %}
-{% block operation_multiselect %}{% endblock %}
-{% block status_main_left %}
-  {% if RouteName %}
-    <span>{{ RouteName }}</span>
-  {% endif %}
+{% block operation_left %}
+  <div>
+    <strong>从本地备份中选取文件恢复</strong>
+  </div>
 {% endblock %}
 {% block status_main_right %}
   {% if Pager.Num > 1 %}
@@ -40,26 +40,18 @@
   </div>
 {% endblock %}
 {% block content %}
-
-<style>
-  .app-operation {display:none;}
-</style>
-
 {% if BackupListError %}
   <div class="app-px app-pb">
     {{ sui.Alert(BackupListError, "danger", "读取备份失败", inline=true) }}
   </div>
 {% endif %}
 
-<div class="app-px app-px">
-  <h3>从本地备份中选取文件恢复</h3>
-</div>
-
 <div class="data-table-wrap">
   {% if LocalBackupFiles | length > 0 %}
     <table id="backup-restore-table" class="data-table" data-role="data-table" aria-label="本地备份文件列表">
       <thead>
         <tr>
+          <th>{{ ui.table_th_id() }}</th>
           <th>文件名</th>
           <th>更新时间</th>
           <th>大小</th>
@@ -69,6 +61,7 @@
       <tbody>
         {% for file in LocalBackupFiles %}
           <tr>
+            <td>{{ ui.table_td_id(((Pager.Page - 1) * Pager.PageSize) + loop.index) }}</td>
             <td>{{ file.Name }}</td>
             <td>{{ file.ModifiedAt | relativeTime }}</td>
             <td>{{ file.Size | humanSize }}</td>
