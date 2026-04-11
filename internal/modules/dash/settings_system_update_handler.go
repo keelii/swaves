@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/logger"
@@ -16,6 +17,8 @@ import (
 )
 
 var checkLatestRelease = updater.CheckLatestRelease
+
+const defaultRefreshDelaySeconds = 3
 
 type latestVersionInfo struct {
 	Version           string
@@ -72,6 +75,19 @@ func buildSystemUpdateNotice(result updater.InstallResult) string {
 		return result.Reason
 	}
 	return "当前已是最新版本。"
+}
+
+func parseRefreshDelaySeconds(raw string) int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+
+	seconds, err := strconv.Atoi(raw)
+	if err != nil || seconds <= 0 {
+		return 0
+	}
+	return seconds
 }
 
 func systemUpdateSupportState(autoUpdateEnabled bool) systemUpdateViewState {
@@ -151,20 +167,20 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 	viewState := systemUpdateSupportState(latestInfo.AutoUpdateEnabled)
 
 	return h.RenderDashView(c, "dash/settings_system_update.html", fiber.Map{
-		"Title":                   "系统更新",
-		"FrontendArea":            frontendArea,
-		"BackendArea":             backendArea,
-		"FrontendFirstSection":    firstSettingSectionCode(frontendArea),
-		"CurrentVersion":          versionLabel(buildinfo.Version),
-		"LatestVersion":           latestInfo.Version,
-		"LatestReleaseURL":        latestInfo.ReleaseURL,
-		"HasSystemUpdate":         latestInfo.HasSystemUpdate,
-		"AutoUpdateEnabled":       viewState.AutoUpdateEnabled,
-		"ManualUpdateEnabled":     viewState.ManualUpdateEnabled,
-		"RestartEnabled":          viewState.RestartEnabled,
-		"GlobalUpdateMessage":     viewState.GlobalUpdateMessage,
-		"SystemUpdateAutoRefresh": strings.TrimSpace(c.Query("refresh")) == "1",
-		"SystemRuntimePID":        viewState.SystemRuntimePID,
+		"Title":                    "系统更新",
+		"FrontendArea":             frontendArea,
+		"BackendArea":              backendArea,
+		"FrontendFirstSection":     firstSettingSectionCode(frontendArea),
+		"CurrentVersion":           versionLabel(buildinfo.Version),
+		"LatestVersion":            latestInfo.Version,
+		"LatestReleaseURL":         latestInfo.ReleaseURL,
+		"HasSystemUpdate":          latestInfo.HasSystemUpdate,
+		"AutoUpdateEnabled":        viewState.AutoUpdateEnabled,
+		"ManualUpdateEnabled":      viewState.ManualUpdateEnabled,
+		"RestartEnabled":           viewState.RestartEnabled,
+		"GlobalUpdateMessage":      viewState.GlobalUpdateMessage,
+		"SystemUpdateRefreshDelay": parseRefreshDelaySeconds(c.Query("refresh")),
+		"SystemRuntimePID":         viewState.SystemRuntimePID,
 	}, "")
 }
 
@@ -182,7 +198,7 @@ func (h *Handler) PostSettingsSystemRestartHandler(c fiber.Ctx) error {
 
 	logger.Info("[dash] system restart requested: ip=%s pid=%d", c.IP(), pid)
 	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
-		"refresh": "1",
+		"refresh": strconv.Itoa(defaultRefreshDelaySeconds),
 	}, fmt.Sprintf("已向服务发送重启信号（pid=%d）。", pid))
 }
 
@@ -203,7 +219,7 @@ func (h *Handler) PostSettingsSystemAutoUpdateHandler(c fiber.Ctx) error {
 	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": func() string {
 			if result.RestartedPID > 0 {
-				return "1"
+				return strconv.Itoa(defaultRefreshDelaySeconds)
 			}
 			return ""
 		}(),
@@ -268,7 +284,7 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": func() string {
 			if result.RestartedPID > 0 {
-				return "1"
+				return strconv.Itoa(defaultRefreshDelaySeconds)
 			}
 			return ""
 		}(),

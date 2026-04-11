@@ -325,33 +325,12 @@
 
 <script>
   (function() {
-    var systemUpdateNotice = {{ (Notice or "") | tojson }};
-    var systemUpdateAutoRefresh = {{ SystemUpdateAutoRefresh | tojson }};
-    if (systemUpdateAutoRefresh && systemUpdateNotice) {
+    var systemUpdateRefreshDelay = {{ SystemUpdateRefreshDelay | tojson }};
+    if (systemUpdateRefreshDelay > 0) {
       var refreshURL = window.location.pathname;
       window.setTimeout(function() {
-        var attempts = 0;
-        var maxAttempts = 10;
-        var refreshTimer = window.setInterval(function() {
-          attempts += 1;
-          fetch(refreshURL, { credentials: 'same-origin', cache: 'no-store' })
-            .then(function(response) {
-              if (response.ok) {
-                window.clearInterval(refreshTimer);
-                window.location.replace(refreshURL);
-                return;
-              }
-              if (attempts >= maxAttempts) {
-                window.clearInterval(refreshTimer);
-              }
-            })
-            .catch(function() {
-              if (attempts >= maxAttempts) {
-                window.clearInterval(refreshTimer);
-              }
-            });
-        }, 1500);
-      }, 1000);
+        window.location.replace(refreshURL);
+      }, systemUpdateRefreshDelay * 1000);
     }
 
     var triggers = document.querySelectorAll('[data-role="system-update-manual-trigger"]');

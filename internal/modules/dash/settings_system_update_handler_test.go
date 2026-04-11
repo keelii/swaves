@@ -128,3 +128,24 @@ func TestSystemUpdateSupportStateDisablesManualUpdateWithoutDaemon(t *testing.T)
 		t.Fatal("expected restart to be disabled without daemon mode")
 	}
 }
+
+func TestParseRefreshDelaySeconds(t *testing.T) {
+	tests := []struct {
+		raw  string
+		want int
+	}{
+		{raw: "", want: 0},
+		{raw: "0", want: 0},
+		{raw: "-1", want: 0},
+		{raw: "1", want: 1},
+		{raw: "5", want: 5},
+		{raw: " 3 ", want: 3},
+		{raw: "abc", want: 0},
+	}
+
+	for _, tt := range tests {
+		if got := parseRefreshDelaySeconds(tt.raw); got != tt.want {
+			t.Fatalf("parseRefreshDelaySeconds(%q) = %d, want %d", tt.raw, got, tt.want)
+		}
+	}
+}

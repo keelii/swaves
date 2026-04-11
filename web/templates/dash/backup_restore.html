@@ -21,7 +21,7 @@
 {% endblock %}
 {% block app_header %}
   <div class="app-px app-pt">
-    <div data-restore-status-panel data-status-url="{{ RestoreStatusAPIURL }}" data-auto-refresh="{% if RestoreAutoRefresh %}1{% else %}0{% endif %}" hidden>
+    <div data-restore-status-panel data-status-url="{{ RestoreStatusAPIURL }}" data-refresh-delay="{{ RestoreRefreshDelay or 0 }}" hidden>
       <span data-restore-status-message>{{ RestoreStatusMessage }}</span>
       <span data-restore-status-label>{{ RestoreStatusLabel }}</span>
       <span data-restore-status-updated>{{ RestoreStatusUpdated }}</span>
@@ -163,7 +163,11 @@
     });
 
     var panel = document.querySelector("[data-restore-status-panel]");
-    if (!panel || panel.getAttribute("data-auto-refresh") !== "1") {
+    if (!panel) {
+      return;
+    }
+    var refreshDelay = parseInt(panel.getAttribute("data-refresh-delay") || "0", 10);
+    if (!refreshDelay || refreshDelay <= 0) {
       return;
     }
 
@@ -204,7 +208,7 @@
         });
     }
 
-    window.setTimeout(pollStatus, 1500);
+    window.setTimeout(pollStatus, refreshDelay * 1000);
   })();
 </script>
 {% endblock %}

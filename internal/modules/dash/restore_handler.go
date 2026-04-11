@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	job "swaves/internal/platform/jobs"
@@ -90,7 +91,7 @@ func (h *Handler) PostExportRestoreLocalHandler(c fiber.Ctx) error {
 	}
 
 	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, map[string]string{
-		"refresh": "1",
+		"refresh": strconv.Itoa(defaultRefreshDelaySeconds),
 	}, "数据库恢复任务已提交，服务即将重启。")
 }
 
@@ -119,7 +120,7 @@ func (h *Handler) PostExportRestoreUploadHandler(c fiber.Ctx) error {
 	}
 
 	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, map[string]string{
-		"refresh": "1",
+		"refresh": strconv.Itoa(defaultRefreshDelaySeconds),
 	}, "数据库恢复任务已提交，服务即将重启。")
 }
 
@@ -184,6 +185,10 @@ func buildBackupRestoreViewData(c fiber.Ctx) (fiber.Map, error) {
 	}
 
 	statusAPIURL, _ := c.GetRouteURL("dash.backup_restore.status", fiber.Map{})
+	refreshDelay := parseRefreshDelaySeconds(c.Query(restoreStatusRefreshQuery))
+	if refreshDelay <= 0 && isRestoreStatusActive(restoreStatus.State) {
+		refreshDelay = defaultRefreshDelaySeconds
+	}
 
 	viewData := fiber.Map{
 		"Title":                "备份恢复",
@@ -194,12 +199,11 @@ func buildBackupRestoreViewData(c fiber.Ctx) (fiber.Map, error) {
 		"RestoreStatusLabel":   restoreStatusLabel(restoreStatus.State),
 		"RestoreStatusMessage": strings.TrimSpace(restoreStatus.Message),
 		"RestoreStatusUpdated": updatedAt,
-		"RestoreAutoRefresh": isRestoreStatusActive(restoreStatus.State) ||
-			strings.TrimSpace(c.Query(restoreStatusRefreshQuery)) == "1",
-		"RestoreStatusAPIURL": statusAPIURL,
-		"LocalBackupFiles":    backupFiles,
-		"LocalBackupDir":      backupDir,
-		"Pager":               pager,
+		"RestoreRefreshDelay":  refreshDelay,
+		"RestoreStatusAPIURL":  statusAPIURL,
+		"LocalBackupFiles":     backupFiles,
+		"LocalBackupDir":       backupDir,
+		"Pager":                pager,
 	}
 	if backupErr != nil {
 		viewData["BackupListError"] = backupErr.Error()
