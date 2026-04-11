@@ -1501,9 +1501,11 @@
         return;
       }
       listEl.innerHTML = '';
+      listEl.classList.remove('has-files');
       if (!files || files.length === 0) {
         return;
       }
+      listEl.classList.add('has-files');
       for (var i = 0; i < files.length; i++) {
         var file = files[i];
         var item = document.createElement('div');

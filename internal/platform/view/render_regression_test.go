@@ -853,6 +853,16 @@ func TestRenderLucideIconWithoutSize(t *testing.T) {
 	}
 }
 
+func TestRenderLucideNewspaperIcon(t *testing.T) {
+	rendered := renderLucideIconSVG("newspaper", "24")
+	if !strings.Contains(rendered, `data-name="newspaper"`) {
+		t.Fatalf("expected newspaper data-name, got %q", rendered)
+	}
+	if !strings.Contains(rendered, "lucide-newspaper") {
+		t.Fatalf("expected newspaper svg class, got %q", rendered)
+	}
+}
+
 func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {

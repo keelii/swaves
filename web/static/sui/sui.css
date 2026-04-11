@@ -438,10 +438,14 @@ svg rect:focus {
 }
 
 .ui-file-list {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: var(--app-gap-1);
   font-size: 0.88rem;
+}
+
+.ui-file-list.has-files {
+  display: flex;
 }
 
 .ui-file-item {

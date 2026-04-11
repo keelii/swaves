@@ -16,12 +16,6 @@
 {% endblock %}
 {% block app_header %}
   <div class="app-px app-pt">
-    {% if Notice %}
-      {{ sui.Alert(Notice, "success", "操作完成") }}
-    {% endif %}
-    {% if Error %}
-      {{ sui.Alert(Error, "danger", "操作失败") }}
-    {% endif %}
     <div data-restore-status-panel data-status-url="{{ RestoreStatusAPIURL }}" data-auto-refresh="{% if RestoreAutoRefresh %}1{% else %}0{% endif %}" hidden>
       <span data-restore-status-message>{{ RestoreStatusMessage }}</span>
       <span data-restore-status-label>{{ RestoreStatusLabel }}</span>
@@ -37,6 +31,16 @@
         attrs=(not RestoreEnabled and 'disabled' or '')
       ) }}
     </form>
+    {% if Notice %}
+      <div class="app-pt">
+        {{ sui.Alert(Notice, "success", "操作完成") }}
+      </div>
+    {% endif %}
+    {% if Error %}
+      <div class="app-pt">
+        {{ sui.Alert(Error, "danger", "操作失败") }}
+      </div>
+    {% endif %}
   </div>
 {% endblock %}
 {% block content %}
