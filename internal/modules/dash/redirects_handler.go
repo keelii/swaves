@@ -32,7 +32,7 @@ func (h *Handler) renderRedirectList(c fiber.Ctx, errMsg string, notice string) 
 
 // Redirects
 func (h *Handler) GetRedirectListHandler(c fiber.Ctx) error {
-	return h.renderRedirectList(c, c.Query("error"), c.Query("notice"))
+	return h.renderRedirectList(c, "", "")
 }
 
 type redirectTargetOptionView struct {
@@ -174,9 +174,7 @@ func (h *Handler) PostImportRedirectHandler(c fiber.Ctx) error {
 		return h.renderRedirectList(c, err.Error(), "")
 	}
 
-	return h.redirectToDashRoute(c, "dash.redirects.list", nil, map[string]string{
-		"notice": fmt.Sprintf("成功导入 %d 条重定向规则", imported),
-	})
+	return h.redirectToDashRouteWithNotice(c, "dash.redirects.list", nil, nil, fmt.Sprintf("成功导入 %d 条重定向规则", imported))
 }
 
 func (h *Handler) GetRedirectEditHandler(c fiber.Ctx) error {

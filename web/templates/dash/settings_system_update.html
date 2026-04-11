@@ -243,14 +243,14 @@
   </aside>
 
   <div class="settings-main">
-    {% if SystemUpdateError %}
+    {% if Error %}
       <div class="system-update-banner">
-        {{ sui.Alert(SystemUpdateError, kind="danger", title="更新失败", inline=true) }}
+        {{ sui.Alert(Error, kind="danger", title="更新失败", inline=true) }}
       </div>
     {% endif %}
-    {% if SystemUpdateNotice %}
+    {% if Notice %}
       <div class="system-update-banner">
-        {{ sui.Alert(SystemUpdateNotice, kind="success", title="更新状态", inline=true) }}
+        {{ sui.Alert(Notice, kind="success", title="更新状态", inline=true) }}
       </div>
     {% endif %}
     {% if GlobalUpdateMessage %}
@@ -325,7 +325,7 @@
 
 <script>
   (function() {
-    var systemUpdateNotice = {{ SystemUpdateNotice | tojson }};
+    var systemUpdateNotice = {{ (Notice or "") | tojson }};
     var systemUpdateAutoRefresh = {{ SystemUpdateAutoRefresh | tojson }};
     if (systemUpdateAutoRefresh && systemUpdateNotice) {
       var refreshURL = window.location.pathname;

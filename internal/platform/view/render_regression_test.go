@@ -414,7 +414,7 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	if !strings.Contains(rendered, "本地备份文件列表") {
 		t.Fatalf("expected local restore section in backup restore view")
 	}
-	if !strings.Contains(rendered, "立即执行本地备份") {
+	if !strings.Contains(rendered, "执行本地备份") {
 		t.Fatalf("expected local backup action in backup restore view")
 	}
 	if !strings.Contains(rendered, `data-title="恢复"`) {

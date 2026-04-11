@@ -77,28 +77,21 @@ func (h *Handler) GetBackupRestoreStatusHandler(c fiber.Ctx) error {
 func (h *Handler) PostExportRestoreLocalHandler(c fiber.Ctx) error {
 	sourceName := filepath.Base(strings.TrimSpace(c.FormValue(restoreBackupFileFormKey)))
 	if sourceName == "" {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": "请选择一个本地备份文件。",
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "请选择一个本地备份文件。")
 	}
 
 	sourcePath, err := findLocalRestoreSource(sourceName)
 	if err != nil {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, err.Error())
 	}
 
 	if err := h.enqueueRestore(sourcePath); err != nil {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, err.Error())
 	}
 
-	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-		"notice":  "数据库恢复任务已提交，服务即将重启。",
+	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, map[string]string{
 		"refresh": "1",
-	})
+	}, "数据库恢复任务已提交，服务即将重启。")
 }
 
 func (h *Handler) PostExportRestoreUploadHandler(c fiber.Ctx) error {
@@ -112,77 +105,56 @@ func (h *Handler) PostExportRestoreUploadHandler(c fiber.Ctx) error {
 		if statusCode == fiber.StatusRequestEntityTooLarge {
 			message = "上传文件过大，当前请求体大小限制为 10MB，请优先使用服务器本地备份恢复。"
 		}
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": message,
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, message)
 	}
 
 	sourcePath, err := h.saveRestoreUpload(fileHeader)
 	if err != nil {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, err.Error())
 	}
 
 	if err := h.enqueueRestore(sourcePath); err != nil {
 		_ = os.Remove(sourcePath)
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, err.Error())
 	}
 
-	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-		"notice":  "数据库恢复任务已提交，服务即将重启。",
+	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, map[string]string{
 		"refresh": "1",
-	})
+	}, "数据库恢复任务已提交，服务即将重启。")
 }
 
 func (h *Handler) PostBackupRestoreDeleteHandler(c fiber.Ctx) error {
 	status, err := updater.ReadRestoreStatus()
 	if err != nil {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": "读取恢复状态失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "读取恢复状态失败："+err.Error())
 	}
 	if isRestoreStatusActive(status.State) {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": "恢复任务执行中，暂时不能删除本地备份文件。",
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "恢复任务执行中，暂时不能删除本地备份文件。")
 	}
 
 	sourceName := filepath.Base(strings.TrimSpace(c.FormValue(restoreBackupFileFormKey)))
 	if sourceName == "" {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": "请选择要删除的本地备份文件。",
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "请选择要删除的本地备份文件。")
 	}
 	if err := deleteLocalRestoreBackup(sourceName); err != nil {
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, err.Error())
 	}
 
-	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-		"notice": "本地备份文件已删除。",
-	})
+	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, nil, "本地备份文件已删除。")
 }
 
 func (h *Handler) PostBackupRestoreBackupNowHandler(c fiber.Ctx) error {
 	message, err := job.RunLocalBackupNow(h.Model)
 	if err != nil {
 		logger.Error("[backup] run local backup now failed: %v", err)
-		return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-			"error": "立即执行本地备份失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "执行本地备份失败："+err.Error())
 	}
 
 	notice := "本地备份已完成。"
 	if message != nil && strings.TrimSpace(*message) != "" {
 		notice = strings.TrimSpace(*message)
 	}
-	return h.redirectToDashRoute(c, "dash.backup_restore.show", nil, map[string]string{
-		"notice": notice,
-	})
+	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, nil, notice)
 }
 
 func (h *Handler) renderBackupRestoreView(c fiber.Ctx, extra fiber.Map) error {
@@ -215,8 +187,6 @@ func buildBackupRestoreViewData(c fiber.Ctx) (fiber.Map, error) {
 
 	viewData := fiber.Map{
 		"Title":                "备份恢复",
-		"Notice":               strings.TrimSpace(c.Query("notice")),
-		"Error":                strings.TrimSpace(c.Query("error")),
 		"RestoreEnabled":       restoreSupport.Enabled,
 		"RestoreMessage":       restoreSupport.Message,
 		"RestoreStatus":        restoreStatus.State,

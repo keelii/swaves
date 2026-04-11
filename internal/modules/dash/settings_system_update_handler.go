@@ -163,8 +163,6 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 		"ManualUpdateEnabled":     viewState.ManualUpdateEnabled,
 		"RestartEnabled":          viewState.RestartEnabled,
 		"GlobalUpdateMessage":     viewState.GlobalUpdateMessage,
-		"SystemUpdateNotice":      strings.TrimSpace(c.Query("notice")),
-		"SystemUpdateError":       strings.TrimSpace(c.Query("error")),
 		"SystemUpdateAutoRefresh": strings.TrimSpace(c.Query("refresh")) == "1",
 		"SystemRuntimePID":        viewState.SystemRuntimePID,
 	}, "")
@@ -173,93 +171,73 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 func (h *Handler) PostSettingsSystemRestartHandler(c fiber.Ctx) error {
 	if runtime.GOOS == "windows" {
 		logger.Warn("[dash] system restart blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "Windows 暂不支持系统重启",
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持系统重启")
 	}
 
 	pid, err := updater.RestartActiveRuntime()
 	if err != nil {
 		logger.Error("[dash] system restart failed: ip=%s err=%v", c.IP(), err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "系统重启失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "系统重启失败："+err.Error())
 	}
 
 	logger.Info("[dash] system restart requested: ip=%s pid=%d", c.IP(), pid)
-	return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-		"notice":  fmt.Sprintf("已向服务发送重启信号（pid=%d）。", pid),
+	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": "1",
-	})
+	}, fmt.Sprintf("已向服务发送重启信号（pid=%d）。", pid))
 }
 
 func (h *Handler) PostSettingsSystemAutoUpdateHandler(c fiber.Ctx) error {
 	if runtime.GOOS == "windows" {
 		logger.Warn("[dash] auto update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "Windows 暂不支持 daemon-mode 自动更新",
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持 daemon-mode 自动更新")
 	}
 
 	logger.Info("[dash] auto update requested: ip=%s current=%s target=%s/%s", c.IP(), versionLabel(buildinfo.Version), runtime.GOOS, runtime.GOARCH)
 	result, err := updater.InstallLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		logger.Error("[dash] auto update failed: ip=%s current=%s err=%v", c.IP(), versionLabel(buildinfo.Version), err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, err.Error())
 	}
 	logger.Info("[dash] auto update completed: ip=%s latest=%s installed=%t restarted_pid=%d", c.IP(), versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
-	return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-		"notice": buildSystemUpdateNotice(result),
+	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": func() string {
 			if result.RestartedPID > 0 {
 				return "1"
 			}
 			return ""
 		}(),
-	})
+	}, buildSystemUpdateNotice(result))
 }
 
 func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	if runtime.GOOS == "windows" {
 		logger.Warn("[dash] manual update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "Windows 暂不支持 daemon-mode 自动更新",
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持 daemon-mode 自动更新")
 	}
 	if _, err := updater.ReadActiveRuntimeInfo(); err != nil {
 		logger.Warn("[dash] manual update blocked: ip=%s err=%v", c.IP(), err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "当前 daemon-mode master 不可用，无法执行手动更新：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "当前 daemon-mode master 不可用，无法执行手动更新："+err.Error())
 	}
 
 	fileHeader, err := c.FormFile("archive")
 	if err != nil {
 		logger.Error("[dash] manual update read upload failed: ip=%s err=%v", c.IP(), err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "读取安装包失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "读取安装包失败："+err.Error())
 	}
 	logger.Info("[dash] manual update requested: ip=%s archive=%s size=%d current=%s", c.IP(), filepath.Base(fileHeader.Filename), fileHeader.Size, versionLabel(buildinfo.Version))
 
 	src, err := fileHeader.Open()
 	if err != nil {
 		logger.Error("[dash] manual update open upload failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "打开安装包失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "打开安装包失败："+err.Error())
 	}
 	defer func() { _ = src.Close() }()
 
 	tmpDir, err := os.MkdirTemp("", ".swaves-manual-upgrade-")
 	if err != nil {
 		logger.Error("[dash] manual update create temp dir failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "创建临时目录失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "创建临时目录失败："+err.Error())
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
@@ -268,40 +246,31 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	dst, err := os.Create(archivePath)
 	if err != nil {
 		logger.Error("[dash] manual update create temp archive failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "创建临时安装包失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "创建临时安装包失败："+err.Error())
 	}
 	if _, err = io.Copy(dst, src); err != nil {
 		_ = dst.Close()
 		logger.Error("[dash] manual update save upload failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "保存安装包失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "保存安装包失败："+err.Error())
 	}
 	if err = dst.Close(); err != nil {
 		logger.Error("[dash] manual update close temp archive failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": "关闭临时安装包失败：" + err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "关闭临时安装包失败："+err.Error())
 	}
 
 	result, err := updater.InstallLocalReleaseArchive(archiveName, archivePath, buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		logger.Error("[dash] manual update failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
-		return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-			"error": err.Error(),
-		})
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, err.Error())
 	}
 	logger.Info("[dash] manual update completed: ip=%s archive=%s latest=%s installed=%t restarted_pid=%d", c.IP(), archiveName, versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
-	return h.redirectToDashRoute(c, "dash.settings.system_update", nil, map[string]string{
-		"notice": buildSystemUpdateNotice(result),
+	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": func() string {
 			if result.RestartedPID > 0 {
 				return "1"
 			}
 			return ""
 		}(),
-	})
+	}, buildSystemUpdateNotice(result))
 }

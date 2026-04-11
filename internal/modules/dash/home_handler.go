@@ -80,6 +80,7 @@ func RenderDashView(c fiber.Ctx, view string, data fiber.Map, layout string) err
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 	data["_csrf_token_value"] = fiber.Locals[string](c, "CsrfToken")
 	data["NotificationUnreadCount"] = fiber.Locals[int](c, "DashNotificationUnreadCount")
+	injectDashFlash(c, data)
 
 	return c.Render(view, data)
 }

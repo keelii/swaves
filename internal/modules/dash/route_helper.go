@@ -10,6 +10,15 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+func isFlashQueryKey(key string) bool {
+	switch strings.TrimSpace(key) {
+	case "notice", "error":
+		return true
+	default:
+		return false
+	}
+}
+
 func buildRouteParams(params map[string]string) fiber.Map {
 	routeParams := fiber.Map{}
 	for key, value := range params {
@@ -51,7 +60,7 @@ func mergeQuery(dst map[string]string, src map[string]string) map[string]string 
 	}
 	for key, value := range src {
 		k := strings.TrimSpace(key)
-		if k == "" {
+		if k == "" || isFlashQueryKey(k) {
 			continue
 		}
 		dst[k] = value
@@ -124,11 +133,37 @@ func (h *Handler) dashRouteURL(c fiber.Ctx, name string, params map[string]strin
 }
 
 func (h *Handler) redirectToDashRoute(c fiber.Ctx, name string, params map[string]string, query map[string]string, status ...int) error {
-	path := h.dashRouteURL(c, name, params, query)
+	if notice := strings.TrimSpace(query["notice"]); notice != "" {
+		h.setFlashNotice(c, notice)
+	}
+	if errorMessage := strings.TrimSpace(query["error"]); errorMessage != "" {
+		h.setFlashError(c, errorMessage)
+	}
+	cleanQuery := mergeQuery(nil, query)
+	path := h.dashRouteURL(c, name, params, cleanQuery)
 	if path == "" {
 		return fmt.Errorf("redirect route resolve failed: name=%s", name)
 	}
 	return webutil.RedirectTo(c, path, status...)
+}
+
+func (h *Handler) redirectToDashRouteWithFlash(c fiber.Ctx, name string, params map[string]string, query map[string]string, notice string, errorMessage string, status ...int) error {
+	cleanQuery := mergeQuery(nil, query)
+	if notice != "" {
+		h.setFlashNotice(c, notice)
+	}
+	if errorMessage != "" {
+		h.setFlashError(c, errorMessage)
+	}
+	return h.redirectToDashRoute(c, name, params, cleanQuery, status...)
+}
+
+func (h *Handler) redirectToDashRouteWithNotice(c fiber.Ctx, name string, params map[string]string, query map[string]string, notice string, status ...int) error {
+	return h.redirectToDashRouteWithFlash(c, name, params, query, notice, "", status...)
+}
+
+func (h *Handler) redirectToDashRouteWithError(c fiber.Ctx, name string, params map[string]string, query map[string]string, errorMessage string, status ...int) error {
+	return h.redirectToDashRouteWithFlash(c, name, params, query, "", errorMessage, status...)
 }
 
 func (h *Handler) redirectToDashRouteKeepQuery(c fiber.Ctx, name string, params map[string]string, query map[string]string, status ...int) error {
