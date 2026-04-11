@@ -1,15 +1,16 @@
 {% extends "dash/layout/layout_list.html" %}
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
+{% set defaultProvider = DefaultProvider %}
 {% set defaultProviderReady = DefaultProviderReady %}
 {% set defaultProviderError = DefaultProviderError %}
-{% set defaultProvider = DefaultProvider %}
 {% set assetProviderLabelMap = AssetProviderLabelMap %}
 {% set assetKindLabelMap = AssetKindLabelMap %}
 {% set kindCounts = KindCounts %}
 {% set currentKind = CurrentKind %}
 {% set query = Query %}
 {% set pageSizeQuery = query["pageSize"] %}
+{% set totalCount = kindCounts[""] %}
 {% set imageCount = kindCounts["image"] %}
 {% set fileCount = kindCounts["file"] %}
 {% set backupCount = kindCounts["backup"] %}
@@ -27,6 +28,7 @@
 
 {% block operation_left %}
   {{ sui.TabsStart("资源类型") }}
+    {{ sui.Tab("全部 (" ~ totalCount ~ ")", href=UrlFor('dash.assets.list', {"pageSize":pageSizeQuery}), active=(currentKind == "")) }}
     {{ sui.Tab(assetKindLabelMap["image"] ~ " (" ~ imageCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"image", "pageSize":pageSizeQuery}), active=(currentKind == "image")) }}
     {{ sui.Tab(assetKindLabelMap["file"] ~ " (" ~ fileCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"file", "pageSize":pageSizeQuery}), active=(currentKind == "file")) }}
     {{ sui.Tab(assetKindLabelMap["backup"] ~ " (" ~ backupCount ~ ")", href=UrlFor('dash.assets.list', {"kind":"backup", "pageSize":pageSizeQuery}), active=(currentKind == "backup")) }}
@@ -39,21 +41,12 @@
       id="asset-drop-input",
       name="files",
       label="上传资源文件",
+      desc="拖拽资源文件到这里，或点击选择 via " ~ assetProviderLabelMap[defaultProvider],
       multiple=true,
       attrs=(not defaultProviderReady and 'disabled' or '')
     ) }}
-    <div class="asset-upload-status" id="asset-upload-status">
-      <div class="ui-alert {% if defaultProviderReady %}info{% else %}danger{% endif %} inline" role="status">
-        <div class="ui-alert-title">{% if defaultProviderReady %}上传说明{% else %}上传不可用{% endif %}</div>
-        <div class="ui-alert-body">
-          <div class="asset-upload-alert-row" id="asset-upload-provider-text">
-            当前默认服务：{{ assetProviderLabelMap[defaultProvider] }}{% if not defaultProviderReady %}（{{ defaultProviderError }}）{% endif %}
-          </div>
-          <div class="asset-upload-alert-row">
-            <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）">
-          </div>
-        </div>
-      </div>
+    <div class="asset-upload-controls">
+      <input type="text" id="asset-upload-remark" class="ui-input asset-upload-remark" placeholder="备注（可选，批量上传时会应用到本次所有文件）"{% if not defaultProviderReady %} disabled{% endif %}>
     </div>
   </section>
 
@@ -70,17 +63,8 @@
     opacity: 0.7;
   }
 
-  .asset-upload-status {
+  .asset-upload-controls {
     margin-top: var(--app-gap-2);
-  }
-
-  .asset-upload-alert-row {
-    margin-top: var(--app-gap-2);
-  }
-
-  .asset-upload-tip {
-    color: var(--app-text-soft);
-    margin: calc(var(--app-spacing) * 0.5) 0 0;
   }
 
   .asset-upload-remark {
@@ -211,24 +195,18 @@ document.addEventListener('DOMContentLoaded', function() {
   var uploadRoot = document.getElementById('asset-upload-root');
   var fileInput = document.getElementById('asset-drop-input');
   var uploadRemark = document.getElementById('asset-upload-remark');
-  var uploadStatus = document.getElementById('asset-upload-status');
-  var uploadStatusText = document.getElementById('asset-upload-status-text');
-  var uploadProviderText = document.getElementById('asset-upload-provider-text');
   var alertDialog = document.getElementById('asset-alert-dialog');
   var alertMessage = document.getElementById('asset-alert-message');
   var isUploading = false;
   var uploadReady;
   var uploadError;
-  var uploadStatusBaseText;
 
-  if (!uploadRoot || !fileInput || !uploadRemark || !uploadStatus || !uploadStatusText || !uploadProviderText) {
+  if (!uploadRoot || !fileInput || !uploadRemark) {
     return;
   }
 
   uploadReady = {{ defaultProviderReady | tojson }};
   uploadError = {{ defaultProviderError | tojson }};
-  uploadStatusBaseText = String(uploadStatusText.textContent || '').replace(/\s+/g, ' ').trim();
-  var uploadProviderBaseText = String(uploadProviderText.textContent || '').replace(/\s+/g, ' ').trim();
 
   function getDialogAPI() {
     return window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
@@ -297,18 +275,9 @@ document.addEventListener('DOMContentLoaded', function() {
     return Promise.resolve(window.confirm(message));
   }
 
-  function setUploading(working, text) {
+  function setUploading(working) {
     isUploading = working;
     uploadRoot.classList.toggle('is-uploading', working);
-    if (text) {
-      uploadStatusText.textContent = text;
-      uploadProviderText.textContent = '';
-      return;
-    }
-    if (!working) {
-      uploadStatusText.textContent = uploadStatusBaseText;
-      uploadProviderText.textContent = uploadProviderBaseText;
-    }
   }
 
   function uploadSingleFile(file) {
@@ -376,11 +345,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      setUploading(true, '上传中 0/' + files.length + '...');
+      setUploading(true);
 
-      files.forEach(function(file, idx) {
+      files.forEach(function(file) {
         chain = chain.then(function() {
-          setUploading(true, '上传中 ' + (idx + 1) + '/' + files.length + '...');
           return uploadSingleFile(file).then(function() {
             successCount += 1;
           }).catch(function(err) {
@@ -420,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        setUploading(false, '上传失败，请重试');
+        setUploading(false);
       });
     });
   }

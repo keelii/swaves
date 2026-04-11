@@ -28,17 +28,20 @@
   --app-btn-secondary-border: #CBCED3;
   --app-btn-secondary-bg: #F0F1F2;
   --app-btn-secondary-fg: var(--app-text);
-  --app-danger-fg: #b91c1c;
-  --app-danger-border: #E6B0B0;
-  --app-danger-bg: #FBF1F1;
+  --app-success-fg: #166534;
+  --app-danger-fg: #c24134;
+  --app-danger-border: #E9B2AB;
+  --app-danger-bg: #FDF0EE;
   --app-icon-btn-secondary-fg: #4b5563;
   --app-icon-btn-danger-fg: var(--app-danger-fg);
   --app-input-focus-border: var(--app-brand-border);
   --app-input-focus-shadow: none;
   --app-input-error-border: #E09999;
   --app-field-error-text: var(--app-danger-fg);
-  --app-badge-success-fg: #166534;
-  --app-badge-success-bg: #E4F8EC;
+  --app-badge-success-fg: var(--app-success-fg);
+  --app-badge-success-bg: #D7F0E2;
+  --app-badge-danger-fg: var(--app-danger-fg);
+  --app-badge-danger-bg: #F8DDD8;
   --app-badge-draft-fg: var(--app-text-soft);
   --app-badge-draft-bg: #EDEEF0;
   --app-nav-badge-fg: var(--app-brand-fg);
@@ -52,12 +55,12 @@
   --app-color-neutral-bg: #F6F7F7;
   --app-color-info-border: #C6D3F5;
   --app-color-info-bg: #EDF1FC;
-  --app-color-success-border: #C8F0D7;
-  --app-color-success-bg: #EDFAF2;
+  --app-color-success-border: #9FD0B2;
+  --app-color-success-bg: #DFF2E6;
   --app-color-warning-border: #FCE4BB;
   --app-color-warning-bg: #FEF5E7;
-  --app-color-danger-border: #EBBFBF;
-  --app-color-danger-bg: #F9EDED;
+  --app-color-danger-border: #E5B4AD;
+  --app-color-danger-bg: #FBE8E5;
   --ui-select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --ui-select-caret-mini: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
   --ui-checkbox-checked-bg: var(--app-text);
@@ -102,16 +105,19 @@
   --app-btn-secondary-border: #444F63;
   --app-btn-secondary-bg: #2F394C;
   --app-btn-secondary-fg: #e4e8ee;
-  --app-danger-fg: #fecaca;
-  --app-danger-border: #635662;
-  --app-danger-bg: #222537;
+  --app-success-fg: #9EE6B8;
+  --app-danger-fg: #F8B4AB;
+  --app-danger-border: #6A4247;
+  --app-danger-bg: #341C22;
   --app-icon-btn-secondary-fg: #cbd5e1;
   --app-icon-btn-danger-fg: var(--app-danger-fg);
   --app-input-focus-shadow: 0 0 0 2px #1C283F;
   --app-input-error-border: #635662;
   --app-field-error-text: var(--app-danger-fg);
-  --app-badge-success-fg: #bbf7d0;
-  --app-badge-success-bg: #123633;
+  --app-badge-success-fg: var(--app-success-fg);
+  --app-badge-success-bg: #163C32;
+  --app-badge-danger-fg: var(--app-danger-fg);
+  --app-badge-danger-bg: #3B2027;
   --app-badge-draft-fg: #cbd5e1;
   --app-badge-draft-bg: #1F283B;
   --app-nav-badge-fg: var(--app-brand-fg);
@@ -122,12 +128,12 @@
   --app-color-neutral-bg: #1A2235;
   --app-color-info-border: #30425F;
   --app-color-info-bg: #1C283F;
-  --app-color-success-border: #294747;
-  --app-color-success-bg: #122F31;
+  --app-color-success-border: #2C5A49;
+  --app-color-success-bg: #16352E;
   --app-color-warning-border: #43453F;
   --app-color-warning-bg: #342D25;
-  --app-color-danger-border: #443E4D;
-  --app-color-danger-bg: #2A1828;
+  --app-color-danger-border: #5B3940;
+  --app-color-danger-bg: #321A20;
   --app-table-head-bg: #161E30;
   --ui-select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f99aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --ui-select-caret-mini: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f99aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
@@ -1462,6 +1468,11 @@ a.ui-icon-btn[disabled] {
 .ui-badge.success {
   color: var(--app-badge-success-fg);
   background: var(--app-badge-success-bg);
+}
+
+.ui-badge.danger {
+  color: var(--app-badge-danger-fg);
+  background: var(--app-badge-danger-bg);
 }
 
 .ui-badge.draft {

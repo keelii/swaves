@@ -1,5 +1,7 @@
 {% set expiresAtUnix = 0 %}
-{% if Post is defined and Post.ExpiresAt is not none %}
+{% if DraftExpiresAtUnix is defined and DraftExpiresAtUnix > 0 %}
+  {% set expiresAtUnix = DraftExpiresAtUnix %}
+{% elif Post is defined and Post.ExpiresAt is not none %}
   {% set expiresAtUnix = Post.ExpiresAt %}
 {% endif %}
 {% set hasExpiry = expiresAtUnix > 0 %}
@@ -9,6 +11,7 @@
   {% set passwordPlaceholder = "留空保持当前密码" %}
   {% set passwordHelp = "留空可保持当前密码" %}
 {% endif %}
+{% set passwordValue = DraftPassword if DraftPassword is defined else "" %}
 <style>
   .encrypted-status-controls {
     display: inline-flex;
@@ -109,6 +112,7 @@
       name="password"
       form="form"
       autocomplete="new-password"
+      value="{{ passwordValue }}"
       placeholder="{{ passwordPlaceholder }}"
       aria-label="访问密码"
       title="{{ passwordHelp }}"

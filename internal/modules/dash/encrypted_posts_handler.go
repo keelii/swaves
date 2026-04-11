@@ -5,6 +5,7 @@ import (
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/shared/md"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -69,10 +70,89 @@ func (h *Handler) GetEncryptedPostListHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) GetEncryptedPostNewHandler(c fiber.Ctx) error {
-	return RenderDashView(c, "dash/encrypted_posts_new.html", fiber.Map{
-		"Title":   "New Encrypted Post",
-		"SEditor": true,
-	}, "")
+	return h.renderEncryptedPostNew(c, nil)
+}
+
+func encryptedDraftExpiresAtUnix(raw string) int64 {
+	if raw == "" {
+		return 0
+	}
+	value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || value <= 0 {
+		return 0
+	}
+	return value
+}
+
+func (h *Handler) renderEncryptedPostNew(c fiber.Ctx, data fiber.Map) error {
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if _, ok := data["DraftTitle"]; !ok {
+		data["DraftTitle"] = ""
+	}
+	if _, ok := data["DraftContent"]; !ok {
+		data["DraftContent"] = ""
+	}
+	if _, ok := data["DraftPassword"]; !ok {
+		data["DraftPassword"] = ""
+	}
+	if _, ok := data["DraftExpiresAtUnix"]; !ok {
+		data["DraftExpiresAtUnix"] = int64(0)
+	}
+	if _, ok := data["DraftTOCHTML"]; !ok {
+		draftContent, _ := data["DraftContent"].(string)
+		data["DraftTOCHTML"] = md.ParseMarkdownTOC(draftContent)
+	}
+	data["Title"] = "New Encrypted Post"
+	data["SEditor"] = true
+	return RenderDashView(c, "dash/encrypted_posts_new.html", data, "")
+}
+
+func (h *Handler) renderEncryptedPostNewWithError(c fiber.Ctx, err error, data fiber.Map) error {
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if err != nil {
+		data["Error"] = err.Error()
+	}
+	return h.renderEncryptedPostNew(c, data)
+}
+
+func (h *Handler) renderEncryptedPostEdit(c fiber.Ctx, id int64, data fiber.Map) error {
+	post, err := GetEncryptedPostForEdit(h.Model, id)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if _, ok := data["Post"]; !ok {
+		data["Post"] = post
+	}
+	if _, ok := data["DraftPassword"]; !ok {
+		data["DraftPassword"] = ""
+	}
+	if _, ok := data["PostTOCHTML"]; !ok {
+		if postValue, ok := data["Post"].(*db.EncryptedPost); ok && postValue != nil {
+			data["PostTOCHTML"] = md.ParseMarkdownTOC(postValue.Content)
+		} else {
+			data["PostTOCHTML"] = md.ParseMarkdownTOC(post.Content)
+		}
+	}
+	data["Title"] = "Edit Encrypted Post"
+	data["SEditor"] = true
+	return RenderDashView(c, "dash/encrypted_posts_edit.html", data, "")
+}
+
+func (h *Handler) renderEncryptedPostEditWithError(c fiber.Ctx, id int64, err error, data fiber.Map) error {
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if err != nil {
+		data["Error"] = err.Error()
+	}
+	return h.renderEncryptedPostEdit(c, id, data)
 }
 
 func (h *Handler) PostCreateEncryptedPostHandler(c fiber.Ctx) error {
@@ -86,7 +166,13 @@ func (h *Handler) PostCreateEncryptedPostHandler(c fiber.Ctx) error {
 	}
 
 	if err := CreateEncryptedPostService(h.Model, in); err != nil {
-		return err
+		return h.renderEncryptedPostNewWithError(c, err, fiber.Map{
+			"DraftTitle":         in.Title,
+			"DraftContent":       in.Content,
+			"DraftPassword":      in.Password,
+			"DraftExpiresAtUnix": encryptedDraftExpiresAtUnix(expiresAtStr),
+			"DraftTOCHTML":       md.ParseMarkdownTOC(in.Content),
+		})
 	}
 
 	return h.redirectToDashRoute(c, "dash.encrypted_posts.list", nil, nil)
@@ -98,16 +184,7 @@ func (h *Handler) GetEncryptedPostEditHandler(c fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	post, err := GetEncryptedPostForEdit(h.Model, id)
-	if err != nil {
-		return err
-	}
-
-	return RenderDashView(c, "dash/encrypted_posts_edit.html", fiber.Map{
-		"Title":   "Edit Encrypted Post",
-		"SEditor": true,
-		"Post":    post,
-	}, "")
+	return h.renderEncryptedPostEdit(c, id, nil)
 }
 
 func (h *Handler) PostUpdateEncryptedPostHandler(c fiber.Ctx) error {
@@ -133,7 +210,18 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c fiber.Ctx) error {
 	}
 
 	if err := UpdateEncryptedPostService(h.Model, id, in); err != nil {
-		return err
+		currentPost, getErr := db.GetEncryptedPostByID(h.Model, id)
+		if getErr != nil {
+			return err
+		}
+		currentPost.Title = in.Title
+		currentPost.Content = in.Content
+		return h.renderEncryptedPostEditWithError(c, id, err, fiber.Map{
+			"Post":               currentPost,
+			"DraftPassword":      in.Password,
+			"DraftExpiresAtUnix": encryptedDraftExpiresAtUnix(expiresAtStr),
+			"PostTOCHTML":        md.ParseMarkdownTOC(in.Content),
+		})
 	}
 
 	return h.redirectToDashRoute(c, "dash.encrypted_posts.list", nil, nil)

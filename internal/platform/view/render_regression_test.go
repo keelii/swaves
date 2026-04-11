@@ -291,6 +291,49 @@ func TestRenderDashAssetsIndexWithItems(t *testing.T) {
 	if !strings.Contains(rendered, `data-role="ui-file-upload"`) {
 		t.Fatalf("expected assets page to use standard file upload component, got: %s", rendered)
 	}
+	if !strings.Contains(rendered, "via S.EE") {
+		t.Fatalf("expected assets page upload desc to include provider label, got: %s", rendered)
+	}
+	if strings.Contains(rendered, `asset-upload-status`) {
+		t.Fatalf("expected assets page to remove upload status panel, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, "全部") {
+		t.Fatalf("expected assets page to render all-assets tab, got: %s", rendered)
+	}
+}
+
+func TestRenderDashPostsNewShowsError(t *testing.T) {
+	view, _ := NewViewEngine(testTemplateRoot(), false)
+	if err := view.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := view.Render(&out, "dash/posts_new.html", map[string]any{
+		"Error":               "slug already exists",
+		"DraftTitle":          "hello",
+		"DraftSlug":           "hello",
+		"DraftContent":        "world",
+		"DraftKind":           "0",
+		"DraftCategoryID":     int64(0),
+		"DraftCommentEnabled": true,
+		"SelectedTagNames":    "",
+		"CategoryOptions":     []map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("render posts new failed: %v", err)
+	}
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "slug already exists") {
+		t.Fatalf("expected post editor error message rendered, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, `toastAPI.show({`) {
+		t.Fatalf("expected post editor to use sui toast api, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, `"保存失败"`) {
+		t.Fatalf("expected post editor error toast rendered, got: %s", rendered)
+	}
 }
 
 func TestRenderStatusMainPaginationFallsBackToRouteContext(t *testing.T) {

@@ -49,9 +49,6 @@ var imageAssetExtensions = map[string]struct{}{
 func (h *Handler) GetAssetListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	kind := normalizeAssetKind(c.Query("kind"))
-	if kind == "" {
-		kind = db.AssetKindImage
-	}
 	provider := ""
 	defaultProvider := h.defaultAssetProvider()
 	defaultProviderErr := h.validateAssetProviderConfig(defaultProvider)

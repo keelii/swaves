@@ -13,10 +13,7 @@
   {% endif %}
 {% endif %}
 
-{% set titleValue = "" %}
-{% if isRegularPostEditor %}
-  {% set titleValue = DraftTitle %}
-{% endif %}
+{% set titleValue = DraftTitle if DraftTitle is defined else "" %}
 {% if isEditMode %}
   {% set titleValue = Post.Title %}
 {% endif %}
@@ -29,10 +26,7 @@
   {% set titlePlaceholder = "" %}
 {% endif %}
 
-{% set contentValue = "" %}
-{% if isRegularPostEditor %}
-  {% set contentValue = DraftContent %}
-{% endif %}
+{% set contentValue = DraftContent if DraftContent is defined else "" %}
 {% if isEditMode %}
   {% set contentValue = Post.Content %}
 {% endif %}
@@ -107,6 +101,8 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", function() {
+    var initialNotice = "{{ Notice | default("") | safe }}";
+    var initialError = "{{ Error | default("") | safe }}";
     var titleInput = document.getElementById("post-title");
     var textarea = document.getElementById("post-content");
     var wordCount = document.getElementById("post-editor-word-count");
@@ -118,9 +114,9 @@
     var tocToggleButton = document.querySelector('[data-role="toggle-post-toc"]');
     var sourceToggleButton = document.querySelector('[data-role="toggle-post-source"]');
     var autoSyncSlug = {% if autoSyncSlugEnabled %}true{% else %}false{% endif %};
-    var slugAPIURL = {{ slugAPIURLValue | tojson }};
-    var markdownTOCAPIURL = {{ UrlFor('api.markdown.toc') | tojson }};
-    var uiStateSaveURL = {{ UrlFor('dash.settings.api.ui_state.update') | tojson }};
+    var slugAPIURL = {{ (slugAPIURLValue | tojson) | safe }};
+    var markdownTOCAPIURL = {{ (UrlFor('api.markdown.toc') | tojson) | safe }};
+    var uiStateSaveURL = {{ (UrlFor('dash.settings.api.ui_state.update') | tojson) | safe }};
     var slugSyncTimer = null;
     var slugSyncSeq = 0;
     var tocSyncTimer = null;
@@ -142,6 +138,34 @@
       headingIDRunePattern = new RegExp("^[\\p{L}\\p{N}]$", "u");
     } catch (error) {
       headingIDRunePattern = null;
+    }
+
+    function showInitialToast(kind, title, message) {
+      var text = String(message || "");
+      var toastAPI;
+      if (!text) {
+        return;
+      }
+      toastAPI = window.DashAppUI && window.DashAppUI.toast;
+      if (toastAPI && typeof toastAPI.show === "function") {
+        toastAPI.show({
+          kind: kind,
+          title: title,
+          message: text,
+          duration: 5000
+        });
+        return;
+      }
+      if (typeof notify === "function") {
+        notify(text, title, { variant: kind });
+      }
+    }
+
+    if (initialNotice) {
+      showInitialToast("success", "操作完成", initialNotice);
+    }
+    if (initialError) {
+      showInitialToast("danger", "保存失败", initialError);
     }
 
     function getEditorRoot() {

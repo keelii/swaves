@@ -232,6 +232,79 @@ func (h *Handler) renderPostNewWithDraft(c fiber.Ctx, err error, data fiber.Map)
 	return h.renderPostNew(c, data)
 }
 
+func (h *Handler) renderPostEdit(c fiber.Ctx, id int64, data fiber.Map) error {
+	postWithTags, err := GetPostForEdit(h.Model, id)
+	if err != nil {
+		return err
+	}
+
+	allTags, err := GetAllTags(h.Model)
+	if err != nil {
+		return err
+	}
+
+	selectedTagNames := make([]string, 0, len(postWithTags.Tags))
+	for _, tag := range postWithTags.Tags {
+		selectedTagNames = append(selectedTagNames, tag.Name)
+	}
+
+	allCategories, err := GetAllCategoriesFlat(h.Model)
+	if err != nil {
+		return err
+	}
+	categoryOptions := BuildCategorySelectOptions(allCategories)
+
+	category, err := db.GetPostCategory(h.Model, id)
+	if err != nil {
+		return err
+	}
+
+	var emptyCategory db.Category
+	if category == nil {
+		category = &emptyCategory
+	}
+
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if _, ok := data["Post"]; !ok {
+		data["Post"] = postWithTags.Post
+	}
+	if _, ok := data["SelectedTagNames"]; !ok {
+		data["SelectedTagNames"] = strings.Join(selectedTagNames, ", ")
+	}
+	if _, ok := data["Category"]; !ok {
+		data["Category"] = *category
+	}
+	if _, ok := data["PostTOCHTML"]; !ok {
+		post := data["Post"]
+		if postValue, ok := post.(*db.Post); ok && postValue != nil {
+			data["PostTOCHTML"] = md.ParseMarkdownTOC(postValue.Content)
+		} else {
+			data["PostTOCHTML"] = md.ParseMarkdownTOC(postWithTags.Post.Content)
+		}
+	}
+
+	data["Title"] = "Edit Post"
+	data["SEditor"] = true
+	data["Tags"] = allTags
+	data["SelectedTags"] = postWithTags.Tags
+	data["Categories"] = allCategories
+	data["CategoryOptions"] = categoryOptions
+
+	return RenderDashView(c, "dash/posts_edit.html", data, "")
+}
+
+func (h *Handler) renderPostEditWithDraft(c fiber.Ctx, id int64, err error, data fiber.Map) error {
+	if data == nil {
+		data = fiber.Map{}
+	}
+	if err != nil {
+		data["Error"] = err.Error()
+	}
+	return h.renderPostEdit(c, id, data)
+}
+
 func (h *Handler) PostCreatePostHandler(c fiber.Ctx) error {
 	// 草稿字段：创建失败后回填
 	title := c.FormValue("title")
@@ -307,53 +380,7 @@ func (h *Handler) GetPostEditHandler(c fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	postWithTags, err := GetPostForEdit(h.Model, id)
-	if err != nil {
-		return err
-	}
-
-	allTags, err := GetAllTags(h.Model)
-	if err != nil {
-		return err
-	}
-
-	// 已选标签名逗号拼接，供 input 展示
-	selectedTagNames := make([]string, 0, len(postWithTags.Tags))
-	for _, tag := range postWithTags.Tags {
-		selectedTagNames = append(selectedTagNames, tag.Name)
-	}
-
-	// 获取所有分类
-	allCategories, err := GetAllCategoriesFlat(h.Model)
-	if err != nil {
-		return err
-	}
-	categoryOptions := BuildCategorySelectOptions(allCategories)
-
-	// 获取当前 post 的分类（单选）
-	category, err := db.GetPostCategory(h.Model, id)
-	if err != nil {
-		return err
-	}
-
-	// 如果没有分类，使用空的 Category（ID 为 0）
-	var emptyCategory db.Category
-	if category == nil {
-		category = &emptyCategory
-	}
-
-	return RenderDashView(c, "dash/posts_edit.html", fiber.Map{
-		"Title":            "Edit Post",
-		"SEditor":          true,
-		"Post":             postWithTags.Post,
-		"Tags":             allTags,
-		"SelectedTags":     postWithTags.Tags,
-		"SelectedTagNames": strings.Join(selectedTagNames, ", "),
-		"Categories":       allCategories,
-		"CategoryOptions":  categoryOptions,
-		"Category":         *category,
-		"PostTOCHTML":      md.ParseMarkdownTOC(postWithTags.Post.Content),
-	}, "")
+	return h.renderPostEdit(c, id, nil)
 }
 
 func (h *Handler) PostUpdatePostHandler(c fiber.Ctx) error {
@@ -399,8 +426,29 @@ func (h *Handler) PostUpdatePostHandler(c fiber.Ctx) error {
 		Action:         action,
 	}
 
-	if err := UpdatePostService(h.Model, id, in); err != nil {
+	currentPost, err := db.GetPostByIDAnyStatus(h.Model, id)
+	if err != nil {
 		return err
+	}
+
+	if err := UpdatePostService(h.Model, id, in); err != nil {
+		currentPost.Title = in.Title
+		currentPost.Content = in.Content
+		currentPost.Kind = in.Kind
+		if in.CommentEnabled != nil {
+			if *in.CommentEnabled {
+				currentPost.CommentEnabled = 1
+			} else {
+				currentPost.CommentEnabled = 0
+			}
+		}
+
+		return h.renderPostEditWithDraft(c, id, err, fiber.Map{
+			"Post":             &currentPost,
+			"SelectedTagNames": c.FormValue("tags"),
+			"Category":         db.Category{ID: categoryID},
+			"PostTOCHTML":      md.ParseMarkdownTOC(in.Content),
+		})
 	}
 
 	return h.redirectToDashRoute(c, "dash.posts.edit", map[string]string{

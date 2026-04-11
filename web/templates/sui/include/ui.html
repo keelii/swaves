@@ -109,12 +109,12 @@
 </fieldset>
 {% endmacro %}
 
-{% macro FileUpload(id="", name="", label="上传文件", accept="", multiple=false, help="", attrs="") %}
+{% macro FileUpload(id="", name="", label="上传文件", accept="", multiple=false, help="", desc="拖拽文件到这里，或点击选择", attrs="") %}
 <div class="ui-file-upload" data-role="ui-file-upload">
-  <div class="ui-file-dropzone" data-role="ui-file-dropzone" tabindex="0" data-title="拖拽文件到这里，或点击选择">
+  <div class="ui-file-dropzone" data-role="ui-file-dropzone" tabindex="0" data-title="{{ desc }}">
     <div class="ui-file-dropzone-title">{{ label }}</div>
     <div class="ui-file-dropzone-meta">
-      <span class="ui-file-dropzone-hint">拖拽文件到这里，或点击选择</span>
+      <span class="ui-file-dropzone-hint">{{ desc }}</span>
       {% if accept %}
         <span class="ui-file-dropzone-accept">{{ accept }}</span>
       {% endif %}
