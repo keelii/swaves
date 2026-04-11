@@ -36,6 +36,13 @@ var (
 	SessionCookieSameSite = "Lax"
 )
 
+func CondProduction[T any](a T, b T) T {
+	if IsProduction {
+		return a
+	}
+	return b
+}
+
 func readAppEnv(name string) AppEnvironment {
 	raw := normalizeAppEnv(os.Getenv(name))
 	switch raw {

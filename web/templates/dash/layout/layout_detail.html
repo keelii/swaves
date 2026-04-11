@@ -13,7 +13,7 @@
   data-nav-width-current="{{ Settings('dash_nav_width') }}"
   style="--app-pane-nav-width: {{ Settings('dash_nav_width') }}px;"
 >
-  <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="150" data-nav-max-width="480">
+  <aside class="app-panel app-nav" aria-label="导航栏" data-nav-min-width="100" data-nav-max-width="480">
     <div class="app-panel-toolbar{% if Settings('dash_full_main_open') == '1' %} main-toggle-hidden{% endif %}">
       {% block window_toolbar_left %}
         {% include "dash/include/window_toolbar_left.html" %}

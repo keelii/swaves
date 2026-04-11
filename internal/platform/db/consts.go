@@ -536,7 +536,7 @@ var DefaultSettings = []Setting{
 	{Sort: 16, Kind: SettingKindThirdPartyServices, SubKind: SettingSubKindImageKit, Name: "ImageKit Private Key", Code: "asset_imagekit_private_key", Type: "secret", Value: config.ImagekitPrivateKey, Description: "ImageKit 服务端 Private Key"},
 	{Sort: 17, Kind: SettingKindThirdPartyServices, Name: "GA4 统计 ID", Code: "ga4_id", Type: "text", Value: "", Description: "Google Analytics 4 Measurement ID。"},
 	{Sort: 10, Kind: SettingKindDashSecurity, Name: "管理后台路径", Code: "dash_path", Reload: 1, Type: "text", Value: "/dash", Description: "管理后台地址", Attrs: config.DashPathValidatorJSON},
-	{Sort: 11, Kind: SettingKindDashSecurity, Name: "管理后台密码", Code: "dash_password", Type: "password", Value: "dash", Description: "管理员密码", Attrs: `{"minlength": 6}`},
+	{Sort: 11, Kind: SettingKindDashSecurity, Name: "管理后台密码", Code: "dash_password", Type: "password", Value: "dash", Description: "管理员密码", Attrs: config.DashPasswordValidatorJSON},
 	{Sort: 12, Kind: SettingKindDashSecurity, SubKind: SettingSubKindAsset, Name: "默认资源上传服务", Code: "asset_default_provider", Type: "select", Value: "see", Description: "资源上传默认使用的服务商。", Options: `[{"label":"S.EE","value":"see"},{"label":"ImageKit","value":"imagekit"}]`},
 	{Sort: 10, Kind: SettingKindNotifications, Name: "文章点赞通知", Code: "notify_enable_post_like", Type: "radio", Value: "1", DefaultOptionValue: "1", Description: "文章收到点赞时发送通知（按时间窗口聚合）", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 11, Kind: SettingKindNotifications, Name: "用户留言通知", Code: "notify_enable_comment", Type: "radio", Value: "1", DefaultOptionValue: "1", Description: "有新留言时发送通知", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},

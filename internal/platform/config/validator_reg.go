@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"regexp"
+	"swaves/internal/shared/helper"
 )
 
 func jsonStringify(v interface{}) string {
@@ -61,3 +62,8 @@ var PostUrlExtValidatorJSON = jsonStringify(PostUrlExtValidator)
 //	"pattern":  PostUrlNameRegexp.String(),
 //}
 //var PostUrlNameValidatorJSON = helper.JSONStringify(PostUrlNameValidator)
+
+var DashPasswordValidator = CondProduction(map[string]interface{}{
+	"minlength": 6,
+}, map[string]interface{}{})
+var DashPasswordValidatorJSON = helper.JSONStringify(DashPasswordValidator)
