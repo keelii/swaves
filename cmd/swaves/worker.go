@@ -22,20 +22,33 @@ func runSwavesWorker(appCfg types.AppConfig) error {
 	installWorkerReadyHook(swv.App)
 	installAppShutdownHook(swv.App)
 
+	pid := os.Getpid()
 	listener, err := inheritedListenerFromEnv()
 	if err != nil {
 		return err
 	}
 	listenCfg := fiber.ListenConfig{DisableStartupMessage: true}
 	if listener != nil {
+		startAt := time.Now()
 		logger.Info("%s serving inherited listener on %s", swv.Config.AppName, swv.Config.ListenAddr)
-		return swv.Serve(listener, listenCfg)
+		logger.Info("[worker] serve start: pid=%d inherited_listener=true addr=%s", pid, swv.Config.ListenAddr)
+		err = swv.Serve(listener, listenCfg)
+		if err != nil {
+			logger.Error("[worker] serve returned error: pid=%d inherited_listener=true elapsed=%s err=%v", pid, time.Since(startAt), err)
+			return err
+		}
+		logger.Info("[worker] serve returned: pid=%d inherited_listener=true elapsed=%s", pid, time.Since(startAt))
+		return nil
 	}
 
 	logger.Info("%s listening on %s", swv.Config.AppName, swv.Config.ListenAddr)
+	startAt := time.Now()
+	logger.Info("[worker] listen start: pid=%d inherited_listener=false addr=%s", pid, swv.Config.ListenAddr)
 	if err := swv.App.Listen(swv.Config.ListenAddr, listenCfg); err != nil {
+		logger.Error("[worker] listen returned error: pid=%d inherited_listener=false elapsed=%s err=%v", pid, time.Since(startAt), err)
 		return err
 	}
+	logger.Info("[worker] listen returned: pid=%d inherited_listener=false elapsed=%s", pid, time.Since(startAt))
 	return nil
 }
 
@@ -57,17 +70,20 @@ func installAppShutdownHook(appInstance *fiber.App) {
 		return
 	}
 
+	pid := os.Getpid()
+	const shutdownTimeout = 8 * time.Second
 	shutdownCh := make(chan os.Signal, 1)
 	signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-shutdownCh
 		signal.Stop(shutdownCh)
-		logger.Info("[app] shutdown requested by signal: %s", sig)
-		if err := appInstance.ShutdownWithTimeout(8 * time.Second); err != nil {
-			logger.Error("graceful shutdown failed: %v", err)
+		startAt := time.Now()
+		logger.Info("[app] shutdown requested by signal: pid=%d signal=%s timeout=%s", pid, sig, shutdownTimeout)
+		if err := appInstance.ShutdownWithTimeout(shutdownTimeout); err != nil {
+			logger.Error("[app] graceful shutdown failed: pid=%d signal=%s elapsed=%s err=%v", pid, sig, time.Since(startAt), err)
 			return
 		}
-		logger.Info("[app] shutdown completed by signal: %s", sig)
+		logger.Info("[app] shutdown completed by signal: pid=%d signal=%s elapsed=%s", pid, sig, time.Since(startAt))
 	}()
 }
 
@@ -105,15 +121,18 @@ func signalWorkerReady() error {
 		return err
 	}
 
+	pid := os.Getpid()
 	file := os.NewFile(uintptr(fd), "swaves-ready")
 	if file == nil {
 		return fmt.Errorf("restore ready pipe failed")
 	}
 	defer func() { _ = file.Close() }()
 
+	logger.Info("[worker] signaling ready: pid=%d fd=%d", pid, fd)
 	if _, err := file.WriteString(workerReadyMessage + "\n"); err != nil {
 		return fmt.Errorf("signal worker ready failed: %w", err)
 	}
+	logger.Info("[worker] ready signaled: pid=%d", pid)
 	return nil
 }
 

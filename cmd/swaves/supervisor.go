@@ -295,26 +295,28 @@ func stopWorkerProcess(worker *workerProcess, timeout time.Duration) error {
 	if worker == nil || worker.cmd == nil || worker.cmd.Process == nil {
 		return nil
 	}
+	startAt := time.Now()
 	pid := worker.cmd.Process.Pid
 	logger.Info("[master] stopping worker pid=%d timeout=%s", pid, timeout)
 
 	if err := worker.cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return fmt.Errorf("signal worker SIGTERM failed: %w", err)
 	}
+	logger.Info("[master] worker SIGTERM sent pid=%d", pid)
 
 	select {
 	case <-worker.done:
 		if worker.exitErr != nil {
 			return fmt.Errorf("worker exit after SIGTERM failed: %w", worker.exitErr)
 		}
-		logger.Info("[master] worker stopped gracefully pid=%d", pid)
+		logger.Info("[master] worker stopped gracefully pid=%d elapsed=%s", pid, time.Since(startAt))
 		return nil
 	case <-time.After(timeout):
 		if err := worker.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 			return fmt.Errorf("kill worker after timeout failed: %w", err)
 		}
 		<-worker.done
-		logger.Warn("[master] worker killed after timeout pid=%d timeout=%s", pid, timeout)
+		logger.Warn("[master] worker killed after timeout pid=%d timeout=%s elapsed=%s", pid, timeout, time.Since(startAt))
 		return nil
 	}
 }

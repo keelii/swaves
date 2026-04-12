@@ -182,6 +182,7 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		return
 	}
 
+	logger.Info("[task] execute job %s start", t.Code)
 	retPtr, err := jobItem.Func(reg)
 	if err == nil && retPtr == nil {
 		logger.Info("[task] execute job %s no-op", t.Code)
@@ -290,22 +291,26 @@ func RegisterJob(code string, job JobItem) {
 }
 
 func DestroyRegistry() {
+	startAt := time.Now()
+	logger.Info("[task] destroy registry start")
 	registryMu.Lock()
 	reg := registry
 	registry = nil
 	registryMu.Unlock()
 	if reg == nil {
-		logger.Info("[task] destroy registry skipped: registry is nil")
+		logger.Info("[task] destroy registry skipped: registry is nil elapsed=%s", time.Since(startAt))
 		registryInitStarted.Store(false)
 		return
 	}
 
 	if reg.cron != nil {
+		logger.Info("[task] destroy registry waiting for cron stop")
 		stopCtx := reg.cron.Stop()
 		<-stopCtx.Done()
+		logger.Info("[task] destroy registry cron stopped: elapsed=%s", time.Since(startAt))
 	}
 	registryInitStarted.Store(false)
-	logger.Info("[task] registry destroyed")
+	logger.Info("[task] registry destroyed: elapsed=%s", time.Since(startAt))
 }
 
 func ensureBuiltinTask(dbx *db.DB, task db.Task) {
