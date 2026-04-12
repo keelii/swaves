@@ -9,6 +9,35 @@ import (
 	"swaves/internal/platform/store"
 )
 
+func withTestSettings(t *testing.T) {
+	t.Helper()
+
+	previous, hasPrevious := store.Settings.Load().(map[string]string)
+	if hasPrevious {
+		cloned := make(map[string]string, len(previous))
+		for key, value := range previous {
+			cloned[key] = value
+		}
+		previous = cloned
+	}
+
+	t.Cleanup(func() {
+		if !hasPrevious {
+			store.Settings.Store(map[string]string{})
+			return
+		}
+		store.Settings.Store(previous)
+	})
+}
+
+func setTestSettings(settings map[string]string) {
+	cloned := make(map[string]string, len(settings))
+	for key, value := range settings {
+		cloned[key] = value
+	}
+	store.Settings.Store(cloned)
+}
+
 func TestBuildPostURL(t *testing.T) {
 	publishedAt := time.Date(2026, time.February, 20, 9, 30, 0, 0, time.UTC).Unix()
 
@@ -177,18 +206,11 @@ func TestBuildPostURL(t *testing.T) {
 		},
 	}
 
-	previous, hasPrevious := store.Settings.Load().(map[string]string)
-	t.Cleanup(func() {
-		if !hasPrevious {
-			store.Settings.Store(map[string]string{})
-			return
-		}
-		store.Settings.Store(previous)
-	})
+	withTestSettings(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store.Settings.Store(tt.settings)
+			setTestSettings(tt.settings)
 
 			got := BuildPostURL(tt.id, tt.kind, tt.slug, tt.published)
 			if got != tt.want {
@@ -239,18 +261,11 @@ func TestBuildDashPath(t *testing.T) {
 		},
 	}
 
-	previous, hasPrevious := store.Settings.Load().(map[string]string)
-	t.Cleanup(func() {
-		if !hasPrevious {
-			store.Settings.Store(map[string]string{})
-			return
-		}
-		store.Settings.Store(previous)
-	})
+	withTestSettings(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store.Settings.Store(tt.settings)
+			setTestSettings(tt.settings)
 			if got := BuildDashPath(tt.path); got != tt.want {
 				t.Fatalf("BuildDashPath(%q) = %q, want %q", tt.path, got, tt.want)
 			}
@@ -299,18 +314,11 @@ func TestCanonicalDashPath(t *testing.T) {
 		},
 	}
 
-	previous, hasPrevious := store.Settings.Load().(map[string]string)
-	t.Cleanup(func() {
-		if !hasPrevious {
-			store.Settings.Store(map[string]string{})
-			return
-		}
-		store.Settings.Store(previous)
-	})
+	withTestSettings(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store.Settings.Store(tt.settings)
+			setTestSettings(tt.settings)
 			if got := CanonicalDashPath(tt.path); got != tt.want {
 				t.Fatalf("CanonicalDashPath(%q) = %q, want %q", tt.path, got, tt.want)
 			}

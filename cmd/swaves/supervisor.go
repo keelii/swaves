@@ -174,7 +174,6 @@ func normalizeSupervisorConfig(cfg *supervisorConfig) {
 }
 
 func spawnWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, error) {
-	logger.Info("[master] spawn worker start: executable=%s args=%v", strings.TrimSpace(cfg.ExecutablePath), workerArgs(cfg.Args))
 	listenerDup, err := listenerFile(listener)
 	if err != nil {
 		logger.Error("[master] spawn worker duplicate listener failed: err=%v", err)
@@ -303,7 +302,6 @@ func stopWorkerProcess(worker *workerProcess, timeout time.Duration) error {
 	if err := worker.cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return fmt.Errorf("signal worker SIGTERM failed: %w", err)
 	}
-	logger.Info("[master] worker SIGTERM sent pid=%d", pid)
 
 	select {
 	case <-worker.done:

@@ -30,26 +30,20 @@ func runSwavesWorker(appCfg types.AppConfig) error {
 	}
 	listenCfg := fiber.ListenConfig{DisableStartupMessage: true}
 	if listener != nil {
-		startAt := time.Now()
 		logger.Info("%s serving inherited listener on %s", swv.Config.AppName, swv.Config.ListenAddr)
-		logger.Info("[worker] serve start: pid=%d inherited_listener=true addr=%s", pid, swv.Config.ListenAddr)
 		err = swv.Serve(listener, listenCfg)
 		if err != nil {
-			logger.Error("[worker] serve returned error: pid=%d inherited_listener=true elapsed=%s err=%v", pid, time.Since(startAt), err)
+			logger.Error("[worker] serve returned error: pid=%d inherited_listener=true err=%v", pid, err)
 			return err
 		}
-		logger.Info("[worker] serve returned: pid=%d inherited_listener=true elapsed=%s", pid, time.Since(startAt))
 		return nil
 	}
 
 	logger.Info("%s listening on %s", swv.Config.AppName, swv.Config.ListenAddr)
-	startAt := time.Now()
-	logger.Info("[worker] listen start: pid=%d inherited_listener=false addr=%s", pid, swv.Config.ListenAddr)
 	if err := swv.App.Listen(swv.Config.ListenAddr, listenCfg); err != nil {
-		logger.Error("[worker] listen returned error: pid=%d inherited_listener=false elapsed=%s err=%v", pid, time.Since(startAt), err)
+		logger.Error("[worker] listen returned error: pid=%d inherited_listener=false err=%v", pid, err)
 		return err
 	}
-	logger.Info("[worker] listen returned: pid=%d inherited_listener=false elapsed=%s", pid, time.Since(startAt))
 	return nil
 }
 
@@ -89,7 +83,8 @@ func installAppShutdownHook(appInstance *fiber.App, tracker *middleware.RequestT
 
 		if err := appInstance.ShutdownWithTimeout(workerGracefulShutdownTimeout); err != nil {
 			close(done)
-			logger.Error("[app] graceful shutdown failed: pid=%d signal=%s elapsed=%s err=%v", pid, sig, time.Since(startAt), err)
+			activeCount = tracker.ActiveCount()
+			logger.Error("[app] graceful shutdown failed: pid=%d signal=%s elapsed=%s active_requests=%d active_details=%s err=%v", pid, sig, time.Since(startAt), activeCount, middleware.FormatActiveRequests(tracker.Snapshot(5), time.Now()), err)
 			return
 		}
 		close(done)
@@ -101,6 +96,8 @@ func logShutdownWaitState(pid int, tracker *middleware.RequestTracker, startAt t
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
+	idleWarned := false
+	lastActiveWarnAt := time.Time{}
 	for {
 		select {
 		case <-done:
@@ -108,9 +105,16 @@ func logShutdownWaitState(pid int, tracker *middleware.RequestTracker, startAt t
 		case now := <-ticker.C:
 			activeCount := tracker.ActiveCount()
 			if activeCount == 0 {
-				logger.Info("[app] shutdown waiting: pid=%d elapsed=%s active_requests=0", pid, now.Sub(startAt).Round(time.Millisecond))
+				if !idleWarned {
+					logger.Warn("[app] shutdown waiting without active requests: pid=%d elapsed=%s hint=likely idle keep-alive connections or abnormal client/proxy timeout settings; check reverse proxy keepalive/read timeout config", pid, now.Sub(startAt).Round(time.Millisecond))
+					idleWarned = true
+				}
 				continue
 			}
+			if now.Sub(lastActiveWarnAt) < 2*time.Second {
+				continue
+			}
+			lastActiveWarnAt = now
 			logger.Warn("[app] shutdown waiting: pid=%d elapsed=%s active_requests=%d active_details=%s", pid, now.Sub(startAt).Round(time.Millisecond), activeCount, middleware.FormatActiveRequests(tracker.Snapshot(5), now))
 		}
 	}
@@ -150,18 +154,15 @@ func signalWorkerReady() error {
 		return err
 	}
 
-	pid := os.Getpid()
 	file := os.NewFile(uintptr(fd), "swaves-ready")
 	if file == nil {
 		return fmt.Errorf("restore ready pipe failed")
 	}
 	defer func() { _ = file.Close() }()
 
-	logger.Info("[worker] signaling ready: pid=%d fd=%d", pid, fd)
 	if _, err := file.WriteString(workerReadyMessage + "\n"); err != nil {
 		return fmt.Errorf("signal worker ready failed: %w", err)
 	}
-	logger.Info("[worker] ready signaled: pid=%d", pid)
 	return nil
 }
 

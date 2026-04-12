@@ -5,12 +5,33 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
+	"time"
+
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/types"
-	"testing"
-	"time"
 )
+
+func withDashTestSettings(t *testing.T, settings map[string]string) {
+	t.Helper()
+
+	restore := map[string]string{}
+	if current, ok := store.Settings.Load().(map[string]string); ok {
+		for key, value := range current {
+			restore[key] = value
+		}
+	}
+	t.Cleanup(func() {
+		store.Settings.Store(restore)
+	})
+
+	next := make(map[string]string, len(settings))
+	for key, value := range settings {
+		next[key] = value
+	}
+	store.Settings.Store(next)
+}
 
 func TestCleanupFileStreamCloseRunsCleanup(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -37,16 +58,7 @@ func TestCleanupFileStreamCloseRunsCleanup(t *testing.T) {
 
 func TestListLocalRestoreBackups(t *testing.T) {
 	tmpDir := t.TempDir()
-	restore := map[string]string{}
-	if current, ok := store.Settings.Load().(map[string]string); ok {
-		for key, value := range current {
-			restore[key] = value
-		}
-	}
-	t.Cleanup(func() {
-		store.Settings.Store(restore)
-	})
-	store.Settings.Store(map[string]string{"backup_local_dir": tmpDir})
+	withDashTestSettings(t, map[string]string{"backup_local_dir": tmpDir})
 
 	oldPath := filepath.Join(tmpDir, "2026-04-01_old.sqlite")
 	newPath := filepath.Join(tmpDir, "2026-04-02_new.sqlite")
@@ -82,16 +94,7 @@ func TestListLocalRestoreBackups(t *testing.T) {
 
 func TestDeleteLocalRestoreBackup(t *testing.T) {
 	tmpDir := t.TempDir()
-	restore := map[string]string{}
-	if current, ok := store.Settings.Load().(map[string]string); ok {
-		for key, value := range current {
-			restore[key] = value
-		}
-	}
-	t.Cleanup(func() {
-		store.Settings.Store(restore)
-	})
-	store.Settings.Store(map[string]string{"backup_local_dir": tmpDir})
+	withDashTestSettings(t, map[string]string{"backup_local_dir": tmpDir})
 
 	targetPath := filepath.Join(tmpDir, "2026-04-10.sqlite")
 	if err := os.WriteFile(targetPath, []byte("backup"), 0o644); err != nil {

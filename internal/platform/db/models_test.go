@@ -85,6 +85,26 @@ func mustCreateCategory(t *testing.T, db *DB, parentID int64, slug string) *Cate
 	return c
 }
 
+func mustCountRecords(t *testing.T, db *DB, spec TableSpec, where string, args ...interface{}) int {
+	t.Helper()
+
+	count, err := Count(db, spec, where, args)
+	if err != nil {
+		t.Fatalf("Count failed: %v", err)
+	}
+	return count
+}
+
+func mustGetPostAnyStatus(t *testing.T, db *DB, postID int64) Post {
+	t.Helper()
+
+	post, err := GetPostByIDAnyStatus(db, postID)
+	if err != nil {
+		t.Fatalf("GetPostByIDAnyStatus failed: %v", err)
+	}
+	return post
+}
+
 func TestGenericCRUDFlow(t *testing.T) {
 	db := openTestDB(t)
 	slug := uniqueValue("generic")
@@ -101,10 +121,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	cnt, err := Count(db, specPosts, "id=?", []interface{}{id})
-	if err != nil {
-		t.Fatalf("Count failed: %v", err)
-	}
+	cnt := mustCountRecords(t, db, specPosts, "id=?", id)
 	if cnt != 1 {
 		t.Fatalf("expected count 1, got %d", cnt)
 	}
@@ -127,10 +144,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 	if err := Update(db, specPosts, id, map[string]interface{}{"title": "Generic2"}); err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
-	p, err := GetPostByIDAnyStatus(db, id)
-	if err != nil {
-		t.Fatalf("GetPostByID failed: %v", err)
-	}
+	p := mustGetPostAnyStatus(t, db, id)
 	if p.Title != "Generic2" {
 		t.Fatalf("expected updated title, got %s", p.Title)
 	}
@@ -138,10 +152,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 	if err := Delete(db, specPosts, id); err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
-	cnt, err = Count(db, specPosts, "id=?", []interface{}{id})
-	if err != nil {
-		t.Fatalf("Count after delete failed: %v", err)
-	}
+	cnt = mustCountRecords(t, db, specPosts, "id=?", id)
 	if cnt != 0 {
 		t.Fatalf("expected count 0 after soft delete, got %d", cnt)
 	}
@@ -163,10 +174,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 	if err := Restore(db, specPosts, id); err != nil {
 		t.Fatalf("Restore failed: %v", err)
 	}
-	cnt, err = Count(db, specPosts, "id=?", []interface{}{id})
-	if err != nil {
-		t.Fatalf("Count after restore failed: %v", err)
-	}
+	cnt = mustCountRecords(t, db, specPosts, "id=?", id)
 	if cnt != 1 {
 		t.Fatalf("expected count 1 after restore, got %d", cnt)
 	}
@@ -174,10 +182,7 @@ func TestGenericCRUDFlow(t *testing.T) {
 	if err := HardDelete(db, specPosts, id); err != nil {
 		t.Fatalf("HardDelete failed: %v", err)
 	}
-	cnt, err = Count(db, specPosts, "id=?", []interface{}{id})
-	if err != nil {
-		t.Fatalf("Count after hard delete failed: %v", err)
-	}
+	cnt = mustCountRecords(t, db, specPosts, "id=?", id)
 	if cnt != 0 {
 		t.Fatalf("expected count 0 after hard delete, got %d", cnt)
 	}
@@ -259,10 +264,7 @@ func TestPostVisibilityAndPublish(t *testing.T) {
 	if err := PublishPost(db, draft.ID); err != nil {
 		t.Fatalf("PublishPost failed: %v", err)
 	}
-	postByID, err := GetPostByIDAnyStatus(db, draft.ID)
-	if err != nil {
-		t.Fatalf("GetPostByID failed: %v", err)
-	}
+	postByID := mustGetPostAnyStatus(t, db, draft.ID)
 	if postByID.Status != "published" || postByID.PublishedAt == 0 {
 		t.Fatalf("draft should be published now: %+v", postByID)
 	}
@@ -413,10 +415,7 @@ func TestPostCommentEnabledSwitch(t *testing.T) {
 
 	p := mustCreatePost(t, db, "draft", PostKindPost, 0)
 
-	created, err := GetPostByIDAnyStatus(db, p.ID)
-	if err != nil {
-		t.Fatalf("GetPostByID failed: %v", err)
-	}
+	created := mustGetPostAnyStatus(t, db, p.ID)
 	if created.CommentEnabled != 1 {
 		t.Fatalf("new post should default comment_enabled=1, got %d", created.CommentEnabled)
 	}
@@ -424,10 +423,7 @@ func TestPostCommentEnabledSwitch(t *testing.T) {
 	if err := SetPostCommentEnabled(db, p.ID, false); err != nil {
 		t.Fatalf("SetPostCommentEnabled(false) failed: %v", err)
 	}
-	disabled, err := GetPostByIDAnyStatus(db, p.ID)
-	if err != nil {
-		t.Fatalf("GetPostByID after disable failed: %v", err)
-	}
+	disabled := mustGetPostAnyStatus(t, db, p.ID)
 	if disabled.CommentEnabled != 0 {
 		t.Fatalf("expected comment_enabled=0, got %d", disabled.CommentEnabled)
 	}
@@ -438,10 +434,7 @@ func TestPostCommentEnabledSwitch(t *testing.T) {
 		t.Fatalf("UpdatePost failed: %v", err)
 	}
 
-	enabled, err := GetPostByIDAnyStatus(db, p.ID)
-	if err != nil {
-		t.Fatalf("GetPostByID after update failed: %v", err)
-	}
+	enabled := mustGetPostAnyStatus(t, db, p.ID)
 	if enabled.CommentEnabled != 1 {
 		t.Fatalf("expected comment_enabled=1 after update, got %d", enabled.CommentEnabled)
 	}

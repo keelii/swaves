@@ -53,6 +53,24 @@ func mustRenderRegressionTemplate(t *testing.T, view *FiberView, template string
 	return out.String()
 }
 
+func withRegressionSettings(t *testing.T, settings map[string]string) {
+	t.Helper()
+
+	previous, _ := store.Settings.Load().(map[string]string)
+	restore := make(map[string]string, len(previous))
+	for key, value := range previous {
+		restore[key] = value
+	}
+	next := make(map[string]string, len(settings))
+	for key, value := range settings {
+		next[key] = value
+	}
+	store.Settings.Store(next)
+	t.Cleanup(func() {
+		store.Settings.Store(restore)
+	})
+}
+
 func TestRenderDashCategoriesIndexWithMissingCounts(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
@@ -799,13 +817,7 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 func TestRenderSiteLayoutUsesSiteTitleFallback(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
-	previous, _ := store.Settings.Load().(map[string]string)
-	restore := map[string]string{}
-	for key, value := range previous {
-		restore[key] = value
-	}
-	store.Settings.Store(map[string]string{"site_title": "Example Site"})
-	defer store.Settings.Store(restore)
+	withRegressionSettings(t, map[string]string{"site_title": "Example Site"})
 
 	rendered := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{})
 	if !strings.Contains(rendered, "<title>Example Site</title>") {

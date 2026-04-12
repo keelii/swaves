@@ -17,38 +17,69 @@ import (
 	"testing"
 )
 
+func withRuntimeInfoPath(t *testing.T, path string) {
+	t.Helper()
+
+	oldRuntimePath := runtimeInfoPath
+	runtimeInfoPath = func() string { return path }
+	t.Cleanup(func() {
+		runtimeInfoPath = oldRuntimePath
+	})
+}
+
+func withCurrentExecutablePath(t *testing.T, path string) {
+	t.Helper()
+
+	oldCurrentExecutable := currentExecutable
+	currentExecutable = func() (string, error) { return path, nil }
+	t.Cleanup(func() {
+		currentExecutable = oldCurrentExecutable
+	})
+}
+
+func withProcessHooks(t *testing.T, exists func(pid int) bool, signal func(pid int) error) {
+	t.Helper()
+
+	oldProcessExists := processExists
+	oldSignalProcess := signalProcess
+	processExists = exists
+	signalProcess = signal
+	t.Cleanup(func() {
+		processExists = oldProcessExists
+		signalProcess = oldSignalProcess
+	})
+}
+
+func mustWriteExecutable(t *testing.T, path string, content string) {
+	t.Helper()
+
+	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+		t.Fatalf("write executable failed: %v", err)
+	}
+}
+
+func mustWriteRuntime(t *testing.T, info RuntimeInfo) {
+	t.Helper()
+
+	if err := WriteRuntimeInfo(info); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+}
+
 func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	oldCurrentExecutable := currentExecutable
-	runtimeInfoPath = func() string { return runtimePath }
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-		currentExecutable = oldCurrentExecutable
-	}()
-
 	executablePath := filepath.Join(tmpDir, "swaves")
-	currentExecutable = func() (string, error) { return executablePath, nil }
-	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write old executable failed: %v", err)
-	}
-	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
-	}
+	withRuntimeInfoPath(t, runtimePath)
+	withCurrentExecutablePath(t, executablePath)
+	mustWriteExecutable(t, executablePath, "old-binary")
+	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	var signaledPID atomic.Int64
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	processExists = func(pid int) bool { return pid == 4321 }
-	signalProcess = func(pid int) error {
+	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
-	}
-	defer func() {
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
+	})
 
 	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
 	hash := sha256.Sum256(archiveData)
@@ -107,28 +138,14 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	runtimeInfoPath = func() string { return runtimePath }
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-	}()
+	withRuntimeInfoPath(t, runtimePath)
+	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: filepath.Join(tmpDir, "swaves")})
 
-	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: filepath.Join(tmpDir, "swaves")}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
-	}
-
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	processExists = func(pid int) bool { return pid == 4321 }
 	var signaledPID atomic.Int64
-	signalProcess = func(pid int) error {
+	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
-	}
-	defer func() {
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
+	})
 
 	pid, err := RestartActiveRuntime()
 	if err != nil {
@@ -145,34 +162,15 @@ func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
 func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	oldCurrentExecutable := currentExecutable
-	runtimeInfoPath = func() string { return runtimePath }
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-		currentExecutable = oldCurrentExecutable
-	}()
-
 	executablePath := filepath.Join(tmpDir, "swaves")
-	currentExecutable = func() (string, error) { return executablePath, nil }
-	if err := os.WriteFile(executablePath, []byte("same-binary"), 0755); err != nil {
-		t.Fatalf("write executable failed: %v", err)
-	}
-	if err := WriteRuntimeInfo(RuntimeInfo{PID: 1001, Executable: executablePath}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
-	}
-
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	processExists = func(pid int) bool { return pid == 1001 }
-	signalProcess = func(pid int) error {
+	withRuntimeInfoPath(t, runtimePath)
+	withCurrentExecutablePath(t, executablePath)
+	mustWriteExecutable(t, executablePath, "same-binary")
+	mustWriteRuntime(t, RuntimeInfo{PID: 1001, Executable: executablePath})
+	withProcessHooks(t, func(pid int) bool { return pid == 1001 }, func(pid int) error {
 		t.Fatalf("signalProcess should not be called, got pid=%d", pid)
 		return nil
-	}
-	defer func() {
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
+	})
 
 	client := Client{
 		BaseURL: "https://example.test/latest",
@@ -218,35 +216,17 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	oldCurrentExecutable := currentExecutable
-	runtimeInfoPath = func() string { return runtimePath }
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-		currentExecutable = oldCurrentExecutable
-	}()
-
 	executablePath := filepath.Join(tmpDir, "swaves")
-	currentExecutable = func() (string, error) { return executablePath, nil }
-	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write old executable failed: %v", err)
-	}
-	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
-	}
+	withRuntimeInfoPath(t, runtimePath)
+	withCurrentExecutablePath(t, executablePath)
+	mustWriteExecutable(t, executablePath, "old-binary")
+	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	var signaledPID atomic.Int64
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	processExists = func(pid int) bool { return pid == 4321 }
-	signalProcess = func(pid int) error {
+	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
-	}
-	defer func() {
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
+	})
 
 	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
 	archivePath := filepath.Join(tmpDir, archiveName)
@@ -287,29 +267,14 @@ func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
 func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	oldCurrentExecutable := currentExecutable
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	runtimeInfoPath = func() string { return runtimePath }
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-		currentExecutable = oldCurrentExecutable
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
-
 	executablePath := filepath.Join(tmpDir, "swaves")
-	currentExecutable = func() (string, error) { return executablePath, nil }
-	processExists = func(pid int) bool { return false }
-	signalProcess = func(pid int) error {
+	withRuntimeInfoPath(t, runtimePath)
+	withCurrentExecutablePath(t, executablePath)
+	withProcessHooks(t, func(pid int) bool { return false }, func(pid int) error {
 		t.Fatalf("signalProcess should not be called without daemon mode, got pid=%d", pid)
 		return nil
-	}
-
-	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write old executable failed: %v", err)
-	}
+	})
+	mustWriteExecutable(t, executablePath, "old-binary")
 
 	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
 	archivePath := filepath.Join(tmpDir, archiveName)
@@ -343,14 +308,9 @@ func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T)
 
 func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldCurrentExecutable := currentExecutable
-	defer func() { currentExecutable = oldCurrentExecutable }()
-
 	executablePath := filepath.Join(tmpDir, "swaves")
-	currentExecutable = func() (string, error) { return executablePath, nil }
-	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write executable failed: %v", err)
-	}
+	withCurrentExecutablePath(t, executablePath)
+	mustWriteExecutable(t, executablePath, "old-binary")
 
 	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
 	hash := sha256.Sum256(archiveData)
@@ -432,30 +392,17 @@ func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	runtimeInfoPath = func() string { return runtimePath }
-	processExists = func(pid int) bool { return pid == 4321 }
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
+	withRuntimeInfoPath(t, runtimePath)
 
 	executablePath := filepath.Join(tmpDir, "swaves")
-	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write executable failed: %v", err)
-	}
-	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
-	}
+	mustWriteExecutable(t, executablePath, "old-binary")
+	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	var signaledPID atomic.Int64
-	signalProcess = func(pid int) error {
+	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
-	}
+	})
 
 	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
 	hash := sha256.Sum256(archiveData)
@@ -503,28 +450,15 @@ func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(
 func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	oldCurrentExecutable := currentExecutable
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	runtimeInfoPath = func() string { return runtimePath }
-	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
-	processExists = func(pid int) bool { return pid == 4321 }
-	signalProcess = func(pid int) error { return errors.New("restart failed") }
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-		currentExecutable = oldCurrentExecutable
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
-
 	executablePath := filepath.Join(tmpDir, "swaves")
-	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write executable failed: %v", err)
-	}
-	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
-	}
+	withRuntimeInfoPath(t, runtimePath)
+	withCurrentExecutablePath(t, executablePath)
+	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+		return errors.New("restart failed")
+	})
+
+	mustWriteExecutable(t, executablePath, "old-binary")
+	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
 	hash := sha256.Sum256(archiveData)
@@ -573,32 +507,17 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 	tmpDir := t.TempDir()
 	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	oldRuntimePath := runtimeInfoPath
-	oldCurrentExecutable := currentExecutable
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	runtimeInfoPath = func() string { return runtimePath }
-	currentExecutable = func() (string, error) { return filepath.Join(tmpDir, "swaves"), nil }
-	processExists = func(pid int) bool { return pid == 4321 || pid == 9999 }
+	executablePath := filepath.Join(tmpDir, "swaves")
+	withRuntimeInfoPath(t, runtimePath)
+	withCurrentExecutablePath(t, executablePath)
 	signalCalled := false
-	signalProcess = func(pid int) error {
+	withProcessHooks(t, func(pid int) bool { return pid == 4321 || pid == 9999 }, func(pid int) error {
 		signalCalled = true
 		return nil
-	}
-	defer func() {
-		runtimeInfoPath = oldRuntimePath
-		currentExecutable = oldCurrentExecutable
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	}()
+	})
 
-	executablePath := filepath.Join(tmpDir, "swaves")
-	if err := os.WriteFile(executablePath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write executable failed: %v", err)
-	}
-	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: executablePath}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
-	}
+	mustWriteExecutable(t, executablePath, "old-binary")
+	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
 	hash := sha256.Sum256(archiveData)

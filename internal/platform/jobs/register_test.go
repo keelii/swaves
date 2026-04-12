@@ -51,6 +51,26 @@ func mustCreateTask(t *testing.T, dbx *db.DB, code string, kind db.TaskKind) db.
 	return task
 }
 
+func mustGetTaskByCode(t *testing.T, dbx *db.DB, code string) db.Task {
+	t.Helper()
+
+	task, err := db.GetTaskByCode(dbx, code)
+	if err != nil {
+		t.Fatalf("GetTaskByCode failed: %v", err)
+	}
+	return *task
+}
+
+func mustListTaskRuns(t *testing.T, dbx *db.DB, code string) []db.TaskRun {
+	t.Helper()
+
+	runs, err := db.ListTaskRuns(dbx, code, "", 100)
+	if err != nil {
+		t.Fatalf("ListTaskRuns failed: %v", err)
+	}
+	return runs
+}
+
 func withTaskSettings(t *testing.T, settings map[string]string) {
 	t.Helper()
 	prev := store.GetSettingMap()
@@ -86,10 +106,7 @@ func TestExecuteTaskNoOpDoesNotUpdateTaskStatus(t *testing.T) {
 
 	ExecuteTask(dbx, task)
 
-	gotTask, err := db.GetTaskByCode(dbx, task.Code)
-	if err != nil {
-		t.Fatalf("GetTaskByCode failed: %v", err)
-	}
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
 	if gotTask.LastRunAt != nil {
 		t.Fatalf("LastRunAt should stay nil for no-op, got %v", *gotTask.LastRunAt)
 	}
@@ -97,10 +114,7 @@ func TestExecuteTaskNoOpDoesNotUpdateTaskStatus(t *testing.T) {
 		t.Fatalf("LastStatus should stay empty for no-op, got %q", gotTask.LastStatus)
 	}
 
-	runs, err := db.ListTaskRuns(dbx, task.Code, "", 100)
-	if err != nil {
-		t.Fatalf("ListTaskRuns failed: %v", err)
-	}
+	runs := mustListTaskRuns(t, dbx, task.Code)
 	if len(runs) != 0 {
 		t.Fatalf("expected no task runs for no-op, got %d", len(runs))
 	}
@@ -125,10 +139,7 @@ func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
 
 	ExecuteTask(dbx, task)
 
-	gotTask, err := db.GetTaskByCode(dbx, task.Code)
-	if err != nil {
-		t.Fatalf("GetTaskByCode failed: %v", err)
-	}
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
 	if gotTask.LastRunAt == nil || *gotTask.LastRunAt <= 0 {
 		t.Fatalf("LastRunAt should be updated, got %v", gotTask.LastRunAt)
 	}
@@ -136,10 +147,7 @@ func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
 		t.Fatalf("LastStatus should be success, got %q", gotTask.LastStatus)
 	}
 
-	runs, err := db.ListTaskRuns(dbx, task.Code, "", 100)
-	if err != nil {
-		t.Fatalf("ListTaskRuns failed: %v", err)
-	}
+	runs := mustListTaskRuns(t, dbx, task.Code)
 	if len(runs) != 1 {
 		t.Fatalf("expected 1 task run, got %d", len(runs))
 	}
@@ -176,10 +184,7 @@ func TestExecuteTaskSkipsDisabledRemoteBackup(t *testing.T) {
 	if called {
 		t.Fatal("remote backup task should not execute when sync_push_enabled is disabled")
 	}
-	gotTask, err := db.GetTaskByCode(dbx, task.Code)
-	if err != nil {
-		t.Fatalf("GetTaskByCode failed: %v", err)
-	}
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
 	if gotTask.LastRunAt != nil {
 		t.Fatalf("LastRunAt should stay nil for disabled remote backup, got %v", *gotTask.LastRunAt)
 	}
@@ -187,10 +192,7 @@ func TestExecuteTaskSkipsDisabledRemoteBackup(t *testing.T) {
 		t.Fatalf("LastStatus should stay empty for disabled remote backup, got %q", gotTask.LastStatus)
 	}
 
-	runs, err := db.ListTaskRuns(dbx, task.Code, "", 100)
-	if err != nil {
-		t.Fatalf("ListTaskRuns failed: %v", err)
-	}
+	runs := mustListTaskRuns(t, dbx, task.Code)
 	if len(runs) != 0 {
 		t.Fatalf("expected no task runs for disabled remote backup, got %d", len(runs))
 	}

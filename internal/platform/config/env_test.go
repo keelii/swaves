@@ -2,6 +2,16 @@ package config
 
 import "testing"
 
+func withAppEnv(t *testing.T, env AppEnvironment) {
+	t.Helper()
+
+	original := AppEnv
+	AppEnv = env
+	t.Cleanup(func() {
+		AppEnv = original
+	})
+}
+
 func TestReadAppEnv(t *testing.T) {
 	tests := []struct {
 		name string
@@ -28,10 +38,7 @@ func TestReadAppEnv(t *testing.T) {
 }
 
 func TestEnvIsAndEnvIsNot(t *testing.T) {
-	original := AppEnv
-	defer func() { AppEnv = original }()
-
-	AppEnv = envProd
+	withAppEnv(t, envProd)
 	if !EnvIs(envProd) {
 		t.Fatalf("EnvIs(envProd) should be true")
 	}
@@ -49,11 +56,8 @@ func TestEnvIsAndEnvIsNot(t *testing.T) {
 }
 
 func TestShouldEnsureDefaultSettings(t *testing.T) {
-	original := AppEnv
-	defer func() { AppEnv = original }()
-
 	t.Run("prod never ensures", func(t *testing.T) {
-		AppEnv = envProd
+		withAppEnv(t, envProd)
 		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "true")
 		if ShouldEnsureDefaultSettings() {
 			t.Fatal("ShouldEnsureDefaultSettings should be false in prod")
@@ -61,7 +65,7 @@ func TestShouldEnsureDefaultSettings(t *testing.T) {
 	})
 
 	t.Run("dev defaults to false", func(t *testing.T) {
-		AppEnv = envDev
+		withAppEnv(t, envDev)
 		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "")
 		if ShouldEnsureDefaultSettings() {
 			t.Fatal("ShouldEnsureDefaultSettings should default to false in dev")
@@ -69,7 +73,7 @@ func TestShouldEnsureDefaultSettings(t *testing.T) {
 	})
 
 	t.Run("dev explicit true", func(t *testing.T) {
-		AppEnv = envDev
+		withAppEnv(t, envDev)
 		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "true")
 		if !ShouldEnsureDefaultSettings() {
 			t.Fatal("ShouldEnsureDefaultSettings should be true when explicitly enabled in dev")
@@ -77,7 +81,7 @@ func TestShouldEnsureDefaultSettings(t *testing.T) {
 	})
 
 	t.Run("dev explicit false-like value", func(t *testing.T) {
-		AppEnv = envDev
+		withAppEnv(t, envDev)
 		t.Setenv("SWAVES_ENSURE_DEFAULT_SETTINGS", "false")
 		if ShouldEnsureDefaultSettings() {
 			t.Fatal("ShouldEnsureDefaultSettings should be false for false-like values")

@@ -2,13 +2,18 @@ package dash
 
 import "testing"
 
-func TestBuildInstallSettingViewsAppliesPlaceholderOverride(t *testing.T) {
+func withInstallSettingsOptions(t *testing.T) {
+	t.Helper()
+
 	original := append([]InstallSettingsOption(nil), installSettings...)
 	t.Cleanup(func() {
 		installSettings = original
 	})
-
 	installSettings = append([]InstallSettingsOption(nil), installSettings...)
+}
+
+func TestBuildInstallSettingViewsAppliesPlaceholderOverride(t *testing.T) {
+	withInstallSettingsOptions(t)
 	for i := range installSettings {
 		if installSettings[i].Code != "site_desc" {
 			continue
@@ -32,12 +37,7 @@ func TestBuildInstallSettingViewsAppliesPlaceholderOverride(t *testing.T) {
 }
 
 func TestCloneInstallDefaultSettingsWithSiteURLAppliesPresentationDefaultValue(t *testing.T) {
-	original := append([]InstallSettingsOption(nil), installSettings...)
-	t.Cleanup(func() {
-		installSettings = original
-	})
-
-	installSettings = append([]InstallSettingsOption(nil), installSettings...)
+	withInstallSettingsOptions(t)
 	for i := range installSettings {
 		switch installSettings[i].Code {
 		case "site_desc":

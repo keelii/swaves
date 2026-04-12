@@ -7,99 +7,93 @@ import (
 	"swaves/internal/platform/updater"
 )
 
-func TestLoadLatestVersionInfoPrefersFreshReleaseCheck(t *testing.T) {
+func withLatestReleaseCheck(t *testing.T, fn func(currentVersion string, goos string, goarch string) (updater.CheckResult, error)) {
+	t.Helper()
+
 	original := checkLatestRelease
-	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
-		return updater.CheckResult{
-			LatestVersion:    "v0.0.13",
-			LatestReleaseURL: updater.ReleaseTagURL("v0.0.13"),
-		}, nil
-	}
-	defer func() {
+	checkLatestRelease = fn
+	t.Cleanup(func() {
 		checkLatestRelease = original
-	}()
-
-	latestInfo := loadLatestVersionInfo(
-		"v0.0.12",
-		"linux",
-		"amd64",
-		"v0.0.11",
-		updater.ReleaseTagURL("v0.0.11"),
-	)
-
-	if latestInfo.Version != "v0.0.13" {
-		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.13")
-	}
-	if latestInfo.ReleaseURL != updater.ReleaseTagURL("v0.0.13") {
-		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
-	}
-	if !latestInfo.HasSystemUpdate {
-		t.Fatal("expected system update to be detected when latest version is newer")
-	}
-	if !latestInfo.AutoUpdateEnabled {
-		t.Fatal("expected auto update to stay enabled when latest version is newer")
-	}
+	})
 }
 
-func TestLoadLatestVersionInfoFallsBackWhenReleaseCheckFails(t *testing.T) {
-	original := checkLatestRelease
-	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
-		return updater.CheckResult{}, fmt.Errorf("boom")
+func TestLoadLatestVersionInfo(t *testing.T) {
+	tests := []struct {
+		name                  string
+		currentVersion        string
+		fallbackVersion       string
+		checkResult           updater.CheckResult
+		checkErr              error
+		wantVersion           string
+		wantReleaseURL        string
+		wantHasSystemUpdate   bool
+		wantAutoUpdateEnabled bool
+	}{
+		{
+			name:            "prefers fresh release check",
+			currentVersion:  "v0.0.12",
+			fallbackVersion: "v0.0.11",
+			checkResult: updater.CheckResult{
+				LatestVersion:    "v0.0.13",
+				LatestReleaseURL: updater.ReleaseTagURL("v0.0.13"),
+			},
+			wantVersion:           "v0.0.13",
+			wantReleaseURL:        updater.ReleaseTagURL("v0.0.13"),
+			wantHasSystemUpdate:   true,
+			wantAutoUpdateEnabled: true,
+		},
+		{
+			name:                  "falls back when release check fails",
+			currentVersion:        "v0.0.12",
+			fallbackVersion:       "v0.0.11",
+			checkErr:              fmt.Errorf("boom"),
+			wantVersion:           "v0.0.11",
+			wantReleaseURL:        updater.ReleaseTagURL("v0.0.11"),
+			wantHasSystemUpdate:   true,
+			wantAutoUpdateEnabled: true,
+		},
+		{
+			name:            "disables auto update when already latest",
+			currentVersion:  "v0.0.15",
+			fallbackVersion: "v0.0.14",
+			checkResult: updater.CheckResult{
+				LatestVersion:    "v0.0.15",
+				LatestReleaseURL: updater.ReleaseTagURL("v0.0.15"),
+			},
+			wantVersion:           "v0.0.15",
+			wantReleaseURL:        updater.ReleaseTagURL("v0.0.15"),
+			wantHasSystemUpdate:   false,
+			wantAutoUpdateEnabled: false,
+		},
 	}
-	defer func() {
-		checkLatestRelease = original
-	}()
 
-	latestInfo := loadLatestVersionInfo(
-		"v0.0.12",
-		"linux",
-		"amd64",
-		"v0.0.11",
-		updater.ReleaseTagURL("v0.0.11"),
-	)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withLatestReleaseCheck(t, func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+				return tt.checkResult, tt.checkErr
+			})
 
-	if latestInfo.Version != "v0.0.11" {
-		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.11")
-	}
-	if latestInfo.ReleaseURL != updater.ReleaseTagURL("v0.0.11") {
-		t.Fatalf("latestReleaseURL = %q", latestInfo.ReleaseURL)
-	}
-	if !latestInfo.HasSystemUpdate {
-		t.Fatal("expected system update to stay detected when fallback version differs from current version")
-	}
-	if !latestInfo.AutoUpdateEnabled {
-		t.Fatal("expected auto update to stay enabled when fallback version is older")
-	}
-}
+			latestInfo := loadLatestVersionInfo(
+				tt.currentVersion,
+				"linux",
+				"amd64",
+				tt.fallbackVersion,
+				updater.ReleaseTagURL(tt.fallbackVersion),
+			)
 
-func TestLoadLatestVersionInfoDisablesAutoUpdateWhenAlreadyLatest(t *testing.T) {
-	original := checkLatestRelease
-	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
-		return updater.CheckResult{
-			LatestVersion:    "v0.0.15",
-			LatestReleaseURL: updater.ReleaseTagURL("v0.0.15"),
-		}, nil
-	}
-	defer func() {
-		checkLatestRelease = original
-	}()
-
-	latestInfo := loadLatestVersionInfo(
-		"v0.0.15",
-		"linux",
-		"amd64",
-		"v0.0.14",
-		updater.ReleaseTagURL("v0.0.14"),
-	)
-
-	if latestInfo.Version != "v0.0.15" {
-		t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, "v0.0.15")
-	}
-	if latestInfo.HasSystemUpdate {
-		t.Fatal("expected system update to be disabled when current version already matches latest version")
-	}
-	if latestInfo.AutoUpdateEnabled {
-		t.Fatal("expected auto update to be disabled when current version already matches latest version")
+			if latestInfo.Version != tt.wantVersion {
+				t.Fatalf("latestVersion = %q, want %q", latestInfo.Version, tt.wantVersion)
+			}
+			if latestInfo.ReleaseURL != tt.wantReleaseURL {
+				t.Fatalf("latestReleaseURL = %q, want %q", latestInfo.ReleaseURL, tt.wantReleaseURL)
+			}
+			if latestInfo.HasSystemUpdate != tt.wantHasSystemUpdate {
+				t.Fatalf("HasSystemUpdate = %v, want %v", latestInfo.HasSystemUpdate, tt.wantHasSystemUpdate)
+			}
+			if latestInfo.AutoUpdateEnabled != tt.wantAutoUpdateEnabled {
+				t.Fatalf("AutoUpdateEnabled = %v, want %v", latestInfo.AutoUpdateEnabled, tt.wantAutoUpdateEnabled)
+			}
+		})
 	}
 }
 

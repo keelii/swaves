@@ -297,20 +297,21 @@ func RegisterJob(code string, job JobItem) {
 
 func DestroyRegistry() {
 	startAt := time.Now()
-	logger.Info("[task] destroy registry start")
 	registryMu.Lock()
 	reg := registry
 	registry = nil
 	registryMu.Unlock()
 	if reg == nil {
-		logger.Info("[task] destroy registry skipped: registry is nil elapsed=%s", time.Since(startAt))
 		registryInitStarted.Store(false)
 		return
 	}
 
-	reg.waitForCronStop(startAt)
+	waited := reg.waitForCronStop()
 	registryInitStarted.Store(false)
-	logger.Info("[task] registry destroyed: elapsed=%s", time.Since(startAt))
+	totalElapsed := time.Since(startAt)
+	if waited > time.Second || totalElapsed > time.Second {
+		logger.Warn("[task] registry destroyed slowly: total_elapsed=%s cron_wait=%s", totalElapsed, waited)
+	}
 }
 
 func PauseRegistry() {
@@ -344,11 +345,12 @@ func (reg *Registry) requestCronStop() bool {
 	return true
 }
 
-func (reg *Registry) waitForCronStop(startAt time.Time) {
+func (reg *Registry) waitForCronStop() time.Duration {
 	if reg == nil || reg.cron == nil {
-		return
+		return 0
 	}
 
+	waitStart := time.Now()
 	reg.cronStopMu.Lock()
 	stopCtx := reg.cronStopCtx
 	if !reg.cronStopStarted {
@@ -359,12 +361,11 @@ func (reg *Registry) waitForCronStop(startAt time.Time) {
 	reg.cronStopMu.Unlock()
 
 	if stopCtx == nil {
-		return
+		return 0
 	}
 
-	logger.Info("[task] destroy registry waiting for cron stop")
 	<-stopCtx.Done()
-	logger.Info("[task] destroy registry cron stopped: elapsed=%s", time.Since(startAt))
+	return time.Since(waitStart)
 }
 
 func ensureBuiltinTask(dbx *db.DB, task db.Task) {
