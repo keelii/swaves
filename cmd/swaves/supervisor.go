@@ -19,16 +19,17 @@ import (
 )
 
 const (
-	daemonModeConfigEnv       = "SWAVES_DAEMON_MODE"
-	workerModeEnv             = "SWAVES_RUN_MODE"
-	workerProcessFlag         = "--worker-process"
-	defaultWorkerStopTimeout  = 8 * time.Second
-	defaultWorkerReadyTimeout = 8 * time.Second
-	workerListenerFDEnv       = "SWAVES_LISTENER_FD"
-	workerReadyFDEnv          = "SWAVES_READY_FD"
-	workerReadyMessage        = "READY"
-	workerListenerFD          = 3
-	workerReadyFD             = 4
+	daemonModeConfigEnv           = "SWAVES_DAEMON_MODE"
+	workerModeEnv                 = "SWAVES_RUN_MODE"
+	workerProcessFlag             = "--worker-process"
+	workerGracefulShutdownTimeout = 8 * time.Second
+	defaultWorkerStopTimeout      = workerGracefulShutdownTimeout + 4*time.Second
+	defaultWorkerReadyTimeout     = 8 * time.Second
+	workerListenerFDEnv           = "SWAVES_LISTENER_FD"
+	workerReadyFDEnv              = "SWAVES_READY_FD"
+	workerReadyMessage            = "READY"
+	workerListenerFD              = 3
+	workerReadyFD                 = 4
 )
 
 type supervisorConfig struct {

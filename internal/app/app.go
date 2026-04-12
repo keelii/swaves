@@ -30,9 +30,10 @@ import (
 )
 
 type SwavesApp struct {
-	App    *fiber.App
-	Config *types.AppConfig
-	Store  *store.GlobalStore
+	App     *fiber.App
+	Config  *types.AppConfig
+	Store   *store.GlobalStore
+	Tracker *middleware.RequestTracker
 }
 
 func NewApp(appCfg types.AppConfig) SwavesApp {
@@ -48,6 +49,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	store.InitSettings(globalStore)
 	store.InitRedirects(globalStore)
 	viewEngine, initURLResolver := newRuntimeViewEngine()
+	requestTracker := middleware.NewRequestTracker()
 
 	app := fiber.New(fiber.Config{
 		AppName:       appCfg.AppName,
@@ -105,6 +107,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 			return uuid.NewString()
 		},
 	}))
+	app.Use(requestTracker.Middleware())
 	app.Use(middleware.HttpErrorLog(globalStore.Model))
 
 	dash.RegisterRouter(app, globalStore)
@@ -113,9 +116,10 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	api.RegisterRouter(app)
 
 	return SwavesApp{
-		App:    app,
-		Store:  globalStore,
-		Config: &appCfg,
+		App:     app,
+		Store:   globalStore,
+		Config:  &appCfg,
+		Tracker: requestTracker,
 	}
 }
 

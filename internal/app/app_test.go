@@ -207,13 +207,7 @@ func TestDashLoginRateLimitInProduction(t *testing.T) {
 		if resp.StatusCode != fiber.StatusOK {
 			t.Fatalf("login post %d status = %d, want %d", i+1, resp.StatusCode, fiber.StatusOK)
 		}
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("read login post %d failed: %v", i+1, err)
-		}
-		if !strings.Contains(string(body), "Invalid password") {
-			t.Fatalf("expected invalid password message in attempt %d, got: %s", i+1, string(body))
-		}
+		assertResponseBodyContains(t, resp, "Invalid password")
 	}
 
 	resp, err := postDashLogin(t, swv, "198.51.100.10:12345", cookieKV, csrfToken, "wrong-password")
@@ -224,13 +218,7 @@ func TestDashLoginRateLimitInProduction(t *testing.T) {
 		t.Fatalf("rate-limited login post status = %d, want %d", resp.StatusCode, fiber.StatusTooManyRequests)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("read rate-limited login post failed: %v", err)
-	}
-	if !strings.Contains(string(body), "今日登录访问次数已达上限") {
-		t.Fatalf("expected rate-limit message in body, got: %s", string(body))
-	}
+	assertResponseBodyContains(t, resp, "今日登录访问次数已达上限")
 }
 
 func TestAppTrustsLoopbackProxyHeaderForClientIP(t *testing.T) {
@@ -266,13 +254,7 @@ func TestDashLoginRateLimitSkippedOutsideProduction(t *testing.T) {
 		if resp.StatusCode != fiber.StatusOK {
 			t.Fatalf("login post %d status = %d, want %d", i+1, resp.StatusCode, fiber.StatusOK)
 		}
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("read login post %d failed: %v", i+1, err)
-		}
-		if !strings.Contains(string(body), "Invalid password") {
-			t.Fatalf("expected invalid password message in attempt %d, got: %s", i+1, string(body))
-		}
+		assertResponseBodyContains(t, resp, "Invalid password")
 	}
 }
 
@@ -311,13 +293,7 @@ func TestDashLoginRateLimitResetsAfterSuccessfulLogin(t *testing.T) {
 		if resp.StatusCode != fiber.StatusOK {
 			t.Fatalf("post-reset login post %d status = %d, want %d", i+1, resp.StatusCode, fiber.StatusOK)
 		}
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("read post-reset login post %d failed: %v", i+1, err)
-		}
-		if !strings.Contains(string(body), "Invalid password") {
-			t.Fatalf("expected invalid password message in post-reset attempt %d, got: %s", i+1, string(body))
-		}
+		assertResponseBodyContains(t, resp, "Invalid password")
 	}
 
 	limitedResp, err := postDashLogin(t, swv, "198.51.100.12:12345", cookieKV, csrfToken, "wrong-password")
@@ -373,6 +349,18 @@ func postDashLogin(t *testing.T, swv SwavesApp, remoteAddr string, cookieKV stri
 	req.Header.Set("Cookie", cookieKV)
 
 	return swv.App.Test(req)
+}
+
+func assertResponseBodyContains(t *testing.T, resp *http.Response, needle string) {
+	t.Helper()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read response body failed: %v", err)
+	}
+	if !strings.Contains(string(body), needle) {
+		t.Fatalf("expected response body to contain %q, got: %s", needle, string(body))
+	}
 }
 
 func extractCSRFTokenFromBody(t *testing.T, body []byte) string {

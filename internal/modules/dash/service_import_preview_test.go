@@ -31,6 +31,26 @@ func mustStageImportingItem(t *testing.T, dbx *db.DB, item PreviewPostItem) Prev
 	return staged
 }
 
+func mustSaveImportingItem(t *testing.T, dbx *db.DB, item PreviewPostItem) PreviewPostItem {
+	t.Helper()
+
+	saved, err := SaveImportPreviewItemService(dbx, item)
+	if err != nil {
+		t.Fatalf("save importing item failed: %v", err)
+	}
+	return saved
+}
+
+func mustGetPostAnyStatus(t *testing.T, dbx *db.DB, postID int64) db.Post {
+	t.Helper()
+
+	post, err := db.GetPostByIDAnyStatus(dbx, postID)
+	if err != nil {
+		t.Fatalf("load post failed: %v", err)
+	}
+	return post
+}
+
 func tagNamesSorted(tags []db.Tag) []string {
 	names := make([]string, 0, len(tags))
 	for _, tag := range tags {
@@ -61,7 +81,7 @@ func TestSaveImportPreviewItemServicePersistsRowEdits(t *testing.T) {
 		t.Fatalf("parse created_at failed: %v", err)
 	}
 
-	saved, err := SaveImportPreviewItemService(dbx, PreviewPostItem{
+	saved := mustSaveImportingItem(t, dbx, PreviewPostItem{
 		PostID:     staged.PostID,
 		Filename:   "demo.md",
 		Title:      "  New Title  ",
@@ -74,9 +94,6 @@ func TestSaveImportPreviewItemServicePersistsRowEdits(t *testing.T) {
 		Category:   "Main Category",
 		Categories: "Main Category, Extra Category",
 	})
-	if err != nil {
-		t.Fatalf("save importing item failed: %v", err)
-	}
 
 	if saved.Title != "New Title" {
 		t.Fatalf("unexpected saved title: %q", saved.Title)
@@ -91,10 +108,7 @@ func TestSaveImportPreviewItemServicePersistsRowEdits(t *testing.T) {
 		t.Fatalf("unexpected saved kind: %q", saved.Kind)
 	}
 
-	post, err := db.GetPostByIDAnyStatus(dbx, staged.PostID)
-	if err != nil {
-		t.Fatalf("load saved post failed: %v", err)
-	}
+	post := mustGetPostAnyStatus(t, dbx, staged.PostID)
 	if post.Status != importingPostStatus {
 		t.Fatalf("post should stay in importing status after save, got %q", post.Status)
 	}
@@ -168,7 +182,7 @@ func TestConfirmAllImportingPreviewItemsServiceConfirmsAcrossPages(t *testing.T)
 		t.Fatalf("unexpected paged result length: got=%d want=1", len(pagedItems))
 	}
 
-	_, err = SaveImportPreviewItemService(dbx, PreviewPostItem{
+	mustSaveImportingItem(t, dbx, PreviewPostItem{
 		PostID:    itemB.PostID,
 		Title:     "Post B",
 		Slug:      "post-b",
@@ -177,9 +191,6 @@ func TestConfirmAllImportingPreviewItemsServiceConfirmsAcrossPages(t *testing.T)
 		Kind:      "0",
 		CreatedAt: "2024-01-02 00:00:00",
 	})
-	if err != nil {
-		t.Fatalf("save item B failed: %v", err)
-	}
 
 	result, err := ConfirmAllImportingPreviewItemsService(dbx)
 	if err != nil {
@@ -200,26 +211,17 @@ func TestConfirmAllImportingPreviewItemsServiceConfirmsAcrossPages(t *testing.T)
 		t.Fatalf("expected no importing items after confirm-all, got=%d", len(remaining))
 	}
 
-	postA, err := db.GetPostByIDAnyStatus(dbx, itemA.PostID)
-	if err != nil {
-		t.Fatalf("load post A failed: %v", err)
-	}
+	postA := mustGetPostAnyStatus(t, dbx, itemA.PostID)
 	if postA.Status != "draft" {
 		t.Fatalf("unexpected post A status: %q", postA.Status)
 	}
 
-	postB, err := db.GetPostByIDAnyStatus(dbx, itemB.PostID)
-	if err != nil {
-		t.Fatalf("load post B failed: %v", err)
-	}
+	postB := mustGetPostAnyStatus(t, dbx, itemB.PostID)
 	if postB.Status != "published" {
 		t.Fatalf("unexpected post B status: %q", postB.Status)
 	}
 
-	postC, err := db.GetPostByIDAnyStatus(dbx, itemC.PostID)
-	if err != nil {
-		t.Fatalf("load post C failed: %v", err)
-	}
+	postC := mustGetPostAnyStatus(t, dbx, itemC.PostID)
 	if postC.Status != "draft" {
 		t.Fatalf("unexpected post C status: %q", postC.Status)
 	}
@@ -237,7 +239,7 @@ func TestSaveImportPreviewItemServiceKeepsExistingContentWhenFormOmitsContent(t 
 		CreatedAt: "2024-01-01 00:00:00",
 	})
 
-	saved, err := SaveImportPreviewItemService(dbx, PreviewPostItem{
+	saved := mustSaveImportingItem(t, dbx, PreviewPostItem{
 		PostID:    staged.PostID,
 		Title:     "Keep Content Updated",
 		Slug:      "keep-content-updated",
@@ -245,17 +247,11 @@ func TestSaveImportPreviewItemServiceKeepsExistingContentWhenFormOmitsContent(t 
 		Kind:      "0",
 		CreatedAt: "2024-01-01 00:00:00",
 	})
-	if err != nil {
-		t.Fatalf("save importing item failed: %v", err)
-	}
 	if saved.Content != "full body content" {
 		t.Fatalf("expected saved content to keep existing body, got %q", saved.Content)
 	}
 
-	post, err := db.GetPostByIDAnyStatus(dbx, staged.PostID)
-	if err != nil {
-		t.Fatalf("load saved post failed: %v", err)
-	}
+	post := mustGetPostAnyStatus(t, dbx, staged.PostID)
 	if post.Content != "full body content" {
 		t.Fatalf("expected post content unchanged, got %q", post.Content)
 	}
