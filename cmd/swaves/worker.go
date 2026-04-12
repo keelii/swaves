@@ -21,7 +21,7 @@ func runSwavesWorker(appCfg types.AppConfig) error {
 	defer swv.Shutdown()
 
 	installWorkerReadyHook(swv.App)
-	installAppShutdownHook(swv.App, swv.Tracker)
+	installAppShutdownHook(swv.App, swv.Tracker, swv.PauseJobs)
 
 	pid := os.Getpid()
 	listener, err := inheritedListenerFromEnv()
@@ -57,7 +57,7 @@ func runSwavesApp(appCfg types.AppConfig) error {
 	swv := app.NewApp(appCfg)
 	defer swv.Shutdown()
 
-	installAppShutdownHook(swv.App, swv.Tracker)
+	installAppShutdownHook(swv.App, swv.Tracker, swv.PauseJobs)
 	listenCfg := fiber.ListenConfig{DisableStartupMessage: true}
 	logger.Info("%s listening on %s", swv.Config.AppName, swv.Config.ListenAddr)
 	if err := swv.App.Listen(swv.Config.ListenAddr, listenCfg); err != nil {
@@ -66,7 +66,7 @@ func runSwavesApp(appCfg types.AppConfig) error {
 	return nil
 }
 
-func installAppShutdownHook(appInstance *fiber.App, tracker *middleware.RequestTracker) {
+func installAppShutdownHook(appInstance *fiber.App, tracker *middleware.RequestTracker, pauseJobs func()) {
 	if appInstance == nil {
 		return
 	}
@@ -80,6 +80,9 @@ func installAppShutdownHook(appInstance *fiber.App, tracker *middleware.RequestT
 		startAt := time.Now()
 		activeCount := tracker.ActiveCount()
 		logger.Info("[app] shutdown requested by signal: pid=%d signal=%s timeout=%s active_requests=%d active_details=%s", pid, sig, workerGracefulShutdownTimeout, activeCount, middleware.FormatActiveRequests(tracker.Snapshot(5), startAt))
+		if pauseJobs != nil {
+			pauseJobs()
+		}
 
 		done := make(chan struct{})
 		go logShutdownWaitState(pid, tracker, startAt, done)

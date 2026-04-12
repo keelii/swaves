@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -35,6 +36,10 @@ type Registry struct {
 	DB      *db.DB
 	Config  types.AppConfig
 	cron    *cron.Cron
+
+	cronStopMu      sync.Mutex
+	cronStopCtx     context.Context
+	cronStopStarted bool
 }
 
 type JobItem struct {
@@ -303,14 +308,63 @@ func DestroyRegistry() {
 		return
 	}
 
-	if reg.cron != nil {
-		logger.Info("[task] destroy registry waiting for cron stop")
-		stopCtx := reg.cron.Stop()
-		<-stopCtx.Done()
-		logger.Info("[task] destroy registry cron stopped: elapsed=%s", time.Since(startAt))
-	}
+	reg.waitForCronStop(startAt)
 	registryInitStarted.Store(false)
 	logger.Info("[task] registry destroyed: elapsed=%s", time.Since(startAt))
+}
+
+func PauseRegistry() {
+	registryMu.RLock()
+	reg := registry
+	registryMu.RUnlock()
+	if reg == nil {
+		logger.Info("[task] pause registry skipped: registry is nil")
+		return
+	}
+
+	if reg.requestCronStop() {
+		logger.Info("[task] pause registry requested")
+		return
+	}
+	logger.Info("[task] pause registry skipped: cron stop already requested")
+}
+
+func (reg *Registry) requestCronStop() bool {
+	if reg == nil || reg.cron == nil {
+		return false
+	}
+
+	reg.cronStopMu.Lock()
+	defer reg.cronStopMu.Unlock()
+	if reg.cronStopStarted {
+		return false
+	}
+	reg.cronStopCtx = reg.cron.Stop()
+	reg.cronStopStarted = true
+	return true
+}
+
+func (reg *Registry) waitForCronStop(startAt time.Time) {
+	if reg == nil || reg.cron == nil {
+		return
+	}
+
+	reg.cronStopMu.Lock()
+	stopCtx := reg.cronStopCtx
+	if !reg.cronStopStarted {
+		stopCtx = reg.cron.Stop()
+		reg.cronStopCtx = stopCtx
+		reg.cronStopStarted = true
+	}
+	reg.cronStopMu.Unlock()
+
+	if stopCtx == nil {
+		return
+	}
+
+	logger.Info("[task] destroy registry waiting for cron stop")
+	<-stopCtx.Done()
+	logger.Info("[task] destroy registry cron stopped: elapsed=%s", time.Since(startAt))
 }
 
 func ensureBuiltinTask(dbx *db.DB, task db.Task) {

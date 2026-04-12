@@ -21,6 +21,7 @@ import (
 	"swaves/internal/shared/types"
 	"swaves/internal/shared/webutil"
 	webassets "swaves/web"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/recover"
@@ -56,6 +57,8 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		CaseSensitive: true,
 		Views:         viewEngine,
 		BodyLimit:     10 * 1024 * 1024, // 10MB
+		ReadTimeout:   15 * time.Second,
+		IdleTimeout:   5 * time.Second,
 		ProxyHeader:   fiber.HeaderXForwardedFor,
 		TrustProxy:    true,
 		TrustProxyConfig: fiber.TrustProxyConfig{
@@ -224,4 +227,11 @@ func (swv *SwavesApp) Shutdown() {
 		logger.Warn("[app] shutdown store close skipped: app=%s reason=nil_store", appName)
 	}
 	logger.Info("[app] shutdown complete: app=%s", appName)
+}
+
+func (swv *SwavesApp) PauseJobs() {
+	if swv == nil {
+		return
+	}
+	job.PauseRegistry()
 }
