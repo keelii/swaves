@@ -30,10 +30,10 @@ const (
 
 var installSettings = []InstallSettingsOption{
 	{
-		Code:         "site_name",
+		Code:         "site_title",
 		DefaultValue: "",
 		Placeholder:  "",
-		Description:  "公开展示的站点名称",
+		Description:  "公开展示的站点标题",
 	},
 	{
 		Code:         "site_desc",

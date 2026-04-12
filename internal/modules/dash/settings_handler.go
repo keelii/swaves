@@ -99,16 +99,16 @@ var settingAreaLabels = map[string]string{
 
 var settingSectionOrderByArea = map[string][]string{
 	settingAreaFrontend: {
+		settingSectionDisplay,
 		settingSectionSite,
 		settingSectionAuthor,
 		settingSectionContent,
-		settingSectionDisplay,
 		settingSectionIntegrations,
 	},
 	settingAreaBackend: {
+		settingSectionLayout,
 		settingSectionSecurity,
 		settingSectionEditor,
-		settingSectionLayout,
 		settingSectionAssets,
 		settingSectionBackup,
 		settingSectionNotifications,
@@ -119,7 +119,7 @@ var settingSectionOrderByArea = map[string][]string{
 var settingSectionMetaByCode = map[string]settingSectionMeta{
 	settingSectionSite: {
 		Label:       "站点信息",
-		Description: "配置公开站点的名称、访问地址、语言和页面基础信息。",
+		Description: "配置公开站点的标题、访问地址、语言和页面基础信息。",
 	},
 	settingSectionAuthor: {
 		Label:       "作者信息",
@@ -130,7 +130,7 @@ var settingSectionMetaByCode = map[string]settingSectionMeta{
 		Description: "配置页面、文章、分类和标签的公开访问地址。修改后可能影响既有链接。",
 	},
 	settingSectionDisplay: {
-		Label:       "展示与阅读",
+		Label:       "用户界面",
 		Description: "配置站点默认显示模式和列表阅读体验。",
 	},
 	settingSectionIntegrations: {
@@ -146,8 +146,8 @@ var settingSectionMetaByCode = map[string]settingSectionMeta{
 		Description: "配置文章编辑页的默认模式和文字显示。",
 	},
 	settingSectionLayout: {
-		Label:       "后台布局",
-		Description: "配置管理后台导航与默认布局状态。",
+		Label:       "用户界面",
+		Description: "配置后台站点名称、导航与默认布局状态。",
 	},
 	settingSectionAssets: {
 		Label:       "资源与云服务",
@@ -175,7 +175,7 @@ var settingCardOrderBySection = map[string][]string{
 	settingSectionIntegrations:  {"analytics"},
 	settingSectionSecurity:      {"entry", "auth"},
 	settingSectionEditor:        {"defaults", "typography"},
-	settingSectionLayout:        {"navigation"},
+	settingSectionLayout:        {"identity", "navigation", "pagination"},
 	settingSectionAssets:        {"provider", "see", "imagekit", "s3"},
 	settingSectionBackup:        {"local", "remote"},
 	settingSectionNotifications: {"interaction", "task", "policy"},
@@ -211,7 +211,9 @@ var settingCardMetaBySection = map[string]map[string]settingCardMeta{
 		"typography": {Label: "编辑器文字"},
 	},
 	settingSectionLayout: {
+		"identity":   {Label: "站点信息"},
 		"navigation": {},
+		"pagination": {Label: "列表与分页"},
 	},
 	settingSectionAssets: {
 		"provider": {Label: "默认资源服务"},
@@ -235,7 +237,7 @@ var settingCardMetaBySection = map[string]map[string]settingCardMeta{
 
 var settingLocationsByCode = map[string]settingLocation{
 	"site_url":                         {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
-	"site_name":                        {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"site_name":                        {Area: settingAreaBackend, Section: settingSectionLayout, Card: "identity"},
 	"site_title":                       {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"site_desc":                        {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"site_keywords":                    {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
@@ -264,6 +266,7 @@ var settingLocationsByCode = map[string]settingLocation{
 	"editor_font_family":               {Area: settingAreaBackend, Section: settingSectionEditor, Card: "typography"},
 	"dash_nav_width":                   {Area: settingAreaBackend, Section: settingSectionLayout, Card: "navigation"},
 	"dash_full_main_open":              {Area: settingAreaBackend, Section: settingSectionLayout, Card: "navigation"},
+	"dash_page_size":                   {Area: settingAreaBackend, Section: settingSectionLayout, Card: "pagination"},
 	"asset_default_provider":           {Area: settingAreaBackend, Section: settingSectionAssets, Card: "provider"},
 	"asset_see_api_base":               {Area: settingAreaBackend, Section: settingSectionAssets, Card: "see"},
 	"asset_see_api_token":              {Area: settingAreaBackend, Section: settingSectionAssets, Card: "see"},
@@ -486,7 +489,7 @@ func buildSectionSummary(section SettingSectionView) string {
 
 	switch section.Code {
 	case settingSectionSite:
-		return joinSectionSummary(values["site_name"], values["site_url"])
+		return joinSectionSummary(values["site_title"], values["site_url"])
 	case settingSectionAuthor:
 		return joinSectionSummary(values["author"], values["author_email"])
 	case settingSectionContent:
@@ -519,11 +522,15 @@ func buildSectionSummary(section SettingSectionView) string {
 		}
 		return joinSectionSummary(fontSize, editorMode)
 	case settingSectionLayout:
+		pageSize := strings.TrimSpace(values["dash_page_size"])
+		if pageSize != "" {
+			pageSize = "每页 " + pageSize + " 条"
+		}
 		navWidth := strings.TrimSpace(values["dash_nav_width"])
 		if navWidth != "" {
-			return "导航 " + navWidth + "px"
+			navWidth = "导航 " + navWidth + "px"
 		}
-		return "后台布局"
+		return joinSectionSummary(values["site_name"], navWidth, pageSize)
 	case settingSectionAssets:
 		provider := humanizeAssetProviderSummary(values["asset_default_provider"])
 		if provider == "" {

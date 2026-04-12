@@ -106,6 +106,7 @@ func TestBuildSettingAreasAddsSectionCountsAndSummaries(t *testing.T) {
 		{Kind: db.SettingKindContentRouting, Name: "文章前缀", Code: "post_url_prefix", Type: "text", Value: "archives"},
 		{Kind: db.SettingKindContentRouting, Name: "文章名称", Code: "post_url_name", Type: "text", Value: "{slug}"},
 		{Kind: db.SettingKindContentRouting, Name: "文章后缀", Code: "post_url_ext", Type: "text", Value: ".html"},
+		{Kind: db.SettingKindUIExperience, Name: "界面模式", Code: "mode", Type: "radio", Value: "light"},
 		{Kind: db.SettingKindDashSecurity, Name: "资源默认服务", Code: "asset_default_provider", Type: "select", Value: "imagekit"},
 		{Kind: db.SettingKindBackupSync, Name: "开启远程备份", Code: "sync_push_enabled", Type: "radio", Value: "1", DefaultOptionValue: "0"},
 		{Kind: db.SettingKindBackupSync, Name: "远程备份服务商", Code: "sync_push_provider", Type: "select", Value: "s3", DefaultOptionValue: "s3"},
@@ -119,15 +120,25 @@ func TestBuildSettingAreasAddsSectionCountsAndSummaries(t *testing.T) {
 	if frontend == nil {
 		t.Fatalf("expected frontend area to exist")
 	}
+	if len(frontend.Sections) == 0 || frontend.Sections[0].Code != settingSectionDisplay {
+		t.Fatalf("expected frontend display section to be first, got %+v", frontend.Sections)
+	}
+	display := findSettingSection(frontend, settingSectionDisplay)
+	if display == nil {
+		t.Fatalf("expected display section to exist")
+	}
+	if display.Summary != "浅色界面" {
+		t.Fatalf("unexpected display summary: %q", display.Summary)
+	}
 
 	site := findSettingSection(frontend, settingSectionSite)
 	if site == nil {
 		t.Fatalf("expected site section to exist")
 	}
-	if site.SettingCount != 2 {
-		t.Fatalf("expected site setting count = 2, got %d", site.SettingCount)
+	if site.SettingCount != 1 {
+		t.Fatalf("expected site setting count = 1, got %d", site.SettingCount)
 	}
-	if site.Summary != "Swaves · https://example.com" {
+	if site.Summary != "https://example.com" {
 		t.Fatalf("unexpected site summary: %q", site.Summary)
 	}
 
@@ -142,6 +153,20 @@ func TestBuildSettingAreasAddsSectionCountsAndSummaries(t *testing.T) {
 	backend := findSettingArea(areas, settingAreaBackend)
 	if backend == nil {
 		t.Fatalf("expected backend area to exist")
+	}
+	if len(backend.Sections) == 0 || backend.Sections[0].Code != settingSectionLayout {
+		t.Fatalf("expected backend layout section to be first, got %+v", backend.Sections)
+	}
+
+	layout := findSettingSection(backend, settingSectionLayout)
+	if layout == nil {
+		t.Fatalf("expected layout section to exist")
+	}
+	if layout.SettingCount != 1 {
+		t.Fatalf("expected layout setting count = 1, got %d", layout.SettingCount)
+	}
+	if layout.Summary != "Swaves" {
+		t.Fatalf("unexpected layout summary: %q", layout.Summary)
 	}
 
 	assets := findSettingSection(backend, settingSectionAssets)

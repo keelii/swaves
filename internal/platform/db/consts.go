@@ -502,7 +502,7 @@ var SettingSubKindLabels = map[string]map[string]string{
 
 var DefaultSettings = []Setting{
 	{Sort: 10, Kind: SettingKindSiteBasics, Name: "访问地址", Code: "site_url", Type: "text", Value: "", Description: "站点地址，不包括路径"},
-	{Sort: 11, Kind: SettingKindSiteBasics, Name: "站点名称", Code: "site_name", Type: "text", Value: "Swaves", Description: "站点名称"},
+	{Sort: 11, Kind: SettingKindSiteBasics, Name: "站点名称", Code: "site_name", Type: "text", Value: "SWAVES", Description: "后台显示的站点名称"},
 	{Sort: 12, Kind: SettingKindSiteBasics, Name: "站点标题", Code: "site_title", Type: "text", Value: "", Description: "站点标题"},
 	{Sort: 13, Kind: SettingKindSiteBasics, Name: "站点描述", Code: "site_desc", Type: "text", Value: "", Description: "站点描述"},
 	{Sort: 14, Kind: SettingKindSiteBasics, Name: "站点关键字", Code: "site_keywords", Type: "text", Value: "", Description: "关键字，英文,分割多个"},
@@ -553,5 +553,6 @@ var DefaultSettings = []Setting{
 	{Sort: 16, Kind: SettingKindUIExperience, Name: "源码模式", Code: "dash_post_editor_source_mode", Type: "radio", Value: "0", DefaultOptionValue: "0", Description: "默认源码模式状态。", Options: `[{"label": "关闭", "value": "0"}, {"label": "开启", "value": "1"}]`},
 	{Sort: 17, Kind: SettingKindUIExperience, Name: "字体大小", Code: "editor_font_size", Type: "number", Value: "16", DefaultOptionValue: "16", Description: "文字大小（px）。", Attrs: `{"min": 12, "max": 36, "step": 1}`},
 	{Sort: 18, Kind: SettingKindUIExperience, Name: "字体", Code: "editor_font_family", Type: "text", Value: `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`, Description: "文字使用的 font-family。"},
-	{Sort: 19, Kind: SettingKindUIExperience, Name: "默认分页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "系统默认分页数量，当前同时影响前后台列表分页。", Attrs: `{"min": 1, "max": 100}`},
+	{Sort: 19, Kind: SettingKindUIExperience, Name: "前台默认分页数量", Code: "page_size", Type: "number", Value: "20", DefaultOptionValue: "10", Description: "公开站点列表页的默认分页数量。", Attrs: `{"min": 1, "max": 100}`},
+	{Sort: 20, Kind: SettingKindUIExperience, Name: "后台默认分页数量", Code: "dash_page_size", Type: "number", Value: "20", DefaultOptionValue: "20", Description: "管理后台列表页的默认分页数量。", Attrs: `{"min": 1, "max": 100}`},
 }

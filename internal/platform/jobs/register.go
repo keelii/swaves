@@ -187,10 +187,8 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		return
 	}
 
-	logger.Info("[task] execute job %s start", t.Code)
 	retPtr, err := jobItem.Func(reg)
 	if err == nil && retPtr == nil {
-		logger.Info("[task] execute job %s no-op", t.Code)
 		return
 	}
 

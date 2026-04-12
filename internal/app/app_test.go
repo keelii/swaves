@@ -491,7 +491,8 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 		swv,
 		"/install",
 		"",
-		`name="setting_site_name"`,
+		`name="setting_site_title"`,
+		`name="setting_site_desc"`,
 		`name="setting_author"`,
 		`name="setting_dash_password"`,
 		"完成安装",
@@ -512,8 +513,11 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if strings.Contains(body, `id="setting_author_email"`) {
 		t.Fatal("install page should not expose author email settings")
 	}
-	if strings.Contains(body, `id="setting_site_title"`) {
-		t.Fatal("install page should not expose site title settings")
+	if !strings.Contains(body, `id="setting_site_title"`) {
+		t.Fatal("install page should expose site title setting")
+	}
+	if strings.Contains(body, `id="setting_site_name"`) {
+		t.Fatal("install page should not expose site name setting")
 	}
 	if !strings.Contains(body, `name="setting_site_desc"`) {
 		t.Fatal("install page should expose site description setting")
@@ -553,7 +557,7 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	}
 
 	expectedOrder := []string{
-		`name="setting_site_name"`,
+		`name="setting_site_title"`,
 		`name="setting_site_desc"`,
 		`name="setting_author"`,
 		`name="setting_dash_path"`,
