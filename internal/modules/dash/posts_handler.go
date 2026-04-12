@@ -29,8 +29,14 @@ func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
 }
 
 func (h *Handler) GetRecordListHandler(c fiber.Ctx) error {
+	recordTabCounts, err := getRecordTabCounts(h.Model)
+	if err != nil {
+		return err
+	}
+
 	return RenderDashView(c, "dash/records_index.html", fiber.Map{
-		"Title": "Records",
+		"Title":           "Records",
+		"RecordTabCounts": recordTabCounts,
 	}, "")
 }
 

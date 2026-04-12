@@ -35,48 +35,40 @@ func prepareInstalledAppDB(t *testing.T, dbPath string) {
 	}
 }
 
-func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "test.sqlite")
+func newInstalledTestApp(t *testing.T, sqliteName string) SwavesApp {
+	t.Helper()
+
+	dbPath := filepath.Join(t.TempDir(), sqliteName)
 	prepareInstalledAppDB(t, dbPath)
 	swv := NewApp(types.AppConfig{
 		SqliteFile: dbPath,
 		ListenAddr: ":0",
 		AppName:    "swaves-test",
 	})
-	defer swv.Shutdown()
+	t.Cleanup(func() {
+		swv.Shutdown()
+	})
+	return swv
+}
 
-	form := url.Values{}
-	form.Set("password", "dash")
-	loginPageReq := httptest.NewRequest("GET", "/dash/login", nil)
-	loginPageResp, err := swv.App.Test(loginPageReq)
-	if err != nil {
-		t.Fatalf("login page request failed: %v", err)
-	}
-	if loginPageResp.StatusCode != fiber.StatusOK {
-		t.Fatalf("unexpected login page status: %d", loginPageResp.StatusCode)
-	}
+func setProductionFlags(t *testing.T, isProduction bool) {
+	t.Helper()
 
-	cookieHeader := strings.TrimSpace(loginPageResp.Header.Get("Set-Cookie"))
-	if cookieHeader == "" {
-		t.Fatalf("expected login page response to set session cookie")
-	}
-	cookieKV := strings.SplitN(cookieHeader, ";", 2)[0]
-	if cookieKV == "" {
-		t.Fatalf("expected valid session cookie")
-	}
+	originalIsProduction := config.IsProduction
+	originalIsNotProduction := config.IsNotProduction
+	config.IsProduction = isProduction
+	config.IsNotProduction = !isProduction
+	t.Cleanup(func() {
+		config.IsProduction = originalIsProduction
+		config.IsNotProduction = originalIsNotProduction
+	})
+}
 
-	loginPageBody, _ := io.ReadAll(loginPageResp.Body)
-	matches := regexp.MustCompile(`name="_csrf_token" value="([^"]+)"`).FindStringSubmatch(string(loginPageBody))
-	if len(matches) < 2 || strings.TrimSpace(matches[1]) == "" {
-		t.Fatalf("expected csrf token in login form")
-	}
-	form.Set("_csrf_token", strings.TrimSpace(matches[1]))
+func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
+	swv := newInstalledTestApp(t, "test.sqlite")
 
-	loginReq := httptest.NewRequest("POST", "/dash/login", strings.NewReader(form.Encode()))
-	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	loginReq.Header.Set("Cookie", cookieKV)
-
-	loginResp, err := swv.App.Test(loginReq)
+	cookieKV, loginCSRFToken := loadDashLoginForm(t, swv, "")
+	loginResp, err := postDashLogin(t, swv, "", cookieKV, loginCSRFToken, "dash")
 	if err != nil {
 		t.Fatalf("login request failed: %v", err)
 	}
@@ -84,7 +76,7 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 		t.Fatalf("expected login redirect status, got %d", loginResp.StatusCode)
 	}
 
-	cookieHeader = strings.TrimSpace(loginResp.Header.Get("Set-Cookie"))
+	cookieHeader := strings.TrimSpace(loginResp.Header.Get("Set-Cookie"))
 	if cookieHeader == "" {
 		t.Fatalf("expected login response to set session cookie")
 	}
@@ -102,12 +94,11 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 	if importPageResp.StatusCode != fiber.StatusOK {
 		t.Fatalf("unexpected import page status: %d", importPageResp.StatusCode)
 	}
-	importPageBody, _ := io.ReadAll(importPageResp.Body)
-	metaMatches := regexp.MustCompile(`name="_csrf_token" value="([^"]+)"`).FindStringSubmatch(string(importPageBody))
-	if len(metaMatches) < 2 || strings.TrimSpace(metaMatches[1]) == "" {
-		t.Fatalf("expected csrf token field in import page")
+	importPageBody, err := io.ReadAll(importPageResp.Body)
+	if err != nil {
+		t.Fatalf("read import page failed: %v", err)
 	}
-	csrfToken := strings.TrimSpace(metaMatches[1])
+	csrfToken := extractCSRFTokenFromBody(t, importPageBody)
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -202,25 +193,9 @@ func TestImportParseItemRouteRespondsForPostAndGet(t *testing.T) {
 }
 
 func TestDashLoginRateLimitInProduction(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "login-rate-limit.sqlite")
-	prepareInstalledAppDB(t, dbPath)
+	swv := newInstalledTestApp(t, "login-rate-limit.sqlite")
 	middleware.DashLoginRateLimitResetAll()
-
-	originalIsProduction := config.IsProduction
-	originalIsNotProduction := config.IsNotProduction
-	config.IsProduction = true
-	config.IsNotProduction = false
-	defer func() {
-		config.IsProduction = originalIsProduction
-		config.IsNotProduction = originalIsNotProduction
-	}()
-
-	swv := NewApp(types.AppConfig{
-		SqliteFile: dbPath,
-		ListenAddr: ":0",
-		AppName:    "swaves-test",
-	})
-	defer swv.Shutdown()
+	setProductionFlags(t, true)
 
 	cookieKV, csrfToken := loadDashLoginForm(t, swv, "198.51.100.10:12345")
 
@@ -259,15 +234,7 @@ func TestDashLoginRateLimitInProduction(t *testing.T) {
 }
 
 func TestAppTrustsLoopbackProxyHeaderForClientIP(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "proxy-ip.sqlite")
-	prepareInstalledAppDB(t, dbPath)
-
-	swv := NewApp(types.AppConfig{
-		SqliteFile: dbPath,
-		ListenAddr: ":0",
-		AppName:    "swaves-test",
-	})
-	defer swv.Shutdown()
+	swv := newInstalledTestApp(t, "proxy-ip.sqlite")
 
 	appConfig := swv.App.Config()
 	if got := appConfig.ProxyHeader; got != fiber.HeaderXForwardedFor {
@@ -285,25 +252,9 @@ func TestAppTrustsLoopbackProxyHeaderForClientIP(t *testing.T) {
 }
 
 func TestDashLoginRateLimitSkippedOutsideProduction(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "login-rate-limit-dev.sqlite")
-	prepareInstalledAppDB(t, dbPath)
+	swv := newInstalledTestApp(t, "login-rate-limit-dev.sqlite")
 	middleware.DashLoginRateLimitResetAll()
-
-	originalIsProduction := config.IsProduction
-	originalIsNotProduction := config.IsNotProduction
-	config.IsProduction = false
-	config.IsNotProduction = true
-	defer func() {
-		config.IsProduction = originalIsProduction
-		config.IsNotProduction = originalIsNotProduction
-	}()
-
-	swv := NewApp(types.AppConfig{
-		SqliteFile: dbPath,
-		ListenAddr: ":0",
-		AppName:    "swaves-test",
-	})
-	defer swv.Shutdown()
+	setProductionFlags(t, false)
 
 	cookieKV, csrfToken := loadDashLoginForm(t, swv, "198.51.100.11:12345")
 
@@ -326,25 +277,9 @@ func TestDashLoginRateLimitSkippedOutsideProduction(t *testing.T) {
 }
 
 func TestDashLoginRateLimitResetsAfterSuccessfulLogin(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "login-rate-limit-reset.sqlite")
-	prepareInstalledAppDB(t, dbPath)
+	swv := newInstalledTestApp(t, "login-rate-limit-reset.sqlite")
 	middleware.DashLoginRateLimitResetAll()
-
-	originalIsProduction := config.IsProduction
-	originalIsNotProduction := config.IsNotProduction
-	config.IsProduction = true
-	config.IsNotProduction = false
-	defer func() {
-		config.IsProduction = originalIsProduction
-		config.IsNotProduction = originalIsNotProduction
-	}()
-
-	swv := NewApp(types.AppConfig{
-		SqliteFile: dbPath,
-		ListenAddr: ":0",
-		AppName:    "swaves-test",
-	})
-	defer swv.Shutdown()
+	setProductionFlags(t, true)
 
 	cookieKV, csrfToken := loadDashLoginForm(t, swv, "198.51.100.12:12345")
 
@@ -421,12 +356,8 @@ func loadDashLoginForm(t *testing.T, swv SwavesApp, remoteAddr string) (string, 
 	if err != nil {
 		t.Fatalf("read login page failed: %v", err)
 	}
-	matches := regexp.MustCompile(`name="_csrf_token" value="([^"]+)"`).FindStringSubmatch(string(body))
-	if len(matches) < 2 || strings.TrimSpace(matches[1]) == "" {
-		t.Fatal("expected csrf token in login form")
-	}
 
-	return cookieKV, strings.TrimSpace(matches[1])
+	return cookieKV, extractCSRFTokenFromBody(t, body)
 }
 
 func postDashLogin(t *testing.T, swv SwavesApp, remoteAddr string, cookieKV string, csrfToken string, password string) (*http.Response, error) {
@@ -442,6 +373,16 @@ func postDashLogin(t *testing.T, swv SwavesApp, remoteAddr string, cookieKV stri
 	req.Header.Set("Cookie", cookieKV)
 
 	return swv.App.Test(req)
+}
+
+func extractCSRFTokenFromBody(t *testing.T, body []byte) string {
+	t.Helper()
+
+	matches := regexp.MustCompile(`name="_csrf_token" value="([^"]+)"`).FindStringSubmatch(string(body))
+	if len(matches) < 2 || strings.TrimSpace(matches[1]) == "" {
+		t.Fatal("expected csrf token in response body")
+	}
+	return strings.TrimSpace(matches[1])
 }
 
 func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {

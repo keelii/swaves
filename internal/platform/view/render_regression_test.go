@@ -15,14 +15,48 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func TestRenderDashCategoriesIndexWithMissingCounts(t *testing.T) {
+func mustLoadRegressionView(t *testing.T) *FiberView {
+	t.Helper()
+
 	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
+	fiberView, ok := view.(*FiberView)
+	if !ok {
+		t.Fatal("expected FiberView from NewViewEngine")
+	}
+	if err := fiberView.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
+	return fiberView
+}
+
+func mustLoadRegressionViewWithResolver(t *testing.T) (*FiberView, func(app *fiber.App)) {
+	t.Helper()
+
+	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
+	fiberView, ok := view.(*FiberView)
+	if !ok {
+		t.Fatal("expected FiberView from NewViewEngine")
+	}
+	if err := fiberView.Load(); err != nil {
+		t.Fatalf("load templates failed: %v", err)
+	}
+	return fiberView, initURLResolver
+}
+
+func mustRenderRegressionTemplate(t *testing.T, view *FiberView, template string, context map[string]any) string {
+	t.Helper()
 
 	var out bytes.Buffer
-	err := view.Render(&out, "dash/categories_index.html", map[string]any{
+	if err := view.Render(&out, template, context); err != nil {
+		t.Fatalf("render %s failed: %v", template, err)
+	}
+	return out.String()
+}
+
+func TestRenderDashCategoriesIndexWithMissingCounts(t *testing.T) {
+	view := mustLoadRegressionView(t)
+
+	rendered := mustRenderRegressionTemplate(t, view, "dash/categories_index.html", map[string]any{
 		"Categories": []db.Category{
 			{
 				ID:          1,
@@ -39,22 +73,15 @@ func TestRenderDashCategoriesIndexWithMissingCounts(t *testing.T) {
 		"PostCounts": map[int64]int{},
 		"Pager":      types.Pagination{Page: 1, Num: 1, Total: 1, PageSize: 10},
 	})
-	if err != nil {
-		t.Fatalf("render categories index failed: %v", err)
-	}
-	if out.Len() == 0 {
+	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
 }
 
 func TestRenderDashPostsIndexWithoutFilterNames(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/posts_index.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/posts_index.html", map[string]any{
 		"Posts":                   []db.PostWithRelation{},
 		"Pager":                   types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 10},
 		"Kind":                    db.PostKindPost,
@@ -71,60 +98,40 @@ func TestRenderDashPostsIndexWithoutFilterNames(t *testing.T) {
 		"FilterCategoryRemoveURL": "",
 		"PostUVMap":               map[int64]int{},
 	})
-	if err != nil {
-		t.Fatalf("render posts index failed: %v", err)
-	}
-	if out.Len() == 0 {
+	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	if !strings.Contains(out.String(), "多选") {
+	if !strings.Contains(rendered, "多选") {
 		t.Fatal("expected posts index to render multiselect toggle")
 	}
 }
 
 func TestRenderDashRecordsIndexDoesNotRenderMultiselect(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/records_index.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/records_index.html", map[string]any{
 		"RouteName": "dash.records.list",
 	})
-	if err != nil {
-		t.Fatalf("render records index failed: %v", err)
-	}
-	if strings.Contains(out.String(), "多选") {
+	if strings.Contains(rendered, "多选") {
 		t.Fatal("expected records index to hide multiselect toggle")
 	}
 }
 
 func TestRenderDashTaskRunsIndexDoesNotRenderMultiselect(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/task_runs_index.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/task_runs_index.html", map[string]any{
 		"RouteName": "dash.tasks.runs",
 		"Task":      db.Task{Name: "demo", Code: "demo"},
 		"Runs":      []db.TaskRun{},
 	})
-	if err != nil {
-		t.Fatalf("render task runs index failed: %v", err)
-	}
-	if strings.Contains(out.String(), "多选") {
+	if strings.Contains(rendered, "多选") {
 		t.Fatal("expected task runs index to hide multiselect toggle")
 	}
 }
 
 func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
 	post := site.DisplayPostWithRelation{
 		DisplayPost: site.DisplayPost{
@@ -139,8 +146,7 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 		},
 	}
 
-	var out bytes.Buffer
-	err := view.Render(&out, "site/post.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "site/post.html", map[string]any{
 		"Post":                   post,
 		"ReadUV":                 0,
 		"LikeCount":              0,
@@ -154,13 +160,9 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 		"UrlPath":                "/hello",
 		"IsLogin":                false,
 	})
-	if err != nil {
-		t.Fatalf("render site post failed: %v", err)
-	}
-	if out.Len() == 0 {
+	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	rendered := out.String()
 	if !strings.Contains(rendered, "hello") {
 		t.Fatalf("expected rendered post title/content")
 	}
@@ -173,10 +175,7 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 }
 
 func TestRenderSitePostWithCommentTree(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
 	post := site.DisplayPostWithRelation{
 		DisplayPost: site.DisplayPost{
@@ -218,8 +217,7 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 		},
 	}
 
-	var out bytes.Buffer
-	err := view.Render(&out, "site/post.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "site/post.html", map[string]any{
 		"Post":                   post,
 		"ReadUV":                 0,
 		"LikeCount":              0,
@@ -233,11 +231,6 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 		"UrlPath":                "/with-comments",
 		"IsLogin":                false,
 	})
-	if err != nil {
-		t.Fatalf("render site post with comments failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, "comment-101") {
 		t.Fatalf("expected parent comment rendered, got: %s", rendered)
 	}
@@ -247,13 +240,9 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 }
 
 func TestRenderDashAssetsIndexWithItems(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/assets_index.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/assets_index.html", map[string]any{
 		"Items": []db.Asset{
 			{
 				ID:           11,
@@ -275,10 +264,6 @@ func TestRenderDashAssetsIndexWithItems(t *testing.T) {
 		"CurrentKind":           "image",
 		"Query":                 map[string]string{"pageSize": "10"},
 	})
-	if err != nil {
-		t.Fatalf("render assets index failed: %v", err)
-	}
-	rendered := out.String()
 	if !strings.Contains(rendered, `data-asset-id="11"`) {
 		t.Fatalf("expected asset row id rendered, got: %s", rendered)
 	}
@@ -303,13 +288,9 @@ func TestRenderDashAssetsIndexWithItems(t *testing.T) {
 }
 
 func TestRenderDashPostsNewShowsError(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/posts_new.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/posts_new.html", map[string]any{
 		"Error":               "slug already exists",
 		"DraftTitle":          "hello",
 		"DraftSlug":           "hello",
@@ -320,11 +301,6 @@ func TestRenderDashPostsNewShowsError(t *testing.T) {
 		"SelectedTagNames":    "",
 		"CategoryOptions":     []map[string]any{},
 	})
-	if err != nil {
-		t.Fatalf("render posts new failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, "slug already exists") {
 		t.Fatalf("expected post editor error message rendered, got: %s", rendered)
 	}
@@ -337,10 +313,7 @@ func TestRenderDashPostsNewShowsError(t *testing.T) {
 }
 
 func TestRenderStatusMainPaginationFallsBackToRouteContext(t *testing.T) {
-	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view, initURLResolver := mustLoadRegressionViewWithResolver(t)
 
 	app := fiber.New()
 	app.Get("/assets", func(c fiber.Ctx) error {
@@ -348,16 +321,11 @@ func TestRenderStatusMainPaginationFallsBackToRouteContext(t *testing.T) {
 	}).Name("dash.assets.list")
 	initURLResolver(app)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/include/status_main_pagination.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/include/status_main_pagination.html", map[string]any{
 		"Pager":     types.Pagination{Page: 2, Num: 3, Total: 25, PageSize: 10},
 		"RouteName": "dash.assets.list",
 		"Query":     map[string]string{"kind": "image", "pageSize": "10"},
 	})
-	if err != nil {
-		t.Fatalf("render status main pagination failed: %v", err)
-	}
-	rendered := out.String()
 	if !strings.Contains(rendered, `&#x2f;assets?kind=image&amp;page=1&amp;pageSize=10`) {
 		t.Fatalf("expected pagination prev link to use route context, got: %s", rendered)
 	}
@@ -367,10 +335,7 @@ func TestRenderStatusMainPaginationFallsBackToRouteContext(t *testing.T) {
 }
 
 func TestRenderPaginationFallsBackToRouteContext(t *testing.T) {
-	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view, initURLResolver := mustLoadRegressionViewWithResolver(t)
 
 	app := fiber.New()
 	app.Get("/logs", func(c fiber.Ctx) error {
@@ -378,16 +343,11 @@ func TestRenderPaginationFallsBackToRouteContext(t *testing.T) {
 	}).Name("dash.http_error_logs.list")
 	initURLResolver(app)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/include/pagination.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/include/pagination.html", map[string]any{
 		"Pager":     types.Pagination{Page: 2, Num: 3, Total: 25, PageSize: 10},
 		"RouteName": "dash.http_error_logs.list",
 		"Query":     map[string]string{"pageSize": "10"},
 	})
-	if err != nil {
-		t.Fatalf("render pagination failed: %v", err)
-	}
-	rendered := out.String()
 	if !strings.Contains(rendered, `&#x2f;logs?page=1&amp;pageSize=10`) {
 		t.Fatalf("expected pagination prev link to use route context, got: %s", rendered)
 	}
@@ -397,25 +357,17 @@ func TestRenderPaginationFallsBackToRouteContext(t *testing.T) {
 }
 
 func TestRenderDashImportWithoutFeedback(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/import.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/import.html", map[string]any{
 		"ImportingItems": []dash.PreviewPostItem{},
 		"ImportingTotal": 0,
 		"Pager":          types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 20},
 		"AllCategories":  []db.Category{},
 	})
-	if err != nil {
-		t.Fatalf("render import failed: %v", err)
-	}
-	if out.Len() == 0 {
+	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	rendered := out.String()
 	if !strings.Contains(rendered, `data-import-edit-status`) {
 		t.Fatalf("expected import row status cell")
 	}
@@ -428,10 +380,7 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 }
 
 func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
-	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view, initURLResolver := mustLoadRegressionViewWithResolver(t)
 
 	app := fiber.New()
 	app.Get("/dash/backup-restore", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.show")
@@ -442,8 +391,7 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	app.Post("/dash/backup-restore/delete", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.delete")
 	initURLResolver(app)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/backup_restore.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/backup_restore.html", map[string]any{
 		"RestoreStatusLabel":  "空闲",
 		"RestoreStatusKind":   "info",
 		"RestoreStatus":       "idle",
@@ -455,11 +403,6 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 			{"Name": "2026-04-08.sqlite", "ModifiedAt": time.Now().Add(-2 * time.Hour).Unix(), "Size": 1024},
 		},
 	})
-	if err != nil {
-		t.Fatalf("render backup_restore failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, "本地备份文件列表") {
 		t.Fatalf("expected local restore section in backup restore view")
 	}
@@ -502,29 +445,20 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 }
 
 func TestRenderDashImportShowsExportTab(t *testing.T) {
-	view, initURLResolver := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view, initURLResolver := mustLoadRegressionViewWithResolver(t)
 
 	app := fiber.New()
 	app.Get("/dash/import", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.import.show")
 	app.Get("/dash/export/download", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.download")
 	initURLResolver(app)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/import.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/import.html", map[string]any{
 		"ImportExportTab": "export",
 		"ImportingItems":  []dash.PreviewPostItem{},
 		"ImportingTotal":  0,
 		"Pager":           types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 20},
 		"AllCategories":   []db.Category{},
 	})
-	if err != nil {
-		t.Fatalf("render import export tab failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, "导入导出") {
 		t.Fatalf("expected import/export tabs heading")
 	}
@@ -534,13 +468,9 @@ func TestRenderDashImportShowsExportTab(t *testing.T) {
 }
 
 func TestRenderDashHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/http_error_logs_index.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/http_error_logs_index.html", map[string]any{
 		"Logs": []db.HttpErrorLog{
 			{
 				ID:        1,
@@ -559,24 +489,15 @@ func TestRenderDashHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
 		},
 		"Pager": types.Pagination{Page: 1, Num: 1, Total: 2, PageSize: 10},
 	})
-	if err != nil {
-		t.Fatalf("render http_error_logs_index failed: %v", err)
-	}
-
-	rendered := out.String()
 	if count := strings.Count(rendered, "lucide-arrow-right-icon"); count != 1 {
 		t.Fatalf("expected add-redirect icon once, got %d", count)
 	}
 }
 
 func TestRenderDashRedirectsNewShowsTargetPicker(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/redirects_new.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/redirects_new.html", map[string]any{
 		"Redirect": db.Redirect{
 			From:    "/missing-path",
 			To:      "",
@@ -592,25 +513,26 @@ func TestRenderDashRedirectsNewShowsTargetPicker(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatalf("render redirects_new failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, "选择文章 URL") {
 		t.Fatalf("expected target picker entry in redirects_new")
 	}
 	if !strings.Contains(rendered, "Hello World") {
 		t.Fatalf("expected target option title in redirects_new")
 	}
-	if !strings.Contains(rendered, "redirect-target-picker-choose") {
-		t.Fatalf("expected target picker choose button in redirects_new")
+	if !strings.Contains(rendered, `id="redirect-target-picker-open"`) {
+		t.Fatalf("expected target picker open trigger in redirects_new")
 	}
-	if !strings.Contains(rendered, "redirect-target-picker-empty") {
+	if !strings.Contains(rendered, `id="redirect-target-picker-search"`) {
+		t.Fatalf("expected target picker search input in redirects_new")
+	}
+	if !strings.Contains(rendered, `data-role="redirect-target-picker-choose"`) {
+		t.Fatalf("expected target picker choose action in redirects_new")
+	}
+	if !strings.Contains(rendered, `data-target-url="/posts/hello-world"`) {
+		t.Fatalf("expected target picker option url in redirects_new")
+	}
+	if !strings.Contains(rendered, `id="redirect-target-picker-empty"`) {
 		t.Fatalf("expected target picker empty state in redirects_new")
-	}
-	if !strings.Contains(rendered, "redirect-target-input-group") {
-		t.Fatalf("expected target picker trigger layout classes in redirects_new")
 	}
 	dialogStart := strings.Index(rendered, `id="redirect-target-picker-dialog"`)
 	if dialogStart < 0 {
@@ -621,30 +543,18 @@ func TestRenderDashRedirectsNewShowsTargetPicker(t *testing.T) {
 		dialogEnd = len(rendered)
 	}
 	dialogSnippet := rendered[dialogStart:dialogEnd]
-	if strings.Contains(dialogSnippet, `data-role="ui-dialog-cancel"`) {
-		t.Fatalf("expected target picker dialog without footer close button")
-	}
-	if !strings.Contains(dialogSnippet, `data-role="ui-dialog-close"`) {
-		t.Fatalf("expected target picker dialog with header close button")
+	if count := strings.Count(dialogSnippet, `data-role="ui-dialog-close"`); count != 1 {
+		t.Fatalf("expected exactly one dialog close action, got %d", count)
 	}
 }
 
 func TestRenderDashRedirectsIndexShowsImportAction(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/redirects_index.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/redirects_index.html", map[string]any{
 		"Redirects": []db.Redirect{},
 		"Pager":     types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 10},
 	})
-	if err != nil {
-		t.Fatalf("render redirects_index failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, "导入重定向") {
 		t.Fatalf("expected import action button in redirects_index")
 	}
@@ -657,13 +567,9 @@ func TestRenderDashRedirectsIndexShowsImportAction(t *testing.T) {
 }
 
 func TestRenderDashRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/redirects_new.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/redirects_new.html", map[string]any{
 		"RouteName": "dash.redirects.create",
 		"Redirect": db.Redirect{
 			From:    "/missing-path",
@@ -672,24 +578,15 @@ func TestRenderDashRedirectsCreateRouteKeepsSaveAction(t *testing.T) {
 			Enabled: 1,
 		},
 	})
-	if err != nil {
-		t.Fatalf("render redirects_new failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, `type="submit" form="form"`) {
 		t.Fatalf("expected save action button for configured create route")
 	}
 }
 
 func TestRenderDashSettingsSystemUpdateShowsRestartAction(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/settings_system_update.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/settings_system_update.html", map[string]any{
 		"FrontendArea": dash.SettingAreaView{},
 		"BackendArea": dash.SettingAreaView{
 			Code: "backend",
@@ -704,11 +601,6 @@ func TestRenderDashSettingsSystemUpdateShowsRestartAction(t *testing.T) {
 		"ManualUpdateEnabled": true,
 		"RestartEnabled":      true,
 	})
-	if err != nil {
-		t.Fatalf("render settings_system_update failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, "系统更新") {
 		t.Fatalf("expected system update label in settings_system_update")
 	}
@@ -721,10 +613,7 @@ func TestRenderDashSettingsSystemUpdateShowsRestartAction(t *testing.T) {
 }
 
 func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
 	areas := []dash.SettingAreaView{
 		{
@@ -758,20 +647,15 @@ func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 		},
 	}
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/settings_all.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/settings_all.html", map[string]any{
 		"SettingAreas":              areas,
 		"ActiveArea":                areas[0],
 		"ActiveSection":             areas[0].Sections[0],
 		"ContentRoutingSectionCode": "content",
 	})
-	if err != nil {
-		t.Fatalf("render settings_all failed: %v", err)
-	}
-	if out.Len() == 0 {
+	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	rendered := out.String()
 	if !strings.Contains(rendered, "站点信息") {
 		t.Fatalf("expected rendered settings output to contain section title")
 	}
@@ -781,39 +665,27 @@ func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 }
 
 func TestRenderDashMonitorWithMapGranularities(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/monitor.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/monitor.html", map[string]any{
 		"Granularities": []map[string]any{
 			{"Key": "1m", "Label": "1分钟"},
 		},
 		"ActiveGranularity": "1m",
 		"ActiveScope":       "app",
 	})
-	if err != nil {
-		t.Fatalf("render monitor failed: %v", err)
-	}
-	if out.Len() == 0 {
+	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	rendered := out.String()
 	if !strings.Contains(rendered, "function bindChartTooltips()") {
 		t.Fatalf("expected monitor page to include chart tooltip binding logic")
 	}
 }
 
 func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/posts_edit.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/posts_edit.html", map[string]any{
 		"SEditor": true,
 		"Post": db.Post{
 			ID:             2,
@@ -828,11 +700,6 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 		"Categories":       []db.Category{},
 		"SelectedTagNames": "",
 	})
-	if err != nil {
-		t.Fatalf("render posts_edit failed: %v", err)
-	}
-
-	rendered := out.String()
 	if !strings.Contains(rendered, `class="content wysiwyg"`) {
 		t.Fatalf("expected rendered output to contain editor mount container")
 	}
@@ -842,13 +709,9 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 }
 
 func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "site/home.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "site/home.html", map[string]any{
 		"Articles": []site.DisplayPost{
 			{
 				Post: db.Post{
@@ -860,10 +723,6 @@ func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
 		},
 		"Pager": types.Pagination{Page: 1, Num: 1, Total: 1, PageSize: 10},
 	})
-	if err != nil {
-		t.Fatalf("render site home failed: %v", err)
-	}
-	rendered := out.String()
 	if !strings.Contains(rendered, "home-title") {
 		t.Fatalf("expected rendered article title")
 	}
@@ -873,13 +732,9 @@ func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
 }
 
 func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "site/detail.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "site/detail.html", map[string]any{
 		"IsTag": true,
 		"Entity": site.DisplayItem{
 			ID:          7,
@@ -899,10 +754,6 @@ func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatalf("render site detail failed: %v", err)
-	}
-	rendered := out.String()
 	if !strings.Contains(rendered, "golang") {
 		t.Fatalf("expected rendered tag name")
 	}
@@ -912,17 +763,10 @@ func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
 }
 
 func TestRenderLucideIconWithoutSize(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "site/include/read_uv.html", map[string]any{"Count": 0})
-	if err != nil {
-		t.Fatalf("render lucide icon failed: %v", err)
-	}
-	if !strings.Contains(out.String(), "<svg") {
+	rendered := mustRenderRegressionTemplate(t, view, "site/include/read_uv.html", map[string]any{"Count": 0})
+	if !strings.Contains(rendered, "<svg") {
 		t.Fatalf("expected svg output")
 	}
 }
@@ -938,32 +782,22 @@ func TestRenderLucideNewspaperIcon(t *testing.T) {
 }
 
 func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "site/layout/layout.html", map[string]any{})
-	if err != nil {
-		t.Fatalf("render site layout failed: %v", err)
-	}
-	if out.Len() == 0 {
+	rendered := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{})
+	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	if !strings.Contains(out.String(), `/static/favicon.svg?v=2`) {
+	if !strings.Contains(rendered, `/static/favicon.svg?v=2`) {
 		t.Fatalf("expected favicon link in site layout")
 	}
-	if strings.Contains(out.String(), `/static/katex/katex.min.css`) {
+	if strings.Contains(rendered, `/static/katex/katex.min.css`) {
 		t.Fatalf("expected site layout not to include math assets by default")
 	}
 }
 
 func TestRenderSiteLayoutUsesSiteTitleFallback(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
 	previous, _ := store.Settings.Load().(map[string]string)
 	restore := map[string]string{}
@@ -973,31 +807,20 @@ func TestRenderSiteLayoutUsesSiteTitleFallback(t *testing.T) {
 	store.Settings.Store(map[string]string{"site_title": "Example Site"})
 	defer store.Settings.Store(restore)
 
-	var out bytes.Buffer
-	if err := view.Render(&out, "site/layout/layout.html", map[string]any{}); err != nil {
-		t.Fatalf("render site layout failed: %v", err)
-	}
-	if !strings.Contains(out.String(), "<title>Example Site</title>") {
-		t.Fatalf("expected site title fallback, got %s", out.String())
+	rendered := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{})
+	if !strings.Contains(rendered, "<title>Example Site</title>") {
+		t.Fatalf("expected site title fallback, got %s", rendered)
 	}
 }
 
 func TestRenderSiteLayoutIncludesCanonicalAndDescription(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "site/layout/layout.html", map[string]any{
+	html := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{
 		"Title":           "Hello",
 		"CanonicalURL":    "https://example.com/hello",
 		"MetaDescription": "Hello description",
 	})
-	if err != nil {
-		t.Fatalf("render site layout failed: %v", err)
-	}
-	html := out.String()
 	if !strings.Contains(html, `rel="canonical"`) || !strings.Contains(html, `example.com`) {
 		t.Fatalf("expected canonical tag, got %s", html)
 	}
@@ -1007,17 +830,10 @@ func TestRenderSiteLayoutIncludesCanonicalAndDescription(t *testing.T) {
 }
 
 func TestRenderSUILayoutIncludesFavicon(t *testing.T) {
-	view, _ := NewViewEngine(testTemplateRoot(), false)
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadRegressionView(t)
 
-	var out bytes.Buffer
-	err := view.Render(&out, "sui/layout/base.html", map[string]any{})
-	if err != nil {
-		t.Fatalf("render sui layout failed: %v", err)
-	}
-	if !strings.Contains(out.String(), `/static/favicon.svg?v=2`) {
+	rendered := mustRenderRegressionTemplate(t, view, "sui/layout/base.html", map[string]any{})
+	if !strings.Contains(rendered, `/static/favicon.svg?v=2`) {
 		t.Fatalf("expected favicon link in sui layout")
 	}
 }
@@ -1038,18 +854,13 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 		t.Fatalf("load templates failed: %v", err)
 	}
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/monitor.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/monitor.html", map[string]any{
 		"Granularities": []map[string]any{
 			{"Key": "1m", "Label": "1分钟"},
 		},
 		"ActiveGranularity": "1m",
 		"ActiveScope":       "app",
 	})
-	if err != nil {
-		t.Fatalf("render monitor failed: %v", err)
-	}
-	rendered := out.String()
 	if strings.Contains(rendered, "var monitorAPIURL = '&#x2f;") {
 		t.Fatalf("expected monitor js api url not to be html escaped")
 	}
@@ -1083,8 +894,7 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 		t.Fatalf("load templates failed: %v", err)
 	}
 
-	var out bytes.Buffer
-	err := view.Render(&out, "dash/import.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "dash/import.html", map[string]any{
 		"ImportingItems": []dash.PreviewPostItem{},
 		"ImportingTotal": 0,
 		"Pager":          types.Pagination{Page: 1, Num: 1, Total: 0, PageSize: 20},
@@ -1093,11 +903,6 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 			{Name: "文娱"},
 		},
 	})
-	if err != nil {
-		t.Fatalf("render import failed: %v", err)
-	}
-
-	rendered := out.String()
 	if strings.Contains(rendered, "var parseItemURL = '&#x2f;dash&#x2f;import&#x2f;parse-item';") {
 		t.Fatalf("expected parse-item url in js not to be html escaped")
 	}

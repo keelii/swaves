@@ -60,11 +60,14 @@ func installAppShutdownHook(appInstance *fiber.App) {
 	shutdownCh := make(chan os.Signal, 1)
 	signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-shutdownCh
+		sig := <-shutdownCh
 		signal.Stop(shutdownCh)
+		logger.Info("[app] shutdown requested by signal: %s", sig)
 		if err := appInstance.ShutdownWithTimeout(8 * time.Second); err != nil {
 			logger.Error("graceful shutdown failed: %v", err)
+			return
 		}
+		logger.Info("[app] shutdown completed by signal: %s", sig)
 	}()
 }
 

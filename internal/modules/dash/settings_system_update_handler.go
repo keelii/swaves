@@ -196,7 +196,7 @@ func (h *Handler) PostSettingsSystemRestartHandler(c fiber.Ctx) error {
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "系统重启失败："+err.Error())
 	}
 
-	logger.Info("[dash] system restart requested: ip=%s pid=%d", c.IP(), pid)
+	logger.Info("[dash] system restart requested: ip=%s master_pid=%d", c.IP(), pid)
 	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": strconv.Itoa(defaultRefreshDelaySeconds),
 	}, fmt.Sprintf("已向服务发送重启信号（pid=%d）。", pid))
@@ -214,7 +214,7 @@ func (h *Handler) PostSettingsSystemAutoUpdateHandler(c fiber.Ctx) error {
 		logger.Error("[dash] auto update failed: ip=%s current=%s err=%v", c.IP(), versionLabel(buildinfo.Version), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, err.Error())
 	}
-	logger.Info("[dash] auto update completed: ip=%s latest=%s installed=%t restarted_pid=%d", c.IP(), versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
+	logger.Info("[dash] auto update completed: ip=%s latest=%s installed=%t master_pid=%d", c.IP(), versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
 	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": func() string {
@@ -279,7 +279,7 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 		logger.Error("[dash] manual update failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, err.Error())
 	}
-	logger.Info("[dash] manual update completed: ip=%s archive=%s latest=%s installed=%t restarted_pid=%d", c.IP(), archiveName, versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
+	logger.Info("[dash] manual update completed: ip=%s archive=%s latest=%s installed=%t master_pid=%d", c.IP(), archiveName, versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
 	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
 		"refresh": func() string {

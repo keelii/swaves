@@ -202,6 +202,22 @@ func (swv *SwavesApp) Serve(listener net.Listener, opts fiber.ListenConfig) erro
 }
 
 func (swv *SwavesApp) Shutdown() {
+	if swv == nil {
+		logger.Warn("[app] shutdown skipped: app is nil")
+		return
+	}
+	appName := ""
+	if swv.Config != nil {
+		appName = strings.TrimSpace(swv.Config.AppName)
+	}
+	logger.Info("[app] shutdown start: app=%s", appName)
 	job.DestroyRegistry()
-	swv.Store.Close()
+	logger.Info("[app] shutdown jobs destroyed: app=%s", appName)
+	if swv.Store != nil {
+		swv.Store.Close()
+		logger.Info("[app] shutdown store closed: app=%s", appName)
+	} else {
+		logger.Warn("[app] shutdown store close skipped: app=%s reason=nil_store", appName)
+	}
+	logger.Info("[app] shutdown complete: app=%s", appName)
 }

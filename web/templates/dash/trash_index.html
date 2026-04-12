@@ -2,17 +2,30 @@
 {% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "trash-table" %}
-{% block page_actions %}{% endblock %}
 
-{% set type = Query["type"] %}
+{% set type = ModelType %}
+{% set trashTabCounts = TrashTabCounts or {"posts":0, "encrypted-posts":0, "tags":0, "categories":0, "redirects":0} %}
+{% set trashTypeLabelMap = {
+  "posts":"文章",
+  "encrypted-posts":"加密文章",
+  "tags":"标签",
+  "categories":"分类",
+  "redirects":"重定向"
+} %}
+{% set currentTrashLabel = trashTypeLabelMap[type] %}
+{% set currentTrashCount = trashTabCounts[type] %}
+
+{% block page_actions %}
+  {{ sui.Button("全部清空", "primary", attrs='type="button" id="trash-empty-trigger"' ~ ((currentTrashCount <= 0) and ' disabled' or '')) }}
+{% endblock %}
 
 {% block operation_left %}
 {{ sui.TabsStart("回收站类型") }}
-  {{ sui.Tab("文章", href=UrlFor('dash.trash.list', type='posts'), active=(type == "posts")) }}
-  {{ sui.Tab("加密文章", href=UrlFor('dash.trash.list', type='encrypted-posts'), active=(type == "encrypted-posts")) }}
-  {{ sui.Tab("标签", href=UrlFor('dash.trash.list', type='tags'), active=(type == "tags")) }}
-  {{ sui.Tab("分类", href=UrlFor('dash.trash.list', type='categories'), active=(type == "categories")) }}
-  {{ sui.Tab("重定向", href=UrlFor('dash.trash.list', type='redirects'), active=(type == "redirects")) }}
+  {{ sui.Tab("文章 " ~ trashTabCounts["posts"], href=UrlFor('dash.trash.list', type='posts'), active=(type == "posts")) }}
+  {{ sui.Tab("加密文章 " ~ trashTabCounts["encrypted-posts"], href=UrlFor('dash.trash.list', type='encrypted-posts'), active=(type == "encrypted-posts")) }}
+  {{ sui.Tab("标签 " ~ trashTabCounts["tags"], href=UrlFor('dash.trash.list', type='tags'), active=(type == "tags")) }}
+  {{ sui.Tab("分类 " ~ trashTabCounts["categories"], href=UrlFor('dash.trash.list', type='categories'), active=(type == "categories")) }}
+  {{ sui.Tab("重定向 " ~ trashTabCounts["redirects"], href=UrlFor('dash.trash.list', type='redirects'), active=(type == "redirects")) }}
 {{ sui.TabsEnd() }}
 {% endblock %}
 
@@ -244,3 +257,107 @@
   {% endif %}
 {% endif %}
 {% endblock %}
+
+{% call sui.Dialog(
+  "trash-empty-confirm-dialog",
+  "确认全部清空",
+  actions=(
+    sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("确认清空", "danger", attrs='type="button" id="trash-empty-confirm-ok" data-role="ui-confirm-ok"')
+  ),
+  open=false
+) %}
+  <p id="trash-empty-confirm-message"></p>
+{% endcall %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var trigger = document.getElementById('trash-empty-trigger');
+  if (!trigger) {
+    return;
+  }
+
+  var currentTrashLabel = {{ currentTrashLabel | tojson }};
+  var batchDeleteURL = {{ UrlFor('dash.trash.api.batch_delete', type=type) | tojson }};
+  var confirmAPI = window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
+  var toastAPI = window.DashAppUI && window.DashAppUI.toast ? window.DashAppUI.toast : null;
+
+  function currentIDs() {
+    return Array.from(document.querySelectorAll('#trash-table tbody tr[data-batch-delete-id]')).map(function(row) {
+      var id = parseInt(row.getAttribute('data-batch-delete-id') || '0', 10);
+      if (!Number.isFinite(id) || id <= 0) {
+        return 0;
+      }
+      return id;
+    }).filter(function(id) {
+      return id > 0;
+    });
+  }
+
+  function showToast(message, kind) {
+    if (toastAPI && typeof toastAPI.show === 'function') {
+      toastAPI.show({
+        kind: kind || 'info',
+        title: '回收站',
+        message: message,
+        duration: 2800,
+      });
+      return;
+    }
+    window.alert(message);
+  }
+
+  trigger.addEventListener('click', function(event) {
+    event.preventDefault();
+
+    var ids = currentIDs();
+    if (ids.length === 0) {
+      trigger.disabled = true;
+      return;
+    }
+
+    var message = '确定彻底删除当前“' + currentTrashLabel + '”下的 ' + ids.length + ' 项吗？此操作不可恢复。';
+    var ask = confirmAPI && typeof confirmAPI.ask === 'function'
+      ? confirmAPI.ask({
+          dialogId: 'trash-empty-confirm-dialog',
+          title: '确认全部清空',
+          message: message,
+          messageSelector: '#trash-empty-confirm-message',
+          opener: trigger,
+        })
+      : Promise.resolve(window.confirm(message));
+
+    ask.then(function(confirmed) {
+      if (!confirmed) {
+        return;
+      }
+
+      trigger.disabled = true;
+      return window.sfetchJSON(batchDeleteURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids: ids }),
+      }).then(function(result) {
+        var body = result && result.body ? result.body : {};
+        var deletedCount = Number(body.deleted_count || 0);
+        var failedCount = Number(body.failed_count || 0);
+
+        if (failedCount > 0) {
+          showToast('已清空 ' + deletedCount + ' 项，另有 ' + failedCount + ' 项删除失败。', 'warning');
+        } else {
+          showToast('已清空当前' + currentTrashLabel + '。', 'success');
+        }
+
+        window.setTimeout(function() {
+          window.location.reload();
+        }, 700);
+      }).catch(function() {
+        trigger.disabled = false;
+        showToast('全部清空失败，请稍后重试。', 'danger');
+      });
+    });
+  });
+});
+</script>

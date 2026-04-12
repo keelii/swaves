@@ -7,44 +7,38 @@ func TestRule(t *testing.T) {
 		from      string
 		to        string
 		path      string
-		target    string
+		want      string
 		isPattern bool
-		missPath  string
 	}{
 		"exact": {
 			from:      "/legacy-post",
 			to:        "/new-post",
 			path:      "/legacy-post",
-			target:    "/new-post",
 			isPattern: false,
-			missPath:  "/another-post",
 		},
 		"exact trailing slash": {
 			from:      "/legacy-post",
 			to:        "/new-post",
 			path:      "/legacy-post/",
-			target:    "/new-post",
 			isPattern: false,
 		},
 		"param": {
 			from:      "/{year}/{month}/{day}/{slug}",
 			to:        "/{slug}",
 			path:      "/2019/01/01/political-correctness",
-			target:    "/political-correctness",
+			want:      "/political-correctness",
 			isPattern: true,
-			missPath:  "/2019/01/political-correctness",
 		},
 		"wildcard": {
 			from:      "/*/*/*/{slug}",
 			to:        "/{slug}",
 			path:      "/2019/01/01/legacy-post",
-			target:    "/legacy-post",
+			want:      "/legacy-post",
 			isPattern: true,
-			missPath:  "/2019/01/legacy-post",
 		},
 	}
 
-	invalidCases := map[string]struct {
+	invalidCompileCases := map[string]struct {
 		from string
 		to   string
 	}{
@@ -57,6 +51,16 @@ func TestRule(t *testing.T) {
 		"broken param segment": {from: "/prefix-{slug}", to: "/target"},
 	}
 
+	invalidMatchCases := map[string]struct {
+		from string
+		to   string
+		path string
+	}{
+		"exact miss":    {from: "/legacy-post", to: "/new-post", path: "/another-post"},
+		"param miss":    {from: "/{year}/{month}/{day}/{slug}", to: "/{slug}", path: "/2019/01/political-correctness"},
+		"wildcard miss": {from: "/*/*/*/{slug}", to: "/{slug}", path: "/2019/01/legacy-post"},
+	}
+
 	for name, tt := range validCases {
 		rule, err := Compile(tt.from, tt.to)
 		if err != nil {
@@ -66,26 +70,34 @@ func TestRule(t *testing.T) {
 			t.Fatalf("%s: unexpected pattern flag: got=%v want=%v", name, rule.IsPattern(), tt.isPattern)
 		}
 		target, ok := rule.Match(tt.path)
-		if !ok || target != tt.target {
-			t.Fatalf("%s: expected match target=%q, got ok=%v target=%q", name, tt.target, ok, target)
+		if tt.want == "" {
+			tt.want = tt.to
 		}
-		if tt.missPath != "" {
-			if _, ok := rule.Match(tt.missPath); ok {
-				t.Fatalf("%s: expected mismatch for path=%q", name, tt.missPath)
-			}
+		if !ok || target != tt.want {
+			t.Fatalf("%s: expected match target=%q, got ok=%v target=%q", name, tt.want, ok, target)
 		}
 	}
 
-	for name, tt := range invalidCases {
+	for name, tt := range invalidCompileCases {
 		if _, err := Compile(tt.from, tt.to); err == nil {
 			t.Fatalf("%s: expected compile to fail: from=%q to=%q", name, tt.from, tt.to)
 		}
 	}
 
+	for name, tt := range invalidMatchCases {
+		rule, err := Compile(tt.from, tt.to)
+		if err != nil {
+			t.Fatalf("%s: compile failed: %v", name, err)
+		}
+		if _, ok := rule.Match(tt.path); ok {
+			t.Fatalf("%s: expected mismatch for path=%q", name, tt.path)
+		}
+	}
+
 	rules := []Rule{
-		mustCompileRule(t, "/*/*/*/{slug}", "/wild/{slug}"),
-		mustCompileRule(t, "/{year}/{month}/{day}/{slug}", "/param/{slug}"),
-		mustCompileRule(t, "/blog/{year}/{month}/{slug}", "/blog/{slug}"),
+		{From: "/*/*/*/{slug}", paramCnt: 1, wildcardCnt: 3, fromParts: make([]segment, 4)},
+		{From: "/{year}/{month}/{day}/{slug}", paramCnt: 4, fromParts: make([]segment, 4)},
+		{From: "/blog/{year}/{month}/{slug}", literalCnt: 1, paramCnt: 3, fromParts: make([]segment, 4)},
 	}
 	SortRules(rules)
 	if rules[0].From != "/blog/{year}/{month}/{slug}" {
@@ -97,13 +109,4 @@ func TestRule(t *testing.T) {
 	if rules[2].From != "/*/*/*/{slug}" {
 		t.Fatalf("expected wildcard rule last, got=%q", rules[2].From)
 	}
-}
-
-func mustCompileRule(t *testing.T, fromPath string, toPath string) Rule {
-	t.Helper()
-	rule, err := Compile(fromPath, toPath)
-	if err != nil {
-		t.Fatalf("compile redirect rule failed: %v", err)
-	}
-	return rule
 }

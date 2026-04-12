@@ -42,11 +42,15 @@ func InstallLatestRelease(currentVersion string, goos string, goarch string) (In
 func RestartActiveRuntime() (int, error) {
 	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
+		logger.Error("[update] restart active runtime failed to read active runtime: err=%v", err)
 		return 0, err
 	}
+	logger.Info("[update] restart active runtime signaling master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
 	if err := signalProcess(runtimeInfo.PID); err != nil {
+		logger.Error("[update] restart active runtime signal failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return 0, fmt.Errorf("signal master restart failed: %w", err)
 	}
+	logger.Info("[update] restart active runtime signal sent: master_pid=%d", runtimeInfo.PID)
 	return runtimeInfo.PID, nil
 }
 
@@ -81,7 +85,7 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 	runtimeInfo, err := ReadActiveRuntimeInfo()
 	hasActiveMaster := err == nil
 	if hasActiveMaster {
-		logger.Info("[update] manual install using active master: pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
+		logger.Info("[update] manual install using active master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
 	} else {
 		logger.Info("[update] manual install without daemon-mode master: err=%v", err)
 	}
@@ -111,25 +115,25 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 	}
 
 	if hasActiveMaster {
-		logger.Info("[update] manual install replacing executable via active master: pid=%d", runtimeInfo.PID)
+		logger.Info("[update] manual install replacing executable via active master: master_pid=%d", runtimeInfo.PID)
 		rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
 		if err != nil {
-			logger.Error("[update] manual install replace executable failed: archive=%s pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
+			logger.Error("[update] manual install replace executable failed: archive=%s master_pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
 			return result, err
 		}
 		if err := signalProcess(runtimeInfo.PID); err != nil {
 			if rollbackErr := rollback(); rollbackErr != nil {
-				logger.Error("[update] manual install restart signal failed and rollback failed: archive=%s pid=%d err=%v rollback_err=%v", result.ArchiveName, runtimeInfo.PID, err, rollbackErr)
+				logger.Error("[update] manual install restart signal failed and rollback failed: archive=%s master_pid=%d err=%v rollback_err=%v", result.ArchiveName, runtimeInfo.PID, err, rollbackErr)
 				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
 			}
-			logger.Error("[update] manual install restart signal failed: archive=%s pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
+			logger.Error("[update] manual install restart signal failed: archive=%s master_pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
 			return result, fmt.Errorf("signal master restart failed: %w", err)
 		}
 
 		result.Installed = true
 		result.RestartedPID = runtimeInfo.PID
 		result.Reason = fmt.Sprintf("upgraded to %s", version)
-		logger.Info("[update] manual install success: version=%s restarted_pid=%d", result.LatestVersion, result.RestartedPID)
+		logger.Info("[update] manual install success: version=%s master_pid=%d", result.LatestVersion, result.RestartedPID)
 		return result, nil
 	}
 
@@ -160,7 +164,7 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 		logger.Warn("[update] auto install unavailable: err=%v", err)
 		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
 	}
-	logger.Info("[update] auto install active master detected: pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
+	logger.Info("[update] auto install active master detected: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
 
 	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
 	if err != nil {
@@ -237,25 +241,25 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 		logger.Error("[update] auto install chmod failed: path=%s err=%v", extractedPath, err)
 		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
 	}
-	logger.Info("[update] auto install replacing executable: pid=%d target=%s", runtimeInfo.PID, runtimeInfo.Executable)
+	logger.Info("[update] auto install replacing executable: master_pid=%d target=%s", runtimeInfo.PID, runtimeInfo.Executable)
 	rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
 	if err != nil {
-		logger.Error("[update] auto install replace executable failed: pid=%d err=%v", runtimeInfo.PID, err)
+		logger.Error("[update] auto install replace executable failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return result, err
 	}
 	if err := signalProcess(runtimeInfo.PID); err != nil {
 		if rollbackErr := rollback(); rollbackErr != nil {
-			logger.Error("[update] auto install restart signal failed and rollback failed: pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
+			logger.Error("[update] auto install restart signal failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
 			return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
 		}
-		logger.Error("[update] auto install restart signal failed: pid=%d err=%v", runtimeInfo.PID, err)
+		logger.Error("[update] auto install restart signal failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return result, fmt.Errorf("signal master restart failed: %w", err)
 	}
 
 	result.Installed = true
 	result.RestartedPID = runtimeInfo.PID
 	result.Reason = fmt.Sprintf("upgraded to %s", check.LatestVersion)
-	logger.Info("[update] auto install success: version=%s restarted_pid=%d", versionLabel(result.LatestVersion), result.RestartedPID)
+	logger.Info("[update] auto install success: version=%s master_pid=%d", versionLabel(result.LatestVersion), result.RestartedPID)
 	return result, nil
 }
 

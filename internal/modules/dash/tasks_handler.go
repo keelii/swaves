@@ -17,11 +17,17 @@ func (h *Handler) GetTaskListHandler(c fiber.Ctx) error {
 		return err
 	}
 
+	recordTabCounts, err := getRecordTabCounts(h.Model)
+	if err != nil {
+		return err
+	}
+
 	return RenderDashView(c, "dash/tasks_index.html", fiber.Map{
 		"Title":              "Tasks",
 		"Tasks":              tasks,
 		"Pager":              pager,
 		"TaskScheduleLabels": buildTaskScheduleLabels(tasks),
+		"RecordTabCounts":    recordTabCounts,
 	}, "")
 }
 

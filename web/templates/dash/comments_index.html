@@ -7,11 +7,12 @@
 
 {% block operation_left %}
 {% set status = (StatusFilter or "") %}
+{% set commentTabCounts = CommentTabCounts or {"all":0, "pending":0, "approved":0, "spam":0} %}
 {{ sui.TabsStart("评论状态") }}
-  {{ sui.Tab("全部", href=UrlFor('dash.comments.list'), active=(status == "")) }}
-  {{ sui.Tab("待审核", href=UrlFor('dash.comments.list', status='pending'), active=(status == "pending")) }}
-  {{ sui.Tab("已通过", href=UrlFor('dash.comments.list', status='approved'), active=(status == "approved")) }}
-  {{ sui.Tab("垃圾", href=UrlFor('dash.comments.list', status='spam'), active=(status == "spam")) }}
+  {{ sui.Tab("全部 " ~ commentTabCounts["all"], href=UrlFor('dash.comments.list'), active=(status == "")) }}
+  {{ sui.Tab("待审核 " ~ commentTabCounts["pending"], href=UrlFor('dash.comments.list', status='pending'), active=(status == "pending")) }}
+  {{ sui.Tab("已通过 " ~ commentTabCounts["approved"], href=UrlFor('dash.comments.list', status='approved'), active=(status == "approved")) }}
+  {{ sui.Tab("垃圾 " ~ commentTabCounts["spam"], href=UrlFor('dash.comments.list', status='spam'), active=(status == "spam")) }}
 {{ sui.TabsEnd() }}
 {% endblock %}
 

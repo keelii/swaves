@@ -10,25 +10,42 @@ import (
 	"testing"
 )
 
-func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
-	tempDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{% import "macros.html" as ui %}{{ ui.row({"Value": "ok"}) }}`), 0o644); err != nil {
-		t.Fatalf("write page template failed: %v", err)
+func mustWriteTemplateFile(t *testing.T, root string, relativeName string, source string) {
+	t.Helper()
+
+	templatePath := filepath.Join(root, relativeName)
+	if err := os.MkdirAll(filepath.Dir(templatePath), 0o755); err != nil {
+		t.Fatalf("create template directory failed: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(tempDir, "macros.html"), []byte(`{% macro row(ctx) %}{% with Value = ctx.Value, __root = ctx %}{% include "partial.html" %}{% endwith %}{% endmacro %}`), 0o644); err != nil {
-		t.Fatalf("write macro template failed: %v", err)
+	if err := os.WriteFile(templatePath, []byte(source), 0o644); err != nil {
+		t.Fatalf("write template %q failed: %v", relativeName, err)
 	}
-	if err := os.WriteFile(filepath.Join(tempDir, "partial.html"), []byte(`{{ Value }} / {{ __root.Value }}`), 0o644); err != nil {
-		t.Fatalf("write partial template failed: %v", err)
+}
+
+func mustLoadMiniJinjaTestView(t *testing.T, root string, resolver func(name string, params map[string]string, query map[string]string) string) *FiberView {
+	t.Helper()
+
+	if resolver == nil {
+		resolver = func(name string, params map[string]string, query map[string]string) string {
+			return name
+		}
 	}
 
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
+	view := newMiniJinjaView(root, false)
+	registerViewFunc(view.env, resolver)
 	if err := view.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
+	return view
+}
+
+func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
+	tempDir := t.TempDir()
+	mustWriteTemplateFile(t, tempDir, "page.html", `{% import "macros.html" as ui %}{{ ui.row({"Value": "ok"}) }}`)
+	mustWriteTemplateFile(t, tempDir, "macros.html", `{% macro row(ctx) %}{% with Value = ctx.Value, __root = ctx %}{% include "partial.html" %}{% endwith %}{% endmacro %}`)
+	mustWriteTemplateFile(t, tempDir, "partial.html", `{{ Value }} / {{ __root.Value }}`)
+
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{}); err != nil {
@@ -41,29 +58,13 @@ func TestMacroIncludeRendersNestedTemplate(t *testing.T) {
 
 func TestMacroImportAvailableAcrossExtendsAndInclude(t *testing.T) {
 	tempDir := t.TempDir()
-	mustWriteTemplate := func(relativeName string, source string) {
-		templatePath := filepath.Join(tempDir, relativeName)
-		if err := os.MkdirAll(filepath.Dir(templatePath), 0o755); err != nil {
-			t.Fatalf("create template directory failed: %v", err)
-		}
-		if err := os.WriteFile(templatePath, []byte(source), 0o644); err != nil {
-			t.Fatalf("write template %q failed: %v", relativeName, err)
-		}
-	}
+	mustWriteTemplateFile(t, tempDir, "dash/layout/base.html", `{% block body %}{% endblock %}`)
+	mustWriteTemplateFile(t, tempDir, "dash/include/ui.html", `{% macro hi(label) %}{{ label }}{% endmacro %}`)
+	mustWriteTemplateFile(t, tempDir, "dash/layout/layout.html", `{% extends "dash/layout/base.html" %}{% import "dash/include/ui.html" as ui %}{% block body %}{% include "dash/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplateFile(t, tempDir, "dash/include/actions.html", `{% import "dash/include/ui.html" as ui %}{{ ui.hi("A") }}`)
+	mustWriteTemplateFile(t, tempDir, "page.html", `{% extends "dash/layout/layout.html" %}{% import "dash/include/ui.html" as ui %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
 
-	mustWriteTemplate("dash/layout/base.html", `{% block body %}{% endblock %}`)
-	mustWriteTemplate("dash/include/ui.html", `{% macro hi(label) %}{{ label }}{% endmacro %}`)
-	mustWriteTemplate("dash/layout/layout.html", `{% extends "dash/layout/base.html" %}{% import "dash/include/ui.html" as ui %}{% block body %}{% include "dash/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
-	mustWriteTemplate("dash/include/actions.html", `{% import "dash/include/ui.html" as ui %}{{ ui.hi("A") }}`)
-	mustWriteTemplate("page.html", `{% extends "dash/layout/layout.html" %}{% import "dash/include/ui.html" as ui %}{% block content %}{{ ui.hi("B") }}{% endblock %}`)
-
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{}); err != nil {
@@ -76,28 +77,12 @@ func TestMacroImportAvailableAcrossExtendsAndInclude(t *testing.T) {
 
 func TestExtendsAndIncludeSupportRootPathsWithoutLeadingSlash(t *testing.T) {
 	tempDir := t.TempDir()
-	mustWriteTemplate := func(relativeName string, source string) {
-		templatePath := filepath.Join(tempDir, relativeName)
-		if err := os.MkdirAll(filepath.Dir(templatePath), 0o755); err != nil {
-			t.Fatalf("create template directory failed: %v", err)
-		}
-		if err := os.WriteFile(templatePath, []byte(source), 0o644); err != nil {
-			t.Fatalf("write template %q failed: %v", relativeName, err)
-		}
-	}
+	mustWriteTemplateFile(t, tempDir, "dash/layout/base.html", `{% block body %}{% endblock %}`)
+	mustWriteTemplateFile(t, tempDir, "dash/include/actions.html", `A`)
+	mustWriteTemplateFile(t, tempDir, "dash/layout/layout.html", `{% extends "dash/layout/base.html" %}{% block body %}{% include "dash/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
+	mustWriteTemplateFile(t, tempDir, "dash/categories_index.html", `{% extends "dash/layout/layout.html" %}{% block content %}B{% endblock %}`)
 
-	mustWriteTemplate("dash/layout/base.html", `{% block body %}{% endblock %}`)
-	mustWriteTemplate("dash/include/actions.html", `A`)
-	mustWriteTemplate("dash/layout/layout.html", `{% extends "dash/layout/base.html" %}{% block body %}{% include "dash/include/actions.html" %}{% block content %}{% endblock %}{% endblock %}`)
-	mustWriteTemplate("dash/categories_index.html", `{% extends "dash/layout/layout.html" %}{% block content %}B{% endblock %}`)
-
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "dash/categories_index.html", map[string]any{}); err != nil {
@@ -110,26 +95,10 @@ func TestExtendsAndIncludeSupportRootPathsWithoutLeadingSlash(t *testing.T) {
 
 func TestIncludeSupportsExplicitRelativeSubPath(t *testing.T) {
 	tempDir := t.TempDir()
-	mustWriteTemplate := func(relativeName string, source string) {
-		templatePath := filepath.Join(tempDir, relativeName)
-		if err := os.MkdirAll(filepath.Dir(templatePath), 0o755); err != nil {
-			t.Fatalf("create template directory failed: %v", err)
-		}
-		if err := os.WriteFile(templatePath, []byte(source), 0o644); err != nil {
-			t.Fatalf("write template %q failed: %v", relativeName, err)
-		}
-	}
+	mustWriteTemplateFile(t, tempDir, "dash/page.html", `{% include "./include/item.html" %}`)
+	mustWriteTemplateFile(t, tempDir, "dash/include/item.html", `ok`)
 
-	mustWriteTemplate("dash/page.html", `{% include "./include/item.html" %}`)
-	mustWriteTemplate("dash/include/item.html", `ok`)
-
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "dash/page.html", map[string]any{}); err != nil {
@@ -146,13 +115,7 @@ func TestMapLookupHandlesMissingAndNumericKeys(t *testing.T) {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
@@ -171,13 +134,7 @@ func TestRenderInjectsCSRFTokenInputGlobal(t *testing.T) {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
@@ -204,13 +161,7 @@ func TestSafeFilterRendersRawHTML(t *testing.T) {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
@@ -238,13 +189,7 @@ func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
@@ -267,13 +212,7 @@ func TestUrlIsRejectsMultipleArguments(t *testing.T) {
 		t.Fatalf("write page template failed: %v", err)
 	}
 
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
-		return name
-	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
 
 	var out bytes.Buffer
 	err := view.Render(&out, "page.html", map[string]any{
@@ -296,16 +235,12 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 	var capturedName string
 	var capturedParams map[string]string
 	var capturedQuery map[string]string
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
 		capturedName = name
 		capturedParams = params
 		capturedQuery = query
 		return "ok"
 	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{"PostID": 12}); err != nil {
@@ -332,14 +267,10 @@ func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	}
 
 	var capturedParams map[string]string
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
 		capturedParams = params
 		return "ok"
 	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{"PostID": 9}); err != nil {
@@ -362,15 +293,11 @@ func TestURLForDropsBlankParamsAndQuery(t *testing.T) {
 
 	var capturedParams map[string]string
 	var capturedQuery map[string]string
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
 		capturedParams = params
 		capturedQuery = query
 		return "ok"
 	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
@@ -412,14 +339,10 @@ func TestURLForDropsBlankKeywordArguments(t *testing.T) {
 	}
 
 	var capturedParams map[string]string
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
 		capturedParams = params
 		return "ok"
 	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{"PostID": 7}); err != nil {
@@ -449,16 +372,12 @@ func TestPagerURLUsesContextRouteAndQuery(t *testing.T) {
 	var capturedName string
 	var capturedParams map[string]string
 	var capturedQuery map[string]string
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
 		capturedName = name
 		capturedParams = params
 		capturedQuery = query
 		return "ok"
 	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
@@ -496,15 +415,11 @@ func TestPagerURLUsesExplicitRouteAndQuery(t *testing.T) {
 
 	var capturedName string
 	var capturedQuery map[string]string
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
 		capturedName = name
 		capturedQuery = query
 		return "ok"
 	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
 
 	var out bytes.Buffer
 	if err := view.Render(&out, "page.html", map[string]any{
@@ -541,15 +456,11 @@ func TestPagerURLAllowsKeywordArguments(t *testing.T) {
 
 	var capturedName string
 	var capturedQuery map[string]string
-	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
 		capturedName = name
 		capturedQuery = query
 		return "resolved"
 	})
-	if err := view.Load(); err != nil {
-		t.Fatalf("load templates failed: %v", err)
-	}
 
 	var out bytes.Buffer
 	err := view.Render(&out, "page.html", map[string]any{})

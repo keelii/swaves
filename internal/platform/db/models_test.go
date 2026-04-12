@@ -495,6 +495,81 @@ func TestPostDeleteRestoreAndDeletedList(t *testing.T) {
 	}
 }
 
+func TestCountDeletedRecords(t *testing.T) {
+	db := openTestDB(t)
+
+	post := mustCreatePost(t, db, "published", PostKindPost, 0)
+	if err := SoftDeletePost(db, post.ID); err != nil {
+		t.Fatalf("SoftDeletePost failed: %v", err)
+	}
+
+	encryptedPost := &EncryptedPost{Title: "secret", Slug: uniqueValue("enc"), Content: "x", Password: "p"}
+	if _, err := CreateEncryptedPost(db, encryptedPost); err != nil {
+		t.Fatalf("CreateEncryptedPost failed: %v", err)
+	}
+	if err := SoftDeleteEncryptedPost(db, encryptedPost.ID); err != nil {
+		t.Fatalf("SoftDeleteEncryptedPost failed: %v", err)
+	}
+
+	tag := mustCreateTag(t, db, uniqueValue("tag"))
+	if err := SoftDeleteTag(db, tag.ID); err != nil {
+		t.Fatalf("SoftDeleteTag failed: %v", err)
+	}
+
+	category := mustCreateCategory(t, db, 0, uniqueValue("category"))
+	if err := SoftDeleteCategory(db, category.ID); err != nil {
+		t.Fatalf("SoftDeleteCategory failed: %v", err)
+	}
+
+	redirect := &Redirect{From: "/" + uniqueValue("from"), To: "/target", Enabled: 1}
+	if _, err := CreateRedirect(db, redirect); err != nil {
+		t.Fatalf("CreateRedirect failed: %v", err)
+	}
+	if err := SoftDeleteRedirect(db, redirect.ID); err != nil {
+		t.Fatalf("SoftDeleteRedirect failed: %v", err)
+	}
+
+	postCount, err := CountDeletedPosts(db)
+	if err != nil {
+		t.Fatalf("CountDeletedPosts failed: %v", err)
+	}
+	if postCount != 1 {
+		t.Fatalf("CountDeletedPosts = %d, want 1", postCount)
+	}
+
+	encryptedPostCount, err := CountDeletedEncryptedPosts(db)
+	if err != nil {
+		t.Fatalf("CountDeletedEncryptedPosts failed: %v", err)
+	}
+	if encryptedPostCount != 1 {
+		t.Fatalf("CountDeletedEncryptedPosts = %d, want 1", encryptedPostCount)
+	}
+
+	tagCount, err := CountDeletedTags(db)
+	if err != nil {
+		t.Fatalf("CountDeletedTags failed: %v", err)
+	}
+	if tagCount != 1 {
+		t.Fatalf("CountDeletedTags = %d, want 1", tagCount)
+	}
+
+	categoryCount, err := CountDeletedCategories(db)
+	if err != nil {
+		t.Fatalf("CountDeletedCategories failed: %v", err)
+	}
+	if categoryCount != 1 {
+		t.Fatalf("CountDeletedCategories = %d, want 1", categoryCount)
+	}
+
+	redirectCount, err := CountDeletedRedirects(db)
+	if err != nil {
+		t.Fatalf("CountDeletedRedirects failed: %v", err)
+	}
+	if redirectCount != 1 {
+		t.Fatalf("CountDeletedRedirects = %d, want 1", redirectCount)
+	}
+}
+
 func TestTagLifecycleAndCounts(t *testing.T) {
 	db := openTestDB(t)
 	slug := uniqueValue("tag")

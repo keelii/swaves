@@ -21,12 +21,18 @@ func (h *Handler) renderRedirectList(c fiber.Ctx, errMsg string, notice string) 
 		return err
 	}
 
+	recordTabCounts, err := getRecordTabCounts(h.Model)
+	if err != nil {
+		return err
+	}
+
 	return RenderDashView(c, "dash/redirects_index.html", fiber.Map{
-		"Title":     "Redirects",
-		"Redirects": redirects,
-		"Pager":     pager,
-		"Error":     strings.TrimSpace(errMsg),
-		"Notice":    strings.TrimSpace(notice),
+		"Title":           "Redirects",
+		"Redirects":       redirects,
+		"Pager":           pager,
+		"Error":           strings.TrimSpace(errMsg),
+		"Notice":          strings.TrimSpace(notice),
+		"RecordTabCounts": recordTabCounts,
 	}, "")
 }
 

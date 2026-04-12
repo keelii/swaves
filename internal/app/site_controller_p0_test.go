@@ -161,99 +161,77 @@ func TestSiteControllerP0_HomePostAndNotFound(t *testing.T) {
 	)
 }
 
-func TestSiteControllerP0_NotFoundUsesRedirectMapForDatedPath(t *testing.T) {
-	swv := newControllerP0TestApp(t)
-	defer swv.Shutdown()
-
-	redirect := &db.Redirect{
-		From:    "/2022/05/19/legacy-post",
-		To:      "/legacy-post",
-		Status:  301,
-		Enabled: 1,
-	}
-	if _, err := db.CreateRedirect(swv.Store.Model, redirect); err != nil {
-		t.Fatalf("create redirect failed: %v", err)
-	}
-
-	resp := requestControllerP0(t, swv, fiber.MethodGet, redirect.From, nil, "", nil)
-	if resp.StatusCode != fiber.StatusMovedPermanently {
-		t.Fatalf("unexpected redirect status: got=%d want=%d", resp.StatusCode, fiber.StatusMovedPermanently)
-	}
-	location := strings.TrimSpace(resp.Header.Get("Location"))
-	if location != redirect.To {
-		t.Fatalf("unexpected redirect location: got=%q want=%q", location, redirect.To)
-	}
-}
-
-func TestSiteControllerP0_NotFoundUsesRedirectMapForTrailingSlashDatedPath(t *testing.T) {
-	swv := newControllerP0TestApp(t)
-	defer swv.Shutdown()
-
-	redirect := &db.Redirect{
-		From:    "/2018/08/12/fuzzy-finder-full-guide",
-		To:      "/fuzzy-finder-full-guide",
-		Status:  301,
-		Enabled: 1,
-	}
-	if _, err := db.CreateRedirect(swv.Store.Model, redirect); err != nil {
-		t.Fatalf("create redirect failed: %v", err)
-	}
-
-	resp := requestControllerP0(t, swv, fiber.MethodGet, redirect.From+"/", nil, "", nil)
-	if resp.StatusCode != fiber.StatusMovedPermanently {
-		t.Fatalf("unexpected redirect status: got=%d want=%d", resp.StatusCode, fiber.StatusMovedPermanently)
-	}
-	location := strings.TrimSpace(resp.Header.Get("Location"))
-	if location != redirect.To {
-		t.Fatalf("unexpected redirect location: got=%q want=%q", location, redirect.To)
-	}
-}
-
-func TestSiteControllerP0_NotFoundUsesRedirectMapForSingleSlugPath(t *testing.T) {
-	swv := newControllerP0TestApp(t)
-	defer swv.Shutdown()
-
-	redirect := &db.Redirect{
-		From:    "/legacy-single",
-		To:      "/new-single",
-		Status:  302,
-		Enabled: 1,
-	}
-	if _, err := db.CreateRedirect(swv.Store.Model, redirect); err != nil {
-		t.Fatalf("create redirect failed: %v", err)
+func TestSiteControllerP0_NotFoundUsesRedirectMap(t *testing.T) {
+	tests := map[string]struct {
+		redirect db.Redirect
+		path     string
+		status   int
+		location string
+	}{
+		"dated path": {
+			redirect: db.Redirect{
+				From:    "/2022/05/19/legacy-post",
+				To:      "/legacy-post",
+				Status:  301,
+				Enabled: 1,
+			},
+			path:     "/2022/05/19/legacy-post",
+			status:   fiber.StatusMovedPermanently,
+			location: "/legacy-post",
+		},
+		"dated trailing slash": {
+			redirect: db.Redirect{
+				From:    "/2018/08/12/fuzzy-finder-full-guide",
+				To:      "/fuzzy-finder-full-guide",
+				Status:  301,
+				Enabled: 1,
+			},
+			path:     "/2018/08/12/fuzzy-finder-full-guide/",
+			status:   fiber.StatusMovedPermanently,
+			location: "/fuzzy-finder-full-guide",
+		},
+		"single slug": {
+			redirect: db.Redirect{
+				From:    "/legacy-single",
+				To:      "/new-single",
+				Status:  302,
+				Enabled: 1,
+			},
+			path:     "/legacy-single",
+			status:   fiber.StatusFound,
+			location: "/new-single",
+		},
+		"pattern": {
+			redirect: db.Redirect{
+				From:    "/*/*/*/{slug}",
+				To:      "/{slug}",
+				Status:  301,
+				Enabled: 1,
+			},
+			path:     "/2019/01/01/political-correctness",
+			status:   fiber.StatusMovedPermanently,
+			location: "/political-correctness",
+		},
 	}
 
-	resp := requestControllerP0(t, swv, fiber.MethodGet, redirect.From, nil, "", nil)
-	if resp.StatusCode != fiber.StatusFound {
-		t.Fatalf("unexpected redirect status: got=%d want=%d", resp.StatusCode, fiber.StatusFound)
-	}
-	location := strings.TrimSpace(resp.Header.Get("Location"))
-	if location != redirect.To {
-		t.Fatalf("unexpected redirect location: got=%q want=%q", location, redirect.To)
-	}
-}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			swv := newControllerP0TestApp(t)
+			defer swv.Shutdown()
 
-func TestSiteControllerP0_NotFoundUsesRedirectPatternMap(t *testing.T) {
-	swv := newControllerP0TestApp(t)
-	defer swv.Shutdown()
+			if _, err := db.CreateRedirect(swv.Store.Model, &tt.redirect); err != nil {
+				t.Fatalf("create redirect failed: %v", err)
+			}
 
-	redirect := &db.Redirect{
-		From:    "/*/*/*/{slug}",
-		To:      "/{slug}",
-		Status:  301,
-		Enabled: 1,
-	}
-	if _, err := db.CreateRedirect(swv.Store.Model, redirect); err != nil {
-		t.Fatalf("create pattern redirect failed: %v", err)
-	}
-
-	resp := requestControllerP0(t, swv, fiber.MethodGet, "/2019/01/01/political-correctness", nil, "", nil)
-	if resp.StatusCode != fiber.StatusMovedPermanently {
-		t.Fatalf("unexpected redirect status: got=%d want=%d", resp.StatusCode, fiber.StatusMovedPermanently)
-	}
-	location := strings.TrimSpace(resp.Header.Get("Location"))
-	if location != "/political-correctness" {
-		t.Fatalf("unexpected redirect location: got=%q want=%q", location, "/political-correctness")
+			resp := requestControllerP0(t, swv, fiber.MethodGet, tt.path, nil, "", nil)
+			if resp.StatusCode != tt.status {
+				t.Fatalf("unexpected redirect status: got=%d want=%d", resp.StatusCode, tt.status)
+			}
+			location := strings.TrimSpace(resp.Header.Get("Location"))
+			if location != tt.location {
+				t.Fatalf("unexpected redirect location: got=%q want=%q", location, tt.location)
+			}
+		})
 	}
 }
 

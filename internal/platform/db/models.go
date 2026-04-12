@@ -421,6 +421,29 @@ func Count(db *DB, spec TableSpec, whereClause string, whereArgs []interface{}) 
 	return count, nil
 }
 
+// CountDeleted 通用 Count（仅统计 soft delete 记录）
+func CountDeleted(db *DB, spec TableSpec, whereClause string, whereArgs []interface{}) (int, error) {
+	where := whereClause
+	args := append([]interface{}{}, whereArgs...)
+	if err := validateWhereArgs(where, args); err != nil {
+		return 0, WrapInternalErr("CountDeleted.whereArgs", err)
+	}
+	if !spec.HasDeletedAt {
+		return 0, WrapInternalErr("CountDeleted", fmt.Errorf("table %s does not support deleted_at", spec.Name))
+	}
+	where = appendWhere(where, spec.deletedAtCol()+" IS NOT NULL")
+
+	query := `SELECT COUNT(*) FROM ` + string(spec.Name)
+	if where != "" {
+		query += ` WHERE ` + where
+	}
+	var count int
+	if err := db.QueryRow(query, args...).Scan(&count); err != nil {
+		return 0, WrapInternalErr("CountDeleted", err)
+	}
+	return count, nil
+}
+
 // ============================================================================
 // Update 操作（更新）
 // ============================================================================
@@ -1780,6 +1803,16 @@ func CountPostComments(db *DB, postID int64, status CommentStatus) (int, error) 
 	return Count(db, specComments, whereClause, whereArgs)
 }
 
+func CountComments(db *DB, status CommentStatus) (int, error) {
+	whereClause := ""
+	var whereArgs []interface{}
+	if status != "" {
+		whereClause = "status=?"
+		whereArgs = []interface{}{status}
+	}
+	return Count(db, specComments, whereClause, whereArgs)
+}
+
 func ListCommentsForDash(db *DB, status CommentStatus, limit, offset int) ([]Comment, int, error) {
 	whereClause := "c.deleted_at IS NULL"
 	whereArgs := make([]interface{}, 0, 2)
@@ -1788,9 +1821,8 @@ func ListCommentsForDash(db *DB, status CommentStatus, limit, offset int) ([]Com
 		whereArgs = append(whereArgs, status)
 	}
 
-	totalSQL := `SELECT COUNT(*) FROM ` + string(TableComments) + ` c WHERE ` + whereClause
-	var total int
-	if err := db.QueryRow(totalSQL, whereArgs...).Scan(&total); err != nil {
+	total, err := CountComments(db, status)
+	if err != nil {
 		return nil, 0, WrapInternalErr("ListCommentsForDash.Count", err)
 	}
 
@@ -2002,6 +2034,14 @@ func CountEncryptedPostsByKind(db *DB) (int, error) {
 	return Count(db, specEncryptedPosts, "", []interface{}{})
 }
 
+func CountDeletedPosts(db *DB) (int, error) {
+	return CountDeleted(db, specPosts, "", nil)
+}
+
+func CountDeletedEncryptedPosts(db *DB) (int, error) {
+	return CountDeleted(db, specEncryptedPosts, "", nil)
+}
+
 // CountCategories 统计分类数（未删除）
 func CountCategories(db *DB) (int, error) {
 	return Count(db, specCategories, "", nil)
@@ -2010,6 +2050,14 @@ func CountCategories(db *DB) (int, error) {
 // CountTags 统计标签数（未删除）
 func CountTags(db *DB) (int, error) {
 	return Count(db, specTags, "", nil)
+}
+
+func CountDeletedCategories(db *DB) (int, error) {
+	return CountDeleted(db, specCategories, "", nil)
+}
+
+func CountDeletedTags(db *DB) (int, error) {
+	return CountDeleted(db, specTags, "", nil)
 }
 
 // ListPublishedPosts 分页列出已发布文章（用于 RSS 等），返回 []Post
@@ -3429,6 +3477,14 @@ func ListDeletedRedirects(db *DB) ([]Redirect, error) {
 		res[i] = v.(Redirect)
 	}
 	return res, nil
+}
+
+func CountDeletedRedirects(db *DB) (int, error) {
+	return CountDeleted(db, specRedirects, "", nil)
+}
+
+func CountRedirects(db *DB) (int, error) {
+	return Count(db, specRedirects, "", nil)
 }
 
 func CreateRedirect(db *DB, r *Redirect) (int64, error) {

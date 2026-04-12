@@ -29,11 +29,17 @@ func (h *Handler) GetTagListHandler(c fiber.Ctx) error {
 		return err
 	}
 
+	recordTabCounts, err := getRecordTabCounts(h.Model)
+	if err != nil {
+		return err
+	}
+
 	return RenderDashView(c, "dash/tags_index.html", fiber.Map{
-		"Title":      "Tags",
-		"Tags":       tags,
-		"Pager":      pager,
-		"PostCounts": postCounts,
+		"Title":           "Tags",
+		"Tags":            tags,
+		"Pager":           pager,
+		"PostCounts":      postCounts,
+		"RecordTabCounts": recordTabCounts,
 	}, "")
 }
 

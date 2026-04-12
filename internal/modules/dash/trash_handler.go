@@ -6,6 +6,37 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+func getTrashTabCounts(h *Handler) (map[string]int, error) {
+	postCount, err := CountTrashPosts(h.Model)
+	if err != nil {
+		return nil, err
+	}
+	encryptedPostCount, err := CountTrashEncryptedPosts(h.Model)
+	if err != nil {
+		return nil, err
+	}
+	tagCount, err := CountTrashTags(h.Model)
+	if err != nil {
+		return nil, err
+	}
+	categoryCount, err := CountTrashCategories(h.Model)
+	if err != nil {
+		return nil, err
+	}
+	redirectCount, err := CountTrashRedirects(h.Model)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]int{
+		"posts":           postCount,
+		"encrypted-posts": encryptedPostCount,
+		"tags":            tagCount,
+		"categories":      categoryCount,
+		"redirects":       redirectCount,
+	}, nil
+}
+
 // Trash
 func (h *Handler) GetTrashHandler(c fiber.Ctx) error {
 	// 获取当前选中的类型，默认为 posts
@@ -34,10 +65,16 @@ func (h *Handler) GetTrashHandler(c fiber.Ctx) error {
 		return err
 	}
 
+	tabCounts, err := getTrashTabCounts(h)
+	if err != nil {
+		return err
+	}
+
 	return RenderDashView(c, "dash/trash_index.html", fiber.Map{
-		"Title":     "Trash",
-		"Data":      data,
-		"ModelType": modelType,
+		"Title":          "Trash",
+		"Data":           data,
+		"ModelType":      modelType,
+		"TrashTabCounts": tabCounts,
 	}, "")
 }
 

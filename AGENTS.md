@@ -3,7 +3,7 @@
 These rules are mandatory by default.
 Any exception must be explicitly approved, and the owner must confirm whether this guide should be updated.
 
-## 5 Engineering Values
+## 6 Engineering Values
 
 1) Correctness first, then simplicity and maintainability.
 
@@ -14,6 +14,8 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 4) Keep system behavior honest: user-visible behavior must match real capability.
 
 5) Prefer explicit boundaries and readable flow over hidden magic.
+
+6) Start with the smallest feature that solves the real user need; avoid introducing extra entities, options, edge-case flows, or speculative capabilities without clear demand.
 
 ## 5 Engineering Constraints
 

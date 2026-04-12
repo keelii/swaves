@@ -324,6 +324,10 @@ func ListTags(dbx *db.DB, pager *types.Pagination) ([]db.Tag, error) {
 	return res, nil
 }
 
+func CountTagsService(dbx *db.DB) (int, error) {
+	return db.CountTags(dbx)
+}
+
 func generateSlug(name string) string {
 	return helper.MakeSlug(name)
 }
@@ -529,6 +533,10 @@ func ListRedirects(dbx *db.DB, pager *types.Pagination) ([]db.Redirect, error) {
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
 
 	return res, nil
+}
+
+func CountRedirectsService(dbx *db.DB) (int, error) {
+	return db.CountRedirects(dbx)
 }
 
 // checkRedirectCycle 检查是否存在循环重定向
@@ -1026,6 +1034,10 @@ func ListCategoriesService(dbx *db.DB, pager *types.Pagination) ([]db.Category, 
 	return res, nil
 }
 
+func CountCategoriesService(dbx *db.DB) (int, error) {
+	return db.CountCategories(dbx)
+}
+
 func GetAllCategoriesFlat(dbx *db.DB) ([]db.Category, error) {
 	return db.ListCategories(dbx, false)
 }
@@ -1168,20 +1180,40 @@ func GetTrashPosts(dbx *db.DB) ([]db.Post, error) {
 	return db.ListDeletedPosts(dbx)
 }
 
+func CountTrashPosts(dbx *db.DB) (int, error) {
+	return db.CountDeletedPosts(dbx)
+}
+
 func GetTrashEncryptedPosts(dbx *db.DB) ([]db.EncryptedPost, error) {
 	return db.ListDeletedEncryptedPosts(dbx)
+}
+
+func CountTrashEncryptedPosts(dbx *db.DB) (int, error) {
+	return db.CountDeletedEncryptedPosts(dbx)
 }
 
 func GetTrashTags(dbx *db.DB) ([]db.Tag, error) {
 	return db.ListDeletedTags(dbx)
 }
 
+func CountTrashTags(dbx *db.DB) (int, error) {
+	return db.CountDeletedTags(dbx)
+}
+
 func GetTrashRedirects(dbx *db.DB) ([]db.Redirect, error) {
 	return db.ListDeletedRedirects(dbx)
 }
 
+func CountTrashRedirects(dbx *db.DB) (int, error) {
+	return db.CountDeletedRedirects(dbx)
+}
+
 func GetTrashCategories(dbx *db.DB) ([]db.Category, error) {
 	return db.ListDeletedCategories(dbx)
+}
+
+func CountTrashCategories(dbx *db.DB) (int, error) {
+	return db.CountDeletedCategories(dbx)
 }
 
 func RestorePostService(dbx *db.DB, id int64) error {
@@ -1260,6 +1292,10 @@ func ListCommentsService(dbx *db.DB, status db.CommentStatus, pager *types.Pagin
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
 
 	return items, nil
+}
+
+func CountCommentsService(dbx *db.DB, status db.CommentStatus) (int, error) {
+	return db.CountComments(dbx, status)
 }
 
 func UpdateCommentStatusService(dbx *db.DB, id int64, status db.CommentStatus) error {
@@ -1357,6 +1393,10 @@ func ListTasksService(dbx *db.DB, pager *types.Pagination) ([]db.Task, error) {
 	pager.Total = total
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
 	return res, nil
+}
+
+func CountTasksService(dbx *db.DB) (int, error) {
+	return db.CountTasks(dbx)
 }
 
 func GetTaskForEdit(dbx *db.DB, id int64) (*db.Task, error) {

@@ -142,12 +142,18 @@ func (h *Handler) GetCategoryListHandler(c fiber.Ctx) error {
 		return err
 	}
 
+	recordTabCounts, err := getRecordTabCounts(h.Model)
+	if err != nil {
+		return err
+	}
+
 	return RenderDashView(c, "dash/categories_index.html", fiber.Map{
-		"Title":      "Categories",
-		"Categories": categories,
-		"ParentMap":  parentMap,
-		"Pager":      pager,
-		"PostCounts": postCounts,
+		"Title":           "Categories",
+		"Categories":      categories,
+		"ParentMap":       parentMap,
+		"Pager":           pager,
+		"PostCounts":      postCounts,
+		"RecordTabCounts": recordTabCounts,
 	}, "")
 }
 
