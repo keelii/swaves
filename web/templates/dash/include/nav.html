@@ -53,5 +53,9 @@
       <span class="nav-item-icon">{{ LucideIcon("activity", 16) }}</span>
       <span class="nav-item-text">性能监控</span>
     </a>
+    <a class="nav-item{% if UrlIs('dash.themes.entry') or UrlIs('dash.themes.list') or UrlIs('dash.themes.new') or UrlIs('dash.themes.edit') %} active{% endif %}" href="{{ UrlFor('dash.themes.entry') }}"{% if UrlIs('dash.themes.entry') or UrlIs('dash.themes.list') or UrlIs('dash.themes.new') or UrlIs('dash.themes.edit') %} aria-current="page"{% endif %}>
+      <span class="nav-item-icon">{{ LucideIcon("palette", 16) }}</span>
+      <span class="nav-item-text">主题</span>
+    </a>
   </div>
 </nav>

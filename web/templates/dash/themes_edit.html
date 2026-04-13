@@ -1,0 +1,61 @@
+{% extends "dash/layout/layout_detail.html" %}
+{% import "dash/include/ui.html" as sui %}
+
+{% block page_actions %}
+{{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
+{% endblock %}
+{% block window_toolbar_main_right %}
+<div class="app-flex app-items-center">
+  {% if Theme.IsCurrent != 1 %}
+    <form method="post" action="{{ UrlFor('dash.themes.set_current', id=Theme.ID) }}">
+      {{ _csrf_token() }}
+      {{ sui.Button("设为当前", "outline", attrs='type="submit"') }}
+    </form>
+  {% endif %}
+  {{ sui.LinkButton("返回列表", "outline", href=UrlFor('dash.themes.list')) }}
+</div>
+{% endblock %}
+
+{% block content %}
+<form id="form" method="post" action="{{ UrlFor('dash.themes.update', id=Theme.ID) }}">
+  {{ _csrf_token() }}
+  <input type="hidden" name="version" value="{{ Theme.Version }}">
+  <input type="hidden" name="current_file" value="{{ CurrentFile }}">
+
+  <div class="app-flex" style="align-items:flex-start;">
+    <aside style="width:260px; flex:0 0 260px;">
+      <div class="ui-form">
+        {{ sui.Field("主题编码", sui.Input(id="theme-code", value=Theme.Code, attrs="disabled"), id="theme-code") }}
+        {{ sui.Field("当前文件", sui.Input(id="theme-current-file", value=CurrentFile, attrs="disabled"), id="theme-current-file") }}
+      </div>
+      <div class="app-mt">
+        <div class="ui-field-label">模板文件</div>
+        <div class="app-mt"></div>
+        <ul>
+          {% for path in ThemeFilePaths %}
+            <li>
+              {% if path == CurrentFile %}
+                <strong>{{ path }}</strong>
+              {% else %}
+                <a href="{{ UrlFor('dash.themes.edit', id=Theme.ID) }}?file={{ path }}">{{ path }}</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </aside>
+
+    <div style="flex:1; min-width:0;">
+      <div class="ui-form">
+        {% if Error %}
+          {{ sui.Alert(Error, kind="danger", title="保存失败") }}
+        {% endif %}
+        {{ sui.Field("主题名称", sui.Input(id="theme-name", name="name", value=Theme.Name, placeholder="主题名称", attrs="required"), id="theme-name", required=true) }}
+        {{ sui.Field("作者", sui.Input(id="theme-author", name="author", value=Theme.Author, placeholder="主题作者"), id="theme-author") }}
+        {{ sui.Field("描述", sui.Textarea(id="theme-description", name="description", value=Theme.Description, rows=3, placeholder="主题说明"), id="theme-description") }}
+        {{ sui.Field("文件内容", sui.Textarea(id="theme-current-content", name="current_content", value=ThemeFiles[CurrentFile], rows=28, attrs='spellcheck="false" style="font-family: var(--app-font-mono);"'), id="theme-current-content") }}
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

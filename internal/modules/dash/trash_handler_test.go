@@ -123,6 +123,20 @@ func TestGetRecordTabCounts(t *testing.T) {
 		t.Fatalf("CreateRedirect failed: %v", err)
 	}
 
+	theme := &db.Theme{
+		Name:        "record-theme",
+		Code:        "record-theme",
+		Description: "record theme",
+		Author:      "tester",
+		Files:       `{"site/home.html":"<h1>theme</h1>"}`,
+		CurrentFile: "site/home.html",
+		Status:      "draft",
+		Version:     1,
+	}
+	if _, err := db.CreateTheme(dbx, theme); err != nil {
+		t.Fatalf("CreateTheme failed: %v", err)
+	}
+
 	tabCounts, err := getRecordTabCounts(dbx)
 	if err != nil {
 		t.Fatalf("getRecordTabCounts failed: %v", err)
@@ -133,6 +147,7 @@ func TestGetRecordTabCounts(t *testing.T) {
 		"tags":       baseCounts["tags"] + 1,
 		"tasks":      baseCounts["tasks"] + 1,
 		"redirects":  baseCounts["redirects"] + 1,
+		"themes":     baseCounts["themes"] + 1,
 	}
 	for key, expected := range want {
 		if got := tabCounts[key]; got != expected {

@@ -1,0 +1,24 @@
+{% extends "dash/layout/layout_detail.html" %}
+{% import "dash/include/ui.html" as sui %}
+
+{% block page_actions %}
+{{ sui.Button("保存", "primary", attrs='type="submit" form="form"') }}
+{% endblock %}
+{% block window_toolbar_main_right %}
+{{ sui.LinkButton("返回列表", "outline", href=UrlFor('dash.themes.list')) }}
+{% endblock %}
+
+{% block content %}
+<form id="form" method="post" action="{{ UrlFor('dash.themes.create') }}">
+  {{ _csrf_token() }}
+  <div class="ui-form">
+    {% if Error %}
+      {{ sui.Alert(Error, kind="danger", title="保存失败") }}
+    {% endif %}
+    {{ sui.Field("主题名称", sui.Input(id="theme-name", name="name", value=Theme.Name, placeholder="例如：默认主题", attrs="required"), id="theme-name", required=true) }}
+    {{ sui.Field("主题编码", sui.Input(id="theme-code", name="code", value=Theme.Code, placeholder="例如：default-theme", attrs="required"), id="theme-code", required=true, help="用于唯一标识主题。") }}
+    {{ sui.Field("作者", sui.Input(id="theme-author", name="author", value=Theme.Author, placeholder="例如：keelii"), id="theme-author") }}
+    {{ sui.Field("描述", sui.Textarea(id="theme-description", name="description", value=Theme.Description, rows=3, placeholder="主题说明"), id="theme-description") }}
+  </div>
+</form>
+{% endblock %}

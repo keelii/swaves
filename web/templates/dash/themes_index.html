@@ -1,0 +1,72 @@
+{% extends "dash/layout/layout_list.html" %}
+{% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
+
+{% set OperationTableID = "themes-table" %}
+
+{% block page_actions %}
+  {{ sui.LinkButton("新建主题", "primary", href=UrlFor('dash.themes.new')) }}
+{% endblock %}
+
+{% block operation_multiselect %}{% endblock %}
+{% block operation_left %}
+  {% set ActiveRecordTab = "themes" %}
+  {% include "dash/include/records_tabs.html" %}
+{% endblock %}
+{% block status_main_left %}{% endblock %}
+{% block status_main_right %}
+  {% include "dash/include/status_main_pagination.html" %}
+{% endblock %}
+
+{% block content %}
+{% if Themes|length > 0 %}
+  <div class="data-table-wrap">
+    <table id="themes-table" class="data-table" aria-label="主题列表" data-role="data-table">
+      <thead>
+        <tr>
+          <th>{{ ui.table_th_id() }}</th>
+          <th>名称</th>
+          <th>编码</th>
+          <th>作者</th>
+          <th>状态</th>
+          <th>当前</th>
+          <th>内置</th>
+          <th>版本</th>
+          <th>更新时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for theme in Themes %}
+          <tr>
+            <td>{{ ui.table_td_id(theme.ID) }}</td>
+            <td>{{ theme.Name }}</td>
+            <td>{{ theme.Code }}</td>
+            <td>{{ theme.Author or '-' }}</td>
+            <td>{{ theme.Status }}</td>
+            <td>{% if theme.IsCurrent == 1 %}<span class="ui-badge success">是</span>{% else %}-{% endif %}</td>
+            <td>{% if theme.IsBuiltin == 1 %}<span class="ui-badge">是</span>{% else %}-{% endif %}</td>
+            <td>{{ theme.Version }}</td>
+            <td>{{ theme.UpdatedAt | formatTime }}</td>
+            <td>
+              <div class="cell-actions">
+                {{ sui.LinkIcon("square-pen", UrlFor('dash.themes.edit', id=theme.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+                {% if theme.IsCurrent != 1 %}
+                <form method="post" action="{{ UrlFor('dash.themes.set_current', id=theme.ID) }}">
+                  {{ _csrf_token() }}
+                  {{ sui.IconAction("circle-check-big", "设为当前", attrs='data-title="设为当前"', button_type="submit") }}
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="app-px">
+    {{ sui.EmptyState("暂无主题") }}
+  </div>
+{% endif %}
+{% endblock %}
