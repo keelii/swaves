@@ -128,8 +128,8 @@ func TestGetRecordTabCounts(t *testing.T) {
 		Code:        "record-theme",
 		Description: "record theme",
 		Author:      "tester",
-		Files:       `{"site/home.html":"<h1>theme</h1>"}`,
-		CurrentFile: "site/home.html",
+		Files:       `{"home.html":"<h1>theme</h1>"}`,
+		CurrentFile: "home.html",
 		Status:      "draft",
 		Version:     1,
 	}

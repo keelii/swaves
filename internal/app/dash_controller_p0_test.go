@@ -521,7 +521,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if entryURL.Path != fmt.Sprintf("/dash/themes/%d", templateTheme.ID) {
 		t.Fatalf("unexpected theme entry redirect path: %q", entryLocation)
 	}
-	if entryURL.Query().Get("file") != "site/home.html" {
+	if entryURL.Query().Get("file") != "home.html" {
 		t.Fatalf("unexpected theme entry redirect file query: %q", entryLocation)
 	}
 
@@ -568,8 +568,8 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse theme id from redirect failed: %v", err)
 	}
-	if redirectURL.Query().Get("file") != "site/home.html" {
-		t.Fatalf("expected create theme redirect file query to be site/home.html, got %q", redirectURL.Query().Get("file"))
+	if redirectURL.Query().Get("file") != "home.html" {
+		t.Fatalf("expected create theme redirect file query to be home.html, got %q", redirectURL.Query().Get("file"))
 	}
 
 	createdTheme, err := db.GetThemeByID(swv.Store.Model, themeID)
@@ -587,17 +587,17 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if err := json.Unmarshal([]byte(templateTheme.Files), &templateFiles); err != nil {
 		t.Fatalf("decode template theme files failed: %v", err)
 	}
-	if createdFiles["site/home.html"] == "" {
-		t.Fatal("expected created theme files to include site/home.html")
+	if createdFiles["home.html"] == "" {
+		t.Fatal("expected created theme files to include home.html")
 	}
-	if createdFiles["site/post.html"] == "" {
-		t.Fatal("expected created theme files to include site/post.html")
+	if createdFiles["post.html"] == "" {
+		t.Fatal("expected created theme files to include post.html")
 	}
-	if createdFiles["site/layout/layout.html"] != templateFiles["site/layout/layout.html"] {
+	if createdFiles["layout_main.html"] != templateFiles["layout_main.html"] {
 		t.Fatal("expected created theme to copy minimal template layout")
 	}
 
-	editPath := fmt.Sprintf("/dash/themes/%d?file=site/home.html", themeID)
+	editPath := fmt.Sprintf("/dash/themes/%d?file=home.html", themeID)
 	csrfToken, cookieKV, editPageBody := fetchCSRFToken(
 		t,
 		swv,
@@ -613,7 +613,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	updateForm.Set("name", "Controller Theme Updated")
 	updateForm.Set("author", "tester")
 	updateForm.Set("description", "updated description")
-	updateForm.Set("current_file", "site/home.html")
+	updateForm.Set("current_file", "home.html")
 	updateForm.Set("current_content", "<h1>updated theme</h1>")
 	updateForm.Set("version", strconv.FormatInt(createdTheme.Version, 10))
 	updateForm.Set("_csrf_token", csrfToken)
@@ -633,18 +633,57 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if updatedTheme.Name != updateForm.Get("name") || updatedTheme.Author != updateForm.Get("author") {
 		t.Fatalf("unexpected updated theme metadata: %+v", updatedTheme)
 	}
-	if updatedTheme.CurrentFile != "site/home.html" || updatedTheme.Version != createdTheme.Version+1 {
+	if updatedTheme.CurrentFile != "home.html" || updatedTheme.Version != createdTheme.Version+1 {
 		t.Fatalf("unexpected updated theme state: %+v", updatedTheme)
 	}
 	var updatedFiles map[string]string
 	if err := json.Unmarshal([]byte(updatedTheme.Files), &updatedFiles); err != nil {
 		t.Fatalf("decode updated theme files failed: %v", err)
 	}
-	if updatedFiles["site/home.html"] != "<h1>updated theme</h1>" {
-		t.Fatalf("updated site/home.html content mismatch: %q", updatedFiles["site/home.html"])
+	if updatedFiles["home.html"] != "<h1>updated theme</h1>" {
+		t.Fatalf("updated home.html content mismatch: %q", updatedFiles["home.html"])
 	}
-	if updatedFiles["site/post.html"] == "" {
+	if updatedFiles["post.html"] == "" {
 		t.Fatal("expected update to keep other theme files")
+	}
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(
+		t,
+		swv,
+		fmt.Sprintf("/dash/themes/%d?file=home.html", themeID),
+		cookieKV,
+		`theme-new-file-trigger`,
+	)
+	createFileForm := url.Values{}
+	createFileForm.Set("name", updatedTheme.Name)
+	createFileForm.Set("author", updatedTheme.Author)
+	createFileForm.Set("description", updatedTheme.Description)
+	createFileForm.Set("current_file", "home.html")
+	createFileForm.Set("current_content", updatedFiles["home.html"])
+	createFileForm.Set("new_file_path", "inc_footer.html")
+	createFileForm.Set("version", strconv.FormatInt(updatedTheme.Version, 10))
+	createFileForm.Set("_csrf_token", csrfToken)
+
+	createFileResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d", themeID), createFileForm, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if createFileResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected create theme file redirect 303, got %d", createFileResp.StatusCode)
+	}
+
+	themeAfterNewFile, err := db.GetThemeByID(swv.Store.Model, themeID)
+	if err != nil {
+		t.Fatalf("GetThemeByID(after new file) failed: %v", err)
+	}
+	var filesAfterNewFile map[string]string
+	if err := json.Unmarshal([]byte(themeAfterNewFile.Files), &filesAfterNewFile); err != nil {
+		t.Fatalf("decode files after new file failed: %v", err)
+	}
+	if _, ok := filesAfterNewFile["inc_footer.html"]; !ok {
+		t.Fatal("expected newly created theme file to exist")
+	}
+	if themeAfterNewFile.CurrentFile != "inc_footer.html" {
+		t.Fatalf("expected current file switch to new file, got %q", themeAfterNewFile.CurrentFile)
 	}
 
 	secondThemeID, err := db.CreateTheme(swv.Store.Model, &db.Theme{
@@ -652,8 +691,8 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 		Code:        fmt.Sprintf("second-theme-%d", time.Now().UnixNano()),
 		Description: "second",
 		Author:      "tester",
-		Files:       `{"site/home.html":"<h1>second</h1>"}`,
-		CurrentFile: "site/home.html",
+		Files:       `{"home.html":"<h1>second</h1>"}`,
+		CurrentFile: "home.html",
 		Status:      "draft",
 		Version:     1,
 		CreatedAt:   time.Now().Unix(),

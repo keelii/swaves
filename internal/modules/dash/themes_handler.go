@@ -14,19 +14,30 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-const defaultThemeCurrentFile = "site/home.html"
+const defaultThemeCurrentFile = "home.html"
+
+func normalizeThemeFileName(path string) string {
+	path = strings.TrimSpace(path)
+	path = strings.TrimPrefix(path, "site/")
+	return path
+}
 
 func parseThemeFiles(raw string) (map[string]string, error) {
 	if strings.TrimSpace(raw) == "" {
 		return map[string]string{}, nil
 	}
-	files := make(map[string]string)
-	if err := json.Unmarshal([]byte(raw), &files); err != nil {
+	rawFiles := make(map[string]string)
+	if err := json.Unmarshal([]byte(raw), &rawFiles); err != nil {
 		return nil, err
 	}
-	for path, content := range files {
+	files := make(map[string]string, len(rawFiles))
+	for rawPath, content := range rawFiles {
+		path := normalizeThemeFileName(rawPath)
 		if !isValidThemeFilePath(path) {
-			return nil, fmt.Errorf("invalid theme file path: %s", path)
+			return nil, fmt.Errorf("invalid theme file path: %s", rawPath)
+		}
+		if _, exists := files[path]; exists {
+			return nil, fmt.Errorf("duplicate theme file path: %s", path)
 		}
 		files[path] = content
 	}
@@ -51,24 +62,27 @@ func sortedThemeFilePaths(files map[string]string) []string {
 }
 
 func isValidThemeFilePath(path string) bool {
-	path = strings.TrimSpace(path)
+	path = normalizeThemeFileName(path)
 	if path == "" {
 		return false
 	}
-	if !strings.HasPrefix(path, "site/") || !strings.HasSuffix(path, ".html") {
+	if !strings.HasSuffix(path, ".html") {
+		return false
+	}
+	if strings.Contains(path, "/") || strings.Contains(path, `\`) {
 		return false
 	}
 	return !strings.Contains(path, "..")
 }
 
 func resolveThemeCurrentFile(theme db.Theme, files map[string]string, candidate string) string {
-	candidate = strings.TrimSpace(candidate)
+	candidate = normalizeThemeFileName(candidate)
 	if candidate != "" {
 		if _, ok := files[candidate]; ok {
 			return candidate
 		}
 	}
-	if stored := strings.TrimSpace(theme.CurrentFile); stored != "" {
+	if stored := normalizeThemeFileName(theme.CurrentFile); stored != "" {
 		if _, ok := files[stored]; ok {
 			return stored
 		}
@@ -127,11 +141,16 @@ func (h *Handler) GetThemeEntryHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	files, err := parseThemeFiles(theme.Files)
+	if err != nil {
+		return err
+	}
+	currentFile := resolveThemeCurrentFile(*theme, files, theme.CurrentFile)
 
 	return h.redirectToDashRoute(c, "dash.themes.edit", map[string]string{
 		"id": strconv.FormatInt(theme.ID, 10),
 	}, map[string]string{
-		"file": theme.CurrentFile,
+		"file": currentFile,
 	})
 }
 
@@ -239,7 +258,7 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	currentFile := strings.TrimSpace(c.FormValue("current_file"))
+	currentFile := normalizeThemeFileName(c.FormValue("current_file"))
 	if !isValidThemeFilePath(currentFile) {
 		return fiber.ErrBadRequest
 	}
@@ -251,6 +270,31 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 		return err
 	}
 	files[currentFile] = c.FormValue("current_content")
+	newFilePath := normalizeThemeFileName(c.FormValue("new_file_path"))
+	if newFilePath != "" {
+		if !isValidThemeFilePath(newFilePath) {
+			return RenderDashView(c, "dash/themes_edit.html", fiber.Map{
+				"Title":          "编辑主题",
+				"Error":          "新文件路径无效，必须是扁平的 *.html 文件名。",
+				"Theme":          *theme,
+				"ThemeFiles":     files,
+				"ThemeFilePaths": sortedThemeFilePaths(files),
+				"CurrentFile":    currentFile,
+			}, "")
+		}
+		if _, exists := files[newFilePath]; exists {
+			return RenderDashView(c, "dash/themes_edit.html", fiber.Map{
+				"Title":          "编辑主题",
+				"Error":          "文件已存在。",
+				"Theme":          *theme,
+				"ThemeFiles":     files,
+				"ThemeFilePaths": sortedThemeFilePaths(files),
+				"CurrentFile":    currentFile,
+			}, "")
+		}
+		files[newFilePath] = ""
+		currentFile = newFilePath
+	}
 	filesJSON, err := marshalThemeFiles(files)
 	if err != nil {
 		return err
@@ -279,6 +323,9 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 			"ThemeFilePaths": sortedThemeFilePaths(files),
 			"CurrentFile":    currentFile,
 		}, "")
+	}
+	if newFilePath != "" {
+		return h.redirectToDashRouteWithNotice(c, "dash.themes.edit", map[string]string{"id": strconv.FormatInt(theme.ID, 10)}, map[string]string{"file": currentFile}, "文件已创建。")
 	}
 	return h.redirectToDashRouteWithNotice(c, "dash.themes.edit", map[string]string{"id": strconv.FormatInt(theme.ID, 10)}, map[string]string{"file": currentFile}, "主题已保存。")
 }

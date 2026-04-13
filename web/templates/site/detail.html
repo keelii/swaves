@@ -1,11 +1,11 @@
-{% extends "site/layout/layout.html" %}
+{% extends "layout_main.html" %}
 {% block content %}
-{% from "site/macro/content.html" import category_item, tag_list %}
+{% from "macro_content.html" import category_item, tag_list %}
 
 <header>
   <h1>{{ Entity.Name }}</h1>
 
-  {% include "site/include/list_nav.html" %}
+  {% include "inc_list_nav.html" %}
 </header>
 
 {% if Entity.Description %}

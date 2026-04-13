@@ -36,7 +36,7 @@
     <ol class="comment-children">
       {% for childComment in commentChildren %}
         {% set Comment = childComment %}
-        {% include "site/include/comment_item.html" %}
+        {% include "inc_comment_item.html" %}
       {% endfor %}
     </ol>
   {% endif %}

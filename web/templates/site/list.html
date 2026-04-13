@@ -1,4 +1,4 @@
-{% extends "site/layout/layout.html" %}
+{% extends "layout_main.html" %}
 {% block content %}
 {% macro macro_site_category_tree_nodes(__ctx) %}
   {% for categoryNode in __ctx %}
@@ -22,7 +22,7 @@
   {% set __listNavIsTag = IsTag %}
   {% set IsCategory = true %}
   {% set IsTag = true %}
-  {% include "site/include/list_nav.html" %}
+  {% include "inc_list_nav.html" %}
   {% set IsCategory = __listNavIsCategory %}
   {% set IsTag = __listNavIsTag %}
 </header>

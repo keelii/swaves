@@ -8,7 +8,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ pageTitle }}</title>
-  {% include "site/include/meta.html" %}
+  {% include "inc_meta.html" %}
   {% include "include/favicon.html" %}
 
   <link rel="stylesheet" href="/static/site/tufte-css/tufte.min.css">
@@ -16,7 +16,7 @@
   <script src="/static/site/main.js"></script>
 
   {% if Settings("ga4_id") %}
-    {% include "site/include/ga.html" %}
+    {% include "inc_ga.html" %}
   {% endif %}
   {% block head_extra %}{% endblock %}
 </head>

@@ -21,15 +21,21 @@
   {{ _csrf_token() }}
   <input type="hidden" name="version" value="{{ Theme.Version }}">
   <input type="hidden" name="current_file" value="{{ CurrentFile }}">
+  <input type="hidden" name="new_file_path" id="theme-new-file-path" value="">
 
   <div class="app-flex" style="align-items:flex-start;">
     <aside style="width:260px; flex:0 0 260px;">
       <div class="ui-form">
         {{ sui.Field("主题编码", sui.Input(id="theme-code", value=Theme.Code, attrs="disabled"), id="theme-code") }}
-        {{ sui.Field("当前文件", sui.Input(id="theme-current-file", value=CurrentFile, attrs="disabled"), id="theme-current-file") }}
+        {{ sui.Field("主题名称", sui.Input(id="theme-name", name="name", value=Theme.Name, placeholder="主题名称", attrs="required"), id="theme-name", required=true) }}
+        {{ sui.Field("作者", sui.Input(id="theme-author", name="author", value=Theme.Author, placeholder="主题作者"), id="theme-author") }}
+        {{ sui.Field("描述", sui.Textarea(id="theme-description", name="description", value=Theme.Description, rows=3, placeholder="主题说明"), id="theme-description") }}
       </div>
       <div class="app-mt">
-        <div class="ui-field-label">模板文件</div>
+        <div class="app-flex app-items-center app-justify-between">
+          <div class="ui-field-label">模板文件</div>
+          {{ sui.IconAction("plus", "新建文件", attrs='id="theme-new-file-trigger" data-title="新建文件"') }}
+        </div>
         <div class="app-mt"></div>
         <ul>
           {% for path in ThemeFilePaths %}
@@ -50,12 +56,57 @@
         {% if Error %}
           {{ sui.Alert(Error, kind="danger", title="保存失败") }}
         {% endif %}
-        {{ sui.Field("主题名称", sui.Input(id="theme-name", name="name", value=Theme.Name, placeholder="主题名称", attrs="required"), id="theme-name", required=true) }}
-        {{ sui.Field("作者", sui.Input(id="theme-author", name="author", value=Theme.Author, placeholder="主题作者"), id="theme-author") }}
-        {{ sui.Field("描述", sui.Textarea(id="theme-description", name="description", value=Theme.Description, rows=3, placeholder="主题说明"), id="theme-description") }}
         {{ sui.Field("文件内容", sui.Textarea(id="theme-current-content", name="current_content", value=ThemeFiles[CurrentFile], rows=28, attrs='spellcheck="false" style="font-family: var(--app-font-mono);"'), id="theme-current-content") }}
       </div>
     </div>
   </div>
 </form>
+
+{% call sui.Dialog(
+  "theme-new-file-dialog",
+  "新建模板文件",
+  actions=(
+    sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("创建", "primary", attrs='type="button" id="theme-new-file-confirm"')
+  ),
+  open=false
+) %}
+  {{ sui.Field("文件路径", sui.Input(id="theme-new-file-input", value="", placeholder="例如：inc_footer.html"), id="theme-new-file-input", help="只允许扁平的 *.html 文件名，不支持目录") }}
+{% endcall %}
+
+<script>
+  (function () {
+    var trigger = document.getElementById('theme-new-file-trigger');
+    var dialogId = 'theme-new-file-dialog';
+    var input = document.getElementById('theme-new-file-input');
+    var hiddenInput = document.getElementById('theme-new-file-path');
+    var confirmButton = document.getElementById('theme-new-file-confirm');
+    var form = document.getElementById('form');
+    var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
+
+    if (!trigger || !input || !hiddenInput || !confirmButton || !form || !dialogAPI) {
+      return;
+    }
+
+    trigger.addEventListener('click', function () {
+      hiddenInput.value = '';
+      input.value = '';
+      dialogAPI.open(dialogId, trigger);
+      window.setTimeout(function () {
+        input.focus();
+      }, 0);
+    });
+
+    confirmButton.addEventListener('click', function () {
+      var nextPath = input.value.trim();
+      if (!nextPath) {
+        input.focus();
+        return;
+      }
+      hiddenInput.value = nextPath;
+      dialogAPI.close(dialogId);
+      form.requestSubmit();
+    });
+  })();
+</script>
 {% endblock %}

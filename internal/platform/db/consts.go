@@ -247,7 +247,7 @@ const InitialSQL = `
 		author TEXT NOT NULL DEFAULT '',
 
 		files TEXT NOT NULL DEFAULT '{}',
-		current_file TEXT NOT NULL DEFAULT 'site/home.html',
+		current_file TEXT NOT NULL DEFAULT 'home.html',
 
 		status TEXT NOT NULL DEFAULT 'draft',
 		is_current INTEGER NOT NULL DEFAULT 0,

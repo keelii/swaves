@@ -1127,7 +1127,7 @@ func TestBootstrapDefaultSettingsFromEmptyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetThemeByCode(default template) failed: %v", err)
 	}
-	if templateTheme.IsBuiltin != 1 || templateTheme.CurrentFile != "site/home.html" {
+	if templateTheme.IsBuiltin != 1 || templateTheme.CurrentFile != "home.html" {
 		t.Fatalf("unexpected default template theme: %+v", templateTheme)
 	}
 
@@ -1160,8 +1160,8 @@ func TestThemeLifecycleAndCurrentState(t *testing.T) {
 		Code:        uniqueValue("theme"),
 		Description: "first theme",
 		Author:      "keelii",
-		Files:       mustMarshalThemeFiles(t, map[string]string{"site/home.html": "<h1>A</h1>"}),
-		CurrentFile: "site/home.html",
+		Files:       mustMarshalThemeFiles(t, map[string]string{"home.html": "<h1>A</h1>"}),
+		CurrentFile: "home.html",
 		Status:      "draft",
 		Version:     1,
 		CreatedAt:   time.Now().Unix(),
@@ -1176,8 +1176,8 @@ func TestThemeLifecycleAndCurrentState(t *testing.T) {
 		Code:        uniqueValue("theme"),
 		Description: "second theme",
 		Author:      "swaves",
-		Files:       mustMarshalThemeFiles(t, map[string]string{"site/post.html": "<article>B</article>"}),
-		CurrentFile: "site/post.html",
+		Files:       mustMarshalThemeFiles(t, map[string]string{"post.html": "<article>B</article>"}),
+		CurrentFile: "post.html",
 		Status:      "draft",
 		IsBuiltin:   1,
 		Version:     1,
@@ -1192,7 +1192,7 @@ func TestThemeLifecycleAndCurrentState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetThemeByID(themeA) failed: %v", err)
 	}
-	if gotThemeA.CurrentFile != "site/home.html" {
+	if gotThemeA.CurrentFile != "home.html" {
 		t.Fatalf("unexpected current_file: %q", gotThemeA.CurrentFile)
 	}
 
@@ -1214,8 +1214,8 @@ func TestThemeLifecycleAndCurrentState(t *testing.T) {
 
 	themeA.Name = "Theme A Updated"
 	themeA.Author = "updated-author"
-	themeA.CurrentFile = "site/layout/layout.html"
-	themeA.Files = mustMarshalThemeFiles(t, map[string]string{"site/layout/layout.html": "<!doctype html>"})
+	themeA.CurrentFile = "layout_main.html"
+	themeA.Files = mustMarshalThemeFiles(t, map[string]string{"layout_main.html": "<!doctype html>"})
 	if err := UpdateTheme(db, themeA, 1); err != nil {
 		t.Fatalf("UpdateTheme failed: %v", err)
 	}
@@ -1223,7 +1223,7 @@ func TestThemeLifecycleAndCurrentState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetThemeByID(updated themeA) failed: %v", err)
 	}
-	if updatedThemeA.Name != "Theme A Updated" || updatedThemeA.CurrentFile != "site/layout/layout.html" || updatedThemeA.Version != 2 {
+	if updatedThemeA.Name != "Theme A Updated" || updatedThemeA.CurrentFile != "layout_main.html" || updatedThemeA.Version != 2 {
 		t.Fatalf("unexpected updated theme: %+v", updatedThemeA)
 	}
 

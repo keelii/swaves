@@ -1,8 +1,8 @@
-{% extends "site/layout/layout.html" %}
+{% extends "layout_main.html" %}
 {% block content %}
 <header>
   <h1>{{ Settings("site_title") }}</h1>
-  {% include "site/include/nav.html" %}
+  {% include "inc_nav.html" %}
 </header>
 
 <ul class="articles">
@@ -16,5 +16,5 @@
   {% endfor %}
 </ul>
 
-{% include "site/include/pagination.html" %}
+{% include "inc_pagination.html" %}
 {% endblock %}

@@ -9,7 +9,7 @@ const DefaultThemeTemplateCode = "default-theme-template"
 
 func defaultThemeTemplateFiles() map[string]string {
 	return map[string]string{
-		"site/layout/layout.html": `<!DOCTYPE html>
+		"layout_main.html": `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
@@ -27,7 +27,7 @@ func defaultThemeTemplateFiles() map[string]string {
 </body>
 </html>
 `,
-		"site/home.html": `{% extends "site/layout/layout.html" %}
+		"home.html": `{% extends "layout_main.html" %}
 {% block content %}
 <h2>首页</h2>
 <ul>
@@ -39,7 +39,7 @@ func defaultThemeTemplateFiles() map[string]string {
 </ul>
 {% endblock %}
 `,
-		"site/post.html": `{% extends "site/layout/layout.html" %}
+		"post.html": `{% extends "layout_main.html" %}
 {% block content %}
 <article>
   <h2>{{ Post.Post.Title }}</h2>
@@ -47,7 +47,7 @@ func defaultThemeTemplateFiles() map[string]string {
 </article>
 {% endblock %}
 `,
-		"site/list.html": `{% extends "site/layout/layout.html" %}
+		"list.html": `{% extends "layout_main.html" %}
 {% block content %}
 <h2>{{ Title }}</h2>
 <ul>
@@ -59,7 +59,7 @@ func defaultThemeTemplateFiles() map[string]string {
 </ul>
 {% endblock %}
 `,
-		"site/detail.html": `{% extends "site/layout/layout.html" %}
+		"detail.html": `{% extends "layout_main.html" %}
 {% block content %}
 <h2>{{ Entity.Name }}</h2>
 <ul>
@@ -71,13 +71,13 @@ func defaultThemeTemplateFiles() map[string]string {
 </ul>
 {% endblock %}
 `,
-		"site/404.html": `{% extends "site/layout/layout.html" %}
+		"404.html": `{% extends "layout_main.html" %}
 {% block content %}
 <h2>404</h2>
 <p>页面不存在。</p>
 {% endblock %}
 `,
-		"site/error.html": `{% extends "site/layout/layout.html" %}
+		"error.html": `{% extends "layout_main.html" %}
 {% block content %}
 <h2>错误</h2>
 <p>{{ Msg or "页面暂时不可用。" }}</p>
@@ -99,7 +99,7 @@ func newDefaultThemeTemplate() (*Theme, error) {
 		Description: "用于创建新主题的最小模板",
 		Author:      "swaves",
 		Files:       string(files),
-		CurrentFile: "site/home.html",
+		CurrentFile: "home.html",
 		Status:      "draft",
 		IsBuiltin:   1,
 		Version:     1,

@@ -1,10 +1,10 @@
-{% extends "site/layout/layout.html" %}
+{% extends "layout_main.html" %}
 {% block content %}
 {% set displayPost = Post.DisplayPost %}
 {% set postData = displayPost.Post %}
 {% set postCategory = Post.Category %}
 {% set postTags = Post.Tags %}
-{% from "site/macro/content.html" import category_item, tag_list %}
+{% from "macro_content.html" import category_item, tag_list %}
 
 <header>
   <h1>{{ postData.Title }}</h1>
@@ -16,13 +16,13 @@
       <a href="{{ UrlFor('dash.posts.edit', id=postData.ID) }}">编辑</a>
     {% endif %}
     {% set Count = ReadUV %}
-    {% include "site/include/read_uv.html" %}
+    {% include "inc_read_uv.html" %}
     {% if postData.Kind == 0 %}
       {% set Count = CommentCount %}
-      {% include "site/include/comment_count.html" %}
+      {% include "inc_comment_count.html" %}
     {% endif %}
     {% set PostID = postData.ID %}
-    {% include "site/include/like_action.html" %}
+    {% include "inc_like_action.html" %}
   </nav>
 </header>
 <article>
@@ -100,7 +100,7 @@
         <ol class="comment-list">
           {% for item in Comments %}
             {% set Comment = item %}
-            {% include "site/include/comment_item.html" %}
+            {% include "inc_comment_item.html" %}
           {% endfor %}
         </ol>
       {% else %}
@@ -108,7 +108,7 @@
       {% endif %}
       {% if CommentPager and CommentPager.Num > 1 %}
         {% set Pager = CommentPager %}
-        {% include "site/include/comment_pagination.html" %}
+        {% include "inc_comment_pagination.html" %}
       {% endif %}
 
       <fieldset>

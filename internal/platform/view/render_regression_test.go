@@ -783,7 +783,7 @@ func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
 func TestRenderLucideIconWithoutSize(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/include/read_uv.html", map[string]any{"Count": 0})
+	rendered := mustRenderRegressionTemplate(t, view, "site/inc_read_uv.html", map[string]any{"Count": 0})
 	if !strings.Contains(rendered, "<svg") {
 		t.Fatalf("expected svg output")
 	}
@@ -802,7 +802,7 @@ func TestRenderLucideNewspaperIcon(t *testing.T) {
 func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{})
+	rendered := mustRenderRegressionTemplate(t, view, "site/layout_main.html", map[string]any{})
 	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
@@ -819,7 +819,7 @@ func TestRenderSiteLayoutUsesSiteTitleFallback(t *testing.T) {
 
 	withRegressionSettings(t, map[string]string{"site_title": "Example Site"})
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{})
+	rendered := mustRenderRegressionTemplate(t, view, "site/layout_main.html", map[string]any{})
 	if !strings.Contains(rendered, "<title>Example Site</title>") {
 		t.Fatalf("expected site title fallback, got %s", rendered)
 	}
@@ -828,7 +828,7 @@ func TestRenderSiteLayoutUsesSiteTitleFallback(t *testing.T) {
 func TestRenderSiteLayoutIncludesCanonicalAndDescription(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
-	html := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{
+	html := mustRenderRegressionTemplate(t, view, "site/layout_main.html", map[string]any{
 		"Title":           "Hello",
 		"CanonicalURL":    "https://example.com/hello",
 		"MetaDescription": "Hello description",
