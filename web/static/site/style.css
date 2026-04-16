@@ -57,6 +57,7 @@ button[data-like-button]:disabled {
   margin: 0 0.2em;
 }
 .articles {
+  padding-left: 0;
 }
 .relation {
   margin-left: 10px;
