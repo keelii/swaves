@@ -9,20 +9,24 @@
 <header>
   <h1>{{ postData.Title }}</h1>
   <nav class="valign">
-    <span class="author">{{ Settings("author") }}</span>
-    <span>{{ postData.PublishedAt | articleTime }}</span>
-    <a href="{{ GetBasePath() }}">首页</a>
+    <span class="post-info author">{{ Settings("author") }}</span>
+    <span class="post-info datetime">{{ postData.PublishedAt | articleTime }}</span>
+{#    <span  class="post-info home">#}
+{#      <a href="{{ GetBasePath() }}">首页</a>#}
+{#    </span>#}
+    <span  class="post-info edit">
     {% if IsLogin and (postData.ID > 0) %}
       <a href="{{ UrlFor('dash.posts.edit', id=postData.ID) }}">编辑</a>
     {% endif %}
+    </span>
     {% set Count = ReadUV %}
     {% include "site/include/read_uv.html" %}
+    {% set PostID = postData.ID %}
+    {% include "site/include/like_action.html" %}
     {% if postData.Kind == 0 %}
       {% set Count = CommentCount %}
       {% include "site/include/comment_count.html" %}
     {% endif %}
-    {% set PostID = postData.ID %}
-    {% include "site/include/like_action.html" %}
   </nav>
 </header>
 <article>
@@ -33,7 +37,7 @@
 {% if postData.Kind == 0 %}
 <section>
   <hr>
-  <div class="post-info">
+  <div class="post-meta">
     <div class="post-catgory-tag">
       <div>
         {% if postCategory %}
@@ -53,14 +57,14 @@
     <div class="post-nav">
       <div>
         {% if displayPost.Next %}
-          <span>上一篇：<a href="{{ displayPost.Next.PermLink }}" class="next">{{ displayPost.Next.Title }}</a></span>
+          <span>上一篇：<a href="{{ displayPost.Next.PermLink }}" class="next" title="{{ displayPost.Next.Title }}">{{ displayPost.Next.Title }}</a></span>
         {% else %}
           <span>上一篇：无</span>
         {% endif %}
       </div>
       <div>
         {% if displayPost.Prev %}
-          <span>下一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev">{{ displayPost.Prev.Title }}</a></span>
+          <span>下一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev" title="{{ displayPost.Prev.Title }}">{{ displayPost.Prev.Title }}</a></span>
         {% else %}
           <span>下一篇：无</span>
         {% endif %}

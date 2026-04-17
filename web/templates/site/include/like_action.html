@@ -1,3 +1,4 @@
+<span class="post-info like">
 <form method="post" action="{{ UrlFor('site.action.like', postID=PostID) }}" style="display:inline-flex;align-items: center" data-like-form>
   <input type="hidden" name="return_url" value="{{ UrlPath }}">
   <button title="点赞数" type="submit" data-like-button data-liked="{% if Liked %}1{% else %}0{% endif %}" aria-label="点赞">
@@ -5,6 +6,7 @@
     <span data-like-count>{% if LikeCount %}{{ LikeCount }}{% else %}0{% endif %}</span>
   </button>
 </form>
+</span>
 <script>
   (function () {
     if (window.__swavesLikeAsyncInit) {
