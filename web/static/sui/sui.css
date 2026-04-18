@@ -1436,14 +1436,10 @@ a.ui-icon-btn[disabled] {
   padding: 0 12px;
   border-radius: var(--app-radius-pill);
   border: var(--app-border-width) solid var(--app-border);
-  background: transparent;
   color: var(--app-text-soft);
-  font: inherit;
   font-size: 0.86rem;
-  line-height: 1;
   white-space: nowrap;
   user-select: none;
-  text-decoration: none;
   box-sizing: border-box;
 }
 
@@ -1919,6 +1915,8 @@ a.ui-icon-btn[disabled] {
   border-bottom: var(--app-border-width) solid var(--app-border);
   vertical-align: middle;
   color: var(--app-text);
+  white-space: normal;
+  word-break: break-all;
 }
 
 .data-table tbody tr:last-child td {
@@ -2264,7 +2262,7 @@ a.ui-icon-btn[disabled] {
 }
 .app-main-toolbar .slug {
   padding: var(--app-spacing);
-  min-width: 20em;
+  max-width: 20em;
   text-align: center;
   border: none;
 }

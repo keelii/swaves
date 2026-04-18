@@ -57,6 +57,7 @@ button[data-like-button]:disabled {
   margin: 0 0.2em;
 }
 .articles {
+  padding-left: 0;
 }
 .relation {
   margin-left: 10px;
@@ -200,10 +201,31 @@ article table thead th {
 .comment-help {
   color: #666;
 }
+
+.post-catgory-tag,.post-nav {
+  width: 50%;
+}
 .post-info {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.post-meta {
   display: flex;
   justify-content: space-between;
   width: 55%;
+}
+@media (max-width: 760px) {
+  .post-meta {
+    width: 100%;
+  }
+}
+.post-nav div {
+  width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .katex-display {
