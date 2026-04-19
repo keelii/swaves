@@ -1,0 +1,125 @@
+.ceditor-root {
+  width: 100%;
+  min-height: 640px;
+  /*border: 1px solid var(--app-border, #d0d7de);*/
+  /*border-radius: var(--app-radius, 6px);*/
+  background: var(--app-surface, #fff);
+  overflow: hidden;
+}
+
+.ceditor-root .cm-editor {
+  height: 100%;
+  min-height: 640px;
+  background: transparent;
+  color: var(--app-text, #111827);
+  font: 14px/1.7 var(--app-font-mono, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace);
+}
+
+.ceditor-root .cm-scroller {
+  overflow: auto;
+  font-family: inherit;
+}
+
+.ceditor-root .cm-content,
+.ceditor-root .cm-gutter {
+  min-height: 640px;
+}
+
+.ceditor-root .cm-content {
+  caret-color: var(--app-text, #111827);
+}
+
+.ceditor-root .cm-line {
+}
+
+.ceditor-root .cm-gutters {
+  background: #f7f8fa;
+  border-right: 1px solid var(--app-border, #d0d7de);
+}
+
+.ceditor-root .cm-foldGutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.ceditor-root .cm-foldGutterMarker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: #6c6c6c;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.ceditor-root .cm-foldGutterMarker svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.ceditor-root .cm-gutters:hover .cm-foldGutterMarker,
+.ceditor-root .cm-foldGutter .cm-gutterElement:hover .cm-foldGutterMarker,
+.ceditor-root .cm-activeLineGutter .cm-foldGutterMarker {
+  opacity: 1;
+}
+
+.ceditor-root .cm-activeLine,
+.ceditor-root .cm-activeLineGutter {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.ceditor-root .cm-selectionBackground,
+.ceditor-root ::selection {
+  background: rgba(37, 99, 235, 0.22);
+}
+
+.ceditor-root .cm-focused {
+  outline: none;
+}
+
+.ceditor-root .cm-focused .cm-cursor {
+  border-left-color: #2563eb;
+}
+
+.ceditor-root .cm-focused .cm-selectionBackground,
+.ceditor-root .cm-selectionBackground,
+.ceditor-root .cm-content ::selection {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.ceditor-root .cm-jinja-expression {
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.ceditor-root .cm-jinja-tag {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.ceditor-root .cm-jinja-comment {
+  color: #047857;
+  font-style: italic;
+}
+
+.ceditor-hidden-textarea[hidden] {
+  display: none !important;
+}
+
+.cm-search {
+  font-size: 18px;
+}
+.cm-search > label {
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+}
+.cm-search .cm-button,
+.cm-search label {
+  text-transform: capitalize;
+}

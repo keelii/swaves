@@ -25,6 +25,25 @@ type DisplayPostWithRelation struct {
 	Category *DisplayItem
 }
 
+type TemplatePost struct {
+	ID             int64
+	Title          string
+	Slug           string
+	Content        string
+	Status         string
+	Kind           db.PostKind
+	CommentEnabled int
+	PublishedAt    int64
+	CreatedAt      int64
+	UpdatedAt      int64
+	PermLink       string
+	HTML           string
+	Prev           *DisplayPostInfo
+	Next           *DisplayPostInfo
+	Tags           []DisplayItem
+	Category       *DisplayItem
+}
+
 type DisplayComment struct {
 	db.Comment
 	ParentAuthor string
@@ -33,6 +52,58 @@ type DisplayComment struct {
 
 func (receiver DisplayPostWithRelation) Raw() *db.Post {
 	return &receiver.Post
+}
+
+func ToTemplatePost(post *DisplayPostWithRelation) TemplatePost {
+	if post == nil {
+		return TemplatePost{}
+	}
+
+	return TemplatePost{
+		ID:             post.Post.ID,
+		Title:          post.Post.Title,
+		Slug:           post.Post.Slug,
+		Content:        post.Post.Content,
+		Status:         post.Post.Status,
+		Kind:           post.Post.Kind,
+		CommentEnabled: post.Post.CommentEnabled,
+		PublishedAt:    post.Post.PublishedAt,
+		CreatedAt:      post.Post.CreatedAt,
+		UpdatedAt:      post.Post.UpdatedAt,
+		PermLink:       post.PermLink,
+		HTML:           post.HTML,
+		Prev:           post.Prev,
+		Next:           post.Next,
+		Tags:           post.Tags,
+		Category:       post.Category,
+	}
+}
+
+func ToTemplatePosts(posts []DisplayPost) []TemplatePost {
+	if len(posts) == 0 {
+		return []TemplatePost{}
+	}
+
+	result := make([]TemplatePost, 0, len(posts))
+	for _, post := range posts {
+		result = append(result, TemplatePost{
+			ID:             post.Post.ID,
+			Title:          post.Post.Title,
+			Slug:           post.Post.Slug,
+			Content:        post.Post.Content,
+			Status:         post.Post.Status,
+			Kind:           post.Post.Kind,
+			CommentEnabled: post.Post.CommentEnabled,
+			PublishedAt:    post.Post.PublishedAt,
+			CreatedAt:      post.Post.CreatedAt,
+			UpdatedAt:      post.Post.UpdatedAt,
+			PermLink:       post.PermLink,
+			HTML:           post.HTML,
+			Prev:           post.Prev,
+			Next:           post.Next,
+		})
+	}
+	return result
 }
 
 // DisplayPostInfo 包含了 Post 的基本信息，适用于在列表中显示，没有 HTML 内容 和 content

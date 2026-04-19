@@ -1,0 +1,53 @@
+{% extends "layout_main.html" %}
+{% block content %}
+{% macro RenderCategoryTreeNodes(Nodes) %}
+  {% for CategoryNode in Nodes %}
+  <li>
+    <a href="{{ CategoryNode.Item.PermLink }}">{{ CategoryNode.Item.Name }}</a>
+    <span class="post-count">({{ CategoryNode.Item.PostCount }})</span>
+    <span>{{ CategoryNode.Item.CreatedAt | relativeTime }}</span>
+    {% if (CategoryNode.Children|length) > 0 %}
+    <ul>
+      {{ RenderCategoryTreeNodes(CategoryNode.Children) }}
+    </ul>
+    {% endif %}
+  </li>
+  {% endfor %}
+{% endmacro %}
+
+<header>
+  <h1>{{ Title }}</h1>
+
+  {% set PrevIsCategory = IsCategory %}
+  {% set PrevIsTag = IsTag %}
+  {% set IsCategory = true %}
+  {% set IsTag = true %}
+  {% include "inc_list_nav.html" %}
+  {% set IsCategory = PrevIsCategory %}
+  {% set IsTag = PrevIsTag %}
+</header>
+
+
+
+{% if IsCategory %}
+<ul class="category-index">
+  {% if (List|length) > 0 %}
+    {{ RenderCategoryTreeNodes(List) }}
+  {% else %}
+  <li>暂无分类</li>
+  {% endif %}
+</ul>
+{% else %}
+<ul class="tag-index">
+  {% for Tag in List %}
+  <li>
+    <a href="{{ Tag.PermLink }}">{{ Tag.Name }}</a>
+    <span class="post-count">({{ Tag.PostCount }})</span>
+    <span>{{ Tag.CreatedAt | relativeTime }}</span>
+  </li>
+  {% else %}
+  <li>暂无数据</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

@@ -11,19 +11,19 @@ import (
 //
 //go:embed templates
 //go:embed static/favicon.svg
+//go:embed static/ceditor/ceditor.css
+//go:embed static/ceditor/dist/ceditor.min.js
 //go:embed static/dash/main.js
 //go:embed static/dash/style.css
 //go:embed static/robots.txt
 //go:embed static/site/main.js
 //go:embed static/site/style.css
 //go:embed static/site/tufte-css/tufte.min.css
-//go:embed static/site/tufte-css/et-book
 //go:embed static/seditor/dist/seditor.min.js
 //go:embed static/sui
 //go:embed static/katex/katex.min.css
 //go:embed static/katex/katex.min.js
 //go:embed static/katex/contrib/auto-render.min.js
-//go:embed static/katex/fonts
 var embeddedFiles embed.FS
 
 func StaticFS() fs.FS {

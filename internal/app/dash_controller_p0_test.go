@@ -1,9 +1,11 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -504,12 +506,12 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	defer swv.Shutdown()
 
 	cookieKV := loginAsDash(t, swv)
-	templateTheme, err := db.GetThemeByCode(swv.Store.Model, db.DefaultThemeTemplateCode)
+	defaultTheme, err := db.GetThemeByCode(swv.Store.Model, db.DefaultThemeCode)
 	if err != nil {
-		t.Fatalf("GetThemeByCode(default template) failed: %v", err)
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
 	}
 
-	entryResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/themes/template", nil, cookieKV, nil)
+	entryResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/themes/default", nil, cookieKV, nil)
 	if entryResp.StatusCode != fiber.StatusSeeOther {
 		t.Fatalf("expected theme entry redirect 303, got %d", entryResp.StatusCode)
 	}
@@ -518,7 +520,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse theme entry redirect failed: %v", err)
 	}
-	if entryURL.Path != fmt.Sprintf("/dash/themes/%d", templateTheme.ID) {
+	if entryURL.Path != fmt.Sprintf("/dash/themes/%d", defaultTheme.ID) {
 		t.Fatalf("unexpected theme entry redirect path: %q", entryLocation)
 	}
 	if entryURL.Query().Get("file") != "home.html" {
@@ -526,7 +528,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	}
 
 	listResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/themes", nil, cookieKV, nil)
-	assertTemplateRendered(t, listResp, fiber.StatusOK, "主题", "新建主题", "新建主题模板")
+	assertTemplateRendered(t, listResp, fiber.StatusOK, "主题", "新建主题", "tuft")
 
 	csrfToken, cookieKV, newPageBody := fetchCSRFToken(
 		t,
@@ -583,9 +585,9 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if err := json.Unmarshal([]byte(createdTheme.Files), &createdFiles); err != nil {
 		t.Fatalf("decode created theme files failed: %v", err)
 	}
-	var templateFiles map[string]string
-	if err := json.Unmarshal([]byte(templateTheme.Files), &templateFiles); err != nil {
-		t.Fatalf("decode template theme files failed: %v", err)
+	var defaultFiles map[string]string
+	if err := json.Unmarshal([]byte(defaultTheme.Files), &defaultFiles); err != nil {
+		t.Fatalf("decode default theme files failed: %v", err)
 	}
 	if createdFiles["home.html"] == "" {
 		t.Fatal("expected created theme files to include home.html")
@@ -593,8 +595,144 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if createdFiles["post.html"] == "" {
 		t.Fatal("expected created theme files to include post.html")
 	}
-	if createdFiles["layout_main.html"] != templateFiles["layout_main.html"] {
-		t.Fatal("expected created theme to copy minimal template layout")
+	if createdFiles["layout_main.html"] != defaultFiles["layout_main.html"] {
+		t.Fatal("expected created theme to copy default theme layout")
+	}
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
+	copyResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/copy", themeID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if copyResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected copy theme redirect 303, got %d", copyResp.StatusCode)
+	}
+	cookieKV = mergeCookieKV(cookieKV, copyResp)
+	copyLocation := strings.TrimSpace(copyResp.Header.Get("Location"))
+	copyURL, err := url.Parse(copyLocation)
+	if err != nil {
+		t.Fatalf("parse copy theme redirect failed: %v", err)
+	}
+	copiedThemeID, err := strconv.ParseInt(strings.TrimPrefix(copyURL.Path, "/dash/themes/"), 10, 64)
+	if err != nil {
+		t.Fatalf("parse copied theme id from redirect failed: %v", err)
+	}
+	copiedTheme, err := db.GetThemeByID(swv.Store.Model, copiedThemeID)
+	if err != nil {
+		t.Fatalf("GetThemeByID(copied) failed: %v", err)
+	}
+	if copiedTheme.Name != "Controller Theme 副本" {
+		t.Fatalf("unexpected copied theme name: %q", copiedTheme.Name)
+	}
+	if copiedTheme.Code != createForm.Get("code")+"-copy" {
+		t.Fatalf("unexpected copied theme code: %q", copiedTheme.Code)
+	}
+	if copiedTheme.Files != createdTheme.Files || copiedTheme.CurrentFile != createdTheme.CurrentFile {
+		t.Fatalf("copied theme should keep files/current_file: %+v", copiedTheme)
+	}
+	if copiedTheme.IsCurrent != 0 || copiedTheme.IsBuiltin != 0 {
+		t.Fatalf("copied theme should not be current/builtin: %+v", copiedTheme)
+	}
+
+	exportResp := requestControllerP0(t, swv, fiber.MethodGet, fmt.Sprintf("/dash/themes/%d/export", themeID), nil, cookieKV, nil)
+	if exportResp.StatusCode != fiber.StatusOK {
+		t.Fatalf("expected export theme status 200, got %d", exportResp.StatusCode)
+	}
+	if got := strings.TrimSpace(exportResp.Header.Get("Content-Type")); !strings.Contains(got, "application/json") {
+		t.Fatalf("unexpected export content-type: %q", got)
+	}
+	exportBody, err := io.ReadAll(exportResp.Body)
+	if err != nil {
+		t.Fatalf("read export theme body failed: %v", err)
+	}
+	var exportedTheme struct {
+		Name  string            `json:"name"`
+		Code  string            `json:"code"`
+		Files map[string]string `json:"files"`
+	}
+	if err := json.Unmarshal(exportBody, &exportedTheme); err != nil {
+		t.Fatalf("decode export theme payload failed: %v", err)
+	}
+	if exportedTheme.Code != createdTheme.Code || exportedTheme.Files["home.html"] == "" {
+		t.Fatalf("unexpected exported theme payload: %+v", exportedTheme)
+	}
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
+	var importBody bytes.Buffer
+	importWriter := multipart.NewWriter(&importBody)
+	importPart, err := importWriter.CreateFormFile("file", "theme.json")
+	if err != nil {
+		t.Fatalf("create import form file failed: %v", err)
+	}
+	if _, err := importPart.Write(exportBody); err != nil {
+		t.Fatalf("write import json failed: %v", err)
+	}
+	if err := importWriter.Close(); err != nil {
+		t.Fatalf("close import writer failed: %v", err)
+	}
+	importReq := httptest.NewRequest(fiber.MethodPost, "/dash/themes/import", &importBody)
+	importReq.Header.Set("Content-Type", importWriter.FormDataContentType())
+	importReq.Header.Set("Cookie", cookieKV)
+	importReq.Header.Set("X-CSRF-Token", csrfToken)
+	importResp, err := swv.App.Test(importReq)
+	if err != nil {
+		t.Fatalf("import theme request failed: %v", err)
+	}
+	if importResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected import theme redirect 303, got %d", importResp.StatusCode)
+	}
+	importLocation := strings.TrimSpace(importResp.Header.Get("Location"))
+	importURL, err := url.Parse(importLocation)
+	if err != nil {
+		t.Fatalf("parse import theme redirect failed: %v", err)
+	}
+	importedThemeID, err := strconv.ParseInt(strings.TrimPrefix(importURL.Path, "/dash/themes/"), 10, 64)
+	if err != nil {
+		t.Fatalf("parse imported theme id failed: %v", err)
+	}
+	importedTheme, err := db.GetThemeByID(swv.Store.Model, importedThemeID)
+	if err != nil {
+		t.Fatalf("GetThemeByID(imported) failed: %v", err)
+	}
+	if importedTheme.Name != "Controller Theme 副本 2" {
+		t.Fatalf("unexpected imported theme name: %q", importedTheme.Name)
+	}
+	if importedTheme.Code != createForm.Get("code")+"-copy-2" {
+		t.Fatalf("unexpected imported theme code: %q", importedTheme.Code)
+	}
+	if importedTheme.Files == "" || importedTheme.CurrentFile != "home.html" {
+		t.Fatalf("unexpected imported theme payload: %+v", importedTheme)
+	}
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
+	deleteResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/delete", copiedThemeID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if deleteResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected delete theme redirect 303, got %d", deleteResp.StatusCode)
+	}
+	if _, err := db.GetThemeByID(swv.Store.Model, copiedThemeID); !db.IsErrNotFound(err) {
+		t.Fatalf("expected copied theme deleted, got err=%v", err)
+	}
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
+	deleteCurrentResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/delete", defaultTheme.ID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if deleteCurrentResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected delete current theme redirect 303, got %d", deleteCurrentResp.StatusCode)
+	}
+	currentThemeStill, err := db.GetThemeByID(swv.Store.Model, defaultTheme.ID)
+	if err != nil {
+		t.Fatalf("GetThemeByID(default current) failed: %v", err)
+	}
+	if currentThemeStill.IsCurrent != 1 {
+		t.Fatalf("current theme should not be deleted: %+v", currentThemeStill)
 	}
 
 	editPath := fmt.Sprintf("/dash/themes/%d?file=home.html", themeID)
@@ -702,6 +840,10 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 		t.Fatalf("CreateTheme(second) failed: %v", err)
 	}
 
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(tempHome, ".cache"))
+
 	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
 	setCurrentResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/set-current", secondThemeID), url.Values{
 		"_csrf_token": []string{csrfToken},
@@ -716,8 +858,8 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCurrentTheme failed: %v", err)
 	}
-	if currentTheme.ID != secondThemeID || currentTheme.IsCurrent != 1 {
-		t.Fatalf("unexpected current theme after switch: %+v", currentTheme)
+	if currentTheme.ID != defaultTheme.ID || currentTheme.IsCurrent != 1 {
+		t.Fatalf("unexpected current theme after switch attempt without daemon mode: %+v", currentTheme)
 	}
 
 	updatedListResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/themes", nil, cookieKV, nil)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -50,6 +51,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	store.InitSettings(globalStore)
 	store.InitRedirects(globalStore)
 	viewEngine, initURLResolver := newRuntimeViewEngine()
+	siteViews, initSiteURLResolver := newSiteRuntimeViewEngine(globalStore.Model, appCfg.SqliteFile)
 	requestTracker := middleware.NewRequestTracker()
 
 	app := fiber.New(fiber.Config{
@@ -92,6 +94,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		},
 	})
 	initURLResolver(app)
+	initSiteURLResolver(app)
 	app.Hooks().OnListen(func(_ fiber.ListenData) error {
 		go job.InitRegistry(globalStore, appCfg)
 		return nil
@@ -115,7 +118,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 
 	dash.RegisterRouter(app, globalStore)
 	sui.RegisterRouter(app, globalStore)
-	site.RegisterRouter(app, globalStore)
+	site.RegisterRouter(app, globalStore, siteViews)
 	api.RegisterRouter(app)
 
 	return SwavesApp{
@@ -134,6 +137,41 @@ func newRuntimeViewEngine() (fiber.Views, func(app *fiber.App)) {
 		}
 	}
 	return view.NewViewEngineFS(webassets.TemplateFS(), false)
+}
+
+func newSiteRuntimeViewEngine(model *db.DB, sqliteFile string) (fiber.Views, func(app *fiber.App)) {
+	templateRoot := ""
+	var templateFS fs.FS
+	if config.TemplateReload {
+		templateRoot = resolveProjectPath("web/templates")
+		if !pathExists(templateRoot) {
+			templateRoot = ""
+		}
+	}
+	if templateRoot == "" {
+		templateFS = webassets.TemplateFS()
+	}
+	if config.TemplateReload {
+		if templateRoot != "" {
+			return view.NewThemeDBViewEngineWithShared(model, templateRoot, true)
+		}
+		return view.NewThemeDBViewEngineWithSharedFS(model, templateFS, true)
+	}
+
+	themeRoot, err := view.MaterializeCurrentThemeCache(model, sqliteFile, templateRoot, templateFS)
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			logger.Info("[theme] current theme not set, fallback to builtin theme templates")
+		} else {
+			logger.Warn("[theme] materialize current theme cache failed, fallback to builtin theme templates: %v", err)
+		}
+		themeRoot, err = view.MaterializeBuiltinThemeCache(sqliteFile, templateRoot, templateFS)
+		if err != nil {
+			logger.Fatal("materialize builtin theme cache failed: %v", err)
+		}
+	}
+
+	return view.NewViewEngine(themeRoot, config.TemplateReload)
 }
 
 func newStaticMiddleware() fiber.Handler {

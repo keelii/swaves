@@ -5,16 +5,18 @@
   {% include "inc_nav.html" %}
 </header>
 
+<section>
 <ul class="articles">
-  {% for article in Articles %}
+  {% for Article in Articles %}
   <li>
-    <a href="{{ article.PermLink }}">{{ article.Post.Title }}</a>
-    <span class="published">{{ article.Post.PublishedAt | relativeTime }}</span>
+    <a href="{{ Article.PermLink }}">{{ Article.Title }}</a>
+    <span class="published">{{ Article.PublishedAt | relativeTime }}</span>
   </li>
   {% else %}
   <li>暂无文章</li>
   {% endfor %}
 </ul>
+</section>
 
 {% include "inc_pagination.html" %}
 {% endblock %}

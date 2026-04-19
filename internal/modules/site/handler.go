@@ -1,6 +1,7 @@
 package site
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/url"
@@ -27,6 +28,7 @@ type Handler struct {
 	Model   *db.DB
 	Session *types.SessionStore
 	Service *Service
+	Views   fiber.Views
 }
 
 func (h Handler) trackSiteUV(c fiber.Ctx) {
@@ -209,12 +211,12 @@ func (h Handler) redirectNotFound(c fiber.Ctx) error {
 	returnURL = normalizeErrorReturnURL(returnURL)
 
 	c.Status(fiber.StatusNotFound)
-	return RenderUIView(c, "site/404.html", fiber.Map{
+	return h.renderView(c, "404.html", fiber.Map{
 		"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
-	}, "")
+	})
 }
 
 func (h Handler) redirectError(c fiber.Ctx) error {
@@ -230,8 +232,7 @@ func (h Handler) ensureLikePostExists(postID int64) (db.Post, error) {
 	return post, nil
 }
 
-func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
-	_ = layout
+func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
 	if data == nil {
 		data = fiber.Map{}
 	}
@@ -251,56 +252,57 @@ func RenderUIView(c fiber.Ctx, view string, data fiber.Map, layout string) error
 	//	data[string(k)] = v
 	//})
 
-	return c.Render(view, data)
+	if h.Views == nil {
+		return c.Render(view, data)
+	}
+
+	var out bytes.Buffer
+	if err := h.Views.Render(&out, view, data); err != nil {
+		return err
+	}
+	c.Type("html", "utf-8")
+	return c.SendString(out.String())
 }
 
 func (h Handler) GetDate(c fiber.Ctx) error {
 	return c.Send([]byte("ui home"))
 }
 
-//	func PageNotFound(c fiber.Ctx) error {
-//		returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
-//		c.Status(fiber.StatusNotFound)
-//		return RenderUIView(c, "site/404.html", fiber.Map{
-//			"Title":     fmt.Sprintf("404 Not Found [%s]", "PageNotFound"),
-//			"ReturnURL": returnURL,
-//			"ReqID":     requestid.FromContext(c),
-//		}, "")
-//	}
 func (h Handler) GetNotFound(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusNotFound)
-	return RenderUIView(c, "site/404.html", fiber.Map{
+	return h.renderView(c, "404.html", fiber.Map{
 		"Title":     fmt.Sprintf("404 Not Found [%s]", "GetNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
-	}, "")
+	})
 }
 
 func (h Handler) GetError(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusInternalServerError)
-	return RenderUIView(c, "site/error.html", fiber.Map{
+	return h.renderView(c, "error.html", fiber.Map{
 		"Title":     "Error",
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
-	}, "")
+	})
 }
 
 func (h Handler) GetHome(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
+	templatePosts := ToTemplatePosts(articles)
 	h.trackSiteUV(c)
 
-	return RenderUIView(c, "site/home.html", fiber.Map{
+	return h.renderView(c, "home.html", fiber.Map{
 		"Title":        buildPageTitle(""),
 		"CanonicalURL": absoluteSiteURL(c, share.GetBasePath()),
-		"Articles":     articles,
+		"Articles":     templatePosts,
 		"Pages":        ListPages(h.Model),
 		"Pager":        pager,
-	}, "")
+	})
 }
 func (h Handler) GetRaw(c fiber.Ctx) error {
 	filename := c.Params("*")
@@ -314,20 +316,6 @@ func (h Handler) GetRaw(c fiber.Ctx) error {
 
 	return c.SendString(fmt.Sprintf("# %s\n\n%s", post.Title, post.Content))
 }
-
-//func (h Handler) GetPost(c fiber.Ctx) error {
-//	matched := MatchRouter(c.Path())
-//	if len(matched) == 0 {
-//		return c.Status(fiber.StatusNotFound).SendString("post not found")
-//	}
-//
-//	post := getPostByIST(h.Model, matched["slug"])
-//
-//	return RenderUIView(c, "site/post.html", fiber.Map{
-//		"Post": post,
-//		//"Pages": ListPages(h.Model),
-//	}, "")
-//}
 
 func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 	year := c.Params("year")
@@ -355,12 +343,13 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 
 	h.trackUV(c, db.UVEntityPost, post.Post.ID)
 	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
+	templatePost := ToTemplatePost(post)
 
-	return RenderUIView(c, "site/post.html", fiber.Map{
+	return h.renderView(c, "post.html", fiber.Map{
 		"Title":                  buildPageTitle(post.Post.Title),
 		"CanonicalURL":           absoluteSiteURL(c, share.GetPostUrl(post.Post)),
 		"MetaDescription":        excerptFromHTML(post.HTML, 160),
-		"Post":                   post,
+		"Post":                   templatePost,
 		"ReadUV":                 readUV,
 		"LikeCount":              likeCount,
 		"Liked":                  liked,
@@ -372,7 +361,7 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 		"CommentCaptchaRequired": captchaRequired,
 		"CommentCaptcha":         commentCaptcha,
 		//"Pages": ListPages(h.Model),
-	}, "")
+	})
 }
 
 func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRelation, error) {
@@ -454,12 +443,13 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 	}
 
 	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
+	templatePost := ToTemplatePost(post)
 
-	return RenderUIView(c, "site/post.html", fiber.Map{
+	return h.renderView(c, "post.html", fiber.Map{
 		"Title":                  buildPageTitle(post.Post.Title),
 		"CanonicalURL":           absoluteSiteURL(c, share.GetPostUrl(post.Post)),
 		"MetaDescription":        excerptFromHTML(post.HTML, 160),
-		"Post":                   post,
+		"Post":                   templatePost,
 		"ReadUV":                 readUV,
 		"LikeCount":              likeCount,
 		"Liked":                  liked,
@@ -471,7 +461,7 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 		"CommentCaptchaRequired": captchaRequired,
 		"CommentCaptcha":         commentCaptcha,
 		//"Pages": ListPages(h.Model),
-	}, "")
+	})
 }
 func (h Handler) getIST(c fiber.Ctx) (string, string) {
 	filename := c.Params("ist")
@@ -498,13 +488,13 @@ func (h Handler) GetCategoryIndex(c fiber.Ctx) error {
 
 	pages := ListPages(h.Model)
 	h.trackSiteUV(c)
-	return RenderUIView(c, "site/list.html", fiber.Map{
+	return h.renderView(c, "list.html", fiber.Map{
 		"Title":        buildPageTitle("Categories"),
 		"CanonicalURL": absoluteSiteURL(c, share.GetCategoryPrefix()),
 		"Pages":        pages,
 		"List":         categories,
 		"IsCategory":   true,
-	}, "")
+	})
 }
 func (h Handler) GetTagIndex(c fiber.Ctx) error {
 	tags := ListTags(h.Model)
@@ -514,12 +504,12 @@ func (h Handler) GetTagIndex(c fiber.Ctx) error {
 	}
 
 	h.trackSiteUV(c)
-	return RenderUIView(c, "site/list.html", fiber.Map{
+	return h.renderView(c, "list.html", fiber.Map{
 		"Title":        buildPageTitle("Tags"),
 		"CanonicalURL": absoluteSiteURL(c, share.GetTagPrefix()),
 		"Pages":        ListPages(h.Model),
 		"List":         tags,
-	}, "")
+	})
 }
 func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
@@ -533,7 +523,7 @@ func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
 
-	return RenderUIView(c, "site/detail.html", fiber.Map{
+	return h.renderView(c, "detail.html", fiber.Map{
 		"Title":           buildPageTitle(category.Name),
 		"CanonicalURL":    absoluteSiteURL(c, category.PermLink),
 		"MetaDescription": strings.TrimSpace(category.Description),
@@ -542,7 +532,7 @@ func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 		"List":            posts,
 		"ListPage":        share.GetCategoryPrefix(),
 		"Pages":           ListPages(h.Model),
-	}, "")
+	})
 }
 func (h Handler) GetTagDetail(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
@@ -556,7 +546,7 @@ func (h Handler) GetTagDetail(c fiber.Ctx) error {
 
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
 
-	return RenderUIView(c, "site/detail.html", fiber.Map{
+	return h.renderView(c, "detail.html", fiber.Map{
 		"Title":           buildPageTitle(tag.Name),
 		"CanonicalURL":    absoluteSiteURL(c, tag.PermLink),
 		"MetaDescription": "",
@@ -565,7 +555,7 @@ func (h Handler) GetTagDetail(c fiber.Ctx) error {
 		"List":            posts,
 		"ListPage":        share.GetTagPrefix(),
 		"Pages":           ListPages(h.Model),
-	}, "")
+	})
 }
 
 func (h Handler) PostEntityLike(c fiber.Ctx) error {
@@ -759,10 +749,11 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 	return webutil.RedirectTo(c, redirectPath)
 }
 
-func NewHandler(gStore *store.GlobalStore, service *Service) *Handler {
+func NewHandler(gStore *store.GlobalStore, service *Service, views fiber.Views) *Handler {
 	return &Handler{
 		Model:   gStore.Model,
 		Session: gStore.Session,
 		Service: service,
+		Views:   views,
 	}
 }

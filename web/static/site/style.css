@@ -56,6 +56,9 @@ button[data-like-button]:disabled {
 .page-link-num {
   margin: 0 0.2em;
 }
+article {
+  padding: 2em 0;
+}
 .articles {
   padding-left: 0;
 }

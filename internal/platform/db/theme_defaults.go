@@ -2,105 +2,66 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/fs"
+	"path"
+	"strings"
 	"time"
+
+	webassets "swaves/web"
 )
 
-const DefaultThemeTemplateCode = "default-theme-template"
+const (
+	DefaultThemeCode       = "tuft"
+	legacyDefaultThemeCode = "default-theme-template"
+)
 
-func defaultThemeTemplateFiles() map[string]string {
-	return map[string]string{
-		"layout_main.html": `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <title>{{ Title or Settings("site_title") }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-  <header>
-    <h1>{{ Settings("site_title") }}</h1>
-    <p>{{ Settings("site_description") }}</p>
-  </header>
-  <main>
-    {% block content %}{% endblock %}
-  </main>
-</body>
-</html>
-`,
-		"home.html": `{% extends "layout_main.html" %}
-{% block content %}
-<h2>首页</h2>
-<ul>
-  {% for article in Articles %}
-  <li><a href="{{ article.PermLink }}">{{ article.Post.Title }}</a></li>
-  {% else %}
-  <li>暂无文章</li>
-  {% endfor %}
-</ul>
-{% endblock %}
-`,
-		"post.html": `{% extends "layout_main.html" %}
-{% block content %}
-<article>
-  <h2>{{ Post.Post.Title }}</h2>
-  <div>{{ Post.HTML | safe }}</div>
-</article>
-{% endblock %}
-`,
-		"list.html": `{% extends "layout_main.html" %}
-{% block content %}
-<h2>{{ Title }}</h2>
-<ul>
-  {% for item in List %}
-  <li><a href="{{ item.PermLink }}">{{ item.Name }}</a></li>
-  {% else %}
-  <li>暂无内容</li>
-  {% endfor %}
-</ul>
-{% endblock %}
-`,
-		"detail.html": `{% extends "layout_main.html" %}
-{% block content %}
-<h2>{{ Entity.Name }}</h2>
-<ul>
-  {% for item in List %}
-  <li><a href="{{ item.PermLink }}">{{ item.Post.Title }}</a></li>
-  {% else %}
-  <li>暂无内容</li>
-  {% endfor %}
-</ul>
-{% endblock %}
-`,
-		"404.html": `{% extends "layout_main.html" %}
-{% block content %}
-<h2>404</h2>
-<p>页面不存在。</p>
-{% endblock %}
-`,
-		"error.html": `{% extends "layout_main.html" %}
-{% block content %}
-<h2>错误</h2>
-<p>{{ Msg or "页面暂时不可用。" }}</p>
-{% endblock %}
-`,
+func loadDefaultThemeFiles() (map[string]string, error) {
+	templateFS := webassets.TemplateFS()
+	themeDir := path.Join("themes", DefaultThemeCode)
+	entries, err := fs.ReadDir(templateFS, themeDir)
+	if err != nil {
+		return nil, WrapInternalErr("loadDefaultThemeFiles.ReadDir", err)
 	}
+
+	files := make(map[string]string, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".html") {
+			continue
+		}
+
+		content, err := fs.ReadFile(templateFS, path.Join(themeDir, entry.Name()))
+		if err != nil {
+			return nil, WrapInternalErr("loadDefaultThemeFiles.ReadFile", err)
+		}
+		files[entry.Name()] = string(content)
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("default theme %q has no html files", DefaultThemeCode)
+	}
+	return files, nil
 }
 
-func newDefaultThemeTemplate() (*Theme, error) {
-	files, err := json.Marshal(defaultThemeTemplateFiles())
+func newDefaultTheme() (*Theme, error) {
+	files, err := loadDefaultThemeFiles()
 	if err != nil {
-		return nil, WrapInternalErr("newDefaultThemeTemplate.Marshal", err)
+		return nil, err
+	}
+	filesJSON, err := json.Marshal(files)
+	if err != nil {
+		return nil, WrapInternalErr("newDefaultTheme.Marshal", err)
 	}
 
 	nowUnix := time.Now().Unix()
 	return &Theme{
-		Name:        "新建主题模板",
-		Code:        DefaultThemeTemplateCode,
-		Description: "用于创建新主题的最小模板",
+		Name:        DefaultThemeCode,
+		Code:        DefaultThemeCode,
+		Description: "内置默认主题",
 		Author:      "swaves",
-		Files:       string(files),
+		Files:       string(filesJSON),
 		CurrentFile: "home.html",
 		Status:      "draft",
+		IsCurrent:   1,
 		IsBuiltin:   1,
 		Version:     1,
 		CreatedAt:   nowUnix,
@@ -108,19 +69,104 @@ func newDefaultThemeTemplate() (*Theme, error) {
 	}, nil
 }
 
-func EnsureDefaultThemeTemplate(db *DB) error {
-	_, err := GetThemeByCode(db, DefaultThemeTemplateCode)
+func ensureDefaultThemeCurrent(db *DB, theme *Theme) error {
+	currentTheme, err := GetCurrentTheme(db)
 	if err == nil {
+		if currentTheme.ID == theme.ID && theme.IsCurrent != 1 {
+			theme.IsCurrent = 1
+		}
 		return nil
 	}
 	if !IsErrNotFound(err) {
 		return err
 	}
+	if err := SetThemeCurrent(db, theme.ID); err != nil {
+		return WrapInternalErr("EnsureDefaultTheme.SetCurrent", err)
+	}
+	theme.IsCurrent = 1
+	return nil
+}
 
-	theme, err := newDefaultThemeTemplate()
+func syncDefaultTheme(db *DB, theme *Theme) error {
+	defaultTheme, err := newDefaultTheme()
 	if err != nil {
 		return err
 	}
+
+	if theme.Name == defaultTheme.Name &&
+		theme.Description == defaultTheme.Description &&
+		theme.Author == defaultTheme.Author &&
+		theme.Files == defaultTheme.Files &&
+		theme.CurrentFile == defaultTheme.CurrentFile &&
+		theme.Status == defaultTheme.Status &&
+		theme.IsBuiltin == defaultTheme.IsBuiltin {
+		return nil
+	}
+
+	nowUnix := time.Now().Unix()
+	_, err = db.Exec(
+		`UPDATE `+string(TableThemes)+` SET name=?, description=?, author=?, files=?, current_file=?, status=?, is_builtin=?, updated_at=? WHERE id=? AND deleted_at IS NULL`,
+		defaultTheme.Name,
+		defaultTheme.Description,
+		defaultTheme.Author,
+		defaultTheme.Files,
+		defaultTheme.CurrentFile,
+		defaultTheme.Status,
+		defaultTheme.IsBuiltin,
+		nowUnix,
+		theme.ID,
+	)
+	if err != nil {
+		return WrapInternalErr("EnsureDefaultTheme.Sync", err)
+	}
+	return ensureDefaultThemeCurrent(db, theme)
+}
+
+func EnsureDefaultTheme(db *DB) error {
+	theme, err := GetThemeByCode(db, DefaultThemeCode)
+	if err == nil {
+		return syncDefaultTheme(db, theme)
+	}
+	if !IsErrNotFound(err) {
+		return err
+	}
+
+	theme, err = GetThemeByCode(db, legacyDefaultThemeCode)
+	if err == nil {
+		nowUnix := time.Now().Unix()
+		_, updateErr := db.Exec(
+			`UPDATE `+string(TableThemes)+` SET code=?, name=?, description=?, updated_at=? WHERE id=? AND deleted_at IS NULL`,
+			DefaultThemeCode,
+			DefaultThemeCode,
+			"内置默认主题",
+			nowUnix,
+			theme.ID,
+		)
+		if updateErr != nil {
+			return WrapInternalErr("EnsureDefaultTheme.RenameLegacy", updateErr)
+		}
+		theme.Code = DefaultThemeCode
+		theme.Name = DefaultThemeCode
+		theme.Description = "内置默认主题"
+		return syncDefaultTheme(db, theme)
+	}
+	if !IsErrNotFound(err) {
+		return err
+	}
+
+	theme, err = newDefaultTheme()
+	if err != nil {
+		return err
+	}
+	_, err = GetCurrentTheme(db)
+	if err == nil {
+		theme.IsCurrent = 0
+	} else if !IsErrNotFound(err) {
+		return err
+	}
 	_, err = CreateTheme(db, theme)
-	return err
+	if err != nil {
+		return err
+	}
+	return ensureDefaultThemeCurrent(db, theme)
 }

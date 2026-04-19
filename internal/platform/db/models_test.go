@@ -1123,12 +1123,12 @@ func TestBootstrapDefaultSettingsFromEmptyDB(t *testing.T) {
 		t.Fatalf("CheckPassword should pass after bootstrap: %v", err)
 	}
 
-	templateTheme, err := GetThemeByCode(db, DefaultThemeTemplateCode)
+	defaultTheme, err := GetThemeByCode(db, DefaultThemeCode)
 	if err != nil {
-		t.Fatalf("GetThemeByCode(default template) failed: %v", err)
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
 	}
-	if templateTheme.IsBuiltin != 1 || templateTheme.CurrentFile != "home.html" {
-		t.Fatalf("unexpected default template theme: %+v", templateTheme)
+	if defaultTheme.IsBuiltin != 1 || defaultTheme.IsCurrent != 1 || defaultTheme.CurrentFile != "home.html" {
+		t.Fatalf("unexpected default theme: %+v", defaultTheme)
 	}
 
 	if err := BootstrapDefaultSettings(db, nil); err == nil {
@@ -1136,19 +1136,134 @@ func TestBootstrapDefaultSettingsFromEmptyDB(t *testing.T) {
 	}
 }
 
-func TestEnsureDefaultSettingsCreatesThemeTemplate(t *testing.T) {
+func TestEnsureDefaultSettingsCreatesDefaultTheme(t *testing.T) {
 	db := openEmptyTestDB(t)
 
 	if err := EnsureDefaultSettings(db); err != nil {
 		t.Fatalf("EnsureDefaultSettings failed: %v", err)
 	}
 
-	templateTheme, err := GetThemeByCode(db, DefaultThemeTemplateCode)
+	defaultTheme, err := GetThemeByCode(db, DefaultThemeCode)
 	if err != nil {
-		t.Fatalf("GetThemeByCode(default template) failed: %v", err)
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
 	}
-	if templateTheme.Name != "新建主题模板" || templateTheme.IsBuiltin != 1 {
-		t.Fatalf("unexpected template theme: %+v", templateTheme)
+	if defaultTheme.Name != DefaultThemeCode || defaultTheme.IsBuiltin != 1 || defaultTheme.IsCurrent != 1 {
+		t.Fatalf("unexpected default theme: %+v", defaultTheme)
+	}
+	files := map[string]string{}
+	if err := json.Unmarshal([]byte(defaultTheme.Files), &files); err != nil {
+		t.Fatalf("unmarshal template files failed: %v", err)
+	}
+	if _, ok := files["inc_nav.html"]; !ok {
+		t.Fatalf("expected builtin theme files to include inc_nav.html")
+	}
+	if !strings.Contains(files["home.html"], `{% include "inc_nav.html" %}`) {
+		t.Fatalf("expected builtin home template to match tuft theme, got: %s", files["home.html"])
+	}
+	if !strings.Contains(files["layout_main.html"], `<footer>`) {
+		t.Fatalf("expected builtin layout to keep site footer, got: %s", files["layout_main.html"])
+	}
+}
+
+func TestEnsureDefaultThemeUpdatesLegacyBuiltinTheme(t *testing.T) {
+	db := openEmptyTestDB(t)
+
+	defaultTheme, err := GetThemeByCode(db, DefaultThemeCode)
+	if err != nil {
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
+	}
+	legacyFiles := mustMarshalThemeFiles(t, map[string]string{
+		"home.html":        `{% extends "site/layout/layout.html" %}`,
+		"layout_main.html": "<html></html>",
+	})
+	if _, err := db.Exec(
+		`UPDATE `+string(TableThemes)+` SET name=?, description=?, author=?, files=?, current_file=?, status=?, is_builtin=?, updated_at=? WHERE id=?`,
+		"旧模板",
+		"legacy",
+		"legacy",
+		legacyFiles,
+		"home.html",
+		"published",
+		1,
+		time.Now().Unix(),
+		defaultTheme.ID,
+	); err != nil {
+		t.Fatalf("update legacy template failed: %v", err)
+	}
+
+	if err := EnsureDefaultTheme(db); err != nil {
+		t.Fatalf("EnsureDefaultTheme failed: %v", err)
+	}
+
+	defaultTheme, err = GetThemeByCode(db, DefaultThemeCode)
+	if err != nil {
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
+	}
+	files := map[string]string{}
+	if err := json.Unmarshal([]byte(defaultTheme.Files), &files); err != nil {
+		t.Fatalf("unmarshal template files failed: %v", err)
+	}
+	if strings.Contains(files["home.html"], `site/layout/layout.html`) {
+		t.Fatalf("legacy template path should be replaced: %s", files["home.html"])
+	}
+	if !strings.Contains(files["home.html"], `{% extends "layout_main.html" %}`) {
+		t.Fatalf("expected flattened template extends path, got: %s", files["home.html"])
+	}
+	if strings.Contains(files["home.html"], `article.Post.Title`) {
+		t.Fatalf("home template should not expose embedded post wrapper, got: %s", files["home.html"])
+	}
+	if strings.Contains(files["post.html"], `Post.DisplayPost`) {
+		t.Fatalf("post template should not expose wrapper semantics, got: %s", files["post.html"])
+	}
+	if !strings.Contains(files["post.html"], `{{ Post.Title }}`) {
+		t.Fatalf("expected post template to read title from Post directly, got: %s", files["post.html"])
+	}
+}
+
+func TestEnsureDefaultThemeDoesNotOverrideExistingCurrentTheme(t *testing.T) {
+	db := openEmptyTestDB(t)
+
+	customTheme := &Theme{
+		Name:        "Current Theme",
+		Code:        uniqueValue("theme"),
+		Description: "custom current theme",
+		Author:      "tester",
+		Files:       mustMarshalThemeFiles(t, map[string]string{"home.html": "<h1>custom</h1>"}),
+		CurrentFile: "home.html",
+		Status:      "draft",
+		Version:     1,
+		CreatedAt:   time.Now().Unix(),
+		UpdatedAt:   time.Now().Unix(),
+	}
+	if _, err := CreateTheme(db, customTheme); err != nil {
+		t.Fatalf("CreateTheme(customTheme) failed: %v", err)
+	}
+	if err := SetThemeCurrent(db, customTheme.ID); err != nil {
+		t.Fatalf("SetThemeCurrent(customTheme) failed: %v", err)
+	}
+
+	if _, err := db.Exec(`DELETE FROM `+string(TableThemes)+` WHERE code=?`, DefaultThemeCode); err != nil {
+		t.Fatalf("delete default theme failed: %v", err)
+	}
+
+	if err := EnsureDefaultTheme(db); err != nil {
+		t.Fatalf("EnsureDefaultTheme failed: %v", err)
+	}
+
+	currentTheme, err := GetCurrentTheme(db)
+	if err != nil {
+		t.Fatalf("GetCurrentTheme failed: %v", err)
+	}
+	if currentTheme.ID != customTheme.ID {
+		t.Fatalf("current theme = %+v, want custom theme id=%d", currentTheme, customTheme.ID)
+	}
+
+	defaultTheme, err := GetThemeByCode(db, DefaultThemeCode)
+	if err != nil {
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
+	}
+	if defaultTheme.IsCurrent != 0 {
+		t.Fatalf("default theme should not override current theme: %+v", defaultTheme)
 	}
 }
 
@@ -1236,6 +1351,44 @@ func TestThemeLifecycleAndCurrentState(t *testing.T) {
 	}
 	if currentTheme.ID != themeB.ID || currentTheme.IsCurrent != 1 {
 		t.Fatalf("unexpected current theme: %+v", currentTheme)
+	}
+}
+
+func TestDeleteThemeRejectsCurrentTheme(t *testing.T) {
+	db := openEmptyTestDB(t)
+
+	if err := EnsureDefaultSettings(db); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+
+	currentTheme, err := GetCurrentTheme(db)
+	if err != nil {
+		t.Fatalf("GetCurrentTheme failed: %v", err)
+	}
+	if err := DeleteTheme(db, currentTheme.ID); err == nil || err.Error() != "当前主题不能删除" {
+		t.Fatalf("DeleteTheme(current) error = %v, want 当前主题不能删除", err)
+	}
+
+	customTheme := &Theme{
+		Name:        "delete-me",
+		Code:        uniqueValue("theme"),
+		Description: "delete me",
+		Author:      "tester",
+		Files:       mustMarshalThemeFiles(t, map[string]string{"home.html": "<h1>delete</h1>"}),
+		CurrentFile: "home.html",
+		Status:      "draft",
+		Version:     1,
+		CreatedAt:   time.Now().Unix(),
+		UpdatedAt:   time.Now().Unix(),
+	}
+	if _, err := CreateTheme(db, customTheme); err != nil {
+		t.Fatalf("CreateTheme(customTheme) failed: %v", err)
+	}
+	if err := DeleteTheme(db, customTheme.ID); err != nil {
+		t.Fatalf("DeleteTheme(customTheme) failed: %v", err)
+	}
+	if _, err := GetThemeByID(db, customTheme.ID); !IsErrNotFound(err) {
+		t.Fatalf("expected deleted theme to be not found, got %v", err)
 	}
 }
 

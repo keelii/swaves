@@ -17,6 +17,7 @@ import (
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/platform/view"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -219,6 +220,166 @@ func TestDashLoginRateLimitInProduction(t *testing.T) {
 	}
 
 	assertResponseBodyContains(t, resp, "今日登录访问次数已达上限")
+}
+
+func TestNewAppLoadsCurrentThemeFromCache(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "theme-cache.sqlite")
+	prepareInstalledAppDB(t, dbPath)
+
+	model := db.Open(db.Options{DSN: dbPath})
+	files, err := json.Marshal(map[string]string{
+		"layout_main.html": "<!doctype html><html><body>{% block content %}{% endblock %}</body></html>",
+		"home.html":        `{% extends "layout_main.html" %}{% block content %}<div>theme-cache-home</div>{% endblock %}`,
+	})
+	if err != nil {
+		t.Fatalf("marshal theme files failed: %v", err)
+	}
+	if _, err := db.CreateTheme(model, &db.Theme{
+		Name:        "Runtime Theme",
+		Code:        "runtime-theme",
+		Author:      "tester",
+		Files:       string(files),
+		CurrentFile: "home.html",
+		Status:      "published",
+		Version:     1,
+	}); err != nil {
+		_ = model.Close()
+		t.Fatalf("CreateTheme failed: %v", err)
+	}
+	runtimeTheme, err := db.GetThemeByCode(model, "runtime-theme")
+	if err != nil {
+		_ = model.Close()
+		t.Fatalf("GetThemeByCode(runtime-theme) failed: %v", err)
+	}
+	if err := db.SetThemeCurrent(model, runtimeTheme.ID); err != nil {
+		_ = model.Close()
+		t.Fatalf("SetThemeCurrent(runtime-theme) failed: %v", err)
+	}
+	if err := model.Close(); err != nil {
+		t.Fatalf("close prepared model failed: %v", err)
+	}
+
+	swv := NewApp(types.AppConfig{
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
+	})
+	t.Cleanup(func() {
+		swv.Shutdown()
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	resp, err := swv.App.Test(req)
+	if err != nil {
+		t.Fatalf("home request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("home status = %d, want %d", resp.StatusCode, fiber.StatusOK)
+	}
+	assertResponseBodyContains(t, resp, "theme-cache-home")
+
+	cachedHome, err := os.ReadFile(filepath.Join(filepath.Dir(dbPath), ".cache", "themes", "runtime-theme", "home.html"))
+	if err != nil {
+		t.Fatalf("read cached home template failed: %v", err)
+	}
+	if !strings.Contains(string(cachedHome), "theme-cache-home") {
+		t.Fatalf("unexpected cached home template: %q", string(cachedHome))
+	}
+}
+
+func TestNewSiteRuntimeViewEngineUsesCurrentThemeFromDBInReloadMode(t *testing.T) {
+	oldTemplateReload := config.TemplateReload
+	config.TemplateReload = true
+	t.Cleanup(func() {
+		config.TemplateReload = oldTemplateReload
+	})
+
+	projectRoot := filepath.Join(t.TempDir(), "repo")
+	themeRoot := filepath.Join(projectRoot, "web", "templates", "themes", "runtime-theme")
+	includeRoot := filepath.Join(projectRoot, "web", "templates", "include")
+	nestedDir := filepath.Join(projectRoot, "web", "ceditor")
+	if err := os.MkdirAll(themeRoot, 0o755); err != nil {
+		t.Fatalf("create theme root failed: %v", err)
+	}
+	if err := os.MkdirAll(includeRoot, 0o755); err != nil {
+		t.Fatalf("create include root failed: %v", err)
+	}
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatalf("create nested dir failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeRoot, "layout_main.html"), []byte(`<!doctype html><html><body>{% block content %}{% endblock %}</body></html>`), 0o644); err != nil {
+		t.Fatalf("write layout_main.html failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeRoot, "home.html"), []byte(`{% extends "layout_main.html" %}{% block content %}<div>local-theme-home</div>{% endblock %}`), 0o644); err != nil {
+		t.Fatalf("write home.html failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(includeRoot, "favicon.html"), []byte("favicon"), 0o644); err != nil {
+		t.Fatalf("write favicon include failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(includeRoot, "math.html"), []byte("math"), 0o644); err != nil {
+		t.Fatalf("write math include failed: %v", err)
+	}
+
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+	if err := os.Chdir(nestedDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	dbPath := filepath.Join(t.TempDir(), "theme-local.sqlite")
+	prepareInstalledAppDB(t, dbPath)
+
+	model := db.Open(db.Options{DSN: dbPath})
+	t.Cleanup(func() {
+		_ = model.Close()
+	})
+	files, err := json.Marshal(map[string]string{
+		"layout_main.html": "<!doctype html><html><body>{% block content %}{% endblock %}</body></html>",
+		"home.html":        `{% extends "layout_main.html" %}{% block content %}<div>db-theme-home</div>{% endblock %}`,
+	})
+	if err != nil {
+		t.Fatalf("marshal theme files failed: %v", err)
+	}
+	if _, err := db.CreateTheme(model, &db.Theme{
+		Name:        "Runtime Theme",
+		Code:        "runtime-theme",
+		Author:      "tester",
+		Files:       string(files),
+		CurrentFile: "home.html",
+		Status:      "published",
+		Version:     1,
+	}); err != nil {
+		t.Fatalf("CreateTheme failed: %v", err)
+	}
+	theme, err := db.GetThemeByCode(model, "runtime-theme")
+	if err != nil {
+		t.Fatalf("GetThemeByCode(runtime-theme) failed: %v", err)
+	}
+	if err := db.SetThemeCurrent(model, theme.ID); err != nil {
+		t.Fatalf("SetThemeCurrent(runtime-theme) failed: %v", err)
+	}
+
+	views, _ := newSiteRuntimeViewEngine(model, dbPath)
+	viewEngine, ok := views.(*view.FiberView)
+	if !ok {
+		t.Fatal("expected FiberView")
+	}
+
+	var out bytes.Buffer
+	if err := viewEngine.Render(&out, "home.html", fiber.Map{}); err != nil {
+		t.Fatalf("render home failed: %v", err)
+	}
+	if !strings.Contains(out.String(), "db-theme-home") {
+		t.Fatalf("expected db theme content, got: %s", out.String())
+	}
+	if strings.Contains(out.String(), "local-theme-home") {
+		t.Fatalf("expected reload mode to ignore local theme source, got: %s", out.String())
+	}
 }
 
 func TestAppTrustsLoopbackProxyHeaderForClientIP(t *testing.T) {

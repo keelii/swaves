@@ -2,10 +2,6 @@
   "name": "@swaves/seditor",
   "private": true,
   "type": "module",
-  "scripts": {
-    "build": "esbuild src/index.js --bundle --format=iife --global-name=SEditor --outfile=../static/seditor/dist/seditor.js --target=es2018 && npm run build:min",
-    "build:min": "esbuild src/index.js --bundle --format=iife --global-name=SEditor --outfile=../static/seditor/dist/seditor.min.js --minify --target=es2018"
-  },
   "dependencies": {
     "prosemirror-commands": "^1.0.0",
     "prosemirror-history": "^1.0.0",

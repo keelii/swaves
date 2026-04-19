@@ -84,8 +84,8 @@ func InitDatabase(db *DB) error {
 		}
 	}
 
-	if err := EnsureDefaultThemeTemplate(db); err != nil {
-		return WrapInternalErr("InitDatabase.EnsureDefaultThemeTemplate", err)
+	if err := EnsureDefaultTheme(db); err != nil {
+		return WrapInternalErr("InitDatabase.EnsureDefaultTheme", err)
 	}
 
 	if config.ShouldEnsureDefaultSettings() {
@@ -3786,6 +3786,21 @@ func UpdateTheme(db *DB, t *Theme, expectedVersion int64) error {
 	return nil
 }
 
+func DeleteTheme(db *DB, id int64) error {
+	if id <= 0 {
+		return errors.New("id is invalid")
+	}
+
+	theme, err := GetThemeByID(db, id)
+	if err != nil {
+		return err
+	}
+	if theme.IsCurrent == 1 {
+		return errors.New("当前主题不能删除")
+	}
+	return Delete(db, specThemes, id)
+}
+
 func SetThemeCurrent(db *DB, id int64) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -4102,7 +4117,7 @@ func BootstrapDefaultSettings(db *DB, overrides map[string]string) error {
 		OnDatabaseChanged(TableSettings, TableOpInsert)
 	}
 
-	return EnsureDefaultThemeTemplate(db)
+	return EnsureDefaultTheme(db)
 }
 
 func DeleteSetting(db *DB, id int64) error {
@@ -4149,7 +4164,7 @@ func EnsureDefaultSettings(db *DB) error {
 		}
 	}
 
-	return EnsureDefaultThemeTemplate(db)
+	return EnsureDefaultTheme(db)
 }
 
 func syncDefaultSettingMeta(db *DB, existing *Setting, defaults Setting) error {

@@ -17,6 +17,8 @@ import (
 )
 
 var checkLatestRelease = updater.CheckLatestRelease
+var readActiveRuntimeInfo = updater.ReadActiveRuntimeInfo
+var restartActiveRuntime = updater.RestartActiveRuntime
 
 const defaultRefreshDelaySeconds = 3
 
@@ -98,7 +100,7 @@ func systemUpdateSupportState(autoUpdateEnabled bool) systemUpdateViewState {
 		return state
 	}
 
-	runtimeInfo, err := updater.ReadActiveRuntimeInfo()
+	runtimeInfo, err := readActiveRuntimeInfo()
 	if err != nil {
 		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新、手动更新和系统重启都不可用。"
 		return state
@@ -190,7 +192,7 @@ func (h *Handler) PostSettingsSystemRestartHandler(c fiber.Ctx) error {
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持系统重启")
 	}
 
-	pid, err := updater.RestartActiveRuntime()
+	pid, err := restartActiveRuntime()
 	if err != nil {
 		logger.Error("[dash] system restart failed: ip=%s err=%v", c.IP(), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "系统重启失败："+err.Error())
@@ -231,7 +233,7 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 		logger.Warn("[dash] manual update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持 daemon-mode 自动更新")
 	}
-	if _, err := updater.ReadActiveRuntimeInfo(); err != nil {
+	if _, err := readActiveRuntimeInfo(); err != nil {
 		logger.Warn("[dash] manual update blocked: ip=%s err=%v", c.IP(), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "当前 daemon-mode master 不可用，无法执行手动更新："+err.Error())
 	}

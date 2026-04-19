@@ -64,8 +64,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run go test
-        run: go test ./...
+      - name: Run make test
+        run: make test
 
   build:
     name: Build ${{ matrix.os }}-${{ matrix.arch }}
@@ -77,15 +77,9 @@ jobs:
         include:
           - os: linux
             arch: amd64
-            ext: ''
             runner: ubuntu-latest
-          # - os: windows
-          #   arch: amd64
-          #   ext: '.exe'
-          #   runner: windows-latest
           # - os: darwin
           #   arch: arm64
-          #   ext: ''
           #   runner: macos-latest
 
     steps:
@@ -110,50 +104,26 @@ jobs:
             version="manual-${GITHUB_SHA::7}"
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "asset_basename=swaves_${version}_${{ matrix.os }}_${{ matrix.arch }}" >> "$GITHUB_OUTPUT"
 
-      - name: Build binary
+      - name: Build release package via Makefile
         shell: bash
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: 1
         run: |
-          mkdir -p dist
-          output="dist/${{ steps.meta.outputs.asset_basename }}${{ matrix.ext }}"
-          build_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          go build -trimpath \
-            -buildvcs=false \
-            -ldflags "-s -w -X swaves/internal/platform/buildinfo.Version=${{ steps.meta.outputs.version }} -X swaves/internal/platform/buildinfo.Commit=${GITHUB_SHA::7} -X swaves/internal/platform/buildinfo.BuildTime=${build_time}" \
-            -o "$output" ./cmd/swaves
-
-      - name: Package and checksum (Unix)
-        if: matrix.os != 'windows'
-        shell: bash
-        run: |
-          cd dist
-          archive="${{ steps.meta.outputs.asset_basename }}.tar.gz"
-          bin="${{ steps.meta.outputs.asset_basename }}${{ matrix.ext }}"
-          tar -czf "$archive" "$bin"
-          shasum -a 256 "$archive" > "${archive}.sha256"
-
-      - name: Package and checksum (Windows)
-        if: matrix.os == 'windows'
-        shell: pwsh
-        run: |
-          Set-Location dist
-          $archive = "${{ steps.meta.outputs.asset_basename }}.zip"
-          $bin = "${{ steps.meta.outputs.asset_basename }}${{ matrix.ext }}"
-          Compress-Archive -Path $bin -DestinationPath $archive -Force
-          (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() + "  " + $archive | Out-File -FilePath ("$archive.sha256") -Encoding ascii
+          make release \
+            VERSION="${{ steps.meta.outputs.version }}" \
+            COMMIT="${GITHUB_SHA::7}" \
+            BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.meta.outputs.asset_basename }}
+          name: swaves_${{ steps.meta.outputs.version }}_${{ matrix.os }}_${{ matrix.arch }}
           path: |
-            dist/*.tar.gz
-            dist/*.sha256
+            swaves_*.tar.gz
+            swaves_*.sha256
           if-no-files-found: error
 
   release:

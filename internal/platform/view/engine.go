@@ -27,11 +27,14 @@ import (
 )
 
 type FiberView struct {
-	env           *minijinja.Environment
-	templateFS    fs.FS
-	templateRoot  string
-	clearOnRender bool
-	mu            sync.Mutex
+	env                *minijinja.Environment
+	templateFS         fs.FS
+	templateRoot       string
+	sharedTemplateFS   fs.FS
+	sharedTemplateRoot string
+	templateNamesFunc  func() ([]string, error)
+	clearOnRender      bool
+	mu                 sync.Mutex
 }
 
 var (
@@ -80,6 +83,7 @@ var lucideSVGByName = map[string]string{
 	"bell":                      `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>`,
 	"heading-1":                 `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heading1-icon lucide-heading-1"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="m17 12 3-2v8"/></svg>`,
 	"bold":                      `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bold-icon lucide-bold"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/></svg>`,
+	"brush":                     `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brush-icon lucide-brush"><path d="m11 10 3 3"/><path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z"/><path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031"/></svg>`,
 	"italic":                    `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-italic-icon lucide-italic"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>`,
 	"underline":                 `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-underline-icon lucide-underline"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" x2="20" y1="20" y2="20"/></svg>`,
 	"list-checks":               `<svg xmlns="http://www.w3.org/2000/svg" width="%[1]s" height="%[1]s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-checks-icon lucide-list-checks"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/></svg>`,
@@ -109,16 +113,20 @@ var lucideSVGByName = map[string]string{
 }
 
 func NewViewEngine(dir string, reload bool) (fiber.Views, func(app *fiber.App)) {
-	return newViewEngine(dir, nil, reload)
+	return newViewEngine(dir, nil, "", nil, reload)
+}
+
+func NewViewEngineWithShared(dir string, sharedDir string, reload bool) (fiber.Views, func(app *fiber.App)) {
+	return newViewEngine(dir, nil, sharedDir, nil, reload)
 }
 
 func NewViewEngineFS(templateFS fs.FS, reload bool) (fiber.Views, func(app *fiber.App)) {
-	return newViewEngine("", templateFS, reload)
+	return newViewEngine("", templateFS, "", nil, reload)
 }
 
-func newViewEngine(dir string, templateFS fs.FS, reload bool) (fiber.Views, func(app *fiber.App)) {
+func newViewEngine(dir string, templateFS fs.FS, sharedDir string, sharedFS fs.FS, reload bool) (fiber.Views, func(app *fiber.App)) {
 	urlForStore := share.NewURLForStore()
-	view := newMiniJinjaViewWithFS(dir, templateFS, reload)
+	view := newMiniJinjaViewWithFS(dir, templateFS, sharedDir, sharedFS, reload)
 	registerViewFunc(view.env, urlForStore.URLFor)
 	initURLResolver := func(app *fiber.App) {
 		urlForStore.SetResolver(newURLForResolver(app))
@@ -127,22 +135,34 @@ func newViewEngine(dir string, templateFS fs.FS, reload bool) (fiber.Views, func
 }
 
 func newMiniJinjaView(templateRoot string, clearOnRender bool) *FiberView {
-	return newMiniJinjaViewWithFS(templateRoot, nil, clearOnRender)
+	return newMiniJinjaViewWithFS(templateRoot, nil, "", nil, clearOnRender)
 }
 
-func newMiniJinjaViewWithFS(templateRoot string, templateFS fs.FS, clearOnRender bool) *FiberView {
+func newMiniJinjaViewWithLoader(loader minijinja.LoaderFunc, templateNamesFunc func() ([]string, error), clearOnRender bool) *FiberView {
 	env := minijinja.NewEnvironment()
 	env.SetDebug(true)
 	env.SetUndefinedBehavior(minijinja.UndefinedLenient)
 	env.SetDebug(clearOnRender)
-	env.SetLoader(newMiniJinjaTemplateLoader(templateRoot, templateFS))
+	env.SetLoader(loader)
 	env.SetPathJoinCallback(resolveTemplateImportPath)
 	return &FiberView{
-		env:           env,
-		templateFS:    templateFS,
-		templateRoot:  templateRoot,
-		clearOnRender: clearOnRender,
+		env:               env,
+		templateNamesFunc: templateNamesFunc,
+		clearOnRender:     clearOnRender,
 	}
+}
+
+func newMiniJinjaViewWithFS(templateRoot string, templateFS fs.FS, sharedTemplateRoot string, sharedTemplateFS fs.FS, clearOnRender bool) *FiberView {
+	view := newMiniJinjaViewWithLoader(
+		newMiniJinjaTemplateLoader(templateRoot, templateFS, sharedTemplateRoot, sharedTemplateFS),
+		nil,
+		clearOnRender,
+	)
+	view.templateFS = templateFS
+	view.templateRoot = templateRoot
+	view.sharedTemplateFS = sharedTemplateFS
+	view.sharedTemplateRoot = sharedTemplateRoot
+	return view
 }
 
 func (v *FiberView) Load() error {
@@ -152,7 +172,7 @@ func (v *FiberView) Load() error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	templateNames, err := collectTemplateNames(v.templateRoot, v.templateFS)
+	templateNames, err := v.loadTemplateNames()
 	if err != nil {
 		return err
 	}
@@ -196,7 +216,14 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 	return tmpl.RenderToWrite(context, out)
 }
 
-func newMiniJinjaTemplateLoader(templateRoot string, templateFS fs.FS) minijinja.LoaderFunc {
+func (v *FiberView) loadTemplateNames() ([]string, error) {
+	if v.templateNamesFunc != nil {
+		return v.templateNamesFunc()
+	}
+	return collectTemplateNames(v.templateRoot, v.templateFS, v.sharedTemplateRoot, v.sharedTemplateFS)
+}
+
+func newMiniJinjaTemplateLoader(templateRoot string, templateFS fs.FS, sharedTemplateRoot string, sharedTemplateFS fs.FS) minijinja.LoaderFunc {
 	return func(name string) (string, error) {
 		normalizedName, err := normalizeTemplateName(name)
 		if err != nil {
@@ -205,33 +232,61 @@ func newMiniJinjaTemplateLoader(templateRoot string, templateFS fs.FS) minijinja
 		if templateFS != nil {
 			content, err := fs.ReadFile(templateFS, normalizedName)
 			if err != nil {
-				if errors.Is(err, fs.ErrNotExist) {
-					return "", minijinja.NewError(minijinja.ErrTemplateNotFound, normalizedName)
+				if !errors.Is(err, fs.ErrNotExist) {
+					return "", err
 				}
+			} else {
+				return string(content), nil
+			}
+			if sharedTemplateFS != nil {
+				content, err = fs.ReadFile(sharedTemplateFS, normalizedName)
+				if err == nil {
+					return string(content), nil
+				}
+				if !errors.Is(err, fs.ErrNotExist) {
+					return "", err
+				}
+			}
+			return "", minijinja.NewError(minijinja.ErrTemplateNotFound, normalizedName)
+		}
+
+		content, ok, err := readTemplateFromDir(templateRoot, normalizedName)
+		if err != nil {
+			return "", err
+		}
+		if !ok && sharedTemplateRoot != "" {
+			content, ok, err = readTemplateFromDir(sharedTemplateRoot, normalizedName)
+			if err != nil {
 				return "", err
 			}
-			return string(content), nil
 		}
-
-		rootPath, err := filepath.Abs(templateRoot)
-		if err != nil {
-			return "", err
+		if !ok {
+			return "", minijinja.NewError(minijinja.ErrTemplateNotFound, normalizedName)
 		}
-		templatePath := filepath.Join(rootPath, filepath.FromSlash(normalizedName))
-		cleanedPath := filepath.Clean(templatePath)
-		if !strings.HasPrefix(cleanedPath, rootPath+string(filepath.Separator)) && cleanedPath != rootPath {
-			return "", fmt.Errorf("template path escapes root: %s", name)
-		}
-
-		content, err := os.ReadFile(cleanedPath)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return "", minijinja.NewError(minijinja.ErrTemplateNotFound, normalizedName)
-			}
-			return "", err
-		}
-		return string(content), nil
+		return content, nil
 	}
+}
+
+func readTemplateFromDir(root string, normalizedName string) (string, bool, error) {
+	rootPath, err := filepath.Abs(root)
+	if err != nil {
+		return "", false, err
+	}
+
+	templatePath := filepath.Join(rootPath, filepath.FromSlash(normalizedName))
+	cleanedPath := filepath.Clean(templatePath)
+	if !strings.HasPrefix(cleanedPath, rootPath+string(filepath.Separator)) && cleanedPath != rootPath {
+		return "", false, fmt.Errorf("template path escapes root: %s", normalizedName)
+	}
+
+	content, err := os.ReadFile(cleanedPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return string(content), true, nil
 }
 
 func resolveTemplateImportPath(name string, parent string) string {
@@ -264,9 +319,9 @@ func resolveTemplateImportPath(name string, parent string) string {
 	return path.Clean(path.Join(parentDir, cleaned))
 }
 
-func collectTemplateNames(templateRoot string, templateFS fs.FS) ([]string, error) {
+func collectTemplateNames(templateRoot string, templateFS fs.FS, sharedTemplateRoot string, sharedTemplateFS fs.FS) ([]string, error) {
 	if templateFS != nil {
-		var names []string
+		nameSet := map[string]struct{}{}
 		err := fs.WalkDir(templateFS, ".", func(filePath string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
@@ -277,16 +332,55 @@ func collectTemplateNames(templateRoot string, templateFS fs.FS) ([]string, erro
 			if !strings.HasSuffix(entry.Name(), ".html") {
 				return nil
 			}
-			names = append(names, filepath.ToSlash(filePath))
+			nameSet[filepath.ToSlash(filePath)] = struct{}{}
 			return nil
 		})
 		if err != nil {
 			return nil, err
 		}
-		sort.Strings(names)
-		return names, nil
+		if sharedTemplateFS != nil {
+			err = fs.WalkDir(sharedTemplateFS, ".", func(filePath string, entry fs.DirEntry, walkErr error) error {
+				if walkErr != nil {
+					return walkErr
+				}
+				if entry.IsDir() {
+					return nil
+				}
+				if !strings.HasSuffix(entry.Name(), ".html") {
+					return nil
+				}
+				nameSet[filepath.ToSlash(filePath)] = struct{}{}
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+		return sortedTemplateNames(nameSet), nil
 	}
 
+	rootNames, err := collectTemplateNamesFromDir(templateRoot)
+	if err != nil {
+		return nil, err
+	}
+	if sharedTemplateRoot == "" {
+		return rootNames, nil
+	}
+	sharedNames, err := collectTemplateNamesFromDir(sharedTemplateRoot)
+	if err != nil {
+		return nil, err
+	}
+	nameSet := map[string]struct{}{}
+	for _, name := range rootNames {
+		nameSet[name] = struct{}{}
+	}
+	for _, name := range sharedNames {
+		nameSet[name] = struct{}{}
+	}
+	return sortedTemplateNames(nameSet), nil
+}
+
+func collectTemplateNamesFromDir(templateRoot string) ([]string, error) {
 	rootPath, err := filepath.Abs(templateRoot)
 	if err != nil {
 		return nil, err
@@ -295,6 +389,9 @@ func collectTemplateNames(templateRoot string, templateFS fs.FS) ([]string, erro
 	var names []string
 	err = filepath.WalkDir(rootPath, func(filePath string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			if errors.Is(walkErr, os.ErrNotExist) && filePath == rootPath {
+				return nil
+			}
 			return walkErr
 		}
 		if entry.IsDir() {
@@ -315,6 +412,15 @@ func collectTemplateNames(templateRoot string, templateFS fs.FS) ([]string, erro
 	}
 	sort.Strings(names)
 	return names, nil
+}
+
+func sortedTemplateNames(nameSet map[string]struct{}) []string {
+	names := make([]string, 0, len(nameSet))
+	for name := range nameSet {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func normalizeTemplateName(name string) (string, error) {

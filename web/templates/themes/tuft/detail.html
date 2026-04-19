@@ -1,6 +1,6 @@
 {% extends "layout_main.html" %}
 {% block content %}
-{% from "macro_content.html" import category_item, tag_list %}
+{% from "macro_content.html" import CategoryItem, TagList %}
 
 <header>
   <h1>{{ Entity.Name }}</h1>
@@ -15,16 +15,16 @@
 {% endif %}
 
 <ul>
-  {% for item in List %}
+  {% for Item in List %}
   <li>
-    <a href="{{ item.PermLink }}">{{ item.Title }}</a>
+    <a href="{{ Item.PermLink }}">{{ Item.Title }}</a>
     <span class="relation">
-      {{ tag_list(item.Tags, true) }}
-      {% if (not IsCategory) and item.Category %}
-        {{ category_item(item.Category, true) }}
+      {{ TagList(Item.Tags, true) }}
+      {% if (not IsCategory) and Item.Category %}
+        {{ CategoryItem(Item.Category, true) }}
       {% endif %}
     </span>
-    <span class="published">{{ item.CreatedAt | relativeTime }}</span>
+    <span class="published">{{ Item.CreatedAt | relativeTime }}</span>
   </li>
   {% else %}
   <li>暂无文章</li>
