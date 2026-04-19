@@ -1955,6 +1955,7 @@ a.ui-icon-btn[disabled] {
 }
 
 .data-table .cell-actions {
+  width: 82px;
   display: inline-flex;
   align-items: center;
   gap: var(--app-gap-3);

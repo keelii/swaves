@@ -11,10 +11,7 @@ import (
 	webassets "swaves/web"
 )
 
-const (
-	DefaultThemeCode       = "tuft"
-	legacyDefaultThemeCode = "default-theme-template"
-)
+const DefaultThemeCode = "tuft"
 
 func loadDefaultThemeFiles() (map[string]string, error) {
 	templateFS := webassets.TemplateFS()
@@ -125,29 +122,6 @@ func syncDefaultTheme(db *DB, theme *Theme) error {
 func EnsureDefaultTheme(db *DB) error {
 	theme, err := GetThemeByCode(db, DefaultThemeCode)
 	if err == nil {
-		return syncDefaultTheme(db, theme)
-	}
-	if !IsErrNotFound(err) {
-		return err
-	}
-
-	theme, err = GetThemeByCode(db, legacyDefaultThemeCode)
-	if err == nil {
-		nowUnix := time.Now().Unix()
-		_, updateErr := db.Exec(
-			`UPDATE `+string(TableThemes)+` SET code=?, name=?, description=?, updated_at=? WHERE id=? AND deleted_at IS NULL`,
-			DefaultThemeCode,
-			DefaultThemeCode,
-			"内置默认主题",
-			nowUnix,
-			theme.ID,
-		)
-		if updateErr != nil {
-			return WrapInternalErr("EnsureDefaultTheme.RenameLegacy", updateErr)
-		}
-		theme.Code = DefaultThemeCode
-		theme.Name = DefaultThemeCode
-		theme.Description = "内置默认主题"
 		return syncDefaultTheme(db, theme)
 	}
 	if !IsErrNotFound(err) {

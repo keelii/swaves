@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"swaves/internal/platform/themefiles"
 )
 
 func TestLoadLocalThemeFiles(t *testing.T) {
@@ -40,15 +42,15 @@ func TestResolveThemeCurrentFile(t *testing.T) {
 		"post.html":        "post",
 	}
 
-	if got := resolveThemeCurrentFile(files, "post.html"); got != "post.html" {
-		t.Fatalf("resolveThemeCurrentFile(existing) = %q, want post.html", got)
+	if got := themefiles.ResolveCurrentFile(files, "post.html"); got != "post.html" {
+		t.Fatalf("ResolveCurrentFile(existing) = %q, want post.html", got)
 	}
-	if got := resolveThemeCurrentFile(files, "missing.html"); got != "home.html" {
-		t.Fatalf("resolveThemeCurrentFile(fallback home) = %q, want home.html", got)
+	if got := themefiles.ResolveCurrentFile(files, "missing.html"); got != "home.html" {
+		t.Fatalf("ResolveCurrentFile(fallback home) = %q, want home.html", got)
 	}
 
 	delete(files, "home.html")
-	if got := resolveThemeCurrentFile(files, ""); got != "layout_main.html" {
-		t.Fatalf("resolveThemeCurrentFile(sorted fallback) = %q, want layout_main.html", got)
+	if got := themefiles.ResolveCurrentFile(files); got != "layout_main.html" {
+		t.Fatalf("ResolveCurrentFile(sorted fallback) = %q, want layout_main.html", got)
 	}
 }

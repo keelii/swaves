@@ -10,20 +10,21 @@ import (
 	"testing"
 
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/themefiles"
 	"swaves/internal/platform/updater"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 func TestParseThemeFilesNormalizesLegacySitePaths(t *testing.T) {
-	files, err := parseThemeFiles(`{
+	files, err := themefiles.ParseJSON(`{
 		"site/home.html": "home",
 		"site/include/nav.html": "nav",
 		"site/layout/layout.html": "layout",
 		"site/macro/content.html": "macro"
 	}`)
 	if err != nil {
-		t.Fatalf("parseThemeFiles failed: %v", err)
+		t.Fatalf("themefiles.ParseJSON failed: %v", err)
 	}
 
 	if files["home.html"] != "home" {
@@ -41,13 +42,13 @@ func TestParseThemeFilesNormalizesLegacySitePaths(t *testing.T) {
 }
 
 func TestParseThemeFilesNormalizesCurrentThemePaths(t *testing.T) {
-	files, err := parseThemeFiles(`{
+	files, err := themefiles.ParseJSON(`{
 		"themes/tuft/home.html": "home",
 		"themes/tuft/inc_nav.html": "nav",
 		"themes/tuft/layout_main.html": "layout"
 	}`)
 	if err != nil {
-		t.Fatalf("parseThemeFiles failed: %v", err)
+		t.Fatalf("themefiles.ParseJSON failed: %v", err)
 	}
 
 	if files["home.html"] != "home" {
@@ -341,9 +342,9 @@ func TestPostUpdateThemeHandlerReturnsJSONForAjaxSave(t *testing.T) {
 	if updated.Version != 2 {
 		t.Fatalf("updated version = %d, want %d", updated.Version, 2)
 	}
-	files, err := parseThemeFiles(updated.Files)
+	files, err := themefiles.ParseJSON(updated.Files)
 	if err != nil {
-		t.Fatalf("parseThemeFiles failed: %v", err)
+		t.Fatalf("themefiles.ParseJSON failed: %v", err)
 	}
 	if files["home.html"] != "<h1>updated</h1>" {
 		t.Fatalf("home.html content = %q, want %q", files["home.html"], "<h1>updated</h1>")
@@ -469,9 +470,9 @@ func TestPostUpdateThemeHandlerDeletesThemeFile(t *testing.T) {
 	if updated.CurrentFile != "home.html" {
 		t.Fatalf("updated current_file = %q, want %q", updated.CurrentFile, "home.html")
 	}
-	files, err := parseThemeFiles(updated.Files)
+	files, err := themefiles.ParseJSON(updated.Files)
 	if err != nil {
-		t.Fatalf("parseThemeFiles failed: %v", err)
+		t.Fatalf("themefiles.ParseJSON failed: %v", err)
 	}
 	if _, ok := files["inc_footer.html"]; ok {
 		t.Fatal("expected inc_footer.html to be deleted")

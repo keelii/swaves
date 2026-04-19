@@ -141,26 +141,6 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	assertCachedThemeFile(filepath.Join("include", "math.html"), "math")
 }
 
-func TestResolveThemeSourceRoot(t *testing.T) {
-	root := t.TempDir()
-	themeRoot := filepath.Join(root, "themes", "tuft")
-	if err := os.MkdirAll(themeRoot, 0o755); err != nil {
-		t.Fatalf("create theme root failed: %v", err)
-	}
-
-	got, ok := ResolveThemeSourceRoot(root, "tuft")
-	if !ok {
-		t.Fatal("expected ResolveThemeSourceRoot to find local theme root")
-	}
-	if got != themeRoot {
-		t.Fatalf("ResolveThemeSourceRoot = %q, want %q", got, themeRoot)
-	}
-
-	if _, ok := ResolveThemeSourceRoot(root, "missing"); ok {
-		t.Fatal("expected missing theme root to return ok=false")
-	}
-}
-
 func TestViewEngineWithSharedLoadsThemeAndIncludeTemplates(t *testing.T) {
 	root := t.TempDir()
 	themeRoot := filepath.Join(root, "themes", "tuft")

@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path/filepath"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/themefiles"
 	"time"
 
 	"swaves/internal/platform/db"
@@ -17,8 +16,6 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 )
-
-const defaultThemeCurrentFile = "home.html"
 
 var protectedThemeFilePaths = map[string]struct{}{
 	"404.html":    {},
@@ -30,9 +27,12 @@ var protectedThemeFilePaths = map[string]struct{}{
 }
 
 func isProtectedThemeFilePath(path string) bool {
-	path = normalizeThemeFileName(path)
-	_, ok := protectedThemeFilePaths[path]
-	return ok
+	path, ok := themefiles.NormalizePath(path)
+	if !ok {
+		return false
+	}
+	_, exists := protectedThemeFilePaths[path]
+	return exists
 }
 
 func themeProtectedFileFlags(files map[string]string) map[string]bool {
@@ -51,109 +51,6 @@ func wantsThemeJSONResponse(c fiber.Ctx) bool {
 		return true
 	}
 	return strings.EqualFold(strings.TrimSpace(c.Get("X-Requested-With")), "XMLHttpRequest")
-}
-
-func normalizeThemeFileName(path string) string {
-	path = strings.TrimSpace(path)
-	path = filepath.ToSlash(path)
-	path = strings.TrimPrefix(path, "site/")
-	if strings.HasPrefix(path, "themes/") {
-		rest := strings.TrimPrefix(path, "themes/")
-		if idx := strings.Index(rest, "/"); idx >= 0 {
-			path = rest[idx+1:]
-		}
-	}
-	if !strings.Contains(path, "/") {
-		return path
-	}
-
-	switch {
-	case strings.HasPrefix(path, "include/"):
-		return "inc_" + strings.TrimPrefix(path, "include/")
-	case strings.HasPrefix(path, "macro/"):
-		return "macro_" + strings.TrimPrefix(path, "macro/")
-	case strings.HasPrefix(path, "layout/"):
-		name := strings.TrimPrefix(path, "layout/")
-		if name == "layout.html" {
-			return "layout_main.html"
-		}
-		return "layout_" + name
-	}
-	return path
-}
-
-func parseThemeFiles(raw string) (map[string]string, error) {
-	if strings.TrimSpace(raw) == "" {
-		return map[string]string{}, nil
-	}
-	rawFiles := make(map[string]string)
-	if err := json.Unmarshal([]byte(raw), &rawFiles); err != nil {
-		return nil, err
-	}
-	files := make(map[string]string, len(rawFiles))
-	for rawPath, content := range rawFiles {
-		path := normalizeThemeFileName(rawPath)
-		if !isValidThemeFilePath(path) {
-			return nil, fmt.Errorf("invalid theme file path: %s", rawPath)
-		}
-		if _, exists := files[path]; exists {
-			return nil, fmt.Errorf("duplicate theme file path: %s", path)
-		}
-		files[path] = content
-	}
-	return files, nil
-}
-
-func marshalThemeFiles(files map[string]string) (string, error) {
-	data, err := json.Marshal(files)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func sortedThemeFilePaths(files map[string]string) []string {
-	paths := make([]string, 0, len(files))
-	for path := range files {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-	return paths
-}
-
-func isValidThemeFilePath(path string) bool {
-	path = normalizeThemeFileName(path)
-	if path == "" {
-		return false
-	}
-	if !strings.HasSuffix(path, ".html") {
-		return false
-	}
-	if strings.Contains(path, "/") || strings.Contains(path, `\`) {
-		return false
-	}
-	return !strings.Contains(path, "..")
-}
-
-func resolveThemeCurrentFile(theme db.Theme, files map[string]string, candidate string) string {
-	candidate = normalizeThemeFileName(candidate)
-	if candidate != "" {
-		if _, ok := files[candidate]; ok {
-			return candidate
-		}
-	}
-	if stored := normalizeThemeFileName(theme.CurrentFile); stored != "" {
-		if _, ok := files[stored]; ok {
-			return stored
-		}
-	}
-	if _, ok := files[defaultThemeCurrentFile]; ok {
-		return defaultThemeCurrentFile
-	}
-	for _, path := range sortedThemeFilePaths(files) {
-		return path
-	}
-	return defaultThemeCurrentFile
 }
 
 func parseThemeVersion(raw string) (int64, error) {
@@ -213,12 +110,7 @@ func buildCopiedThemeCode(base string, taken map[string]struct{}) string {
 }
 
 func duplicateTheme(source db.Theme, themes []db.Theme) *db.Theme {
-	nameSet := make(map[string]struct{}, len(themes))
-	codeSet := make(map[string]struct{}, len(themes))
-	for _, item := range themes {
-		nameSet[item.Name] = struct{}{}
-		codeSet[item.Code] = struct{}{}
-	}
+	nameSet, codeSet := themeNameSets(themes)
 
 	nowUnix := time.Now().Unix()
 	return &db.Theme{
@@ -247,6 +139,30 @@ func themeNameSets(themes []db.Theme) (map[string]struct{}, map[string]struct{})
 	return nameSet, codeSet
 }
 
+func decodeThemeTransferFiles(raw json.RawMessage) (map[string]string, error) {
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("theme files is required")
+	}
+
+	if raw[0] == '"' {
+		var rawFiles string
+		if err := json.Unmarshal(raw, &rawFiles); err != nil {
+			return nil, err
+		}
+		return themefiles.ParseJSON(rawFiles)
+	}
+
+	rawFiles := map[string]string{}
+	if err := json.Unmarshal(raw, &rawFiles); err != nil {
+		return nil, err
+	}
+	rawFilesJSON, err := json.Marshal(rawFiles)
+	if err != nil {
+		return nil, err
+	}
+	return themefiles.ParseJSON(string(rawFilesJSON))
+}
+
 func decodeThemeTransferPayload(raw []byte) (*themeTransferPayload, error) {
 	var envelope struct {
 		Name        string          `json:"name"`
@@ -265,31 +181,9 @@ func decodeThemeTransferPayload(raw []byte) (*themeTransferPayload, error) {
 		return nil, fmt.Errorf("theme files is required")
 	}
 
-	var files map[string]string
-	if len(envelope.Files) > 0 && envelope.Files[0] == '"' {
-		var rawFiles string
-		if err := json.Unmarshal(envelope.Files, &rawFiles); err != nil {
-			return nil, err
-		}
-		normalizedFiles, err := parseThemeFiles(rawFiles)
-		if err != nil {
-			return nil, err
-		}
-		files = normalizedFiles
-	} else {
-		rawFiles := map[string]string{}
-		if err := json.Unmarshal(envelope.Files, &rawFiles); err != nil {
-			return nil, err
-		}
-		rawFilesJSON, err := json.Marshal(rawFiles)
-		if err != nil {
-			return nil, err
-		}
-		normalizedFiles, err := parseThemeFiles(string(rawFilesJSON))
-		if err != nil {
-			return nil, err
-		}
-		files = normalizedFiles
+	files, err := decodeThemeTransferFiles(envelope.Files)
+	if err != nil {
+		return nil, err
 	}
 	if len(files) == 0 {
 		return nil, fmt.Errorf("theme files is empty")
@@ -334,7 +228,7 @@ func buildImportedTheme(payload *themeTransferPayload, themes []db.Theme) (*db.T
 		code = buildCopiedThemeCode(code, codeSet)
 	}
 
-	filesJSON, err := marshalThemeFiles(payload.Files)
+	filesJSON, err := themefiles.MarshalJSON(payload.Files)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +240,7 @@ func buildImportedTheme(payload *themeTransferPayload, themes []db.Theme) (*db.T
 		Description: payload.Description,
 		Author:      payload.Author,
 		Files:       filesJSON,
-		CurrentFile: resolveThemeCurrentFile(db.Theme{CurrentFile: payload.CurrentFile}, payload.Files, payload.CurrentFile),
+		CurrentFile: themefiles.ResolveCurrentFile(payload.Files, payload.CurrentFile),
 		Status:      payload.Status,
 		IsCurrent:   0,
 		IsBuiltin:   0,
@@ -361,7 +255,7 @@ func buildImportedTheme(payload *themeTransferPayload, themes []db.Theme) (*db.T
 }
 
 func exportThemePayload(theme db.Theme) (*themeTransferPayload, error) {
-	files, err := parseThemeFiles(theme.Files)
+	files, err := themefiles.ParseJSON(theme.Files)
 	if err != nil {
 		return nil, err
 	}
@@ -391,10 +285,35 @@ func themeEditViewData(theme db.Theme, files map[string]string, currentFile stri
 		"Error":               errorMessage,
 		"Theme":               theme,
 		"ThemeFiles":          files,
-		"ThemeFilePaths":      sortedThemeFilePaths(files),
+		"ThemeFilePaths":      themefiles.SortedPaths(files),
 		"ThemeProtectedFiles": themeProtectedFileFlags(files),
 		"CurrentFile":         currentFile,
 	}
+}
+
+func (h *Handler) respondThemeEditUpdate(c fiber.Ctx, returnJSON bool, themeID, version int64, currentFile string, message string, extraData fiber.Map) error {
+	if returnJSON {
+		data := fiber.Map{
+			"version":      version,
+			"current_file": currentFile,
+		}
+		for key, value := range extraData {
+			data[key] = value
+		}
+		return c.JSON(fiber.Map{
+			"ok":      true,
+			"message": message,
+			"data":    data,
+		})
+	}
+
+	return h.redirectToDashRouteWithNotice(
+		c,
+		"dash.themes.edit",
+		map[string]string{"id": strconv.FormatInt(themeID, 10)},
+		map[string]string{"file": currentFile},
+		message,
+	)
 }
 
 func setCurrentThemeAndRestart(model *db.DB, id int64) (themeSwitchResult, error) {
@@ -479,11 +398,11 @@ func (h *Handler) GetDefaultThemeEntryHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	files, err := parseThemeFiles(theme.Files)
+	files, err := themefiles.ParseJSON(theme.Files)
 	if err != nil {
 		return err
 	}
-	currentFile := resolveThemeCurrentFile(*theme, files, theme.CurrentFile)
+	currentFile := themefiles.ResolveCurrentFile(files, theme.CurrentFile)
 	return h.redirectToDashRoute(c, "dash.themes.edit", map[string]string{
 		"id": strconv.FormatInt(theme.ID, 10),
 	}, map[string]string{
@@ -513,11 +432,11 @@ func (h *Handler) PostCreateThemeHandler(c fiber.Ctx) error {
 	if err != nil {
 		return RenderDashView(c, "dash/themes_new.html", themeNewViewData(formTheme, "读取默认主题失败："+err.Error()), "")
 	}
-	files, err := parseThemeFiles(defaultTheme.Files)
+	files, err := themefiles.ParseJSON(defaultTheme.Files)
 	if err != nil {
 		return RenderDashView(c, "dash/themes_new.html", themeNewViewData(formTheme, "读取默认主题失败："+err.Error()), "")
 	}
-	filesJSON, err := marshalThemeFiles(files)
+	filesJSON, err := themefiles.MarshalJSON(files)
 	if err != nil {
 		return RenderDashView(c, "dash/themes_new.html", themeNewViewData(formTheme, "序列化默认主题失败："+err.Error()), "")
 	}
@@ -527,7 +446,7 @@ func (h *Handler) PostCreateThemeHandler(c fiber.Ctx) error {
 		Description: description,
 		Author:      author,
 		Files:       filesJSON,
-		CurrentFile: resolveThemeCurrentFile(*defaultTheme, files, defaultTheme.CurrentFile),
+		CurrentFile: themefiles.ResolveCurrentFile(files, defaultTheme.CurrentFile),
 		Status:      "draft",
 		IsCurrent:   0,
 		IsBuiltin:   0,
@@ -550,11 +469,11 @@ func (h *Handler) GetThemeEditHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	files, err := parseThemeFiles(theme.Files)
+	files, err := themefiles.ParseJSON(theme.Files)
 	if err != nil {
 		return err
 	}
-	currentFile := resolveThemeCurrentFile(*theme, files, c.Query("file"))
+	currentFile := themefiles.ResolveCurrentFile(files, c.Query("file"), theme.CurrentFile)
 	theme.CurrentFile = currentFile
 	return RenderDashView(c, "dash/themes_edit.html", themeEditViewData(*theme, files, currentFile, ""), "")
 }
@@ -569,12 +488,12 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	files, err := parseThemeFiles(theme.Files)
+	files, err := themefiles.ParseJSON(theme.Files)
 	if err != nil {
 		return err
 	}
-	currentFile := normalizeThemeFileName(c.FormValue("current_file"))
-	if !isValidThemeFilePath(currentFile) {
+	currentFile, ok := themefiles.NormalizePath(c.FormValue("current_file"))
+	if !ok {
 		return fiber.ErrBadRequest
 	}
 	if _, ok := files[currentFile]; !ok {
@@ -594,15 +513,16 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 		return err
 	}
 	files[currentFile] = c.FormValue("current_content")
-	newFilePath := normalizeThemeFileName(c.FormValue("new_file_path"))
-	deleteFilePath := normalizeThemeFileName(c.FormValue("delete_file_path"))
+	newFilePath := strings.TrimSpace(c.FormValue("new_file_path"))
+	deleteFilePath := strings.TrimSpace(c.FormValue("delete_file_path"))
 	if newFilePath != "" && deleteFilePath != "" {
 		return renderEdit("不能同时创建和删除文件。")
 	}
 	if newFilePath != "" {
-		if !isValidThemeFilePath(newFilePath) {
+		if _, ok := themefiles.NormalizePath(newFilePath); !ok {
 			return renderEdit("新文件路径无效，必须是扁平的 *.html 文件名。")
 		}
+		newFilePath, _ = themefiles.NormalizePath(newFilePath)
 		if _, exists := files[newFilePath]; exists {
 			return renderEdit("文件已存在。")
 		}
@@ -610,9 +530,10 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 		currentFile = newFilePath
 	}
 	if deleteFilePath != "" {
-		if !isValidThemeFilePath(deleteFilePath) {
+		if _, ok := themefiles.NormalizePath(deleteFilePath); !ok {
 			return renderEdit("待删除文件路径无效。")
 		}
+		deleteFilePath, _ = themefiles.NormalizePath(deleteFilePath)
 		if isProtectedThemeFilePath(deleteFilePath) {
 			return renderEdit("该文件为内置入口模板，不能删除。")
 		}
@@ -624,10 +545,10 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 		}
 		delete(files, deleteFilePath)
 		if currentFile == deleteFilePath {
-			currentFile = resolveThemeCurrentFile(*theme, files, "")
+			currentFile = themefiles.ResolveCurrentFile(files, theme.CurrentFile)
 		}
 	}
-	filesJSON, err := marshalThemeFiles(files)
+	filesJSON, err := themefiles.MarshalJSON(files)
 	if err != nil {
 		return err
 	}
@@ -647,46 +568,16 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 	}
 	message := "主题已保存。"
 	if newFilePath != "" {
-		message = "文件已创建。"
-		if returnJSON {
-			return c.JSON(fiber.Map{
-				"ok":      true,
-				"message": message,
-				"data": fiber.Map{
-					"version":      theme.Version,
-					"current_file": currentFile,
-					"new_file":     newFilePath,
-				},
-			})
-		}
-		return h.redirectToDashRouteWithNotice(c, "dash.themes.edit", map[string]string{"id": strconv.FormatInt(theme.ID, 10)}, map[string]string{"file": currentFile}, message)
-	}
-	if deleteFilePath != "" {
-		message = "文件已删除。"
-		if returnJSON {
-			return c.JSON(fiber.Map{
-				"ok":      true,
-				"message": message,
-				"data": fiber.Map{
-					"version":      theme.Version,
-					"current_file": currentFile,
-					"deleted_file": deleteFilePath,
-				},
-			})
-		}
-		return h.redirectToDashRouteWithNotice(c, "dash.themes.edit", map[string]string{"id": strconv.FormatInt(theme.ID, 10)}, map[string]string{"file": currentFile}, message)
-	}
-	if returnJSON {
-		return c.JSON(fiber.Map{
-			"ok":      true,
-			"message": message,
-			"data": fiber.Map{
-				"version":      theme.Version,
-				"current_file": currentFile,
-			},
+		return h.respondThemeEditUpdate(c, returnJSON, theme.ID, theme.Version, currentFile, "文件已创建。", fiber.Map{
+			"new_file": newFilePath,
 		})
 	}
-	return h.redirectToDashRouteWithNotice(c, "dash.themes.edit", map[string]string{"id": strconv.FormatInt(theme.ID, 10)}, map[string]string{"file": currentFile}, message)
+	if deleteFilePath != "" {
+		return h.respondThemeEditUpdate(c, returnJSON, theme.ID, theme.Version, currentFile, "文件已删除。", fiber.Map{
+			"deleted_file": deleteFilePath,
+		})
+	}
+	return h.respondThemeEditUpdate(c, returnJSON, theme.ID, theme.Version, currentFile, message, nil)
 }
 
 func (h *Handler) PostSetCurrentThemeHandler(c fiber.Ctx) error {

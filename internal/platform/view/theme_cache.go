@@ -1,7 +1,6 @@
 package view
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -9,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/themefiles"
 )
 
 const (
@@ -19,19 +19,6 @@ const (
 var runtimeThemeSharedFiles = []string{
 	"include/favicon.html",
 	"include/math.html",
-}
-
-func ResolveThemeSourceRoot(templateRoot string, themeCode string) (string, bool) {
-	templateRoot = strings.TrimSpace(templateRoot)
-	themeCode = strings.TrimSpace(themeCode)
-	if templateRoot == "" || themeCode == "" {
-		return "", false
-	}
-	root := filepath.Join(templateRoot, "themes", themeCode)
-	if info, err := os.Stat(root); err == nil && info.IsDir() {
-		return root, true
-	}
-	return "", false
 }
 
 func ResolveThemeCacheRoot(sqliteFile string) (string, error) {
@@ -203,20 +190,7 @@ func readTemplateSourceFile(templateRoot string, templateFS fs.FS, name string) 
 }
 
 func parseThemeCacheFiles(raw string) (map[string]string, error) {
-	files := map[string]string{}
-	if err := json.Unmarshal([]byte(raw), &files); err != nil {
-		return nil, err
-	}
-
-	normalized := make(map[string]string, len(files))
-	for rawName, content := range files {
-		name, ok := normalizeThemeCacheFileName(rawName)
-		if !ok {
-			return nil, fmt.Errorf("invalid theme file name %q", rawName)
-		}
-		normalized[name] = content
-	}
-	return normalized, nil
+	return themefiles.ParseJSON(raw)
 }
 
 func normalizeThemeCacheDirName(name string) (string, bool) {
@@ -227,44 +201,6 @@ func normalizeThemeCacheDirName(name string) (string, bool) {
 	}
 	name = path.Clean(name)
 	if name == "." || name == ".." || strings.HasPrefix(name, "../") || strings.Contains(name, "/") {
-		return "", false
-	}
-	return name, true
-}
-
-func normalizeThemeCacheFileName(name string) (string, bool) {
-	name = strings.TrimSpace(name)
-	name = filepath.ToSlash(name)
-	name = strings.TrimPrefix(name, "site/")
-	if strings.HasPrefix(name, "themes/") {
-		rest := strings.TrimPrefix(name, "themes/")
-		if idx := strings.Index(rest, "/"); idx >= 0 {
-			name = rest[idx+1:]
-		}
-	}
-	if name == "" {
-		return "", false
-	}
-
-	switch {
-	case strings.HasPrefix(name, "include/"):
-		name = "inc_" + strings.TrimPrefix(name, "include/")
-	case strings.HasPrefix(name, "macro/"):
-		name = "macro_" + strings.TrimPrefix(name, "macro/")
-	case strings.HasPrefix(name, "layout/"):
-		baseName := strings.TrimPrefix(name, "layout/")
-		if baseName == "layout.html" {
-			name = "layout_main.html"
-		} else {
-			name = "layout_" + baseName
-		}
-	}
-
-	name = path.Clean(name)
-	if name == "." || name == ".." || strings.HasPrefix(name, "../") || strings.Contains(name, "/") {
-		return "", false
-	}
-	if !strings.HasSuffix(name, ".html") {
 		return "", false
 	}
 	return name, true

@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/themefiles"
 )
 
 var (
@@ -72,7 +72,7 @@ func main() {
 			exitWithError(err)
 		}
 
-		currentFile := resolveThemeCurrentFile(files, "")
+		currentFile := themefiles.ResolveCurrentFile(files)
 		createdTheme := &db.Theme{
 			Name:        themeCode,
 			Code:        themeCode,
@@ -109,7 +109,7 @@ func main() {
 		theme.Description = "synced from local theme source"
 	}
 	theme.Files = string(filesJSON)
-	theme.CurrentFile = resolveThemeCurrentFile(files, theme.CurrentFile)
+	theme.CurrentFile = themefiles.ResolveCurrentFile(files, theme.CurrentFile)
 	if strings.TrimSpace(theme.Status) == "" {
 		theme.Status = "published"
 	}
@@ -151,27 +151,6 @@ func loadLocalThemeFiles(themeDir string) (map[string]string, error) {
 		return nil, fmt.Errorf("no html theme files found in %s", themeDir)
 	}
 	return files, nil
-}
-
-func resolveThemeCurrentFile(files map[string]string, currentFile string) string {
-	currentFile = strings.TrimSpace(currentFile)
-	if currentFile != "" {
-		if _, ok := files[currentFile]; ok {
-			return currentFile
-		}
-	}
-	if _, ok := files["home.html"]; ok {
-		return "home.html"
-	}
-	names := make([]string, 0, len(files))
-	for name := range files {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	if len(names) == 0 {
-		return "home.html"
-	}
-	return names[0]
 }
 
 func boolToInt(ok bool) int {
