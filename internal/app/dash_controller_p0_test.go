@@ -53,7 +53,16 @@ func requestControllerP0(
 	if form != nil {
 		body = strings.NewReader(form.Encode())
 	}
-	req := httptest.NewRequest(method, path, body)
+	requestPath := path
+	host := ""
+	if parsed, err := url.Parse(path); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		requestPath = parsed.RequestURI()
+		host = parsed.Host
+	}
+	req := httptest.NewRequest(method, requestPath, body)
+	if host != "" {
+		req.Host = host
+	}
 	if form != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
