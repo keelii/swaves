@@ -45,6 +45,10 @@
       <span class="nav-item-icon">{{ LucideIcon("database", 16) }}</span>
       <span class="nav-item-text">备份恢复</span>
     </a>
+    <a class="nav-item{% if UrlIs('dash.themes.default') or UrlIs('dash.themes.list') or UrlIs('dash.themes.new') or UrlIs('dash.themes.edit') %} active{% endif %}" href="{{ UrlFor('dash.themes.list') }}"{% if UrlIs('dash.themes.default') or UrlIs('dash.themes.list') or UrlIs('dash.themes.new') or UrlIs('dash.themes.edit') %} aria-current="page"{% endif %}>
+      <span class="nav-item-icon">{{ LucideIcon("brush", 16) }}</span>
+      <span class="nav-item-text">主题</span>
+    </a>
     <a class="nav-item{% if UrlIs('dash.trash.list') %} active{% endif %}" href="{{ UrlFor('dash.trash.list') }}"{% if UrlIs('dash.trash.list') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("trash", 16) }}</span>
       <span class="nav-item-text">回收站</span>
@@ -52,10 +56,6 @@
     <a class="nav-item{% if UrlIs('dash.monitor') %} active{% endif %}" href="{{ UrlFor('dash.monitor') }}"{% if UrlIs('dash.monitor') %} aria-current="page"{% endif %}>
       <span class="nav-item-icon">{{ LucideIcon("activity", 16) }}</span>
       <span class="nav-item-text">性能监控</span>
-    </a>
-    <a class="nav-item{% if UrlIs('dash.themes.default') or UrlIs('dash.themes.list') or UrlIs('dash.themes.new') or UrlIs('dash.themes.edit') %} active{% endif %}" href="{{ UrlFor('dash.themes.list') }}"{% if UrlIs('dash.themes.default') or UrlIs('dash.themes.list') or UrlIs('dash.themes.new') or UrlIs('dash.themes.edit') %} aria-current="page"{% endif %}>
-      <span class="nav-item-icon">{{ LucideIcon("brush", 16) }}</span>
-      <span class="nav-item-text">主题</span>
     </a>
   </div>
 </nav>
