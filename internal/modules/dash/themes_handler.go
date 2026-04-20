@@ -561,7 +561,7 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 		return renderEdit("主题名称不能为空。")
 	}
 	if err := db.UpdateTheme(h.Model, theme, expectedVersion); err != nil {
-		if db.IsErrNotFound(err) {
+		if db.IsErrNotFound(err) || db.IsErrConflict(err) {
 			return renderEdit("主题已被其他修改覆盖，请刷新后重试。")
 		}
 		return renderEdit(err.Error())

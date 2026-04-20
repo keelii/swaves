@@ -24,6 +24,7 @@ import (
 //go:embed static/katex/katex.min.css
 //go:embed static/katex/katex.min.js
 //go:embed static/katex/contrib/auto-render.min.js
+//go:embed static/katex/fonts
 var embeddedFiles embed.FS
 
 func StaticFS() fs.FS {

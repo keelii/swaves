@@ -3779,7 +3779,10 @@ func UpdateTheme(db *DB, t *Theme, expectedVersion int64) error {
 		return WrapInternalErr("UpdateTheme.RowsAffected", err)
 	}
 	if affected == 0 {
-		return ErrNotFound("UpdateTheme")
+		if _, err := GetThemeByID(db, t.ID); err != nil {
+			return err
+		}
+		return ErrConflict("UpdateTheme")
 	}
 	t.Version = expectedVersion + 1
 	t.UpdatedAt = data["updated_at"].(int64)
@@ -5132,6 +5135,7 @@ func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 }
 
 var errNotFoundSentinel = errors.New("not found")
+var errConflictSentinel = errors.New("conflict")
 
 // ErrNotFound 返回带标识的 not found 错误，便于排查来源；判断请用 IsErrNotFound(err)
 func ErrNotFound(label string) error {
@@ -5162,6 +5166,16 @@ func IsErrInternalError(err error) bool {
 // IsErrNotFound 判断是否为“未找到”错误
 func IsErrNotFound(err error) bool {
 	return errors.Is(err, errNotFoundSentinel)
+}
+
+// ErrConflict 返回带标识的冲突错误，例如乐观锁版本冲突
+func ErrConflict(label string) error {
+	return fmt.Errorf("%s: %w", label, errConflictSentinel)
+}
+
+// IsErrConflict 判断是否为冲突错误
+func IsErrConflict(err error) bool {
+	return errors.Is(err, errConflictSentinel)
 }
 
 var errDuplicateCommentSentinel = errors.New("duplicate comment")

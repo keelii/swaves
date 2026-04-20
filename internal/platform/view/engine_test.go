@@ -141,6 +141,35 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	assertCachedThemeFile(filepath.Join("include", "math.html"), "math")
 }
 
+func TestResetThemeCacheRootKeepsSiblingThemes(t *testing.T) {
+	cacheRoot := filepath.Join(t.TempDir(), ".cache", "themes")
+	targetRoot := filepath.Join(cacheRoot, "current")
+	siblingRoot := filepath.Join(cacheRoot, "builtin")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("create target root failed: %v", err)
+	}
+	if err := os.MkdirAll(siblingRoot, 0o755); err != nil {
+		t.Fatalf("create sibling root failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(targetRoot, "home.html"), []byte("old"), 0o644); err != nil {
+		t.Fatalf("write target file failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(siblingRoot, "home.html"), []byte("sibling"), 0o644); err != nil {
+		t.Fatalf("write sibling file failed: %v", err)
+	}
+
+	if err := resetThemeCacheRoot(cacheRoot, targetRoot); err != nil {
+		t.Fatalf("resetThemeCacheRoot failed: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(siblingRoot, "home.html")); err != nil {
+		t.Fatalf("sibling cache should be preserved, stat failed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(targetRoot, "home.html")); !os.IsNotExist(err) {
+		t.Fatalf("target cache should be cleared, got err=%v", err)
+	}
+}
+
 func TestViewEngineWithSharedLoadsThemeAndIncludeTemplates(t *testing.T) {
 	root := t.TempDir()
 	themeRoot := filepath.Join(root, "themes", "tuft")

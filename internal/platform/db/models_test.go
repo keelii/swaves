@@ -254,6 +254,11 @@ func TestErrorHelpers(t *testing.T) {
 	if !IsErrDuplicateComment(dupComment) {
 		t.Fatal("ErrDuplicateComment should satisfy IsErrDuplicateComment")
 	}
+
+	conflict := ErrConflict("x")
+	if !IsErrConflict(conflict) {
+		t.Fatal("ErrConflict should satisfy IsErrConflict")
+	}
 }
 
 func TestPostVisibilityAndPublish(t *testing.T) {
@@ -1340,6 +1345,10 @@ func TestThemeLifecycleAndCurrentState(t *testing.T) {
 	}
 	if updatedThemeA.Name != "Theme A Updated" || updatedThemeA.CurrentFile != "layout_main.html" || updatedThemeA.Version != 2 {
 		t.Fatalf("unexpected updated theme: %+v", updatedThemeA)
+	}
+	themeA.Name = "Theme A Stale Update"
+	if err := UpdateTheme(db, themeA, 1); !IsErrConflict(err) {
+		t.Fatalf("UpdateTheme stale version should return conflict, got %v", err)
 	}
 
 	if err := SetThemeCurrent(db, themeB.ID); err != nil {
