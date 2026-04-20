@@ -140,7 +140,6 @@ func newMiniJinjaView(templateRoot string, clearOnRender bool) *FiberView {
 
 func newMiniJinjaViewWithLoader(loader minijinja.LoaderFunc, templateNamesFunc func() ([]string, error), clearOnRender bool) *FiberView {
 	env := minijinja.NewEnvironment()
-	env.SetDebug(true)
 	env.SetUndefinedBehavior(minijinja.UndefinedLenient)
 	env.SetDebug(clearOnRender)
 	env.SetLoader(loader)
