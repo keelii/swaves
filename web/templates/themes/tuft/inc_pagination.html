@@ -4,14 +4,14 @@
     {% if not Pager.HasPrev() %}
     <span class="page-link page-link-prev" tabindex="-1">上一页</span>
     {% else %}
-    <a class="page-link page-link-prev" href="?page={{ Pager.PrevPage() }}&pageSize={{ Pager.PageSize }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}" tabindex="-1">上一页</a>
+    <a class="page-link page-link-prev" href="?page={{ Pager.PrevPage() }}&pageSize={{ Pager.PageSize }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}">上一页</a>
     {% endif %}
 
     {% for Item in Pager.GetPageItems() %}
     {% if Item.Type == "ellipsis" %}
     <span class="page-link" aria-hidden="true">…</span>
     {% elif Item.Current %}
-    <span class="page-link">{{ Item.Page }}</span>
+    <span class="page-link" aria-current="page">{{ Item.Page }}</span>
     {% else %}
     <a class="page-link-num page-link" href="?page={{ Item.Page }}&pageSize={{ Pager.PageSize }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}">{{ Item.Page }}</a>
     {% endif %}
