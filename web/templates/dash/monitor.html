@@ -294,12 +294,12 @@
       var os = latest.os || {};
 
       var latestMap = {
-        pid_cpu: formatPercent(pid.CPU),
-        pid_ram: formatBytes(pid.RAM),
-        pid_conns: formatNumber(pid.Conns),
-        os_cpu: formatPercent(os.CPU),
-        os_ram: formatBytes(os.RAMUsed) + ' / ' + formatBytes(os.RAMTotal),
-        os_conns: formatNumber(os.Conns),
+        pid_cpu: formatPercent(pid.cpu),
+        pid_ram: formatBytes(pid.ram),
+        pid_conns: formatNumber(pid.conns),
+        os_cpu: formatPercent(os.cpu),
+        os_ram: formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram),
+        os_conns: formatNumber(os.conns),
       };
 
       Object.keys(latestMap).forEach(function(key) {

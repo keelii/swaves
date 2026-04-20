@@ -721,6 +721,24 @@ func TestRenderDashMonitorWithMapGranularities(t *testing.T) {
 	}
 }
 
+func TestRenderDashMonitorUsesJSONFieldNamesForLatestValues(t *testing.T) {
+	view := mustLoadRegressionView(t)
+
+	rendered := mustRenderRegressionTemplate(t, view, "dash/monitor.html", map[string]any{
+		"Granularities": []map[string]any{
+			{"Key": "1m", "Label": "1分钟"},
+		},
+		"ActiveGranularity": "1m",
+		"ActiveScope":       "app",
+	})
+	if !strings.Contains(rendered, "pid_cpu: formatPercent(pid.cpu)") {
+		t.Fatalf("expected monitor page to read pid cpu from json field name, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, "os_ram: formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram)") {
+		t.Fatalf("expected monitor page to read os ram from json field names, got: %s", rendered)
+	}
+}
+
 func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 	view := mustLoadRegressionView(t)
 

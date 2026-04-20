@@ -189,7 +189,7 @@
       <div class="dashboard-uv-layout">
         <div>
           <div class="dashboard-label">唯一访客</div>
-          <div class="dashboard-uv-total">{% if tab.Total %}{{ tab.Total }}{% else %}0{% endif %}</div>
+          <div class="dashboard-uv-total">{{ tab.Total | compactNumber }}</div>
           <div class="dashboard-uv-meta">{{ tab.Label }}内访客</div>
           <div class="dashboard-uv-meta">{{ tab.StartLabel }} - {{ tab.EndLabel }}</div>
         </div>
