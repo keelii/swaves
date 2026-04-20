@@ -216,7 +216,6 @@ article table thead th {
   gap: 1em;
   width: 55%;
 }
-
 .post-meta {
   display: flex;
   justify-content: space-between;

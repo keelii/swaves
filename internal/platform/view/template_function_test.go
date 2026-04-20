@@ -179,6 +179,40 @@ func TestSafeFilterRendersRawHTML(t *testing.T) {
 	}
 }
 
+func TestCompactNumberFilter(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ Total|compactNumber }}`), 0o644); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
+
+	cases := []struct {
+		name  string
+		total any
+		want  string
+	}{
+		{name: "small", total: 999, want: "999"},
+		{name: "one_thousand", total: 1000, want: "1k"},
+		{name: "mid_thousand", total: 1500, want: "1.5k"},
+		{name: "ten_thousand", total: 10500, want: "11k"},
+	}
+
+	for _, item := range cases {
+		t.Run(item.name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := view.Render(&out, "page.html", map[string]any{
+				"Total": item.total,
+			}); err != nil {
+				t.Fatalf("render page failed: %v", err)
+			}
+			if got := out.String(); got != item.want {
+				t.Fatalf("compactNumber = %q, want %q", got, item.want)
+			}
+		})
+	}
+}
+
 func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(
