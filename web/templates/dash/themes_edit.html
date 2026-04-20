@@ -1,0 +1,621 @@
+{% extends "dash/layout/layout_detail.html" %}
+{% import "dash/include/ui.html" as sui %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="/static/ceditor/ceditor.css">
+<script src="/static/ceditor/dist/ceditor.min.js"></script>
+<style>
+  .app-window:has(.theme-editor-page) .app-main-body {
+    overflow: hidden;
+  }
+
+  .app-window:has(.theme-editor-page) .app-panel-detail {
+    height: 100%;
+    padding: 0;
+  }
+
+  .theme-editor-page {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .theme-editor-page-form {
+    height: 100%;
+  }
+
+  .theme-editor-workspace {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .theme-editor-sidebar {
+    width: 280px;
+    flex: 0 0 280px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-gap-3);
+    padding: var(--app-spacing);
+    padding-right: 0;
+    border-right: 1px solid var(--app-border);
+    overflow: auto;
+  }
+
+  .theme-editor-sidebar-tabs {
+    flex: 0 0 auto;
+  }
+
+  .theme-editor-sidebar-tabs .ui-tab {
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .theme-editor-sidebar-panel {
+    min-height: 0;
+  }
+
+  .theme-editor-sidebar-panel[hidden] {
+    display: none;
+  }
+
+  .theme-editor-sidebar-panel.is-active {
+    display: block;
+  }
+
+  .theme-editor-pane {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    {#padding: var(--app-spacing);#}
+    gap: var(--app-gap-3);
+  }
+
+  .theme-editor-file-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .theme-editor-file-list li + li {
+    margin-top: 4px;
+  }
+
+  .theme-editor-file-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-gap-2);
+  }
+
+  .theme-editor-file-label {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .theme-editor-file-label a,
+  .theme-editor-file-label strong {
+    overflow-wrap: anywhere;
+  }
+
+  .theme-editor-surface {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+  }
+
+  .theme-editor-surface #theme-current-editor {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .theme-editor-surface .ceditor-root,
+  .theme-editor-surface .cm-editor,
+  .theme-editor-surface .cm-scroller,
+  .theme-editor-surface .cm-content,
+  .theme-editor-surface .cm-gutter {
+    height: 100%;
+    min-height: 0;
+  }
+</style>
+{% endblock %}
+
+{% block page_actions %}
+{{ sui.Button("保存", "primary", attrs='type="submit" form="form" id="theme-save-button"') }}
+{% endblock %}
+{% block window_toolbar_main_right %}
+<div class="app-valign">
+  {% if Theme.IsCurrent != 1 %}
+    <form method="post" action="{{ UrlFor('dash.themes.set_current', id=Theme.ID) }}">
+      {{ _csrf_token() }}
+      {{ sui.Button("设为当前", "outline", attrs='type="submit"') }}
+    </form>
+  {% endif %}
+  {{ sui.LinkButton("返回列表", "outline", href=UrlFor('dash.themes.list'), attrs='id="theme-back-to-list" data-theme-nav="1"') }}
+</div>
+{% endblock %}
+
+{% block content %}
+<form id="form" class="theme-editor-page-form" method="post" action="{{ UrlFor('dash.themes.update', id=Theme.ID) }}">
+  {{ _csrf_token() }}
+  <input type="hidden" name="version" value="{{ Theme.Version }}">
+  <input type="hidden" name="current_file" value="{{ CurrentFile }}">
+  <input type="hidden" name="new_file_path" id="theme-new-file-path" value="">
+  <input type="hidden" name="delete_file_path" id="theme-delete-file-path" value="">
+
+  <div class="theme-editor-page">
+    <div class="theme-editor-workspace">
+      <aside class="theme-editor-sidebar">
+        <div class="theme-editor-sidebar-tabs ui-tabs" aria-label="主题编辑侧边栏">
+          <button type="button" class="ui-tab active" data-role="theme-sidebar-tab" data-panel="files" aria-selected="true">文件树</button>
+          <button type="button" class="ui-tab" data-role="theme-sidebar-tab" data-panel="info" aria-selected="false">主题信息</button>
+        </div>
+
+        <section class="theme-editor-sidebar-panel is-active" data-role="theme-sidebar-panel" data-panel="files">
+          <div class="app-salign app-valign app-mb">
+            <div class="ui-field-label">模板文件</div>
+            {{ sui.IconAction("plus", "新建文件", attrs='id="theme-new-file-trigger" data-title="新建文件"') }}
+          </div>
+          <ul class="theme-editor-file-list">
+            {% for path in ThemeFilePaths %}
+              <li>
+                <div class="theme-editor-file-row">
+                  <div class="theme-editor-file-label">
+                    {% if path == CurrentFile %}
+                      <strong id="theme-current-file-label" data-base-label="{{ path }}"><span id="theme-current-file-dirty" hidden>* </span>{{ path }}</strong>
+                    {% else %}
+                      <a href="{{ UrlFor('dash.themes.edit', id=Theme.ID) }}?file={{ path }}" data-theme-nav="1">{{ path }}</a>
+                    {% endif %}
+                  </div>
+                  {% if not ThemeProtectedFiles[path] %}
+                    {{ sui.IconAction("x", "删除文件", attrs='data-role="theme-delete-file-trigger" data-file-path="' ~ path ~ '" data-title="删除文件"') }}
+                  {% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+
+        <section class="theme-editor-sidebar-panel" data-role="theme-sidebar-panel" data-panel="info" hidden>
+          <div class="ui-form">
+            {{ sui.Field("主题编码", sui.Input(id="theme-code", value=Theme.Code, attrs="disabled"), id="theme-code") }}
+            {{ sui.Field("主题名称", sui.Input(id="theme-name", name="name", value=Theme.Name, placeholder="主题名称", attrs="required"), id="theme-name", required=true) }}
+            {{ sui.Field("作者", sui.Input(id="theme-author", name="author", value=Theme.Author, placeholder="主题作者"), id="theme-author") }}
+            {{ sui.Field("描述", sui.Textarea(id="theme-description", name="description", value=Theme.Description, rows=3, placeholder="主题说明"), id="theme-description") }}
+          </div>
+        </section>
+      </aside>
+
+      <div class="theme-editor-pane">
+        {% if Error %}
+          {{ sui.Alert(Error, kind="danger", title="保存失败") }}
+        {% endif %}
+        <div class="theme-editor-surface">
+          <div id="theme-current-editor" hidden></div>
+          {{ sui.Textarea(
+            id="theme-current-content",
+            name="current_content",
+            value=ThemeFiles[CurrentFile],
+            rows=28,
+            attrs='spellcheck="false" style="font-family: var(--app-font-mono);"'
+          ) }}
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% call sui.Dialog(
+  "theme-new-file-dialog",
+  "新建模板文件",
+  actions=(
+    sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("创建", "primary", attrs='type="button" id="theme-new-file-confirm"')
+  ),
+  open=false
+) %}
+  {{ sui.Field("文件路径", sui.Input(id="theme-new-file-input", value="", placeholder="例如：inc_footer.html"), id="theme-new-file-input", help="只允许扁平的 *.html 文件名，不支持目录") }}
+{% endcall %}
+
+{% call sui.Dialog(
+  "theme-unsaved-confirm-dialog",
+  "未保存更改",
+  actions=(
+    sui.Button("继续编辑", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("仍然切换", "primary", attrs='type="button" data-role="ui-confirm-ok"')
+  ),
+  open=false
+) %}
+  <p id="theme-unsaved-confirm-message">当前更改尚未保存，确认离开当前文件吗？</p>
+{% endcall %}
+
+{% call sui.Dialog(
+  "theme-delete-file-confirm-dialog",
+  "确认删除文件",
+  actions=(
+    sui.Button("取消", "outline", attrs='type="button" data-role="ui-dialog-cancel"') ~
+    sui.Button("确认删除", "danger", attrs='type="button" data-role="ui-confirm-ok"')
+  ),
+  open=false
+) %}
+  <p id="theme-delete-file-confirm-message">确定删除该模板文件吗？</p>
+{% endcall %}
+
+<script>
+  (function () {
+    var editorFilePath = {{ CurrentFile | tojson }};
+
+    function createThemeEditorContext() {
+      var form = document.getElementById('form');
+      var textarea = document.getElementById('theme-current-content');
+      if (!form || !textarea) {
+        return null;
+      }
+
+      return {
+        form: form,
+        textarea: textarea,
+        mount: document.getElementById('theme-current-editor'),
+        saveButton: document.getElementById('theme-save-button'),
+        versionInput: form.querySelector('input[name="version"]'),
+        currentFileInput: form.querySelector('input[name="current_file"]'),
+        newFileInput: document.getElementById('theme-new-file-path'),
+        deleteFileInput: document.getElementById('theme-delete-file-path'),
+        newFileDialogInput: document.getElementById('theme-new-file-input'),
+        newFileTrigger: document.getElementById('theme-new-file-trigger'),
+        newFileConfirmButton: document.getElementById('theme-new-file-confirm'),
+        deleteFileTriggers: Array.prototype.slice.call(document.querySelectorAll('[data-role="theme-delete-file-trigger"]')),
+        tabs: Array.prototype.slice.call(document.querySelectorAll('[data-role="theme-sidebar-tab"]')),
+        panels: Array.prototype.slice.call(document.querySelectorAll('[data-role="theme-sidebar-panel"]')),
+        dirtyMarker: document.getElementById('theme-current-file-dirty'),
+        currentFileLabel: document.getElementById('theme-current-file-label'),
+        dialogAPI: window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null,
+        confirmAPI: window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null,
+        canSaveAsync: typeof window.sfetchJSON === 'function' && typeof notify === 'function'
+      };
+    }
+
+    function syncEditorValue(ctx) {
+      if (window.__ceditor && typeof window.__ceditor.getValue === 'function') {
+        ctx.textarea.value = window.__ceditor.getValue();
+      }
+    }
+
+    function initSidebar(ctx) {
+      if (ctx.tabs.length === 0 || ctx.panels.length === 0) {
+        return {
+          showFiles: function () {},
+          showInfo: function () {}
+        };
+      }
+
+      function setActivePanel(name) {
+        ctx.tabs.forEach(function (tab) {
+          var active = tab.getAttribute('data-panel') === name;
+          tab.classList.toggle('active', active);
+          tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+
+        ctx.panels.forEach(function (panel) {
+          var active = panel.getAttribute('data-panel') === name;
+          panel.classList.toggle('is-active', active);
+          if (active) {
+            panel.removeAttribute('hidden');
+          } else {
+            panel.setAttribute('hidden', '');
+          }
+        });
+      }
+
+      ctx.tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          setActivePanel(tab.getAttribute('data-panel'));
+        });
+      });
+
+      return {
+        showFiles: function () {
+          setActivePanel('files');
+        },
+        showInfo: function () {
+          setActivePanel('info');
+        }
+      };
+    }
+
+    function initDirtyTracker(ctx) {
+      var isDirty = false;
+      var cleanSnapshot = '';
+      var allowUnload = false;
+
+      function buildSnapshot() {
+        syncEditorValue(ctx);
+        return JSON.stringify({
+          name: ctx.form.elements.name ? ctx.form.elements.name.value : '',
+          author: ctx.form.elements.author ? ctx.form.elements.author.value : '',
+          description: ctx.form.elements.description ? ctx.form.elements.description.value : '',
+          current_content: ctx.textarea.value || ''
+        });
+      }
+
+      function renderDirtyMarker() {
+        if (!ctx.dirtyMarker) {
+          return;
+        }
+        if (isDirty) {
+          ctx.dirtyMarker.removeAttribute('hidden');
+        } else {
+          ctx.dirtyMarker.setAttribute('hidden', '');
+        }
+      }
+
+      function update() {
+        var nextDirty = buildSnapshot() !== cleanSnapshot;
+        if (nextDirty === isDirty) {
+          return isDirty;
+        }
+        isDirty = nextDirty;
+        renderDirtyMarker();
+        return isDirty;
+      }
+
+      function markClean() {
+        cleanSnapshot = buildSnapshot();
+        isDirty = false;
+        renderDirtyMarker();
+      }
+
+      function confirmLeave(opener) {
+        if (!update()) {
+          return Promise.resolve(true);
+        }
+        if (ctx.confirmAPI && typeof ctx.confirmAPI.ask === 'function') {
+          return ctx.confirmAPI.ask({
+            dialogId: 'theme-unsaved-confirm-dialog',
+            title: '未保存更改',
+            message: '当前更改尚未保存，确认离开当前文件吗？',
+            messageSelector: '#theme-unsaved-confirm-message',
+            opener: opener || ctx.currentFileLabel || null
+          });
+        }
+        return Promise.resolve(window.confirm('当前更改尚未保存，确认离开当前文件吗？'));
+      }
+
+      ctx.form.addEventListener('input', update);
+      ctx.form.addEventListener('change', update);
+      ctx.form.addEventListener('submit', function () {
+        syncEditorValue(ctx);
+        allowUnload = true;
+      });
+
+      document.addEventListener('click', function (event) {
+        var target = event.target && event.target.closest ? event.target.closest('[data-theme-nav="1"]') : null;
+        if (!target) {
+          return;
+        }
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return;
+        }
+
+        var href = target.getAttribute('href');
+        if (!href) {
+          return;
+        }
+
+        event.preventDefault();
+        confirmLeave(target).then(function (allowed) {
+          if (!allowed) {
+            return;
+          }
+          window.location.href = href;
+        });
+      });
+
+      window.addEventListener('beforeunload', function (event) {
+        if (allowUnload || !update()) {
+          return;
+        }
+        event.preventDefault();
+        event.returnValue = '';
+      });
+
+      markClean();
+      return {
+        markClean: markClean,
+        update: update
+      };
+    }
+
+    function initNewFileDialog(ctx) {
+      if (!ctx.newFileTrigger || !ctx.newFileDialogInput || !ctx.newFileInput || !ctx.newFileConfirmButton || !ctx.dialogAPI) {
+        return;
+      }
+
+      ctx.newFileTrigger.addEventListener('click', function () {
+        ctx.newFileInput.value = '';
+        if (ctx.deleteFileInput) {
+          ctx.deleteFileInput.value = '';
+        }
+        ctx.newFileDialogInput.value = '';
+        ctx.dialogAPI.open('theme-new-file-dialog', ctx.newFileTrigger);
+        window.setTimeout(function () {
+          ctx.newFileDialogInput.focus();
+        }, 0);
+      });
+
+      ctx.newFileConfirmButton.addEventListener('click', function () {
+        var nextPath = ctx.newFileDialogInput.value.trim();
+        if (!nextPath) {
+          ctx.newFileDialogInput.focus();
+          return;
+        }
+        ctx.newFileInput.value = nextPath;
+        if (ctx.deleteFileInput) {
+          ctx.deleteFileInput.value = '';
+        }
+        ctx.dialogAPI.close('theme-new-file-dialog');
+        ctx.form.requestSubmit();
+      });
+    }
+
+    function initDeleteFileActions(ctx) {
+      if (!ctx.deleteFileInput || ctx.deleteFileTriggers.length === 0) {
+        return;
+      }
+
+      ctx.deleteFileTriggers.forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+          var path = (trigger.getAttribute('data-file-path') || '').trim();
+          if (!path) {
+            return;
+          }
+
+          var message = '确定删除模板文件“' + path + '”吗？';
+          var ask = ctx.confirmAPI && typeof ctx.confirmAPI.ask === 'function'
+            ? ctx.confirmAPI.ask({
+                dialogId: 'theme-delete-file-confirm-dialog',
+                title: '确认删除文件',
+                message: message,
+                messageSelector: '#theme-delete-file-confirm-message',
+                opener: trigger
+              })
+            : Promise.resolve(window.confirm(message));
+
+          ask.then(function (confirmed) {
+            if (!confirmed) {
+              return;
+            }
+            if (ctx.newFileInput) {
+              ctx.newFileInput.value = '';
+            }
+            ctx.deleteFileInput.value = path;
+            ctx.form.requestSubmit();
+          });
+        });
+      });
+    }
+
+    function initAsyncSave(ctx, sidebar, dirtyTracker) {
+      var saving = false;
+      var queued = false;
+
+      if (!ctx.canSaveAsync) {
+        return null;
+      }
+
+      function setSavingState(nextSaving) {
+        if (!ctx.saveButton) {
+          return;
+        }
+        if (!ctx.saveButton.dataset.defaultLabel) {
+          ctx.saveButton.dataset.defaultLabel = ctx.saveButton.textContent.trim() || '保存';
+        }
+        ctx.saveButton.disabled = nextSaving;
+        ctx.saveButton.textContent = nextSaving ? '保存中...' : ctx.saveButton.dataset.defaultLabel;
+      }
+
+      function resolveSaveError(result) {
+        if (result && result.body && typeof result.body.error === 'string' && result.body.error.trim()) {
+          return result.body.error.trim();
+        }
+        if (result && typeof result.raw === 'string' && result.raw.trim()) {
+          return result.raw.trim();
+        }
+        return '请求失败';
+      }
+
+      function saveThemeAsync() {
+        if (saving) {
+          queued = true;
+          return;
+        }
+
+        if (typeof ctx.form.checkValidity === 'function' && !ctx.form.checkValidity()) {
+          sidebar.showInfo();
+          if (typeof ctx.form.reportValidity === 'function') {
+            ctx.form.reportValidity();
+          }
+          return;
+        }
+
+        syncEditorValue(ctx);
+        saving = true;
+        setSavingState(true);
+
+        window.sfetchJSON(ctx.form.action, {
+          method: 'POST',
+          body: new FormData(ctx.form)
+        }).then(function (result) {
+          if (!result.ok || !result.body || result.body.ok !== true) {
+            throw new Error(resolveSaveError(result));
+          }
+
+          if (ctx.versionInput && result.body.data && result.body.data.version) {
+            ctx.versionInput.value = String(result.body.data.version);
+          }
+          if (ctx.currentFileInput && result.body.data && result.body.data.current_file) {
+            ctx.currentFileInput.value = String(result.body.data.current_file);
+          }
+          dirtyTracker.markClean();
+          notify(result.body.message || '主题已保存。', '', { variant: 'success' });
+        }).catch(function (error) {
+          notify(error && error.message ? error.message : '主题保存失败。', '', { variant: 'danger' });
+        }).then(function () {
+          saving = false;
+          setSavingState(false);
+          if (queued) {
+            queued = false;
+            saveThemeAsync();
+          }
+        });
+      }
+
+      return saveThemeAsync;
+    }
+
+    function initCodeEditor(ctx, dirtyTracker, saveHandler) {
+      if (!ctx.mount || !window.CEditor || typeof window.CEditor.init !== 'function') {
+        return;
+      }
+
+      window.__ceditor = window.CEditor.init({
+        mount: ctx.mount,
+        textarea: ctx.textarea,
+        filePath: editorFilePath,
+        lineWrapping: true,
+        onChange: function () {
+          dirtyTracker.update();
+        },
+        onSave: typeof saveHandler === 'function' ? saveHandler : null
+      });
+    }
+
+    function initThemeEditorPage() {
+      var ctx = createThemeEditorContext();
+      if (!ctx) {
+        return;
+      }
+
+      var sidebar = initSidebar(ctx);
+      var dirtyTracker = initDirtyTracker(ctx);
+      var saveHandler = initAsyncSave(ctx, sidebar, dirtyTracker);
+
+      initNewFileDialog(ctx);
+      initDeleteFileActions(ctx);
+      initCodeEditor(ctx, dirtyTracker, saveHandler);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initThemeEditorPage, { once: true });
+      return;
+    }
+    initThemeEditorPage();
+  })();
+</script>
+{% endblock %}

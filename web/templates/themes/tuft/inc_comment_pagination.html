@@ -7,13 +7,13 @@
         <a class="page-link page-link-prev" href="?page={{ Pager.PrevPage() }}&pageSize={{ Pager.PageSize }}#comments" tabindex="-1">上一页</a>
       {% endif %}
 
-      {% for item in Pager.GetPageItems() %}
-        {% if item.Type == "ellipsis" %}
+      {% for Item in Pager.GetPageItems() %}
+        {% if Item.Type == "ellipsis" %}
           <span class="page-link" aria-hidden="true">…</span>
-        {% elif item.Current %}
-          <span class="page-link">{{ item.Page }}</span>
+        {% elif Item.Current %}
+          <span class="page-link">{{ Item.Page }}</span>
         {% else %}
-          <a class="page-link-num page-link" href="?page={{ item.Page }}&pageSize={{ Pager.PageSize }}#comments">{{ item.Page }}</a>
+          <a class="page-link-num page-link" href="?page={{ Item.Page }}&pageSize={{ Pager.PageSize }}#comments">{{ Item.Page }}</a>
         {% endif %}
       {% endfor %}
 

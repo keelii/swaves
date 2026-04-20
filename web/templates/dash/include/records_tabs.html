@@ -1,10 +1,11 @@
 {% import "dash/include/ui.html" as sui %}
 {% set recordTab = ActiveRecordTab %}
-{% set recordTabCounts = RecordTabCounts or {"categories":0, "tags":0, "tasks":0, "redirects":0} %}
+{% set recordTabCounts = RecordTabCounts or {"categories":0, "tags":0, "tasks":0, "redirects":0, "themes":0} %}
 
 {{ sui.TabsStart("记录列表导航") }}
   {{ sui.Tab("分类列表 " ~ recordTabCounts["categories"], href=UrlFor('dash.categories.list'), active=(recordTab == "categories")) }}
   {{ sui.Tab("标签列表 " ~ recordTabCounts["tags"], href=UrlFor('dash.tags.list'), active=(recordTab == "tags")) }}
   {{ sui.Tab("任务列表 " ~ recordTabCounts["tasks"], href=UrlFor('dash.tasks.list'), active=(recordTab == "tasks")) }}
   {{ sui.Tab("重定向列表 " ~ recordTabCounts["redirects"], href=UrlFor('dash.redirects.list'), active=(recordTab == "redirects")) }}
+  {{ sui.Tab("主题列表 " ~ recordTabCounts["themes"], href=UrlFor('dash.themes.list'), active=(recordTab == "themes")) }}
 {{ sui.TabsEnd() }}

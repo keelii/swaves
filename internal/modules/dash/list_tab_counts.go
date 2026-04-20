@@ -19,12 +19,17 @@ func getRecordTabCounts(dbx *db.DB) (map[string]int, error) {
 	if err != nil {
 		return nil, err
 	}
+	themeCount, err := db.CountThemes(dbx)
+	if err != nil {
+		return nil, err
+	}
 
 	return map[string]int{
 		"categories": categoryCount,
 		"tags":       tagCount,
 		"tasks":      taskCount,
 		"redirects":  redirectCount,
+		"themes":     themeCount,
 	}, nil
 }
 

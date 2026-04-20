@@ -30,6 +30,7 @@ const (
 	TableLikes          TableName = "t_likes"
 	TableAssets         TableName = "t_assets"
 	TableNotifications  TableName = "t_notifications"
+	TableThemes         TableName = "t_themes"
 )
 
 const InitialSQL = `
@@ -236,6 +237,30 @@ const InitialSQL = `
 		updated_at INTEGER NOT NULL,
 		deleted_at INTEGER
 	);
+
+	CREATE TABLE IF NOT EXISTS ` + TableThemes + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+		name TEXT NOT NULL,
+		code TEXT NOT NULL UNIQUE,
+		description TEXT NOT NULL DEFAULT '',
+		author TEXT NOT NULL DEFAULT '',
+
+		files TEXT NOT NULL DEFAULT '{}',
+		current_file TEXT NOT NULL DEFAULT 'home.html',
+
+		status TEXT NOT NULL DEFAULT 'draft',
+		is_current INTEGER NOT NULL DEFAULT 0,
+		is_builtin INTEGER NOT NULL DEFAULT 0,
+		version INTEGER NOT NULL DEFAULT 1,
+
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL,
+		deleted_at INTEGER
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_themes_single_current
+	ON ` + TableThemes + ` (is_current)
+	WHERE is_current = 1 AND deleted_at IS NULL;
 
 	CREATE TABLE IF NOT EXISTS ` + TableHttpErrorLogs + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

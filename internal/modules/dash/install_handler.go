@@ -1,11 +1,17 @@
 package dash
 
 import (
+	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/logger"
 	"swaves/internal/shared/pathutil"
+	"swaves/internal/shared/webutil"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -293,6 +299,59 @@ func buildInstallPostURLPreview(settings []db.Setting) string {
 	return siteURL + postPath
 }
 
+func installDashPath(settings []db.Setting) string {
+	dashPath := strings.TrimSpace(installSettingValue(settings, "dash_path"))
+	if dashPath == "" {
+		dashPath = "/dash"
+	}
+	return pathutil.JoinAbsolute(dashPath)
+}
+
+func currentExecutablePath() string {
+	path, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	return filepath.Clean(path)
+}
+
+func (h *Handler) saveInstallSession(c fiber.Ctx, notice string) bool {
+	if h == nil || h.Session == nil {
+		return false
+	}
+
+	sess, err := h.Session.AcquireSession(c)
+	if err != nil {
+		logger.Error("get session failed: %v", err)
+		return false
+	}
+	defer sess.Release()
+
+	if err := sess.Regenerate(); err != nil {
+		logger.Error("session regenerate failed: %v", err)
+		return false
+	}
+
+	sess.Set(config.LoginDashName, true)
+	sess.SetIdleTimeout(config.LoginSessionExpire)
+
+	notice = strings.TrimSpace(notice)
+	if notice != "" {
+		sess.Set(dashFlashNoticeKey, notice)
+	}
+
+	if err := sess.Save(); err != nil {
+		logger.Error("session save failed: %v", err)
+		return false
+	}
+	logger.Info("session saved")
+	return true
+}
+
 func (h *Handler) renderInstallPage(c fiber.Ctx, settings []db.Setting, errMsg string) error {
 	return RenderDashView(c, "dash/install.html", fiber.Map{
 		"Title":                  "Install Swaves",
@@ -344,9 +403,51 @@ func (h *Handler) PostInstallHandler(c fiber.Ctx) error {
 		return h.renderInstallPage(c, settings, "安装失败："+err.Error())
 	}
 
-	if h.Session.SaveSession(c) {
-		return h.redirectToDashRoute(c, "dash.home", nil, nil)
+	currentDashHomePath := h.dashRoutePath(c, "dash.home", nil)
+	if currentDashHomePath == "" {
+		currentDashHomePath = "/dash"
+	}
+	targetDashHomePath := installDashPath(settings)
+	targetPath := targetDashHomePath
+
+	runtimeInfo, runtimeErr := readActiveRuntimeInfo()
+	currentExecutable := currentExecutablePath()
+	if runtimeErr != nil || currentExecutable == "" || filepath.Clean(strings.TrimSpace(runtimeInfo.Executable)) != currentExecutable {
+		notice := "安装已完成，请重启服务后让新路径配置生效。"
+		if runtimeErr != nil {
+			logger.Warn("[install] restart required after install but unavailable: ip=%s target=%s err=%v", c.IP(), targetPath, runtimeErr)
+		} else {
+			logger.Warn("[install] skip install restart due to runtime mismatch: ip=%s target=%s current=%s master=%s", c.IP(), targetPath, currentExecutable, strings.TrimSpace(runtimeInfo.Executable))
+		}
+		if normalizePathForCompare(targetDashHomePath) != normalizePathForCompare(currentDashHomePath) {
+			notice = fmt.Sprintf("安装已完成，请重启服务后从 %s 继续访问后台。", targetDashHomePath)
+		}
+		sessionSaved := h.saveInstallSession(c, notice)
+		if sessionSaved {
+			return h.redirectToDashRoute(c, "dash.home", nil, nil)
+		}
+		return h.redirectToDashRoute(c, "dash.login.show", nil, nil)
 	}
 
-	return h.redirectToDashRoute(c, "dash.login.show", nil, nil)
+	pid, restartErr := restartActiveRuntime()
+	if restartErr != nil {
+		logger.Warn("[install] restart request failed after install: ip=%s target=%s err=%v", c.IP(), targetPath, restartErr)
+		notice := "安装已完成，请重启服务后让新路径配置生效。"
+		if normalizePathForCompare(targetDashHomePath) != normalizePathForCompare(currentDashHomePath) {
+			notice = fmt.Sprintf("安装已完成，请重启服务后从 %s 继续访问后台。", targetDashHomePath)
+		}
+		sessionSaved := h.saveInstallSession(c, notice)
+		if sessionSaved {
+			return h.redirectToDashRoute(c, "dash.home", nil, nil)
+		}
+		return h.redirectToDashRoute(c, "dash.login.show", nil, nil)
+	}
+
+	notice := fmt.Sprintf("安装已完成，已向服务发送重启信号（pid=%d）。", pid)
+	sessionSaved := h.saveInstallSession(c, notice)
+	if !sessionSaved {
+		targetPath = pathutil.JoinAbsolute(targetDashHomePath, "login")
+	}
+	logger.Info("[install] install completed and restart requested: ip=%s master_pid=%d target=%s", c.IP(), pid, targetPath)
+	return webutil.RedirectTo(c, targetPath)
 }

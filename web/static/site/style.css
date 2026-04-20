@@ -56,6 +56,9 @@ button[data-like-button]:disabled {
 .page-link-num {
   margin: 0 0.2em;
 }
+article {
+  padding: 2em 0;
+}
 .articles {
   padding-left: 0;
 }
@@ -202,13 +205,16 @@ article table thead th {
   color: #666;
 }
 
-.post-catgory-tag,.post-nav {
+.post-category-tag,.post-nav {
   width: 50%;
 }
 .post-info {
-  display: inline-flex;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   white-space: nowrap;
+  gap: 1em;
+  width: 55%;
 }
 
 .post-meta {
@@ -217,8 +223,15 @@ article table thead th {
   width: 55%;
 }
 @media (max-width: 760px) {
+  .post-info {
+    width: 100%;
+  }
   .post-meta {
     width: 100%;
+  }
+  .post-nav {
+    flex-grow: 1;
+    max-width: 80%;
   }
 }
 .post-nav div {

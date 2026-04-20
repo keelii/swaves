@@ -71,11 +71,11 @@
         <td>
           {% set postTitle = postWithRelation.Post.Title %}
           {% set highlightPostTitle = Highlight(postTitle, SearchQuery) if SearchQuery else postTitle %}
-          <div class="cell-title">
+          <div class="">
             <a href="{{ UrlFor('dash.posts.edit', id=postWithRelation.Post.ID) }}">{{ highlightPostTitle }}</a>
           </div>
         </td>
-        <td class="cell-tags">
+        <td class="">
           {% if postWithRelation.Tags %}
             {% set tagSep = joiner(", ") %}
             {% for item in postWithRelation.Tags %}{{ tagSep() }}<a href="{{ UrlFor('dash.posts.list', {"kind":KindQuery, "q":SearchQuery, "category":FilterCategoryIDStr, "tag":item.ID}) }}">{{ item.Name }}</a>{% endfor %}
@@ -83,7 +83,7 @@
             -
           {% endif %}
         </td>
-        <td class="cell-cat">
+        <td class="">
           {% if postWithRelation.Category %}
             <a href="{{ UrlFor('dash.posts.list', {"kind":KindQuery, "q":SearchQuery, "tag":FilterTagIDStr, "category":postWithRelation.Category.ID}) }}">{{ postWithRelation.Category.Name }}</a>
           {% else %}

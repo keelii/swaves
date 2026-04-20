@@ -8,9 +8,8 @@ global init API.
 From the repository root:
 
 ```bash
-cd web/seditor
-npm install
-npm run build
+npm install --prefix web/seditor
+make seditor
 ```
 
 This produces:

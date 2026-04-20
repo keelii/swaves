@@ -1,0 +1,108 @@
+{% extends "dash/layout/layout_list.html" %}
+{% import "dash/macro/ui.html" as ui %}
+{% import "dash/include/ui.html" as sui %}
+
+{% set OperationTableID = "themes-table" %}
+
+{% block page_actions %}
+  {{ sui.LinkButton("新建主题", "primary", href=UrlFor('dash.themes.new')) }}
+  {{ sui.Button("导入主题", "outline", attrs='type="button" id="theme-import-trigger"') }}
+  <form id="theme-import-form" method="post" action="{{ UrlFor('dash.themes.import') }}" enctype="multipart/form-data" style="display:none;">
+    {{ _csrf_token() }}
+    <input id="theme-import-file" type="file" name="file" accept=".json,application/json">
+  </form>
+{% endblock %}
+
+{% block operation_multiselect %}{% endblock %}
+{% block operation_left %}
+  {% with ActiveRecordTab = "themes" %}{% include "dash/include/records_tabs.html" %}{% endwith %}
+{% endblock %}
+{% block status_main_left %}{% endblock %}
+{% block status_main_right %}
+  {% include "dash/include/status_main_pagination.html" %}
+{% endblock %}
+
+{% block content %}
+{% if Themes|length > 0 %}
+  <div class="data-table-wrap">
+    <table id="themes-table" class="data-table" aria-label="主题列表" data-role="data-table">
+      <thead>
+        <tr>
+          <th>{{ ui.table_th_id() }}</th>
+          <th>名称</th>
+          <th>编码</th>
+          <th>作者</th>
+          <th>状态</th>
+          <th>当前</th>
+          <th>内置</th>
+          <th>版本</th>
+          <th>更新时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for theme in Themes %}
+          <tr>
+            <td>{{ ui.table_td_id(theme.ID) }}</td>
+            <td>{{ theme.Name }}</td>
+            <td>{{ theme.Code }}</td>
+            <td>{{ theme.Author or '-' }}</td>
+            <td>{{ theme.Status }}</td>
+            <td>{% if theme.IsCurrent == 1 %}<span class="ui-badge success">是</span>{% else %}-{% endif %}</td>
+            <td>{% if theme.IsBuiltin == 1 %}<span class="ui-badge">是</span>{% else %}-{% endif %}</td>
+            <td>{{ theme.Version }}</td>
+            <td>{{ theme.UpdatedAt | formatTime }}</td>
+            <td>
+              <div class="cell-actions">
+                {{ sui.LinkIcon("square-pen", UrlFor('dash.themes.edit', id=theme.ID), attrs='aria-label="编辑" data-title="编辑"') }}
+                {{ sui.LinkIcon("archive", UrlFor('dash.themes.export', id=theme.ID), attrs='aria-label="导出" data-title="导出"') }}
+                <form method="post" action="{{ UrlFor('dash.themes.copy', id=theme.ID) }}">
+                  {{ _csrf_token() }}
+                  {{ sui.IconAction("clipboard", "复制", attrs='data-title="复制"', button_type="submit") }}
+                </form>
+                {% if theme.IsCurrent != 1 %}
+                <form method="post" action="{{ UrlFor('dash.themes.delete', id=theme.ID) }}">
+                  {{ _csrf_token() }}
+                  {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除"', button_type="submit") }}
+                </form>
+                {% endif %}
+                {% if theme.IsCurrent != 1 %}
+                <form method="post" action="{{ UrlFor('dash.themes.set_current', id=theme.ID) }}">
+                  {{ _csrf_token() }}
+                  {{ sui.IconAction("circle-check-big", "设为当前", attrs='data-title="设为当前"', button_type="submit") }}
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="app-px">
+    {{ sui.EmptyState("暂无主题") }}
+  </div>
+{% endif %}
+<script>
+  (function () {
+    var trigger = document.getElementById('theme-import-trigger');
+    var input = document.getElementById('theme-import-file');
+    var form = document.getElementById('theme-import-form');
+    if (!trigger || !input || !form) {
+      return;
+    }
+
+    trigger.addEventListener('click', function () {
+      input.click();
+    });
+
+    input.addEventListener('change', function () {
+      if (!input.files || input.files.length === 0) {
+        return;
+      }
+      form.submit();
+    });
+  })();
+</script>
+{% endblock %}

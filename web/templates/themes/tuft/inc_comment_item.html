@@ -1,0 +1,43 @@
+{% set CommentCore = Comment.Comment or Comment %}
+{% set CommentParentAuthor = Comment.ParentAuthor or CommentCore.ParentAuthor %}
+{% set CommentChildren = Comment.Children %}
+<li class="comment-item" id="comment-{{ CommentCore.ID }}">
+  <div class="comment-card">
+    <header class="comment-meta">
+      <div class="comment-info">
+        <img
+          class="comment-avatar"
+          src="{{ GetAvatarImage(CommentCore.AuthorEmail, CommentCore.Author, 40) }}"
+          alt="{{ CommentCore.Author }}"
+          width="40"
+          height="40"
+        >
+        <div class="comment-meta-main">
+          <strong class="comment-author">{{ CommentCore.Author }}</strong>
+          <small class="comment-time">· {{ CommentCore.CreatedAt | relativeTime }}</small>
+          {% if CommentCore.ParentID > 0 %}
+            <small class="comment-reply-to">· 回复 @{{ CommentParentAuthor }}</small>
+          {% endif %}
+        </div>
+      </div>
+      <div class="comment-actions">
+        <button
+                type="button"
+                class="comment-reply-btn"
+                data-comment-reply
+                data-comment-id="{{ CommentCore.ID }}"
+                data-comment-author="{{ CommentCore.Author }}"
+        >回复</button>
+      </div>
+    </header>
+    <div class="comment-body">{{ CommentCore.Content }}</div>
+  </div>
+  {% if CommentChildren %}
+    <ol class="comment-children">
+      {% for ChildComment in CommentChildren %}
+        {% set Comment = ChildComment %}
+        {% include "inc_comment_item.html" %}
+      {% endfor %}
+    </ol>
+  {% endif %}
+</li>

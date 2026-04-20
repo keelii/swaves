@@ -109,7 +109,13 @@ func TestBuildSystemUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *test
 }
 
 func TestSystemUpdateSupportStateDisablesManualUpdateWithoutDaemon(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	original := readActiveRuntimeInfo
+	readActiveRuntimeInfo = func() (updater.RuntimeInfo, error) {
+		return updater.RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
+	}
+	t.Cleanup(func() {
+		readActiveRuntimeInfo = original
+	})
 
 	state := systemUpdateSupportState(true)
 	if state.ManualUpdateEnabled {

@@ -83,7 +83,8 @@ func TestGetSitemapIncludesPublishedContentURLs(t *testing.T) {
 	handler := Handler{Model: dbx}
 	app.Get("/sitemap.xml", handler.GetSitemap)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/sitemap.xml", nil)
+	req := httptest.NewRequest(http.MethodGet, "/sitemap.xml", nil)
+	req.Host = "example.com"
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request sitemap failed: %v", err)
@@ -126,7 +127,8 @@ func TestGetRobotsReturnsEmbeddedStaticFile(t *testing.T) {
 	handler := Handler{Model: dbx}
 	app.Get("/robots.txt", handler.GetRobots)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/robots.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/robots.txt", nil)
+	req.Host = "example.com"
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request robots failed: %v", err)

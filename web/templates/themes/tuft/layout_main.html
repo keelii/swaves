@@ -1,14 +1,10 @@
 <!doctype html>
-<html lang="{{ Settings('language') }}">
+<html lang="{{ Settings('language') }}" data-route="{{ RouteName }}">
 <head>
-  {% set pageTitle = Title %}
-  {% if not pageTitle %}
-    {% set pageTitle = Settings("site_title") %}
-  {% endif %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ pageTitle }}</title>
-  {% include "site/include/meta.html" %}
+  <title>{{ Title }}</title>
+  {% include "inc_meta.html" %}
   {% include "include/favicon.html" %}
 
   <link rel="stylesheet" href="/static/site/tufte-css/tufte.min.css">
@@ -16,7 +12,7 @@
   <script src="/static/site/main.js"></script>
 
   {% if Settings("ga4_id") %}
-    {% include "site/include/ga.html" %}
+    {% include "inc_ga.html" %}
   {% endif %}
   {% block head_extra %}{% endblock %}
 </head>
@@ -27,7 +23,7 @@
 
   <footer>
     <p>
-      <small>{{ Settings("site_copyright") | datetimeReplacer }}</small>
+      <small>{{ (Settings("site_copyright") or "@copyright " ~ Settings("author")) | datetimeReplacer }}</small>
     </p>
   </footer>
 </body>

@@ -1,6 +1,7 @@
 swaves
 testdata
 .idea/
+.cache/
 data.*
 *.gz
 backups

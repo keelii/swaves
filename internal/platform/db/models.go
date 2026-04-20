@@ -84,6 +84,10 @@ func InitDatabase(db *DB) error {
 		}
 	}
 
+	if err := EnsureDefaultTheme(db); err != nil {
+		return WrapInternalErr("InitDatabase.EnsureDefaultTheme", err)
+	}
+
 	if config.ShouldEnsureDefaultSettings() {
 		if err := EnsureDefaultSettings(db); err != nil {
 			return WrapInternalErr("InitDatabase.EnsureDefaultSettings", err)
@@ -258,6 +262,12 @@ var (
 	specNotifications = TableSpec{
 		Name:         TableNotifications,
 		HasDeletedAt: false,
+		HasCreatedAt: true,
+		HasUpdatedAt: true,
+	}
+	specThemes = TableSpec{
+		Name:         TableThemes,
+		HasDeletedAt: true,
 		HasCreatedAt: true,
 		HasUpdatedAt: true,
 	}
@@ -753,6 +763,33 @@ func scanSetting(scanner sqlScanner) (Setting, error) {
 		s.DeletedAt = &deletedAt.Int64
 	}
 	return s, nil
+}
+
+func scanTheme(scanner sqlScanner) (Theme, error) {
+	var t Theme
+	var deletedAt sql.NullInt64
+	if err := scanner.Scan(
+		&t.ID,
+		&t.Name,
+		&t.Code,
+		&t.Description,
+		&t.Author,
+		&t.Files,
+		&t.CurrentFile,
+		&t.Status,
+		&t.IsCurrent,
+		&t.IsBuiltin,
+		&t.Version,
+		&t.CreatedAt,
+		&t.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		return Theme{}, err
+	}
+	if deletedAt.Valid {
+		t.DeletedAt = &deletedAt.Int64
+	}
+	return t, nil
 }
 
 func scanTask(scanner sqlScanner) (Task, error) {
@@ -3537,6 +3574,27 @@ func (s Setting) String() string {
 	return fmt.Sprintf("Setting{Code:%s, Value:%s}", s.Code, s.Value)
 }
 
+type Theme struct {
+	ID          int64
+	Name        string
+	Code        string
+	Description string
+	Author      string
+	Files       string
+	CurrentFile string
+	Status      string
+	IsCurrent   int
+	IsBuiltin   int
+	Version     int64
+	CreatedAt   int64
+	UpdatedAt   int64
+	DeletedAt   *int64
+}
+
+func (t Theme) String() string {
+	return fmt.Sprintf("Theme{Code:%s, CurrentFile:%s}", t.Code, t.CurrentFile)
+}
+
 func CreateSetting(db *DB, s *Setting) (int64, error) {
 	if err := normalizeSettingForWrite(s); err != nil {
 		if err.Error() == "code is required" || err.Error() == "type is required" {
@@ -3576,6 +3634,202 @@ func CreateSetting(db *DB, s *Setting) (int64, error) {
 	}
 
 	return id, nil
+}
+
+func CreateTheme(db *DB, t *Theme) (int64, error) {
+	id, err := Create(db, specThemes, map[string]interface{}{
+		"name":         strings.TrimSpace(t.Name),
+		"code":         strings.TrimSpace(t.Code),
+		"description":  t.Description,
+		"author":       t.Author,
+		"files":        t.Files,
+		"current_file": strings.TrimSpace(t.CurrentFile),
+		"status":       strings.TrimSpace(t.Status),
+		"is_current":   t.IsCurrent,
+		"is_builtin":   t.IsBuiltin,
+		"version":      t.Version,
+		"created_at":   t.CreatedAt,
+		"updated_at":   t.UpdatedAt,
+	})
+	if err != nil {
+		return 0, WrapInternalErr("CreateTheme", err)
+	}
+	t.ID = id
+	return id, nil
+}
+
+func GetThemeByID(db *DB, id int64) (*Theme, error) {
+	result, err := Read(db, specThemes, ReadOptions{
+		SelectFields: "id, name, code, description, author, files, current_file, status, is_current, is_builtin, version, created_at, updated_at, deleted_at",
+		WhereClause:  "id=?",
+		WhereArgs:    []interface{}{id},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		item, err := scanTheme(rows)
+		if err != nil {
+			return nil, WrapInternalErr("GetThemeByID.Scan", err)
+		}
+		return item, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("GetThemeByID", err)
+	}
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetThemeByID")
+	}
+	theme := item.(Theme)
+	return &theme, nil
+}
+
+func GetThemeByCode(db *DB, code string) (*Theme, error) {
+	result, err := Read(db, specThemes, ReadOptions{
+		SelectFields: "id, name, code, description, author, files, current_file, status, is_current, is_builtin, version, created_at, updated_at, deleted_at",
+		WhereClause:  "code=?",
+		WhereArgs:    []interface{}{strings.TrimSpace(code)},
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		item, err := scanTheme(rows)
+		if err != nil {
+			return nil, WrapInternalErr("GetThemeByCode.Scan", err)
+		}
+		return item, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("GetThemeByCode", err)
+	}
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetThemeByCode")
+	}
+	theme := item.(Theme)
+	return &theme, nil
+}
+
+func GetCurrentTheme(db *DB) (*Theme, error) {
+	result, err := Read(db, specThemes, ReadOptions{
+		SelectFields: "id, name, code, description, author, files, current_file, status, is_current, is_builtin, version, created_at, updated_at, deleted_at",
+		WhereClause:  "is_current=1",
+		Limit:        1,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		item, err := scanTheme(rows)
+		if err != nil {
+			return nil, WrapInternalErr("GetCurrentTheme.Scan", err)
+		}
+		return item, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("GetCurrentTheme", err)
+	}
+	item, ok := firstResult(result)
+	if !ok {
+		return nil, ErrNotFound("GetCurrentTheme")
+	}
+	theme := item.(Theme)
+	return &theme, nil
+}
+
+func CountThemes(db *DB) (int, error) {
+	return Count(db, specThemes, "", nil)
+}
+
+func ListThemesPaged(db *DB, limit int, offset int) ([]Theme, error) {
+	result, err := Read(db, specThemes, ReadOptions{
+		SelectFields: "id, name, code, description, author, files, current_file, status, is_current, is_builtin, version, created_at, updated_at, deleted_at",
+		OrderBy:      "is_current DESC, is_builtin DESC, updated_at DESC, id DESC",
+		Limit:        limit,
+		Offset:       offset,
+	}, func(rows *sql.Rows) (interface{}, error) {
+		item, err := scanTheme(rows)
+		if err != nil {
+			return nil, WrapInternalErr("ListThemesPaged.Scan", err)
+		}
+		return item, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("ListThemesPaged", err)
+	}
+	themes := make([]Theme, len(result))
+	for i, item := range result {
+		themes[i] = item.(Theme)
+	}
+	return themes, nil
+}
+
+func UpdateTheme(db *DB, t *Theme, expectedVersion int64) error {
+	data := map[string]interface{}{
+		"name":         strings.TrimSpace(t.Name),
+		"description":  t.Description,
+		"author":       t.Author,
+		"files":        t.Files,
+		"current_file": strings.TrimSpace(t.CurrentFile),
+		"status":       strings.TrimSpace(t.Status),
+		"version":      expectedVersion + 1,
+		"updated_at":   time.Now().Unix(),
+	}
+	res, err := db.Exec(
+		`UPDATE `+string(TableThemes)+` SET name=?, description=?, author=?, files=?, current_file=?, status=?, version=?, updated_at=? WHERE id=? AND version=? AND deleted_at IS NULL`,
+		data["name"], data["description"], data["author"], data["files"], data["current_file"], data["status"], data["version"], data["updated_at"], t.ID, expectedVersion,
+	)
+	if err != nil {
+		return WrapInternalErr("UpdateTheme", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return WrapInternalErr("UpdateTheme.RowsAffected", err)
+	}
+	if affected == 0 {
+		if _, err := GetThemeByID(db, t.ID); err != nil {
+			return err
+		}
+		return ErrConflict("UpdateTheme")
+	}
+	t.Version = expectedVersion + 1
+	t.UpdatedAt = data["updated_at"].(int64)
+	return nil
+}
+
+func DeleteTheme(db *DB, id int64) error {
+	if id <= 0 {
+		return errors.New("id is invalid")
+	}
+
+	theme, err := GetThemeByID(db, id)
+	if err != nil {
+		return err
+	}
+	if theme.IsCurrent == 1 {
+		return errors.New("当前主题不能删除")
+	}
+	return Delete(db, specThemes, id)
+}
+
+func SetThemeCurrent(db *DB, id int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return WrapInternalErr("SetThemeCurrent.Begin", err)
+	}
+	defer tx.Rollback()
+
+	nowUnix := time.Now().Unix()
+	if _, err := tx.Exec(`UPDATE `+string(TableThemes)+` SET is_current=0, updated_at=? WHERE deleted_at IS NULL`, nowUnix); err != nil {
+		return WrapInternalErr("SetThemeCurrent.Reset", err)
+	}
+	res, err := tx.Exec(`UPDATE `+string(TableThemes)+` SET is_current=1, updated_at=? WHERE id=? AND deleted_at IS NULL`, nowUnix, id)
+	if err != nil {
+		return WrapInternalErr("SetThemeCurrent.Set", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return WrapInternalErr("SetThemeCurrent.RowsAffected", err)
+	}
+	if affected == 0 {
+		return ErrNotFound("SetThemeCurrent")
+	}
+	if err := tx.Commit(); err != nil {
+		return WrapInternalErr("SetThemeCurrent.Commit", err)
+	}
+	return nil
 }
 
 func GetSettingByCode(db *DB, code string) (*Setting, error) {
@@ -3866,7 +4120,7 @@ func BootstrapDefaultSettings(db *DB, overrides map[string]string) error {
 		OnDatabaseChanged(TableSettings, TableOpInsert)
 	}
 
-	return nil
+	return EnsureDefaultTheme(db)
 }
 
 func DeleteSetting(db *DB, id int64) error {
@@ -3913,7 +4167,7 @@ func EnsureDefaultSettings(db *DB) error {
 		}
 	}
 
-	return nil
+	return EnsureDefaultTheme(db)
 }
 
 func syncDefaultSettingMeta(db *DB, existing *Setting, defaults Setting) error {
@@ -4881,6 +5135,7 @@ func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 }
 
 var errNotFoundSentinel = errors.New("not found")
+var errConflictSentinel = errors.New("conflict")
 
 // ErrNotFound 返回带标识的 not found 错误，便于排查来源；判断请用 IsErrNotFound(err)
 func ErrNotFound(label string) error {
@@ -4911,6 +5166,16 @@ func IsErrInternalError(err error) bool {
 // IsErrNotFound 判断是否为“未找到”错误
 func IsErrNotFound(err error) bool {
 	return errors.Is(err, errNotFoundSentinel)
+}
+
+// ErrConflict 返回带标识的冲突错误，例如乐观锁版本冲突
+func ErrConflict(label string) error {
+	return fmt.Errorf("%s: %w", label, errConflictSentinel)
+}
+
+// IsErrConflict 判断是否为冲突错误
+func IsErrConflict(err error) bool {
+	return errors.Is(err, errConflictSentinel)
 }
 
 var errDuplicateCommentSentinel = errors.New("duplicate comment")

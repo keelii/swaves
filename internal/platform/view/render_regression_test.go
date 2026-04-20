@@ -2,6 +2,7 @@ package view
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,6 +26,26 @@ func mustLoadRegressionView(t *testing.T) *FiberView {
 	}
 	if err := fiberView.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
+	}
+	return fiberView
+}
+
+func mustLoadRegressionSiteView(t *testing.T) *FiberView {
+	t.Helper()
+
+	sqliteFile := filepath.Join(t.TempDir(), "site-runtime.sqlite")
+	themeRoot, err := MaterializeBuiltinThemeCache(sqliteFile, testTemplateRoot(), nil)
+	if err != nil {
+		t.Fatalf("materialize builtin theme cache failed: %v", err)
+	}
+
+	view, _ := NewViewEngine(themeRoot, false)
+	fiberView, ok := view.(*FiberView)
+	if !ok {
+		t.Fatal("expected FiberView from NewViewEngine")
+	}
+	if err := fiberView.Load(); err != nil {
+		t.Fatalf("load site templates failed: %v", err)
 	}
 	return fiberView
 }
@@ -149,7 +170,7 @@ func TestRenderDashTaskRunsIndexDoesNotRenderMultiselect(t *testing.T) {
 }
 
 func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
-	view := mustLoadRegressionView(t)
+	view := mustLoadRegressionSiteView(t)
 
 	post := site.DisplayPostWithRelation{
 		DisplayPost: site.DisplayPost{
@@ -164,8 +185,8 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 		},
 	}
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/post.html", map[string]any{
-		"Post":                   post,
+	rendered := mustRenderRegressionTemplate(t, view, "post.html", map[string]any{
+		"Post":                   site.ToTemplatePost(&post),
 		"ReadUV":                 0,
 		"LikeCount":              0,
 		"Liked":                  false,
@@ -193,7 +214,7 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 }
 
 func TestRenderSitePostWithCommentTree(t *testing.T) {
-	view := mustLoadRegressionView(t)
+	view := mustLoadRegressionSiteView(t)
 
 	post := site.DisplayPostWithRelation{
 		DisplayPost: site.DisplayPost{
@@ -235,8 +256,8 @@ func TestRenderSitePostWithCommentTree(t *testing.T) {
 		},
 	}
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/post.html", map[string]any{
-		"Post":                   post,
+	rendered := mustRenderRegressionTemplate(t, view, "post.html", map[string]any{
+		"Post":                   site.ToTemplatePost(&post),
 		"ReadUV":                 0,
 		"LikeCount":              0,
 		"Liked":                  false,
@@ -727,19 +748,18 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 }
 
 func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
-	view := mustLoadRegressionView(t)
+	view := mustLoadRegressionSiteView(t)
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/home.html", map[string]any{
-		"Articles": []site.DisplayPost{
+	rendered := mustRenderRegressionTemplate(t, view, "home.html", map[string]any{
+		"Articles": []site.TemplatePost{
 			{
-				Post: db.Post{
-					Title:       "home-title",
-					PublishedAt: 1,
-				},
-				PermLink: "/hello",
+				Title:       "home-title",
+				PublishedAt: 1,
+				PermLink:    "/hello",
 			},
 		},
-		"Pager": types.Pagination{Page: 1, Num: 1, Total: 1, PageSize: 10},
+		"Pager":     types.Pagination{Page: 1, Num: 1, Total: 1, PageSize: 10},
+		"RouteName": "site.home",
 	})
 	if !strings.Contains(rendered, "home-title") {
 		t.Fatalf("expected rendered article title")
@@ -747,12 +767,15 @@ func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
 	if !strings.Contains(rendered, "hello") {
 		t.Fatalf("expected rendered article permalink, got: %s", rendered)
 	}
+	if !strings.Contains(rendered, `data-route="site.home"`) {
+		t.Fatalf("expected html data-route attribute, got: %s", rendered)
+	}
 }
 
 func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
-	view := mustLoadRegressionView(t)
+	view := mustLoadRegressionSiteView(t)
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/detail.html", map[string]any{
+	rendered := mustRenderRegressionTemplate(t, view, "detail.html", map[string]any{
 		"IsTag": true,
 		"Entity": site.DisplayItem{
 			ID:          7,
@@ -781,9 +804,9 @@ func TestRenderSiteDetailWithTagContextOnly(t *testing.T) {
 }
 
 func TestRenderLucideIconWithoutSize(t *testing.T) {
-	view := mustLoadRegressionView(t)
+	view := mustLoadRegressionSiteView(t)
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/include/read_uv.html", map[string]any{"Count": 0})
+	rendered := mustRenderRegressionTemplate(t, view, "inc_read_uv.html", map[string]any{"Count": 0})
 	if !strings.Contains(rendered, "<svg") {
 		t.Fatalf("expected svg output")
 	}
@@ -800,9 +823,9 @@ func TestRenderLucideNewspaperIcon(t *testing.T) {
 }
 
 func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
-	view := mustLoadRegressionView(t)
+	view := mustLoadRegressionSiteView(t)
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{})
+	rendered := mustRenderRegressionTemplate(t, view, "layout_main.html", map[string]any{})
 	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
@@ -814,21 +837,26 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	}
 }
 
-func TestRenderSiteLayoutUsesSiteTitleFallback(t *testing.T) {
-	view := mustLoadRegressionView(t)
+func TestRenderSiteLayoutUsesProvidedTitleOnly(t *testing.T) {
+	view := mustLoadRegressionSiteView(t)
 
 	withRegressionSettings(t, map[string]string{"site_title": "Example Site"})
 
-	rendered := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{})
-	if !strings.Contains(rendered, "<title>Example Site</title>") {
-		t.Fatalf("expected site title fallback, got %s", rendered)
+	rendered := mustRenderRegressionTemplate(t, view, "layout_main.html", map[string]any{
+		"Title": "Example Page",
+	})
+	if !strings.Contains(rendered, "<title>Example Page</title>") {
+		t.Fatalf("expected explicit title, got %s", rendered)
+	}
+	if strings.Contains(rendered, "<title>Example Site</title>") {
+		t.Fatalf("expected layout title not to fallback to site_title, got %s", rendered)
 	}
 }
 
 func TestRenderSiteLayoutIncludesCanonicalAndDescription(t *testing.T) {
-	view := mustLoadRegressionView(t)
+	view := mustLoadRegressionSiteView(t)
 
-	html := mustRenderRegressionTemplate(t, view, "site/layout/layout.html", map[string]any{
+	html := mustRenderRegressionTemplate(t, view, "layout_main.html", map[string]any{
 		"Title":           "Hello",
 		"CanonicalURL":    "https://example.com/hello",
 		"MetaDescription": "Hello description",

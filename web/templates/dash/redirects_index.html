@@ -13,8 +13,7 @@
 {% endblock %}
 
 {% block operation_left %}
-  {% set ActiveRecordTab = "redirects" %}
-  {% include "dash/include/records_tabs.html" %}
+  {% with ActiveRecordTab = "redirects" %}{% include "dash/include/records_tabs.html" %}{% endwith %}
 {% endblock %}
 
 {% block status_main_right %}

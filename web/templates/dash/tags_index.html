@@ -8,8 +8,7 @@
 {% endblock %}
 
 {% block operation_left %}
-  {% set ActiveRecordTab = "tags" %}
-  {% include "dash/include/records_tabs.html" %}
+  {% with ActiveRecordTab = "tags" %}{% include "dash/include/records_tabs.html" %}{% endwith %}
 {% endblock %}
 
 {% block status_main_right %}

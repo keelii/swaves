@@ -1,54 +1,46 @@
-{% extends "site/layout/layout.html" %}
+{% extends "layout_main.html" %}
 {% block content %}
-{% set displayPost = Post.DisplayPost %}
-{% set postData = displayPost.Post %}
-{% set postCategory = Post.Category %}
-{% set postTags = Post.Tags %}
-{% from "site/macro/content.html" import category_item, tag_list %}
+{% from "macro_content.html" import CategoryItem, TagList %}
 
 <header>
-  <h1>{{ postData.Title }}</h1>
+  <h1>{{ Post.Title }}</h1>
   <nav class="valign">
-    <span class="post-info author">{{ Settings("author") }}</span>
-    <span class="post-info datetime">{{ postData.PublishedAt | articleTime }}</span>
-{#    <span  class="post-info home">#}
-{#      <a href="{{ GetBasePath() }}">首页</a>#}
-{#    </span>#}
-    <span  class="post-info edit">
-    {% if IsLogin and (postData.ID > 0) %}
-      <a href="{{ UrlFor('dash.posts.edit', id=postData.ID) }}">编辑</a>
+    <span class="author">{{ Settings("author") }}</span>
+    <span>{{ Post.PublishedAt | articleTime }}</span>
+    <a href="{{ GetBasePath() }}">首页</a>
+    {% if IsLogin and (Post.ID > 0) %}
+      <a href="{{ UrlFor('dash.posts.edit', id=Post.ID) }}">编辑</a>
     {% endif %}
-    </span>
     {% set Count = ReadUV %}
-    {% include "site/include/read_uv.html" %}
-    {% set PostID = postData.ID %}
-    {% include "site/include/like_action.html" %}
-    {% if postData.Kind == 0 %}
+    {% include "inc_read_uv.html" %}
+    {% if Post.Kind == 0 %}
       {% set Count = CommentCount %}
-      {% include "site/include/comment_count.html" %}
+      {% include "inc_comment_count.html" %}
     {% endif %}
+    {% set PostID = Post.ID %}
+    {% include "inc_like_action.html" %}
   </nav>
 </header>
 <article>
   <section>
-    {{ displayPost.HTML | safe }}
+    {{ Post.HTML | safe }}
   </section>
 </article>
-{% if postData.Kind == 0 %}
+{% if Post.Kind == 0 %}
 <section>
   <hr>
-  <div class="post-meta">
-    <div class="post-catgory-tag">
+  <div class="post-info">
+    <div class="post-category-tag">
       <div>
-        {% if postCategory %}
-          {{ category_item(postCategory, label=true, sep="：") }}
+        {% if Post.Category %}
+          {{ CategoryItem(Post.Category, Label=true, Sep="：") }}
         {% else %}
           <span>分类：无</span>
         {% endif %}
       </div>
       <div>
-        {% if postTags %}
-          {{ tag_list(postTags, label=true, sep="：") }}
+        {% if Post.Tags %}
+          {{ TagList(Post.Tags, Label=true, Sep="：") }}
         {% else %}
           <span>标签：无</span>
         {% endif %}
@@ -56,15 +48,15 @@
     </div>
     <div class="post-nav">
       <div>
-        {% if displayPost.Next %}
-          <span>上一篇：<a href="{{ displayPost.Next.PermLink }}" class="next" title="{{ displayPost.Next.Title }}">{{ displayPost.Next.Title }}</a></span>
+        {% if Post.Next %}
+          <span>上一篇：<a href="{{ Post.Next.PermLink }}" class="next">{{ Post.Next.Title }}</a></span>
         {% else %}
           <span>上一篇：无</span>
         {% endif %}
       </div>
       <div>
-        {% if displayPost.Prev %}
-          <span>下一篇：<a href="{{ displayPost.Prev.PermLink }}" class="prev" title="{{ displayPost.Prev.Title }}">{{ displayPost.Prev.Title }}</a></span>
+        {% if Post.Prev %}
+          <span>下一篇：<a href="{{ Post.Prev.PermLink }}" class="prev">{{ Post.Prev.Title }}</a></span>
         {% else %}
           <span>下一篇：无</span>
         {% endif %}
@@ -74,14 +66,14 @@
   <hr>
 </section>
 {% endif %}
-{% if postData.Kind == 0 %}
+{% if Post.Kind == 0 %}
   <section>
   </section>
 {% endif %}
 
 
 
-  {% if postData.CommentEnabled == 1 %}
+  {% if Post.CommentEnabled == 1 %}
   <section>
   <footer>
     <div id="comments" class="comment-block">
@@ -102,9 +94,9 @@
 
       {% if Comments %}
         <ol class="comment-list">
-          {% for item in Comments %}
-            {% set Comment = item %}
-            {% include "site/include/comment_item.html" %}
+          {% for Item in Comments %}
+            {% set Comment = Item %}
+            {% include "inc_comment_item.html" %}
           {% endfor %}
         </ol>
       {% else %}
@@ -112,12 +104,12 @@
       {% endif %}
       {% if CommentPager and CommentPager.Num > 1 %}
         {% set Pager = CommentPager %}
-        {% include "site/include/comment_pagination.html" %}
+        {% include "inc_comment_pagination.html" %}
       {% endif %}
 
       <fieldset>
         <legend>发表评论</legend>
-        <form method="post" action="{{ UrlFor('site.action.comment', postID=postData.ID) }}" id="comment-form" class="comment-form">
+        <form method="post" action="{{ UrlFor('site.action.comment', postID=Post.ID) }}" id="comment-form" class="comment-form">
           <input type="hidden" name="return_url" value="{{ UrlPath }}">
           <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
           <p class="comment-form-row">
