@@ -85,11 +85,8 @@ func MaterializeBuiltinThemeCache(sqliteFile string, templateRoot string, templa
 }
 
 func resetThemeCacheRoot(cacheRoot string, targetRoot string) error {
-	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
-		return fmt.Errorf("create theme cache root failed: %w", err)
-	}
-	if err := os.RemoveAll(targetRoot); err != nil {
-		return fmt.Errorf("reset theme cache failed: %w", err)
+	if err := os.RemoveAll(cacheRoot); err != nil {
+		return fmt.Errorf("clear theme cache root failed: %w", err)
 	}
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
 		return fmt.Errorf("create theme cache directory failed: %w", err)

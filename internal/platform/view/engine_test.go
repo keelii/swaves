@@ -139,9 +139,31 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	assertCachedThemeFile("layout_archive.html", "archive-layout")
 	assertCachedThemeFile(filepath.Join("include", "favicon.html"), "favicon")
 	assertCachedThemeFile(filepath.Join("include", "math.html"), "math")
+
+	cacheBase, err := ResolveThemeCacheRoot(dbPath)
+	if err != nil {
+		t.Fatalf("ResolveThemeCacheRoot failed: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(cacheBase, "stale-theme"), 0o755); err != nil {
+		t.Fatalf("create stale theme dir failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheBase, "stale-theme", "home.html"), []byte("stale"), 0o644); err != nil {
+		t.Fatalf("write stale theme file failed: %v", err)
+	}
+
+	cacheRoot, err = MaterializeCurrentThemeCache(model, dbPath, templateRoot, nil)
+	if err != nil {
+		t.Fatalf("MaterializeCurrentThemeCache second pass failed: %v", err)
+	}
+	if cacheRoot == "" {
+		t.Fatal("expected cache root on second materialize")
+	}
+	if _, err := os.Stat(filepath.Join(cacheBase, "stale-theme", "home.html")); !os.IsNotExist(err) {
+		t.Fatalf("stale sibling cache should be removed on rematerialize, got err=%v", err)
+	}
 }
 
-func TestResetThemeCacheRootKeepsSiblingThemes(t *testing.T) {
+func TestResetThemeCacheRootClearsSiblingThemes(t *testing.T) {
 	cacheRoot := filepath.Join(t.TempDir(), ".cache", "themes")
 	targetRoot := filepath.Join(cacheRoot, "current")
 	siblingRoot := filepath.Join(cacheRoot, "builtin")
@@ -162,8 +184,8 @@ func TestResetThemeCacheRootKeepsSiblingThemes(t *testing.T) {
 		t.Fatalf("resetThemeCacheRoot failed: %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(siblingRoot, "home.html")); err != nil {
-		t.Fatalf("sibling cache should be preserved, stat failed: %v", err)
+	if _, err := os.Stat(filepath.Join(siblingRoot, "home.html")); !os.IsNotExist(err) {
+		t.Fatalf("sibling cache should be cleared, got err=%v", err)
 	}
 	if _, err := os.Stat(filepath.Join(targetRoot, "home.html")); !os.IsNotExist(err) {
 		t.Fatalf("target cache should be cleared, got err=%v", err)
