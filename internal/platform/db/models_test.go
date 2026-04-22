@@ -1170,7 +1170,7 @@ func TestEnsureDefaultSettingsCreatesDefaultTheme(t *testing.T) {
 	}
 }
 
-func TestEnsureDefaultThemeUpdatesLegacyBuiltinTheme(t *testing.T) {
+func TestEnsureDefaultThemeKeepsExistingDefaultThemeContent(t *testing.T) {
 	db := openEmptyTestDB(t)
 
 	defaultTheme, err := GetThemeByCode(db, DefaultThemeCode)
@@ -1208,20 +1208,47 @@ func TestEnsureDefaultThemeUpdatesLegacyBuiltinTheme(t *testing.T) {
 	if err := json.Unmarshal([]byte(defaultTheme.Files), &files); err != nil {
 		t.Fatalf("unmarshal template files failed: %v", err)
 	}
-	if strings.Contains(files["home.html"], `site/layout/layout.html`) {
-		t.Fatalf("legacy template path should be replaced: %s", files["home.html"])
+	if got := files["home.html"]; got != `{% extends "site/layout/layout.html" %}` {
+		t.Fatalf("home template should remain customized, got: %s", got)
 	}
-	if !strings.Contains(files["home.html"], `{% extends "layout_main.html" %}`) {
-		t.Fatalf("expected flattened template extends path, got: %s", files["home.html"])
+	if defaultTheme.Description != "legacy" {
+		t.Fatalf("description should remain customized: %+v", defaultTheme)
 	}
-	if strings.Contains(files["home.html"], `article.Post.Title`) {
-		t.Fatalf("home template should not expose embedded post wrapper, got: %s", files["home.html"])
+	if defaultTheme.Author != "legacy" {
+		t.Fatalf("author should remain customized: %+v", defaultTheme)
 	}
-	if strings.Contains(files["post.html"], `Post.DisplayPost`) {
-		t.Fatalf("post template should not expose wrapper semantics, got: %s", files["post.html"])
+}
+
+func TestEnsureDefaultThemeSetsDefaultCurrentWhenNoCurrentTheme(t *testing.T) {
+	db := openTestDB(t)
+
+	defaultTheme, err := GetThemeByCode(db, DefaultThemeCode)
+	if err != nil {
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
 	}
-	if !strings.Contains(files["post.html"], `{{ Post.Title }}`) {
-		t.Fatalf("expected post template to read title from Post directly, got: %s", files["post.html"])
+
+	if _, err := db.Exec(`UPDATE `+string(TableThemes)+` SET is_current=0 WHERE deleted_at IS NULL`); err != nil {
+		t.Fatalf("clear current theme failed: %v", err)
+	}
+
+	if err := EnsureDefaultTheme(db); err != nil {
+		t.Fatalf("EnsureDefaultTheme failed: %v", err)
+	}
+
+	currentTheme, err := GetCurrentTheme(db)
+	if err != nil {
+		t.Fatalf("GetCurrentTheme failed: %v", err)
+	}
+	if currentTheme.ID != defaultTheme.ID {
+		t.Fatalf("current theme = %+v, want default theme id=%d", currentTheme, defaultTheme.ID)
+	}
+
+	defaultTheme, err = GetThemeByCode(db, DefaultThemeCode)
+	if err != nil {
+		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
+	}
+	if defaultTheme.IsCurrent != 1 {
+		t.Fatalf("default theme should be set current: %+v", defaultTheme)
 	}
 }
 
