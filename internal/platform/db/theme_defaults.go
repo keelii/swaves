@@ -122,7 +122,7 @@ func syncDefaultTheme(db *DB, theme *Theme) error {
 func EnsureDefaultTheme(db *DB) error {
 	theme, err := GetThemeByCode(db, DefaultThemeCode)
 	if err == nil {
-		return syncDefaultTheme(db, theme)
+		return ensureDefaultThemeCurrent(db, theme)
 	}
 	if !IsErrNotFound(err) {
 		return err
