@@ -213,10 +213,10 @@ func extractThemeFiles(files map[string]string, outRoot string, themeCode string
 }
 
 func normalizeExtractFilePath(name string) (string, error) {
-	rawName := strings.TrimSpace(name)
+	rawName := name
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "", fmt.Errorf("invalid theme file path: %s", name)
+		return "", fmt.Errorf("invalid theme file path: %s", rawName)
 	}
 	name = filepath.ToSlash(name)
 	if len(name) >= 2 && name[1] == ':' {
