@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "encrypted-posts-table" %}
@@ -39,7 +38,7 @@
     <table id="encrypted-posts-table" class="data-table" aria-label="加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.encrypted_posts.api.batch_delete') }}">
       <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>标题</th>
         <th>URL 标识</th>
         <th>过期时间</th>
@@ -51,7 +50,7 @@
       <tbody>
       {% for post in Posts %}
       <tr>
-        <td>{{ ui.table_td_id(post.ID) }}</td>
+        <td>{{ sui.TableTdId(post.ID) }}</td>
         <td>{{ post.Title }}</td>
         <td>{{ post.Slug }}</td>
         <td>{% if post.ExpiresAt %}{{ post.ExpiresAt | formatTime }}{% else %}永不过期{% endif %}</td>

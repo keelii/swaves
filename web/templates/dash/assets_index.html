@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set defaultProvider = DefaultProvider %}
 {% set defaultProviderReady = DefaultProviderReady %}
@@ -116,7 +115,7 @@
   <table id="assets-table" class="data-table" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.assets.api.batch_delete') }}">
     <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>类型</th>
         <th>服务</th>
         <th>文件名</th>
@@ -130,7 +129,7 @@
     <tbody>
       {% for assetItem in Items %}
         <tr data-asset-id="{{ assetItem.id }}" data-batch-delete-id="{{ assetItem.id }}">
-          <td>{{ ui.table_td_id(assetItem.id) }}</td>
+          <td>{{ sui.TableTdId(assetItem.id) }}</td>
           <td>{{ assetKindLabelMap[assetItem.kind] }}</td>
           <td>{{ assetProviderLabelMap[assetItem.provider] }}</td>
           <td>{{ assetItem.original_name }}</td>

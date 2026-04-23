@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "comments-table" %}
@@ -29,7 +28,7 @@
 <table id="comments-table" class="data-table" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.comments.api.batch_delete') }}">
   <thead>
   <tr>
-    <th>{{ ui.table_th_id() }}</th>
+    <th>{{ sui.TableThId() }}</th>
     <th>文章</th>
     <th>作者</th>
     <th>内容</th>
@@ -41,7 +40,7 @@
   <tbody>
   {% for comment in Comments %}
     <tr data-batch-delete-id="{{ comment.ID }}">
-      <td>{{ ui.table_td_id(comment.ID) }}</td>
+      <td>{{ sui.TableTdId(comment.ID) }}</td>
       <td>
         <a href="{{ GetPostUrl({"ID": comment.PostID, "Kind": comment.PostKind, "Slug": comment.PostSlug, "PublishedAt": comment.PostPubAt}) }}#comment-{{ comment.ID }}" target="_blank" rel="noopener">{{ comment.PostTitle }}</a>
         <div class="text-light">文章ID={{ comment.PostID }}</div>
