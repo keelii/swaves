@@ -215,7 +215,7 @@ func TestResolveSettingLocationPlacesCrawlerBlockUnderFrontendSite(t *testing.T)
 	}
 }
 
-func TestListAllSettingsBackfillsCrawlerBlockSettingForExistingInstall(t *testing.T) {
+func TestListAllSettingsDoesNotBackfillMissingDefaults(t *testing.T) {
 	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "settings-backfill.sqlite")})
 	t.Cleanup(func() { _ = dbx.Close() })
 
@@ -234,28 +234,13 @@ func TestListAllSettingsBackfillsCrawlerBlockSettingForExistingInstall(t *testin
 		t.Fatalf("ListAllSettings failed: %v", err)
 	}
 
-	found := false
 	for _, setting := range settings {
-		if setting.Code != db.SettingCodeBlockSearchEngineCrawlers {
-			continue
+		if setting.Code == db.SettingCodeBlockSearchEngineCrawlers {
+			t.Fatalf("did not expect %q to be backfilled during list", db.SettingCodeBlockSearchEngineCrawlers)
 		}
-		found = true
-		if setting.Type != "checkbox" {
-			t.Fatalf("expected crawler block setting type checkbox, got %q", setting.Type)
-		}
-		if setting.Options == "" {
-			t.Fatal("expected crawler block setting options to be populated")
-		}
-	}
-	if !found {
-		t.Fatalf("expected %q to be backfilled into settings list", db.SettingCodeBlockSearchEngineCrawlers)
 	}
 
-	stored, err := db.GetSettingByCode(dbx, db.SettingCodeBlockSearchEngineCrawlers)
-	if err != nil {
-		t.Fatalf("GetSettingByCode(%q) failed: %v", db.SettingCodeBlockSearchEngineCrawlers, err)
-	}
-	if stored.Type != "checkbox" {
-		t.Fatalf("expected stored crawler block setting type checkbox, got %q", stored.Type)
+	if _, err := db.GetSettingByCode(dbx, db.SettingCodeBlockSearchEngineCrawlers); !db.IsErrNotFound(err) {
+		t.Fatalf("expected %q to stay missing after list, got %v", db.SettingCodeBlockSearchEngineCrawlers, err)
 	}
 }

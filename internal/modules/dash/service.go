@@ -1147,9 +1147,6 @@ func ListSettingsByKind(dbx *db.DB, kind string) ([]db.Setting, error) {
 }
 
 func ListAllSettings(dbx *db.DB) ([]db.Setting, error) {
-	//if err := db.EnsureDefaultSettings(dbx); err != nil {
-	//	return nil, err
-	//}
 	return db.ListAllSettings(dbx)
 }
 
