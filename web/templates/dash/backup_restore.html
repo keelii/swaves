@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "backup-restore-table" %}
 {% block page_actions %}
@@ -61,7 +60,7 @@
     <table id="backup-restore-table" class="data-table" data-role="data-table" aria-label="本地备份文件列表">
       <thead>
         <tr>
-          <th>{{ ui.table_th_id() }}</th>
+          <th>{{ sui.TableThId() }}</th>
           <th>文件名</th>
           <th>更新时间</th>
           <th>大小</th>
@@ -71,7 +70,7 @@
       <tbody>
         {% for file in LocalBackupFiles %}
           <tr>
-            <td>{{ ui.table_td_id(((Pager.Page - 1) * Pager.PageSize) + loop.index) }}</td>
+            <td>{{ sui.TableTdId(((Pager.Page - 1) * Pager.PageSize) + loop.index) }}</td>
             <td>{{ file.Name }}</td>
             <td>{{ file.ModifiedAt | relativeTime }}</td>
             <td>{{ file.Size | humanSize }}</td>

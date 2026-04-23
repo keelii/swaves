@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "themes-table" %}
@@ -28,7 +27,7 @@
     <table id="themes-table" class="data-table" aria-label="主题列表" data-role="data-table">
       <thead>
         <tr>
-          <th>{{ ui.table_th_id() }}</th>
+          <th>{{ sui.TableThId() }}</th>
           <th>名称</th>
           <th>编码</th>
           <th>作者</th>
@@ -43,7 +42,7 @@
       <tbody>
         {% for theme in Themes %}
           <tr>
-            <td>{{ ui.table_td_id(theme.ID) }}</td>
+            <td>{{ sui.TableTdId(theme.ID) }}</td>
             <td>{{ theme.Name }}</td>
             <td>{{ theme.Code }}</td>
             <td>{{ theme.Author or '-' }}</td>

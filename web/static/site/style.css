@@ -7,7 +7,6 @@ button[data-like-button] {
   font: inherit;
   display: inline-flex;
   align-items: center;
-  gap: 0.2em;
 }
 button[data-liked="1"] {
   color: rgb(249, 24, 128);
@@ -27,7 +26,14 @@ button[data-like-button]:disabled {
 .valign {
   display: flex;
   align-items: center;
+  gap: 5px;
+}
+.gap-10 { gap: 10px; }
+.gap-5 { gap: 5px; }
+
+.post-meta-nav {
   gap: 0.8em;
+  line-height: 18px;
 }
 .read-uv {
   /*display: inline-flex;*/
@@ -38,7 +44,6 @@ button[data-like-button]:disabled {
 .comment-count {
   display: inline-flex;
   align-items: center;
-  gap: 0.2em;
   text-decoration: none;
   color: inherit;
   border: 0;

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/shared/share"
 
@@ -42,7 +43,43 @@ func newCurrentThemeTemplateLoader(model *db.DB, sharedDir string, sharedFS fs.F
 		if err != nil {
 			return "", err
 		}
+		// In development prefer disk/shared templates over DB-stored ones so
+		// developers can iterate on files in web/templates without DB overrides.
+		if config.IsDevelopment {
+			// In dev, prefer theme-specific disk file under web/templates/themes/<code>/<name>
+			// then prefer shared root, then fall back to DB.
+			if theme, errTheme := db.GetCurrentTheme(model); errTheme == nil {
+				themeCandidate := filepath.ToSlash(filepath.Join("themes", theme.Code, normalizedName))
+				content, ok, err := readSharedTemplate(themeCandidate, sharedDir, sharedFS)
+				if err != nil {
+					return "", err
+				}
+				if ok {
+					return content, nil
+				}
+			}
 
+			// try shared root
+			content, ok, err := readSharedTemplate(normalizedName, sharedDir, sharedFS)
+			if err != nil {
+				return "", err
+			}
+			if ok {
+				return content, nil
+			}
+
+			// fall back to DB if shared template not present
+			content, ok, err = readCurrentThemeTemplate(model, normalizedName)
+			if err != nil {
+				return "", err
+			}
+			if ok {
+				return content, nil
+			}
+			return "", minijinja.NewError(minijinja.ErrTemplateNotFound, normalizedName)
+		}
+
+		// Production/default behavior: prefer DB (current theme) and fall back to shared disk
 		content, ok, err := readCurrentThemeTemplate(model, normalizedName)
 		if err != nil {
 			return "", err

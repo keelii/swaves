@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"path/filepath"
 	"testing"
 
 	"swaves/internal/platform/db"
@@ -201,5 +202,45 @@ func TestResolveSettingLocationPlacesS3UnderAssets(t *testing.T) {
 	})
 	if location.Area != settingAreaBackend || location.Section != settingSectionAssets || location.Card != "s3" {
 		t.Fatalf("unexpected s3 location: %+v", location)
+	}
+}
+
+func TestResolveSettingLocationPlacesCrawlerBlockUnderFrontendSite(t *testing.T) {
+	location := resolveSettingLocation(db.Setting{
+		Kind: db.SettingKindSiteBasics,
+		Code: db.SettingCodeBlockSearchEngineCrawlers,
+	})
+	if location.Area != settingAreaFrontend || location.Section != settingSectionSite || location.Card != "identity" {
+		t.Fatalf("unexpected crawler block location: %+v", location)
+	}
+}
+
+func TestListAllSettingsDoesNotBackfillMissingDefaults(t *testing.T) {
+	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "settings-backfill.sqlite")})
+	t.Cleanup(func() { _ = dbx.Close() })
+
+	if _, err := db.CreateSetting(dbx, &db.Setting{
+		Kind:  db.SettingKindSiteBasics,
+		Name:  "站点标题",
+		Code:  "site_title",
+		Type:  "text",
+		Value: "Existing Site",
+	}); err != nil {
+		t.Fatalf("create initial setting failed: %v", err)
+	}
+
+	settings, err := ListAllSettings(dbx)
+	if err != nil {
+		t.Fatalf("ListAllSettings failed: %v", err)
+	}
+
+	for _, setting := range settings {
+		if setting.Code == db.SettingCodeBlockSearchEngineCrawlers {
+			t.Fatalf("did not expect %q to be backfilled during list", db.SettingCodeBlockSearchEngineCrawlers)
+		}
+	}
+
+	if _, err := db.GetSettingByCode(dbx, db.SettingCodeBlockSearchEngineCrawlers); !db.IsErrNotFound(err) {
+		t.Fatalf("expected %q to stay missing after list, got %v", db.SettingCodeBlockSearchEngineCrawlers, err)
 	}
 }

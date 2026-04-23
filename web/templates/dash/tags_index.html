@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "tags-table" %}
@@ -21,7 +20,7 @@
     <table id="tags-table" class="data-table" aria-label="标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.tags.api.batch_delete') }}">
       <thead>
         <tr>
-          <th>{{ ui.table_th_id() }}</th>
+          <th>{{ sui.TableThId() }}</th>
           <th>名称</th>
           <th class="cell-12">URL 标识</th>
           <th>文章数量</th>
@@ -33,7 +32,7 @@
       <tbody>
         {% for tag in Tags %}
           <tr data-batch-delete-id="{{ tag.ID }}">
-            <td>{{ ui.table_td_id(tag.ID) }}</td>
+            <td>{{ sui.TableTdId(tag.ID) }}</td>
             <td>{{ tag.Name }}</td>
             <td><a href="{{ GetTagUrl(tag.Slug) }}" target="_blank" rel="noopener">{{ tag.Slug }}</a></td>
             <td><a href="{{ UrlFor('dash.posts.list', {"kind":"0", "tag":tag.ID}) }}">{{ PostCounts[tag.ID] }}</a></td>

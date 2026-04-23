@@ -290,6 +290,30 @@
 </div>
 {% endmacro %}
 
+{% macro TableThId(label="ID") %}
+  <span class="cell-id">{{ label }}</span>
+  <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="全选" />
+{% endmacro %}
+
+{% macro TableTdId(label="-") %}
+  <div class="cell-td-id">
+    <span class="cell-id">{{ label }}</span>
+    <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="选择" />
+  </div>
+{% endmacro %}
+
+{% macro PostStatusBadge(status) %}
+{% if status == "published" %}
+  <span class="ui-badge success">已发布</span>
+{% elif status == "importing" %}
+  <span class="ui-badge draft">导入中</span>
+{% elif status == "draft" %}
+  <span class="ui-badge draft">草稿</span>
+{% else %}
+  <span class="ui-badge">{{ status }}</span>
+{% endif %}
+{% endmacro %}
+
 {% macro Pager(current=1, total=1, href_prefix="javascript:;", page_param="page") %}
 <div class="ui-tags" aria-label="分页">
   {% set sep = "?" %}
