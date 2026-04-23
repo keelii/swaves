@@ -36,7 +36,6 @@ func MaterializeCurrentThemeCache(model *db.DB, sqliteFile string, templateRoot 
 		return "", err
 	}
 
-	logger.Info("[theme] materialize current theme start: code=%s", theme.Code)
 	dirName, ok := normalizeThemeCacheDirName(theme.Code)
 	if !ok {
 		return "", fmt.Errorf("invalid theme code %q", theme.Code)
@@ -60,12 +59,11 @@ func MaterializeCurrentThemeCache(model *db.DB, sqliteFile string, templateRoot 
 	if err := copySharedSiteFiles(targetRoot, templateRoot, templateFS); err != nil {
 		return "", err
 	}
-	logger.Info("[theme] materialize current theme success: code=%s files=%d root=%s", theme.Code, len(files), targetRoot)
+	logger.Info("[theme] loaded: code=%s source=db files=%d root=%s", theme.Code, len(files), targetRoot)
 	return targetRoot, nil
 }
 
 func MaterializeBuiltinThemeCache(sqliteFile string, templateRoot string, templateFS fs.FS) (string, error) {
-	logger.Info("[theme] materialize builtin theme start: code=%s", runtimeThemeBuiltinCode)
 	files, err := loadBuiltinThemeFiles(templateRoot, templateFS, runtimeThemeBuiltinCode)
 	if err != nil {
 		return "", err
@@ -85,7 +83,7 @@ func MaterializeBuiltinThemeCache(sqliteFile string, templateRoot string, templa
 	if err := copySharedSiteFiles(targetRoot, templateRoot, templateFS); err != nil {
 		return "", err
 	}
-	logger.Info("[theme] materialize builtin theme success: code=%s files=%d root=%s", runtimeThemeBuiltinCode, len(files), targetRoot)
+	logger.Info("[theme] loaded: code=%s source=builtin files=%d root=%s", runtimeThemeBuiltinCode, len(files), targetRoot)
 	return targetRoot, nil
 }
 
