@@ -377,20 +377,20 @@ func TestRenderPaginationFallsBackToRouteContext(t *testing.T) {
 	view, initURLResolver := mustLoadRegressionViewWithResolver(t)
 
 	app := fiber.New()
-	app.Get("/logs", func(c fiber.Ctx) error {
+	app.Get("/comments", func(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNoContent)
-	}).Name("dash.http_error_logs.list")
+	}).Name("dash.comments.list")
 	initURLResolver(app)
 
 	rendered := mustRenderRegressionTemplate(t, view, "dash/include/pagination.html", map[string]any{
 		"Pager":     types.Pagination{Page: 2, Num: 3, Total: 25, PageSize: 10},
-		"RouteName": "dash.http_error_logs.list",
+		"RouteName": "dash.comments.list",
 		"Query":     map[string]string{"pageSize": "10"},
 	})
-	if !strings.Contains(rendered, `&#x2f;logs?page=1&amp;pageSize=10`) {
+	if !strings.Contains(rendered, `&#x2f;comments?page=1&amp;pageSize=10`) {
 		t.Fatalf("expected pagination prev link to use route context, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `&#x2f;logs?page=3&amp;pageSize=10`) {
+	if !strings.Contains(rendered, `&#x2f;comments?page=3&amp;pageSize=10`) {
 		t.Fatalf("expected pagination next link to use route context, got: %s", rendered)
 	}
 }
@@ -423,6 +423,7 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 
 	app := fiber.New()
 	app.Get("/dash/backup-restore", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.show")
+	app.Get("/dash/backup-restore/download", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.download")
 	app.Get("/dash/backup-restore/status", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.status")
 	app.Post("/dash/backup-restore/backup", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.backup")
 	app.Post("/dash/backup-restore/local", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.local")
@@ -450,6 +451,9 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	}
 	if !strings.Contains(rendered, `data-title="恢复"`) {
 		t.Fatalf("expected backup restore action in backup restore view")
+	}
+	if !strings.Contains(rendered, `data-title="下载"`) {
+		t.Fatalf("expected backup download action in backup restore view")
 	}
 	if !strings.Contains(rendered, `class="cell-checkbox ui-checkbox"`) {
 		t.Fatalf("expected backup restore multiselect checkboxes in backup restore view")
@@ -503,33 +507,6 @@ func TestRenderDashImportShowsExportTab(t *testing.T) {
 	}
 	if !strings.Contains(rendered, "数据库导出") {
 		t.Fatalf("expected export panel in import export tab")
-	}
-}
-
-func TestRenderDashHttpErrorLogsShowsAddRedirectActionForGet404(t *testing.T) {
-	view := mustLoadRegressionView(t)
-
-	rendered := mustRenderRegressionTemplate(t, view, "dash/http_error_logs_index.html", map[string]any{
-		"Logs": []db.HttpErrorLog{
-			{
-				ID:        1,
-				Method:    "GET",
-				Path:      "/missing-path",
-				Status:    404,
-				CreatedAt: 1,
-			},
-			{
-				ID:        2,
-				Method:    "POST",
-				Path:      "/missing-post",
-				Status:    404,
-				CreatedAt: 1,
-			},
-		},
-		"Pager": types.Pagination{Page: 1, Num: 1, Total: 2, PageSize: 10},
-	})
-	if count := strings.Count(rendered, "lucide-arrow-right-icon"); count != 1 {
-		t.Fatalf("expected add-redirect icon once, got %d", count)
 	}
 }
 

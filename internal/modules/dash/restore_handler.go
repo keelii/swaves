@@ -75,9 +75,33 @@ func (h *Handler) GetBackupRestoreStatusHandler(c fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) GetBackupRestoreDownloadHandler(c fiber.Ctx) error {
+	sourceName := filepath.Base(c.Query(restoreBackupFileFormKey))
+	if sourceName == "" || sourceName == "." {
+		return fiber.ErrBadRequest
+	}
+
+	sourcePath, err := findLocalRestoreSource(sourceName)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
+	}
+
+	stream, err := openCleanupFileStream(sourcePath, nil)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fiber.NewError(fiber.StatusNotFound, "未找到选中的本地备份文件。")
+		}
+		return fmt.Errorf("打开本地备份文件失败：%w", err)
+	}
+
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", sourceName))
+	c.Set("Content-Type", "application/x-sqlite3")
+	return c.SendStream(stream)
+}
+
 func (h *Handler) PostExportRestoreLocalHandler(c fiber.Ctx) error {
 	sourceName := filepath.Base(strings.TrimSpace(c.FormValue(restoreBackupFileFormKey)))
-	if sourceName == "" {
+	if sourceName == "" || sourceName == "." {
 		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "请选择一个本地备份文件。")
 	}
 
@@ -134,7 +158,7 @@ func (h *Handler) PostBackupRestoreDeleteHandler(c fiber.Ctx) error {
 	}
 
 	sourceName := filepath.Base(strings.TrimSpace(c.FormValue(restoreBackupFileFormKey)))
-	if sourceName == "" {
+	if sourceName == "" || sourceName == "." {
 		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "请选择要删除的本地备份文件。")
 	}
 	if err := deleteLocalRestoreBackup(sourceName); err != nil {

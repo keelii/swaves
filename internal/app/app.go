@@ -114,8 +114,6 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		},
 	}))
 	app.Use(requestTracker.Middleware())
-	app.Use(middleware.HttpErrorLog(globalStore.Model))
-
 	dash.RegisterRouter(app, globalStore)
 	sui.RegisterRouter(app, globalStore)
 	site.RegisterRouter(app, globalStore, siteViews)

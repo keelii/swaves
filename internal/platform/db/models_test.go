@@ -1227,7 +1227,7 @@ func TestEnsureDefaultThemeSetsDefaultCurrentWhenNoCurrentTheme(t *testing.T) {
 		t.Fatalf("GetThemeByCode(default theme) failed: %v", err)
 	}
 
-	if _, err := db.Exec(`UPDATE `+string(TableThemes)+` SET is_current=0 WHERE deleted_at IS NULL`); err != nil {
+	if _, err := db.Exec(`UPDATE ` + string(TableThemes) + ` SET is_current=0 WHERE deleted_at IS NULL`); err != nil {
 		t.Fatalf("clear current theme failed: %v", err)
 	}
 
@@ -1877,48 +1877,6 @@ func TestEnsureDefaultCategories(t *testing.T) {
 		}
 	}
 
-}
-
-func TestHttpErrorLogLifecycle(t *testing.T) {
-	db := openTestDB(t)
-
-	logItem := &HttpErrorLog{
-		ReqID:     uniqueValue("req"),
-		ClientIP:  "127.0.0.1",
-		Method:    "GET",
-		Path:      "/err",
-		Status:    500,
-		UserAgent: "ua",
-	}
-	if _, err := CreateHttpErrorLog(db, logItem); err != nil {
-		t.Fatalf("CreateHttpErrorLog failed: %v", err)
-	}
-	if logItem.CreatedAt == 0 || logItem.ExpiredAt != logItem.CreatedAt+7*24*60*60 {
-		t.Fatalf("unexpected created/expired timestamps: %+v", logItem)
-	}
-
-	logs, err := ListHttpErrorLogs(db, 10, 0)
-	if err != nil {
-		t.Fatalf("ListHttpErrorLogs failed: %v", err)
-	}
-	if len(logs) == 0 {
-		t.Fatal("expected logs")
-	}
-
-	before, err := CountHttpErrorLogs(db)
-	if err != nil {
-		t.Fatalf("CountHttpErrorLogs failed: %v", err)
-	}
-	if err := DeleteHttpErrorLog(db, logItem.ID); err != nil {
-		t.Fatalf("DeleteHttpErrorLog failed: %v", err)
-	}
-	after, err := CountHttpErrorLogs(db)
-	if err != nil {
-		t.Fatalf("CountHttpErrorLogs failed: %v", err)
-	}
-	if after != before-1 {
-		t.Fatalf("count should decrease by 1, before=%d after=%d", before, after)
-	}
 }
 
 func TestTaskAndTaskRunLifecycle(t *testing.T) {

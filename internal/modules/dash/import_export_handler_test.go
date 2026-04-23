@@ -2,6 +2,8 @@ package dash
 
 import (
 	"database/sql"
+	"io"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +13,8 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/types"
+
+	"github.com/gofiber/fiber/v3"
 )
 
 func withDashTestSettings(t *testing.T, settings map[string]string) {
@@ -89,6 +93,44 @@ func TestListLocalRestoreBackups(t *testing.T) {
 	}
 	if backups[0].Name != "2026-04-02_new.sqlite" {
 		t.Fatalf("expected newest backup first, got %q", backups[0].Name)
+	}
+}
+
+func TestGetBackupRestoreDownloadHandler(t *testing.T) {
+	tmpDir := t.TempDir()
+	withDashTestSettings(t, map[string]string{"backup_local_dir": tmpDir})
+
+	backupName := "2026-04-10.sqlite"
+	backupBody := "sqlite-backup-data"
+	backupPath := filepath.Join(tmpDir, backupName)
+	if err := os.WriteFile(backupPath, []byte(backupBody), 0o644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	app := fiber.New()
+	handler := &Handler{Model: openDashTestDB(t)}
+	app.Get("/download", handler.GetBackupRestoreDownloadHandler)
+
+	req := httptest.NewRequest("GET", "/download?backup_file="+backupName, nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, fiber.StatusOK)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "application/x-sqlite3" {
+		t.Fatalf("Content-Type = %q, want %q", got, "application/x-sqlite3")
+	}
+	if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, `filename="2026-04-10.sqlite"`) {
+		t.Fatalf("Content-Disposition = %q", got)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("ReadAll failed: %v", err)
+	}
+	if string(body) != backupBody {
+		t.Fatalf("body = %q, want %q", string(body), backupBody)
 	}
 }
 

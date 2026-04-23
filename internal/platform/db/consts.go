@@ -24,7 +24,6 @@ const (
 	TablePostTags       TableName = "t_post_tags"
 	TablePostCategories TableName = "t_post_categories"
 	TableTaskRuns       TableName = "t_task_runs"
-	TableHttpErrorLogs  TableName = "t_http_error_logs"
 	TableUniqueVisitors TableName = "t_unique_visitors"
 	TableUVUnique       TableName = TableUniqueVisitors
 	TableLikes          TableName = "t_likes"
@@ -261,23 +260,6 @@ const InitialSQL = `
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_themes_single_current
 	ON ` + TableThemes + ` (is_current)
 	WHERE is_current = 1 AND deleted_at IS NULL;
-
-	CREATE TABLE IF NOT EXISTS ` + TableHttpErrorLogs + ` (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-		req_id TEXT NOT NULL,
-		client_ip TEXT NOT NULL,
-		method TEXT NOT NULL,
-		path TEXT NOT NULL,
-		status INTEGER NOT NULL,
-		user_agent TEXT NOT NULL,
-
-		query_params TEXT,
-		body_params TEXT,
-
-		created_at INTEGER NOT NULL,
-		expired_at INTEGER NOT NULL
-	);
 
 	CREATE TABLE IF NOT EXISTS ` + TableUniqueVisitors + ` (
 		entity_type INTEGER NOT NULL CHECK (entity_type IN (1, 2, 3, 4)),

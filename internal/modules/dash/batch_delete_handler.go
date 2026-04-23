@@ -136,12 +136,6 @@ func (h *Handler) PostSettingBatchDeleteAPIHandler(c fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) PostHttpErrorLogBatchDeleteAPIHandler(c fiber.Ctx) error {
-	return h.runBatchDelete(c, "http_error_logs", func(id int64) error {
-		return DeleteHttpErrorLogService(h.Model, id)
-	})
-}
-
 func (h *Handler) PostTaskBatchDeleteAPIHandler(c fiber.Ctx) error {
 	return h.runBatchDelete(c, "tasks", func(id int64) error {
 		return DeleteTaskService(h.Model, id)

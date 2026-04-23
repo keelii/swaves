@@ -1256,30 +1256,6 @@ func HardDeleteCategoryService(dbx *db.DB, id int64) error {
 	return db.HardDeleteCategory(dbx, id)
 }
 
-// HttpErrorLogs
-func ListHttpErrorLogs(dbx *db.DB, pager *types.Pagination) ([]db.HttpErrorLog, error) {
-	var total int
-	total, err := db.CountHttpErrorLogs(dbx)
-	if err != nil {
-		return nil, err
-	}
-
-	offset := (pager.Page - 1) * pager.PageSize
-	logs, err := db.ListHttpErrorLogs(dbx, pager.PageSize, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	pager.Total = total
-	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
-
-	return logs, nil
-}
-
-func DeleteHttpErrorLogService(dbx *db.DB, id int64) error {
-	return db.DeleteHttpErrorLog(dbx, id)
-}
-
 // Comments
 func ListCommentsService(dbx *db.DB, status db.CommentStatus, pager *types.Pagination) ([]db.Comment, error) {
 	offset := (pager.Page - 1) * pager.PageSize

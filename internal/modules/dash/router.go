@@ -164,10 +164,6 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashGroup.Post("/trash/redirects/:id/delete", handler.PostHardDeleteRedirectHandler).Name("dash.trash.redirects.delete")
 	dashGroup.Post("/api/trash/:type/batch-delete", handler.PostTrashBatchDeleteAPIHandler).Name("dash.trash.api.batch_delete")
 
-	dashGroup.Get("/http-error-logs", handler.GetHttpErrorLogListHandler).Name("dash.http_error_logs.list")
-	dashGroup.Post("/http-error-logs/:id/delete", handler.PostDeleteHttpErrorLogHandler).Name("dash.http_error_logs.delete")
-	dashGroup.Post("/api/http-error-logs/batch-delete", handler.PostHttpErrorLogBatchDeleteAPIHandler).Name("dash.http_error_logs.api.batch_delete")
-
 	dashGroup.Get("/tasks", handler.GetTaskListHandler).Name("dash.tasks.list")
 	dashGroup.Get("/tasks/new", handler.GetTaskNewHandler).Name("dash.tasks.new")
 	dashGroup.Post("/tasks/new", handler.PostCreateTaskHandler).Name("dash.tasks.create")
@@ -195,6 +191,7 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashGroup.Get("/export", handler.GetExportHandler).Name("dash.export.show")
 	dashGroup.Get("/export/download", handler.GetExportDownloadHandler).Name("dash.export.download")
 	dashGroup.Get("/backup-restore", handler.GetBackupRestoreHandler).Name("dash.backup_restore.show")
+	dashGroup.Get("/backup-restore/download", handler.GetBackupRestoreDownloadHandler).Name("dash.backup_restore.download")
 	dashGroup.Get("/backup-restore/status", handler.GetBackupRestoreStatusHandler).Name("dash.backup_restore.status")
 	dashGroup.Post("/backup-restore/backup", handler.PostBackupRestoreBackupNowHandler).Name("dash.backup_restore.backup")
 	dashGroup.Post("/backup-restore/local", handler.PostExportRestoreLocalHandler).Name("dash.backup_restore.local")

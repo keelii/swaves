@@ -236,12 +236,6 @@ var (
 		HasCreatedAt: true,
 		HasUpdatedAt: true,
 	}
-	specHttpErrorLogs = TableSpec{
-		Name:         TableHttpErrorLogs,
-		HasDeletedAt: false,
-		HardDelete:   true,
-		HasCreatedAt: true,
-	}
 	specTasks = TableSpec{
 		Name:         TableTasks,
 		HasDeletedAt: true,
@@ -842,26 +836,6 @@ func scanEncryptedPost(scanner sqlScanner, decrypt bool) (EncryptedPost, error) 
 		p.Content = encryptedContent
 	}
 	return p, nil
-}
-
-func scanHttpErrorLog(scanner sqlScanner) (HttpErrorLog, error) {
-	var l HttpErrorLog
-	if err := scanner.Scan(
-		&l.ID,
-		&l.ReqID,
-		&l.ClientIP,
-		&l.Method,
-		&l.Path,
-		&l.Status,
-		&l.UserAgent,
-		&l.QueryParams,
-		&l.BodyParams,
-		&l.CreatedAt,
-		&l.ExpiredAt,
-	); err != nil {
-		return HttpErrorLog{}, err
-	}
-	return l, nil
 }
 
 func scanTaskRun(scanner sqlScanner) (TaskRun, error) {
@@ -4209,82 +4183,6 @@ func syncDefaultSettingMeta(db *DB, existing *Setting, defaults Setting) error {
 		return WrapInternalErr("syncDefaultSettingMeta", err)
 	}
 	return nil
-}
-
-type HttpErrorLog struct {
-	ID          int64
-	ReqID       string
-	ClientIP    string
-	Method      string
-	Path        string
-	Status      int
-	UserAgent   string
-	QueryParams string
-	BodyParams  string
-	CreatedAt   int64
-	ExpiredAt   int64
-}
-
-func CreateHttpErrorLog(db *DB, l *HttpErrorLog) (int64, error) {
-	if l.CreatedAt == 0 {
-		l.CreatedAt = now()
-	}
-	if l.ExpiredAt == 0 {
-		// 默认 7 天
-		l.ExpiredAt = l.CreatedAt + 7*24*60*60
-	}
-
-	id, err := Create(db, specHttpErrorLogs, map[string]interface{}{
-		"req_id":       l.ReqID,
-		"client_ip":    l.ClientIP,
-		"method":       l.Method,
-		"path":         l.Path,
-		"status":       l.Status,
-		"user_agent":   l.UserAgent,
-		"query_params": l.QueryParams,
-		"body_params":  l.BodyParams,
-		"created_at":   l.CreatedAt,
-		"expired_at":   l.ExpiredAt,
-	})
-	if err != nil {
-		return 0, WrapInternalErr("CreateHttpErrorLog", err)
-	}
-	l.ID = id
-	return id, nil
-}
-
-func ListHttpErrorLogs(db *DB, limit, offset int) ([]HttpErrorLog, error) {
-	results, err := Read(db, specHttpErrorLogs, ReadOptions{
-		SelectFields: "id, req_id, client_ip, method, path, status, user_agent, query_params, body_params, created_at, expired_at",
-		WhereClause:  "",
-		OrderBy:      "",
-		WhereArgs:    nil,
-		Limit:        limit,
-		Offset:       offset,
-	}, func(rows *sql.Rows) (interface{}, error) {
-		l, err := scanHttpErrorLog(rows)
-		if err != nil {
-			return nil, WrapInternalErr("ListHttpErrorLogs.Scan", err)
-		}
-		return l, nil
-	})
-	if err != nil {
-		return nil, WrapInternalErr("ListHttpErrorLogs", err)
-	}
-
-	res := make([]HttpErrorLog, len(results))
-	for i, v := range results {
-		res[i] = v.(HttpErrorLog)
-	}
-	return res, nil
-}
-
-func CountHttpErrorLogs(db *DB) (int, error) {
-	return Count(db, specHttpErrorLogs, "", nil)
-}
-
-func DeleteHttpErrorLog(db *DB, id int64) error {
-	return HardDelete(db, specHttpErrorLogs, id)
 }
 
 var AppSettings atomic.Value // map[string]string
