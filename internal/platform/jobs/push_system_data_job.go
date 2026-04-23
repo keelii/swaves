@@ -2,24 +2,23 @@ package job
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"swaves/internal/platform/asset"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/store"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 const (
@@ -166,39 +165,136 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 	}
 	defer file.Close()
 
-	awsCfg, err := buildS3AWSConfig(cfg)
+	info, err := file.Stat()
 	if err != nil {
-		return "", 0, fmt.Errorf("build s3 config failed: %w", err)
+		return "", 0, fmt.Errorf("stat snapshot failed: %w", err)
 	}
 
-	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = cfg.S3ForcePath
-	})
+	objectURL := buildS3ObjectURL(cfg, objectKey)
+	parsedURL, err := url.Parse(objectURL)
+	if err != nil {
+		return "", 0, fmt.Errorf("parse object url failed: %w", err)
+	}
+
+	now := time.Now().UTC()
+	dateISO := now.Format("20060102T150405Z")
+	dateShort := now.Format("20060102")
+
+	metaHeaders := map[string]string{
+		"x-amz-meta-swaves-app":      appName,
+		"x-amz-meta-snapshot-hash":   snapshot.Hash,
+		"x-amz-meta-snapshot-date":   snapshot.Date,
+		"x-amz-meta-snapshot-source": "remote_backup_data",
+	}
+
+	authHeader := s3Sign(cfg, parsedURL.Host, objectKey, dateISO, dateShort, metaHeaders)
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 
-	putOut, err := client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(cfg.S3Bucket),
-		Key:         aws.String(objectKey),
-		Body:        file,
-		ContentType: aws.String("application/x-sqlite3"),
-		Metadata: map[string]string{
-			"swaves-app":      appName,
-			"snapshot-hash":   snapshot.Hash,
-			"snapshot-date":   snapshot.Date,
-			"snapshot-source": "remote_backup_data",
-		},
-	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, objectURL, file)
 	if err != nil {
-		statusCode = extractS3StatusCode(err)
-		return "", statusCode, fmt.Errorf("s3 put object failed: %w", err)
+		return "", 0, fmt.Errorf("build request failed: %w", err)
+	}
+	req.ContentLength = info.Size()
+	req.Header.Set("Content-Type", "application/x-sqlite3")
+	req.Header.Set("Authorization", authHeader)
+	req.Header.Set("X-Amz-Date", dateISO)
+	req.Header.Set("X-Amz-Content-Sha256", "UNSIGNED-PAYLOAD")
+	for k, v := range metaHeaders {
+		req.Header.Set(k, v)
 	}
 
-	statusCode = http.StatusOK
-	etag := strings.TrimSpace(aws.ToString(putOut.ETag))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", 0, fmt.Errorf("s3 put object failed: %w", err)
+	}
+	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body) //nolint:errcheck
+
+	statusCode = resp.StatusCode
+	if statusCode < 200 || statusCode >= 300 {
+		return "", statusCode, fmt.Errorf("s3 put object failed: status=%d", statusCode)
+	}
+
+	etag := strings.Trim(resp.Header.Get("ETag"), `"`)
 	response = fmt.Sprintf("bucket=%s key=%s etag=%s", cfg.S3Bucket, objectKey, etag)
 	return response, statusCode, nil
+}
+
+// buildS3ObjectURL constructs the full PUT URL for the given object key.
+// Virtual-hosted style is used by default; path style when S3ForcePath is set.
+// When no custom endpoint is configured, standard AWS S3 is assumed.
+func buildS3ObjectURL(cfg pushJobConfig, objectKey string) string {
+	endpoint := cfg.S3Endpoint
+	if endpoint == "" {
+		endpoint = fmt.Sprintf("https://s3.%s.amazonaws.com", cfg.S3Region)
+	}
+	encodedKey := url.PathEscape(objectKey)
+	if cfg.S3ForcePath {
+		return strings.TrimRight(endpoint, "/") + "/" + cfg.S3Bucket + "/" + encodedKey
+	}
+	u, _ := url.Parse(endpoint)
+	return fmt.Sprintf("%s://%s.%s/%s", u.Scheme, cfg.S3Bucket, u.Host, encodedKey)
+}
+
+// s3Sign returns an AWS4-HMAC-SHA256 Authorization header value for an S3 PUT.
+// It signs with UNSIGNED-PAYLOAD so the file body does not need to be buffered.
+func s3Sign(cfg pushJobConfig, host, objectKey, dateISO, dateShort string, metaHeaders map[string]string) string {
+	const payloadHash = "UNSIGNED-PAYLOAD"
+
+	type header struct{ k, v string }
+	hdrs := []header{
+		{"content-type", "application/x-sqlite3"},
+		{"host", host},
+		{"x-amz-content-sha256", payloadHash},
+		{"x-amz-date", dateISO},
+	}
+	for k, v := range metaHeaders {
+		hdrs = append(hdrs, header{strings.ToLower(k), v})
+	}
+	sort.Slice(hdrs, func(i, j int) bool { return hdrs[i].k < hdrs[j].k })
+
+	canonicalHeaders := ""
+	signedHeaderParts := make([]string, len(hdrs))
+	for i, h := range hdrs {
+		canonicalHeaders += h.k + ":" + h.v + "\n"
+		signedHeaderParts[i] = h.k
+	}
+	signedHeaders := strings.Join(signedHeaderParts, ";")
+
+	encodedKey := "/" + url.PathEscape(objectKey)
+	if cfg.S3ForcePath {
+		encodedKey = "/" + cfg.S3Bucket + encodedKey
+	}
+
+	canonicalRequest := strings.Join([]string{
+		"PUT",
+		encodedKey,
+		"",
+		canonicalHeaders,
+		signedHeaders,
+		payloadHash,
+	}, "\n")
+
+	reqHash := sha256.Sum256([]byte(canonicalRequest))
+	scope := dateShort + "/" + cfg.S3Region + "/s3/aws4_request"
+	stringToSign := "AWS4-HMAC-SHA256\n" + dateISO + "\n" + scope + "\n" + hex.EncodeToString(reqHash[:])
+
+	kDate := s3HMAC([]byte("AWS4"+cfg.S3SecretKey), []byte(dateShort))
+	kRegion := s3HMAC(kDate, []byte(cfg.S3Region))
+	kService := s3HMAC(kRegion, []byte("s3"))
+	kSigning := s3HMAC(kService, []byte("aws4_request"))
+	sig := hex.EncodeToString(s3HMAC(kSigning, []byte(stringToSign)))
+
+	return fmt.Sprintf("AWS4-HMAC-SHA256 Credential=%s/%s,SignedHeaders=%s,Signature=%s",
+		cfg.S3AccessKey, scope, signedHeaders, sig)
+}
+
+func s3HMAC(key, data []byte) []byte {
+	mac := hmac.New(sha256.New, key)
+	mac.Write(data)
+	return mac.Sum(nil)
 }
 
 func createRemoteBackupAssetRecordForS3(dbx *db.DB, cfg pushJobConfig, snapshot *db.ExportResult, objectKey string) (int64, error) {
@@ -280,48 +376,12 @@ func buildRemoteBackupFileURL(bucket string, objectKey string) string {
 	return "s3://" + assetID
 }
 
-func buildS3AWSConfig(cfg pushJobConfig) (aws.Config, error) {
-	opts := []func(*awsconfig.LoadOptions) error{
-		awsconfig.WithRegion(cfg.S3Region),
-	}
-
-	if cfg.S3AccessKey != "" && cfg.S3SecretKey != "" {
-		provider := credentials.NewStaticCredentialsProvider(cfg.S3AccessKey, cfg.S3SecretKey, "")
-		opts = append(opts, awsconfig.WithCredentialsProvider(provider))
-	}
-
-	if cfg.S3Endpoint != "" {
-		endpointURL := cfg.S3Endpoint
-		opts = append(opts, awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
-				if service == s3.ServiceID {
-					return aws.Endpoint{
-						URL:               endpointURL,
-						HostnameImmutable: true,
-					}, nil
-				}
-				return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-			},
-		)))
-	}
-
-	return awsconfig.LoadDefaultConfig(context.Background(), opts...)
-}
-
 func buildS3ObjectKey(snapshotFile string) string {
 	key := filepath.Base(snapshotFile)
 	if key == "" || key == "." || key == "/" {
 		key = "snapshot.sqlite"
 	}
 	return key
-}
-
-func extractS3StatusCode(err error) int {
-	var respErr *smithyhttp.ResponseError
-	if errors.As(err, &respErr) {
-		return respErr.HTTPStatusCode()
-	}
-	return 0
 }
 
 func loadPushJobConfig() pushJobConfig {
