@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "posts-table" %}
 
@@ -53,7 +52,7 @@
     <table id="posts-table" class="data-table" aria-label="文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.posts.api.batch_delete') }}">
       <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>标题</th>
         <th>标签</th>
         <th>分类</th>
@@ -67,7 +66,7 @@
       <tbody>
       {% for postWithRelation in Posts %}
       <tr data-batch-delete-id="{{ postWithRelation.Post.ID }}">
-        <td>{{ ui.table_td_id(postWithRelation.Post.ID) }}</td>
+        <td>{{ sui.TableTdId(postWithRelation.Post.ID) }}</td>
         <td>
           {% set postTitle = postWithRelation.Post.Title %}
           {% set highlightPostTitle = Highlight(postTitle, SearchQuery) if SearchQuery else postTitle %}
@@ -90,17 +89,7 @@
             -
           {% endif %}
         </td>
-        <td>
-          {% if postWithRelation.Post.Status == "published" %}
-            <span class="ui-badge success">已发布</span>
-          {% elif postWithRelation.Post.Status == "importing" %}
-            <span class="ui-badge draft">导入中</span>
-          {% elif postWithRelation.Post.Status == "draft" %}
-            <span class="ui-badge draft">草稿</span>
-          {% else %}
-            <span class="ui-badge">{{ postWithRelation.Post.Status }}</span>
-          {% endif %}
-        </td>
+        <td>{{ sui.PostStatusBadge(postWithRelation.Post.Status) }}</td>
         <td>{{ PostUVMap[postWithRelation.Post.ID] }}</td>
         <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
         <td>

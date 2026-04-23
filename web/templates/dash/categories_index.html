@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "categories-table" %}
@@ -22,7 +21,7 @@
     <table id="categories-table" class="data-table" aria-label="分类列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.categories.api.batch_delete') }}">
       <thead>
         <tr>
-          <th>{{ ui.table_th_id() }}</th>
+          <th>{{ sui.TableThId() }}</th>
           <th>名称</th>
           <th>URL 标识</th>
           <th>父级</th>
@@ -37,7 +36,7 @@
       <tbody>
         {% for category in Categories %}
           <tr data-batch-delete-id="{{ category.ID }}">
-            <td>{{ ui.table_td_id(category.ID) }}</td>
+            <td>{{ sui.TableTdId(category.ID) }}</td>
             <td>{{ category.Name }}</td>
             <td>
               <a href="{{ GetCategoryUrl(category.Slug) }}" target="_blank" rel="noopener">{{ category.Slug }}</a>

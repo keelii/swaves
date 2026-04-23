@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "tasks-table" %}
@@ -21,7 +20,7 @@
     <table id="tasks-table" class="data-table" aria-label="任务列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.tasks.api.batch_delete') }}">
       <thead>
         <tr>
-          <th>{{ ui.table_th_id() }}</th>
+          <th>{{ sui.TableThId() }}</th>
           <th class="cell-12">编码</th>
           <th>名称</th>
           <th>描述</th>
@@ -36,7 +35,7 @@
       <tbody>
         {% for task in Tasks %}
           <tr{% if task.Kind != 0 %} data-batch-delete-id="{{ task.ID }}"{% endif %}>
-            <td>{{ ui.table_td_id(task.ID) }}</td>
+            <td>{{ sui.TableTdId(task.ID) }}</td>
             <td>{{ task.Code }}</td>
             <td>{{ task.Name }}</td>
             <td>{% if task.Description %}{{ task.Description }}{% else %}-{% endif %}</td>

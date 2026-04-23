@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/logger"
 	"swaves/internal/platform/themefiles"
 )
 
@@ -58,6 +59,7 @@ func MaterializeCurrentThemeCache(model *db.DB, sqliteFile string, templateRoot 
 	if err := copySharedSiteFiles(targetRoot, templateRoot, templateFS); err != nil {
 		return "", err
 	}
+	logger.Info("[theme] loaded: code=%s source=db files=%d root=%s", theme.Code, len(files), targetRoot)
 	return targetRoot, nil
 }
 
@@ -81,6 +83,7 @@ func MaterializeBuiltinThemeCache(sqliteFile string, templateRoot string, templa
 	if err := copySharedSiteFiles(targetRoot, templateRoot, templateFS); err != nil {
 		return "", err
 	}
+	logger.Info("[theme] loaded: code=%s source=builtin files=%d root=%s", runtimeThemeBuiltinCode, len(files), targetRoot)
 	return targetRoot, nil
 }
 

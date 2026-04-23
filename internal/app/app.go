@@ -170,10 +170,11 @@ func newSiteRuntimeViewEngine(model *db.DB, sqliteFile string) (fiber.Views, fun
 		}
 		themeRoot, err = view.MaterializeBuiltinThemeCache(sqliteFile, templateRoot, templateFS)
 		if err != nil {
-			logger.Fatal("materialize builtin theme cache failed: %v", err)
+			logger.Fatal("[theme] materialize builtin theme cache failed: %v", err)
 		}
 	}
 
+	logger.Info("[theme] serving from: root=%s", themeRoot)
 	return view.NewViewEngine(themeRoot, config.TemplateReload)
 }
 

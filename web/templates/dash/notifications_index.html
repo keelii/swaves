@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "notifications-table" %}
@@ -48,7 +47,7 @@
   <table id="notifications-table" class="data-table" aria-label="通知列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.notifications.api.batch_delete') }}">
     <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>类型</th>
         <th>标题</th>
         <th>内容</th>
@@ -62,7 +61,7 @@
       {% for item in Notifications %}
         {% set isUnread = item.ReadAt == none %}
         <tr data-notification-row data-notification-id="{{ item.ID }}" data-notification-read="{{ 0 if isUnread else 1 }}" data-batch-delete-id="{{ item.ID }}">
-          <td>{{ ui.table_td_id(item.ID) }}</td>
+          <td>{{ sui.TableTdId(item.ID) }}</td>
           <td>
             {% if item.EventType == "post_like" %}
               点赞
