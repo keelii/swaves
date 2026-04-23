@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"path/filepath"
 	"testing"
 
 	"swaves/internal/platform/db"
@@ -201,5 +202,60 @@ func TestResolveSettingLocationPlacesS3UnderAssets(t *testing.T) {
 	})
 	if location.Area != settingAreaBackend || location.Section != settingSectionAssets || location.Card != "s3" {
 		t.Fatalf("unexpected s3 location: %+v", location)
+	}
+}
+
+func TestResolveSettingLocationPlacesCrawlerBlockUnderFrontendSite(t *testing.T) {
+	location := resolveSettingLocation(db.Setting{
+		Kind: db.SettingKindSiteBasics,
+		Code: db.SettingCodeBlockSearchEngineCrawlers,
+	})
+	if location.Area != settingAreaFrontend || location.Section != settingSectionSite || location.Card != "identity" {
+		t.Fatalf("unexpected crawler block location: %+v", location)
+	}
+}
+
+func TestListAllSettingsBackfillsCrawlerBlockSettingForExistingInstall(t *testing.T) {
+	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "settings-backfill.sqlite")})
+	t.Cleanup(func() { _ = dbx.Close() })
+
+	if _, err := db.CreateSetting(dbx, &db.Setting{
+		Kind:  db.SettingKindSiteBasics,
+		Name:  "站点标题",
+		Code:  "site_title",
+		Type:  "text",
+		Value: "Existing Site",
+	}); err != nil {
+		t.Fatalf("create initial setting failed: %v", err)
+	}
+
+	settings, err := ListAllSettings(dbx)
+	if err != nil {
+		t.Fatalf("ListAllSettings failed: %v", err)
+	}
+
+	found := false
+	for _, setting := range settings {
+		if setting.Code != db.SettingCodeBlockSearchEngineCrawlers {
+			continue
+		}
+		found = true
+		if setting.Type != "checkbox" {
+			t.Fatalf("expected crawler block setting type checkbox, got %q", setting.Type)
+		}
+		if setting.Options == "" {
+			t.Fatal("expected crawler block setting options to be populated")
+		}
+	}
+	if !found {
+		t.Fatalf("expected %q to be backfilled into settings list", db.SettingCodeBlockSearchEngineCrawlers)
+	}
+
+	stored, err := db.GetSettingByCode(dbx, db.SettingCodeBlockSearchEngineCrawlers)
+	if err != nil {
+		t.Fatalf("GetSettingByCode(%q) failed: %v", db.SettingCodeBlockSearchEngineCrawlers, err)
+	}
+	if stored.Type != "checkbox" {
+		t.Fatalf("expected stored crawler block setting type checkbox, got %q", stored.Type)
 	}
 }
