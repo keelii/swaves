@@ -131,9 +131,12 @@ func newRuntimeViewEngine() (fiber.Views, func(app *fiber.App)) {
 	if config.TemplateReload {
 		templateRoot := resolveProjectPath("web/templates")
 		if pathExists(templateRoot) {
+			logger.Info("[view] TemplateReload=true, using local templates at %s", templateRoot)
 			return view.NewViewEngine(templateRoot, true)
 		}
+		logger.Info("[view] TemplateReload=true but local web/templates not found at %s; falling back to embedded templates", templateRoot)
 	}
+	logger.Info("[view] TemplateReload=%t, using embedded templates", config.TemplateReload)
 	return view.NewViewEngineFS(webassets.TemplateFS(), false)
 }
 
@@ -151,11 +154,13 @@ func newSiteRuntimeViewEngine(model *db.DB, sqliteFile string) (fiber.Views, fun
 	}
 	if config.TemplateReload {
 		if templateRoot != "" {
+			logger.Info("[theme] TemplateReload=true, using local web/templates for site views: %s", templateRoot)
 			return view.NewThemeDBViewEngineWithShared(model, templateRoot, true)
 		}
+		logger.Info("[theme] TemplateReload=true but local web/templates not found; using embedded template FS")
 		return view.NewThemeDBViewEngineWithSharedFS(model, templateFS, true)
 	}
-
+	logger.Info("[theme] TemplateReload=%t, materializing theme cache from DB or builtin assets", config.TemplateReload)
 	themeRoot, err := view.MaterializeCurrentThemeCache(model, sqliteFile, templateRoot, templateFS)
 	if err != nil {
 		if db.IsErrNotFound(err) {
@@ -189,23 +194,35 @@ func validateAppConfig(appCfg types.AppConfig) error {
 
 func resolveProjectPath(path string) string {
 	rel := filepath.Clean(path)
+	logger.Info("[resolve] resolveProjectPath called: requested=%s", rel)
+
 	if filepath.IsAbs(rel) {
+		logger.Info("[resolve] path is absolute: %s", rel)
 		if _, err := os.Stat(rel); err == nil {
+			logger.Info("[resolve] absolute path exists: %s", rel)
 			return rel
 		}
+		logger.Info("[resolve] absolute path does not exist: %s", rel)
 		return rel
 	}
 
 	wd, err := os.Getwd()
 	if err == nil {
+		logger.Info("[resolve] working dir: %s", wd)
 		if resolved, ok := findPathUpward(wd, rel); ok {
+			logger.Info("[resolve] found %s upward at %s", rel, resolved)
 			return resolved
 		}
+		logger.Info("[resolve] not found upward from wd: %s", rel)
+	} else {
+		logger.Info("[resolve] getwd failed: %v", err)
 	}
 
 	if _, err := os.Stat(rel); err == nil {
+		logger.Info("[resolve] relative path exists in cwd: %s", rel)
 		return rel
 	}
+	logger.Info("[resolve] returning cleaned relative path (may not exist): %s", rel)
 	return rel
 }
 
