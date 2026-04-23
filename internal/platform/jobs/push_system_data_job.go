@@ -210,7 +210,7 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 		return "", 0, fmt.Errorf("s3 put object failed: %w", err)
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body) //nolint:errcheck
+	io.Copy(io.Discard, resp.Body) // drain to allow connection reuse; drain errors are non-fatal
 
 	statusCode = resp.StatusCode
 	if statusCode < 200 || statusCode >= 300 {
@@ -234,7 +234,12 @@ func buildS3ObjectURL(cfg pushJobConfig, objectKey string) string {
 	if cfg.S3ForcePath {
 		return strings.TrimRight(endpoint, "/") + "/" + cfg.S3Bucket + "/" + encodedKey
 	}
-	u, _ := url.Parse(endpoint)
+	// endpoint is validated in normalizeS3Endpoint / splitS3EndpointBucket upstream,
+	// so url.Parse will succeed; fall back to path style on unexpected parse failure.
+	u, err := url.Parse(endpoint)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return strings.TrimRight(endpoint, "/") + "/" + cfg.S3Bucket + "/" + encodedKey
+	}
 	return fmt.Sprintf("%s://%s.%s/%s", u.Scheme, cfg.S3Bucket, u.Host, encodedKey)
 }
 
