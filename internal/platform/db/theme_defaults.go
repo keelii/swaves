@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+	"swaves/internal/platform/logger"
 	"time"
 
 	webassets "swaves/web"
@@ -140,7 +141,7 @@ func EnsureDefaultTheme(db *DB) error {
 	}
 	_, err = CreateTheme(db, theme)
 	if err != nil {
-		return err
+		logger.Error("EnsureDefaultTheme %s", err)
 	}
 	return ensureDefaultThemeCurrent(db, theme)
 }

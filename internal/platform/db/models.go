@@ -4137,7 +4137,8 @@ func EnsureDefaultSettings(db *DB) error {
 		}
 
 		if _, err := CreateSetting(db, &s); err != nil {
-			return err
+			logger.Error("EnsureDefaultSettings error: %v", err)
+			continue
 		}
 	}
 
