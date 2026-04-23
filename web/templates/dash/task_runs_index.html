@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "task-runs-table" %}
 
@@ -23,7 +22,7 @@
     <thead>
       <tr>
         <th class="cell-12">任务代码</th>
-        <th>{{ ui.table_th_id("记录ID") }}</th>
+        <th>{{ sui.TableThId("记录ID") }}</th>
         <th class="cell-6">状态</th>
         <th class="cell-30">消息</th>
         <th>耗时（毫秒）</th>
@@ -36,7 +35,7 @@
       {% for run in Runs %}
       <tr>
         <td>{{ run.TaskCode }}</td>
-        <td>{{ ui.table_td_id(run.ID) }}</td>
+        <td>{{ sui.TableTdId(run.ID) }}</td>
         <td>
           {% if run.Status == "success" %}
             <span class="ui-badge success">成功</span>

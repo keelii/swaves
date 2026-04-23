@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "trash-table" %}
 
@@ -37,7 +36,7 @@
     <table id="trash-table" class="data-table" aria-label="已删除文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='posts') }}">
       <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>标题</th>
         <th>URL 标识</th>
         <th>状态</th>
@@ -48,10 +47,10 @@
       <tbody>
       {% for postItem in Data %}
       <tr data-batch-delete-id="{{ postItem.ID }}">
-        <td>{{ ui.table_td_id(postItem.ID) }}</td>
+        <td>{{ sui.TableTdId(postItem.ID) }}</td>
         <td>{{ postItem.Title }}</td>
         <td>{{ postItem.Slug }}</td>
-        <td>{{ postItem.Status }}</td>
+        <td>{{ sui.PostStatusBadge(postItem.Status) }}</td>
         <td>{% if postItem.DeletedAt %}{{ postItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
         <td>
           <div class="cell-actions">
@@ -83,7 +82,7 @@
     <table id="trash-table" class="data-table" aria-label="已删除加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='encrypted-posts') }}">
       <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>标题</th>
         <th>URL 标识</th>
         <th>删除时间</th>
@@ -93,7 +92,7 @@
       <tbody>
       {% for encryptedPostItem in Data %}
       <tr data-batch-delete-id="{{ encryptedPostItem.ID }}">
-        <td>{{ ui.table_td_id(encryptedPostItem.ID) }}</td>
+        <td>{{ sui.TableTdId(encryptedPostItem.ID) }}</td>
         <td>{{ encryptedPostItem.Title }}</td>
         <td>{{ encryptedPostItem.Slug }}</td>
         <td>{% if encryptedPostItem.DeletedAt %}{{ encryptedPostItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
@@ -127,7 +126,7 @@
     <table id="trash-table" class="data-table" aria-label="已删除标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='tags') }}">
       <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>名称</th>
         <th>URL 标识</th>
         <th>删除时间</th>
@@ -137,7 +136,7 @@
       <tbody>
       {% for tagItem in Data %}
       <tr data-batch-delete-id="{{ tagItem.ID }}">
-        <td>{{ ui.table_td_id(tagItem.ID) }}</td>
+        <td>{{ sui.TableTdId(tagItem.ID) }}</td>
         <td>{{ tagItem.Name }}</td>
         <td>{{ tagItem.Slug }}</td>
         <td>{% if tagItem.DeletedAt %}{{ tagItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
@@ -171,7 +170,7 @@
     <table id="trash-table" class="data-table" aria-label="已删除分类列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='categories') }}">
       <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>名称</th>
         <th>URL 标识</th>
         <th>父级</th>
@@ -183,7 +182,7 @@
       <tbody>
       {% for categoryItem in Data %}
       <tr data-batch-delete-id="{{ categoryItem.ID }}">
-        <td>{{ ui.table_td_id(categoryItem.ID) }}</td>
+        <td>{{ sui.TableTdId(categoryItem.ID) }}</td>
         <td>{{ categoryItem.Name }}</td>
         <td>{{ categoryItem.Slug }}</td>
         <td>{% if categoryItem.ParentID == 0 %}-{% else %}{{ categoryItem.ParentID }}{% endif %}</td>
@@ -219,7 +218,7 @@
     <table id="trash-table" class="data-table" aria-label="已删除重定向列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='redirects') }}">
       <thead>
       <tr>
-        <th>{{ ui.table_th_id() }}</th>
+        <th>{{ sui.TableThId() }}</th>
         <th>来源</th>
         <th>目标</th>
         <th>删除时间</th>
@@ -229,7 +228,7 @@
       <tbody>
       {% for redirectItem in Data %}
       <tr data-batch-delete-id="{{ redirectItem.ID }}">
-        <td>{{ ui.table_td_id(redirectItem.ID) }}</td>
+        <td>{{ sui.TableTdId(redirectItem.ID) }}</td>
         <td>{{ redirectItem.From }}</td>
         <td>{{ redirectItem.To }}</td>
         <td>{% if redirectItem.DeletedAt %}{{ redirectItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
