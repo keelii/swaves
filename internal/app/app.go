@@ -151,8 +151,10 @@ func newSiteRuntimeViewEngine(model *db.DB, sqliteFile string) (fiber.Views, fun
 	}
 	if config.TemplateReload {
 		if templateRoot != "" {
+			logger.Info("[theme] reload mode: DB loader with shared dir root=%s", templateRoot)
 			return view.NewThemeDBViewEngineWithShared(model, templateRoot, true)
 		}
+		logger.Info("[theme] reload mode: DB loader with embedded shared templates")
 		return view.NewThemeDBViewEngineWithSharedFS(model, templateFS, true)
 	}
 
