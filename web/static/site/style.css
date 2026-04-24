@@ -212,6 +212,7 @@ article table thead th {
 
 .post-category-tag,.post-nav {
   width: 50%;
+  white-space: normal;
 }
 .post-info {
   display: flex;
