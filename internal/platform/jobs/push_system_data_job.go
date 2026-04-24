@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"swaves/internal/platform/asset"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/store"
@@ -282,6 +283,9 @@ func loadPushJobConfig() pushJobConfig {
 	}
 
 	rawS3Endpoint := strings.TrimSpace(store.GetSetting("s3_api_endpoint"))
+	if rawS3Endpoint == "" {
+		rawS3Endpoint = strings.TrimSpace(config.S3Endpoint)
+	}
 	s3Bucket := strings.TrimSpace(store.GetSetting("s3_bucket"))
 
 	s3Endpoint := ""
@@ -314,8 +318,8 @@ func loadPushJobConfig() pushJobConfig {
 		S3Bucket:           s3Bucket,
 		S3Region:           s3Region,
 		S3Endpoint:         s3Endpoint,
-		S3AccessKey:        strings.TrimSpace(store.GetSetting("s3_access_key_id")),
-		S3SecretKey:        strings.TrimSpace(store.GetSetting("s3_secret_access_key")),
+		S3AccessKey:        strings.TrimSpace(firstNonEmpty(store.GetSetting("s3_access_key_id"), config.S3AccessKeyID)),
+		S3SecretKey:        strings.TrimSpace(firstNonEmpty(store.GetSetting("s3_secret_access_key"), config.S3SecretAccessKey)),
 		S3ForcePath:        s3ForcePath,
 		ImageKitEndpoint:   strings.TrimSpace(store.GetSetting("asset_imagekit_endpoint")),
 		ImageKitPrivateKey: strings.TrimSpace(store.GetSetting("asset_imagekit_private_key")),
@@ -389,4 +393,13 @@ func shortHash(hash string) string {
 		return hash
 	}
 	return hash[:8]
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
