@@ -6,6 +6,10 @@
     {{ _csrf_token() }}
     {{ sui.Button("执行本地备份", "primary", attrs='type="submit"') }}
   </form>
+  <form method="post" action="{{ UrlFor('dash.backup_restore.remote_backup') }}">
+    {{ _csrf_token() }}
+    {{ sui.Button("执行远程备份", "outline", attrs='type="submit"') }}
+  </form>
 {% endblock %}
 {% block operation_left %}
   <div>

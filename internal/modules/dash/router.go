@@ -196,6 +196,7 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashGroup.Get("/backup-restore/download", handler.GetBackupRestoreDownloadHandler).Name("dash.backup_restore.download")
 	dashGroup.Get("/backup-restore/status", handler.GetBackupRestoreStatusHandler).Name("dash.backup_restore.status")
 	dashGroup.Post("/backup-restore/backup", handler.PostBackupRestoreBackupNowHandler).Name("dash.backup_restore.backup")
+	dashGroup.Post("/backup-restore/remote-backup", handler.PostBackupRestoreRemoteBackupNowHandler).Name("dash.backup_restore.remote_backup")
 	dashGroup.Post("/backup-restore/local", handler.PostExportRestoreLocalHandler).Name("dash.backup_restore.local")
 	dashGroup.Post("/backup-restore/upload", handler.PostExportRestoreUploadHandler).Name("dash.backup_restore.upload")
 	dashGroup.Post("/backup-restore/delete", handler.PostBackupRestoreDeleteHandler).Name("dash.backup_restore.delete")
