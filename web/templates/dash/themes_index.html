@@ -54,7 +54,7 @@
             <td>
               <div class="cell-actions">
                 {{ sui.LinkIcon("square-pen", UrlFor('dash.themes.edit', id=theme.ID), attrs='aria-label="编辑" data-title="编辑"') }}
-                {{ sui.LinkIcon("archive", UrlFor('dash.themes.export', id=theme.ID), attrs='aria-label="导出" data-title="导出"') }}
+                {{ sui.LinkIcon("download", UrlFor('dash.themes.export', id=theme.ID), attrs='aria-label="导出" data-title="导出"') }}
                 <form method="post" action="{{ UrlFor('dash.themes.copy', id=theme.ID) }}">
                   {{ _csrf_token() }}
                   {{ sui.IconAction("clipboard", "复制", attrs='data-title="复制"', button_type="submit") }}

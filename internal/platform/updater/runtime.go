@@ -50,7 +50,6 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 	}
 
 	path := RuntimeInfoPath()
-	logger.Info("[update] write runtime info start: master_pid=%d executable=%s path=%s", info.PID, info.Executable, path)
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		logger.Error("[update] write runtime info create dir failed: path=%s err=%v", path, err)
 		return fmt.Errorf("create runtime dir failed: %w", err)
@@ -65,13 +64,11 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 		logger.Error("[update] write runtime info failed: master_pid=%d path=%s err=%v", info.PID, path, err)
 		return fmt.Errorf("write runtime info failed: %w", err)
 	}
-	logger.Info("[update] write runtime info success: master_pid=%d path=%s", info.PID, path)
 	return nil
 }
 
 func ReadRuntimeInfo() (RuntimeInfo, error) {
 	path := RuntimeInfoPath()
-	logger.Info("[update] read runtime info start: path=%s", path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -96,7 +93,6 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 		logger.Error("[update] runtime info invalid executable: path=%s", path)
 		return RuntimeInfo{}, fmt.Errorf("runtime info executable is invalid")
 	}
-	logger.Info("[update] read runtime info success: master_pid=%d executable=%s path=%s", info.PID, info.Executable, path)
 	return info, nil
 }
 
@@ -109,7 +105,6 @@ func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
 		logger.Warn("[update] active runtime missing process: master_pid=%d executable=%s", info.PID, info.Executable)
 		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d", info.PID)
 	}
-	logger.Info("[update] active runtime verified: master_pid=%d executable=%s", info.PID, info.Executable)
 	return info, nil
 }
 
@@ -126,16 +121,13 @@ func defaultProcessExists(pid int) bool {
 
 func RemoveRuntimeInfo() error {
 	path := RuntimeInfoPath()
-	logger.Info("[update] remove runtime info start: path=%s", path)
 	err := os.Remove(path)
 	if err != nil && !os.IsNotExist(err) {
 		logger.Error("[update] remove runtime info failed: path=%s err=%v", path, err)
 		return fmt.Errorf("remove runtime info failed: %w", err)
 	}
 	if err == nil {
-		logger.Info("[update] remove runtime info success: path=%s", path)
 		return nil
 	}
-	logger.Info("[update] remove runtime info skipped: path=%s reason=not_found", path)
 	return nil
 }

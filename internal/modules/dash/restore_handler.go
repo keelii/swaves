@@ -78,22 +78,27 @@ func (h *Handler) GetBackupRestoreStatusHandler(c fiber.Ctx) error {
 func (h *Handler) GetBackupRestoreDownloadHandler(c fiber.Ctx) error {
 	sourceName := filepath.Base(c.Query(restoreBackupFileFormKey))
 	if sourceName == "" || sourceName == "." {
+		logger.Warn("[backup] local backup download rejected: ip=%s reason=missing_file", c.IP())
 		return fiber.ErrBadRequest
 	}
 
 	sourcePath, err := findLocalRestoreSource(sourceName)
 	if err != nil {
+		logger.Warn("[backup] local backup download failed: ip=%s file=%s err=%v", c.IP(), sourceName, err)
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	stream, err := openCleanupFileStream(sourcePath, nil)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			logger.Warn("[backup] local backup download failed: ip=%s file=%s err=%v", c.IP(), sourceName, err)
 			return fiber.NewError(fiber.StatusNotFound, "未找到选中的本地备份文件。")
 		}
+		logger.Error("[backup] local backup open failed: ip=%s file=%s err=%v", c.IP(), sourceName, err)
 		return fmt.Errorf("打开本地备份文件失败：%w", err)
 	}
 
+	logger.Info("[backup] local backup download requested: ip=%s file=%s", c.IP(), sourceName)
 	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", sourceName))
 	c.Set("Content-Type", "application/x-sqlite3")
 	return c.SendStream(stream)

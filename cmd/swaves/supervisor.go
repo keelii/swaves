@@ -331,7 +331,6 @@ func listenerFile(listener net.Listener) (*os.File, error) {
 		logger.Error("[master] duplicate listener fd failed: err=%v", err)
 		return nil, fmt.Errorf("duplicate listener fd failed: %w", err)
 	}
-	logger.Info("[master] duplicate listener fd success")
 	return file, nil
 }
 

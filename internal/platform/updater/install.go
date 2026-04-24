@@ -350,12 +350,29 @@ func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goar
 		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
 	}
 	logger.Info("[update] cli install replacing current executable: target=%s", targetPath)
-	if _, err := replaceExecutableAtPathWithRollback(extractedPath, targetPath, filepath.Join(tmpDir, ".swaves-executable-backup")); err != nil {
+	rollback, err := replaceExecutableAtPathWithRollback(extractedPath, targetPath, filepath.Join(tmpDir, ".swaves-executable-backup"))
+	if err != nil {
 		logger.Error("[update] cli install replace current executable failed: target=%s err=%v", targetPath, err)
 		return result, err
 	}
 
 	result.Installed = true
+	if runtimeInfo, ok := activeRuntimeForExecutable(targetPath); ok {
+		logger.Info("[update] cli install restarting active master: master_pid=%d target=%s", runtimeInfo.PID, targetPath)
+		if err := signalProcess(runtimeInfo.PID); err != nil {
+			if rollbackErr := rollback(); rollbackErr != nil {
+				logger.Error("[update] cli install restart active master failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
+				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
+			}
+			logger.Error("[update] cli install restart active master failed: master_pid=%d err=%v", runtimeInfo.PID, err)
+			return result, fmt.Errorf("signal master restart failed: %w", err)
+		}
+		result.RestartedPID = runtimeInfo.PID
+		result.Reason = fmt.Sprintf("installed %s to current executable and restarted master", check.LatestVersion)
+		logger.Info("[update] cli install success: version=%s target=%s master_pid=%d", versionLabel(result.LatestVersion), targetPath, result.RestartedPID)
+		return result, nil
+	}
+
 	result.Reason = fmt.Sprintf("installed %s to current executable", check.LatestVersion)
 	logger.Info("[update] cli install success: version=%s target=%s", versionLabel(result.LatestVersion), targetPath)
 	return result, nil
@@ -516,6 +533,22 @@ func currentInstallExecutable() (string, error) {
 		return "", fmt.Errorf("current executable is empty")
 	}
 	return path, nil
+}
+
+func activeRuntimeForExecutable(targetPath string) (RuntimeInfo, bool) {
+	targetPath = strings.TrimSpace(targetPath)
+	if targetPath == "" {
+		return RuntimeInfo{}, false
+	}
+
+	runtimeInfo, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		return RuntimeInfo{}, false
+	}
+	if strings.TrimSpace(runtimeInfo.Executable) != targetPath {
+		return RuntimeInfo{}, false
+	}
+	return runtimeInfo, true
 }
 
 func replaceExecutableAtPathWithRollback(nextPath string, targetPath string, backupPath string) (executableRollback, error) {
