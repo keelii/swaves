@@ -20,6 +20,7 @@ type MarkdownResult struct {
 	Meta     map[string]interface{}
 	Markdown string
 	HTML     string
+	TOCHTML  string
 }
 
 func GetMarkdownOnly(input string) string {
@@ -101,10 +102,18 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 
 	result := helper.FlattenTOC(buf.String(), "ol", "class")
 
+	tocHTML := ""
+	bodyHTML := result
+	if includeTOC {
+		tocHTML = ExtractTOCHTML(result)
+		bodyHTML = StripTOCHTML(result)
+	}
+
 	return &MarkdownResult{
 		Meta:     metaData,
 		Markdown: GetMarkdownOnly(text),
-		HTML:     result,
+		HTML:     bodyHTML,
+		TOCHTML:  tocHTML,
 	}
 }
 

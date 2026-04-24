@@ -11,7 +11,7 @@ func ParseMarkdownTOC(text string) string {
 	if result == nil {
 		return ""
 	}
-	return ExtractTOCHTML(result.HTML)
+	return result.TOCHTML
 }
 
 func ExtractTOCHTML(input string) string {
@@ -33,6 +33,31 @@ func ExtractTOCHTML(input string) string {
 	var builder strings.Builder
 	if err = html.Render(&builder, tocNode); err != nil {
 		return ""
+	}
+	return builder.String()
+}
+
+func StripTOCHTML(input string) string {
+	source := strings.TrimSpace(input)
+	if source == "" {
+		return source
+	}
+
+	doc, err := html.Parse(strings.NewReader(source))
+	if err != nil {
+		return input
+	}
+
+	tocNode := findNodeByClass(doc, "toc")
+	if tocNode == nil {
+		return input
+	}
+
+	tocNode.Parent.RemoveChild(tocNode)
+
+	var builder strings.Builder
+	if err = html.Render(&builder, doc); err != nil {
+		return input
 	}
 	return builder.String()
 }
