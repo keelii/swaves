@@ -1411,20 +1411,6 @@ func ListTaskRunsService(dbx *db.DB, taskCode string, limit int) ([]db.TaskRun, 
 	return db.ListTaskRuns(dbx, taskCode, "", limit)
 }
 
-func CreatePendingRunService(dbx *db.DB, taskCode string) error {
-	now := time.Now().Unix()
-	run := &db.TaskRun{
-		TaskCode:   taskCode,
-		Status:     "pending",
-		Message:    "",
-		StartedAt:  now, // pending 状态时，started_at 设置为当前时间
-		FinishedAt: now, // pending 状态时，finished_at 设置为当前时间（满足 NOT NULL 约束）
-		Duration:   0,   // pending 状态时，duration 为 0
-	}
-	_, err := db.CreateTaskRun(dbx, run)
-	return err
-}
-
 func ListNotificationsService(dbx *db.DB, receiver string, eventType string, pager *types.Pagination) ([]db.Notification, error) {
 	if pager == nil {
 		return db.ListNotificationsByEventType(dbx, receiver, eventType, 20, 0)

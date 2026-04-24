@@ -18,9 +18,9 @@ import (
 )
 
 // JobFunc 返回值约定：
-// - (message, nil): 任务成功，更新任务状态并按需记录 TaskRun
-// - (nil, err): 任务失败
-// - (nil, nil): 任务无动作（no-op），不更新任务最后状态和最后执行时间
+// - (message, nil): 任务成功，更新任务状态并记录 TaskRun
+// - (nil, err): 任务失败，更新任务状态并记录 TaskRun
+// - (nil, nil): 任务无动作（no-op），不更新任务最后状态和最后执行时间，不记录 TaskRun
 type JobFunc func(reg *Registry) (*string, error)
 
 var (
@@ -213,10 +213,6 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		notifyMessage = err.Error()
 	}
 	notifyTaskResult(dbx, t, status, notifyMessage)
-
-	if t.Kind == db.TaskInternal {
-		return
-	}
 
 	finishAt := time.Now()
 	taskRun := &db.TaskRun{

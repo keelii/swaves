@@ -156,6 +156,42 @@ func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
 	}
 }
 
+func TestExecuteInternalTaskAlsoCreatesTaskRun(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task := mustCreateTask(t, dbx, "internal_task", db.TaskInternal)
+
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: func(_ *Registry) (*string, error) {
+					msg := "internal done"
+					return &msg, nil
+				},
+			},
+		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, task)
+
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
+	if gotTask.LastRunAt == nil || *gotTask.LastRunAt <= 0 {
+		t.Fatalf("LastRunAt should be updated, got %v", gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "success" {
+		t.Fatalf("LastStatus should be success, got %q", gotTask.LastStatus)
+	}
+
+	runs := mustListTaskRuns(t, dbx, task.Code)
+	if len(runs) != 1 {
+		t.Fatalf("expected 1 task run for internal task, got %d", len(runs))
+	}
+	if runs[0].Status != "success" {
+		t.Fatalf("task run status should be success, got %q", runs[0].Status)
+	}
+}
+
 func TestExecuteTaskSkipsDisabledRemoteBackup(t *testing.T) {
 	dbx := openJobTestDB(t)
 	task, err := db.GetTaskByCode(dbx, "remote_backup_data")

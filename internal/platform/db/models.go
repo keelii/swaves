@@ -4795,12 +4795,12 @@ func DeleteExpiredNotifications(db *DB, beforeUnix int64) (int64, error) {
 	return affected, nil
 }
 
-// TaskKind 任务类型，与 job.JobKind 枚举值复用；JobInternal(0) 执行时不生成 TaskRun
+// TaskKind 任务类型
 type TaskKind int
 
 const (
-	TaskInternal TaskKind = 0 // 内部任务，不生成 TaskRun 日志
-	TaskUser     TaskKind = 1 // 用户任务，生成 TaskRun 日志
+	TaskInternal TaskKind = 0 // 内部任务（系统内置）
+	TaskUser     TaskKind = 1 // 用户任务（用户创建）
 )
 
 type Task struct {
@@ -5002,14 +5002,6 @@ func CreateTaskRun(db *DB, run *TaskRun) (int64, error) {
 	}
 	run.ID = id
 	return id, nil
-
-	//// 同步更新 tasks 的 last_run_at 和 last_status 字段
-	//_, _ = db.Exec(`UPDATE `+string(TableTasks)+`
-	//	SET last_run_at=?, last_status=?, updated_at=?
-	//	WHERE code=? AND deleted_at IS NULL`,
-	//	run.StartedAt, run.Status, now, run.TaskCode,
-	//)
-	//return nil
 }
 
 func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun, error) {
@@ -5029,7 +5021,7 @@ func ListTaskRuns(db *DB, taskCode string, status string, limit int) ([]TaskRun,
 	results, err := Read(db, specTaskRuns, ReadOptions{
 		SelectFields: "id, task_code, status, message, started_at, finished_at, duration, created_at",
 		WhereClause:  whereClause,
-		OrderBy:      "",
+		OrderBy:      "started_at DESC",
 		WhereArgs:    whereArgs,
 		Limit:        limit,
 	}, func(rows *sql.Rows) (interface{}, error) {
