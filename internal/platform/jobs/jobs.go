@@ -49,6 +49,21 @@ func RunLocalBackupNow(dbx *db.DB) (*string, error) {
 	return runLocalBackup(dbx, cfg, false)
 }
 
+func RunRemoteBackupNow(dbx *db.DB) (*string, error) {
+	if dbx == nil {
+		return nil, errors.New("db is nil")
+	}
+
+	registryMu.RLock()
+	reg := registry
+	registryMu.RUnlock()
+	if reg == nil {
+		return nil, errors.New("task registry not initialized")
+	}
+
+	return PushSystemDataJob(&Registry{DB: dbx, Config: reg.Config})
+}
+
 func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, error) {
 	backupDir := resolveBackupDir(cfg.Dir)
 	logger.Info("[backup] local backup start: dir=%s interval=%s max_count=%d check_interval=%t", backupDir, cfg.Interval, cfg.MaxCount, checkInterval)
