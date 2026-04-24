@@ -163,6 +163,8 @@ func (h *Handler) PostTrashBatchDeleteAPIHandler(c fiber.Ctx) error {
 		deleteByID = func(id int64) error { return HardDeleteCategoryService(h.Model, id) }
 	case "redirects":
 		deleteByID = func(id int64) error { return HardDeleteRedirectService(h.Model, id) }
+	case "themes":
+		deleteByID = func(id int64) error { return HardDeleteThemeService(h.Model, id) }
 	default:
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"ok":    false,

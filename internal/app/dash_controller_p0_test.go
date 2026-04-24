@@ -723,8 +723,84 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if deleteResp.StatusCode != fiber.StatusSeeOther {
 		t.Fatalf("expected delete theme redirect 303, got %d", deleteResp.StatusCode)
 	}
+	cookieKV = mergeCookieKV(cookieKV, deleteResp)
 	if _, err := db.GetThemeByID(swv.Store.Model, copiedThemeID); !db.IsErrNotFound(err) {
 		t.Fatalf("expected copied theme deleted, got err=%v", err)
+	}
+	deletedThemes, err := db.ListDeletedThemes(swv.Store.Model)
+	if err != nil {
+		t.Fatalf("ListDeletedThemes failed: %v", err)
+	}
+	foundDeletedTheme := false
+	for _, item := range deletedThemes {
+		if item.ID != copiedThemeID {
+			continue
+		}
+		foundDeletedTheme = true
+		if item.DeletedAt == nil {
+			t.Fatalf("expected deleted theme deleted_at to be set")
+		}
+		break
+	}
+	if !foundDeletedTheme {
+		t.Fatalf("expected deleted theme id=%d to appear in trash list", copiedThemeID)
+	}
+
+	trashResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/trash?type=themes", nil, cookieKV, nil)
+	assertTemplateRendered(t, trashResp, fiber.StatusOK, "已删除主题列表", copiedTheme.Name, copiedTheme.Code)
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/trash?type=themes", cookieKV, "trash-table")
+	restoreResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/trash/themes/%d/restore", copiedThemeID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+		"Referer":      "/dash/trash?type=themes",
+	})
+	if restoreResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected restore theme redirect 303, got %d", restoreResp.StatusCode)
+	}
+	cookieKV = mergeCookieKV(cookieKV, restoreResp)
+	restoredCopiedTheme, err := db.GetThemeByID(swv.Store.Model, copiedThemeID)
+	if err != nil {
+		t.Fatalf("GetThemeByID(restored copied theme) failed: %v", err)
+	}
+	if restoredCopiedTheme.DeletedAt != nil {
+		t.Fatalf("expected restored copied theme deleted_at to be nil, got %+v", restoredCopiedTheme.DeletedAt)
+	}
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
+	deleteAgainResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/delete", copiedThemeID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if deleteAgainResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected second delete theme redirect 303, got %d", deleteAgainResp.StatusCode)
+	}
+	cookieKV = mergeCookieKV(cookieKV, deleteAgainResp)
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/trash?type=themes", cookieKV, "trash-table")
+	hardDeleteResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/trash/themes/%d/delete", copiedThemeID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+		"Referer":      "/dash/trash?type=themes",
+	})
+	if hardDeleteResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected hard delete theme redirect 303, got %d", hardDeleteResp.StatusCode)
+	}
+	cookieKV = mergeCookieKV(cookieKV, hardDeleteResp)
+	if _, err := db.GetThemeByID(swv.Store.Model, copiedThemeID); !db.IsErrNotFound(err) {
+		t.Fatalf("expected copied theme hard deleted, got err=%v", err)
+	}
+	deletedThemes, err = db.ListDeletedThemes(swv.Store.Model)
+	if err != nil {
+		t.Fatalf("ListDeletedThemes after hard delete failed: %v", err)
+	}
+	for _, item := range deletedThemes {
+		if item.ID == copiedThemeID {
+			t.Fatalf("expected copied theme to be removed from trash after hard delete")
+		}
 	}
 
 	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")

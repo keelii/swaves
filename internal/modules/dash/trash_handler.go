@@ -27,6 +27,10 @@ func getTrashTabCounts(h *Handler) (map[string]int, error) {
 	if err != nil {
 		return nil, err
 	}
+	themeCount, err := CountTrashThemes(h.Model)
+	if err != nil {
+		return nil, err
+	}
 
 	return map[string]int{
 		"posts":           postCount,
@@ -34,6 +38,7 @@ func getTrashTabCounts(h *Handler) (map[string]int, error) {
 		"tags":            tagCount,
 		"categories":      categoryCount,
 		"redirects":       redirectCount,
+		"themes":          themeCount,
 	}, nil
 }
 
@@ -56,6 +61,8 @@ func (h *Handler) GetTrashHandler(c fiber.Ctx) error {
 		data, err = GetTrashCategories(h.Model)
 	case "redirects":
 		data, err = GetTrashRedirects(h.Model)
+	case "themes":
+		data, err = GetTrashThemes(h.Model)
 	default:
 		data, err = GetTrashPosts(h.Model)
 		modelType = "posts"
@@ -202,6 +209,32 @@ func (h *Handler) PostHardDeleteCategoryHandler(c fiber.Ctx) error {
 	}
 
 	if err := HardDeleteCategoryService(h.Model, id); err != nil {
+		return err
+	}
+
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
+}
+
+func (h *Handler) PostRestoreThemeHandler(c fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := RestoreThemeService(h.Model, id); err != nil {
+		return err
+	}
+
+	return h.redirectToDashRouteKeepQuery(c, "dash.trash.list", nil, nil)
+}
+
+func (h *Handler) PostHardDeleteThemeHandler(c fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	if err := HardDeleteThemeService(h.Model, id); err != nil {
 		return err
 	}
 

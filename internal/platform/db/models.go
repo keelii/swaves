@@ -3707,6 +3707,10 @@ func CountThemes(db *DB) (int, error) {
 	return Count(db, specThemes, "", nil)
 }
 
+func CountDeletedThemes(db *DB) (int, error) {
+	return CountDeleted(db, specThemes, "", nil)
+}
+
 func ListThemesPaged(db *DB, limit int, offset int) ([]Theme, error) {
 	result, err := Read(db, specThemes, ReadOptions{
 		SelectFields: "id, name, code, description, author, files, current_file, status, is_current, is_builtin, version, created_at, updated_at, deleted_at",
@@ -3725,6 +3729,24 @@ func ListThemesPaged(db *DB, limit int, offset int) ([]Theme, error) {
 	}
 	themes := make([]Theme, len(result))
 	for i, item := range result {
+		themes[i] = item.(Theme)
+	}
+	return themes, nil
+}
+
+func ListDeletedThemes(db *DB) ([]Theme, error) {
+	results, err := ListDeletedRecords(db, TableThemes, "id, name, code, description, author, files, current_file, status, is_current, is_builtin, version, created_at, updated_at, deleted_at", "deleted_at DESC", func(rows *sql.Rows) (interface{}, error) {
+		item, err := scanTheme(rows)
+		if err != nil {
+			return nil, WrapInternalErr("ListDeletedThemes.Scan", err)
+		}
+		return item, nil
+	})
+	if err != nil {
+		return nil, WrapInternalErr("ListDeletedThemes", err)
+	}
+	themes := make([]Theme, len(results))
+	for i, item := range results {
 		themes[i] = item.(Theme)
 	}
 	return themes, nil
@@ -3776,6 +3798,20 @@ func DeleteTheme(db *DB, id int64) error {
 		return errors.New("当前主题不能删除")
 	}
 	return Delete(db, specThemes, id)
+}
+
+func HardDeleteTheme(db *DB, id int64) error {
+	if id <= 0 {
+		return errors.New("id is invalid")
+	}
+	return HardDelete(db, specThemes, id)
+}
+
+func RestoreTheme(db *DB, id int64) error {
+	if id <= 0 {
+		return errors.New("id is invalid")
+	}
+	return Restore(db, specThemes, id)
 }
 
 func SetThemeCurrent(db *DB, id int64) error {

@@ -162,6 +162,8 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashGroup.Post("/trash/categories/:id/delete", handler.PostHardDeleteCategoryHandler).Name("dash.trash.categories.delete")
 	dashGroup.Post("/trash/redirects/:id/restore", handler.PostRestoreRedirectHandler).Name("dash.trash.redirects.restore")
 	dashGroup.Post("/trash/redirects/:id/delete", handler.PostHardDeleteRedirectHandler).Name("dash.trash.redirects.delete")
+	dashGroup.Post("/trash/themes/:id/restore", handler.PostRestoreThemeHandler).Name("dash.trash.themes.restore")
+	dashGroup.Post("/trash/themes/:id/delete", handler.PostHardDeleteThemeHandler).Name("dash.trash.themes.delete")
 	dashGroup.Post("/api/trash/:type/batch-delete", handler.PostTrashBatchDeleteAPIHandler).Name("dash.trash.api.batch_delete")
 
 	dashGroup.Get("/tasks", handler.GetTaskListHandler).Name("dash.tasks.list")

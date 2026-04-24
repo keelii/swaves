@@ -1216,6 +1216,14 @@ func CountTrashCategories(dbx *db.DB) (int, error) {
 	return db.CountDeletedCategories(dbx)
 }
 
+func GetTrashThemes(dbx *db.DB) ([]db.Theme, error) {
+	return db.ListDeletedThemes(dbx)
+}
+
+func CountTrashThemes(dbx *db.DB) (int, error) {
+	return db.CountDeletedThemes(dbx)
+}
+
 func RestorePostService(dbx *db.DB, id int64) error {
 	return db.RestorePost(dbx, id)
 }
@@ -1254,6 +1262,14 @@ func RestoreCategoryService(dbx *db.DB, id int64) error {
 
 func HardDeleteCategoryService(dbx *db.DB, id int64) error {
 	return db.HardDeleteCategory(dbx, id)
+}
+
+func RestoreThemeService(dbx *db.DB, id int64) error {
+	return db.RestoreTheme(dbx, id)
+}
+
+func HardDeleteThemeService(dbx *db.DB, id int64) error {
+	return db.HardDeleteTheme(dbx, id)
 }
 
 // Comments

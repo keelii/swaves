@@ -57,7 +57,7 @@
                 {{ sui.LinkIcon("download", UrlFor('dash.themes.export', id=theme.ID), attrs='aria-label="导出" data-title="导出"') }}
                 <form method="post" action="{{ UrlFor('dash.themes.copy', id=theme.ID) }}">
                   {{ _csrf_token() }}
-                  {{ sui.IconAction("clipboard", "复制", attrs='data-title="复制"', button_type="submit") }}
+                  {{ sui.IconAction("copy", "复制", attrs='data-title="复制"', button_type="submit") }}
                 </form>
                 {% if theme.IsCurrent != 1 %}
                 <form method="post" action="{{ UrlFor('dash.themes.delete', id=theme.ID) }}">
