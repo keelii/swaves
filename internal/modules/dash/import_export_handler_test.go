@@ -81,7 +81,7 @@ func TestListLocalRestoreBackups(t *testing.T) {
 		t.Fatalf("Chtimes new failed: %v", err)
 	}
 
-	backups, dir, err := listLocalRestoreBackups()
+	backups, dir, err := listLocalRestoreBackups("")
 	if err != nil {
 		t.Fatalf("listLocalRestoreBackups failed: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestDeleteLocalRestoreBackup(t *testing.T) {
 		t.Fatalf("WriteFile failed: %v", err)
 	}
 
-	if err := deleteLocalRestoreBackup("2026-04-10.sqlite"); err != nil {
+	if err := deleteLocalRestoreBackup("2026-04-10.sqlite", ""); err != nil {
 		t.Fatalf("deleteLocalRestoreBackup failed: %v", err)
 	}
 	if _, err := os.Stat(targetPath); !os.IsNotExist(err) {

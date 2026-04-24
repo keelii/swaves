@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	defaultBackupDir    = "backups"
+	defaultBackupDir    = ".cache/backups"
 	defaultListenAddr   = ":4096"
 	defaultAppName      = "swaves"
 	defaultDaemonMode   = 1
