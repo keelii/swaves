@@ -499,10 +499,6 @@ func (h Handler) GetCategoryIndex(c fiber.Ctx) error {
 func (h Handler) GetTagIndex(c fiber.Ctx) error {
 	tags := ListTags(h.Model)
 
-	if tags == nil {
-		return h.redirectError(c)
-	}
-
 	h.trackSiteUV(c)
 	return h.renderView(c, "list.html", fiber.Map{
 		"Title":        buildPageTitle("Tags"),
