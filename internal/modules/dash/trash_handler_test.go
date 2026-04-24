@@ -65,6 +65,23 @@ func TestGetTrashTabCounts(t *testing.T) {
 		t.Fatalf("SoftDeleteRedirect failed: %v", err)
 	}
 
+	theme := &db.Theme{
+		Name:        "trash-theme",
+		Code:        "trash-theme",
+		Description: "trash theme",
+		Author:      "tester",
+		Files:       `{"home.html":"<h1>theme</h1>"}`,
+		CurrentFile: "home.html",
+		Status:      "draft",
+		Version:     1,
+	}
+	if _, err := db.CreateTheme(dbx, theme); err != nil {
+		t.Fatalf("CreateTheme failed: %v", err)
+	}
+	if err := db.DeleteTheme(dbx, theme.ID); err != nil {
+		t.Fatalf("DeleteTheme failed: %v", err)
+	}
+
 	tabCounts, err := getTrashTabCounts(&Handler{Model: dbx})
 	if err != nil {
 		t.Fatalf("getTrashTabCounts failed: %v", err)
@@ -76,6 +93,7 @@ func TestGetTrashTabCounts(t *testing.T) {
 		"tags":            1,
 		"categories":      1,
 		"redirects":       1,
+		"themes":          1,
 	}
 	for key, expected := range want {
 		if got := tabCounts[key]; got != expected {

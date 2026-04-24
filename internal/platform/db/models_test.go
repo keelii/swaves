@@ -1428,6 +1428,84 @@ func TestDeleteThemeRejectsCurrentTheme(t *testing.T) {
 	}
 }
 
+func TestThemeTrashLifecycle(t *testing.T) {
+	db := openEmptyTestDB(t)
+
+	if err := EnsureDefaultSettings(db); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+
+	theme := &Theme{
+		Name:        "trash-theme",
+		Code:        uniqueValue("theme"),
+		Description: "trash theme",
+		Author:      "tester",
+		Files:       mustMarshalThemeFiles(t, map[string]string{"home.html": "<h1>trash</h1>"}),
+		CurrentFile: "home.html",
+		Status:      "draft",
+		Version:     1,
+		CreatedAt:   time.Now().Unix(),
+		UpdatedAt:   time.Now().Unix(),
+	}
+	if _, err := CreateTheme(db, theme); err != nil {
+		t.Fatalf("CreateTheme(theme) failed: %v", err)
+	}
+
+	if err := DeleteTheme(db, theme.ID); err != nil {
+		t.Fatalf("DeleteTheme(theme) failed: %v", err)
+	}
+	if _, err := GetThemeByID(db, theme.ID); !IsErrNotFound(err) {
+		t.Fatalf("expected deleted theme to be not found, got %v", err)
+	}
+
+	count, err := CountDeletedThemes(db)
+	if err != nil {
+		t.Fatalf("CountDeletedThemes failed: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("CountDeletedThemes = %d, want 1", count)
+	}
+
+	deletedThemes, err := ListDeletedThemes(db)
+	if err != nil {
+		t.Fatalf("ListDeletedThemes failed: %v", err)
+	}
+	if len(deletedThemes) != 1 || deletedThemes[0].ID != theme.ID {
+		t.Fatalf("unexpected deleted themes: %+v", deletedThemes)
+	}
+	if deletedThemes[0].DeletedAt == nil {
+		t.Fatal("expected deleted theme deleted_at to be set")
+	}
+
+	if err := RestoreTheme(db, theme.ID); err != nil {
+		t.Fatalf("RestoreTheme failed: %v", err)
+	}
+	restoredTheme, err := GetThemeByID(db, theme.ID)
+	if err != nil {
+		t.Fatalf("GetThemeByID after restore failed: %v", err)
+	}
+	if restoredTheme.DeletedAt != nil {
+		t.Fatalf("expected restored theme deleted_at to be nil, got %+v", restoredTheme.DeletedAt)
+	}
+
+	if err := DeleteTheme(db, theme.ID); err != nil {
+		t.Fatalf("DeleteTheme(theme) second time failed: %v", err)
+	}
+	if err := HardDeleteTheme(db, theme.ID); err != nil {
+		t.Fatalf("HardDeleteTheme failed: %v", err)
+	}
+	if _, err := GetThemeByID(db, theme.ID); !IsErrNotFound(err) {
+		t.Fatalf("expected hard-deleted theme to be not found, got %v", err)
+	}
+	deletedThemes, err = ListDeletedThemes(db)
+	if err != nil {
+		t.Fatalf("ListDeletedThemes after hard delete failed: %v", err)
+	}
+	if len(deletedThemes) != 0 {
+		t.Fatalf("expected no deleted themes after hard delete, got %+v", deletedThemes)
+	}
+}
+
 func TestListSettingsOrder(t *testing.T) {
 	db := openTestDB(t)
 

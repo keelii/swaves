@@ -149,3 +149,36 @@ func TestGetRobotsReturnsEmbeddedStaticFile(t *testing.T) {
 		t.Fatalf("expected default robots directive, got %s", text)
 	}
 }
+
+func TestGetRobotsReturnsDisallowAllWhenCrawlerBlockEnabled(t *testing.T) {
+	dbx := newSiteTestDB(t)
+	if err := db.UpdateSettingByCode(dbx, db.SettingCodeBlockSearchEngineCrawlers, "1"); err != nil {
+		t.Fatalf("update crawler block setting failed: %v", err)
+	}
+	if err := store.ReloadSettings(&store.GlobalStore{Model: dbx}); err != nil {
+		t.Fatalf("reload settings failed: %v", err)
+	}
+
+	app := fiber.New()
+	handler := Handler{Model: dbx}
+	app.Get("/robots.txt", handler.GetRobots)
+
+	req := httptest.NewRequest(http.MethodGet, "/robots.txt", nil)
+	req.Host = "example.com"
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request robots failed: %v", err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read robots failed: %v", err)
+	}
+	text := string(body)
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", resp.StatusCode, text)
+	}
+	if text != robotsDisallowAllBody {
+		t.Fatalf("unexpected robots body: got %q want %q", text, robotsDisallowAllBody)
+	}
+}

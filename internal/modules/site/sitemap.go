@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/store"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
 	webassets "swaves/web"
@@ -24,6 +25,8 @@ type sitemapURL struct {
 	Loc     string `xml:"loc"`
 	LastMod string `xml:"lastmod,omitempty"`
 }
+
+const robotsDisallowAllBody = "User-agent: *\nDisallow: /\n"
 
 func lastModifiedValue(values ...int64) int64 {
 	for _, value := range values {
@@ -119,6 +122,11 @@ func (h Handler) GetSitemap(c fiber.Ctx) error {
 }
 
 func (h Handler) GetRobots(c fiber.Ctx) error {
+	if store.GetSettingBool(db.SettingCodeBlockSearchEngineCrawlers, false) {
+		c.Set(fiber.HeaderContentType, "text/plain; charset=utf-8")
+		return c.SendString(robotsDisallowAllBody)
+	}
+
 	body, err := fs.ReadFile(webassets.StaticFS(), "robots.txt")
 	if err != nil {
 		return err

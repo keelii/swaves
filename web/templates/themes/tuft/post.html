@@ -1,23 +1,16 @@
 {% extends "layout_main.html" %}
 {% block content %}
-{% from "macro_content.html" import CategoryItem, TagList %}
+{% from "macro_content.html" import LoginLink, CategoryItem, TagList %}
 
 <header>
   <h1>{{ Post.Title }}</h1>
-  <nav class="valign">
+  <nav class="post-meta-nav valign">
     <span class="author">{{ Settings("author") }}</span>
     <span>{{ Post.PublishedAt | articleTime }}</span>
     <a href="{{ GetBasePath() }}">首页</a>
-    {% if IsLogin and (Post.ID > 0) %}
-      <a href="{{ UrlFor('dash.posts.edit', id=Post.ID) }}">编辑</a>
-    {% endif %}
-    {% set Count = ReadUV %}
+    {{ LoginLink("编辑", UrlFor('dash.posts.edit', id=Post.ID)) }}
     {% include "inc_read_uv.html" %}
-    {% if Post.Kind == 0 %}
-      {% set Count = CommentCount %}
-      {% include "inc_comment_count.html" %}
-    {% endif %}
-    {% set PostID = Post.ID %}
+    {% include "inc_comment_count.html" %}
     {% include "inc_like_action.html" %}
   </nav>
 </header>

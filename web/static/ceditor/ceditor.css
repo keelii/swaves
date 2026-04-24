@@ -22,7 +22,7 @@
 
 .ceditor-root .cm-content,
 .ceditor-root .cm-gutter {
-  min-height: 640px;
+  min-height: 100%;
 }
 
 .ceditor-root .cm-content {

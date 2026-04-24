@@ -1,4 +1,6 @@
-<a class="comment-count" href="#comments" title="评论数" aria-label="评论数">
+{% if Post.Kind == 0 %}
+<a class="comment-count valign" href="#comments" title="评论数" aria-label="评论数">
   {{ LucideIcon("message-square", 16) }}
-  <span>{% if Count %}{{ Count }}{% else %}0{% endif %}</span>
+  <span>{% if CommentCount %}{{ CommentCount }}{% else %}0{% endif %}</span>
 </a>
+{% endif %}

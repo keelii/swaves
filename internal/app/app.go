@@ -131,8 +131,10 @@ func newRuntimeViewEngine() (fiber.Views, func(app *fiber.App)) {
 	if config.TemplateReload {
 		templateRoot := resolveProjectPath("web/templates")
 		if pathExists(templateRoot) {
+			logger.Info("[view] using local templates: %s", templateRoot)
 			return view.NewViewEngine(templateRoot, true)
 		}
+		logger.Info("[view] local templates not found, using embedded templates")
 	}
 	return view.NewViewEngineFS(webassets.TemplateFS(), false)
 }
@@ -151,11 +153,12 @@ func newSiteRuntimeViewEngine(model *db.DB, sqliteFile string) (fiber.Views, fun
 	}
 	if config.TemplateReload {
 		if templateRoot != "" {
+			logger.Info("[theme] using local templates: %s", templateRoot)
 			return view.NewThemeDBViewEngineWithShared(model, templateRoot, true)
 		}
+		logger.Info("[theme] local templates not found, using embedded templates")
 		return view.NewThemeDBViewEngineWithSharedFS(model, templateFS, true)
 	}
-
 	themeRoot, err := view.MaterializeCurrentThemeCache(model, sqliteFile, templateRoot, templateFS)
 	if err != nil {
 		if db.IsErrNotFound(err) {
@@ -165,10 +168,11 @@ func newSiteRuntimeViewEngine(model *db.DB, sqliteFile string) (fiber.Views, fun
 		}
 		themeRoot, err = view.MaterializeBuiltinThemeCache(sqliteFile, templateRoot, templateFS)
 		if err != nil {
-			logger.Fatal("materialize builtin theme cache failed: %v", err)
+			logger.Fatal("[theme] materialize builtin theme cache failed: %v", err)
 		}
 	}
 
+	logger.Info("[theme] serving from: root=%s", themeRoot)
 	return view.NewViewEngine(themeRoot, config.TemplateReload)
 }
 
@@ -189,6 +193,7 @@ func validateAppConfig(appCfg types.AppConfig) error {
 
 func resolveProjectPath(path string) string {
 	rel := filepath.Clean(path)
+
 	if filepath.IsAbs(rel) {
 		if _, err := os.Stat(rel); err == nil {
 			return rel

@@ -451,6 +451,8 @@ const (
 	SettingKindUIExperience       = "ui_experience"
 )
 
+const SettingCodeBlockSearchEngineCrawlers = "block_search_engine_crawlers"
+
 const (
 	SettingSubKindGeneral  = "general"
 	SettingSubKindSEE      = "see"
@@ -517,6 +519,7 @@ var DefaultSettings = []Setting{
 	{Sort: 16, Kind: SettingKindSiteBasics, Name: "语言", Code: "language", Type: "select", Value: "zh-CN", Description: "语言", Options: InternalLang},
 	{Sort: 17, Kind: SettingKindSiteBasics, Name: "页面字符集", Code: "charset", Type: "text", Value: "utf-8", Description: "编码", Options: InternalLang},
 	{Sort: 18, Kind: SettingKindSiteBasics, Name: "时区", Code: "timezone", Type: "select", Value: "Asia/Shanghai", Description: "时区", Options: InternalTimezone},
+	{Sort: 19, Kind: SettingKindSiteBasics, Name: "屏蔽搜索引擎爬虫", Code: SettingCodeBlockSearchEngineCrawlers, Type: "checkbox", Value: "", Description: "开启后 robots.txt 将禁止所有搜索引擎抓取公开站点。", Options: `[{"label": "禁止所有搜索引擎抓取", "value": "1"}]`},
 	{Sort: 10, Kind: SettingKindAuthorInfo, Name: "作者", Code: "author", Type: "text", Value: "keelii", Description: "作者"},
 	{Sort: 11, Kind: SettingKindAuthorInfo, Name: "邮箱", Code: "author_email", Type: "text", Value: "keeliizhou@gmail.com", Description: "作者邮箱"},
 	{Sort: 10, Kind: SettingKindContentRouting, Name: "全局路径前缀", Code: "base_path", Reload: 1, Type: "prefix-field", Value: "", PrefixValue: "/", Description: "访问根路径", Attrs: config.UrlPrefixValidatorJSON},

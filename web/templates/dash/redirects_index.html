@@ -1,5 +1,4 @@
 {% extends "dash/layout/layout_list.html" %}
-{% import "dash/macro/ui.html" as ui %}
 {% import "dash/include/ui.html" as sui %}
 
 {% set OperationTableID = "redirects-table" %}
@@ -36,7 +35,7 @@
     <table id="redirects-table" class="data-table" aria-label="重定向列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.redirects.api.batch_delete') }}">
       <thead>
         <tr>
-          <th>{{ ui.table_th_id() }}</th>
+          <th>{{ sui.TableThId() }}</th>
           <th>来源</th>
           <th>目标</th>
           <th>状态</th>
@@ -49,7 +48,7 @@
       <tbody>
         {% for redirect in Redirects %}
           <tr data-batch-delete-id="{{ redirect.ID }}">
-            <td>{{ ui.table_td_id(redirect.ID) }}</td>
+            <td>{{ sui.TableTdId(redirect.ID) }}</td>
             <td>{{ redirect.From }}</td>
             <td>{{ redirect.To }}</td>
             <td>

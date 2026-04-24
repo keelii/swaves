@@ -1,5 +1,6 @@
 {% extends "dash/layout/base.html" %}
 {% import "dash/include/ui.html" as sui %}
+{% set OperationTableID = OperationTableID or "" %}
 {% block body %}
 <div
   class="app-window{% if Settings('dash_full_main_open') == '1' %} menu-collapsed{% endif %}"

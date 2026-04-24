@@ -56,6 +56,10 @@ var installSettings = []InstallSettingsOption{
 		Description:  "公开内容显示的作者名",
 	},
 	{
+		Code:        db.SettingCodeBlockSearchEngineCrawlers,
+		Description: "开启后 robots.txt 将禁止所有搜索引擎抓取站点内容",
+	},
+	{
 		Code:        installSettingSeparatorCode,
 		Name:        "后台",
 		Description: "",

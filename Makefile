@@ -19,7 +19,12 @@ RELEASE_BIN_PATH := $(RELEASE_BASENAME)
 RELEASE_ARCHIVE := $(RELEASE_BASENAME).tar.gz
 RELEASE_SHA256 := $(RELEASE_ARCHIVE).sha256
 
-.PHONY: help fe ceditor seditor test build release clean
+TAG_BUMP := $(word 2,$(MAKECMDGOALS))
+ifeq ($(strip $(TAG_BUMP)),)
+TAG_BUMP := patch
+endif
+
+.PHONY: help fe ceditor seditor test build release tag major minor patch clean
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -59,6 +64,51 @@ release: ## Build and package the release executable with version metadata
 		echo "missing shasum/sha256sum" >&2; \
 		exit 1; \
 	fi
+
+tag: ## Pull latest changes, bump remote semver tag, and push branch with the new tag
+	@set -eu; \
+	mode="$(TAG_BUMP)"; \
+	echo "==> tag bump mode: $$mode"; \
+	case "$$mode" in \
+		major|minor|patch) ;; \
+		*) echo "invalid bump type: $$mode (use major, minor, or patch)" >&2; exit 1 ;; \
+	esac; \
+	echo "==> pulling latest branch"; \
+	git pull --ff-only; \
+	echo "==> reading latest remote tag from origin"; \
+	latest_tag=$$(git ls-remote --tags --refs origin 'v*' | awk '{ \
+		sub("refs/tags/", "", $$2); \
+		tag = $$2; \
+		if (tag ~ /^v[0-9]+\.[0-9]+\.[0-9]+$$/) { \
+			version = substr(tag, 2); \
+			split(version, parts, "."); \
+			printf("%09d %09d %09d %s\n", parts[1], parts[2], parts[3], tag); \
+		} \
+	}' | sort | tail -n 1 | awk '{print $$4}'); \
+	if [ -z "$$latest_tag" ]; then \
+		latest_tag="v0.0.0"; \
+	fi; \
+	version=$${latest_tag#v}; \
+	old_ifs=$$IFS; \
+	IFS=.; set -- $$version; \
+	IFS=$$old_ifs; \
+	major=$${1:-0}; \
+	minor=$${2:-0}; \
+	patch=$${3:-0}; \
+	case "$$mode" in \
+		major) major=$$((major + 1)); minor=0; patch=0 ;; \
+		minor) minor=$$((minor + 1)); patch=0 ;; \
+		patch) patch=$$((patch + 1)) ;; \
+	esac; \
+	new_tag="v$${major}.$$minor.$$patch"; \
+	echo "==> latest remote tag: $$latest_tag"; \
+	echo "==> creating new tag: $$new_tag"; \
+	git tag -a "$$new_tag" -m "$$new_tag"; \
+	echo "==> pushing current branch and tag $$new_tag"; \
+	git push origin HEAD --follow-tags
+
+major minor patch:
+	@:
 
 clean: ## Remove build artifacts produced by this Makefile
 	rm -rf .cache/go-build swaves swaves_*.tar.gz swaves_*.tar.gz.sha256 swaves_*_*_*
