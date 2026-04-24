@@ -189,6 +189,22 @@ func (h *Handler) PostBackupRestoreBackupNowHandler(c fiber.Ctx) error {
 	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, nil, notice)
 }
 
+func (h *Handler) PostBackupRestoreRemoteBackupNowHandler(c fiber.Ctx) error {
+	logger.Info("[backup] manual remote backup requested: ip=%s", c.IP())
+	message, err := job.RunRemoteBackupNow(h.Model)
+	if err != nil {
+		logger.Error("[backup] run remote backup now failed: %v", err)
+		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "执行远程备份失败："+err.Error())
+	}
+
+	notice := "远程备份已完成。"
+	if message != nil && strings.TrimSpace(*message) != "" {
+		notice = strings.TrimSpace(*message)
+	}
+	logger.Info("[backup] manual remote backup completed: ip=%s message=%s", c.IP(), notice)
+	return h.redirectToDashRouteWithNotice(c, "dash.backup_restore.show", nil, nil, notice)
+}
+
 func (h *Handler) renderBackupRestoreView(c fiber.Ctx, extra fiber.Map) error {
 	viewData, err := buildBackupRestoreViewData(c)
 	if err != nil {
