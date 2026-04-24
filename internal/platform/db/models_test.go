@@ -2929,3 +2929,94 @@ func TestLikeStateAndTopLikedContents(t *testing.T) {
 		t.Fatal("expected invalid visitor id error")
 	}
 }
+
+func TestHardDeleteClearsUVRecords(t *testing.T) {
+	db := openTestDB(t)
+	ts := int64(1000)
+
+	post := mustCreatePost(t, db, "published", PostKindPost, ts)
+	tag := mustCreateTag(t, db, "uv-tag")
+	cat := mustCreateCategory(t, db, 0, "uv-cat")
+
+	vid1 := testVisitorID(0x01)
+	vid2 := testVisitorID(0x02)
+	vid3 := testVisitorID(0x03)
+
+	mustInsertUVRow(t, db, UVEntityPost, post.ID, vid1, ts)
+	mustInsertUVRow(t, db, UVEntityPost, post.ID, vid2, ts)
+	mustInsertUVRow(t, db, UVEntityTag, tag.ID, vid1, ts)
+	mustInsertUVRow(t, db, UVEntityCategory, cat.ID, vid3, ts)
+	mustInsertUVRow(t, db, UVEntitySite, 0, vid1, ts)
+
+	// site-wide UV counts all 3 distinct visitors before any deletion
+	total, err := CountUVUnique(db, UVEntitySite, 0)
+	if err != nil {
+		t.Fatalf("CountUVUnique failed: %v", err)
+	}
+	if total != 3 {
+		t.Fatalf("expected 3 site UV before delete, got %d", total)
+	}
+
+	// soft-delete post then hard-delete – UV must be cleaned up
+	if err := SoftDeletePost(db, post.ID); err != nil {
+		t.Fatalf("SoftDeletePost failed: %v", err)
+	}
+	if err := HardDeletePost(db, post.ID); err != nil {
+		t.Fatalf("HardDeletePost failed: %v", err)
+	}
+	postUV, err := CountUVUnique(db, UVEntityPost, post.ID)
+	if err != nil {
+		t.Fatalf("CountUVUnique post failed: %v", err)
+	}
+	if postUV != 0 {
+		t.Fatalf("expected 0 post UV after hard-delete, got %d", postUV)
+	}
+
+	// site total should drop: vid2 is now orphaned and removed
+	total, err = CountUVUnique(db, UVEntitySite, 0)
+	if err != nil {
+		t.Fatalf("CountUVUnique site failed: %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("expected 2 site UV after post hard-delete, got %d", total)
+	}
+
+	// hard-delete tag – UV for tag must be cleaned up
+	if err := SoftDeleteTag(db, tag.ID); err != nil {
+		t.Fatalf("SoftDeleteTag failed: %v", err)
+	}
+	if err := HardDeleteTag(db, tag.ID); err != nil {
+		t.Fatalf("HardDeleteTag failed: %v", err)
+	}
+	tagUV, err := CountUVUnique(db, UVEntityTag, tag.ID)
+	if err != nil {
+		t.Fatalf("CountUVUnique tag failed: %v", err)
+	}
+	if tagUV != 0 {
+		t.Fatalf("expected 0 tag UV after hard-delete, got %d", tagUV)
+	}
+
+	// hard-delete category – UV for category must be cleaned up
+	if err := SoftDeleteCategory(db, cat.ID); err != nil {
+		t.Fatalf("SoftDeleteCategory failed: %v", err)
+	}
+	if err := HardDeleteCategory(db, cat.ID); err != nil {
+		t.Fatalf("HardDeleteCategory failed: %v", err)
+	}
+	catUV, err := CountUVUnique(db, UVEntityCategory, cat.ID)
+	if err != nil {
+		t.Fatalf("CountUVUnique category failed: %v", err)
+	}
+	if catUV != 0 {
+		t.Fatalf("expected 0 category UV after hard-delete, got %d", catUV)
+	}
+
+	// only site-level UV row (vid1) remains
+	total, err = CountUVUnique(db, UVEntitySite, 0)
+	if err != nil {
+		t.Fatalf("CountUVUnique final site failed: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("expected 1 site UV after all hard-deletes, got %d", total)
+	}
+}
