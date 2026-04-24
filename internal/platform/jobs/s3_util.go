@@ -29,7 +29,10 @@ type S3PutInput struct {
 // AWS4-HMAC-SHA256 signing. It returns the ETag value, the HTTP status code,
 // and any transport or non-2xx error.
 func PutS3Object(ctx context.Context, cfg pushJobConfig, input S3PutInput) (etag string, statusCode int, err error) {
-	objectURL := buildS3ObjectURL(cfg, input.ObjectKey)
+	objectURL, err := buildS3ObjectURL(cfg, input.ObjectKey)
+	if err != nil {
+		return "", 0, err
+	}
 	parsedURL, err := url.Parse(objectURL)
 	if err != nil {
 		return "", 0, fmt.Errorf("parse object url failed: %w", err)
@@ -76,23 +79,23 @@ func PutS3Object(ctx context.Context, cfg pushJobConfig, input S3PutInput) (etag
 
 // buildS3ObjectURL constructs the full PUT URL for the given object key.
 // Virtual-hosted style is used by default; path style when S3ForcePath is set.
-// When no custom endpoint is configured, standard AWS S3 is assumed.
-func buildS3ObjectURL(cfg pushJobConfig, objectKey string) string {
+// Returns an error when no endpoint is configured.
+func buildS3ObjectURL(cfg pushJobConfig, objectKey string) (string, error) {
 	endpoint := cfg.S3Endpoint
 	if endpoint == "" {
-		endpoint = fmt.Sprintf("https://s3.%s.amazonaws.com", cfg.S3Region)
+		return "", fmt.Errorf("s3 endpoint is not configured")
 	}
 	encodedKey := url.PathEscape(objectKey)
 	if cfg.S3ForcePath {
-		return strings.TrimRight(endpoint, "/") + "/" + cfg.S3Bucket + "/" + encodedKey
+		return strings.TrimRight(endpoint, "/") + "/" + cfg.S3Bucket + "/" + encodedKey, nil
 	}
 	// endpoint is validated in normalizeS3Endpoint / splitS3EndpointBucket upstream,
 	// so url.Parse will succeed; fall back to path style on unexpected parse failure.
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		return strings.TrimRight(endpoint, "/") + "/" + cfg.S3Bucket + "/" + encodedKey
+		return strings.TrimRight(endpoint, "/") + "/" + cfg.S3Bucket + "/" + encodedKey, nil
 	}
-	return fmt.Sprintf("%s://%s.%s/%s", u.Scheme, cfg.S3Bucket, u.Host, encodedKey)
+	return fmt.Sprintf("%s://%s.%s/%s", u.Scheme, cfg.S3Bucket, u.Host, encodedKey), nil
 }
 
 // s3Sign returns an AWS4-HMAC-SHA256 Authorization header value for an S3 PUT.
