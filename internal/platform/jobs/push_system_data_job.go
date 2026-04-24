@@ -170,7 +170,44 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 		return "", 0, fmt.Errorf("stat snapshot failed: %w", err)
 	}
 
-	objectURL := buildS3ObjectURL(cfg, objectKey)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
+	defer cancel()
+
+	etag, statusCode, err := putS3Object(ctx, cfg, s3PutInput{
+		ObjectKey:   objectKey,
+		ContentType: "application/x-sqlite3",
+		Body:        file,
+		Size:        info.Size(),
+		Metadata: map[string]string{
+			"x-amz-meta-swaves-app":      appName,
+			"x-amz-meta-snapshot-hash":   snapshot.Hash,
+			"x-amz-meta-snapshot-date":   snapshot.Date,
+			"x-amz-meta-snapshot-source": "remote_backup_data",
+		},
+	})
+	if err != nil {
+		return "", statusCode, err
+	}
+
+	response = fmt.Sprintf("bucket=%s key=%s etag=%s", cfg.S3Bucket, objectKey, etag)
+	return response, statusCode, nil
+}
+
+// s3PutInput holds the parameters for a single S3 PutObject request.
+type s3PutInput struct {
+	ObjectKey   string
+	ContentType string
+	Body        io.Reader
+	Size        int64
+	// Metadata are extra request headers (e.g. x-amz-meta-* keys).
+	Metadata map[string]string
+}
+
+// putS3Object executes an authenticated S3 PutObject via stdlib net/http with
+// AWS4-HMAC-SHA256 signing. It returns the ETag value, the HTTP status code,
+// and any transport or non-2xx error.
+func putS3Object(ctx context.Context, cfg pushJobConfig, input s3PutInput) (etag string, statusCode int, err error) {
+	objectURL := buildS3ObjectURL(cfg, input.ObjectKey)
 	parsedURL, err := url.Parse(objectURL)
 	if err != nil {
 		return "", 0, fmt.Errorf("parse object url failed: %w", err)
@@ -180,28 +217,18 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 	dateISO := now.Format("20060102T150405Z")
 	dateShort := now.Format("20060102")
 
-	metaHeaders := map[string]string{
-		"x-amz-meta-swaves-app":      appName,
-		"x-amz-meta-snapshot-hash":   snapshot.Hash,
-		"x-amz-meta-snapshot-date":   snapshot.Date,
-		"x-amz-meta-snapshot-source": "remote_backup_data",
-	}
+	authHeader := s3Sign(cfg, parsedURL.Host, input.ObjectKey, dateISO, dateShort, input.Metadata)
 
-	authHeader := s3Sign(cfg, parsedURL.Host, objectKey, dateISO, dateShort, metaHeaders)
-
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, objectURL, file)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, objectURL, input.Body)
 	if err != nil {
 		return "", 0, fmt.Errorf("build request failed: %w", err)
 	}
-	req.ContentLength = info.Size()
-	req.Header.Set("Content-Type", "application/x-sqlite3")
+	req.ContentLength = input.Size
+	req.Header.Set("Content-Type", input.ContentType)
 	req.Header.Set("Authorization", authHeader)
 	req.Header.Set("X-Amz-Date", dateISO)
 	req.Header.Set("X-Amz-Content-Sha256", "UNSIGNED-PAYLOAD")
-	for k, v := range metaHeaders {
+	for k, v := range input.Metadata {
 		req.Header.Set(k, v)
 	}
 
@@ -217,9 +244,8 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 		return "", statusCode, fmt.Errorf("s3 put object failed: status=%d", statusCode)
 	}
 
-	etag := strings.Trim(resp.Header.Get("ETag"), `"`)
-	response = fmt.Sprintf("bucket=%s key=%s etag=%s", cfg.S3Bucket, objectKey, etag)
-	return response, statusCode, nil
+	etag = strings.Trim(resp.Header.Get("ETag"), `"`)
+	return etag, statusCode, nil
 }
 
 // buildS3ObjectURL constructs the full PUT URL for the given object key.
