@@ -334,7 +334,9 @@ func resolveRestoreBackupDir(dir, sqliteFile string) string {
 	sqliteFile = strings.TrimSpace(sqliteFile)
 	if sqliteFile != "" {
 		absFile, err := filepath.Abs(sqliteFile)
-		if err == nil {
+		if err != nil {
+			logger.Warn("[backup] resolve sqlite abs path failed, falling back to cwd: file=%s err=%v", sqliteFile, err)
+		} else {
 			return filepath.Join(filepath.Dir(absFile), dir)
 		}
 	}
