@@ -241,7 +241,7 @@ func DeleteExpiredEncryptedPostsJob(reg *Registry) (*string, error) {
 		return jobMessage(fmt.Sprintf("已软删除 %d 条过期加密文章", n)), nil
 	}
 
-	return nil, nil
+	return jobMessage("暂无过期加密文章，无需处理"), nil
 }
 
 // CheckAppUpdateJob 检查当前 swaves 版本是否落后于最新稳定 release。
@@ -250,7 +250,7 @@ func CheckAppUpdateJob(reg *Registry) (*string, error) {
 		return nil, errors.New("reg.DB is nil")
 	}
 	if !buildinfo.IsReleaseVersion() {
-		return nil, nil
+		return jobMessage("非发布版本，跳过更新检查"), nil
 	}
 
 	result, err := checkLatestAppRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
@@ -258,7 +258,7 @@ func CheckAppUpdateJob(reg *Registry) (*string, error) {
 		return nil, err
 	}
 	if !result.HasUpgrade || result.Target == nil {
-		return nil, nil
+		return jobMessage(fmt.Sprintf("当前已是最新版本：%s", result.CurrentVersion)), nil
 	}
 
 	nowUnix := time.Now().Unix()

@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
@@ -18,9 +17,9 @@ import (
 )
 
 // JobFunc 返回值约定：
-// - (message, nil): 任务成功，更新任务状态并按需记录 TaskRun
-// - (nil, err): 任务失败
-// - (nil, nil): 任务无动作（no-op），不更新任务最后状态和最后执行时间
+// - (message, nil): 任务成功，更新任务状态并记录 TaskRun
+// - (nil, err): 任务失败，更新任务状态并记录 TaskRun
+// - (nil, nil): 任务无动作（no-op），不更新任务最后状态和最后执行时间，不记录 TaskRun
 type JobFunc func(reg *Registry) (*string, error)
 
 var (
@@ -214,10 +213,6 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	}
 	notifyTaskResult(dbx, t, status, notifyMessage)
 
-	if t.Kind == db.TaskInternal {
-		return
-	}
-
 	finishAt := time.Now()
 	taskRun := &db.TaskRun{
 		TaskCode:   t.Code,
@@ -237,32 +232,8 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	}
 }
 
-func shouldSkipTaskExecution(t db.Task) bool {
-	if t.Code != "remote_backup_data" {
-		return false
-	}
-	settings := store.GetSettingMap()
-	if len(settings) == 0 {
-		return false
-	}
-	return !parseTaskBoolSetting(settings["sync_push_enabled"])
-}
-
-func parseTaskBoolSetting(raw string) bool {
-	value := strings.TrimSpace(strings.ToLower(raw))
-	if value == "" {
-		return false
-	}
-	parsed, err := strconv.ParseBool(value)
-	if err == nil {
-		return parsed
-	}
-	switch value {
-	case "1", "yes", "on":
-		return true
-	default:
-		return false
-	}
+func shouldSkipTaskExecution(_ db.Task) bool {
+	return false
 }
 
 func notifyTaskResult(dbx *db.DB, task db.Task, status string, message string) {
