@@ -25,6 +25,7 @@ const (
 	workerGracefulShutdownTimeout = 8 * time.Second
 	defaultWorkerStopTimeout      = workerGracefulShutdownTimeout + 4*time.Second
 	defaultWorkerReadyTimeout     = 8 * time.Second
+	defaultWorkerDrainTimeout     = 5 * time.Second
 	workerListenerFDEnv           = "SWAVES_LISTENER_FD"
 	workerReadyFDEnv              = "SWAVES_READY_FD"
 	workerReadyMessage            = "READY"
@@ -39,6 +40,7 @@ type supervisorConfig struct {
 	MaxFailures     int
 	ReadyTimeout    time.Duration
 	ShutdownTimeout time.Duration
+	DrainTimeout    time.Duration
 	ExecutablePath  string
 	Args            []string
 	Worker          func() error
@@ -129,6 +131,7 @@ func runSupervisor(cfg supervisorConfig) error {
 						continue
 					}
 					logger.Info("[master] replacement worker ready: previous_worker_pid=%d next_worker_pid=%d", workerPID(active), workerPID(next))
+					drainWorkerProcess(active, cfg.DrainTimeout)
 					if err := stopWorkerProcess(active, cfg.ShutdownTimeout); err != nil {
 						logger.Error("[master] stop previous worker failed: %v", err)
 					}
@@ -170,6 +173,9 @@ func normalizeSupervisorConfig(cfg *supervisorConfig) {
 	}
 	if cfg.ShutdownTimeout <= 0 {
 		cfg.ShutdownTimeout = defaultWorkerStopTimeout
+	}
+	if cfg.DrainTimeout <= 0 {
+		cfg.DrainTimeout = defaultWorkerDrainTimeout
 	}
 }
 
@@ -289,6 +295,27 @@ func readWorkerReady(reader *os.File) error {
 		return fmt.Errorf("unexpected worker ready message: %q", strings.TrimSpace(message))
 	}
 	return nil
+}
+
+func drainWorkerProcess(worker *workerProcess, timeout time.Duration) {
+	if worker == nil || worker.cmd == nil || worker.cmd.Process == nil {
+		return
+	}
+	pid := worker.cmd.Process.Pid
+	if err := worker.cmd.Process.Signal(syscall.SIGUSR1); err != nil {
+		if errors.Is(err, os.ErrProcessDone) {
+			return
+		}
+		logger.Warn("[master] drain worker signal failed: pid=%d err=%v", pid, err)
+		return
+	}
+	logger.Info("[master] drain signal sent to worker: pid=%d timeout=%s", pid, timeout)
+	select {
+	case <-worker.done:
+		logger.Info("[master] worker drained and exited: pid=%d", pid)
+	case <-time.After(timeout):
+		logger.Info("[master] worker drain timeout: pid=%d", pid)
+	}
 }
 
 func stopWorkerProcess(worker *workerProcess, timeout time.Duration) error {
