@@ -1083,16 +1083,6 @@ func upsertUVUniqueCompat(db *DB, entityType UVEntityType, entityID int64, visit
 	return affected > 0, nil
 }
 
-func DeleteEntityUVRecords(db *DB, entityType UVEntityType, entityID int64) error {
-	if _, err := db.Exec(
-		`DELETE FROM `+string(TableUVUnique)+` WHERE entity_type = ? AND entity_id = ?`,
-		entityType, entityID,
-	); err != nil {
-		return WrapInternalErr("DeleteEntityUVRecords", err)
-	}
-	return nil
-}
-
 func CountUVUnique(db *DB, entityType UVEntityType, entityID int64) (int, error) {
 	if !entityType.IsValid() {
 		return 0, errors.New("entity_type is invalid")
@@ -2297,10 +2287,7 @@ func SoftDeletePost(db *DB, id int64) error {
 }
 
 func HardDeletePost(db *DB, id int64) error {
-	if err := HardDelete(db, specPosts, id); err != nil {
-		return err
-	}
-	return DeleteEntityUVRecords(db, UVEntityPost, id)
+	return HardDelete(db, specPosts, id)
 }
 
 func RestorePost(db *DB, id int64) error {
@@ -2698,10 +2685,7 @@ func SoftDeleteTag(db *DB, id int64) error {
 }
 
 func HardDeleteTag(db *DB, id int64) error {
-	if err := HardDelete(db, specTags, id); err != nil {
-		return err
-	}
-	return DeleteEntityUVRecords(db, UVEntityTag, id)
+	return HardDelete(db, specTags, id)
 }
 
 func RestoreTag(db *DB, id int64) error {
@@ -5402,10 +5386,7 @@ func SoftDeleteCategory(db *DB, id int64) error {
 }
 
 func HardDeleteCategory(db *DB, id int64) error {
-	if err := HardDelete(db, specCategories, id); err != nil {
-		return err
-	}
-	return DeleteEntityUVRecords(db, UVEntityCategory, id)
+	return HardDelete(db, specCategories, id)
 }
 
 func RestoreCategory(db *DB, id int64) error {
