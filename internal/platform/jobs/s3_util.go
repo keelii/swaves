@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -55,6 +56,10 @@ func PutS3Object(ctx context.Context, cfg pushJobConfig, input S3PutInput) (etag
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			err = urlErr.Err
+		}
 		return "", 0, fmt.Errorf("s3 put object failed: %w", err)
 	}
 	defer resp.Body.Close()
