@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
@@ -233,32 +232,8 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	}
 }
 
-func shouldSkipTaskExecution(t db.Task) bool {
-	if t.Code != "remote_backup_data" {
-		return false
-	}
-	settings := store.GetSettingMap()
-	if len(settings) == 0 {
-		return false
-	}
-	return !parseTaskBoolSetting(settings["sync_push_enabled"])
-}
-
-func parseTaskBoolSetting(raw string) bool {
-	value := strings.TrimSpace(strings.ToLower(raw))
-	if value == "" {
-		return false
-	}
-	parsed, err := strconv.ParseBool(value)
-	if err == nil {
-		return parsed
-	}
-	switch value {
-	case "1", "yes", "on":
-		return true
-	default:
-		return false
-	}
+func shouldSkipTaskExecution(_ db.Task) bool {
+	return false
 }
 
 func notifyTaskResult(dbx *db.DB, task db.Task, status string, message string) {
