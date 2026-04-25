@@ -509,6 +509,9 @@ var SettingSubKindLabels = map[string]map[string]string{
 	},
 }
 
+const LegacyBackupDir = "backups"
+const DefaultBackupDir = ".cache/backups"
+
 var DefaultSettings = []Setting{
 	{Sort: 10, Kind: SettingKindSiteBasics, Name: "访问地址", Code: "site_url", Type: "text", Value: "", Description: "站点地址，不包括路径"},
 	{Sort: 11, Kind: SettingKindSiteBasics, Name: "站点名称", Code: "site_name", Type: "text", Value: "SWAVES", Description: "后台显示的站点名称"},

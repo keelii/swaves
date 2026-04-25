@@ -23,9 +23,6 @@ const (
 	settingBackupLocalDir         = "backup_local_dir"
 	settingBackupLocalIntervalMin = "backup_local_interval_min"
 	settingBackupLocalMaxCount    = "backup_local_max_count"
-
-	// legacyBackupDir is the old default backup directory before it was moved under .cache/.
-	legacyBackupDir = "backups"
 )
 
 func jobMessage(message string) *string {
@@ -123,7 +120,7 @@ type localBackupConfig struct {
 func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 	defaultDir := strings.TrimSpace(reg.Config.BackupDir)
 	if defaultDir == "" {
-		defaultDir = ".cache/backups"
+		defaultDir = db.DefaultBackupDir
 	}
 
 	dir := strings.TrimSpace(store.GetSetting(settingBackupLocalDir))
@@ -174,23 +171,23 @@ func resolveBackupDir(dir, sqliteFile string) string {
 // directory to the current default ".cache/backups/" when no custom backup directory
 // has been configured by the user.
 func migrateBackupDir(sqliteFile string) {
-	if strings.TrimSpace(store.GetSetting(settingBackupLocalDir)) != "" {
+	if strings.TrimSpace(store.GetSetting(settingBackupLocalDir)) == db.DefaultBackupDir {
 		return
 	}
 
-	oldDir := resolveBackupDir(legacyBackupDir, sqliteFile)
-	newDir := resolveBackupDir(".cache/backups", sqliteFile)
+	oldDir := resolveBackupDir(db.LegacyBackupDir, sqliteFile)
+	newDir := resolveBackupDir(db.DefaultBackupDir, sqliteFile)
 	if oldDir == newDir {
 		return
 	}
 
 	entries, err := os.ReadDir(oldDir)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			logger.Warn("[backup] migrate: read legacy dir failed: dir=%s err=%v", oldDir, err)
-		}
+		logger.Warn("[backup] migrate: read legacy dir failed: dir=%s err=%v", oldDir, err)
 		return
 	}
+
+	logger.Warn("[backup] migrate: old dir=%s dir=%s entries=%s", oldDir, newDir, entries)
 
 	var filesToMove []string
 	for _, entry := range entries {
@@ -223,6 +220,11 @@ func migrateBackupDir(sqliteFile string) {
 
 	if moved > 0 {
 		logger.Info("[backup] migrate: moved %d backup file(s) from %s to %s", moved, oldDir, newDir)
+		// delete old dir
+		err := os.RemoveAll(oldDir)
+		if err != nil {
+			logger.Warn("[backup] migrate: remove old dir failed: dir=%s err=%v", oldDir, err)
+		}
 	}
 }
 

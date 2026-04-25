@@ -27,7 +27,6 @@ import (
 )
 
 const (
-	defaultRestoreBackupDir   = ".cache/backups"
 	restoreSignalDelay        = 200 * time.Millisecond
 	restoreUploadFormField    = "file"
 	restoreBackupFileFormKey  = "backup_file"
@@ -342,7 +341,7 @@ func paginateRestoreBackups(backups []restoreBackupFile, pager *types.Pagination
 func resolveRestoreBackupDir(dir, sqliteFile string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		dir = defaultRestoreBackupDir
+		dir = db.DefaultBackupDir
 	}
 	if filepath.IsAbs(dir) {
 		return dir
