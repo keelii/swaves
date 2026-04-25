@@ -2,66 +2,56 @@
 {% import "dash/include/ui.html" as sui %}
 {% set OperationTableID = "task-runs-table" %}
 
-{% block page_actions %}{% endblock %}
-{% block operation_multiselect %}{% endblock %}
+{% block page_actions %}
+  {{ sui.LinkButton("任务列表", "outline", href=UrlFor('dash.tasks.list')) }}
+{% endblock %}
 
-{% block status_main_left %}
-  {% if RouteName %}
-    <span>{{ RouteName }}</span>
-  {% endif %}
+{% block operation_multiselect %}{% endblock %}
+{% block status_main_left %}{% endblock %}
+
+{% block operation_left %}
+  <span>{{ Task.Name }} ({{ Task.Code }})</span>
 {% endblock %}
 
 {% block content %}
-<div class="app-px app-pb">
-  <h3>任务：{{ Task.Name }} ({{ Task.Code }})</h3>
-</div>
-
-<div class="data-table-wrap">
 {% if Runs|length > 0 %}
-  <table id="task-runs-table" class="data-table" aria-label="任务执行记录" data-role="data-table">
-    <thead>
-      <tr>
-        <th class="cell-12">任务代码</th>
-        <th>{{ sui.TableThId("记录ID") }}</th>
-        <th class="cell-6">状态</th>
-        <th class="cell-30">消息</th>
-        <th>耗时（毫秒）</th>
-        <th>开始时间</th>
-        <th>结束时间</th>
-        <th>创建时间</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for run in Runs %}
-      <tr>
-        <td>{{ run.TaskCode }}</td>
-        <td>{{ sui.TableTdId(run.ID) }}</td>
-        <td>
-          {% if run.Status == "success" %}
-            <span class="ui-badge success">成功</span>
-          {% elif run.Status == "pending" %}
-            <span class="ui-badge draft">待执行</span>
-          {% else %}
-            <span class="ui-badge danger">失败</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if run.Status == "success" %}
-            {{ run.Message }}
-          {% else %}
-            <span>{{ run.Message }}</span>
-          {% endif %}
-        </td>
-        <td>{{ run.Duration }}</td>
-        <td>{{ run.StartedAt | formatTime }}</td>
-        <td>{{ run.FinishedAt | formatTime }}</td>
-        <td>{{ run.CreatedAt | formatTime }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="data-table-wrap">
+    <table id="task-runs-table" class="data-table" aria-label="任务执行记录" data-role="data-table">
+      <thead>
+        <tr>
+          <th>{{ sui.TableThId("记录ID") }}</th>
+          <th class="cell-6">状态</th>
+          <th class="cell-30">消息</th>
+          <th>耗时（毫秒）</th>
+          <th>开始时间</th>
+          <th>结束时间</th>
+          <th>创建时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in Runs %}
+        <tr>
+          <td>{{ sui.TableTdId(run.ID) }}</td>
+          <td>
+            {% if run.Status == "success" %}
+              <span class="ui-badge success">成功</span>
+            {% else %}
+              <span class="ui-badge danger">失败</span>
+            {% endif %}
+          </td>
+          <td>{{ run.Message }}</td>
+          <td>{{ run.Duration }}</td>
+          <td>{{ run.StartedAt | formatTime }}</td>
+          <td>{{ run.FinishedAt | formatTime }}</td>
+          <td>{{ run.CreatedAt | formatTime }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% else %}
-  {{ sui.EmptyState("暂无执行记录") }}
+  <div class="app-px">
+    {{ sui.EmptyState("暂无执行记录") }}
+  </div>
 {% endif %}
-</div>
 {% endblock %}

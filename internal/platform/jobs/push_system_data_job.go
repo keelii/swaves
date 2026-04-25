@@ -10,16 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 	"swaves/internal/platform/asset"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/store"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 const (
@@ -48,7 +43,7 @@ func PushSystemDataJob(reg *Registry) (*string, error) {
 
 	cfg := loadPushJobConfig()
 	if !cfg.Enabled {
-		return nil, errors.New("remote data backup disabled")
+		return jobMessage("远程数据备份未启用，跳过"), nil
 	}
 
 	tmpDir, err := os.MkdirTemp("", "swaves-sync-push-*")
@@ -166,37 +161,30 @@ func uploadSnapshotToS3(cfg pushJobConfig, appName string, snapshot *db.ExportRe
 	}
 	defer file.Close()
 
-	awsCfg, err := buildS3AWSConfig(cfg)
+	info, err := file.Stat()
 	if err != nil {
-		return "", 0, fmt.Errorf("build s3 config failed: %w", err)
+		return "", 0, fmt.Errorf("stat snapshot failed: %w", err)
 	}
-
-	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = cfg.S3ForcePath
-	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 
-	putOut, err := client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(cfg.S3Bucket),
-		Key:         aws.String(objectKey),
+	etag, statusCode, err := PutS3Object(ctx, cfg, S3PutInput{
+		ObjectKey:   objectKey,
+		ContentType: "application/x-sqlite3",
 		Body:        file,
-		ContentType: aws.String("application/x-sqlite3"),
+		Size:        info.Size(),
 		Metadata: map[string]string{
-			"swaves-app":      appName,
-			"snapshot-hash":   snapshot.Hash,
-			"snapshot-date":   snapshot.Date,
-			"snapshot-source": "remote_backup_data",
+			"x-amz-meta-swaves-app":      appName,
+			"x-amz-meta-snapshot-hash":   snapshot.Hash,
+			"x-amz-meta-snapshot-date":   snapshot.Date,
+			"x-amz-meta-snapshot-source": "remote_backup_data",
 		},
 	})
 	if err != nil {
-		statusCode = extractS3StatusCode(err)
-		return "", statusCode, fmt.Errorf("s3 put object failed: %w", err)
+		return "", statusCode, err
 	}
 
-	statusCode = http.StatusOK
-	etag := strings.TrimSpace(aws.ToString(putOut.ETag))
 	response = fmt.Sprintf("bucket=%s key=%s etag=%s", cfg.S3Bucket, objectKey, etag)
 	return response, statusCode, nil
 }
@@ -280,48 +268,12 @@ func buildRemoteBackupFileURL(bucket string, objectKey string) string {
 	return "s3://" + assetID
 }
 
-func buildS3AWSConfig(cfg pushJobConfig) (aws.Config, error) {
-	opts := []func(*awsconfig.LoadOptions) error{
-		awsconfig.WithRegion(cfg.S3Region),
-	}
-
-	if cfg.S3AccessKey != "" && cfg.S3SecretKey != "" {
-		provider := credentials.NewStaticCredentialsProvider(cfg.S3AccessKey, cfg.S3SecretKey, "")
-		opts = append(opts, awsconfig.WithCredentialsProvider(provider))
-	}
-
-	if cfg.S3Endpoint != "" {
-		endpointURL := cfg.S3Endpoint
-		opts = append(opts, awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
-				if service == s3.ServiceID {
-					return aws.Endpoint{
-						URL:               endpointURL,
-						HostnameImmutable: true,
-					}, nil
-				}
-				return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-			},
-		)))
-	}
-
-	return awsconfig.LoadDefaultConfig(context.Background(), opts...)
-}
-
 func buildS3ObjectKey(snapshotFile string) string {
 	key := filepath.Base(snapshotFile)
 	if key == "" || key == "." || key == "/" {
 		key = "snapshot.sqlite"
 	}
 	return key
-}
-
-func extractS3StatusCode(err error) int {
-	var respErr *smithyhttp.ResponseError
-	if errors.As(err, &respErr) {
-		return respErr.HTTPStatusCode()
-	}
-	return 0
 }
 
 func loadPushJobConfig() pushJobConfig {
@@ -331,6 +283,9 @@ func loadPushJobConfig() pushJobConfig {
 	}
 
 	rawS3Endpoint := strings.TrimSpace(store.GetSetting("s3_api_endpoint"))
+	if rawS3Endpoint == "" {
+		rawS3Endpoint = strings.TrimSpace(config.S3Endpoint)
+	}
 	s3Bucket := strings.TrimSpace(store.GetSetting("s3_bucket"))
 
 	s3Endpoint := ""
@@ -363,8 +318,8 @@ func loadPushJobConfig() pushJobConfig {
 		S3Bucket:           s3Bucket,
 		S3Region:           s3Region,
 		S3Endpoint:         s3Endpoint,
-		S3AccessKey:        strings.TrimSpace(store.GetSetting("s3_access_key_id")),
-		S3SecretKey:        strings.TrimSpace(store.GetSetting("s3_secret_access_key")),
+		S3AccessKey:        strings.TrimSpace(firstNonEmpty(store.GetSetting("s3_access_key_id"), config.S3AccessKeyID)),
+		S3SecretKey:        strings.TrimSpace(firstNonEmpty(store.GetSetting("s3_secret_access_key"), config.S3SecretAccessKey)),
 		S3ForcePath:        s3ForcePath,
 		ImageKitEndpoint:   strings.TrimSpace(store.GetSetting("asset_imagekit_endpoint")),
 		ImageKitPrivateKey: strings.TrimSpace(store.GetSetting("asset_imagekit_private_key")),
@@ -438,4 +393,13 @@ func shortHash(hash string) string {
 		return hash
 	}
 	return hash[:8]
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }

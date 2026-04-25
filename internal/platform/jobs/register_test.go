@@ -156,22 +156,16 @@ func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
 	}
 }
 
-func TestExecuteTaskSkipsDisabledRemoteBackup(t *testing.T) {
+func TestExecuteInternalTaskAlsoCreatesTaskRun(t *testing.T) {
 	dbx := openJobTestDB(t)
-	task, err := db.GetTaskByCode(dbx, "remote_backup_data")
-	if err != nil {
-		t.Fatalf("GetTaskByCode failed: %v", err)
-	}
-	withTaskSettings(t, map[string]string{"sync_push_enabled": "0"})
+	task := mustCreateTask(t, dbx, "internal_task", db.TaskInternal)
 
-	called := false
 	withTestRegistry(t, &Registry{
 		jobs: map[string]JobItem{
 			task.Code: {
 				Kind: task.Kind,
 				Func: func(_ *Registry) (*string, error) {
-					called = true
-					msg := "should not run"
+					msg := "internal done"
 					return &msg, nil
 				},
 			},
@@ -179,22 +173,59 @@ func TestExecuteTaskSkipsDisabledRemoteBackup(t *testing.T) {
 		DB: dbx,
 	})
 
-	ExecuteTask(dbx, *task)
+	ExecuteTask(dbx, task)
 
-	if called {
-		t.Fatal("remote backup task should not execute when sync_push_enabled is disabled")
-	}
 	gotTask := mustGetTaskByCode(t, dbx, task.Code)
-	if gotTask.LastRunAt != nil {
-		t.Fatalf("LastRunAt should stay nil for disabled remote backup, got %v", *gotTask.LastRunAt)
+	if gotTask.LastRunAt == nil || *gotTask.LastRunAt <= 0 {
+		t.Fatalf("LastRunAt should be updated, got %v", gotTask.LastRunAt)
 	}
-	if gotTask.LastStatus != "" {
-		t.Fatalf("LastStatus should stay empty for disabled remote backup, got %q", gotTask.LastStatus)
+	if gotTask.LastStatus != "success" {
+		t.Fatalf("LastStatus should be success, got %q", gotTask.LastStatus)
 	}
 
 	runs := mustListTaskRuns(t, dbx, task.Code)
-	if len(runs) != 0 {
-		t.Fatalf("expected no task runs for disabled remote backup, got %d", len(runs))
+	if len(runs) != 1 {
+		t.Fatalf("expected 1 task run for internal task, got %d", len(runs))
+	}
+	if runs[0].Status != "success" {
+		t.Fatalf("task run status should be success, got %q", runs[0].Status)
+	}
+}
+
+func TestExecuteTaskDisabledRemoteBackupRecordsSkipRun(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task := mustGetTaskByCode(t, dbx, "remote_backup_data")
+	withTaskSettings(t, map[string]string{"sync_push_enabled": "0"})
+
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: PushSystemDataJob,
+			},
+		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, task)
+
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
+	if gotTask.LastRunAt == nil || *gotTask.LastRunAt <= 0 {
+		t.Fatalf("LastRunAt should be updated for disabled remote backup, got %v", gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "success" {
+		t.Fatalf("LastStatus should be success for disabled remote backup, got %q", gotTask.LastStatus)
+	}
+
+	runs := mustListTaskRuns(t, dbx, task.Code)
+	if len(runs) != 1 {
+		t.Fatalf("expected 1 task run for disabled remote backup, got %d", len(runs))
+	}
+	if runs[0].Status != "success" {
+		t.Fatalf("task run status should be success, got %q", runs[0].Status)
+	}
+	if !strings.Contains(runs[0].Message, "未启用") {
+		t.Fatalf("task run message should mention disabled, got %q", runs[0].Message)
 	}
 }
 
