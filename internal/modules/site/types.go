@@ -9,6 +9,7 @@ type DisplayPost struct {
 	Next     *DisplayPostInfo
 	PermLink string
 	HTML     string
+	TOCHTML  string
 }
 type DisplayTag struct {
 	db.Tag
@@ -38,6 +39,7 @@ type TemplatePost struct {
 	UpdatedAt      int64
 	PermLink       string
 	HTML           string
+	TOCHTML        string
 	Prev           *DisplayPostInfo
 	Next           *DisplayPostInfo
 	Tags           []DisplayItem
@@ -72,6 +74,7 @@ func ToTemplatePost(post *DisplayPostWithRelation) TemplatePost {
 		UpdatedAt:      post.Post.UpdatedAt,
 		PermLink:       post.PermLink,
 		HTML:           post.HTML,
+		TOCHTML:        post.TOCHTML,
 		Prev:           post.Prev,
 		Next:           post.Next,
 		Tags:           post.Tags,
@@ -99,6 +102,7 @@ func ToTemplatePosts(posts []DisplayPost) []TemplatePost {
 			UpdatedAt:      post.Post.UpdatedAt,
 			PermLink:       post.PermLink,
 			HTML:           post.HTML,
+			TOCHTML:        post.TOCHTML,
 			Prev:           post.Prev,
 			Next:           post.Next,
 		})

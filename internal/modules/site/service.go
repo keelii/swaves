@@ -118,13 +118,16 @@ func toDisplayPostWithRelation(dbx *db.DB, p db.PostWithRelation) *DisplayPostWi
 		logger.Warn("get prev/next post failed: published_at=%d err=%v", p.Post.PublishedAt, err)
 	}
 
+	mdResult := md.ParseMarkdown(p.Post.Content, true)
+
 	return &DisplayPostWithRelation{
 		DisplayPost: DisplayPost{
 			Post:     *p.Post,
 			Prev:     postToPostInfo(prev),
 			Next:     postToPostInfo(next),
 			PermLink: share.GetPostUrl(*p.Post),
-			HTML:     md.ParseMarkdown(p.Post.Content, true).HTML,
+			HTML:     mdResult.HTML,
+			TOCHTML:  mdResult.TOCHTML,
 		},
 		Tags:     toDisplayTags(p.Tags),
 		Category: toDisplayCategory(p.Category),
