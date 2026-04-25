@@ -325,3 +325,92 @@ func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
 		t.Fatalf("app update notification count = %d, want 1", len(items))
 	}
 }
+
+func TestMigrateBackupDir(t *testing.T) {
+	dbx := openJobTestDB(t)
+	base := filepath.Dir(dbx.DSN)
+
+	oldDir := filepath.Join(base, legacyBackupDir)
+	newDir := filepath.Join(base, ".cache", "backups")
+
+	if err := os.MkdirAll(oldDir, 0755); err != nil {
+		t.Fatalf("MkdirAll old dir failed: %v", err)
+	}
+
+	// Write two fake backup files in the old dir.
+	for _, name := range []string{"backup-a.sqlite", "backup-b.sqlite"} {
+		if err := os.WriteFile(filepath.Join(oldDir, name), []byte("data"), 0644); err != nil {
+			t.Fatalf("WriteFile %s failed: %v", name, err)
+		}
+	}
+
+	// No custom backup_local_dir setting → migration should run.
+	withTaskSettings(t, map[string]string{})
+	migrateBackupDir(dbx.DSN)
+
+	for _, name := range []string{"backup-a.sqlite", "backup-b.sqlite"} {
+		if _, err := os.Stat(filepath.Join(newDir, name)); err != nil {
+			t.Errorf("expected %s in new dir, got: %v", name, err)
+		}
+		if _, err := os.Stat(filepath.Join(oldDir, name)); err == nil {
+			t.Errorf("expected %s to be removed from old dir after migration", name)
+		}
+	}
+}
+
+func TestMigrateBackupDirSkipsWhenCustomDirSet(t *testing.T) {
+	dbx := openJobTestDB(t)
+	base := filepath.Dir(dbx.DSN)
+
+	oldDir := filepath.Join(base, legacyBackupDir)
+	if err := os.MkdirAll(oldDir, 0755); err != nil {
+		t.Fatalf("MkdirAll old dir failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(oldDir, "backup-x.sqlite"), []byte("data"), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// Custom backup_local_dir is set → migration must not run.
+	withTaskSettings(t, map[string]string{settingBackupLocalDir: "/custom/path"})
+	migrateBackupDir(dbx.DSN)
+
+	// File should still be in old dir.
+	if _, err := os.Stat(filepath.Join(oldDir, "backup-x.sqlite")); err != nil {
+		t.Errorf("file should still be in old dir when custom dir is set: %v", err)
+	}
+}
+
+func TestMigrateBackupDirSkipsExistingDestination(t *testing.T) {
+	dbx := openJobTestDB(t)
+	base := filepath.Dir(dbx.DSN)
+
+	oldDir := filepath.Join(base, legacyBackupDir)
+	newDir := filepath.Join(base, ".cache", "backups")
+
+	if err := os.MkdirAll(oldDir, 0755); err != nil {
+		t.Fatalf("MkdirAll old dir failed: %v", err)
+	}
+	if err := os.MkdirAll(newDir, 0755); err != nil {
+		t.Fatalf("MkdirAll new dir failed: %v", err)
+	}
+
+	existingContent := []byte("new-version")
+	if err := os.WriteFile(filepath.Join(newDir, "backup-dup.sqlite"), existingContent, 0644); err != nil {
+		t.Fatalf("WriteFile new dir failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(oldDir, "backup-dup.sqlite"), []byte("old-version"), 0644); err != nil {
+		t.Fatalf("WriteFile old dir failed: %v", err)
+	}
+
+	withTaskSettings(t, map[string]string{})
+	migrateBackupDir(dbx.DSN)
+
+	// Destination file must not be overwritten.
+	got, err := os.ReadFile(filepath.Join(newDir, "backup-dup.sqlite"))
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if string(got) != string(existingContent) {
+		t.Errorf("destination file was overwritten: got %q, want %q", got, existingContent)
+	}
+}

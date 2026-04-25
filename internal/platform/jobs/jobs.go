@@ -23,6 +23,9 @@ const (
 	settingBackupLocalDir         = "backup_local_dir"
 	settingBackupLocalIntervalMin = "backup_local_interval_min"
 	settingBackupLocalMaxCount    = "backup_local_max_count"
+
+	// legacyBackupDir is the old default backup directory before it was moved under .cache/.
+	legacyBackupDir = "backups"
 )
 
 func jobMessage(message string) *string {
@@ -165,6 +168,62 @@ func resolveBackupDir(dir, sqliteFile string) string {
 		return dir
 	}
 	return filepath.Join(wd, dir)
+}
+
+// migrateBackupDir moves .sqlite backup files from the legacy default "backups/"
+// directory to the current default ".cache/backups/" when no custom backup directory
+// has been configured by the user.
+func migrateBackupDir(sqliteFile string) {
+	if strings.TrimSpace(store.GetSetting(settingBackupLocalDir)) != "" {
+		return
+	}
+
+	oldDir := resolveBackupDir(legacyBackupDir, sqliteFile)
+	newDir := resolveBackupDir(".cache/backups", sqliteFile)
+	if oldDir == newDir {
+		return
+	}
+
+	entries, err := os.ReadDir(oldDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			logger.Warn("[backup] migrate: read legacy dir failed: dir=%s err=%v", oldDir, err)
+		}
+		return
+	}
+
+	var filesToMove []string
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".sqlite") {
+			filesToMove = append(filesToMove, entry.Name())
+		}
+	}
+	if len(filesToMove) == 0 {
+		return
+	}
+
+	if err := helper.EnsureDir(newDir, 0755); err != nil {
+		logger.Warn("[backup] migrate: create target dir failed: dir=%s err=%v", newDir, err)
+		return
+	}
+
+	moved := 0
+	for _, name := range filesToMove {
+		src := filepath.Join(oldDir, name)
+		dst := filepath.Join(newDir, name)
+		if _, err := os.Stat(dst); err == nil {
+			continue
+		}
+		if err := os.Rename(src, dst); err != nil {
+			logger.Warn("[backup] migrate: move file failed: src=%s dst=%s err=%v", src, dst, err)
+			continue
+		}
+		moved++
+	}
+
+	if moved > 0 {
+		logger.Info("[backup] migrate: moved %d backup file(s) from %s to %s", moved, oldDir, newDir)
+	}
 }
 
 func latestLocalBackupAt(backupDir string) (time.Time, error) {
