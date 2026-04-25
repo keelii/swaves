@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultRestoreBackupDir   = "backups"
+	defaultRestoreBackupDir   = ".cache/backups"
 	restoreSignalDelay        = 200 * time.Millisecond
 	restoreUploadFormField    = "file"
 	restoreBackupFileFormKey  = "backup_file"
@@ -82,7 +82,7 @@ func (h *Handler) GetBackupRestoreDownloadHandler(c fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	sourcePath, err := findLocalRestoreSource(sourceName)
+	sourcePath, err := findLocalRestoreSource(sourceName, h.Model.DSN)
 	if err != nil {
 		logger.Warn("[backup] local backup download failed: ip=%s file=%s err=%v", c.IP(), sourceName, err)
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
@@ -110,7 +110,7 @@ func (h *Handler) PostExportRestoreLocalHandler(c fiber.Ctx) error {
 		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "请选择一个本地备份文件。")
 	}
 
-	sourcePath, err := findLocalRestoreSource(sourceName)
+	sourcePath, err := findLocalRestoreSource(sourceName, h.Model.DSN)
 	if err != nil {
 		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, err.Error())
 	}
@@ -166,7 +166,7 @@ func (h *Handler) PostBackupRestoreDeleteHandler(c fiber.Ctx) error {
 	if sourceName == "" || sourceName == "." {
 		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, "请选择要删除的本地备份文件。")
 	}
-	if err := deleteLocalRestoreBackup(sourceName); err != nil {
+	if err := deleteLocalRestoreBackup(sourceName, h.Model.DSN); err != nil {
 		return h.redirectToDashRouteWithError(c, "dash.backup_restore.show", nil, nil, err.Error())
 	}
 
@@ -206,7 +206,7 @@ func (h *Handler) PostBackupRestoreRemoteBackupNowHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) renderBackupRestoreView(c fiber.Ctx, extra fiber.Map) error {
-	viewData, err := buildBackupRestoreViewData(c)
+	viewData, err := buildBackupRestoreViewData(c, h.Model.DSN)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (h *Handler) renderBackupRestoreView(c fiber.Ctx, extra fiber.Map) error {
 	return RenderDashView(c, "dash/backup_restore.html", viewData, "")
 }
 
-func buildBackupRestoreViewData(c fiber.Ctx) (fiber.Map, error) {
+func buildBackupRestoreViewData(c fiber.Ctx, sqliteFile string) (fiber.Map, error) {
 	restoreStatus, err := updater.ReadRestoreStatus()
 	if err != nil {
 		return nil, err
@@ -224,7 +224,7 @@ func buildBackupRestoreViewData(c fiber.Ctx) (fiber.Map, error) {
 
 	restoreSupport := getRestoreSupportState()
 	pager := middleware.GetPagination(c)
-	backupFiles, backupDir, backupErr := listLocalRestoreBackups()
+	backupFiles, backupDir, backupErr := listLocalRestoreBackups(sqliteFile)
 	backupFiles = paginateRestoreBackups(backupFiles, &pager)
 	updatedAt := ""
 	if restoreStatus.UpdatedAt > 0 {
@@ -272,8 +272,8 @@ func getRestoreSupportState() restoreSupportState {
 	return restoreSupportState{Enabled: true}
 }
 
-func listLocalRestoreBackups() ([]restoreBackupFile, string, error) {
-	backupDir := resolveRestoreBackupDir(store.GetSetting("backup_local_dir"))
+func listLocalRestoreBackups(sqliteFile string) ([]restoreBackupFile, string, error) {
+	backupDir := resolveRestoreBackupDir(store.GetSetting("backup_local_dir"), sqliteFile)
 	entries, err := os.ReadDir(backupDir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -339,13 +339,22 @@ func paginateRestoreBackups(backups []restoreBackupFile, pager *types.Pagination
 	return backups[start:end]
 }
 
-func resolveRestoreBackupDir(dir string) string {
+func resolveRestoreBackupDir(dir, sqliteFile string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
 		dir = defaultRestoreBackupDir
 	}
 	if filepath.IsAbs(dir) {
 		return dir
+	}
+	sqliteFile = strings.TrimSpace(sqliteFile)
+	if sqliteFile != "" {
+		absFile, err := filepath.Abs(sqliteFile)
+		if err != nil {
+			logger.Warn("[backup] resolve sqlite abs path failed, falling back to cwd: file=%s err=%v", sqliteFile, err)
+		} else {
+			return filepath.Join(filepath.Dir(absFile), dir)
+		}
 	}
 	wd, err := os.Getwd()
 	if err != nil {
@@ -354,8 +363,8 @@ func resolveRestoreBackupDir(dir string) string {
 	return filepath.Join(wd, dir)
 }
 
-func findLocalRestoreSource(name string) (string, error) {
-	backups, _, err := listLocalRestoreBackups()
+func findLocalRestoreSource(name, sqliteFile string) (string, error) {
+	backups, _, err := listLocalRestoreBackups(sqliteFile)
 	if err != nil {
 		return "", err
 	}
@@ -367,8 +376,8 @@ func findLocalRestoreSource(name string) (string, error) {
 	return "", fmt.Errorf("未找到选中的本地备份文件：%s", name)
 }
 
-func deleteLocalRestoreBackup(name string) error {
-	sourcePath, err := findLocalRestoreSource(name)
+func deleteLocalRestoreBackup(name, sqliteFile string) error {
+	sourcePath, err := findLocalRestoreSource(name, sqliteFile)
 	if err != nil {
 		return err
 	}
@@ -417,7 +426,7 @@ func (h *Handler) enqueueRestore(sourcePath string) error {
 }
 
 func createRestoreSafetyBackup(model *db.DB) error {
-	backupDir := resolveRestoreBackupDir(store.GetSetting("backup_local_dir"))
+	backupDir := resolveRestoreBackupDir(store.GetSetting("backup_local_dir"), model.DSN)
 	_, err := db.ExportSQLiteWithHash(model, backupDir)
 	if err == nil {
 		return nil

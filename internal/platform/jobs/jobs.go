@@ -15,6 +15,7 @@ import (
 	"swaves/internal/platform/store"
 	"swaves/internal/platform/updater"
 	"swaves/internal/shared/helper"
+	"swaves/internal/shared/types"
 	"time"
 )
 
@@ -45,7 +46,7 @@ func RunLocalBackupNow(dbx *db.DB) (*string, error) {
 		return nil, errors.New("db is nil")
 	}
 
-	cfg := loadLocalBackupConfig(&Registry{})
+	cfg := loadLocalBackupConfig(&Registry{Config: types.AppConfig{SqliteFile: dbx.DSN}})
 	return runLocalBackup(dbx, cfg, false)
 }
 
@@ -65,7 +66,7 @@ func RunRemoteBackupNow(dbx *db.DB) (*string, error) {
 }
 
 func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, error) {
-	backupDir := resolveBackupDir(cfg.Dir)
+	backupDir := resolveBackupDir(cfg.Dir, cfg.SqliteFile)
 	logger.Info("[backup] local backup start: dir=%s interval=%s max_count=%d check_interval=%t", backupDir, cfg.Interval, cfg.MaxCount, checkInterval)
 
 	if err := helper.EnsureDir(backupDir, 0755); err != nil {
@@ -110,15 +111,16 @@ func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*str
 }
 
 type localBackupConfig struct {
-	Dir      string
-	Interval time.Duration
-	MaxCount int
+	Dir        string
+	SqliteFile string
+	Interval   time.Duration
+	MaxCount   int
 }
 
 func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 	defaultDir := strings.TrimSpace(reg.Config.BackupDir)
 	if defaultDir == "" {
-		defaultDir = "backups"
+		defaultDir = ".cache/backups"
 	}
 
 	dir := strings.TrimSpace(store.GetSetting(settingBackupLocalDir))
@@ -137,15 +139,25 @@ func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 	}
 
 	return localBackupConfig{
-		Dir:      dir,
-		Interval: time.Duration(intervalMin) * time.Minute,
-		MaxCount: maxCount,
+		Dir:        dir,
+		SqliteFile: reg.Config.SqliteFile,
+		Interval:   time.Duration(intervalMin) * time.Minute,
+		MaxCount:   maxCount,
 	}
 }
 
-func resolveBackupDir(dir string) string {
+func resolveBackupDir(dir, sqliteFile string) string {
 	if filepath.IsAbs(dir) {
 		return dir
+	}
+	sqliteFile = strings.TrimSpace(sqliteFile)
+	if sqliteFile != "" {
+		absFile, err := filepath.Abs(sqliteFile)
+		if err != nil {
+			logger.Warn("[backup] resolve sqlite abs path failed, falling back to cwd: file=%s err=%v", sqliteFile, err)
+		} else {
+			return filepath.Join(filepath.Dir(absFile), dir)
+		}
 	}
 	wd, err := os.Getwd()
 	if err != nil {
