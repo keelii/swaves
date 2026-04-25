@@ -93,6 +93,15 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 			return c.Status(code).SendString(msg)
 		},
 	})
+	// Send "Connection: close" on every response while the server is shutting
+	// down (stop==1).  Without this, fasthttp breaks keep-alive loops via the
+	// bare "if stop==1 { break }" path after sending a response with no
+	// Connection header, so clients hit an EPIPE/ECONNRESET on their very
+	// next write — an error class Go's net/http does not retry.  With this
+	// flag, the response that races against shutdown carries "Connection:
+	// close", the client reads it and opens a fresh connection to the new
+	// worker instead of getting a write-path error.
+	app.Server().CloseOnShutdown = true
 	initURLResolver(app)
 	initSiteURLResolver(app)
 	app.Hooks().OnListen(func(_ fiber.ListenData) error {
