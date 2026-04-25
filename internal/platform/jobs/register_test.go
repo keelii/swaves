@@ -337,8 +337,10 @@ func TestMigrateBackupDir(t *testing.T) {
 		t.Fatalf("MkdirAll old dir failed: %v", err)
 	}
 
+	backupFiles := []string{"backup-a.sqlite", "backup-b.sqlite"}
+
 	// Write two fake backup files in the old dir.
-	for _, name := range []string{"backup-a.sqlite", "backup-b.sqlite"} {
+	for _, name := range backupFiles {
 		if err := os.WriteFile(filepath.Join(oldDir, name), []byte("data"), 0644); err != nil {
 			t.Fatalf("WriteFile %s failed: %v", name, err)
 		}
@@ -348,7 +350,7 @@ func TestMigrateBackupDir(t *testing.T) {
 	withTaskSettings(t, map[string]string{})
 	migrateBackupDir(dbx.DSN)
 
-	for _, name := range []string{"backup-a.sqlite", "backup-b.sqlite"} {
+	for _, name := range backupFiles {
 		if _, err := os.Stat(filepath.Join(newDir, name)); err != nil {
 			t.Errorf("expected %s in new dir, got: %v", name, err)
 		}
