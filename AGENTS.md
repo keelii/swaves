@@ -44,6 +44,9 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - Keep migration logic out of `InitDatabase` (except `EnsureDefaultSettings`).
 - In current development phase, update `InitialSQL` directly for schema changes; do not add compatibility migrations.
 - Background job lifecycle must be idempotent, concurrency-safe, and symmetric on startup/shutdown.
+- Runtime-generated local files must use a single `.cache` root resolved from the process current working directory.
+- Do not derive runtime/cache/temp file locations from the SQLite path, executable path, user cache directory, or system temp directory.
+- Except for the SQLite database file itself, swaves should not write local files outside that shared `.cache` tree.
 
 5) Delivery quality discipline:
 - Keep DB logic in models, keep handlers orchestration-focused.

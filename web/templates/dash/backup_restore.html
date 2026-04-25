@@ -99,7 +99,7 @@
     </table>
   {% else %}
     <div class="app-px">
-      {{ sui.EmptyState("暂无可用的本地备份") }}
+      {{ sui.EmptyState("暂无可用的本地备份(" ~ Settings("backup_local_dir") ~ ")") }}
     </div>
   {% endif %}
 </div>

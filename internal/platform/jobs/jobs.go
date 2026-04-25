@@ -66,7 +66,7 @@ func RunRemoteBackupNow(dbx *db.DB) (*string, error) {
 }
 
 func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, error) {
-	backupDir := resolveBackupDir(cfg.Dir, cfg.SqliteFile)
+	backupDir := resolveBackupDir(cfg.Dir)
 	logger.Info("[backup] local backup start: dir=%s interval=%s max_count=%d check_interval=%t", backupDir, cfg.Interval, cfg.MaxCount, checkInterval)
 
 	if err := helper.EnsureDir(backupDir, 0755); err != nil {
@@ -111,10 +111,9 @@ func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*str
 }
 
 type localBackupConfig struct {
-	Dir        string
-	SqliteFile string
-	Interval   time.Duration
-	MaxCount   int
+	Dir      string
+	Interval time.Duration
+	MaxCount int
 }
 
 func loadLocalBackupConfig(reg *Registry) localBackupConfig {
@@ -139,25 +138,19 @@ func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 	}
 
 	return localBackupConfig{
-		Dir:        dir,
-		SqliteFile: reg.Config.SqliteFile,
-		Interval:   time.Duration(intervalMin) * time.Minute,
-		MaxCount:   maxCount,
+		Dir:      dir,
+		Interval: time.Duration(intervalMin) * time.Minute,
+		MaxCount: maxCount,
 	}
 }
 
-func resolveBackupDir(dir, sqliteFile string) string {
+func ResolveLocalBackupDir(dir string) string {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		dir = db.DefaultBackupDir
+	}
 	if filepath.IsAbs(dir) {
 		return dir
-	}
-	sqliteFile = strings.TrimSpace(sqliteFile)
-	if sqliteFile != "" {
-		absFile, err := filepath.Abs(sqliteFile)
-		if err != nil {
-			logger.Warn("[backup] resolve sqlite abs path failed, falling back to cwd: file=%s err=%v", sqliteFile, err)
-		} else {
-			return filepath.Join(filepath.Dir(absFile), dir)
-		}
 	}
 	wd, err := os.Getwd()
 	if err != nil {
@@ -167,16 +160,20 @@ func resolveBackupDir(dir, sqliteFile string) string {
 	return filepath.Join(wd, dir)
 }
 
+func resolveBackupDir(dir string) string {
+	return ResolveLocalBackupDir(dir)
+}
+
 // migrateBackupDir moves .sqlite backup files from the legacy default "backups/"
 // directory to the current default ".cache/backups/" when no custom backup directory
 // has been configured by the user.
-func migrateBackupDir(sqliteFile string) {
+func migrateBackupDir() {
 	if strings.TrimSpace(store.GetSetting(settingBackupLocalDir)) == db.DefaultBackupDir {
 		return
 	}
 
-	oldDir := resolveBackupDir(db.LegacyBackupDir, sqliteFile)
-	newDir := resolveBackupDir(db.DefaultBackupDir, sqliteFile)
+	oldDir := resolveBackupDir(db.LegacyBackupDir)
+	newDir := resolveBackupDir(db.DefaultBackupDir)
 	if oldDir == newDir {
 		return
 	}

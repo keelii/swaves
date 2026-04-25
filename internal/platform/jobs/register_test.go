@@ -88,6 +88,23 @@ func withTaskSettings(t *testing.T, settings map[string]string) {
 	})
 }
 
+func withWorkingDir(t *testing.T, dir string) {
+	t.Helper()
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir failed: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(wd); err != nil {
+			t.Fatalf("restore working directory failed: %v", err)
+		}
+	})
+}
+
 func TestExecuteTaskNoOpDoesNotUpdateTaskStatus(t *testing.T) {
 	dbx := openJobTestDB(t)
 	task := mustCreateTask(t, dbx, "task_noop", db.TaskUser)
@@ -327,8 +344,8 @@ func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
 }
 
 func TestMigrateBackupDir(t *testing.T) {
-	dbx := openJobTestDB(t)
-	base := filepath.Dir(dbx.DSN)
+	base := t.TempDir()
+	withWorkingDir(t, base)
 
 	oldDir := filepath.Join(base, db.LegacyBackupDir)
 	newDir := filepath.Join(base, ".cache", "backups")
@@ -348,7 +365,7 @@ func TestMigrateBackupDir(t *testing.T) {
 
 	// No custom backup_local_dir setting → migration should run.
 	withTaskSettings(t, map[string]string{})
-	migrateBackupDir(dbx.DSN)
+	migrateBackupDir()
 
 	for _, name := range backupFiles {
 		if _, err := os.Stat(filepath.Join(newDir, name)); err != nil {
@@ -361,8 +378,8 @@ func TestMigrateBackupDir(t *testing.T) {
 }
 
 func TestMigrateBackupDirSkipsWhenCustomDirSet(t *testing.T) {
-	dbx := openJobTestDB(t)
-	base := filepath.Dir(dbx.DSN)
+	base := t.TempDir()
+	withWorkingDir(t, base)
 
 	oldDir := filepath.Join(base, db.LegacyBackupDir)
 	if err := os.MkdirAll(oldDir, 0755); err != nil {
@@ -374,7 +391,7 @@ func TestMigrateBackupDirSkipsWhenCustomDirSet(t *testing.T) {
 
 	// Custom backup_local_dir is set → migration must not run.
 	withTaskSettings(t, map[string]string{settingBackupLocalDir: "/custom/path"})
-	migrateBackupDir(dbx.DSN)
+	migrateBackupDir()
 
 	// File should still be in old dir.
 	//if _, err := os.Stat(filepath.Join(oldDir, "backup-x.sqlite")); err != nil {
@@ -383,8 +400,8 @@ func TestMigrateBackupDirSkipsWhenCustomDirSet(t *testing.T) {
 }
 
 func TestMigrateBackupDirSkipsExistingDestination(t *testing.T) {
-	dbx := openJobTestDB(t)
-	base := filepath.Dir(dbx.DSN)
+	base := t.TempDir()
+	withWorkingDir(t, base)
 
 	oldDir := filepath.Join(base, db.LegacyBackupDir)
 	newDir := filepath.Join(base, ".cache", "backups")
@@ -405,7 +422,7 @@ func TestMigrateBackupDirSkipsExistingDestination(t *testing.T) {
 	}
 
 	withTaskSettings(t, map[string]string{})
-	migrateBackupDir(dbx.DSN)
+	migrateBackupDir()
 
 	// Destination file must not be overwritten.
 	got, err := os.ReadFile(filepath.Join(newDir, "backup-dup.sqlite"))
