@@ -67,6 +67,8 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 	registry = reg
 	registryMu.Unlock()
 
+	migrateBackupDir(config.SqliteFile)
+
 	// Internal jobs
 	RegisterJob("database_backup", JobItem{
 		Kind: db.TaskInternal,
