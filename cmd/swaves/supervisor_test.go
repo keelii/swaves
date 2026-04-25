@@ -67,6 +67,9 @@ func TestNormalizeSupervisorConfigAppliesDefaults(t *testing.T) {
 	if cfg.ShutdownTimeout != defaultWorkerStopTimeout {
 		t.Fatalf("unexpected shutdown timeout=%s", cfg.ShutdownTimeout)
 	}
+	if cfg.DrainTimeout != defaultWorkerDrainTimeout {
+		t.Fatalf("unexpected drain timeout=%s", cfg.DrainTimeout)
+	}
 }
 
 func TestResolveSupervisorExecutablePathUsesConfiguredValue(t *testing.T) {

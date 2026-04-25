@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"swaves/internal/app"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
@@ -20,8 +21,10 @@ func runSwavesWorker(appCfg types.AppConfig) error {
 	swv := app.NewApp(appCfg)
 	defer swv.Shutdown()
 
+	var shutdownOnce sync.Once
 	installWorkerReadyHook(swv.App)
-	installAppShutdownHook(swv.App, swv.Tracker, swv.PauseJobs)
+	installWorkerDrainHook(swv.App, swv.PauseJobs, &shutdownOnce)
+	installAppShutdownHook(swv.App, swv.Tracker, swv.PauseJobs, &shutdownOnce)
 
 	pid := os.Getpid()
 	listener, err := inheritedListenerFromEnv()
@@ -51,7 +54,8 @@ func runSwavesApp(appCfg types.AppConfig) error {
 	swv := app.NewApp(appCfg)
 	defer swv.Shutdown()
 
-	installAppShutdownHook(swv.App, swv.Tracker, swv.PauseJobs)
+	var shutdownOnce sync.Once
+	installAppShutdownHook(swv.App, swv.Tracker, swv.PauseJobs, &shutdownOnce)
 	listenCfg := fiber.ListenConfig{DisableStartupMessage: true}
 	logger.Info("%s listening on %s", swv.Config.AppName, swv.Config.ListenAddr)
 	if err := swv.App.Listen(swv.Config.ListenAddr, listenCfg); err != nil {
@@ -60,7 +64,30 @@ func runSwavesApp(appCfg types.AppConfig) error {
 	return nil
 }
 
-func installAppShutdownHook(appInstance *fiber.App, tracker *middleware.RequestTracker, pauseJobs func()) {
+func installWorkerDrainHook(appInstance *fiber.App, pauseJobs func(), shutdownOnce *sync.Once) {
+	if appInstance == nil {
+		return
+	}
+	pid := os.Getpid()
+	drainCh := make(chan os.Signal, 1)
+	signal.Notify(drainCh, syscall.SIGUSR1)
+	go func() {
+		<-drainCh
+		signal.Stop(drainCh)
+		logger.Info("[app] drain requested by signal: pid=%d timeout=%s", pid, workerGracefulShutdownTimeout)
+		if pauseJobs != nil {
+			pauseJobs()
+		}
+		shutdownOnce.Do(func() {
+			if err := appInstance.ShutdownWithTimeout(workerGracefulShutdownTimeout); err != nil {
+				logger.Warn("[app] drain shutdown failed: pid=%d err=%v", pid, err)
+			}
+			logger.Info("[app] drain shutdown complete: pid=%d", pid)
+		})
+	}()
+}
+
+func installAppShutdownHook(appInstance *fiber.App, tracker *middleware.RequestTracker, pauseJobs func(), shutdownOnce *sync.Once) {
 	if appInstance == nil {
 		return
 	}
@@ -81,14 +108,22 @@ func installAppShutdownHook(appInstance *fiber.App, tracker *middleware.RequestT
 		done := make(chan struct{})
 		go logShutdownWaitState(pid, tracker, startAt, done)
 
-		if err := appInstance.ShutdownWithTimeout(workerGracefulShutdownTimeout); err != nil {
+		triggered := false
+		shutdownOnce.Do(func() {
+			triggered = true
+			if err := appInstance.ShutdownWithTimeout(workerGracefulShutdownTimeout); err != nil {
+				close(done)
+				activeCount = tracker.ActiveCount()
+				logger.Error("[app] graceful shutdown failed: pid=%d signal=%s elapsed=%s active_requests=%d active_details=%s err=%v", pid, sig, time.Since(startAt), activeCount, middleware.FormatActiveRequests(tracker.Snapshot(5), time.Now()), err)
+				return
+			}
 			close(done)
-			activeCount = tracker.ActiveCount()
-			logger.Error("[app] graceful shutdown failed: pid=%d signal=%s elapsed=%s active_requests=%d active_details=%s err=%v", pid, sig, time.Since(startAt), activeCount, middleware.FormatActiveRequests(tracker.Snapshot(5), time.Now()), err)
-			return
+			logger.Info("[app] shutdown completed by signal: pid=%d signal=%s elapsed=%s", pid, sig, time.Since(startAt))
+		})
+		if !triggered {
+			// Drain (SIGUSR1) already initiated shutdown; stop the wait-state log.
+			close(done)
 		}
-		close(done)
-		logger.Info("[app] shutdown completed by signal: pid=%d signal=%s elapsed=%s", pid, sig, time.Since(startAt))
 	}()
 }
 
