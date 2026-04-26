@@ -472,7 +472,7 @@ func wrapMapLookup(raw any) any {
 		target = target.Elem()
 	}
 
-	if target.Kind() != reflect.Map || !target.IsValid() || target.IsNil() {
+	if target.Kind() != reflect.Map || target.IsNil() {
 		return raw
 	}
 	if target.Type().Key().Kind() == reflect.String {

@@ -4,8 +4,6 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/types"
-
-	"github.com/gofiber/fiber/v3"
 )
 
 type Handler struct {
@@ -28,7 +26,3 @@ func NewHandler(
 	}
 }
 
-func (h *Handler) RenderDashView(c fiber.Ctx, view string, data fiber.Map, layout string) error {
-	_ = h
-	return RenderDashView(c, view, data, layout)
-}

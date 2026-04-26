@@ -243,7 +243,7 @@ function init(options) {
           if ((!event.metaKey && !event.ctrlKey) || event.altKey || event.shiftKey) {
             return false;
           }
-          if (String(event.key || "").toLowerCase() !== "s") {
+          if (event.key.toLowerCase() !== "s") {
             return false;
           }
           event.preventDefault();

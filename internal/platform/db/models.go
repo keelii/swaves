@@ -4584,10 +4584,6 @@ func CreateNotification(db *DB, n *Notification) (int64, error) {
 		return 0, WrapInternalErr("CreateNotification", err)
 	}
 
-	if n.ReadAt != nil {
-		readAt := *n.ReadAt
-		n.ReadAt = &readAt
-	}
 	nowUnix := now()
 	if n.CreatedAt <= 0 {
 		n.CreatedAt = nowUnix

@@ -141,37 +141,37 @@
 
 <div class="app-mb dashboard-stats">
   <section class="dashboard-stat">
-    <div class="dashboard-label">活跃用户（{% if ActiveUsersWindowLabel %}{{ ActiveUsersWindowLabel }}{% else %}30分钟{% endif %}）</div>
-    <div class="dashboard-number">{% if ActiveUsers %}{{ ActiveUsers }}{% else %}0{% endif %}</div>
+    <div class="dashboard-label">活跃用户（{{ ActiveUsersWindowLabel | default("30分钟") }}）</div>
+    <div class="dashboard-number">{{ ActiveUsers | default(0) }}</div>
   </section>
   <section class="dashboard-stat">
     <div class="dashboard-label">总访问（UV）</div>
-    <div class="dashboard-number">{% if TotalUV %}{{ TotalUV }}{% else %}0{% endif %}</div>
+    <div class="dashboard-number">{{ TotalUV | default(0) }}</div>
   </section>
   <section class="dashboard-stat">
     <div class="dashboard-label">总点赞</div>
-    <div class="dashboard-number">{% if TotalLikes %}{{ TotalLikes }}{% else %}0{% endif %}</div>
+    <div class="dashboard-number">{{ TotalLikes | default(0) }}</div>
   </section>
   <section class="dashboard-stat">
     <div class="dashboard-label">
       <span>文章总数</span>
       {{ sui.LinkIcon("plus", UrlFor('dash.posts.new'), attrs='aria-label="新建文章" data-title="新建文章"') }}
     </div>
-    <div class="dashboard-number">{% if PostCount %}{{ PostCount }}{% else %}0{% endif %}</div>
+    <div class="dashboard-number">{{ PostCount | default(0) }}</div>
   </section>
   <section class="dashboard-stat">
     <div class="dashboard-label">
       <span>分类总数</span>
       {{ sui.LinkIcon("plus", UrlFor('dash.categories.new'), attrs='aria-label="新建分类" data-title="新建分类"') }}
     </div>
-    <div class="dashboard-number">{% if CategoryCount %}{{ CategoryCount }}{% else %}0{% endif %}</div>
+    <div class="dashboard-number">{{ CategoryCount | default(0) }}</div>
   </section>
   <section class="dashboard-stat">
     <div class="dashboard-label">
       <span>标签总数</span>
       {{ sui.LinkIcon("plus", UrlFor('dash.tags.new'), attrs='aria-label="新建标签" data-title="新建标签"') }}
     </div>
-    <div class="dashboard-number">{% if TagCount %}{{ TagCount }}{% else %}0{% endif %}</div>
+    <div class="dashboard-number">{{ TagCount | default(0) }}</div>
   </section>
 </div>
 

@@ -51,8 +51,7 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	} else {
 		kind = db.PostKindPost
 	}
-	var kindPtr *db.PostKind
-	kindPtr = &kind
+	kindPtr := &kind
 
 	countPost, countPage, countEncryptedPost := CountPost(h.Model)
 

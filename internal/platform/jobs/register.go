@@ -209,23 +209,20 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		logger.Error("[task] update task status failed code=%s status=%s: %v", t.Code, status, updateErr)
 	}
 
-	notifyMessage := ret
+	message := ret
 	if err != nil {
-		notifyMessage = err.Error()
+		message = err.Error()
 	}
-	notifyTaskResult(dbx, t, status, notifyMessage)
+	notifyTaskResult(dbx, t, status, message)
 
 	finishAt := time.Now()
 	taskRun := &db.TaskRun{
 		TaskCode:   t.Code,
 		Status:     status,
-		Message:    ret,
+		Message:    message,
 		StartedAt:  startAt.Unix(),
 		FinishedAt: finishAt.Unix(),
 		Duration:   int64(finishAt.Sub(startAt).Milliseconds()),
-	}
-	if err != nil {
-		taskRun.Message = err.Error()
 	}
 
 	if _, createErr := db.CreateTaskRun(dbx, taskRun); createErr != nil {
