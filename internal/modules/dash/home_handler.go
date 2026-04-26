@@ -176,77 +176,57 @@ func (h *Handler) TestRouter(c fiber.Ctx) error {
 	}, "")
 }
 
+func renderHomeError(c fiber.Ctx, err error) error {
+	return RenderDashView(c, "dash/dash_home.html", fiber.Map{
+		"Title": "工作台",
+		"Error": err.Error(),
+	}, "")
+}
+
 func (h *Handler) GetHome(c fiber.Ctx) error {
 	totalUV, err := db.CountUVUnique(h.Model, db.UVEntitySite, 0)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	activeUsers, err := db.CountActiveVisitors(h.Model, dashboardActiveUsersWindowSeconds)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	totalLikes, err := db.CountTotalLikes(h.Model)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	postCount, err := db.CountPostsByKind(h.Model, db.PostKindPost)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	pageCount, err := db.CountPostsByKind(h.Model, db.PostKindPage)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	categoryCount, err := db.CountCategories(h.Model)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	tagCount, err := db.CountTags(h.Model)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	topUVContents, err := db.ListTopUVContents(h.Model, 10)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	topLikedContents, err := db.ListTopLikedContents(h.Model, 10)
 	if err != nil {
-		return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-			"Title": "工作台",
-			"Error": err.Error(),
-		}, "")
+		return renderHomeError(c, err)
 	}
 
 	activeRange := resolveDashboardUVRange(c.Query("uv_range")).Key
@@ -255,10 +235,7 @@ func (h *Handler) GetHome(c fiber.Ctx) error {
 	for _, rangeConfig := range dashboardUVRanges {
 		chartData, chartErr := buildDashboardUVChart(h.Model, rangeConfig, nowTime)
 		if chartErr != nil {
-			return RenderDashView(c, "dash/dash_home.html", fiber.Map{
-				"Title": "工作台",
-				"Error": chartErr.Error(),
-			}, "")
+			return renderHomeError(c, chartErr)
 		}
 		chartTabs = append(chartTabs, dashboardUVTabData{
 			Key:        rangeConfig.Key,

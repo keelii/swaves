@@ -1947,8 +1947,12 @@ function getLinkMarkRangeAtCursor(state, linkMarkType) {
   return { from: base + start, to: base + end };
 }
 
+function normalizeCommandName(name) {
+  return (name || "").trim();
+}
+
 function isCommandActive(schema, name, state) {
-  var cmd = String(name || "").trim();
+  var cmd = normalizeCommandName(name);
   switch (cmd) {
     case "bold":
       return isMarkActive(state, schema.marks.strong);
@@ -1973,7 +1977,7 @@ function commandByName(schema, name, opts) {
   var link = schema.marks.link;
   var blockquote = schema.nodes.blockquote;
 
-  switch (String(name || "").trim()) {
+  switch (normalizeCommandName(name)) {
     case "bold":
       return strong ? toggleMark(strong) : null;
     case "italic":
@@ -2169,7 +2173,7 @@ function bindCommandButtons(view, schema, root, opts) {
       }
       var visibleWhen = String(el.getAttribute("data-seditor-visible-when") || "").trim();
       bindings.push({ el: el, name: name, command: command, visibleWhen: visibleWhen });
-      if (toggleCommands[String(name || "").trim()]) {
+      if (toggleCommands[normalizeCommandName(name)]) {
         el.setAttribute("aria-pressed", "false");
       }
       el.addEventListener("click", function(e) {

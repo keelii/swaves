@@ -168,7 +168,7 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 	latestInfo := loadLatestVersionInfo(buildinfo.Version, runtime.GOOS, runtime.GOARCH, latestVersion, latestReleaseURL)
 	viewState := systemUpdateSupportState(latestInfo.AutoUpdateEnabled)
 
-	return h.RenderDashView(c, "dash/settings_system_update.html", fiber.Map{
+	return RenderDashView(c, "dash/settings_system_update.html", fiber.Map{
 		"Title":                    "系统更新",
 		"FrontendArea":             frontendArea,
 		"BackendArea":              backendArea,

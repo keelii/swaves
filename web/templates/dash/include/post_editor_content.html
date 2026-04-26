@@ -1,55 +1,19 @@
 {% set isRegularPostEditor = (DraftCategoryID is defined) or (Category is defined) %}
 {% set isEditMode = Post is defined %}
 
-{% set formAction = UrlFor('dash.encrypted_posts.create') %}
-{% if isRegularPostEditor %}
-  {% set formAction = UrlFor('dash.posts.create') %}
-{% endif %}
 {% if isEditMode %}
-  {% if isRegularPostEditor %}
-    {% set formAction = UrlFor('dash.posts.update', id=Post.ID) %}
-  {% else %}
-    {% set formAction = UrlFor('dash.encrypted_posts.update', id=Post.ID) %}
-  {% endif %}
+  {% set formAction = UrlFor('dash.posts.update', id=Post.ID) if isRegularPostEditor else UrlFor('dash.encrypted_posts.update', id=Post.ID) %}
+{% else %}
+  {% set formAction = UrlFor('dash.posts.create') if isRegularPostEditor else UrlFor('dash.encrypted_posts.create') %}
 {% endif %}
 
-{% set titleValue = DraftTitle if DraftTitle is defined else "" %}
-{% if isEditMode %}
-  {% set titleValue = Post.Title %}
-{% endif %}
-
-{% set titlePlaceholder = "加密文章标题" %}
-{% if isRegularPostEditor %}
-  {% set titlePlaceholder = "标题" %}
-{% endif %}
-{% if isEditMode %}
-  {% set titlePlaceholder = "" %}
-{% endif %}
-
-{% set contentValue = DraftContent if DraftContent is defined else "" %}
-{% if isEditMode %}
-  {% set contentValue = Post.Content %}
-{% endif %}
-
-{% set statusValue = "" %}
-{% if isRegularPostEditor and isEditMode %}
-  {% set statusValue = Post.Status %}
-{% endif %}
-
-{% set commentEnabledValue = "1" %}
-{% if isRegularPostEditor and isEditMode %}
-  {% set commentEnabledValue = Printf("%d", Post.CommentEnabled) %}
-{% endif %}
-
-{% set kindValue = "0" %}
-{% if isRegularPostEditor and isEditMode %}
-  {% set kindValue = Printf("%d", Post.Kind) %}
-{% endif %}
-
-{% set tagsValue = "" %}
-{% if isRegularPostEditor %}
-  {% set tagsValue = SelectedTagNames %}
-{% endif %}
+{% set titleValue = Post.Title if isEditMode else (DraftTitle if DraftTitle is defined else "") %}
+{% set titlePlaceholder = "" if isEditMode else ("标题" if isRegularPostEditor else "加密文章标题") %}
+{% set contentValue = Post.Content if isEditMode else (DraftContent if DraftContent is defined else "") %}
+{% set statusValue = Post.Status if (isRegularPostEditor and isEditMode) else "" %}
+{% set commentEnabledValue = Printf("%d", Post.CommentEnabled) if (isRegularPostEditor and isEditMode) else "1" %}
+{% set kindValue = Printf("%d", Post.Kind) if (isRegularPostEditor and isEditMode) else "0" %}
+{% set tagsValue = SelectedTagNames if isRegularPostEditor else "" %}
 
 {% set tocHTML = "" %}
 {% if isRegularPostEditor and isEditMode %}
@@ -60,10 +24,7 @@
 {% set initialTOCHTML = tocHTML|trim %}
 
 {% set autoSyncSlugEnabled = isRegularPostEditor and (not isEditMode) %}
-{% set slugAPIURLValue = "" %}
-{% if autoSyncSlugEnabled %}
-  {% set slugAPIURLValue = UrlFor('api.slug') %}
-{% endif %}
+{% set slugAPIURLValue = UrlFor('api.slug') if autoSyncSlugEnabled else "" %}
 
 {% set initialTOCPreferredOpen = Settings('dash_post_editor_toc_open') == '1' %}
 {% set initialSourcePreferredOpen = Settings('dash_post_editor_source_mode') == '1' %}

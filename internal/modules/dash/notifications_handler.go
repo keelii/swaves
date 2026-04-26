@@ -220,7 +220,7 @@ func (h *Handler) GetNotificationListHandler(c fiber.Ctx) error {
 	}
 	notificationItems := buildNotificationListItems(notifications, commentListURL, appUpdatePageURL)
 
-	return h.RenderDashView(c, "dash/notifications_index.html", fiber.Map{
+	return RenderDashView(c, "dash/notifications_index.html", fiber.Map{
 		"Title":                 "通知中心",
 		"Notifications":         notificationItems,
 		"UnreadCount":           unreadCount,
