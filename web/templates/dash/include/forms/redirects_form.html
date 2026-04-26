@@ -86,7 +86,7 @@
     var body = document.getElementById('redirect-target-picker-body');
     var openButton = document.getElementById('redirect-target-picker-open');
     var emptyState = document.getElementById('redirect-target-picker-empty');
-    var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
+    var dialogAPI = window.DashAppUI.dialog;
 
     if (!dialog || !search || !toInput || !body) {
       return;
@@ -101,19 +101,11 @@
     }
 
     function openPickerDialog() {
-      if (dialogAPI && typeof dialogAPI.open === 'function') {
-        return dialogAPI.open('redirect-target-picker-dialog', openButton || null);
-      }
-      dialog.removeAttribute('hidden');
-      return true;
+      return dialogAPI.open('redirect-target-picker-dialog', openButton || null);
     }
 
     function closePickerDialog() {
-      if (dialogAPI && typeof dialogAPI.close === 'function') {
-        return dialogAPI.close('redirect-target-picker-dialog');
-      }
-      dialog.setAttribute('hidden', '');
-      return true;
+      return dialogAPI.close('redirect-target-picker-dialog');
     }
 
     function updateEmptyState(visibleCount) {

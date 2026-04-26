@@ -329,7 +329,7 @@
     if (systemUpdateRefreshDelay > 0) {
       var refreshURL = window.location.pathname;
       window.setTimeout(function() {
-        window.location.replace(refreshURL);
+        goTo(refreshURL, { replace: true });
       }, systemUpdateRefreshDelay * 1000);
     }
 

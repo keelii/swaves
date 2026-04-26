@@ -328,8 +328,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var currentTrashLabel = {{ currentTrashLabel | tojson }};
   var batchDeleteURL = {{ UrlFor('dash.trash.api.batch_delete', type=type) | tojson }};
-  var confirmAPI = window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null;
-  var toastAPI = window.DashAppUI && window.DashAppUI.toast ? window.DashAppUI.toast : null;
+  var confirmAPI = window.DashAppUI.confirm;
+  var toastAPI = window.DashAppUI.toast;
 
   function currentIDs() {
     return Array.from(document.querySelectorAll('#trash-table tbody tr[data-batch-delete-id]')).map(function(row) {
@@ -344,16 +344,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function showToast(message, kind) {
-    if (toastAPI && typeof toastAPI.show === 'function') {
-      toastAPI.show({
-        kind: kind || 'info',
-        title: '回收站',
-        message: message,
-        duration: 2800,
-      });
-      return;
-    }
-    window.alert(message);
+    toastAPI.show({
+      kind: kind || 'info',
+      title: '回收站',
+      message: message,
+      duration: 2800,
+    });
   }
 
   trigger.addEventListener('click', function(event) {
@@ -366,15 +362,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var message = '确定彻底删除当前“' + currentTrashLabel + '”下的 ' + ids.length + ' 项吗？此操作不可恢复。';
-    var ask = confirmAPI && typeof confirmAPI.ask === 'function'
-      ? confirmAPI.ask({
-          dialogId: 'trash-empty-confirm-dialog',
-          title: '确认全部清空',
-          message: message,
-          messageSelector: '#trash-empty-confirm-message',
-          opener: trigger,
-        })
-      : Promise.resolve(window.confirm(message));
+    var ask = confirmAPI.ask({
+        dialogId: 'trash-empty-confirm-dialog',
+        title: '确认全部清空',
+        message: message,
+        messageSelector: '#trash-empty-confirm-message',
+        opener: trigger,
+      });
 
     ask.then(function(confirmed) {
       if (!confirmed) {
@@ -400,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         window.setTimeout(function() {
-          window.location.reload();
+          goTo('', { reload: true });
         }, 700);
       }).catch(function() {
         trigger.disabled = false;

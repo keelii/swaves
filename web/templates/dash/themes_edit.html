@@ -273,9 +273,9 @@
         panels: Array.prototype.slice.call(document.querySelectorAll('[data-role="theme-sidebar-panel"]')),
         dirtyMarker: document.getElementById('theme-current-file-dirty'),
         currentFileLabel: document.getElementById('theme-current-file-label'),
-        dialogAPI: window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null,
-        confirmAPI: window.DashAppUI && window.DashAppUI.confirm ? window.DashAppUI.confirm : null,
-        canSaveAsync: typeof window.sfetchJSON === 'function' && typeof notify === 'function'
+        dialogAPI: window.DashAppUI.dialog,
+        confirmAPI: window.DashAppUI.confirm,
+        canSaveAsync: true
       };
     }
 
@@ -373,16 +373,13 @@
         if (!update()) {
           return Promise.resolve(true);
         }
-        if (ctx.confirmAPI && typeof ctx.confirmAPI.ask === 'function') {
-          return ctx.confirmAPI.ask({
-            dialogId: 'theme-unsaved-confirm-dialog',
-            title: '未保存更改',
-            message: '当前更改尚未保存，确认离开当前文件吗？',
-            messageSelector: '#theme-unsaved-confirm-message',
-            opener: opener || ctx.currentFileLabel || null
-          });
-        }
-        return Promise.resolve(window.confirm('当前更改尚未保存，确认离开当前文件吗？'));
+        return ctx.confirmAPI.ask({
+          dialogId: 'theme-unsaved-confirm-dialog',
+          title: '未保存更改',
+          message: '当前更改尚未保存，确认离开当前文件吗？',
+          messageSelector: '#theme-unsaved-confirm-message',
+          opener: opener || ctx.currentFileLabel || null
+        });
       }
 
       ctx.form.addEventListener('input', update);
@@ -411,7 +408,7 @@
           if (!allowed) {
             return;
           }
-          window.location.href = href;
+          goTo(href);
         });
       });
 
@@ -475,15 +472,13 @@
           }
 
           var message = '确定删除模板文件“' + path + '”吗？';
-          var ask = ctx.confirmAPI && typeof ctx.confirmAPI.ask === 'function'
-            ? ctx.confirmAPI.ask({
-                dialogId: 'theme-delete-file-confirm-dialog',
-                title: '确认删除文件',
-                message: message,
-                messageSelector: '#theme-delete-file-confirm-message',
-                opener: trigger
-              })
-            : Promise.resolve(window.confirm(message));
+          var ask = ctx.confirmAPI.ask({
+              dialogId: 'theme-delete-file-confirm-dialog',
+              title: '确认删除文件',
+              message: message,
+              messageSelector: '#theme-delete-file-confirm-message',
+              opener: trigger
+            });
 
           ask.then(function (confirmed) {
             if (!confirmed) {

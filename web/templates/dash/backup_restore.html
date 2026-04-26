@@ -200,7 +200,7 @@
             }
           }
           if (!result.active) {
-            window.location.reload();
+            goTo('', { reload: true });
             return;
           }
           window.setTimeout(pollStatus, 1500);
