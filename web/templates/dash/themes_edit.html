@@ -390,7 +390,7 @@
       });
 
       document.addEventListener('click', function (event) {
-        var target = event.target && event.target.closest ? event.target.closest('[data-theme-nav="1"]') : null;
+        var target = event.target.closest('[data-theme-nav="1"]');
         if (!target) {
           return;
         }

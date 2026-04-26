@@ -426,7 +426,7 @@
     }
 
     function postUIStateSetting(code, value) {
-      if (!uiStateSaveURL || !window.DashApp || typeof window.DashApp.postUIStateSetting !== "function") {
+      if (!uiStateSaveURL) {
         return null;
       }
       return window.DashApp.postUIStateSetting(uiStateSaveURL, code, value);

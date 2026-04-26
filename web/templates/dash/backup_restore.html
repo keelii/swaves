@@ -150,7 +150,7 @@
     }
 
     document.addEventListener("submit", function (event) {
-      var form = event.target && event.target.closest ? event.target.closest("form[data-confirm-message]") : null;
+      var form = event.target.closest("form[data-confirm-message]");
       if (!form || form.dataset.confirmed === "1") {
         return;
       }
