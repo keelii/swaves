@@ -96,7 +96,7 @@
     var navPanel = document.querySelector('.app-nav');
     var themeModePersisting = false;
     var themeModeQueued = null;
-    var themeModeLastSaved = document.body && document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    var themeModeLastSaved = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
     if (!appWindow) {
       return;
@@ -429,13 +429,10 @@
     }
 
     function isDarkTheme() {
-      return document.body && document.body.getAttribute('data-theme') === 'dark';
+      return document.body.getAttribute('data-theme') === 'dark';
     }
 
     function applyThemeMode(mode) {
-      if (!document.body) {
-        return;
-      }
       if (mode === 'dark') {
         document.body.setAttribute('data-theme', 'dark');
         return;
@@ -458,11 +455,11 @@
       if (!input) {
         return '';
       }
-      return (input.value || '').trim();
+      return input.value.trim();
     }
 
     function postUIStateSetting(code, value) {
-      if (!uiStateSaveURL || typeof window.fetch !== 'function') {
+      if (!uiStateSaveURL) {
         return null;
       }
 
@@ -656,7 +653,7 @@
       }
 
       table.addEventListener('change', function(event) {
-        var selectAll = event.target && event.target.closest ? event.target.closest('thead .cell-checkbox') : null;
+        var selectAll = event.target.closest('thead .cell-checkbox');
         if (selectAll) {
           var items = table.querySelectorAll('tbody .cell-checkbox');
           items.forEach(function(item) {
@@ -666,7 +663,7 @@
           return;
         }
 
-        var rowCheckbox = event.target && event.target.closest ? event.target.closest('tbody .cell-checkbox') : null;
+        var rowCheckbox = event.target.closest('tbody .cell-checkbox');
         if (rowCheckbox) {
           syncSelectAllState();
         }
@@ -718,7 +715,7 @@
       }
 
       var roots = document.querySelectorAll('[data-role="ui-dropdown"]');
-      if (!roots || roots.length === 0) {
+      if (roots.length === 0) {
         return;
       }
 
@@ -902,9 +899,7 @@
         if (!isElementFocusable(target)) {
           continue;
         }
-        if (typeof target.focus === 'function') {
-          target.focus();
-        }
+        target.focus();
         return;
       }
     }
@@ -913,15 +908,11 @@
       var hasOpenDialog = !!document.querySelector('.ui-dialog-backdrop:not([hidden])');
       if (hasOpenDialog) {
         appWindow.setAttribute('data-dialog-open', '1');
-        if (document.body) {
-          document.body.setAttribute('data-dialog-open', '1');
-        }
+        document.body.setAttribute('data-dialog-open', '1');
         return;
       }
       appWindow.removeAttribute('data-dialog-open');
-      if (document.body) {
-        document.body.removeAttribute('data-dialog-open');
-      }
+      document.body.removeAttribute('data-dialog-open');
     }
 
     function openDialog(id, opener) {
@@ -951,9 +942,6 @@
         opener = null;
       }
       if (!opener) {
-        return;
-      }
-      if (typeof opener.focus !== 'function') {
         return;
       }
       if (!document.contains(opener)) {
@@ -1283,7 +1271,7 @@
 
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Enter' || event.key === ' ') {
-        var closeTarget = event.target && event.target.closest ? event.target.closest('[data-role~="ui-dialog-close"],[data-role~="ui-dialog-cancel"]') : null;
+        var closeTarget = event.target.closest('[data-role~="ui-dialog-close"],[data-role~="ui-dialog-cancel"]');
         if (closeTarget) {
           var backdrop = closeTarget.closest('.ui-dialog-backdrop');
           if (backdrop && !backdrop.hasAttribute('hidden')) {
@@ -1335,7 +1323,7 @@
       if (event.key !== 'Enter' && event.key !== ' ') {
         return;
       }
-      var dropzone = event.target && event.target.closest ? event.target.closest('[data-role="ui-file-dropzone"]') : null;
+      var dropzone = event.target.closest('[data-role="ui-file-dropzone"]');
       if (!dropzone) {
         return;
       }
@@ -1352,7 +1340,7 @@
     });
 
     document.addEventListener('change', function(event) {
-      var input = event.target && event.target.closest ? event.target.closest('[data-role="ui-file-input"]') : null;
+      var input = event.target.closest('[data-role="ui-file-input"]');
       if (!input) {
         return;
       }
@@ -1406,7 +1394,7 @@
       var input = root.querySelector('[data-role="ui-file-input"]');
       var listEl = root.querySelector('[data-role="ui-file-list"]');
       var assigned = false;
-      if (input && typeof DataTransfer === 'function') {
+      if (input) {
         try {
           var dt = new DataTransfer();
           Array.from(files).forEach(function(file) {
@@ -1431,7 +1419,7 @@
     }, true);
 
     document.addEventListener('pointerover', function(event) {
-      var target = event.target && event.target.closest ? event.target.closest('[data-title],[data-tooltip]') : null;
+      var target = event.target.closest('[data-title],[data-tooltip]');
       if (!target) {
         return;
       }
@@ -1460,15 +1448,13 @@
     });
 
     document.addEventListener('focusin', function(event) {
-      var target = event.target && event.target.closest ? event.target.closest('[data-title],[data-tooltip]') : null;
+      var target = event.target.closest('[data-title],[data-tooltip]');
       if (!target) {
         return;
       }
       var isFocusVisible = true;
       try {
-        if (typeof target.matches === 'function') {
-          isFocusVisible = target.matches(':focus-visible');
-        }
+        isFocusVisible = target.matches(':focus-visible');
       } catch (error) {
         isFocusVisible = true;
       }

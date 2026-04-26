@@ -329,7 +329,7 @@
     if (systemUpdateRefreshDelay > 0) {
       var refreshURL = window.location.pathname;
       window.setTimeout(function() {
-        window.location.replace(refreshURL);
+        goTo(refreshURL, { replace: true });
       }, systemUpdateRefreshDelay * 1000);
     }
 
@@ -356,11 +356,7 @@
         return;
       }
       fileName.textContent = input.files[0].name || '已选择安装包';
-      if (typeof form.requestSubmit === 'function') {
-        form.requestSubmit();
-        return;
-      }
-      form.submit();
+      form.requestSubmit();
     });
   })();
 </script>

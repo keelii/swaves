@@ -70,12 +70,7 @@ function notify(message, title, options) {
     }
   }
 
-  if (!opts.disableToast && window.ot && typeof window.ot.toast === "function") {
-    window.ot.toast(msg, heading, { variant: variant });
-    return true;
-  }
-
-  if (opts.alertFallback && typeof window.alert === "function") {
+  if (opts.alertFallback) {
     if (heading) {
       window.alert(heading + "\n" + msg);
     } else {
@@ -84,21 +79,15 @@ function notify(message, title, options) {
     return true;
   }
 
-  if (window.console && typeof window.console.warn === "function") {
-    if (heading) {
-      window.console.warn(heading + ": " + msg);
-    } else {
-      window.console.warn(msg);
-    }
+  if (heading) {
+    console.warn(heading + ": " + msg);
+  } else {
+    console.warn(msg);
   }
   return false;
 }
 
 function goTo(target, options) {
-  if (typeof window === "undefined" || !window.location) {
-    return false;
-  }
-
   var opts = options || {};
   if (opts.reload === true) {
     window.location.reload();
@@ -110,22 +99,17 @@ function goTo(target, options) {
     return false;
   }
 
-  if (opts.replace === true && typeof window.location.replace === "function") {
+  if (opts.replace === true) {
     window.location.replace(href);
     return true;
   }
-  if (typeof window.location.assign === "function") {
-    window.location.assign(href);
-    return true;
-  }
-
-  window.location.href = href;
+  window.location.assign(href);
   return true;
 }
 
 function bindPageSizeSelect(target, options) {
   var selectEl = resolveElement(target);
-  if (!selectEl || typeof selectEl.addEventListener !== "function") {
+  if (!selectEl) {
     return false;
   }
 
@@ -174,11 +158,8 @@ function bindPageSizeSelect(target, options) {
 }
 
 function initPageSizeSelects() {
-  if (typeof document === "undefined" || typeof document.querySelectorAll !== "function") {
-    return;
-  }
   var selects = document.querySelectorAll('[data-role="page-size-select"]');
-  if (!selects || selects.length === 0) {
+  if (selects.length === 0) {
     return;
   }
   for (var i = 0; i < selects.length; i += 1) {
@@ -189,7 +170,7 @@ function initPageSizeSelects() {
 function bindSVGHitboxTooltip(options) {
   var opts = options || {};
   var container = resolveElement(opts.container);
-  if (!container || typeof container.querySelector !== "function") {
+  if (!container) {
     return false;
   }
 
@@ -198,21 +179,19 @@ function bindSVGHitboxTooltip(options) {
     var svgSelector = String(opts.svgSelector || "svg").trim() || "svg";
     svgEl = container.querySelector(svgSelector);
   }
-  if (!svgEl || typeof svgEl.querySelectorAll !== "function") {
+  if (!svgEl) {
     return false;
   }
 
   var boundFlag = String(opts.boundFlag || "tooltipBound").trim();
-  if (svgEl.dataset && boundFlag) {
-    if (svgEl.dataset[boundFlag] === "1") {
-      return false;
-    }
-    svgEl.dataset[boundFlag] = "1";
+  if (svgEl.dataset[boundFlag] === "1") {
+    return false;
   }
+  svgEl.dataset[boundFlag] = "1";
 
   var hitboxSelector = String(opts.hitboxSelector || "rect[data-uv]").trim() || "rect[data-uv]";
   var hitboxes = svgEl.querySelectorAll(hitboxSelector);
-  if (!hitboxes || hitboxes.length === 0) {
+  if (hitboxes.length === 0) {
     return false;
   }
 
@@ -235,7 +214,7 @@ function bindSVGHitboxTooltip(options) {
   var getIndex = typeof opts.getIndex === "function"
     ? opts.getIndex
     : function(hitbox) {
-        var index = parseInt(hitbox && hitbox.getAttribute ? hitbox.getAttribute("data-index") || "" : "", 10);
+        var index = parseInt(hitbox.getAttribute("data-index") || "", 10);
         if (isNaN(index) || index < 0) {
           return -1;
         }
@@ -244,7 +223,7 @@ function bindSVGHitboxTooltip(options) {
   var getText = typeof opts.getText === "function"
     ? opts.getText
     : function(hitbox) {
-        return hitbox && hitbox.getAttribute ? String(hitbox.getAttribute("data-label") || hitbox.getAttribute("data-uv") || "").trim() : "";
+        return String(hitbox.getAttribute("data-label") || hitbox.getAttribute("data-uv") || "").trim();
       };
   var onActivate = typeof opts.onActivate === "function" ? opts.onActivate : null;
   var onDeactivate = typeof opts.onDeactivate === "function" ? opts.onDeactivate : null;
@@ -322,13 +301,10 @@ function bindSVGHitboxTooltip(options) {
   }
 
   function isSameHitboxTarget(nextTarget) {
-    if (typeof SVGElement === "undefined" || !nextTarget || !(nextTarget instanceof SVGElement)) {
+    if (!nextTarget || !(nextTarget instanceof SVGElement)) {
       return false;
     }
-    if (nextTarget.matches && nextTarget.matches(hitboxSelector)) {
-      return true;
-    }
-    return false;
+    return nextTarget.matches(hitboxSelector);
   }
 
   hitboxes.forEach(function(hitbox) {
@@ -369,7 +345,7 @@ function getCSRFToken() {
   if (!input) {
     return "";
   }
-  return String(input.value || "").trim();
+  return input.value.trim();
 }
 
 function shouldCSRF(method) {
@@ -391,7 +367,7 @@ function resolveRequestURL(input) {
   if (typeof input === "string") {
     return input;
   }
-  if (typeof URL !== "undefined" && input instanceof URL) {
+  if (input instanceof URL) {
     return input.toString();
   }
   if (input && typeof input === "object" && typeof input.url === "string") {
@@ -464,9 +440,6 @@ function postUIStateSetting(url, code, value) {
 }
 
 function installSFetch() {
-  if (typeof window.fetch !== "function") {
-    return;
-  }
   window.sfetch = function(input, init, opts) {
     var requestInit = init ? Object.assign({}, init) : {};
     var extra = opts || {};
@@ -533,7 +506,7 @@ function installSFetch() {
 
     return window.sfetch(input, requestInit, opts).then(function(response) {
       return response.text().then(function(raw) {
-        var text = String(raw || "").trim();
+        var text = raw.trim();
         var body = null;
         if (text) {
           try {
@@ -554,13 +527,11 @@ function installSFetch() {
   };
 }
 
-if (typeof document !== "undefined") {
-  installSFetch();
-  window.DashApp = window.DashApp || {};
-  window.DashApp.postUIStateSetting = postUIStateSetting;
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initDashMainBehaviors, { once: true });
-  } else {
-    initDashMainBehaviors();
-  }
+installSFetch();
+window.DashApp = window.DashApp || {};
+window.DashApp.postUIStateSetting = postUIStateSetting;
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initDashMainBehaviors, { once: true });
+} else {
+  initDashMainBehaviors();
 }

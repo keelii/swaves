@@ -19,7 +19,7 @@
 	    var notificationsPollingIntervalMs = 20000;
 	    var themeModePersisting = false;
 	    var themeModeQueued = null;
-	    var themeModeLastSaved = document.body && document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+	    var themeModeLastSaved = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
     if (!appWindow) {
       return;
@@ -38,7 +38,7 @@
     }
 
     function postUIStateSetting(code, value) {
-      if (!uiStateSaveURL || !window.DashApp || typeof window.DashApp.postUIStateSetting !== 'function') {
+      if (!uiStateSaveURL) {
         return null;
       }
       return window.DashApp.postUIStateSetting(uiStateSaveURL, code, value);
@@ -416,13 +416,10 @@
 	    }
 
     function isDarkTheme() {
-      return document.body && document.body.getAttribute('data-theme') === 'dark';
+      return document.body.getAttribute('data-theme') === 'dark';
     }
 
     function applyThemeMode(mode) {
-      if (!document.body) {
-        return;
-      }
       if (mode === 'dark') {
         document.body.setAttribute('data-theme', 'dark');
         return;
@@ -1097,9 +1094,7 @@
         if (!isElementFocusable(target)) {
           continue;
         }
-        if (typeof target.focus === 'function') {
-          target.focus();
-        }
+        target.focus();
         return;
       }
     }
@@ -1108,15 +1103,11 @@
       var hasOpenDialog = !!document.querySelector('.ui-dialog-backdrop:not([hidden])');
       if (hasOpenDialog) {
         appWindow.setAttribute('data-dialog-open', '1');
-        if (document.body) {
-          document.body.setAttribute('data-dialog-open', '1');
-        }
+        document.body.setAttribute('data-dialog-open', '1');
         return;
       }
       appWindow.removeAttribute('data-dialog-open');
-      if (document.body) {
-        document.body.removeAttribute('data-dialog-open');
-      }
+      document.body.removeAttribute('data-dialog-open');
     }
 
     function openDialog(id, opener) {
@@ -1146,9 +1137,6 @@
         opener = null;
       }
       if (!opener) {
-        return;
-      }
-      if (typeof opener.focus !== 'function') {
         return;
       }
       if (!document.contains(opener)) {
@@ -1580,7 +1568,7 @@
 
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Enter' || event.key === ' ') {
-        var closeTarget = event.target && event.target.closest ? event.target.closest('[data-role~="ui-dialog-close"],[data-role~="ui-dialog-cancel"]') : null;
+        var closeTarget = event.target.closest('[data-role~="ui-dialog-close"],[data-role~="ui-dialog-cancel"]');
         if (closeTarget) {
           var backdrop = closeTarget.closest('.ui-dialog-backdrop');
           if (backdrop && !backdrop.hasAttribute('hidden')) {
@@ -1593,7 +1581,7 @@
 
       if (event.key === 'Tab') {
         var openDialogs = document.querySelectorAll('.ui-dialog-backdrop:not([hidden])');
-        if (openDialogs && openDialogs.length > 0) {
+        if (openDialogs.length > 0) {
           var topBackdrop = openDialogs[openDialogs.length - 1];
           if (topBackdrop && topBackdrop.contains(event.target)) {
             var focusables = getDialogFocusables(topBackdrop);
@@ -1632,7 +1620,7 @@
       if (event.key !== 'Enter' && event.key !== ' ') {
         return;
       }
-      var dropzone = event.target && event.target.closest ? event.target.closest('[data-role="ui-file-dropzone"]') : null;
+      var dropzone = event.target.closest('[data-role="ui-file-dropzone"]');
       if (!dropzone) {
         return;
       }
@@ -1649,7 +1637,7 @@
     });
 
     document.addEventListener('change', function(event) {
-      var input = event.target && event.target.closest ? event.target.closest('[data-role="ui-file-input"]') : null;
+      var input = event.target.closest('[data-role="ui-file-input"]');
       if (!input) {
         return;
       }
@@ -1728,7 +1716,7 @@
     }, true);
 
     document.addEventListener('pointerover', function(event) {
-      var target = event.target && event.target.closest ? event.target.closest('[data-title],[data-tooltip]') : null;
+      var target = event.target.closest('[data-title],[data-tooltip]');
       if (!target) {
         return;
       }
@@ -1757,15 +1745,13 @@
     });
 
     document.addEventListener('focusin', function(event) {
-      var target = event.target && event.target.closest ? event.target.closest('[data-title],[data-tooltip]') : null;
+      var target = event.target.closest('[data-title],[data-tooltip]');
       if (!target) {
         return;
       }
       var isFocusVisible = true;
       try {
-        if (typeof target.matches === 'function') {
-          isFocusVisible = target.matches(':focus-visible');
-        }
+        isFocusVisible = target.matches(':focus-visible');
       } catch (error) {
         isFocusVisible = true;
       }

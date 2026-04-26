@@ -69,19 +69,17 @@ function notify(message, title, options) {
     }
   }
 
-  if (window.console && typeof window.console.warn === "function") {
-    if (heading) {
-      window.console.warn(heading + ": " + msg);
-    } else {
-      window.console.warn(msg);
-    }
+  if (heading) {
+    console.warn(heading + ": " + msg);
+  } else {
+    console.warn(msg);
   }
   return false;
 }
 
 function getCSRFToken() {
-  if (typeof window !== "undefined" && window._csrf_token_value != null) {
-    var raw = String(window._csrf_token_value || "").trim();
+  if (window._csrf_token_value != null) {
+    var raw = String(window._csrf_token_value).trim();
     if (raw) {
       return raw;
     }
@@ -90,7 +88,7 @@ function getCSRFToken() {
   if (!input) {
     return "";
   }
-  return String(input.value || "").trim();
+  return input.value.trim();
 }
 
 function shouldCSRF(method) {
@@ -112,7 +110,7 @@ function resolveRequestURL(input) {
   if (typeof input === "string") {
     return input;
   }
-  if (typeof URL !== "undefined" && input instanceof URL) {
+  if (input instanceof URL) {
     return input.toString();
   }
   if (input && typeof input === "object" && typeof input.url === "string") {
@@ -167,10 +165,6 @@ function isSameOriginRequest(input) {
 }
 
 function installSFetch() {
-  if (typeof window.fetch !== "function") {
-    return;
-  }
-
   window.sfetch = function(input, init, opts) {
     var requestInit = init ? Object.assign({}, init) : {};
     var extra = opts || {};
@@ -237,7 +231,7 @@ function installSFetch() {
 
     return window.sfetch(input, requestInit, opts).then(function(response) {
       return response.text().then(function(raw) {
-        var text = String(raw || "").trim();
+        var text = raw.trim();
         var body = null;
         if (text) {
           try {
@@ -258,6 +252,4 @@ function installSFetch() {
   };
 }
 
-if (typeof document !== "undefined") {
-  installSFetch();
-}
+installSFetch();

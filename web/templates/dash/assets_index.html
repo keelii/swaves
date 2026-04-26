@@ -207,14 +207,6 @@ document.addEventListener('DOMContentLoaded', function() {
   uploadReady = {{ defaultProviderReady | tojson }};
   uploadError = {{ defaultProviderError | tojson }};
 
-  function getDialogAPI() {
-    return window.DashAppUI.dialog;
-  }
-
-  function getConfirmAPI() {
-    return window.DashAppUI.confirm;
-  }
-
   function removeAssetRows(ids) {
     ids.forEach(function(id) {
       document.querySelectorAll('tr[data-asset-id="' + id + '"]').forEach(function(row) {
@@ -233,18 +225,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function showAssetNotice(message, title) {
     var heading = title || '提示';
-    var text = message || '';
     var titleNode = alertDialog ? alertDialog.querySelector('.ui-dialog-title') : null;
-    var dialogAPI = getDialogAPI();
 
     if (titleNode) {
       titleNode.textContent = heading;
     }
     if (alertMessage) {
-      alertMessage.textContent = text;
+      alertMessage.textContent = message;
     }
-    if (!dialogAPI.open('asset-alert-dialog')) {
-      notify(text, heading, {
+    if (!window.DashAppUI.dialog.open('asset-alert-dialog')) {
+      notify(message, heading, {
         variant: 'warning',
       });
     }
@@ -257,12 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function askConfirm(message, title) {
-    var confirmAPI = getConfirmAPI();
-
-    message = message || '';
-    title = title || '确认操作';
-
-    return confirmAPI.ask({
+    return window.DashAppUI.confirm.ask({
         dialogId: 'asset-confirm-dialog',
         title: title,
         message: message,

@@ -21,39 +21,23 @@
       return;
     }
     window.requestAnimationFrame(function() {
-      try {
-        input.focus({ preventScroll: true });
-      } catch (error) {
-        input.focus();
-      }
+      input.focus({ preventScroll: true });
       var end = input.value.length;
-      if (typeof input.setSelectionRange === 'function') {
-        input.setSelectionRange(end, end);
-      }
+      input.setSelectionRange(end, end);
     });
   }
 
   focusSearchToEnd();
 
-  function submitSearchForm() {
-    if (typeof form.requestSubmit === 'function') {
-      form.requestSubmit();
-      return;
-    }
-    form.submit();
-  }
-
   input.addEventListener('search', function() {
-    submitSearchForm();
+    form.requestSubmit();
   });
 
   input.addEventListener('input', function(event){
-    // Fallback: some native clear/autofill flows emit plain Event instead of InputEvent.
-    var hasInputEvent = typeof window.InputEvent !== 'undefined';
-    if (hasInputEvent && event instanceof window.InputEvent) {
+    if (event instanceof InputEvent) {
       return;
     }
-    submitSearchForm();
+    form.requestSubmit();
   });
 })();
 </script>

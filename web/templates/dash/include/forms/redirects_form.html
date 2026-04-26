@@ -86,7 +86,7 @@
     var body = document.getElementById('redirect-target-picker-body');
     var openButton = document.getElementById('redirect-target-picker-open');
     var emptyState = document.getElementById('redirect-target-picker-empty');
-    var dialogAPI = window.DashAppUI && window.DashAppUI.dialog ? window.DashAppUI.dialog : null;
+    var dialogAPI = window.DashAppUI.dialog;
 
     if (!dialog || !search || !toInput || !body) {
       return;
@@ -101,19 +101,11 @@
     }
 
     function openPickerDialog() {
-      if (dialogAPI && typeof dialogAPI.open === 'function') {
-        return dialogAPI.open('redirect-target-picker-dialog', openButton || null);
-      }
-      dialog.removeAttribute('hidden');
-      return true;
+      return dialogAPI.open('redirect-target-picker-dialog', openButton || null);
     }
 
     function closePickerDialog() {
-      if (dialogAPI && typeof dialogAPI.close === 'function') {
-        return dialogAPI.close('redirect-target-picker-dialog');
-      }
-      dialog.setAttribute('hidden', '');
-      return true;
+      return dialogAPI.close('redirect-target-picker-dialog');
     }
 
     function updateEmptyState(visibleCount) {
@@ -139,13 +131,9 @@
       dispatchInputEvent(toInput, 'input');
       dispatchInputEvent(toInput, 'change');
       closePickerDialog();
-      if (typeof toInput.focus === 'function') {
-        toInput.focus();
-      }
-      if (typeof toInput.setSelectionRange === 'function') {
-        var end = toInput.value.length;
-        toInput.setSelectionRange(end, end);
-      }
+      toInput.focus();
+      var end = toInput.value.length;
+      toInput.setSelectionRange(end, end);
     }
 
     function filterRows() {
@@ -184,7 +172,7 @@
     }
 
     body.addEventListener('click', function(event) {
-      var button = event.target && event.target.closest ? event.target.closest('[data-role="redirect-target-picker-choose"]') : null;
+      var button = event.target.closest('[data-role="redirect-target-picker-choose"]');
       if (!button || !body.contains(button)) {
         return;
       }

@@ -51,9 +51,9 @@
       });
 
       document.addEventListener('click', function(event) {
-        var cancelButton = event.target && event.target.closest
-          ? event.target.closest('#multiselect-confirm-dialog [data-role~="ui-dialog-close"], #multiselect-confirm-dialog [data-role~="ui-dialog-cancel"]')
-          : null;
+        var cancelButton = event.target.closest(
+          '#multiselect-confirm-dialog [data-role~="ui-dialog-close"], #multiselect-confirm-dialog [data-role~="ui-dialog-cancel"]'
+        );
         if (cancelButton) {
           resolveMultiselectConfirm(false);
         }
@@ -383,7 +383,7 @@
       }
 
       table.addEventListener('change', function(event) {
-        var selectAll = event.target && event.target.closest ? event.target.closest('thead .cell-checkbox') : null;
+        var selectAll = event.target.closest('thead .cell-checkbox');
         if (selectAll) {
           var items = table.querySelectorAll('tbody .cell-checkbox');
           items.forEach(function(item) {
@@ -393,7 +393,7 @@
           return;
         }
 
-        var rowCheckbox = event.target && event.target.closest ? event.target.closest('tbody .cell-checkbox') : null;
+        var rowCheckbox = event.target.closest('tbody .cell-checkbox');
         if (rowCheckbox) {
           syncSelectAllState();
         }
