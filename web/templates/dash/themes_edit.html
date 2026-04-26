@@ -529,11 +529,9 @@
           return;
         }
 
-        if (typeof ctx.form.checkValidity === 'function' && !ctx.form.checkValidity()) {
+        if (!ctx.form.checkValidity()) {
           sidebar.showInfo();
-          if (typeof ctx.form.reportValidity === 'function') {
-            ctx.form.reportValidity();
-          }
+          ctx.form.reportValidity();
           return;
         }
 

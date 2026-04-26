@@ -131,13 +131,9 @@
       dispatchInputEvent(toInput, 'input');
       dispatchInputEvent(toInput, 'change');
       closePickerDialog();
-      if (typeof toInput.focus === 'function') {
-        toInput.focus();
-      }
-      if (typeof toInput.setSelectionRange === 'function') {
-        var end = toInput.value.length;
-        toInput.setSelectionRange(end, end);
-      }
+      toInput.focus();
+      var end = toInput.value.length;
+      toInput.setSelectionRange(end, end);
     }
 
     function filterRows() {

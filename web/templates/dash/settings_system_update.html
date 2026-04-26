@@ -356,11 +356,7 @@
         return;
       }
       fileName.textContent = input.files[0].name || '已选择安装包';
-      if (typeof form.requestSubmit === 'function') {
-        form.requestSubmit();
-        return;
-      }
-      form.submit();
+      form.requestSubmit();
     });
   })();
 </script>
