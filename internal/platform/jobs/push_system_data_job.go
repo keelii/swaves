@@ -37,12 +37,19 @@ type pushJobConfig struct {
 }
 
 func PushSystemDataJob(reg *Registry) (*string, error) {
+	return runRemoteBackupJob(reg, true)
+}
+
+func runRemoteBackupJob(reg *Registry, allowNoOp bool) (*string, error) {
 	if reg == nil || reg.DB == nil {
 		return nil, errors.New("reg.DB is nil")
 	}
 
 	cfg := loadPushJobConfig()
 	if !cfg.Enabled {
+		if allowNoOp {
+			return nil, nil
+		}
 		return jobMessage("远程数据备份未启用，跳过"), nil
 	}
 

@@ -38,7 +38,14 @@ func DatabaseBackupJob(reg *Registry) (*string, error) {
 	}
 
 	cfg := loadLocalBackupConfig(reg)
-	return runLocalBackup(reg.DB, cfg, true)
+	ret, noOp, err := runLocalBackup(reg.DB, cfg, true)
+	if err != nil {
+		return nil, err
+	}
+	if noOp {
+		return nil, nil
+	}
+	return ret, nil
 }
 
 func RunLocalBackupNow(dbx *db.DB) (*string, error) {
@@ -47,7 +54,8 @@ func RunLocalBackupNow(dbx *db.DB) (*string, error) {
 	}
 
 	cfg := loadLocalBackupConfig(&Registry{Config: types.AppConfig{SqliteFile: dbx.DSN}})
-	return runLocalBackup(dbx, cfg, false)
+	ret, _, err := runLocalBackup(dbx, cfg, false)
+	return ret, err
 }
 
 func RunRemoteBackupNow(dbx *db.DB) (*string, error) {
@@ -62,29 +70,26 @@ func RunRemoteBackupNow(dbx *db.DB) (*string, error) {
 		return nil, errors.New("task registry not initialized")
 	}
 
-	return PushSystemDataJob(&Registry{DB: dbx, Config: reg.Config})
+	return runRemoteBackupJob(&Registry{DB: dbx, Config: reg.Config}, false)
 }
 
-func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, error) {
+func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, bool, error) {
 	backupDir := resolveBackupDir(cfg.Dir)
 	logger.Info("[backup] local backup start: dir=%s interval=%s max_count=%d check_interval=%t", backupDir, cfg.Interval, cfg.MaxCount, checkInterval)
 
 	if err := helper.EnsureDir(backupDir, 0755); err != nil {
-		return nil, fmt.Errorf("无法创建备份目录 %s: %w", backupDir, err)
+		return nil, false, fmt.Errorf("无法创建备份目录 %s: %w", backupDir, err)
 	}
 
 	if checkInterval {
 		latestAt, err := latestLocalBackupAt(backupDir)
 		if err != nil {
-			return nil, fmt.Errorf("读取本地备份目录失败: %w", err)
+			return nil, false, fmt.Errorf("读取本地备份目录失败: %w", err)
 		}
 		if !latestAt.IsZero() && cfg.Interval > 0 {
 			elapsed := time.Since(latestAt)
 			if elapsed < cfg.Interval {
-				remain := (cfg.Interval - elapsed).Round(time.Second)
-				message := fmt.Sprintf("skip local backup: interval=%s remaining=%s", cfg.Interval, remain)
-				logger.Info("[backup] local backup skipped: dir=%s reason=%s", backupDir, message)
-				return jobMessage(message), nil
+				return nil, true, nil
 			}
 		}
 	}
@@ -92,22 +97,21 @@ func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*str
 	result, err := db.ExportSQLiteWithHash(dbx, backupDir)
 	if err != nil {
 		if strings.Contains(err.Error(), "无需重复导出") {
-			logger.Info("[backup] local backup skipped: dir=%s reason=%s", backupDir, err.Error())
-			return jobMessage(err.Error()), nil
+			return jobMessage(err.Error()), true, nil
 		}
 		logger.Error("[backup] local backup export failed: dir=%s err=%v", backupDir, err)
-		return nil, err
+		return nil, false, err
 	}
 
 	removedCount, err := pruneLocalBackupFiles(backupDir, cfg.MaxCount)
 	if err != nil {
 		logger.Error("[backup] local backup prune failed: dir=%s err=%v", backupDir, err)
-		return nil, fmt.Errorf("本地备份完成但清理旧备份失败: %w", err)
+		return nil, false, fmt.Errorf("本地备份完成但清理旧备份失败: %w", err)
 	}
 
 	message := fmt.Sprintf("%v, dir=%s, pruned=%d", result, backupDir, removedCount)
 	logger.Info("[backup] local backup completed: %s", message)
-	return jobMessage(message), nil
+	return jobMessage(message), false, nil
 }
 
 type localBackupConfig struct {
@@ -311,7 +315,7 @@ func DeleteExpiredEncryptedPostsJob(reg *Registry) (*string, error) {
 		return jobMessage(fmt.Sprintf("已软删除 %d 条过期加密文章", n)), nil
 	}
 
-	return jobMessage("暂无过期加密文章，无需处理"), nil
+	return nil, nil
 }
 
 // CheckAppUpdateJob 检查当前 swaves 版本是否落后于最新稳定 release。
@@ -320,7 +324,7 @@ func CheckAppUpdateJob(reg *Registry) (*string, error) {
 		return nil, errors.New("reg.DB is nil")
 	}
 	if !buildinfo.IsReleaseVersion() {
-		return jobMessage("非发布版本，跳过更新检查"), nil
+		return nil, nil
 	}
 
 	result, err := checkLatestAppRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
@@ -328,7 +332,7 @@ func CheckAppUpdateJob(reg *Registry) (*string, error) {
 		return nil, err
 	}
 	if !result.HasUpgrade || result.Target == nil {
-		return jobMessage(fmt.Sprintf("当前已是最新版本：%s", result.CurrentVersion)), nil
+		return nil, nil
 	}
 
 	nowUnix := time.Now().Unix()
@@ -349,6 +353,9 @@ func ClearExpiredNotificationsJob(reg *Registry) (*string, error) {
 	deletedCount, err := db.DeleteExpiredNotifications(reg.DB, cutoffUnix)
 	if err != nil {
 		return nil, err
+	}
+	if deletedCount == 0 {
+		return nil, nil
 	}
 
 	retentionDays := notify.NotificationRetentionDays()

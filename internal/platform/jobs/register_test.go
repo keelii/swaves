@@ -137,6 +137,36 @@ func TestExecuteTaskNoOpDoesNotUpdateTaskStatus(t *testing.T) {
 	}
 }
 
+func TestExecuteTaskDeleteExpiredEncryptedPostsNoOpDoesNotUpdateTaskStatus(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task := mustCreateTask(t, dbx, "task_clear_encrypted_posts_noop", db.TaskInternal)
+
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: DeleteExpiredEncryptedPostsJob,
+			},
+		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, task)
+
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
+	if gotTask.LastRunAt != nil {
+		t.Fatalf("LastRunAt should stay nil for no-op, got %v", *gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "" {
+		t.Fatalf("LastStatus should stay empty for no-op, got %q", gotTask.LastStatus)
+	}
+
+	runs := mustListTaskRuns(t, dbx, task.Code)
+	if len(runs) != 0 {
+		t.Fatalf("expected no task runs for no-op, got %d", len(runs))
+	}
+}
+
 func TestExecuteTaskSuccessUpdatesStatusAndTaskRun(t *testing.T) {
 	dbx := openJobTestDB(t)
 	task := mustCreateTask(t, dbx, "task_success", db.TaskUser)
@@ -209,7 +239,7 @@ func TestExecuteInternalTaskAlsoCreatesTaskRun(t *testing.T) {
 	}
 }
 
-func TestExecuteTaskDisabledRemoteBackupRecordsSkipRun(t *testing.T) {
+func TestExecuteTaskDisabledRemoteBackupDoesNotRecordRun(t *testing.T) {
 	dbx := openJobTestDB(t)
 	task := mustGetTaskByCode(t, dbx, "remote_backup_data")
 	withTaskSettings(t, map[string]string{"sync_push_enabled": "0"})
@@ -227,22 +257,16 @@ func TestExecuteTaskDisabledRemoteBackupRecordsSkipRun(t *testing.T) {
 	ExecuteTask(dbx, task)
 
 	gotTask := mustGetTaskByCode(t, dbx, task.Code)
-	if gotTask.LastRunAt == nil || *gotTask.LastRunAt <= 0 {
-		t.Fatalf("LastRunAt should be updated for disabled remote backup, got %v", gotTask.LastRunAt)
+	if gotTask.LastRunAt != nil {
+		t.Fatalf("LastRunAt should stay nil for disabled remote backup no-op, got %v", *gotTask.LastRunAt)
 	}
-	if gotTask.LastStatus != "success" {
-		t.Fatalf("LastStatus should be success for disabled remote backup, got %q", gotTask.LastStatus)
+	if gotTask.LastStatus != "" {
+		t.Fatalf("LastStatus should stay empty for disabled remote backup no-op, got %q", gotTask.LastStatus)
 	}
 
 	runs := mustListTaskRuns(t, dbx, task.Code)
-	if len(runs) != 1 {
-		t.Fatalf("expected 1 task run for disabled remote backup, got %d", len(runs))
-	}
-	if runs[0].Status != "success" {
-		t.Fatalf("task run status should be success, got %q", runs[0].Status)
-	}
-	if !strings.Contains(runs[0].Message, "未启用") {
-		t.Fatalf("task run message should mention disabled, got %q", runs[0].Message)
+	if len(runs) != 0 {
+		t.Fatalf("expected no task runs for disabled remote backup no-op, got %d", len(runs))
 	}
 }
 
@@ -271,8 +295,8 @@ func TestRunLocalBackupNowBypassesInterval(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DatabaseBackupJob failed: %v", err)
 	}
-	if scheduled == nil || !strings.Contains(*scheduled, "skip local backup: interval=") {
-		t.Fatalf("expected scheduled backup to skip by interval, got %v", scheduled)
+	if scheduled != nil {
+		t.Fatalf("expected scheduled backup interval skip to be no-op, got %v", scheduled)
 	}
 
 	second, err := RunLocalBackupNow(dbx)
@@ -295,6 +319,20 @@ func TestRunLocalBackupNowBypassesInterval(t *testing.T) {
 	}
 	if sqliteCount != 2 {
 		t.Fatalf("expected 2 sqlite backups, got %d", sqliteCount)
+	}
+}
+
+func TestRunRemoteBackupNowDisabledReturnsMessage(t *testing.T) {
+	dbx := openJobTestDB(t)
+	withTaskSettings(t, map[string]string{"sync_push_enabled": "0"})
+	withTestRegistry(t, &Registry{DB: dbx})
+
+	msg, err := RunRemoteBackupNow(dbx)
+	if err != nil {
+		t.Fatalf("RunRemoteBackupNow failed: %v", err)
+	}
+	if msg == nil || !strings.Contains(*msg, "未启用") {
+		t.Fatalf("expected disabled remote backup message, got %v", msg)
 	}
 }
 
@@ -340,6 +378,88 @@ func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
 	}
 	if len(items) != 1 {
 		t.Fatalf("app update notification count = %d, want 1", len(items))
+	}
+}
+
+func TestExecuteTaskCheckAppUpdateNoUpgradeDoesNotRecordRun(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task := mustGetTaskByCode(t, dbx, "check_app_update")
+	oldCheck := checkLatestAppRelease
+	oldVersion := buildinfo.Version
+	oldCommit := buildinfo.Commit
+	oldBuildTime := buildinfo.BuildTime
+	buildinfo.Version = "v1.2.3"
+	buildinfo.Commit = "test"
+	buildinfo.BuildTime = "2026-04-05T00:00:00Z"
+	checkLatestAppRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+		return updater.CheckResult{
+			CurrentVersion:       currentVersion,
+			CurrentVersionStable: true,
+			LatestVersion:        currentVersion,
+			HasUpgrade:           false,
+			Target:               nil,
+		}, nil
+	}
+	defer func() {
+		checkLatestAppRelease = oldCheck
+		buildinfo.Version = oldVersion
+		buildinfo.Commit = oldCommit
+		buildinfo.BuildTime = oldBuildTime
+	}()
+
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: CheckAppUpdateJob,
+			},
+		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, task)
+
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
+	if gotTask.LastRunAt != nil {
+		t.Fatalf("LastRunAt should stay nil for no-upgrade no-op, got %v", *gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "" {
+		t.Fatalf("LastStatus should stay empty for no-upgrade no-op, got %q", gotTask.LastStatus)
+	}
+
+	runs := mustListTaskRuns(t, dbx, task.Code)
+	if len(runs) != 0 {
+		t.Fatalf("expected no task runs for no-upgrade no-op, got %d", len(runs))
+	}
+}
+
+func TestExecuteTaskClearExpiredNotificationsNoOpDoesNotRecordRun(t *testing.T) {
+	dbx := openJobTestDB(t)
+	task := mustCreateTask(t, dbx, "task_clear_notifications_noop", db.TaskInternal)
+
+	withTestRegistry(t, &Registry{
+		jobs: map[string]JobItem{
+			task.Code: {
+				Kind: task.Kind,
+				Func: ClearExpiredNotificationsJob,
+			},
+		},
+		DB: dbx,
+	})
+
+	ExecuteTask(dbx, task)
+
+	gotTask := mustGetTaskByCode(t, dbx, task.Code)
+	if gotTask.LastRunAt != nil {
+		t.Fatalf("LastRunAt should stay nil for clear notifications no-op, got %v", *gotTask.LastRunAt)
+	}
+	if gotTask.LastStatus != "" {
+		t.Fatalf("LastStatus should stay empty for clear notifications no-op, got %q", gotTask.LastStatus)
+	}
+
+	runs := mustListTaskRuns(t, dbx, task.Code)
+	if len(runs) != 0 {
+		t.Fatalf("expected no task runs for clear notifications no-op, got %d", len(runs))
 	}
 }
 
