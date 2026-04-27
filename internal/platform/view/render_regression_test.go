@@ -167,6 +167,9 @@ func TestRenderDashTaskRunsIndexRendersMultiselect(t *testing.T) {
 	if !strings.Contains(rendered, "多选") {
 		t.Fatal("expected task runs index to show multiselect toggle")
 	}
+	if !strings.Contains(rendered, "批量删除") {
+		t.Fatal("expected task runs index to show batch delete button")
+	}
 }
 
 func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
