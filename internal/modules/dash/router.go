@@ -175,6 +175,7 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore) {
 	dashGroup.Post("/api/tasks/batch-delete", handler.PostTaskBatchDeleteAPIHandler).Name("dash.tasks.api.batch_delete")
 	dashGroup.Post("/tasks/:code/trigger", handler.PostTriggerTaskHandler).Name("dash.tasks.trigger")
 	dashGroup.Get("/tasks/:code/runs", handler.GetTaskRunListHandler).Name("dash.tasks.runs")
+	dashGroup.Post("/api/tasks/runs/batch-delete", handler.PostTaskRunBatchDeleteAPIHandler).Name("dash.tasks.runs.api.batch_delete")
 
 	dashGroup.Get("/import", handler.GetImportHandler).Name("dash.import.show")
 	dashGroup.Post("/import", handler.PostImportHandler).Name("dash.import.submit")
