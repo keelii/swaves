@@ -5057,6 +5057,13 @@ func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 	return nil
 }
 
+func DeleteTaskRun(db *DB, id int64) error {
+	if err := Delete(db, specTaskRuns, id); err != nil {
+		return WrapInternalErr("DeleteTaskRun", err)
+	}
+	return nil
+}
+
 var errNotFoundSentinel = errors.New("not found")
 var errConflictSentinel = errors.New("conflict")
 

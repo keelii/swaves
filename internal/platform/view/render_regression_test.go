@@ -156,7 +156,7 @@ func TestRenderDashRecordsIndexDoesNotRenderMultiselect(t *testing.T) {
 	}
 }
 
-func TestRenderDashTaskRunsIndexDoesNotRenderMultiselect(t *testing.T) {
+func TestRenderDashTaskRunsIndexRendersMultiselect(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
 	rendered := mustRenderRegressionTemplate(t, view, "dash/task_runs_index.html", map[string]any{
@@ -164,8 +164,11 @@ func TestRenderDashTaskRunsIndexDoesNotRenderMultiselect(t *testing.T) {
 		"Task":      db.Task{Name: "demo", Code: "demo"},
 		"Runs":      []db.TaskRun{},
 	})
-	if strings.Contains(rendered, "多选") {
-		t.Fatal("expected task runs index to hide multiselect toggle")
+	if !strings.Contains(rendered, "多选") {
+		t.Fatal("expected task runs index to show multiselect toggle")
+	}
+	if !strings.Contains(rendered, "批量删除") {
+		t.Fatal("expected task runs index to show batch delete button")
 	}
 }
 

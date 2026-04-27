@@ -1411,6 +1411,10 @@ func ListTaskRunsService(dbx *db.DB, taskCode string, limit int) ([]db.TaskRun, 
 	return db.ListTaskRuns(dbx, taskCode, "", limit)
 }
 
+func DeleteTaskRunService(dbx *db.DB, id int64) error {
+	return db.DeleteTaskRun(dbx, id)
+}
+
 func ListNotificationsService(dbx *db.DB, receiver string, eventType string, pager *types.Pagination) ([]db.Notification, error) {
 	if pager == nil {
 		return db.ListNotificationsByEventType(dbx, receiver, eventType, 20, 0)
