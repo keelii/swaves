@@ -6,7 +6,6 @@
   {{ sui.LinkButton("任务列表", "outline", href=UrlFor('dash.tasks.list')) }}
 {% endblock %}
 
-{% block operation_multiselect %}{% endblock %}
 {% block status_main_left %}{% endblock %}
 
 {% block operation_left %}
@@ -16,7 +15,7 @@
 {% block content %}
 {% if Runs|length > 0 %}
   <div class="data-table-wrap">
-    <table id="task-runs-table" class="data-table" aria-label="任务执行记录" data-role="data-table">
+    <table id="task-runs-table" class="data-table" aria-label="任务执行记录" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.tasks.runs.api.batch_delete') }}">
       <thead>
         <tr>
           <th>{{ sui.TableThId("记录ID") }}</th>
@@ -30,7 +29,7 @@
       </thead>
       <tbody>
         {% for run in Runs %}
-        <tr>
+        <tr data-batch-delete-id="{{ run.ID }}">
           <td>{{ sui.TableTdId(run.ID) }}</td>
           <td>
             {% if run.Status == "success" %}

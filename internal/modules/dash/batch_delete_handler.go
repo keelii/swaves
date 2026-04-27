@@ -142,6 +142,12 @@ func (h *Handler) PostTaskBatchDeleteAPIHandler(c fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) PostTaskRunBatchDeleteAPIHandler(c fiber.Ctx) error {
+	return h.runBatchDelete(c, "task_runs", func(id int64) error {
+		return DeleteTaskRunService(h.Model, id)
+	})
+}
+
 func (h *Handler) PostNotificationBatchDeleteAPIHandler(c fiber.Ctx) error {
 	return h.runBatchDelete(c, "notifications", func(id int64) error {
 		return DeleteNotificationService(h.Model, id, dashNotificationReceiver)
