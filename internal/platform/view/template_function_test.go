@@ -213,6 +213,39 @@ func TestCompactNumberFilter(t *testing.T) {
 	}
 }
 
+func TestHumanSizeFilter(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ Size|humanSize }}`), 0o644); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	view := mustLoadMiniJinjaTestView(t, tempDir, nil)
+
+	cases := []struct {
+		name string
+		size any
+		want string
+	}{
+		{name: "int", size: 1024, want: "1 KB"},
+		{name: "int64", size: int64(1536), want: "1.5 KB"},
+		{name: "invalid_fraction", size: 1.5, want: "-"},
+	}
+
+	for _, item := range cases {
+		t.Run(item.name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := view.Render(&out, "page.html", map[string]any{
+				"Size": item.size,
+			}); err != nil {
+				t.Fatalf("render page failed: %v", err)
+			}
+			if got := out.String(); got != item.want {
+				t.Fatalf("humanSize = %q, want %q", got, item.want)
+			}
+		})
+	}
+}
+
 func TestUrlIsUsesRouteNameFromContext(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(

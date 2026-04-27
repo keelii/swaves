@@ -566,7 +566,12 @@ func formatMonitorBytes(bytes uint64) string {
 		unitIdx++
 	}
 
-	text := fmt.Sprintf("%.2f", size)
-	text = strings.TrimRight(strings.TrimRight(text, "0"), ".")
+	rounded := math.Round(size*10) / 10
+	text := ""
+	if rounded >= 10 {
+		text = fmt.Sprintf("%.0f", rounded)
+	} else {
+		text = fmt.Sprintf("%.1f", rounded)
+	}
 	return text + " " + units[unitIdx]
 }

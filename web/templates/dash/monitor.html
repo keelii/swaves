@@ -39,7 +39,6 @@
 
   .monitor-card-value {
     margin-top: 6px;
-    font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.2;
   }
@@ -235,7 +234,15 @@
       if (index === 0) {
         return Math.round(num) + ' ' + units[index];
       }
-      return num.toFixed(2) + ' ' + units[index];
+
+      var rounded = Number(num.toPrecision(2));
+      var text = '';
+      if (rounded >= 10) {
+        text = rounded.toFixed(0);
+      } else {
+        text = rounded.toFixed(1);
+      }
+      return text + ' ' + units[index];
     }
 
     function formatNumber(value) {

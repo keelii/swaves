@@ -72,6 +72,33 @@ func TestNewURLForResolver(t *testing.T) {
 	}
 }
 
+func TestFormatHumanSize(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  any
+		want string
+	}{
+		{name: "zero", raw: int64(0), want: "0 B"},
+		{name: "bytes", raw: int64(1023), want: "1023 B"},
+		{name: "one_kb", raw: int64(1024), want: "1 KB"},
+		{name: "fractional_kb", raw: int64(1536), want: "1.5 KB"},
+		{name: "one_mb", raw: int64(1024 * 1024), want: "1 MB"},
+		{name: "int_compatible", raw: 1024, want: "1 KB"},
+		{name: "negative", raw: int64(-1), want: "-"},
+		{name: "nil", raw: nil, want: "-"},
+		{name: "string", raw: "1024", want: "-"},
+		{name: "float", raw: 1.5, want: "-"},
+	}
+
+	for _, item := range tests {
+		t.Run(item.name, func(t *testing.T) {
+			if got := formatHumanSize(item.raw); got != item.want {
+				t.Fatalf("formatHumanSize(%#v) = %q, want %q", item.raw, got, item.want)
+			}
+		})
+	}
+}
+
 func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "data.sqlite")
 	templateRoot := t.TempDir()

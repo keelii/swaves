@@ -440,7 +440,7 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 		"LocalBackupDir":      "backups",
 		"Pager":               types.Pagination{Page: 1, PageSize: 10, Num: 2, Total: 11},
 		"LocalBackupFiles": []map[string]any{
-			{"Name": "2026-04-08.sqlite", "ModifiedAt": time.Now().Add(-2 * time.Hour).Unix(), "Size": 1024},
+			{"Name": "2026-04-08.sqlite", "ModifiedAt": time.Now().Add(-2 * time.Hour).Unix(), "Size": int64(1024)},
 		},
 	})
 	if !strings.Contains(rendered, "本地备份文件列表") {

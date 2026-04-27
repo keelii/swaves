@@ -802,32 +802,11 @@ func normalizeBytes(raw interface{}) (float64, bool) {
 			return 0, false
 		}
 		return float64(v), true
-	case int32:
-		if v < 0 {
-			return 0, false
-		}
-		return float64(v), true
 	case int64:
 		if v < 0 {
 			return 0, false
 		}
 		return float64(v), true
-	case uint:
-		return float64(v), true
-	case uint32:
-		return float64(v), true
-	case uint64:
-		return float64(v), true
-	case float32:
-		if v < 0 {
-			return 0, false
-		}
-		return float64(v), true
-	case float64:
-		if v < 0 {
-			return 0, false
-		}
-		return v, true
 	case *int64:
 		if v == nil || *v < 0 {
 			return 0, false
