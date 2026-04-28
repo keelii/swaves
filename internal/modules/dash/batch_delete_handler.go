@@ -94,6 +94,55 @@ func (h *Handler) runBatchDelete(c fiber.Ctx, scope string, deleteByID func(int6
 	return c.JSON(response)
 }
 
+func (h *Handler) runBatchRestore(c fiber.Ctx, scope string, restoreByID func(int64) error) error {
+	var payload batchDeletePayload
+	if err := c.Bind().Body(&payload); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "invalid json",
+		})
+	}
+
+	ids := normalizeBatchDeleteIDs(payload.IDs)
+	if len(ids) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "ids is required",
+		})
+	}
+
+	restoredIDs := make([]int64, 0, len(ids))
+	failed := make([]fiber.Map, 0)
+
+	for _, id := range ids {
+		if err := restoreByID(id); err != nil {
+			status := batchDeleteErrorStatus(err)
+			logger.Warn("[batch-restore] scope=%s id=%d status=%d err=%v", scope, id, status, err)
+			failed = append(failed, fiber.Map{
+				"id":     id,
+				"status": status,
+				"error":  err.Error(),
+			})
+			continue
+		}
+		restoredIDs = append(restoredIDs, id)
+	}
+
+	response := fiber.Map{
+		"ok":              len(failed) == 0,
+		"requested_count": len(ids),
+		"restored_count":  len(restoredIDs),
+		"failed_count":    len(failed),
+		"restored_ids":    restoredIDs,
+		"failed":          failed,
+	}
+
+	if len(failed) > 0 {
+		return c.Status(fiber.StatusMultiStatus).JSON(response)
+	}
+	return c.JSON(response)
+}
+
 func (h *Handler) PostPostBatchDeleteAPIHandler(c fiber.Ctx) error {
 	return h.runBatchDelete(c, "posts", func(id int64) error {
 		return DeletePostService(h.Model, id)
@@ -205,5 +254,5 @@ func (h *Handler) PostTrashBatchRestoreAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	return h.runBatchDelete(c, "trash.restore."+modelType, restoreByID)
+	return h.runBatchRestore(c, "trash.restore."+modelType, restoreByID)
 }

@@ -146,9 +146,9 @@ func TestPostTrashBatchRestoreAPIHandler(t *testing.T) {
 
 	var body struct {
 		OK           bool    `json:"ok"`
-		DeletedCount int     `json:"deleted_count"`
+		RestoredCount int    `json:"restored_count"`
 		FailedCount  int     `json:"failed_count"`
-		DeletedIDs   []int64 `json:"deleted_ids"`
+		RestoredIDs  []int64 `json:"restored_ids"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode response failed: %v", err)
@@ -156,14 +156,14 @@ func TestPostTrashBatchRestoreAPIHandler(t *testing.T) {
 	if !body.OK {
 		t.Fatal("expected ok=true")
 	}
-	if body.DeletedCount != 1 {
-		t.Fatalf("deleted_count = %d, want 1", body.DeletedCount)
+	if body.RestoredCount != 1 {
+		t.Fatalf("restored_count = %d, want 1", body.RestoredCount)
 	}
 	if body.FailedCount != 0 {
 		t.Fatalf("failed_count = %d, want 0", body.FailedCount)
 	}
-	if len(body.DeletedIDs) != 1 || body.DeletedIDs[0] != post.ID {
-		t.Fatalf("deleted_ids = %v, want [%d]", body.DeletedIDs, post.ID)
+	if len(body.RestoredIDs) != 1 || body.RestoredIDs[0] != post.ID {
+		t.Fatalf("restored_ids = %v, want [%d]", body.RestoredIDs, post.ID)
 	}
 
 	// Verify the post is restored (soft-delete cleared)

@@ -458,9 +458,9 @@ document.addEventListener('DOMContentLoaded', function() {
       body: JSON.stringify({ ids: ids }),
     }).then(function(result) {
       var body = result && result.body ? result.body : {};
-      var restoredCount = Number(body.deleted_count || 0);
+      var restoredCount = Number(body.restored_count || 0);
       var failedCount = Number(body.failed_count || 0);
-      var restoredIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
+      var restoredIDs = Array.isArray(body.restored_ids) ? body.restored_ids : [];
 
       restoredIDs.forEach(function(idRaw) {
         var id = parseInt(idRaw, 10);
