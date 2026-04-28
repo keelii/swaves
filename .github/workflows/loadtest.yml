@@ -1,0 +1,161 @@
+name: Load Test
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loadtest-pr-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  wrk:
+    if: >-
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, 'run load test') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install wrk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wrk
+
+      - name: Run wrk against local swaves
+        id: run_load_test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sqlite_file="$RUNNER_TEMP/loadtest.sqlite"
+          log_file="$RUNNER_TEMP/swaves.log"
+          listen_addr="127.0.0.1:4096"
+          target_url="http://${listen_addr}/"
+
+          env \
+            SWAVES_ENV=dev \
+            SWAVES_ENSURE_DEFAULT_SETTINGS=1 \
+            SWAVES_ENABLE_SQL_LOG=0 \
+            go run ./cmd/swaves "$sqlite_file" --daemon-mode=0 --listen-addr="${listen_addr}" \
+            >"${log_file}" 2>&1 &
+          app_pid=$!
+
+          cleanup() {
+            if kill -0 "${app_pid}" 2>/dev/null; then
+              kill "${app_pid}"
+              wait "${app_pid}" || true
+            fi
+          }
+          trap cleanup EXIT
+
+          status="000"
+          for _ in {1..30}; do
+            status="$(curl -s -o /dev/null -w '%{http_code}' "${target_url}" || true)"
+            if [[ "${status}" != "000" ]]; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "${status}" == "000" ]]; then
+            echo "swaves failed to start on ${target_url}" >&2
+            tail -n 200 "${log_file}" >&2 || true
+            exit 1
+          fi
+
+          wrk -t1 -c100 -d10s --latency "${target_url}" | tee result.txt
+
+      - name: Build PR comment body
+        if: always()
+        shell: bash
+        env:
+          LOAD_TEST_OUTCOME: ${{ steps.run_load_test.outcome }}
+        run: |
+          set -euo pipefail
+
+          commit_sha="$(git rev-parse --short HEAD)"
+          title="### wrk load test result"
+          if [[ "${LOAD_TEST_OUTCOME}" != "success" ]]; then
+            title="### wrk load test failed"
+          fi
+
+          {
+            echo "${title}"
+            echo
+            echo "- PR: #${{ github.event.issue.number }}"
+            echo "- Commit: \`${commit_sha}\`"
+            echo "- Triggered by: @${{ github.event.comment.user.login }}"
+            echo
+            echo '```text'
+            if [[ -f result.txt ]]; then
+              cat result.txt
+            else
+              echo "Load test did not complete successfully."
+              if [[ -f "${RUNNER_TEMP}/swaves.log" ]]; then
+                echo
+                echo "Last 50 lines from swaves log:"
+                tail -n 50 "${RUNNER_TEMP}/swaves.log"
+              fi
+            fi
+            echo '```'
+          } > comment.md
+
+      - name: Upload load test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-${{ github.run_id }}
+          path: |
+            comment.md
+            result.txt
+            ${{ runner.temp }}/swaves.log
+          if-no-files-found: error
+
+  comment:
+    needs:
+      - wrk
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    if: >-
+      always() &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, 'run load test') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    steps:
+      - name: Download load test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: loadtest-${{ github.run_id }}
+
+      - name: Comment result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('comment.md', 'utf8');
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
