@@ -233,5 +233,5 @@ func (h *Handler) PostTrashBatchRestoreAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	return h.runBatchRestore(c, "trash.restore."+modelType, restoreByID)
+	return h.runBatchRestore(c, "trash."+modelType, restoreByID)
 }
