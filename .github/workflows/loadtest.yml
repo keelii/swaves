@@ -91,7 +91,7 @@ jobs:
           trap cleanup EXIT
 
           status="000"
-          for _ in {1..30}; do
+          for _ in {1..15}; do
             status="$(curl -s -o /dev/null -w '%{http_code}' "${target_url}" || true)"
             if [[ "${status}" != "000" ]]; then
               break
