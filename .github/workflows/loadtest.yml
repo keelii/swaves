@@ -101,7 +101,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          commit_sha="$(git rev-parse --short HEAD)"
+          commit_sha="$(git rev-parse --short HEAD 2>/dev/null || printf unknown)"
           title="### wrk load test result"
           if [[ "${LOAD_TEST_OUTCOME}" != "success" ]]; then
             title="### wrk load test failed"
