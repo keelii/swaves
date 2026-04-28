@@ -37,6 +37,13 @@ echo "  时间       : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 echo ""
 
+# ---- 连通性检查 ----
+if ! curl -sf --max-time 3 "${URL}" -o /dev/null; then
+  echo "错误: 无法连接 ${URL}"
+  echo "  请确认 swaves 已启动并监听该地址，然后重试。"
+  exit 1
+fi
+
 # ---- 执行压测 ----
 AB_ARGS=(
   -n "${REQUESTS}"
