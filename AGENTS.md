@@ -17,7 +17,7 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 
 6) Start with the smallest feature that solves the real user need; avoid introducing extra entities, options, edge-case flows, or speculative capabilities without clear demand.
 
-## 5 Engineering Constraints
+## 7 Engineering Constraints
 
 1) Route and URL discipline:
 - Separate route paths from content prefixes.
@@ -48,14 +48,17 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - Do not derive runtime/cache/temp file locations from the SQLite path, executable path, user cache directory, or system temp directory.
 - Except for the SQLite database file itself, swaves should not write local files outside that shared `.cache` tree.
 
-5) Delivery quality discipline:
+5) Environment variable discipline:
+- Boolean env vars must use `1` (true) and `0` (false); do not use `true`/`false` in examples or documentation.
+
+6) Delivery quality discipline:
 - Keep DB logic in models, keep handlers orchestration-focused.
 - Centralize shared frontend navigation/redirect helpers; avoid ad-hoc `window.location.*` usage.
 - Keep env definitions centralized and clean.
 - Preserve file history when moving/renaming (prefer tracked move).
 - Treat tests and PR checklist as a merge gate; run `go test ./...`.
 
-6) Go CLI flag discipline:
+7) Go CLI flag discipline:
 - Declare all CLI flags at package top level via `var` with `flag.String`/`flag.Bool`/etc.
 - Call `flag.Parse()` (or `flag.CommandLine.Parse(...)`) only in `main()`.
 - Dereference flag pointers before use and validate required inputs explicitly in `main()` flow.
