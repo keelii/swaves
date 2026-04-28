@@ -32,6 +32,7 @@ var (
 
 	TemplateReload        = EnvIsNot(envProd)
 	EnableSQLLog          = shouldEnableSQLLog(AppEnv)
+	EnableRequestTiming   = envBool("SWAVES_ENABLE_REQUEST_TIMING")
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
 )

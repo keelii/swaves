@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"swaves/internal/platform/logger"
-	"swaves/internal/platform/store"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -46,22 +45,12 @@ func (t *PhaseTimer) Track(name string, fn func()) {
 	})
 }
 
-// Log emits a single INFO line with all phase timings when the
-// "debug_request_timing" setting is enabled (1/true/yes/on).
-// It is a no-op on a nil *PhaseTimer or when the setting is off.
+// Log emits a single INFO line with all phase timings.
+// It is a no-op on a nil *PhaseTimer.
 func (t *PhaseTimer) Log(routeName string) {
 	if t == nil {
 		return
 	}
-	m := store.GetSettingMap()
-	val := strings.ToLower(strings.TrimSpace(m["debug_request_timing"]))
-	switch val {
-	case "1", "true", "yes", "on":
-		// proceed
-	default:
-		return
-	}
-
 	total := time.Since(t.startedAt).Round(time.Millisecond)
 	parts := make([]string, 0, len(t.entries)+1)
 	parts = append(parts, fmt.Sprintf("total=%s", total))
@@ -85,8 +74,12 @@ func GetTimer(c fiber.Ctx) *PhaseTimer {
 
 // PhaseTimerMiddleware injects a PhaseTimer at the start of each request and
 // logs the phase breakdown after the handler chain completes.
-func PhaseTimerMiddleware() fiber.Handler {
+// When enabled is false the middleware is a transparent pass-through.
+func PhaseTimerMiddleware(enabled bool) fiber.Handler {
 	return func(c fiber.Ctx) error {
+		if !enabled {
+			return c.Next()
+		}
 		InjectTimer(c)
 		err := c.Next()
 		routeName := ""

@@ -123,7 +123,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		},
 	}))
 	app.Use(requestTracker.Middleware())
-	app.Use(middleware.PhaseTimerMiddleware())
+	app.Use(middleware.PhaseTimerMiddleware(appCfg.EnableRequestTiming))
 	dash.RegisterRouter(app, globalStore)
 	sui.RegisterRouter(app, globalStore)
 	site.RegisterRouter(app, globalStore, siteViews)

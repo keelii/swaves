@@ -28,26 +28,29 @@ const (
 	flagBackupDirKey    = "backup-dir"
 	flagListenAddrKey   = "listen-addr"
 	flagAppNameKey      = "app-name"
-	flagEnableSQLLogKey = "enable-sql-log"
-	flagDaemonModeKey   = "daemon-mode"
-	flagDemonModeKey    = "demon-mode"
-	flagMaxFailuresKey  = "max-failures"
+	flagEnableSQLLogKey          = "enable-sql-log"
+	flagEnableRequestTimingKey   = "enable-request-timing"
+	flagDaemonModeKey            = "daemon-mode"
+	flagDemonModeKey             = "demon-mode"
+	flagMaxFailuresKey           = "max-failures"
 )
 
 const (
-	flagBackupDirUsage    = "backup directory"
-	flagListenAddrUsage   = "listen address"
-	flagAppNameUsage      = "app name"
-	flagEnableSQLLogUsage = "enable sql log"
-	flagDaemonModeUsage   = "1: run with master process, otherwise run worker directly"
-	flagMaxFailuresUsage  = "max consecutive worker failures before master exits (<=0 means unlimited)"
+	flagBackupDirUsage            = "backup directory"
+	flagListenAddrUsage           = "listen address"
+	flagAppNameUsage              = "app name"
+	flagEnableSQLLogUsage         = "enable sql log"
+	flagEnableRequestTimingUsage  = "enable request phase timing log"
+	flagDaemonModeUsage           = "1: run with master process, otherwise run worker directly"
+	flagMaxFailuresUsage          = "max consecutive worker failures before master exits (<=0 means unlimited)"
 )
 
 var (
 	flagBackupDir    = flag.String(flagBackupDirKey, defaultBackupDir, flagBackupDirUsage)
 	flagListenAddr   = flag.String(flagListenAddrKey, defaultListenAddr, flagListenAddrUsage)
 	flagAppName      = flag.String(flagAppNameKey, defaultAppName, flagAppNameUsage)
-	flagEnableSQLLog = flag.Bool(flagEnableSQLLogKey, config.EnableSQLLog, flagEnableSQLLogUsage)
+	flagEnableSQLLog        = flag.Bool(flagEnableSQLLogKey, config.EnableSQLLog, flagEnableSQLLogUsage)
+	flagEnableRequestTiming = flag.Bool(flagEnableRequestTimingKey, config.EnableRequestTiming, flagEnableRequestTimingUsage)
 	flagDaemonMode   = flag.Int(flagDaemonModeKey, defaultDaemonMode, flagDaemonModeUsage)
 	flagDemonMode    = flag.Int(flagDemonModeKey, defaultDaemonMode, flagDaemonModeUsage+" (deprecated alias)")
 	flagMaxFailures  = flag.Int(flagMaxFailuresKey, defaultMaxFailures, flagMaxFailuresUsage)
@@ -388,10 +391,11 @@ func parseMainConfig(args []string) (mainConfig, error) {
 
 func defaultAppConfig() types.AppConfig {
 	return types.AppConfig{
-		BackupDir:    defaultBackupDir,
-		ListenAddr:   defaultListenAddr,
-		AppName:      defaultAppName,
-		EnableSQLLog: config.EnableSQLLog,
+		BackupDir:           defaultBackupDir,
+		ListenAddr:          defaultListenAddr,
+		AppName:             defaultAppName,
+		EnableSQLLog:        config.EnableSQLLog,
+		EnableRequestTiming: config.EnableRequestTiming,
 	}
 }
 
@@ -416,6 +420,7 @@ func newMainFlagSet(cfg *mainConfig, daemonMode *int, internalWorker *bool) *fla
 	fs.StringVar(&cfg.AppConfig.ListenAddr, flagListenAddrKey, cfg.AppConfig.ListenAddr, flagListenAddrUsage)
 	fs.StringVar(&cfg.AppConfig.AppName, flagAppNameKey, cfg.AppConfig.AppName, flagAppNameUsage)
 	fs.BoolVar(&cfg.AppConfig.EnableSQLLog, flagEnableSQLLogKey, cfg.AppConfig.EnableSQLLog, flagEnableSQLLogUsage)
+	fs.BoolVar(&cfg.AppConfig.EnableRequestTiming, flagEnableRequestTimingKey, cfg.AppConfig.EnableRequestTiming, flagEnableRequestTimingUsage)
 	fs.IntVar(daemonMode, flagDaemonModeKey, *daemonMode, flagDaemonModeUsage)
 	fs.IntVar(daemonMode, flagDemonModeKey, *daemonMode, flagDaemonModeUsage)
 	fs.IntVar(&cfg.MaxFailures, flagMaxFailuresKey, cfg.MaxFailures, flagMaxFailuresUsage)
@@ -453,6 +458,13 @@ func applyEnvAppConfig(cfg *types.AppConfig) error {
 			return fmt.Errorf("invalid SWAVES_ENABLE_SQL_LOG: %w", err)
 		}
 		cfg.EnableSQLLog = parsed
+	}
+	if raw, ok := lookupTrimmedEnv("SWAVES_ENABLE_REQUEST_TIMING"); ok {
+		parsed, err := strconv.ParseBool(raw)
+		if err != nil {
+			return fmt.Errorf("invalid SWAVES_ENABLE_REQUEST_TIMING: %w", err)
+		}
+		cfg.EnableRequestTiming = parsed
 	}
 
 	return nil
