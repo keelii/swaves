@@ -138,8 +138,8 @@ jobs:
               echo "Load test did not complete successfully."
               if [[ -f "${log_file}" ]]; then
                 echo
-                echo "Last 50 lines from swaves log:"
-                tail -n 50 "${log_file}"
+                echo "Last 200 lines from swaves log:"
+                tail -n 200 "${log_file}"
               fi
             } > result.txt
           fi
