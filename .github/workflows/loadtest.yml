@@ -69,11 +69,14 @@ jobs:
           cache_dir="${PWD}/.cache/loadtest"
           sqlite_file="${cache_dir}/loadtest.sqlite"
           log_file="${cache_dir}/swaves.log"
-          listen_addr="127.0.0.1:4096"
+          listen_port="54096"
+          listen_addr="127.0.0.1:${listen_port}"
           target_url="http://${listen_addr}/"
           wrk_threads="1"
           wrk_connections="100"
           wrk_duration="10s"
+          max_startup_retries="15"
+          log_tail_lines="200"
 
           mkdir -p "${cache_dir}"
 
@@ -97,7 +100,7 @@ jobs:
           trap cleanup EXIT
 
           status="000"
-          for _ in {1..15}; do
+          for _ in $(seq 1 "${max_startup_retries}"); do
             status="$(curl -s -o /dev/null -w '%{http_code}' "${target_url}" || true)"
             if [[ "${status}" != "000" ]]; then
               break
@@ -107,7 +110,7 @@ jobs:
 
           if [[ "${status}" == "000" ]]; then
             echo "swaves failed to start on ${target_url}" >&2
-            tail -n 200 "${log_file}" >&2 || true
+            tail -n "${log_tail_lines}" "${log_file}" >&2 || true
             exit 1
           fi
 
@@ -129,6 +132,7 @@ jobs:
           log_file="${PWD}/.cache/loadtest/swaves.log"
           commit_sha="$(git rev-parse --short HEAD 2>/dev/null || printf unknown)"
           title="### wrk load test result"
+          log_tail_lines="200"
           if [[ "${LOAD_TEST_OUTCOME}" != "success" ]]; then
             title="### wrk load test failed"
           fi
@@ -138,8 +142,8 @@ jobs:
               echo "Load test did not complete successfully."
               if [[ -f "${log_file}" ]]; then
                 echo
-                echo "Last 200 lines from swaves log:"
-                tail -n 200 "${log_file}"
+                echo "Last ${log_tail_lines} lines from swaves log:"
+                tail -n "${log_tail_lines}" "${log_file}"
               fi
             } > result.txt
           fi
