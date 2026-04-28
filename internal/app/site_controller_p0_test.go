@@ -840,6 +840,9 @@ func TestSiteControllerP0_PostCommentsPaginationByRootThread(t *testing.T) {
 
 // BenchmarkSiteHome measures the per-request throughput of the site homepage.
 // Run with: go test -bench=BenchmarkSiteHome -benchtime=5s ./internal/app/
+// To benchmark against a real database, set SWAVES_BENCH_DB to an existing SQLite file:
+//
+//	SWAVES_BENCH_DB=/path/to/swaves.db go test -bench=BenchmarkSiteHome -benchtime=5s ./internal/app/
 func BenchmarkSiteHome(b *testing.B) {
 	swv := newControllerP0BenchApp(b)
 	defer swv.Shutdown()

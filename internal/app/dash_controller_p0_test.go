@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -41,8 +42,16 @@ func newControllerP0TestApp(t *testing.T) SwavesApp {
 func newControllerP0BenchApp(b *testing.B) SwavesApp {
 	b.Helper()
 
-	dbPath := filepath.Join(b.TempDir(), "controller-p0.sqlite")
-	prepareInstalledAppDB(b, dbPath)
+	var dbPath string
+	if envDB := os.Getenv("SWAVES_BENCH_DB"); envDB != "" {
+		if _, err := os.Stat(envDB); err != nil {
+			b.Fatalf("SWAVES_BENCH_DB file not found: %v", err)
+		}
+		dbPath = envDB
+	} else {
+		dbPath = filepath.Join(b.TempDir(), "controller-p0.sqlite")
+		prepareInstalledAppDB(b, dbPath)
+	}
 	middleware.DashLoginRateLimitResetAll()
 	return NewApp(types.AppConfig{
 		SqliteFile: dbPath,
