@@ -19,6 +19,12 @@
   {{ sui.Button("全部清空", "primary", attrs='type="button" id="trash-empty-trigger"' ~ ((currentTrashCount <= 0) and ' disabled' or '')) }}
 {% endblock %}
 
+{% block status_main_left_content %}
+  <span data-role="multiselect-selected-count" data-target-table="{{ OperationTableID }}">已选择 0 项</span>
+  {{ sui.Button("批量恢复", "outline", attrs=HtmlAttrs({"type":"button","id":"trash-batch-restore-btn","disabled":"disabled"})) }}
+  {{ sui.Button("批量删除", "outline", attrs=HtmlAttrs({"type":"button","data-role":"multiselect-batch-delete","data-target-table":OperationTableID,"disabled":"disabled"})) }}
+{% endblock %}
+
 {% block operation_left %}
 {{ sui.TabsStart("回收站类型") }}
   {{ sui.Tab("文章 " ~ trashTabCounts["posts"], href=UrlFor('dash.trash.list', type='posts'), active=(type == "posts")) }}
@@ -35,7 +41,7 @@
 {% if ModelType == "posts" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table id="trash-table" class="data-table" aria-label="已删除文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='posts') }}">
+    <table id="trash-table" class="data-table" aria-label="已删除文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='posts') }}" data-batch-restore-url="{{ UrlFor('dash.trash.api.batch_restore', type='posts') }}">
       <thead>
       <tr>
         <th>{{ sui.TableThId() }}</th>
@@ -81,7 +87,7 @@
 {% if ModelType == "encrypted-posts" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table id="trash-table" class="data-table" aria-label="已删除加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='encrypted-posts') }}">
+    <table id="trash-table" class="data-table" aria-label="已删除加密文章列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='encrypted-posts') }}" data-batch-restore-url="{{ UrlFor('dash.trash.api.batch_restore', type='encrypted-posts') }}">
       <thead>
       <tr>
         <th>{{ sui.TableThId() }}</th>
@@ -125,7 +131,7 @@
 {% if ModelType == "tags" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table id="trash-table" class="data-table" aria-label="已删除标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='tags') }}">
+    <table id="trash-table" class="data-table" aria-label="已删除标签列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='tags') }}" data-batch-restore-url="{{ UrlFor('dash.trash.api.batch_restore', type='tags') }}">
       <thead>
       <tr>
         <th>{{ sui.TableThId() }}</th>
@@ -169,7 +175,7 @@
 {% if ModelType == "categories" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table id="trash-table" class="data-table" aria-label="已删除分类列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='categories') }}">
+    <table id="trash-table" class="data-table" aria-label="已删除分类列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='categories') }}" data-batch-restore-url="{{ UrlFor('dash.trash.api.batch_restore', type='categories') }}">
       <thead>
       <tr>
         <th>{{ sui.TableThId() }}</th>
@@ -217,7 +223,7 @@
 {% if ModelType == "redirects" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table id="trash-table" class="data-table" aria-label="已删除重定向列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='redirects') }}">
+    <table id="trash-table" class="data-table" aria-label="已删除重定向列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='redirects') }}" data-batch-restore-url="{{ UrlFor('dash.trash.api.batch_restore', type='redirects') }}">
       <thead>
       <tr>
         <th>{{ sui.TableThId() }}</th>
@@ -261,7 +267,7 @@
 {% if ModelType == "themes" %}
   {% if Data %}
   <div class="data-table-wrap">
-    <table id="trash-table" class="data-table" aria-label="已删除主题列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='themes') }}">
+    <table id="trash-table" class="data-table" aria-label="已删除主题列表" data-role="data-table" data-batch-delete-url="{{ UrlFor('dash.trash.api.batch_delete', type='themes') }}" data-batch-restore-url="{{ UrlFor('dash.trash.api.batch_restore', type='themes') }}">
       <thead>
       <tr>
         <th>{{ sui.TableThId() }}</th>
@@ -400,6 +406,96 @@ document.addEventListener('DOMContentLoaded', function() {
         trigger.disabled = false;
         showToast('全部清空失败，请稍后重试。', 'danger');
       });
+    });
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  var restoreBtn = document.getElementById('trash-batch-restore-btn');
+  if (!restoreBtn) {
+    return;
+  }
+
+  var table = document.getElementById('trash-table');
+  if (!table) {
+    return;
+  }
+
+  var batchRestoreURL = (table.getAttribute('data-batch-restore-url') || '').trim();
+  if (!batchRestoreURL) {
+    return;
+  }
+
+  function selectedRows() {
+    return Array.from(table.querySelectorAll('tbody .cell-checkbox:checked')).map(function(cb) {
+      return cb.closest('tr');
+    }).filter(Boolean);
+  }
+
+  function selectedIDs() {
+    return selectedRows().map(function(row) {
+      return parseInt(row.getAttribute('data-batch-delete-id') || '0', 10);
+    }).filter(function(id) {
+      return id > 0;
+    });
+  }
+
+  function syncRestoreBtn() {
+    restoreBtn.disabled = selectedIDs().length === 0;
+  }
+
+  table.addEventListener('change', function() {
+    syncRestoreBtn();
+  });
+
+  document.addEventListener('dash:batch-delete:done', function() {
+    syncRestoreBtn();
+  });
+
+  restoreBtn.addEventListener('click', function(event) {
+    event.preventDefault();
+
+    var rows = selectedRows();
+    var ids = selectedIDs();
+    if (ids.length === 0) {
+      syncRestoreBtn();
+      return;
+    }
+
+    restoreBtn.disabled = true;
+    window.sfetchJSON(batchRestoreURL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ids: ids }),
+    }).then(function(result) {
+      var body = result && result.body ? result.body : {};
+      var restoredCount = Number(body.deleted_count || 0);
+      var failedCount = Number(body.failed_count || 0);
+      var restoredIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
+
+      restoredIDs.forEach(function(idRaw) {
+        var id = parseInt(idRaw, 10);
+        if (id <= 0) {
+          return;
+        }
+        rows.forEach(function(row) {
+          if (parseInt(row.getAttribute('data-batch-delete-id') || '0', 10) === id) {
+            row.remove();
+          }
+        });
+      });
+
+      if (failedCount > 0) {
+        notify('批量恢复完成：成功 ' + restoredCount + '，失败 ' + failedCount + '。', '批量恢复');
+      } else {
+        notify('已成功恢复 ' + restoredCount + ' 项。', '批量恢复');
+      }
+    }).catch(function() {
+      notify('批量恢复失败，请稍后重试。', '批量恢复');
+    }).finally(function() {
+      syncRestoreBtn();
     });
   });
 });

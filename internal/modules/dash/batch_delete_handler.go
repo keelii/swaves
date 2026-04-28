@@ -180,3 +180,30 @@ func (h *Handler) PostTrashBatchDeleteAPIHandler(c fiber.Ctx) error {
 
 	return h.runBatchDelete(c, "trash."+modelType, deleteByID)
 }
+
+func (h *Handler) PostTrashBatchRestoreAPIHandler(c fiber.Ctx) error {
+	modelType := strings.TrimSpace(c.Params("type"))
+	var restoreByID func(int64) error
+
+	switch modelType {
+	case "posts":
+		restoreByID = func(id int64) error { return RestorePostService(h.Model, id) }
+	case "encrypted-posts":
+		restoreByID = func(id int64) error { return RestoreEncryptedPostService(h.Model, id) }
+	case "tags":
+		restoreByID = func(id int64) error { return RestoreTagService(h.Model, id) }
+	case "categories":
+		restoreByID = func(id int64) error { return RestoreCategoryService(h.Model, id) }
+	case "redirects":
+		restoreByID = func(id int64) error { return RestoreRedirectService(h.Model, id) }
+	case "themes":
+		restoreByID = func(id int64) error { return RestoreThemeService(h.Model, id) }
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":    false,
+			"error": "invalid trash type",
+		})
+	}
+
+	return h.runBatchDelete(c, "trash.restore."+modelType, restoreByID)
+}
