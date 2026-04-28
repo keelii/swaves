@@ -1035,6 +1035,28 @@ func TestDashControllerP0_DeletePostKeepsCurrentListQuery(t *testing.T) {
 	}
 }
 
+func TestDashControllerP0_PageListCreateButtonAndNewPageDefaultKind(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+
+	listResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/posts?kind=1", nil, cookieKV, nil)
+	listBody := assertTemplateRendered(t, listResp, fiber.StatusOK, "新建页面")
+	if !strings.Contains(listBody, `posts&#x2f;new?kind=1`) {
+		t.Fatalf("page list should link create button to kind=1 new page, body=%q", listBody)
+	}
+
+	newResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/posts/new?kind=1", nil, cookieKV, nil)
+	newBody := assertTemplateRendered(t, newResp, fiber.StatusOK, `name="kind" value="1"`)
+	if !strings.Contains(newBody, "New Page") {
+		t.Fatalf("page create view should render page title, body=%q", newBody)
+	}
+	if strings.Contains(newBody, `name="kind" value="0"`) {
+		t.Fatalf("page create view should not fall back to post kind, body=%q", newBody)
+	}
+}
+
 func TestDashControllerP0_EncryptedPostEditorPages(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()
