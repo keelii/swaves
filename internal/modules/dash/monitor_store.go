@@ -60,6 +60,7 @@ type monitorMetricConfig struct {
 	Key         string
 	Label       string
 	Unit        string
+	ShowChart   bool
 	chartValue  func(point monitorHistoryPoint) int
 	formatValue func(point monitorHistoryPoint) string
 }
@@ -75,6 +76,7 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		Key:   "pid_cpu",
 		Label: "应用 CPU",
 		Unit:  "%",
+		ShowChart: false,
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(point.PID.CPU * 100))
 		},
@@ -86,6 +88,7 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		Key:   "pid_ram",
 		Label: "应用内存",
 		Unit:  "B",
+		ShowChart: false,
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(float64(point.PID.RAM) / (1024 * 1024)))
 		},
@@ -97,6 +100,7 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		Key:   "os_cpu",
 		Label: "系统 CPU",
 		Unit:  "%",
+		ShowChart: true,
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(point.OS.CPU * 100))
 		},
@@ -108,6 +112,7 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		Key:   "os_ram",
 		Label: "系统内存",
 		Unit:  "B",
+		ShowChart: true,
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(float64(point.OS.RAM) / (1024 * 1024)))
 		},

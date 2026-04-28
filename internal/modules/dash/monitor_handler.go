@@ -1,16 +1,10 @@
 package dash
 
 import (
-	"strings"
 	"swaves/internal/platform/logger"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-)
-
-const (
-	monitorScopeApp    = "app"
-	monitorScopeSystem = "system"
 )
 
 func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
@@ -19,13 +13,11 @@ func (h *Handler) GetMonitorHandler(c fiber.Ctx) error {
 		logger.Warn("[monitor] invalid granularity on page: raw=%s err=%v", c.Query("granularity", ""), err)
 		granularity = monitorGranularityConfigs[0]
 	}
-	scope := resolveMonitorScope(c.Query("scope", ""))
 
 	return RenderDashView(c, "dash/monitor.html", fiber.Map{
 		"Title":             "系统监控",
 		"Granularities":     monitorGranularityViewOptions(),
 		"ActiveGranularity": granularity.Key,
-		"ActiveScope":       scope,
 	}, "")
 }
 
@@ -63,8 +55,6 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 			"ok":    false,
 		})
 	}
-	scope := resolveMonitorScope(c.Query("scope", ""))
-
 	aggregated, latest, err := h.Monitor.Aggregated(time.Now(), granularity)
 	if err != nil {
 		logger.Error("[monitor] aggregate failed: granularity=%s err=%v", granularity.Key, err)
@@ -76,7 +66,7 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 
 	charts := make([]fiber.Map, 0, len(monitorMetricConfigs))
 	for _, metric := range monitorMetricConfigs {
-		if !monitorMetricInScope(metric.Key, scope) {
+		if !metric.ShowChart {
 			continue
 		}
 		chartSVG, buildErr := buildMonitorMetricChartSVG(aggregated, metric, granularity)
@@ -105,7 +95,6 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"ok":            true,
-		"scope":         scope,
 		"granularity":   granularity,
 		"start_at":      startAt,
 		"end_at":        endAt,
@@ -115,26 +104,6 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 		"metrics":       monitorMetricOptions(),
 		"granularities": monitorGranularityOptions(),
 	})
-}
-
-func resolveMonitorScope(raw string) string {
-	raw = strings.TrimSpace(raw)
-	switch raw {
-	case "", monitorScopeApp:
-		return monitorScopeApp
-	case monitorScopeSystem:
-		return monitorScopeSystem
-	default:
-		logger.Warn("[monitor] invalid scope on page: raw=%s", raw)
-		return monitorScopeApp
-	}
-}
-
-func monitorMetricInScope(metricKey, scope string) bool {
-	if scope == monitorScopeSystem {
-		return metricKey == "os_cpu" || metricKey == "os_ram"
-	}
-	return metricKey == "pid_cpu" || metricKey == "pid_ram"
 }
 
 func monitorGranularityViewOptions() []fiber.Map {
