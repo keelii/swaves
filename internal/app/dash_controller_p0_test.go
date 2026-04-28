@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/md"
@@ -36,6 +38,33 @@ func newControllerP0TestApp(t *testing.T) SwavesApp {
 		SqliteFile: dbPath,
 		ListenAddr: ":0",
 		AppName:    "swaves-test",
+	})
+}
+
+func withControllerP0TemplateReload(t *testing.T, enabled bool) {
+	t.Helper()
+
+	original := config.TemplateReload
+	config.TemplateReload = enabled
+	t.Cleanup(func() {
+		config.TemplateReload = original
+	})
+}
+
+func withControllerP0WorkingDir(t *testing.T, dir string) {
+	t.Helper()
+
+	original, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%s) failed: %v", dir, err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(original); err != nil {
+			t.Fatalf("restore working directory failed: %v", err)
+		}
 	})
 }
 
@@ -604,6 +633,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	cookieKV = mergeCookieKV(cookieKV, createResp)
 
 	location := strings.TrimSpace(createResp.Header.Get("Location"))
+	assertTemplateRendered(t, requestControllerP0(t, swv, fiber.MethodGet, location, nil, cookieKV, nil), fiber.StatusOK, "主题已创建。", `id="theme-current-content"`)
 	redirectURL, err := url.Parse(location)
 	if err != nil {
 		t.Fatalf("parse create theme redirect failed: %v", err)
@@ -961,9 +991,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 		t.Fatalf("CreateTheme(second) failed: %v", err)
 	}
 
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
-	t.Setenv("XDG_CACHE_HOME", filepath.Join(tempHome, ".cache"))
+	withControllerP0WorkingDir(t, t.TempDir())
 
 	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
 	setCurrentResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/set-current", secondThemeID), url.Values{
@@ -979,12 +1007,61 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCurrentTheme failed: %v", err)
 	}
-	if currentTheme.ID != defaultTheme.ID || currentTheme.IsCurrent != 1 {
-		t.Fatalf("unexpected current theme after switch attempt without daemon mode: %+v", currentTheme)
+	if currentTheme.ID != secondThemeID || currentTheme.IsCurrent != 1 {
+		t.Fatalf("unexpected current theme after switch attempt in reload mode: %+v", currentTheme)
 	}
 
 	updatedListResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/themes", nil, cookieKV, nil)
-	assertTemplateRendered(t, updatedListResp, fiber.StatusOK, "Second Theme", "Controller Theme Updated")
+	assertTemplateRendered(t, updatedListResp, fiber.StatusOK, "当前主题已更新；当前运行实例未自动重载，请手动重启服务后生效。", "Second Theme", "Controller Theme Updated")
+}
+
+func TestDashControllerP0_ThemeSetCurrentShowsManualRestartNoticeWhenHotReloadUnavailable(t *testing.T) {
+	withControllerP0TemplateReload(t, false)
+
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+	nowUnix := time.Now().Unix()
+	nextThemeID, err := db.CreateTheme(swv.Store.Model, &db.Theme{
+		Name:        "Manual Restart Theme",
+		Code:        fmt.Sprintf("manual-restart-theme-%d", nowUnix),
+		Description: "requires manual restart",
+		Author:      "tester",
+		Files:       `{"home.html":"<h1>manual restart</h1>"}`,
+		CurrentFile: "home.html",
+		Status:      "draft",
+		Version:     1,
+		CreatedAt:   nowUnix,
+		UpdatedAt:   nowUnix,
+	})
+	if err != nil {
+		t.Fatalf("CreateTheme failed: %v", err)
+	}
+
+	withControllerP0WorkingDir(t, t.TempDir())
+
+	csrfToken, cookieKV, _ := fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
+	setCurrentResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/set-current", nextThemeID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if setCurrentResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected set current theme redirect 303, got %d", setCurrentResp.StatusCode)
+	}
+	cookieKV = mergeCookieKV(cookieKV, setCurrentResp)
+
+	currentTheme, err := db.GetCurrentTheme(swv.Store.Model)
+	if err != nil {
+		t.Fatalf("GetCurrentTheme failed: %v", err)
+	}
+	if currentTheme.ID != nextThemeID {
+		t.Fatalf("unexpected current theme after switch without active runtime: %+v", currentTheme)
+	}
+
+	listResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/themes", nil, cookieKV, nil)
+	assertTemplateRendered(t, listResp, fiber.StatusOK, "当前主题已更新；当前运行实例未自动重载，请手动重启服务后生效。", "Manual Restart Theme")
 }
 
 func TestDashControllerP0_DeletePostKeepsCurrentListQuery(t *testing.T) {

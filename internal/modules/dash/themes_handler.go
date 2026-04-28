@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/themefiles"
 	"time"
@@ -62,8 +63,9 @@ func parseThemeVersion(raw string) (int64, error) {
 }
 
 type themeSwitchResult struct {
-	RestartedPID   int
-	AlreadyCurrent bool
+	RestartedPID    int
+	AlreadyCurrent  bool
+	RestartRequired bool
 }
 
 type themeTransferPayload struct {
@@ -319,10 +321,6 @@ func (h *Handler) respondThemeEditUpdate(c fiber.Ctx, returnJSON bool, themeID, 
 func setCurrentThemeAndRestart(model *db.DB, id int64) (themeSwitchResult, error) {
 	result := themeSwitchResult{}
 
-	if runtime.GOOS == "windows" {
-		return result, fmt.Errorf("Windows 暂不支持 daemon-mode 主题切换")
-	}
-
 	theme, err := db.GetThemeByID(model, id)
 	if err != nil {
 		return result, err
@@ -332,30 +330,28 @@ func setCurrentThemeAndRestart(model *db.DB, id int64) (themeSwitchResult, error
 		return result, nil
 	}
 
-	if _, err := readActiveRuntimeInfo(); err != nil {
-		return result, fmt.Errorf("当前 daemon-mode master 不可用，无法切换主题：%w", err)
-	}
-
-	previousCurrentID := int64(0)
-	currentTheme, err := db.GetCurrentTheme(model)
-	if err == nil {
-		previousCurrentID = currentTheme.ID
-	} else if !db.IsErrNotFound(err) {
-		return result, err
-	}
-
 	if err := db.SetThemeCurrent(model, id); err != nil {
 		return result, err
 	}
 
+	if config.TemplateReload {
+		return result, nil
+	}
+	if runtime.GOOS == "windows" {
+		result.RestartRequired = true
+		return result, nil
+	}
+	if _, err := readActiveRuntimeInfo(); err != nil {
+		logger.Warn("[theme] current theme updated without hot reload: id=%d err=%v", id, err)
+		result.RestartRequired = true
+		return result, nil
+	}
+
 	pid, err := restartActiveRuntime()
 	if err != nil {
-		if previousCurrentID > 0 && previousCurrentID != id {
-			if rollbackErr := db.SetThemeCurrent(model, previousCurrentID); rollbackErr != nil {
-				logger.Error("[theme] rollback current theme failed: current_id=%d previous_id=%d err=%v", id, previousCurrentID, rollbackErr)
-			}
-		}
-		return result, err
+		logger.Error("[theme] current theme updated but restart signal failed: id=%d err=%v", id, err)
+		result.RestartRequired = true
+		return result, nil
 	}
 
 	result.RestartedPID = pid
@@ -594,9 +590,16 @@ func (h *Handler) PostSetCurrentThemeHandler(c fiber.Ctx) error {
 	if result.AlreadyCurrent {
 		return h.redirectToDashRouteWithNotice(c, "dash.themes.list", nil, nil, "已是当前主题。")
 	}
+	if result.RestartRequired {
+		logger.Info("[theme] current theme switched: id=%d ip=%s restart_pending=1", id, c.IP())
+		return h.redirectToDashRouteWithNotice(c, "dash.themes.list", nil, nil, "当前主题已更新；当前运行实例未自动重载，请手动重启服务后生效。")
+	}
 
 	logger.Info("[theme] current theme switched: id=%d ip=%s master_pid=%d", id, c.IP(), result.RestartedPID)
-	return h.redirectToDashRouteWithNotice(c, "dash.themes.list", nil, nil, fmt.Sprintf("当前主题已更新，已向服务发送重启信号（pid=%d）。", result.RestartedPID))
+	if result.RestartedPID > 0 {
+		return h.redirectToDashRouteWithNotice(c, "dash.themes.list", nil, nil, fmt.Sprintf("当前主题已更新，已向服务发送重启信号（pid=%d）。", result.RestartedPID))
+	}
+	return h.redirectToDashRouteWithNotice(c, "dash.themes.list", nil, nil, "当前主题已更新。")
 }
 
 func (h *Handler) PostCopyThemeHandler(c fiber.Ctx) error {
