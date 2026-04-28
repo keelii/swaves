@@ -13,6 +13,13 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+func normalizeDashPostKind(raw string) (db.PostKind, string) {
+	if strings.TrimSpace(raw) == "1" {
+		return db.PostKindPage, "1"
+	}
+	return db.PostKindPost, "0"
+}
+
 // parseTagsFromCommaSeparated 解析 "标签1, 标签2" 为 tagIDs，不存在的标签会创建
 func parseTagsFromCommaSeparated(dbx *db.DB, s string) []int64 {
 	var tagIDs []int64
@@ -44,13 +51,7 @@ func (h *Handler) GetRecordListHandler(c fiber.Ctx) error {
 func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	// kind: 0=文章(post), 1=页面(page)，默认 0
-	kindVal := c.Query("kind", "0")
-	var kind db.PostKind
-	if kindVal == "1" {
-		kind = db.PostKindPage
-	} else {
-		kind = db.PostKindPost
-	}
+	kind, kindQuery := normalizeDashPostKind(c.Query("kind", "0"))
 	kindPtr := &kind
 
 	countPost, countPage, countEncryptedPost := CountPost(h.Model)
@@ -106,10 +107,6 @@ func (h *Handler) GetPostListHandler(c fiber.Ctx) error {
 		return err
 	}
 
-	kindQuery := "0"
-	if kind == db.PostKindPage {
-		kindQuery = "1"
-	}
 	searchQueryEscaped := ""
 	if searchQuery != "" {
 		searchQueryEscaped = url.QueryEscape(searchQuery)
@@ -204,7 +201,11 @@ func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 		data["DraftContent"] = ""
 	}
 	if _, ok := data["DraftKind"]; !ok {
-		data["DraftKind"] = "0"
+		_, draftKind := normalizeDashPostKind(c.Query("kind", "0"))
+		data["DraftKind"] = draftKind
+	} else {
+		_, draftKind := normalizeDashPostKind(fmt.Sprint(data["DraftKind"]))
+		data["DraftKind"] = draftKind
 	}
 	if _, ok := data["DraftCategoryID"]; !ok {
 		data["DraftCategoryID"] = int64(0)
@@ -218,7 +219,11 @@ func (h *Handler) renderPostNew(c fiber.Ctx, data fiber.Map) error {
 	draftContent, _ := data["DraftContent"].(string)
 	data["DraftTOCHTML"] = md.ParseMarkdownTOC(draftContent)
 
-	data["Title"] = "New Post"
+	if data["DraftKind"] == "1" {
+		data["Title"] = "New Page"
+	} else {
+		data["Title"] = "New Post"
+	}
 	data["SEditor"] = true
 	data["Tags"] = tags
 	data["Categories"] = categories
@@ -326,13 +331,7 @@ func (h *Handler) PostCreatePostHandler(c fiber.Ctx) error {
 		}
 	}
 
-	draftKind := c.FormValue("kind")
-	kind := db.PostKindPost
-	if draftKind == "1" {
-		kind = db.PostKindPage
-	} else {
-		draftKind = "0"
-	}
+	kind, draftKind := normalizeDashPostKind(c.FormValue("kind"))
 	commentEnabled := c.FormValue("comment_enabled") == "1" || c.FormValue("comment_enabled") == "on" || c.FormValue("comment_enabled") == "true"
 
 	draft := fiber.Map{

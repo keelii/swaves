@@ -12,7 +12,7 @@
 {% set contentValue = Post.Content if isEditMode else (DraftContent if DraftContent is defined else "") %}
 {% set statusValue = Post.Status if (isRegularPostEditor and isEditMode) else "" %}
 {% set commentEnabledValue = Printf("%d", Post.CommentEnabled) if (isRegularPostEditor and isEditMode) else "1" %}
-{% set kindValue = Printf("%d", Post.Kind) if (isRegularPostEditor and isEditMode) else "0" %}
+{% set kindValue = Printf("%d", Post.Kind) if (isRegularPostEditor and isEditMode) else (DraftKind if DraftKind is defined else "0") %}
 {% set tagsValue = SelectedTagNames if isRegularPostEditor else "" %}
 
 {% set tocHTML = "" %}

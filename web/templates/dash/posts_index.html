@@ -3,7 +3,8 @@
 {% set OperationTableID = "posts-table" %}
 
 {% block page_actions %}
-  {{ sui.LinkButton("新建文章", "primary", href=UrlFor('dash.posts.new')) }}
+  {% set createPostLabel = "新建页面" if Kind == 1 else "新建文章" %}
+  {{ sui.LinkButton(createPostLabel, "primary", href=UrlFor('dash.posts.new', {}, {"kind":KindQuery})) }}
 {% endblock %}
 
 {% block status_main_right %}
@@ -92,7 +93,7 @@
         <td>{{ sui.PostStatusBadge(postWithRelation.Post.Status) }}</td>
         <td>{{ PostUVMap[postWithRelation.Post.ID] }}</td>
         <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             {{ sui.LinkIcon("square-arrow-out-up-right", GetPostUrl(postWithRelation.Post), attrs='aria-label="查看" data-title="查看" target="_blank" rel="noopener"') }}
             <form method="post" action="{{ UrlFor('dash.posts.delete', id=postWithRelation.Post.ID) }}">

@@ -30,7 +30,6 @@ const (
 	flagAppNameKey      = "app-name"
 	flagEnableSQLLogKey = "enable-sql-log"
 	flagDaemonModeKey   = "daemon-mode"
-	flagDemonModeKey    = "demon-mode"
 	flagMaxFailuresKey  = "max-failures"
 )
 
@@ -49,7 +48,6 @@ var (
 	flagAppName      = flag.String(flagAppNameKey, defaultAppName, flagAppNameUsage)
 	flagEnableSQLLog = flag.Bool(flagEnableSQLLogKey, config.EnableSQLLog, flagEnableSQLLogUsage)
 	flagDaemonMode   = flag.Int(flagDaemonModeKey, defaultDaemonMode, flagDaemonModeUsage)
-	flagDemonMode    = flag.Int(flagDemonModeKey, defaultDaemonMode, flagDaemonModeUsage+" (deprecated alias)")
 	flagMaxFailures  = flag.Int(flagMaxFailuresKey, defaultMaxFailures, flagMaxFailuresUsage)
 )
 
@@ -417,7 +415,6 @@ func newMainFlagSet(cfg *mainConfig, daemonMode *int, internalWorker *bool) *fla
 	fs.StringVar(&cfg.AppConfig.AppName, flagAppNameKey, cfg.AppConfig.AppName, flagAppNameUsage)
 	fs.BoolVar(&cfg.AppConfig.EnableSQLLog, flagEnableSQLLogKey, cfg.AppConfig.EnableSQLLog, flagEnableSQLLogUsage)
 	fs.IntVar(daemonMode, flagDaemonModeKey, *daemonMode, flagDaemonModeUsage)
-	fs.IntVar(daemonMode, flagDemonModeKey, *daemonMode, flagDaemonModeUsage)
 	fs.IntVar(&cfg.MaxFailures, flagMaxFailuresKey, cfg.MaxFailures, flagMaxFailuresUsage)
 	fs.BoolVar(internalWorker, strings.TrimPrefix(workerProcessFlag, "--"), false, "")
 	return fs
@@ -494,7 +491,6 @@ Priority:
   command line > environment variables > defaults
 
 Notes:
-  --demon-mode remains supported as a deprecated alias of --daemon-mode.
   set-admin-password updates settings.dash_password in the sqlite file and prints the stored bcrypt hash.
   SWAVES_ENSURE_DEFAULT_SETTINGS=true only enables EnsureDefaultSettings when SWAVES_ENV=dev.
 

@@ -135,6 +135,9 @@ func TestRunUtilityCommandSetAdminPasswordHelp(t *testing.T) {
 	if !strings.Contains(stdout.String(), "swaves set-admin-password <sqlite-file> <raw-password>") {
 		t.Fatalf("unexpected stdout: %q", stdout.String())
 	}
+	if strings.Contains(stdout.String(), "--demon-mode") {
+		t.Fatalf("help should not mention removed demon-mode alias: %q", stdout.String())
+	}
 	if stderr.Len() != 0 {
 		t.Fatalf("unexpected stderr: %q", stderr.String())
 	}
@@ -462,17 +465,16 @@ func TestParseMainConfigParsesSupervisorFlags(t *testing.T) {
 	}
 }
 
-func TestParseMainConfigSupportsLegacyDemonModeFlag(t *testing.T) {
-	cfg, err := parseMainConfig([]string{
+func TestParseMainConfigRejectsRemovedDemonModeFlag(t *testing.T) {
+	_, err := parseMainConfig([]string{
 		"data.sqlite",
 		"--demon-mode=0",
 	})
-	if err != nil {
-		t.Fatalf("parseMainConfig failed: %v", err)
+	if err == nil {
+		t.Fatal("expected removed demon-mode flag to be rejected")
 	}
-
-	if cfg.DaemonMode {
-		t.Fatal("expected legacy demon-mode flag to disable daemon mode")
+	if !strings.Contains(err.Error(), "flag provided but not defined: -demon-mode") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
