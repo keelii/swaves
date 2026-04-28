@@ -44,10 +44,14 @@ func newControllerP0BenchApp(b *testing.B) SwavesApp {
 
 	var dbPath string
 	if envDB := os.Getenv("SWAVES_BENCH_DB"); envDB != "" {
-		if _, err := os.Stat(envDB); err != nil {
+		absDB, err := filepath.Abs(envDB)
+		if err != nil {
+			b.Fatalf("SWAVES_BENCH_DB invalid path: %v", err)
+		}
+		if _, err := os.Stat(absDB); err != nil {
 			b.Fatalf("SWAVES_BENCH_DB file not found: %v", err)
 		}
-		dbPath = envDB
+		dbPath = absDB
 	} else {
 		dbPath = filepath.Join(b.TempDir(), "controller-p0.sqlite")
 		prepareInstalledAppDB(b, dbPath)
