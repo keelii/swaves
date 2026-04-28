@@ -39,7 +39,6 @@
 
   .monitor-card-value {
     margin-top: 6px;
-    font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.2;
   }
@@ -149,10 +148,6 @@
       <a class="ui-tab" data-granularity="1h" href="#">1 小时</a>
     {% endif %}
   </div>
-  <div class="ui-tags" aria-label="监控范围" data-monitor-scope-tabs>
-    <a class="ui-tab" data-scope="app" href="#">应用</a>
-    <a class="ui-tab" data-scope="system" href="#">系统</a>
-  </div>
   <div class="monitor-toolbar-meta">最近采样：<span data-latest-ts>-</span></div>
 </div>
 
@@ -201,7 +196,6 @@
 
     var searchParams = new URLSearchParams(window.location.search || '');
     var activeGranularity = searchParams.get('granularity') || '1m';
-    var activeScope = searchParams.get('scope') || 'app';
 
     var availableGranularities = Array.prototype.slice.call(
       document.querySelectorAll('[data-monitor-granularity-tabs] [data-granularity]')
@@ -235,7 +229,15 @@
       if (index === 0) {
         return Math.round(num) + ' ' + units[index];
       }
-      return num.toFixed(2) + ' ' + units[index];
+
+      var rounded = Number(num.toPrecision(2));
+      var text = '';
+      if (rounded >= 10) {
+        text = rounded.toFixed(0);
+      } else {
+        text = rounded.toFixed(1);
+      }
+      return text + ' ' + units[index];
     }
 
     function formatNumber(value) {
@@ -266,22 +268,6 @@
         }
         var url = new URL(monitorPageURL, window.location.origin);
         url.searchParams.set('granularity', key);
-        url.searchParams.set('scope', activeScope);
-        tab.setAttribute('href', url.pathname + url.search);
-      });
-
-      document.querySelectorAll('[data-monitor-scope-tabs] [data-scope]').forEach(function(tab) {
-        var key = tab.getAttribute('data-scope');
-        var selected = key === activeScope;
-        tab.classList.toggle('active', selected);
-        if (selected) {
-          tab.setAttribute('aria-current', 'page');
-        } else {
-          tab.removeAttribute('aria-current');
-        }
-        var url = new URL(monitorPageURL, window.location.origin);
-        url.searchParams.set('granularity', activeGranularity);
-        url.searchParams.set('scope', key);
         tab.setAttribute('href', url.pathname + url.search);
       });
     }
@@ -416,7 +402,6 @@
 
 	      var url = new URL(monitorAPIURL, window.location.origin);
 	      url.searchParams.set('granularity', activeGranularity);
-	      url.searchParams.set('scope', activeScope);
 
 	      window.sfetchJSON(url.toString(), {
 	        method: 'GET'
@@ -441,7 +426,7 @@
     updateActiveTab();
     load();
 
-    window.setInterval(load, 15000);
+    window.setInterval(load, 5000);
   })();
 </script>
 {% endblock %}

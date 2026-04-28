@@ -51,7 +51,6 @@
   .theme-editor-sidebar-tabs .ui-tab {
     background: transparent;
     cursor: pointer;
-    font: inherit;
   }
 
   .theme-editor-sidebar-panel {
@@ -151,8 +150,8 @@
     <div class="theme-editor-workspace">
       <aside class="theme-editor-sidebar">
         <div class="theme-editor-sidebar-tabs ui-tabs" aria-label="主题编辑侧边栏">
-          <button type="button" class="ui-tab active" data-role="theme-sidebar-tab" data-panel="files" aria-selected="true">文件树</button>
-          <button type="button" class="ui-tab" data-role="theme-sidebar-tab" data-panel="info" aria-selected="false">主题信息</button>
+          <a href="javascript:;" class="ui-tab active" data-role="theme-sidebar-tab" data-panel="files" aria-selected="true">文件树</a>
+          <a href="javascript:;" class="ui-tab" data-role="theme-sidebar-tab" data-panel="info" aria-selected="false">主题信息</a>
         </div>
 
         <section class="theme-editor-sidebar-panel is-active" data-role="theme-sidebar-panel" data-panel="files">
@@ -181,7 +180,7 @@
         </section>
 
         <section class="theme-editor-sidebar-panel" data-role="theme-sidebar-panel" data-panel="info" hidden>
-          <div class="ui-form">
+          <div class="ui-form" style="padding-right: var(--app-spacing);">
             {{ sui.Field("主题编码", sui.Input(id="theme-code", value=Theme.Code, attrs="disabled"), id="theme-code") }}
             {{ sui.Field("主题名称", sui.Input(id="theme-name", name="name", value=Theme.Name, placeholder="主题名称", attrs="required"), id="theme-name", required=true) }}
             {{ sui.Field("作者", sui.Input(id="theme-author", name="author", value=Theme.Author, placeholder="主题作者"), id="theme-author") }}
@@ -191,6 +190,9 @@
       </aside>
 
       <div class="theme-editor-pane">
+        {% if Notice %}
+          {{ sui.Alert(Notice, kind="success", title="操作完成") }}
+        {% endif %}
         {% if Error %}
           {{ sui.Alert(Error, kind="danger", title="保存失败") }}
         {% endif %}

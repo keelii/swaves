@@ -49,9 +49,9 @@ It does not define business logic.
 
 - Development hot reload MUST use strategy 1:
   - call `ClearTemplates()` before rendering.
-- Runtime toggle uses env var `SWAVES_TEMPLATE_RELOAD`:
-  - `1/true/yes/on` => enabled
-  - unset/other => disabled
+- Runtime toggle is derived from `SWAVES_ENV`:
+  - `dev` / `test` => enabled
+  - `prod` or unset => disabled
 - Production MUST NOT use per-request template cache clearing.
 
 ## SHOULD

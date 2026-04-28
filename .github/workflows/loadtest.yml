@@ -1,0 +1,203 @@
+name: Load Test
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loadtest-pr-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  wrk:
+    if: >-
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, 'run load test') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Prepare fallback load test artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          printf '%s\n' 'Load test did not complete successfully.' > result.txt
+
+          {
+            echo '### wrk load test failed'
+            echo
+            echo '- PR: #${{ github.event.issue.number }}'
+            echo '- Commit: `unknown`'
+            echo '- Triggered by: @${{ github.event.comment.user.login }}'
+            echo
+            echo '```text'
+            cat result.txt
+            echo '```'
+          } > comment.md
+
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: refs/pull/${{ github.event.issue.number }}/head
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install wrk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wrk
+
+      - name: Run wrk against local swaves
+        id: run_load_test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cache_dir="${PWD}/.cache/loadtest"
+          sqlite_file="${cache_dir}/loadtest.sqlite"
+          log_file="${cache_dir}/swaves.log"
+          listen_port="54096"
+          listen_addr="127.0.0.1:${listen_port}"
+          target_url="http://${listen_addr}/"
+          wrk_threads="1"
+          wrk_connections="100"
+          wrk_duration="10s"
+          max_startup_retries="15"
+          log_tail_lines="200"
+
+          mkdir -p "${cache_dir}"
+
+          env \
+            SWAVES_ENV=dev \
+            SWAVES_ENSURE_DEFAULT_SETTINGS=1 \
+            SWAVES_ENABLE_SQL_LOG=0 \
+            SWAVES_SQLITE_FILE="${sqlite_file}" \
+            SWAVES_LISTEN_ADDR="${listen_addr}" \
+            SWAVES_DAEMON_MODE=0 \
+            go run ./cmd/swaves \
+            >"${log_file}" 2>&1 &
+          app_pid=$!
+
+          cleanup() {
+            if kill -0 "${app_pid}" 2>/dev/null; then
+              kill "${app_pid}"
+              wait "${app_pid}" || true
+            fi
+          }
+          trap cleanup EXIT
+
+          status="000"
+          for _ in $(seq 1 "${max_startup_retries}"); do
+            status="$(curl -s -o /dev/null -w '%{http_code}' "${target_url}" || true)"
+            if [[ "${status}" != "000" ]]; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "${status}" == "000" ]]; then
+            echo "swaves failed to start on ${target_url}" >&2
+            tail -n "${log_tail_lines}" "${log_file}" >&2 || true
+            exit 1
+          fi
+
+          wrk \
+            -t"${wrk_threads}" \
+            -c"${wrk_connections}" \
+            -d"${wrk_duration}" \
+            --latency \
+            "${target_url}" | tee result.txt
+
+      - name: Build PR comment body
+        if: always()
+        shell: bash
+        env:
+          LOAD_TEST_OUTCOME: ${{ steps.run_load_test.outcome }}
+        run: |
+          set -euo pipefail
+
+          log_file="${PWD}/.cache/loadtest/swaves.log"
+          commit_sha="$(git rev-parse --short HEAD 2>/dev/null || printf unknown)"
+          title="### wrk load test result"
+          log_tail_lines="200"
+          if [[ "${LOAD_TEST_OUTCOME}" != "success" ]]; then
+            title="### wrk load test failed"
+          fi
+
+          if [[ ! -f result.txt ]]; then
+            {
+              echo "Load test did not complete successfully."
+              if [[ -f "${log_file}" ]]; then
+                echo
+                echo "Last ${log_tail_lines} lines from swaves log:"
+                tail -n "${log_tail_lines}" "${log_file}"
+              fi
+            } > result.txt
+          fi
+
+          {
+            echo "${title}"
+            echo
+            echo "- PR: #${{ github.event.issue.number }}"
+            echo "- Commit: \`${commit_sha}\`"
+            echo "- Triggered by: @${{ github.event.comment.user.login }}"
+            echo
+            echo '```text'
+            cat result.txt
+            echo '```'
+          } > comment.md
+
+      - name: Upload load test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-${{ github.run_id }}
+          path: |
+            comment.md
+            result.txt
+            .cache/loadtest/swaves.log
+          if-no-files-found: error
+
+  comment:
+    needs:
+      - wrk
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    if: >-
+      always() &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, 'run load test') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    steps:
+      - name: Download load test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: loadtest-${{ github.run_id }}
+
+      - name: Comment result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('comment.md', 'utf8');
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

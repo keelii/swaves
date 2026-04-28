@@ -34,6 +34,15 @@
 - 互动与运营：支持评论、通知、点赞、任务等日常站点运营能力
 - 特殊内容：支持加密文章，适合需要受限访问的内容场景
 
+## 文档导航
+
+- [CLI 参数参考](./cli-reference.md)
+- [环境变量参考](./env-reference.md)
+- [模板约定](./template-conventions.md)
+- [模板 API](./template_api.md)
+- [SUI dash 路由映射](./sui-dash-route-mapping.md)
+- [性能测试说明](./perf-test.md)
+
 ## 立即体验
 
 - 下载预编译 binary：前往 [Releases](https://github.com/keelii/swaves/releases)

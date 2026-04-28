@@ -71,7 +71,7 @@ func (h Handler) buildSitemapURLs(c fiber.Ctx) ([]sitemapURL, error) {
 
 	for currentPage := 1; ; currentPage++ {
 		pager := types.Pagination{Page: currentPage, PageSize: 200}
-		posts := db.ListPublishedPosts(h.Model, db.PostKindPost, &pager)
+		posts := db.ListPublishedPosts(h.Model, db.PostKindPost, &pager, false)
 		for _, post := range posts {
 			addPath(share.GetPostUrl(post), lastModifiedValue(post.UpdatedAt, post.PublishedAt, post.CreatedAt))
 		}

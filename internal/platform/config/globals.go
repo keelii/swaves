@@ -6,7 +6,7 @@ const LoginDashName = "dash"
 
 const LoginCookieName = "swv_login"
 
-const LoginSessionExpire = time.Hour * 24 * 365
+const LoginSessionExpire = time.Hour * 24 * 30 * 365
 
 const LoginRoutePath = "/dash/login"
 

@@ -27,3 +27,20 @@ func TestMonitorGranularityViewOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestMonitorChartMetricsExcludeApplicationMetrics(t *testing.T) {
+	expected := []string{"os_cpu", "os_ram"}
+	actual := make([]string, 0, len(monitorChartMetricConfigs))
+	for _, metric := range monitorChartMetricConfigs {
+		actual = append(actual, metric.Key)
+	}
+
+	if len(actual) != len(expected) {
+		t.Fatalf("chart metric count = %d, want %d (%v)", len(actual), len(expected), actual)
+	}
+	for idx, key := range expected {
+		if actual[idx] != key {
+			t.Fatalf("chart metric %d = %q, want %q", idx, actual[idx], key)
+		}
+	}
+}

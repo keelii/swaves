@@ -292,7 +292,7 @@ func (h Handler) GetError(c fiber.Ctx) error {
 
 func (h Handler) GetHome(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
-	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
+	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager, false)
 	templatePosts := ToTemplatePosts(articles)
 	h.trackSiteUV(c)
 
@@ -471,7 +471,7 @@ func (h Handler) getIST(c fiber.Ctx) (string, string) {
 }
 func (h Handler) GetRSS(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
-	posts := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
+	posts := ListDisplayPosts(h.Model, db.PostKindPost, &pager, true)
 	rss, err := GenerateRSS(posts, c, pager.Page, pager.Total)
 	if err != nil {
 		return err

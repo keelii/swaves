@@ -70,8 +70,8 @@ type monitorMetricOption struct {
 	Unit  string `json:"unit"`
 }
 
-var monitorMetricConfigs = []monitorMetricConfig{
-	{
+var (
+	monitorMetricPIDCPU = monitorMetricConfig{
 		Key:   "pid_cpu",
 		Label: "应用 CPU",
 		Unit:  "%",
@@ -81,8 +81,8 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		formatValue: func(point monitorHistoryPoint) string {
 			return fmt.Sprintf("%.2f%%", point.PID.CPU)
 		},
-	},
-	{
+	}
+	monitorMetricPIDRAM = monitorMetricConfig{
 		Key:   "pid_ram",
 		Label: "应用内存",
 		Unit:  "B",
@@ -92,8 +92,8 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		formatValue: func(point monitorHistoryPoint) string {
 			return formatMonitorBytes(point.PID.RAM)
 		},
-	},
-	{
+	}
+	monitorMetricOSCPU = monitorMetricConfig{
 		Key:   "os_cpu",
 		Label: "系统 CPU",
 		Unit:  "%",
@@ -103,8 +103,8 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		formatValue: func(point monitorHistoryPoint) string {
 			return fmt.Sprintf("%.2f%%", point.OS.CPU)
 		},
-	},
-	{
+	}
+	monitorMetricOSRAM = monitorMetricConfig{
 		Key:   "os_ram",
 		Label: "系统内存",
 		Unit:  "B",
@@ -114,8 +114,12 @@ var monitorMetricConfigs = []monitorMetricConfig{
 		formatValue: func(point monitorHistoryPoint) string {
 			return formatMonitorBytes(point.OS.RAM)
 		},
-	},
-}
+	}
+	monitorChartMetricConfigs = []monitorMetricConfig{
+		monitorMetricOSCPU,
+		monitorMetricOSRAM,
+	}
+)
 
 type MonitorStore struct {
 	mu             sync.RWMutex
@@ -347,32 +351,6 @@ func monitorGranularityOptions() []monitorGranularityConfig {
 	return items
 }
 
-func resolveMonitorMetric(raw string) (monitorMetricConfig, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return monitorMetricConfigs[0], nil
-	}
-
-	for _, item := range monitorMetricConfigs {
-		if item.Key == raw {
-			return item, nil
-		}
-	}
-	return monitorMetricConfig{}, fmt.Errorf("invalid metric: %s", raw)
-}
-
-func monitorMetricOptions() []monitorMetricOption {
-	items := make([]monitorMetricOption, 0, len(monitorMetricConfigs))
-	for _, metric := range monitorMetricConfigs {
-		items = append(items, monitorMetricOption{
-			Key:   metric.Key,
-			Label: metric.Label,
-			Unit:  metric.Unit,
-		})
-	}
-	return items
-}
-
 func buildMonitorMetricChartSVG(points []monitorHistoryPoint, metric monitorMetricConfig, granularity monitorGranularityConfig) (string, error) {
 	chartPoints := make([]UVChartPoint, 0, len(points))
 	labelLayout := monitorChartLabelLayout(granularity)
@@ -566,7 +544,12 @@ func formatMonitorBytes(bytes uint64) string {
 		unitIdx++
 	}
 
-	text := fmt.Sprintf("%.2f", size)
-	text = strings.TrimRight(strings.TrimRight(text, "0"), ".")
+	rounded := math.Round(size*10) / 10
+	text := ""
+	if rounded >= 10 {
+		text = fmt.Sprintf("%.0f", rounded)
+	} else {
+		text = fmt.Sprintf("%.1f", rounded)
+	}
 	return text + " " + units[unitIdx]
 }

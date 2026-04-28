@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"swaves/internal/platform/logger"
+	"swaves/internal/shared/pathutil"
 	"syscall"
 	"time"
 )
@@ -30,11 +31,12 @@ func RuntimeInfoPath() string {
 }
 
 func defaultRuntimeInfoPath() string {
-	cacheDir, err := os.UserCacheDir()
-	if err == nil && strings.TrimSpace(cacheDir) != "" {
-		return filepath.Join(cacheDir, "swaves", "master_runtime.json")
+	path, err := pathutil.ResolveProcessCachePath("updater", "master_runtime.json")
+	if err == nil && strings.TrimSpace(path) != "" {
+		return path
 	}
-	return filepath.Join(os.TempDir(), "swaves_master_runtime.json")
+	logger.Warn("[update] resolve runtime info path fallback: err=%v", err)
+	return filepath.Join(".cache", "updater", "master_runtime.json")
 }
 
 func WriteRuntimeInfo(info RuntimeInfo) error {

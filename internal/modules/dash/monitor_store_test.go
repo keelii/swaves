@@ -141,3 +141,26 @@ func TestAggregateMonitorHistoryPartialFill(t *testing.T) {
 		t.Fatalf("expected ts30 bucket cpu avg=20, got %v", aggregated[index30].PID.CPU)
 	}
 }
+
+func TestFormatMonitorBytes(t *testing.T) {
+	tests := []struct {
+		name  string
+		bytes uint64
+		want  string
+	}{
+		{name: "zero_bytes", bytes: 0, want: "0 B"},
+		{name: "plain_bytes", bytes: 1023, want: "1023 B"},
+		{name: "one_kb", bytes: 1024, want: "1.0 KB"},
+		{name: "one_point_five_kb", bytes: 1536, want: "1.5 KB"},
+		{name: "twelve_kb", bytes: 12 * 1024, want: "12 KB"},
+		{name: "ten_mb", bytes: 10 * 1024 * 1024, want: "10 MB"},
+	}
+
+	for _, item := range tests {
+		t.Run(item.name, func(t *testing.T) {
+			if got := formatMonitorBytes(item.bytes); got != item.want {
+				t.Fatalf("formatMonitorBytes(%d) = %q, want %q", item.bytes, got, item.want)
+			}
+		})
+	}
+}

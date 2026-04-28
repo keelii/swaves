@@ -22,6 +22,16 @@
 {% endblock %}
 
 {% block content %}
+{% if Error %}
+  <div class="app-px app-pt">
+    {{ sui.Alert(Error, kind="danger", title="操作失败", inline=true) }}
+  </div>
+{% endif %}
+{% if Notice %}
+  <div class="app-px app-pt">
+    {{ sui.Alert(Notice, kind="success", title="操作完成", inline=true) }}
+  </div>
+{% endif %}
 {% if Themes|length > 0 %}
   <div class="data-table-wrap">
     <table id="themes-table" class="data-table" aria-label="主题列表" data-role="data-table">

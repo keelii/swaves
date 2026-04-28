@@ -2071,8 +2071,9 @@ func CountDeletedTags(db *DB) (int, error) {
 	return CountDeleted(db, specTags, "", nil)
 }
 
-// ListPublishedPosts 分页列出已发布文章（用于 RSS 等），返回 []Post
-func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
+// ListPublishedPosts 分页列出已发布文章，返回 []Post。
+// withContent 为 false 时不查询 content 字段，适用于仅需元数据的场景（如首页列表、sitemap）。
+func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination, withContent bool) []Post {
 	if pager == nil {
 		pager = &types.Pagination{}
 	}
@@ -2093,8 +2094,12 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		pager.PageSize = 1024
 	}
 	offset := (pager.Page - 1) * pager.PageSize
+	selectFields := "id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at"
+	if withContent {
+		selectFields = "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at"
+	}
 	opts := ReadOptions{
-		SelectFields: "id, title, slug, content, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
+		SelectFields: selectFields,
 		WhereClause:  "status = ? AND kind = ?",
 		OrderBy:      "published_at DESC",
 		WhereArgs:    []interface{}{"published", kind},
@@ -2104,7 +2109,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination) []Post {
 		opts.Offset = offset
 	}
 	results, err := Read(db, specPosts, opts, func(rows *sql.Rows) (interface{}, error) {
-		p, err := scanPost(rows, true)
+		p, err := scanPost(rows, withContent)
 		if err != nil {
 			return nil, err
 		}
@@ -5053,6 +5058,13 @@ func UpdateTaskRunStatus(db *DB, run *TaskRun) error {
 
 	if err := UpdateTaskStatus(db, run.TaskCode, run.Status, run.StartedAt); err != nil {
 		return WrapInternalErr("UpdateTaskRunStatus.UpdateTaskStatus", err)
+	}
+	return nil
+}
+
+func DeleteTaskRun(db *DB, id int64) error {
+	if err := Delete(db, specTaskRuns, id); err != nil {
+		return WrapInternalErr("DeleteTaskRun", err)
 	}
 	return nil
 }

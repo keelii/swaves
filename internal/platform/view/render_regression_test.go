@@ -156,7 +156,7 @@ func TestRenderDashRecordsIndexDoesNotRenderMultiselect(t *testing.T) {
 	}
 }
 
-func TestRenderDashTaskRunsIndexDoesNotRenderMultiselect(t *testing.T) {
+func TestRenderDashTaskRunsIndexRendersMultiselect(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
 	rendered := mustRenderRegressionTemplate(t, view, "dash/task_runs_index.html", map[string]any{
@@ -164,8 +164,11 @@ func TestRenderDashTaskRunsIndexDoesNotRenderMultiselect(t *testing.T) {
 		"Task":      db.Task{Name: "demo", Code: "demo"},
 		"Runs":      []db.TaskRun{},
 	})
-	if strings.Contains(rendered, "多选") {
-		t.Fatal("expected task runs index to hide multiselect toggle")
+	if !strings.Contains(rendered, "多选") {
+		t.Fatal("expected task runs index to show multiselect toggle")
+	}
+	if !strings.Contains(rendered, "批量删除") {
+		t.Fatal("expected task runs index to show batch delete button")
 	}
 }
 
@@ -440,7 +443,7 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 		"LocalBackupDir":      "backups",
 		"Pager":               types.Pagination{Page: 1, PageSize: 10, Num: 2, Total: 11},
 		"LocalBackupFiles": []map[string]any{
-			{"Name": "2026-04-08.sqlite", "ModifiedAt": time.Now().Add(-2 * time.Hour).Unix(), "Size": 1024},
+			{"Name": "2026-04-08.sqlite", "ModifiedAt": time.Now().Add(-2 * time.Hour).Unix(), "Size": int64(1024)},
 		},
 	})
 	if !strings.Contains(rendered, "本地备份文件列表") {
@@ -688,7 +691,6 @@ func TestRenderDashMonitorWithMapGranularities(t *testing.T) {
 			{"Key": "1m", "Label": "1分钟"},
 		},
 		"ActiveGranularity": "1m",
-		"ActiveScope":       "app",
 	})
 	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
@@ -706,13 +708,29 @@ func TestRenderDashMonitorUsesJSONFieldNamesForLatestValues(t *testing.T) {
 			{"Key": "1m", "Label": "1分钟"},
 		},
 		"ActiveGranularity": "1m",
-		"ActiveScope":       "app",
 	})
 	if !strings.Contains(rendered, "pid_cpu: formatPercent(pid.cpu)") {
 		t.Fatalf("expected monitor page to read pid cpu from json field name, got: %s", rendered)
 	}
 	if !strings.Contains(rendered, "os_ram: formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram)") {
 		t.Fatalf("expected monitor page to read os ram from json field names, got: %s", rendered)
+	}
+}
+
+func TestRenderDashMonitorDoesNotRenderScopeTabsOrScopeQuery(t *testing.T) {
+	view := mustLoadRegressionView(t)
+
+	rendered := mustRenderRegressionTemplate(t, view, "dash/monitor.html", map[string]any{
+		"Granularities": []map[string]any{
+			{"Key": "1m", "Label": "1分钟"},
+		},
+		"ActiveGranularity": "1m",
+	})
+	if strings.Contains(rendered, "data-monitor-scope-tabs") {
+		t.Fatalf("expected monitor page to remove scope tabs, got: %s", rendered)
+	}
+	if strings.Contains(rendered, "url.searchParams.set('scope'") {
+		t.Fatalf("expected monitor page to avoid scope query params, got: %s", rendered)
 	}
 }
 
@@ -894,7 +912,6 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 			{"Key": "1m", "Label": "1分钟"},
 		},
 		"ActiveGranularity": "1m",
-		"ActiveScope":       "app",
 	})
 	if strings.Contains(rendered, "var monitorAPIURL = '&#x2f;") {
 		t.Fatalf("expected monitor js api url not to be html escaped")
