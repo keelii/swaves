@@ -15,6 +15,7 @@ import (
 	"strings"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/shared/md"
 	"swaves/internal/shared/types"
 	"testing"
 	"time"
@@ -1054,6 +1055,57 @@ func TestDashControllerP0_PageListCreateButtonAndNewPageDefaultKind(t *testing.T
 	}
 	if strings.Contains(newBody, `name="kind" value="0"`) {
 		t.Fatalf("page create view should not fall back to post kind, body=%q", newBody)
+	}
+}
+
+func TestDashControllerP0_PostEditKeepsServerRenderedTOC(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+	nowUnix := time.Now().Unix()
+	content := "# 控制器测试目录\n\n## 二级标题\n\n正文"
+	postID, err := db.CreatePost(swv.Store.Model, &db.Post{
+		Title:     fmt.Sprintf("P0 TOC Post %d", nowUnix),
+		Slug:      fmt.Sprintf("p0-toc-post-%d", nowUnix),
+		Content:   content,
+		Status:    "published",
+		Kind:      db.PostKindPost,
+		CreatedAt: nowUnix,
+		UpdatedAt: nowUnix,
+	})
+	if err != nil {
+		t.Fatalf("create post failed: %v", err)
+	}
+
+	body := assertTemplateRendered(t, requestControllerP0(t, swv, fiber.MethodGet, fmt.Sprintf("/dash/posts/%d/edit", postID), nil, cookieKV, nil), fiber.StatusOK, `data-role="post-editor-toc-body"`)
+	wantTOC := md.ParseMarkdownTOC(content)
+	if !strings.Contains(body, wantTOC) {
+		t.Fatalf("post edit page should include server-rendered toc, body=%q want=%q", body, wantTOC)
+	}
+}
+
+func TestDashControllerP0_EncryptedPostEditKeepsServerRenderedTOC(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+	content := "# 加密目录\n\n## 二级标题\n\n正文"
+	expiresAt := time.Now().Add(2 * time.Hour).Unix()
+	postID, err := db.CreateEncryptedPost(swv.Store.Model, &db.EncryptedPost{
+		Title:     fmt.Sprintf("encrypted-toc-%d", time.Now().UnixNano()),
+		Content:   content,
+		Password:  "123456",
+		ExpiresAt: &expiresAt,
+	})
+	if err != nil {
+		t.Fatalf("create encrypted post failed: %v", err)
+	}
+
+	body := assertTemplateRendered(t, requestControllerP0(t, swv, fiber.MethodGet, fmt.Sprintf("/dash/encrypted-posts/%d/edit", postID), nil, cookieKV, nil), fiber.StatusOK, `data-role="post-editor-toc-body"`)
+	wantTOC := md.ParseMarkdownTOC(content)
+	if !strings.Contains(body, wantTOC) {
+		t.Fatalf("encrypted edit page should include server-rendered toc, body=%q want=%q", body, wantTOC)
 	}
 }
 

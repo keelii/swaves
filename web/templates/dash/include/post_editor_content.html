@@ -15,12 +15,7 @@
 {% set kindValue = Printf("%d", Post.Kind) if (isRegularPostEditor and isEditMode) else (DraftKind if DraftKind is defined else "0") %}
 {% set tagsValue = SelectedTagNames if isRegularPostEditor else "" %}
 
-{% set tocHTML = "" %}
-{% if isRegularPostEditor and isEditMode %}
-  {% set tocHTML = PostTOCHTML %}
-{% elif isRegularPostEditor %}
-  {% set tocHTML = DraftTOCHTML %}
-{% endif %}
+{% set tocHTML = PostTOCHTML if (isEditMode and PostTOCHTML is defined) else (DraftTOCHTML if DraftTOCHTML is defined else "") %}
 {% set initialTOCHTML = tocHTML|trim %}
 
 {% set autoSyncSlugEnabled = isRegularPostEditor and (not isEditMode) %}
@@ -84,6 +79,7 @@
     var tocSyncSeq = 0;
     var tocLatestMarkdown = "";
     var tocAvailable = false;
+    var preserveInitialTOC = {{ "true" if initialTOCHTML else "false" }};
     var tocPreferredOpen = !!(workspace && workspace.getAttribute("data-toc-preferred-open") === "1");
     var sourcePreferredOpen = !!(workspace && workspace.getAttribute("data-source-preferred-open") === "1");
     var tocOpenPersisting = false;
@@ -335,39 +331,6 @@
       tocToggleButton.setAttribute("aria-pressed", active ? "true" : "false");
     }
 
-    function resizeSourceTextarea() {
-      if (!textarea || textarea.hidden) {
-        return;
-      }
-      var minHeight = 0;
-      if (workspace && workspace.querySelector) {
-        var contentEditor = workspace.querySelector(".content-editor");
-        if (contentEditor) {
-          minHeight = contentEditor.clientHeight || 0;
-          var title = contentEditor.querySelector(".title");
-          if (title) {
-            minHeight -= title.offsetHeight || 0;
-          }
-          if (minHeight < 0) {
-            minHeight = 0;
-          }
-        }
-      }
-
-      if (minHeight > 0) {
-        textarea.style.minHeight = minHeight + "px";
-      } else {
-        textarea.style.minHeight = "";
-      }
-
-      textarea.style.height = "auto";
-      var nextHeight = textarea.scrollHeight || 0;
-      if (nextHeight < minHeight) {
-        nextHeight = minHeight;
-      }
-      textarea.style.height = nextHeight + "px";
-    }
-
     function syncTextareaFromEditor() {
       if (!textarea || !window.__seditor || typeof window.__seditor.getMarkdown !== "function") {
         return;
@@ -456,7 +419,6 @@
 
       if (sourceMode) {
         syncTextareaFromEditor();
-        resizeSourceTextarea();
         updateWordCount(textarea.value);
         scheduleTOCSync(textarea.value);
         if (!options || options.focus !== false) {
@@ -574,9 +536,6 @@
         tocPreferredOpen = nextOpen;
         queueSaveTOCOpenState(nextOpen);
       }
-      if (sourceMode) {
-        resizeSourceTextarea();
-      }
     }
 
     function setTOCAvailable(available) {
@@ -646,6 +605,10 @@
     }
 
     function scheduleTOCSync(nextMarkdown) {
+      if (preserveInitialTOC) {
+        preserveInitialTOC = false;
+        return;
+      }
       tocLatestMarkdown = typeof nextMarkdown === "string" ? nextMarkdown : ((textarea && textarea.value) || "");
       if (tocSyncTimer) {
         window.clearTimeout(tocSyncTimer);
@@ -723,12 +686,6 @@
       }
     });
 
-    window.addEventListener("resize", function() {
-      if (sourceMode) {
-        resizeSourceTextarea();
-      }
-    });
-
     if (!window.SEditor || typeof window.SEditor.init !== "function" || !wysiwygMount) {
       sourceModeEnabled = false;
       sourceMode = true;
@@ -737,7 +694,6 @@
       }
       if (textarea) {
         textarea.hidden = false;
-        resizeSourceTextarea();
       }
       refreshSourceToggleButton();
       refreshTOCToggleButton();
@@ -764,7 +720,6 @@
     if (textarea) {
       textarea.addEventListener("input", updateWordCount);
       textarea.addEventListener("input", function() {
-        resizeSourceTextarea();
         scheduleTOCSync();
       });
     }
