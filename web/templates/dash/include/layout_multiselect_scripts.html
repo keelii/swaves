@@ -106,6 +106,7 @@
       var batchDelete = document.querySelector('[data-role="multiselect-batch-delete"][data-target-table="' + tableId + '"]');
       var batchRestore = document.querySelector('[data-role="multiselect-batch-restore"][data-target-table="' + tableId + '"]');
       var batchDeleteAPI = (table.getAttribute('data-batch-delete-url') || '').trim();
+      var batchRestoreAPI = (table.getAttribute('data-batch-restore-url') || '').trim();
 
       function selectedRowCheckboxes() {
         return table.querySelectorAll('tbody .cell-checkbox:checked');
@@ -169,7 +170,37 @@
         return rows;
       }
 
-      function postBatchDeleteRequest(apiURL, ids) {
+      function collectSelectedRowState(rows) {
+        var ids = [];
+        var idSeen = {};
+        var rowsByID = {};
+        var unresolvedCount = 0;
+
+        rows.forEach(function(row) {
+          var id = getBatchDeleteIDFromRow(row);
+          if (id <= 0) {
+            unresolvedCount += 1;
+            return;
+          }
+          if (!rowsByID[id]) {
+            rowsByID[id] = [];
+          }
+          rowsByID[id].push(row);
+          if (idSeen[id]) {
+            return;
+          }
+          idSeen[id] = true;
+          ids.push(id);
+        });
+
+        return {
+          ids: ids,
+          rowsByID: rowsByID,
+          unresolvedCount: unresolvedCount,
+        };
+      }
+
+      function postBatchActionRequest(apiURL, ids) {
         var payload = JSON.stringify({ ids: ids });
         return window.sfetchJSON(apiURL, {
           method: 'POST',
@@ -180,7 +211,7 @@
         });
       }
 
-      function summarizeBatchDeleteItems(items, key, limit) {
+      function summarizeBatchItems(items, key, limit) {
         if (!Array.isArray(items) || items.length === 0) {
           return '';
         }
@@ -201,8 +232,8 @@
 
       function buildBatchDeleteMessage(body, successCount, failedCount) {
         var message = '批量删除完成：成功 ' + successCount + '，失败 ' + failedCount + '。';
-        var failedText = summarizeBatchDeleteItems(body && body.failed, 'error', 3);
-        var warningText = summarizeBatchDeleteItems(body && body.warnings, 'warning', 2);
+        var failedText = summarizeBatchItems(body && body.failed, 'error', 3);
+        var warningText = summarizeBatchItems(body && body.warnings, 'warning', 2);
 
         if (failedText) {
           message += ' 失败原因：' + failedText;
@@ -217,6 +248,13 @@
           }
         }
         return message;
+      }
+
+      function buildBatchRestoreMessage(body, successCount, failedCount) {
+        if (failedCount > 0) {
+          return '批量恢复完成：成功 ' + successCount + '，失败 ' + failedCount + '。';
+        }
+        return '已成功恢复 ' + successCount + ' 项。';
       }
 
       function performLegacyBatchDelete(rows) {
@@ -258,63 +296,50 @@
         });
       }
 
-      function performAPIBatchDelete(rows) {
-        var ids = [];
-        var idSeen = {};
-        var rowsByID = {};
-        var unresolvedCount = 0;
+      function removeRowsByIDMap(rowsByID, idList) {
+        var successCount = 0;
 
-        rows.forEach(function(row) {
-          var id = getBatchDeleteIDFromRow(row);
-          if (id <= 0) {
-            unresolvedCount += 1;
+        idList.forEach(function(idRaw) {
+          var id = parsePositiveInt(idRaw);
+          if (id <= 0 || !rowsByID[id]) {
             return;
           }
-          if (!rowsByID[id]) {
-            rowsByID[id] = [];
-          }
-          rowsByID[id].push(row);
-          if (idSeen[id]) {
-            return;
-          }
-          idSeen[id] = true;
-          ids.push(id);
+          successCount += 1;
+          rowsByID[id].forEach(function(row) {
+            row.remove();
+          });
+          delete rowsByID[id];
         });
 
-        if (ids.length === 0) {
+        return successCount;
+      }
+
+      function performAPIBatchAction(rows, options) {
+        var selection = collectSelectedRowState(rows);
+
+        if (selection.ids.length === 0) {
           return Promise.resolve({
             successCount: 0,
             failedCount: rows.length,
+            message: options.buildMessage(null, 0, rows.length),
           });
         }
 
-        return postBatchDeleteRequest(batchDeleteAPI, ids).then(function(result) {
+        return postBatchActionRequest(options.apiURL, selection.ids).then(function(result) {
           var body = result && result.body ? result.body : {};
-          var deletedIDs = Array.isArray(body.deleted_ids) ? body.deleted_ids : [];
-          var failedItems = Array.isArray(body.failed) ? body.failed : [];
-          var deletedCount = 0;
+          var successIDs = Array.isArray(body[options.successIDsKey]) ? body[options.successIDsKey] : [];
+          var failedItems = options.failedItemsKey && Array.isArray(body[options.failedItemsKey]) ? body[options.failedItemsKey] : [];
+          var successCount = removeRowsByIDMap(selection.rowsByID, successIDs);
 
-          deletedIDs.forEach(function(idRaw) {
-            var id = parsePositiveInt(idRaw);
-            if (id <= 0 || !rowsByID[id]) {
-              return;
-            }
-            deletedCount += 1;
-            rowsByID[id].forEach(function(row) {
-              row.remove();
-            });
-            delete rowsByID[id];
-          });
-
-          var failedCount = unresolvedCount;
+          var failedCount = selection.unresolvedCount;
           if (failedItems.length > 0) {
             failedCount += failedItems.length;
           } else {
-            var failedFromBody = parsePositiveInt(body.failed_count);
+            var failedFromBody = parsePositiveInt(body[options.failedCountKey]);
             if (failedFromBody > 0) {
               failedCount += failedFromBody;
             } else {
-              var inferredFailed = ids.length - deletedCount;
+              var inferredFailed = selection.ids.length - successCount;
               if (inferredFailed > 0) {
                 failedCount += inferredFailed;
               }
@@ -322,17 +347,69 @@
           }
 
           return {
-            successCount: deletedCount,
+            successCount: successCount,
             failedCount: failedCount,
-            message: buildBatchDeleteMessage(body, deletedCount, failedCount),
+            message: options.buildMessage(body, successCount, failedCount),
           };
         }).catch(function(err) {
-          console.warn('api batch delete failed', err);
+          console.warn(options.logLabel, err);
           return {
             successCount: 0,
             failedCount: rows.length,
-            message: buildBatchDeleteMessage(null, 0, rows.length),
+            message: options.buildMessage(null, 0, rows.length),
           };
+        });
+      }
+
+      function bindBatchAction(button, options) {
+        if (!button || (!options.apiURL && !options.fallback)) {
+          return;
+        }
+
+        button.addEventListener('click', function(event) {
+          event.preventDefault();
+          var rows = selectedRows();
+          if (!rows || rows.length === 0) {
+            syncSelectionStatus();
+            return;
+          }
+
+          var confirmStep = options.confirmMessage
+            ? askMultiselectConfirm(options.confirmMessage(rows))
+            : Promise.resolve(true);
+
+          confirmStep.then(function(confirmed) {
+            if (!confirmed) {
+              return;
+            }
+
+            button.disabled = true;
+            var runAction = options.apiURL
+              ? performAPIBatchAction(rows, options)
+              : options.fallback(rows);
+
+            return runAction.then(function(result) {
+              var successCount = result && typeof result.successCount === 'number' ? result.successCount : 0;
+              var failedCount = result && typeof result.failedCount === 'number' ? result.failedCount : 0;
+              var message = result && result.message ? result.message : options.buildMessage(null, successCount, failedCount);
+
+              if (successCount > 0 || failedCount > 0) {
+                notify(message, options.title);
+              }
+
+              if (options.doneEventName) {
+                document.dispatchEvent(new CustomEvent(options.doneEventName, {
+                  detail: {
+                    tableId: tableId,
+                    successCount: successCount,
+                    failedCount: failedCount
+                  }
+                }));
+              }
+            }).finally(function() {
+              syncSelectAllState();
+            });
+          });
         });
       }
 
@@ -403,47 +480,30 @@
         }
       });
 
-      if (batchDelete) {
-        batchDelete.addEventListener('click', function(event) {
-          event.preventDefault();
-          var rows = selectedRows();
-          if (!rows || rows.length === 0) {
-            syncSelectionStatus();
-            return;
-          }
+      bindBatchAction(batchDelete, {
+        apiURL: batchDeleteAPI,
+        fallback: batchDeleteAPI ? null : performLegacyBatchDelete,
+        confirmMessage: function(rows) {
+          return '确认批量删除选中的 ' + rows.length + ' 项？';
+        },
+        successIDsKey: 'deleted_ids',
+        failedCountKey: 'failed_count',
+        failedItemsKey: 'failed',
+        buildMessage: buildBatchDeleteMessage,
+        logLabel: 'api batch delete failed',
+        title: '批量删除',
+        doneEventName: 'dash:batch-delete:done',
+      });
 
-          askMultiselectConfirm('确认批量删除选中的 ' + rows.length + ' 项？').then(function(confirmed) {
-            if (!confirmed) {
-              return;
-            }
-
-            batchDelete.disabled = true;
-            var runDelete = batchDeleteAPI
-              ? performAPIBatchDelete(rows)
-              : performLegacyBatchDelete(rows);
-
-            runDelete.then(function(result) {
-              var successCount = result && typeof result.successCount === 'number' ? result.successCount : 0;
-              var failedCount = result && typeof result.failedCount === 'number' ? result.failedCount : 0;
-              var message = result && result.message ? result.message : buildBatchDeleteMessage(null, successCount, failedCount);
-
-              if (successCount > 0 || failedCount > 0) {
-                notify(message, '批量删除');
-              }
-
-              document.dispatchEvent(new CustomEvent('dash:batch-delete:done', {
-                detail: {
-                  tableId: tableId,
-                  successCount: successCount,
-                  failedCount: failedCount
-                }
-              }));
-            }).finally(function() {
-              syncSelectAllState();
-            });
-          });
-        });
-      }
+      bindBatchAction(batchRestore, {
+        apiURL: batchRestoreAPI,
+        successIDsKey: 'restored_ids',
+        failedCountKey: 'failed_count',
+        buildMessage: buildBatchRestoreMessage,
+        logLabel: 'api batch restore failed',
+        title: '批量恢复',
+        doneEventName: 'dash:batch-restore:done',
+      });
 
       document.addEventListener('dash:multiselect:refresh', function(event) {
         var detail = event && event.detail ? event.detail : {};
