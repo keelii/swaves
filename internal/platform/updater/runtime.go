@@ -24,6 +24,7 @@ var runtimeInfoPath = defaultRuntimeInfoPath
 var (
 	processExists     = defaultProcessExists
 	currentExecutable = os.Executable
+	osUserCacheDir    = os.UserCacheDir
 )
 
 func RuntimeInfoPath() string {
@@ -37,6 +38,45 @@ func defaultRuntimeInfoPath() string {
 	}
 	logger.Warn("[update] resolve runtime info path fallback: err=%v", err)
 	return filepath.Join(".cache", "updater", "master_runtime.json")
+}
+
+func legacyRuntimeInfoPaths() []string {
+	paths := make([]string, 0, 3)
+	if cacheDir, err := osUserCacheDir(); err == nil && strings.TrimSpace(cacheDir) != "" {
+		paths = append(paths, filepath.Join(cacheDir, "swaves", "master_runtime.json"))
+	}
+	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil && strings.TrimSpace(processCachePath) != "" {
+		paths = append(paths, processCachePath)
+	}
+	paths = append(paths, filepath.Join(os.TempDir(), "swaves_master_runtime.json"))
+	return paths
+}
+
+func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return RuntimeInfo{}, err
+		}
+		logger.Error("[update] read runtime info failed: path=%s err=%v", path, err)
+		return RuntimeInfo{}, fmt.Errorf("read runtime info failed: %w", err)
+	}
+
+	var info RuntimeInfo
+	if err := json.Unmarshal(data, &info); err != nil {
+		logger.Error("[update] parse runtime info failed: path=%s err=%v", path, err)
+		return RuntimeInfo{}, fmt.Errorf("parse runtime info failed: %w", err)
+	}
+	if info.PID <= 0 {
+		logger.Error("[update] runtime info invalid pid: path=%s master_pid=%d", path, info.PID)
+		return RuntimeInfo{}, fmt.Errorf("runtime info pid is invalid")
+	}
+	info.Executable = strings.TrimSpace(info.Executable)
+	if info.Executable == "" {
+		logger.Error("[update] runtime info invalid executable: path=%s", path)
+		return RuntimeInfo{}, fmt.Errorf("runtime info executable is invalid")
+	}
+	return info, nil
 }
 
 func WriteRuntimeInfo(info RuntimeInfo) error {
@@ -71,31 +111,30 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 
 func ReadRuntimeInfo() (RuntimeInfo, error) {
 	path := RuntimeInfoPath()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			logger.Warn("[update] read runtime info missing: path=%s", path)
-			return RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
-		}
-		logger.Error("[update] read runtime info failed: path=%s err=%v", path, err)
-		return RuntimeInfo{}, fmt.Errorf("read runtime info failed: %w", err)
+	info, err := readRuntimeInfoAtPath(path)
+	if err == nil {
+		return info, nil
+	}
+	if !os.IsNotExist(err) {
+		return RuntimeInfo{}, err
 	}
 
-	var info RuntimeInfo
-	if err := json.Unmarshal(data, &info); err != nil {
-		logger.Error("[update] parse runtime info failed: path=%s err=%v", path, err)
-		return RuntimeInfo{}, fmt.Errorf("parse runtime info failed: %w", err)
+	logger.Warn("[update] read runtime info missing at current path: path=%s", path)
+	for _, legacyPath := range legacyRuntimeInfoPaths() {
+		legacyPath = strings.TrimSpace(legacyPath)
+		if legacyPath == "" || legacyPath == path {
+			continue
+		}
+		info, legacyErr := readRuntimeInfoAtPath(legacyPath)
+		if legacyErr == nil {
+			logger.Warn("[update] read runtime info fallback to legacy path: path=%s", legacyPath)
+			return info, nil
+		}
+		if !os.IsNotExist(legacyErr) {
+			return RuntimeInfo{}, legacyErr
+		}
 	}
-	if info.PID <= 0 {
-		logger.Error("[update] runtime info invalid pid: path=%s master_pid=%d", path, info.PID)
-		return RuntimeInfo{}, fmt.Errorf("runtime info pid is invalid")
-	}
-	info.Executable = strings.TrimSpace(info.Executable)
-	if info.Executable == "" {
-		logger.Error("[update] runtime info invalid executable: path=%s", path)
-		return RuntimeInfo{}, fmt.Errorf("runtime info executable is invalid")
-	}
-	return info, nil
+	return RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
