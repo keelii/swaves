@@ -191,6 +191,40 @@ func loginAsDash(t *testing.T, swv SwavesApp) string {
 	return cookieKV
 }
 
+func TestDashControllerP0_TrashPageRendersTrashScripts(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	t.Cleanup(func() {
+		swv.Shutdown()
+	})
+
+	post := &db.Post{
+		Title:   "trash-script-post",
+		Slug:    "trash-script-post",
+		Content: "content",
+		Status:  "published",
+		Kind:    db.PostKindPost,
+	}
+	if _, err := db.CreatePost(swv.Store.Model, post); err != nil {
+		t.Fatalf("CreatePost failed: %v", err)
+	}
+	if err := db.SoftDeletePost(swv.Store.Model, post.ID); err != nil {
+		t.Fatalf("SoftDeletePost failed: %v", err)
+	}
+
+	cookieKV := loginAsDash(t, swv)
+	resp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/trash?type=posts", nil, cookieKV, nil)
+	assertTemplateRendered(
+		t,
+		resp,
+		fiber.StatusOK,
+		`data-role="multiselect-batch-restore"`,
+		`data-batch-restore-url=`,
+		`batch-restore`,
+		`trash-empty-confirm-dialog`,
+		`window.sfetchJSON(batchRestoreURL`,
+	)
+}
+
 func TestDashControllerP0_ProtectedRouteRequiresLogin(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()
