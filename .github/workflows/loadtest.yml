@@ -66,19 +66,25 @@ jobs:
         run: |
           set -euo pipefail
 
-          sqlite_file="$RUNNER_TEMP/loadtest.sqlite"
-          log_file="$RUNNER_TEMP/swaves.log"
+          cache_dir="${PWD}/.cache/loadtest"
+          sqlite_file="${cache_dir}/loadtest.sqlite"
+          log_file="${cache_dir}/swaves.log"
           listen_addr="127.0.0.1:4096"
           target_url="http://${listen_addr}/"
           wrk_threads="1"
           wrk_connections="100"
           wrk_duration="10s"
 
+          mkdir -p "${cache_dir}"
+
           env \
             SWAVES_ENV=dev \
             SWAVES_ENSURE_DEFAULT_SETTINGS=1 \
             SWAVES_ENABLE_SQL_LOG=0 \
-            go run ./cmd/swaves "$sqlite_file" --daemon-mode=0 --listen-addr="${listen_addr}" \
+            SWAVES_SQLITE_FILE="${sqlite_file}" \
+            SWAVES_LISTEN_ADDR="${listen_addr}" \
+            SWAVES_DAEMON_MODE=0 \
+            go run ./cmd/swaves \
             >"${log_file}" 2>&1 &
           app_pid=$!
 
@@ -120,6 +126,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          log_file="${PWD}/.cache/loadtest/swaves.log"
           commit_sha="$(git rev-parse --short HEAD 2>/dev/null || printf unknown)"
           title="### wrk load test result"
           if [[ "${LOAD_TEST_OUTCOME}" != "success" ]]; then
@@ -129,10 +136,10 @@ jobs:
           if [[ ! -f result.txt ]]; then
             {
               echo "Load test did not complete successfully."
-              if [[ -f "${RUNNER_TEMP}/swaves.log" ]]; then
+              if [[ -f "${log_file}" ]]; then
                 echo
                 echo "Last 50 lines from swaves log:"
-                tail -n 50 "${RUNNER_TEMP}/swaves.log"
+                tail -n 50 "${log_file}"
               fi
             } > result.txt
           fi
@@ -157,7 +164,7 @@ jobs:
           path: |
             comment.md
             result.txt
-            ${{ runner.temp }}/swaves.log
+            .cache/loadtest/swaves.log
           if-no-files-found: error
 
   comment:
