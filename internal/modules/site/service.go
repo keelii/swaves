@@ -6,6 +6,7 @@ import (
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/md"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
@@ -19,19 +20,24 @@ func NewService(db *db.DB) *Service {
 	return &Service{DB: db}
 }
 
-func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination) []DisplayPost {
+func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination, timer *middleware.PhaseTimer) []DisplayPost {
 	var res []DisplayPost
 
-	articles := db.ListPublishedPosts(dbx, kind, pager)
+	var articles []db.Post
+	timer.Track("db.list_posts", func() {
+		articles = db.ListPublishedPosts(dbx, kind, pager)
+	})
 
-	for _, p := range articles {
-		mdResult := md.ParseMarkdown(p.Content, false)
-		res = append(res, DisplayPost{
-			Post:     p,
-			PermLink: share.GetPostUrl(p),
-			HTML:     mdResult.HTML,
-		})
-	}
+	timer.Track("md.parse_all", func() {
+		for _, p := range articles {
+			mdResult := md.ParseMarkdown(p.Content, false)
+			res = append(res, DisplayPost{
+				Post:     p,
+				PermLink: share.GetPostUrl(p),
+				HTML:     mdResult.HTML,
+			})
+		}
+	})
 
 	return res
 }

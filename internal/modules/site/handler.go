@@ -291,18 +291,25 @@ func (h Handler) GetError(c fiber.Ctx) error {
 }
 
 func (h Handler) GetHome(c fiber.Ctx) error {
+	timer := middleware.GetTimer(c)
 	pager := middleware.GetPagination(c)
-	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
+	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager, timer)
 	templatePosts := ToTemplatePosts(articles)
-	h.trackSiteUV(c)
-
-	return h.renderView(c, "home.html", fiber.Map{
-		"Title":        buildPageTitle(""),
-		"CanonicalURL": absoluteSiteURL(c, share.GetBasePath()),
-		"Articles":     templatePosts,
-		"Pages":        ListPages(h.Model),
-		"Pager":        pager,
+	timer.Track("uv.track", func() {
+		h.trackSiteUV(c)
 	})
+
+	var renderErr error
+	timer.Track("template.render", func() {
+		renderErr = h.renderView(c, "home.html", fiber.Map{
+			"Title":        buildPageTitle(""),
+			"CanonicalURL": absoluteSiteURL(c, share.GetBasePath()),
+			"Articles":     templatePosts,
+			"Pages":        ListPages(h.Model),
+			"Pager":        pager,
+		})
+	})
+	return renderErr
 }
 func (h Handler) GetRaw(c fiber.Ctx) error {
 	filename := c.Params("*")
@@ -471,7 +478,7 @@ func (h Handler) getIST(c fiber.Ctx) (string, string) {
 }
 func (h Handler) GetRSS(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
-	posts := ListDisplayPosts(h.Model, db.PostKindPost, &pager)
+	posts := ListDisplayPosts(h.Model, db.PostKindPost, &pager, nil)
 	rss, err := GenerateRSS(posts, c, pager.Page, pager.Total)
 	if err != nil {
 		return err
