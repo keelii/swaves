@@ -1,10 +1,16 @@
 package dash
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
 	"swaves/internal/platform/db"
+
+	"github.com/gofiber/fiber/v3"
 )
 
 func TestGetTrashTabCounts(t *testing.T) {
@@ -99,6 +105,110 @@ func TestGetTrashTabCounts(t *testing.T) {
 		if got := tabCounts[key]; got != expected {
 			t.Fatalf("tabCounts[%q] = %d, want %d", key, got, expected)
 		}
+	}
+}
+
+func TestPostTrashBatchRestoreAPIHandler(t *testing.T) {
+	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "trash-restore.sqlite")})
+	if err := db.EnsureDefaultSettings(dbx); err != nil {
+		t.Fatalf("EnsureDefaultSettings failed: %v", err)
+	}
+	t.Cleanup(func() { _ = dbx.Close() })
+
+	post := &db.Post{
+		Title:   "restore-post",
+		Slug:    "restore-post",
+		Content: "content",
+		Status:  "published",
+		Kind:    db.PostKindPost,
+	}
+	if _, err := db.CreatePost(dbx, post); err != nil {
+		t.Fatalf("CreatePost failed: %v", err)
+	}
+	if err := db.SoftDeletePost(dbx, post.ID); err != nil {
+		t.Fatalf("SoftDeletePost failed: %v", err)
+	}
+
+	h := &Handler{Model: dbx}
+	app := fiber.New()
+	app.Post("/api/trash/:type/batch-restore", h.PostTrashBatchRestoreAPIHandler)
+
+	reqBody := fmt.Sprintf(`{"ids":[%d]}`, post.ID)
+	req := httptest.NewRequest("POST", "/api/trash/posts/batch-restore", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, fiber.StatusOK)
+	}
+
+	var body struct {
+		OK           bool    `json:"ok"`
+		RestoredCount int    `json:"restored_count"`
+		FailedCount  int     `json:"failed_count"`
+		RestoredIDs  []int64 `json:"restored_ids"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response failed: %v", err)
+	}
+	if !body.OK {
+		t.Fatal("expected ok=true")
+	}
+	if body.RestoredCount != 1 {
+		t.Fatalf("restored_count = %d, want 1", body.RestoredCount)
+	}
+	if body.FailedCount != 0 {
+		t.Fatalf("failed_count = %d, want 0", body.FailedCount)
+	}
+	if len(body.RestoredIDs) != 1 || body.RestoredIDs[0] != post.ID {
+		t.Fatalf("restored_ids = %v, want [%d]", body.RestoredIDs, post.ID)
+	}
+
+	// Verify the post is restored (soft-delete cleared)
+	restored, err := db.GetPostByIDAnyStatus(dbx, post.ID)
+	if err != nil {
+		t.Fatalf("GetPost failed after restore: %v", err)
+	}
+	if restored.DeletedAt != nil {
+		t.Fatal("expected DeletedAt to be nil after restore")
+	}
+
+	// Restore again should fail (no longer deleted)
+	req2 := httptest.NewRequest("POST", "/api/trash/posts/batch-restore", bytes.NewBufferString(reqBody))
+	req2.Header.Set("Content-Type", "application/json")
+	resp2, err := app.Test(req2)
+	if err != nil {
+		t.Fatalf("second request failed: %v", err)
+	}
+	if resp2.StatusCode != fiber.StatusMultiStatus {
+		t.Fatalf("second status = %d, want %d", resp2.StatusCode, fiber.StatusMultiStatus)
+	}
+
+	var body2 struct {
+		OK          bool `json:"ok"`
+		FailedCount int  `json:"failed_count"`
+	}
+	if err := json.NewDecoder(resp2.Body).Decode(&body2); err != nil {
+		t.Fatalf("decode second response failed: %v", err)
+	}
+	if body2.OK {
+		t.Fatal("expected ok=false for second restore (already restored)")
+	}
+	if body2.FailedCount != 1 {
+		t.Fatalf("failed_count = %d, want 1", body2.FailedCount)
+	}
+
+	// Invalid type returns 400
+	req3 := httptest.NewRequest("POST", "/api/trash/invalid/batch-restore", bytes.NewBufferString(`{"ids":[1]}`))
+	req3.Header.Set("Content-Type", "application/json")
+	resp3, err := app.Test(req3)
+	if err != nil {
+		t.Fatalf("third request failed: %v", err)
+	}
+	if resp3.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("third status = %d, want %d", resp3.StatusCode, fiber.StatusBadRequest)
 	}
 }
 
