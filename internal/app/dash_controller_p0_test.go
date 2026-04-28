@@ -221,7 +221,8 @@ func TestDashControllerP0_TrashPageRendersTrashScripts(t *testing.T) {
 		`data-batch-restore-url=`,
 		`batch-restore`,
 		`trash-empty-confirm-dialog`,
-		`window.sfetchJSON(batchRestoreURL`,
+		`bindBatchAction(batchRestore, {`,
+		`successIDsKey: 'restored_ids'`,
 	)
 }
 
