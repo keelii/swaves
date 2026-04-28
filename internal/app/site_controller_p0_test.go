@@ -837,3 +837,25 @@ func TestSiteControllerP0_PostCommentsPaginationByRootThread(t *testing.T) {
 		t.Fatalf("page 2 should render parent comment before child: root-a=%d child-a=%d", rootAID, childAID)
 	}
 }
+
+// BenchmarkSiteHome measures the per-request throughput of the site homepage.
+// Run with: go test -bench=BenchmarkSiteHome -benchtime=5s ./internal/app/
+func BenchmarkSiteHome(b *testing.B) {
+	swv := newControllerP0BenchApp(b)
+	defer swv.Shutdown()
+
+	homePath := share.GetBasePath()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := newBenchRequest(fiber.MethodGet, homePath)
+		resp, err := swv.App.Test(req)
+		if err != nil {
+			b.Fatalf("home request failed: %v", err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != fiber.StatusOK {
+			b.Fatalf("unexpected home status: %d", resp.StatusCode)
+		}
+	}
+}

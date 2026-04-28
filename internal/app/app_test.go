@@ -23,7 +23,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func prepareInstalledAppDB(t *testing.T, dbPath string) {
+func prepareInstalledAppDB(t testing.TB, dbPath string) {
 	t.Helper()
 
 	model := db.Open(db.Options{DSN: dbPath})

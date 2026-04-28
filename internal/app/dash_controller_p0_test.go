@@ -38,6 +38,23 @@ func newControllerP0TestApp(t *testing.T) SwavesApp {
 	})
 }
 
+func newControllerP0BenchApp(b *testing.B) SwavesApp {
+	b.Helper()
+
+	dbPath := filepath.Join(b.TempDir(), "controller-p0.sqlite")
+	prepareInstalledAppDB(b, dbPath)
+	middleware.DashLoginRateLimitResetAll()
+	return NewApp(types.AppConfig{
+		SqliteFile: dbPath,
+		ListenAddr: ":0",
+		AppName:    "swaves-test",
+	})
+}
+
+func newBenchRequest(method, path string) *http.Request {
+	return httptest.NewRequest(method, path, nil)
+}
+
 func requestControllerP0(
 	t *testing.T,
 	swv SwavesApp,
