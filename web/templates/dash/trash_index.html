@@ -21,7 +21,7 @@
 
 {% block status_main_left_content %}
   <span data-role="multiselect-selected-count" data-target-table="{{ OperationTableID }}">已选择 0 项</span>
-  {{ sui.Button("批量恢复", "outline", attrs=HtmlAttrs({"type":"button","id":"trash-batch-restore-btn","disabled":"disabled"})) }}
+  {{ sui.Button("批量恢复", "outline", attrs=HtmlAttrs({"type":"button","data-role":"multiselect-batch-restore","data-target-table":OperationTableID,"disabled":"disabled"})) }}
   {{ sui.Button("批量删除", "outline", attrs=HtmlAttrs({"type":"button","data-role":"multiselect-batch-delete","data-target-table":OperationTableID,"disabled":"disabled"})) }}
 {% endblock %}
 
@@ -411,7 +411,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  var restoreBtn = document.getElementById('trash-batch-restore-btn');
+  var restoreBtn = document.querySelector('[data-role="multiselect-batch-restore"][data-target-table="trash-table"]');
   if (!restoreBtn) {
     return;
   }
@@ -440,25 +440,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  function syncRestoreBtn() {
-    restoreBtn.disabled = selectedIDs().length === 0;
-  }
-
-  table.addEventListener('change', function() {
-    syncRestoreBtn();
-  });
-
-  document.addEventListener('dash:batch-delete:done', function() {
-    syncRestoreBtn();
-  });
-
   restoreBtn.addEventListener('click', function(event) {
     event.preventDefault();
 
     var rows = selectedRows();
     var ids = selectedIDs();
     if (ids.length === 0) {
-      syncRestoreBtn();
       return;
     }
 
@@ -495,7 +482,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }).catch(function() {
       notify('批量恢复失败，请稍后重试。', '批量恢复');
     }).finally(function() {
-      syncRestoreBtn();
+      document.dispatchEvent(new CustomEvent('dash:multiselect:refresh', {
+        detail: { tableId: 'trash-table' }
+      }));
     });
   });
 });

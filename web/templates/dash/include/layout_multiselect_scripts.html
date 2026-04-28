@@ -104,6 +104,7 @@
       var toggle = document.querySelector('[data-role="toggle-multiselect"][data-target-table="' + tableId + '"]');
       var statusCount = document.querySelector('[data-role="multiselect-selected-count"][data-target-table="' + tableId + '"]');
       var batchDelete = document.querySelector('[data-role="multiselect-batch-delete"][data-target-table="' + tableId + '"]');
+      var batchRestore = document.querySelector('[data-role="multiselect-batch-restore"][data-target-table="' + tableId + '"]');
       var batchDeleteAPI = (table.getAttribute('data-batch-delete-url') || '').trim();
 
       function selectedRowCheckboxes() {
@@ -342,6 +343,9 @@
         }
         if (batchDelete) {
           batchDelete.disabled = checkedCount === 0;
+        }
+        if (batchRestore) {
+          batchRestore.disabled = checkedCount === 0;
         }
       }
 
