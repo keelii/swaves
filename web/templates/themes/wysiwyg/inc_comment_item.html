@@ -1,0 +1,30 @@
+{% set CommentCore = Comment.Comment or Comment %}
+{% set CommentParentAuthor = Comment.ParentAuthor or CommentCore.ParentAuthor %}
+{% set CommentChildren = Comment.Children %}
+<li id="comment-{{ CommentCore.ID }}">
+  <article>
+    <header>
+      <p>
+        <strong>{{ CommentCore.Author }}</strong>
+        <small>
+          / {{ CommentCore.CreatedAt | relativeTime }}
+          {% if CommentCore.ParentID > 0 %}
+            / 回复 @{{ CommentParentAuthor }}
+          {% endif %}
+        </small>
+      </p>
+    </header>
+    <p>{{ CommentCore.Content }}</p>
+    <p>
+      <button type="button" data-comment-reply data-comment-id="{{ CommentCore.ID }}" data-comment-author="{{ CommentCore.Author }}">回复</button>
+    </p>
+  </article>
+  {% if CommentChildren %}
+    <ol>
+      {% for ChildComment in CommentChildren %}
+        {% set Comment = ChildComment %}
+        {% include "inc_comment_item.html" %}
+      {% endfor %}
+    </ol>
+  {% endif %}
+</li>

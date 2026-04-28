@@ -1,0 +1,19 @@
+{% macro CategoryItem(Item, Label=false, Sep="") -%}
+  {% if Item %}
+    <span>{% if Label %}分类{% endif %}{{ Sep }} <a href="{{ Item.PermLink }}">{{ Item.Name }}</a></span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro TagList(Items, Label=false, Sep="") -%}
+  {% if Items and (Items|length) > 0 %}
+    <span>
+      {% if Label %}标签{% endif %}{{ Sep }}
+      {% set TagSep = joiner(", ") %}
+      {% for Item in Items %}{{ TagSep() }}<a href="{{ Item.PermLink }}">{{ Item.Name }}</a>{% endfor %}
+    </span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro LoginLink(Label="", URL="") -%}
+  {% if IsLogin %}<a href="{{ URL }}">{{ Label }}</a>{% endif %}
+{%- endmacro %}

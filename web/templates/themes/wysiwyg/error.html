@@ -1,0 +1,11 @@
+{% extends "layout_main.html" %}
+{% block content %}
+<header>
+  <h1>页面异常</h1>
+  <p>请求处理失败，请稍后重试。</p>
+</header>
+<article>
+  <p><a href="{{ ReturnURL }}">返回来源页，重试</a> 或者 <a href="{{ GetBasePath() }}">返回首页</a></p>
+  {% if ReqID %}<p><small>请求ID: {{ ReqID }}</small></p>{% endif %}
+</article>
+{% endblock %}

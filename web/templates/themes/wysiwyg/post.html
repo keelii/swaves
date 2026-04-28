@@ -1,0 +1,195 @@
+{% extends "layout_main.html" %}
+{% block content %}
+{% from "macro_content.html" import LoginLink, CategoryItem, TagList %}
+<header>
+  <h1>{{ Post.Title }}</h1>
+  <p><small>{{ Settings("author") }} / {{ Post.PublishedAt | articleTime }}</small></p>
+  <nav>
+    <a href="{{ GetBasePath() }}">首页</a>
+    {{ LoginLink(" / 编辑", UrlFor('dash.posts.edit', id=Post.ID)) }}
+  </nav>
+  <p>
+    {% include "inc_read_uv.html" %}
+    {% if Post.Kind == 0 %} / {% include "inc_comment_count.html" %}{% endif %}
+  </p>
+  <div>{% include "inc_like_action.html" %}</div>
+</header>
+
+<article>
+  {% if Post.TOCHTML %}
+    <section>
+      {{ Post.TOCHTML | safe }}
+    </section>
+  {% endif %}
+  <section>
+    {{ Post.HTML | safe }}
+  </section>
+</article>
+
+{% if Post.Kind == 0 %}
+  <section>
+    <h2>文章信息</h2>
+    <p>
+      {% if Post.Category %}
+        {{ CategoryItem(Post.Category, Label=true, Sep="：") }}
+      {% else %}
+        <span>分类：无</span>
+      {% endif %}
+    </p>
+    <p>
+      {% if Post.Tags %}
+        {{ TagList(Post.Tags, Label=true, Sep="：") }}
+      {% else %}
+        <span>标签：无</span>
+      {% endif %}
+    </p>
+    <p>
+      {% if Post.Next %}
+        上一篇：<a href="{{ Post.Next.PermLink }}">{{ Post.Next.Title }}</a>
+      {% else %}
+        上一篇：无
+      {% endif %}
+    </p>
+    <p>
+      {% if Post.Prev %}
+        下一篇：<a href="{{ Post.Prev.PermLink }}">{{ Post.Prev.Title }}</a>
+      {% else %}
+        下一篇：无
+      {% endif %}
+    </p>
+  </section>
+{% endif %}
+
+{% if Post.CommentEnabled == 1 %}
+  <section id="comments">
+    <h2>评论 ({{ CommentCount }})</h2>
+    {% if CommentFeedback == "pending" %}
+      <p><small>评论已提交，等待审核。</small></p>
+    {% elif CommentFeedback == "captcha_required" %}
+      <p><small>提交较频繁，请先完成验证码再继续评论。</small></p>
+    {% elif CommentFeedback == "captcha_failed" %}
+      <p><small>验证码错误或已过期，请刷新页面后重试。</small></p>
+    {% elif CommentFeedback == "rate_limited" %}
+      <p><small>提交过于频繁，请稍后再试。</small></p>
+    {% elif CommentFeedback == "duplicate" %}
+      <p><small>请勿重复提交相同评论内容。</small></p>
+    {% endif %}
+
+    {% if Comments %}
+      <ol>
+        {% for Item in Comments %}
+          {% set Comment = Item %}
+          {% include "inc_comment_item.html" %}
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p><small>暂无评论，欢迎抢沙发。</small></p>
+    {% endif %}
+
+    {% if CommentPager and CommentPager.Num > 1 %}
+      {% set Pager = CommentPager %}
+      {% include "inc_comment_pagination.html" %}
+    {% endif %}
+
+    <h3>发表评论</h3>
+    <form method="post" action="{{ UrlFor('site.action.comment', postID=Post.ID) }}" id="comment-form">
+      <input type="hidden" name="return_url" value="{{ UrlPath }}">
+      <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
+      <p>
+        <label for="comment-author">昵称</label><br>
+        <input id="comment-author" name="author" type="text" required maxlength="80" value="{{ CommentForm.Author }}">
+      </p>
+      <p>
+        <label for="comment-email">邮箱</label><br>
+        <input id="comment-email" name="author_email" type="email" maxlength="120" placeholder="可选" value="{{ CommentForm.AuthorEmail }}"><br>
+        <small>填写后可自动显示 Gravatar 头像服务中的头像。</small>
+      </p>
+      <p>
+        <label for="comment-url">网址</label><br>
+        <input id="comment-url" name="author_url" type="url" maxlength="300" placeholder="可选" value="{{ CommentForm.AuthorURL }}">
+      </p>
+      <p>
+        <label for="comment-content">内容</label><br>
+        <textarea id="comment-content" name="content" rows="8" cols="40" minlength="5" maxlength="5000" required>{{ CommentForm.Content }}</textarea>
+      </p>
+      <p>
+        <label for="comment-remember-me">
+          <input id="comment-remember-me" name="remember_me" type="checkbox" value="1"{% if CommentForm.RememberMe %} checked{% endif %}>
+          <span>记住我</span>
+        </label>
+      </p>
+      {% if CommentCaptchaRequired %}
+        <p>
+          <label for="comment-captcha-answer">验证码</label><br>
+          <span>{{ CommentCaptcha.Prompt }}</span><br>
+          <input id="comment-captcha-answer" name="captcha_answer" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="16" required autocomplete="off">
+          <input type="hidden" name="captcha_token" value="{{ CommentCaptcha.Token }}">
+        </p>
+      {% endif %}
+      <p id="comment-reply-state" hidden>
+        <small>回复 @<span id="comment-reply-author"></span></small>
+        <button type="button" id="comment-reply-cancel">取消回复</button>
+      </p>
+      <p>
+        <button type="submit">提交评论</button>
+      </p>
+    </form>
+  </section>
+{% else %}
+  <section id="comments">
+    <h2>评论</h2>
+    <p><small>评论已关闭。</small></p>
+  </section>
+{% endif %}
+
+<script>
+  (function () {
+    var root = document.getElementById("comments");
+    if (!root) return;
+
+    var parentInput = document.getElementById("comment-parent-id");
+    var replyState = document.getElementById("comment-reply-state");
+    var replyAuthor = document.getElementById("comment-reply-author");
+    var cancelBtn = document.getElementById("comment-reply-cancel");
+
+    function resetReply() {
+      if (parentInput) {
+        parentInput.value = "0";
+      }
+      if (replyAuthor) {
+        replyAuthor.textContent = "";
+      }
+      if (replyState) {
+        replyState.hidden = true;
+      }
+    }
+
+    root.addEventListener("click", function (event) {
+      var trigger = event.target.closest("[data-comment-reply]");
+      if (!trigger || !parentInput || !replyAuthor) return;
+      event.preventDefault();
+
+      var commentID = trigger.getAttribute("data-comment-id");
+      var author = trigger.getAttribute("data-comment-author") || "";
+      if (!commentID) return;
+
+      parentInput.value = commentID;
+      replyAuthor.textContent = author;
+      if (replyState) {
+        replyState.hidden = false;
+      }
+      var content = document.getElementById("comment-content");
+      if (content) {
+        content.focus();
+      }
+    });
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        resetReply();
+      });
+    }
+  })();
+</script>
+{% include "include/math.html" %}
+{% endblock %}

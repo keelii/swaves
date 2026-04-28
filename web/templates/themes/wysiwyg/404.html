@@ -1,0 +1,11 @@
+{% extends "layout_main.html" %}
+{% block content %}
+<header>
+  <h1>页面找不到</h1>
+  <p>页面不存在，可能已被删除或地址写错了。</p>
+</header>
+<article>
+  <p>返回 <a href="{{ ReturnURL }}">来源页</a>重试，或者返回 <a href="{{ GetBasePath() }}">首页</a></p>
+  {% if ReqID %}<p><small>请求ID: {{ ReqID }}</small></p>{% endif %}
+</article>
+{% endblock %}

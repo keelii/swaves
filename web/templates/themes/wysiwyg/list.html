@@ -1,0 +1,33 @@
+{% extends "layout_main.html" %}
+{% block content %}
+{% from "macro_content.html" import CategoryItem, TagList %}
+<header>
+  <h1>{{ Entity.Name }}</h1>
+  {% include "inc_list_nav.html" %}
+</header>
+
+{% if Entity.Description %}
+  <section>
+    <p>{{ Entity.Description }}</p>
+  </section>
+{% endif %}
+
+<section>
+  <ul>
+    {% for Item in List %}
+      <li>
+        <a href="{{ Item.PermLink }}">{{ Item.Title }}</a><br>
+        {% if (not IsCategory) and Item.Category %}
+          <small>{{ CategoryItem(Item.Category, true) }}</small><br>
+        {% endif %}
+        {% if Item.Tags %}
+          <small>{{ TagList(Item.Tags, true) }}</small><br>
+        {% endif %}
+        <small>{{ Item.CreatedAt | relativeTime }}</small>
+      </li>
+    {% else %}
+      <li>暂无文章</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

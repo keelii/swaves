@@ -1,0 +1,25 @@
+{% extends "layout_main.html" %}
+{% block content %}
+<header>
+  <h1>{{ Settings("site_title") }}</h1>
+  {% if Settings("site_desc") %}
+    <p>{{ Settings("site_desc") }}</p>
+  {% endif %}
+  {% include "inc_nav.html" %}
+</header>
+
+<section>
+  <ul>
+    {% for Article in Articles %}
+      <li>
+        <a href="{{ Article.PermLink }}">{{ Article.Title }}</a><br>
+        <small>{{ Article.PublishedAt | relativeTime }}</small>
+      </li>
+    {% else %}
+      <li>暂无文章</li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% include "inc_pagination.html" %}
+{% endblock %}

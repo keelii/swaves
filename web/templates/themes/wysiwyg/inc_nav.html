@@ -1,0 +1,16 @@
+<nav>
+  <a href="{{ GetBasePath() }}">首页</a>
+  /
+  <a href="{{ GetCategoryPrefix() }}">分类</a>
+  /
+  <a href="{{ GetTagPrefix() }}">标签</a>
+  {% if Pages %}
+    {% for Page in Pages %}
+      / <a href="{{ Page.PermLink }}">{{ Page.Title }}</a>
+    {% endfor %}
+  {% endif %}
+  / <a href="{{ GetRSSUrl() }}">RSS</a>
+  {% if IsLogin %}
+    / <a href="{{ GetDashUrl() }}">管理</a>
+  {% endif %}
+</nav>

@@ -1,0 +1,3 @@
+{% if MetaDescription or Settings('site_desc') %}<meta name="description" content="{{ MetaDescription or Settings('site_desc') }}"/>{% endif %}
+{% if MetaKeywords or Settings('site_keywords') %}<meta name="keywords" content="{{ MetaKeywords or Settings('site_keywords') }}"/>{% endif %}
+{% if CanonicalURL %}<link rel="canonical" href="{{ CanonicalURL | safe }}">{% endif %}

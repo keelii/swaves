@@ -1,0 +1,27 @@
+<nav aria-label="分页导航">
+  {% if Pager %}
+    <p>
+      {% if not Pager.HasPrev() %}
+        <span>上一页</span>
+      {% else %}
+        <a href="?page={{ Pager.PrevPage() }}&pageSize={{ Pager.PageSize }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}">上一页</a>
+      {% endif %}
+
+      {% for Item in Pager.GetPageItems() %}
+        {% if Item.Type == "ellipsis" %}
+          <span> … </span>
+        {% elif Item.Current %}
+          <strong>{{ Item.Page }}</strong>
+        {% else %}
+          <a href="?page={{ Item.Page }}&pageSize={{ Pager.PageSize }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}">{{ Item.Page }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if not Pager.HasNext() %}
+        <span>下一页</span>
+      {% else %}
+        <a href="?page={{ Pager.NextPage() }}&pageSize={{ Pager.PageSize }}{% if SearchQueryEscaped %}&q={{ SearchQueryEscaped }}{% endif %}">下一页</a>
+      {% endif %}
+    </p>
+  {% endif %}
+</nav>
