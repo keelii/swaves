@@ -60,7 +60,6 @@ type monitorMetricConfig struct {
 	Key         string
 	Label       string
 	Unit        string
-	ShowChart   bool
 	chartValue  func(point monitorHistoryPoint) int
 	formatValue func(point monitorHistoryPoint) string
 }
@@ -71,56 +70,56 @@ type monitorMetricOption struct {
 	Unit  string `json:"unit"`
 }
 
-var monitorMetricConfigs = []monitorMetricConfig{
-	{
-		Key:       "pid_cpu",
-		Label:     "应用 CPU",
-		Unit:      "%",
-		ShowChart: false,
+var (
+	monitorMetricPIDCPU = monitorMetricConfig{
+		Key:   "pid_cpu",
+		Label: "应用 CPU",
+		Unit:  "%",
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(point.PID.CPU * 100))
 		},
 		formatValue: func(point monitorHistoryPoint) string {
 			return fmt.Sprintf("%.2f%%", point.PID.CPU)
 		},
-	},
-	{
-		Key:       "pid_ram",
-		Label:     "应用内存",
-		Unit:      "B",
-		ShowChart: false,
+	}
+	monitorMetricPIDRAM = monitorMetricConfig{
+		Key:   "pid_ram",
+		Label: "应用内存",
+		Unit:  "B",
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(float64(point.PID.RAM) / (1024 * 1024)))
 		},
 		formatValue: func(point monitorHistoryPoint) string {
 			return formatMonitorBytes(point.PID.RAM)
 		},
-	},
-	{
-		Key:       "os_cpu",
-		Label:     "系统 CPU",
-		Unit:      "%",
-		ShowChart: true,
+	}
+	monitorMetricOSCPU = monitorMetricConfig{
+		Key:   "os_cpu",
+		Label: "系统 CPU",
+		Unit:  "%",
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(point.OS.CPU * 100))
 		},
 		formatValue: func(point monitorHistoryPoint) string {
 			return fmt.Sprintf("%.2f%%", point.OS.CPU)
 		},
-	},
-	{
-		Key:       "os_ram",
-		Label:     "系统内存",
-		Unit:      "B",
-		ShowChart: true,
+	}
+	monitorMetricOSRAM = monitorMetricConfig{
+		Key:   "os_ram",
+		Label: "系统内存",
+		Unit:  "B",
 		chartValue: func(point monitorHistoryPoint) int {
 			return int(math.Round(float64(point.OS.RAM) / (1024 * 1024)))
 		},
 		formatValue: func(point monitorHistoryPoint) string {
 			return formatMonitorBytes(point.OS.RAM)
 		},
-	},
-}
+	}
+	monitorChartMetricConfigs = []monitorMetricConfig{
+		monitorMetricOSCPU,
+		monitorMetricOSRAM,
+	}
+)
 
 type MonitorStore struct {
 	mu             sync.RWMutex
@@ -349,32 +348,6 @@ func resolveMonitorGranularity(raw string) (monitorGranularityConfig, error) {
 func monitorGranularityOptions() []monitorGranularityConfig {
 	items := make([]monitorGranularityConfig, len(monitorGranularityConfigs))
 	copy(items, monitorGranularityConfigs)
-	return items
-}
-
-func resolveMonitorMetric(raw string) (monitorMetricConfig, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return monitorMetricConfigs[0], nil
-	}
-
-	for _, item := range monitorMetricConfigs {
-		if item.Key == raw {
-			return item, nil
-		}
-	}
-	return monitorMetricConfig{}, fmt.Errorf("invalid metric: %s", raw)
-}
-
-func monitorMetricOptions() []monitorMetricOption {
-	items := make([]monitorMetricOption, 0, len(monitorMetricConfigs))
-	for _, metric := range monitorMetricConfigs {
-		items = append(items, monitorMetricOption{
-			Key:   metric.Key,
-			Label: metric.Label,
-			Unit:  metric.Unit,
-		})
-	}
 	return items
 }
 

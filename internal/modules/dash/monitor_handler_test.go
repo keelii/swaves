@@ -30,11 +30,9 @@ func TestMonitorGranularityViewOptions(t *testing.T) {
 
 func TestMonitorChartMetricsExcludeApplicationMetrics(t *testing.T) {
 	expected := []string{"os_cpu", "os_ram"}
-	actual := make([]string, 0, len(monitorMetricConfigs))
-	for _, metric := range monitorMetricConfigs {
-		if metric.ShowChart {
-			actual = append(actual, metric.Key)
-		}
+	actual := make([]string, 0, len(monitorChartMetricConfigs))
+	for _, metric := range monitorChartMetricConfigs {
+		actual = append(actual, metric.Key)
 	}
 
 	if len(actual) != len(expected) {

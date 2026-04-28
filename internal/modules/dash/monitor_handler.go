@@ -64,11 +64,8 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	charts := make([]fiber.Map, 0, len(monitorMetricConfigs))
-	for _, metric := range monitorMetricConfigs {
-		if !metric.ShowChart {
-			continue
-		}
+	charts := make([]fiber.Map, 0, len(monitorChartMetricConfigs))
+	for _, metric := range monitorChartMetricConfigs {
 		chartSVG, buildErr := buildMonitorMetricChartSVG(aggregated, metric, granularity)
 		if buildErr != nil {
 			logger.Error("[monitor] build chart failed: granularity=%s metric=%s err=%v", granularity.Key, metric.Key, buildErr)
@@ -83,26 +80,10 @@ func (h *Handler) GetMonitorDataAPIHandler(c fiber.Ctx) error {
 		})
 	}
 
-	startAt := int64(0)
-	endAt := int64(0)
-	if len(aggregated) > 0 {
-		startAt = aggregated[0].TS
-		endAt = aggregated[len(aggregated)-1].TS + granularity.BucketSeconds
-		if latest.TS > 0 && latest.TS < endAt {
-			endAt = latest.TS
-		}
-	}
-
 	return c.JSON(fiber.Map{
-		"ok":            true,
-		"granularity":   granularity,
-		"start_at":      startAt,
-		"end_at":        endAt,
-		"point_count":   len(aggregated),
-		"latest":        latest,
-		"charts":        charts,
-		"metrics":       monitorMetricOptions(),
-		"granularities": monitorGranularityOptions(),
+		"ok":     true,
+		"latest": latest,
+		"charts": charts,
 	})
 }
 
