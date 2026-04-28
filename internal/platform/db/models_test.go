@@ -297,13 +297,13 @@ func TestListPublishedPostsAndPages(t *testing.T) {
 	_ = mustCreatePost(t, db, "published", PostKindPage, 0)
 
 	var nilPager *types.Pagination
-	posts := ListPublishedPosts(db, PostKindPost, nilPager)
+	posts := ListPublishedPosts(db, PostKindPost, nilPager, true)
 	if len(posts) == 0 {
 		t.Fatal("expected published posts")
 	}
 
 	pager := &types.Pagination{Page: 1, PageSize: 10}
-	pages := ListPublishedPosts(db, PostKindPage, pager)
+	pages := ListPublishedPosts(db, PostKindPage, pager, true)
 	if len(pages) == 0 {
 		t.Fatal("expected published pages")
 	}
