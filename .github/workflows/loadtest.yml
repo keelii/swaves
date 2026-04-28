@@ -23,6 +23,25 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Prepare fallback load test artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          printf '%s\n' 'Load test did not complete successfully.' > result.txt
+
+          {
+            echo '### wrk load test failed'
+            echo
+            echo '- PR: #${{ github.event.issue.number }}'
+            echo '- Commit: `unknown`'
+            echo '- Triggered by: @${{ github.event.comment.user.login }}'
+            echo
+            echo '```text'
+            cat result.txt
+            echo '```'
+          } > comment.md
+
       - name: Checkout PR head
         uses: actions/checkout@v4
         with:
