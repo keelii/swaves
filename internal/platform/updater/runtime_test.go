@@ -48,7 +48,7 @@ func TestDefaultRuntimeInfoPathUsesProcessCacheRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Getwd failed: %v", err)
 	}
-	want := filepath.Join(wd, RuntimeInfoFile)
+	want := filepath.Join(wd, runtimeInfoRelativePath())
 	if got != want {
 		t.Fatalf("DefaultRuntimeInfoPath = %q, want %q", got, want)
 	}
@@ -63,7 +63,7 @@ func TestWriteRuntimeInfoUsesDefaultProcessCachePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Getwd failed: %v", err)
 	}
-	want := filepath.Join(wd, RuntimeInfoFile)
+	want := filepath.Join(wd, runtimeInfoRelativePath())
 	if err := WriteRuntimeInfo(RuntimeInfo{PID: 4321, Executable: filepath.Join(base, "swaves")}); err != nil {
 		t.Fatalf("WriteRuntimeInfo failed: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestConfigureRuntimeCacheRootUsesSQLiteDirectory(t *testing.T) {
 	}
 
 	got := DefaultRuntimeInfoPath()
-	want := filepath.Join(base, RuntimeInfoFile)
+	want := filepath.Join(base, runtimeInfoRelativePath())
 	if got != want {
 		t.Fatalf("DefaultRuntimeInfoPath = %q, want %q", got, want)
 	}
@@ -122,7 +122,7 @@ func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
 	if getwdErr != nil {
 		t.Fatalf("Getwd failed: %v", getwdErr)
 	}
-	want := "runtime info file not found: path=" + filepath.Join(wd, RuntimeInfoFile)
+	want := "runtime info file not found: path=" + filepath.Join(wd, runtimeInfoRelativePath())
 	if !strings.Contains(err.Error(), want) {
 		t.Fatalf("ReadRuntimeInfo error = %q, want substring %q", err.Error(), want)
 	}

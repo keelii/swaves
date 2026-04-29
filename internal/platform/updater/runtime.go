@@ -21,8 +21,8 @@ type RuntimeInfo struct {
 }
 
 const (
-	CacheDir        = ".cache"
-	RuntimeInfoFile = CacheDir + "/master_runtime.json"
+	CacheDir         = ".cache"
+	RuntimeInfoName  = "master_runtime.json"
 )
 
 var (
@@ -65,7 +65,7 @@ func RuntimeCachePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(filepath.Dir(root), RuntimeInfoFile), nil
+	return filepath.Join(root, RuntimeInfoName), nil
 }
 
 func DefaultRuntimeInfoPath() string {
@@ -74,7 +74,11 @@ func DefaultRuntimeInfoPath() string {
 		return path
 	}
 	logger.Warn("[update] resolve runtime info path fallback: err=%v", err)
-	return RuntimeInfoFile
+	return runtimeInfoRelativePath()
+}
+
+func runtimeInfoRelativePath() string {
+	return filepath.Join(CacheDir, RuntimeInfoName)
 }
 
 func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {
