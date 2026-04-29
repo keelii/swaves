@@ -231,7 +231,7 @@ func (h Handler) ensureLikePostExists(postID int64) (db.Post, error) {
 	return post, nil
 }
 
-func injectDefaultTitle(routeName string, data fiber.Map) {
+func injectDefaultTitle(routeName, view string, data fiber.Map) {
 	if _, hasTitle := data["Title"]; hasTitle {
 		return
 	}
@@ -248,6 +248,17 @@ func injectDefaultTitle(routeName string, data fiber.Map) {
 	case "site.tags":
 		data["Title"] = buildPageTitle("Tags")
 	}
+
+	if _, hasTitle := data["Title"]; hasTitle {
+		return
+	}
+
+	switch view {
+	case "404.html":
+		data["Title"] = "404 Not Found"
+	case "error.html":
+		data["Title"] = "Error"
+	}
 }
 
 func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
@@ -259,7 +270,7 @@ func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
 	if route := c.Route(); route != nil {
 		routeName = strings.TrimSpace(route.Name)
 	}
-	injectDefaultTitle(routeName, data)
+	injectDefaultTitle(routeName, view, data)
 
 	data["UrlPath"] = c.Path()
 	data["Query"] = c.Queries()
