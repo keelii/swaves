@@ -21,8 +21,8 @@ type RuntimeInfo struct {
 }
 
 const (
-	CacheDir         = ".cache"
-	RuntimeInfoName  = "master_runtime.json"
+	CacheDir        = ".cache"
+	RuntimeInfoName = "master_runtime.json"
 )
 
 var (
