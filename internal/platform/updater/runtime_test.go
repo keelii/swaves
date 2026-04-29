@@ -3,6 +3,7 @@ package updater
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -104,5 +105,25 @@ func TestConfigureRuntimeCacheRootUsesSQLiteDirectory(t *testing.T) {
 	}
 	if info, err := os.Stat(filepath.Join(base, ".cache")); err != nil || !info.IsDir() {
 		t.Fatalf("cache root missing or not dir: info=%v err=%v", info, err)
+	}
+}
+
+func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
+	base := t.TempDir()
+	withUpdaterWorkingDir(t, base)
+	resetRuntimeCacheRoot(t)
+
+	_, err := ReadRuntimeInfo()
+	if err == nil {
+		t.Fatal("ReadRuntimeInfo error = nil, want missing file error")
+	}
+
+	wd, getwdErr := os.Getwd()
+	if getwdErr != nil {
+		t.Fatalf("Getwd failed: %v", getwdErr)
+	}
+	want := "runtime info file not found: path=" + filepath.Join(wd, RuntimeInfoFile)
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("ReadRuntimeInfo error = %q, want substring %q", err.Error(), want)
 	}
 }

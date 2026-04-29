@@ -143,7 +143,8 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 	if !os.IsNotExist(err) {
 		return RuntimeInfo{}, err
 	}
-	return RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
+	logger.Warn("[update] runtime info file missing: path=%s", path)
+	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s", path)
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
