@@ -96,14 +96,14 @@ func systemUpdateSupportState(readActiveRuntimeInfo func() (updater.RuntimeInfo,
 		return state
 	}
 
+	state.ManualUpdateEnabled = true
 	runtimeInfo, err := readActiveRuntimeInfo()
 	if err != nil {
-		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新、手动更新和系统重启都不可用。"
+		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新和系统重启不可用；手动上传安装包后需自行重启服务。"
 		return state
 	}
 
 	state.AutoUpdateEnabled = autoUpdateEnabled
-	state.ManualUpdateEnabled = true
 	state.RestartEnabled = true
 	state.SystemRuntimePID = runtimeInfo.PID
 	return state
@@ -227,11 +227,7 @@ func (h *Handler) PostSettingsSystemAutoUpdateHandler(c fiber.Ctx) error {
 func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	if runtime.GOOS == "windows" {
 		logger.Warn("[dash] manual update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
-		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持 daemon-mode 自动更新")
-	}
-	if _, err := updater.ReadActiveRuntimeInfo(); err != nil {
-		logger.Warn("[dash] manual update blocked: ip=%s err=%v", c.IP(), err)
-		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "当前 daemon-mode master 不可用，无法执行手动更新："+err.Error())
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持手动上传更新")
 	}
 
 	fileHeader, err := c.FormFile("archive")
@@ -248,9 +244,18 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	}
 	defer func() { _ = src.Close() }()
 
-	tmpDir, err := os.MkdirTemp("", ".swaves-manual-upgrade-")
+	manualUploadRoot, err := updater.RuntimeCachePath("updater", "manual_uploads")
 	if err != nil {
-		logger.Error("[dash] manual update create temp dir failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
+		logger.Error("[dash] manual update resolve upload cache root failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "解析上传缓存目录失败："+err.Error())
+	}
+	if err := os.MkdirAll(manualUploadRoot, 0o755); err != nil {
+		logger.Error("[dash] manual update create upload cache root failed: ip=%s archive=%s dir=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), manualUploadRoot, err)
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "创建上传缓存目录失败："+err.Error())
+	}
+	tmpDir, err := os.MkdirTemp(manualUploadRoot, ".swaves-manual-upgrade-")
+	if err != nil {
+		logger.Error("[dash] manual update create temp dir failed: ip=%s archive=%s dir=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), manualUploadRoot, err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "创建临时目录失败："+err.Error())
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
