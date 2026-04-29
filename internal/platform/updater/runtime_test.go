@@ -38,19 +38,19 @@ func resetRuntimeCacheRoot(t *testing.T) {
 	})
 }
 
-func TestDefaultRuntimeInfoPathUsesProcessCacheRoot(t *testing.T) {
+func TestRuntimeInfoPathUsesProcessCacheRoot(t *testing.T) {
 	base := t.TempDir()
 	withUpdaterWorkingDir(t, base)
 	resetRuntimeCacheRoot(t)
 
-	got := DefaultRuntimeInfoPath()
+	got := RuntimeInfoPath()
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Getwd failed: %v", err)
 	}
 	want := filepath.Join(wd, runtimeInfoRelativePath())
 	if got != want {
-		t.Fatalf("DefaultRuntimeInfoPath = %q, want %q", got, want)
+		t.Fatalf("RuntimeInfoPath = %q, want %q", got, want)
 	}
 }
 
@@ -98,10 +98,10 @@ func TestConfigureRuntimeCacheRootUsesSQLiteDirectory(t *testing.T) {
 		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
 	}
 
-	got := DefaultRuntimeInfoPath()
+	got := RuntimeInfoPath()
 	want := filepath.Join(base, runtimeInfoRelativePath())
 	if got != want {
-		t.Fatalf("DefaultRuntimeInfoPath = %q, want %q", got, want)
+		t.Fatalf("RuntimeInfoPath = %q, want %q", got, want)
 	}
 	if info, err := os.Stat(filepath.Join(base, ".cache")); err != nil || !info.IsDir() {
 		t.Fatalf("cache root missing or not dir: info=%v err=%v", info, err)

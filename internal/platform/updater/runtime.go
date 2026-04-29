@@ -32,10 +32,6 @@ var (
 	runtimeCacheMu   sync.RWMutex
 )
 
-func RuntimeInfoPath() string {
-	return DefaultRuntimeInfoPath()
-}
-
 func ConfigureRuntimeCacheRoot(sqliteFile string) error {
 	root, err := pathutil.EnsureDatabaseCacheRoot(sqliteFile)
 	if err != nil {
@@ -70,7 +66,7 @@ func RuntimeCachePath() (string, error) {
 	return filepath.Join(root, RuntimeInfoName), nil
 }
 
-func DefaultRuntimeInfoPath() string {
+func RuntimeInfoPath() string {
 	path, err := RuntimeCachePath()
 	if err == nil && strings.TrimSpace(path) != "" {
 		return path
@@ -182,9 +178,6 @@ func RemoveRuntimeInfo() error {
 	if err != nil && !os.IsNotExist(err) {
 		logger.Error("[update] remove runtime info failed: path=%s err=%v", path, err)
 		return fmt.Errorf("remove runtime info failed: %w", err)
-	}
-	if err == nil {
-		return nil
 	}
 	return nil
 }
