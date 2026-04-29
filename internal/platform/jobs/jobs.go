@@ -167,10 +167,6 @@ func ResolveLocalBackupDir(dir string) string {
 	return filepath.Join(wd, dir)
 }
 
-func resolveBackupDir(dir string) string {
-	return ResolveLocalBackupDir(dir)
-}
-
 func ResolveLocalBackupDirForSQLite(dir string, sqliteFile string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {

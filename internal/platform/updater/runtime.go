@@ -84,17 +84,30 @@ func DefaultRuntimeInfoPath() string {
 }
 
 func legacyRuntimeInfoPaths() []string {
-	paths := make([]string, 0, 3)
-	if cacheDir, err := osUserCacheDir(); err == nil && strings.TrimSpace(cacheDir) != "" {
-		paths = append(paths, filepath.Join(cacheDir, "swaves", "master_runtime.json"))
+	seen := make(map[string]struct{})
+	add := func(p string) []string {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return nil
+		}
+		if _, ok := seen[p]; ok {
+			return nil
+		}
+		seen[p] = struct{}{}
+		return []string{p}
 	}
-	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil && strings.TrimSpace(processCachePath) != "" {
-		paths = append(paths, processCachePath)
+
+	var paths []string
+	if cacheDir, err := osUserCacheDir(); err == nil {
+		paths = append(paths, add(filepath.Join(cacheDir, "swaves", "master_runtime.json"))...)
 	}
-	if runtimeCachePath, err := RuntimeCachePath("swaves", "master_runtime.json"); err == nil && strings.TrimSpace(runtimeCachePath) != "" {
-		paths = append(paths, runtimeCachePath)
+	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil {
+		paths = append(paths, add(processCachePath)...)
 	}
-	paths = append(paths, filepath.Join(os.TempDir(), "swaves_master_runtime.json"))
+	if runtimeCachePath, err := RuntimeCachePath("swaves", "master_runtime.json"); err == nil {
+		paths = append(paths, add(runtimeCachePath)...)
+	}
+	paths = append(paths, add(filepath.Join(os.TempDir(), "swaves_master_runtime.json"))...)
 	return paths
 }
 
