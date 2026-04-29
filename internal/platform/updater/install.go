@@ -39,7 +39,7 @@ func InstallLatestRelease(currentVersion string, goos string, goarch string) (In
 }
 
 func RestartActiveRuntime() (int, error) {
-	runtimeInfo, err := readActiveRuntimeInfo()
+	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
 		logger.Error("[update] restart active runtime failed to read active runtime: err=%v", err)
 		return 0, err
@@ -81,7 +81,7 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 	result.LatestVersion = version
 	logger.Info("[update] manual install archive validated: archive=%s version=%s", result.ArchiveName, result.LatestVersion)
 
-	runtimeInfo, err := readActiveRuntimeInfo()
+	runtimeInfo, err := ReadActiveRuntimeInfo()
 	hasActiveMaster := err == nil
 	if hasActiveMaster {
 		logger.Info("[update] manual install using active master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
@@ -158,7 +158,7 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 
 	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
 	logger.Info("[update] auto install start: current=%s target=%s/%s", versionLabel(result.CurrentVersion), goos, goarch)
-	runtimeInfo, err := readActiveRuntimeInfo()
+	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
 		logger.Warn("[update] auto install unavailable: err=%v", err)
 		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
@@ -540,7 +540,7 @@ func activeRuntimeForExecutable(targetPath string) (RuntimeInfo, bool) {
 		return RuntimeInfo{}, false
 	}
 
-	runtimeInfo, err := readActiveRuntimeInfo()
+	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
 		return RuntimeInfo{}, false
 	}
@@ -598,7 +598,7 @@ func ensureRuntimeInstallTarget(expected RuntimeInfo) error {
 		return fmt.Errorf("runtime executable is required")
 	}
 
-	active, err := readActiveRuntimeInfo()
+	active, err := ReadActiveRuntimeInfo()
 	if err != nil {
 		return fmt.Errorf("revalidate active master failed: %w", err)
 	}

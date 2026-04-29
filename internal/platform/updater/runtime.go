@@ -166,10 +166,6 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 }
 
 func ReadRuntimeInfo() (RuntimeInfo, error) {
-	return readRuntimeInfo()
-}
-
-func readRuntimeInfo() (RuntimeInfo, error) {
 	path := RuntimeInfoPath()
 	info, err := readRuntimeInfoAtPath(path)
 	if err == nil {
@@ -198,11 +194,7 @@ func readRuntimeInfo() (RuntimeInfo, error) {
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
-	return readActiveRuntimeInfo()
-}
-
-func readActiveRuntimeInfo() (RuntimeInfo, error) {
-	info, err := readRuntimeInfo()
+	info, err := ReadRuntimeInfo()
 	if err != nil {
 		return RuntimeInfo{}, err
 	}
