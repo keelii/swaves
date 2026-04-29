@@ -8,17 +8,14 @@ import (
 
 func TestRestoreRequestRoundTrip(t *testing.T) {
 	tmpDir := t.TempDir()
-	restoreRequestPath = func() string { return filepath.Join(tmpDir, "restore_request.json") }
-	t.Cleanup(func() {
-		restoreRequestPath = defaultRestoreRequestPath
-	})
+	requestPath := filepath.Join(tmpDir, "restore_request.json")
 
 	want := RestoreRequest{Source: "/tmp/restore.sqlite", RequestedAt: 123}
-	if err := WriteRestoreRequest(want); err != nil {
+	if err := WriteRestoreRequestAtPath(requestPath, want); err != nil {
 		t.Fatalf("WriteRestoreRequest failed: %v", err)
 	}
 
-	got, err := ReadRestoreRequest()
+	got, err := ReadRestoreRequestAtPath(requestPath)
 	if err != nil {
 		t.Fatalf("ReadRestoreRequest failed: %v", err)
 	}
@@ -26,22 +23,19 @@ func TestRestoreRequestRoundTrip(t *testing.T) {
 		t.Fatalf("ReadRestoreRequest = %#v, want %#v", got, want)
 	}
 
-	if err := RemoveRestoreRequest(); err != nil {
+	if err := RemoveRestoreRequestAtPath(requestPath); err != nil {
 		t.Fatalf("RemoveRestoreRequest failed: %v", err)
 	}
-	if _, err := ReadRestoreRequest(); !errors.Is(err, ErrRestoreRequestNotFound) {
+	if _, err := ReadRestoreRequestAtPath(requestPath); !errors.Is(err, ErrRestoreRequestNotFound) {
 		t.Fatalf("expected ErrRestoreRequestNotFound, got %v", err)
 	}
 }
 
 func TestRestoreStatusDefaultsToIdle(t *testing.T) {
 	tmpDir := t.TempDir()
-	restoreStatusPath = func() string { return filepath.Join(tmpDir, "restore_status.json") }
-	t.Cleanup(func() {
-		restoreStatusPath = defaultRestoreStatusPath
-	})
+	statusPath := filepath.Join(tmpDir, "restore_status.json")
 
-	status, err := ReadRestoreStatus()
+	status, err := ReadRestoreStatusAtPath(statusPath)
 	if err != nil {
 		t.Fatalf("ReadRestoreStatus failed: %v", err)
 	}

@@ -154,17 +154,11 @@ func TestBuildImportedThemeKeepsOrRenamesConflicts(t *testing.T) {
 	}
 }
 
-func withThemeRestartFuncs(t *testing.T, readFn func() (updater.RuntimeInfo, error), restartFn func() (int, error)) {
-	t.Helper()
-
-	originalRead := readActiveRuntimeInfo
-	originalRestart := restartActiveRuntime
-	readActiveRuntimeInfo = readFn
-	restartActiveRuntime = restartFn
-	t.Cleanup(func() {
-		readActiveRuntimeInfo = originalRead
-		restartActiveRuntime = originalRestart
-	})
+func themeRestartDeps(readFn func() (updater.RuntimeInfo, error), restartFn func() (int, error)) systemUpdateDeps {
+	deps := defaultSystemUpdateDeps()
+	deps.readActiveRuntime = readFn
+	deps.restartRuntime = restartFn
+	return deps
 }
 
 func createThemeRecord(t *testing.T, dbx *db.DB, code string, isCurrent int) *db.Theme {
@@ -215,7 +209,7 @@ func TestSetCurrentThemeAndRestart(t *testing.T) {
 
 	readCalls := 0
 	restartCalls := 0
-	withThemeRestartFuncs(t,
+	deps := themeRestartDeps(
 		func() (updater.RuntimeInfo, error) {
 			readCalls++
 			return updater.RuntimeInfo{PID: 4321, Executable: "/tmp/swaves"}, nil
@@ -226,7 +220,7 @@ func TestSetCurrentThemeAndRestart(t *testing.T) {
 		},
 	)
 
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID)
+	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
 	if err != nil {
 		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
 	}
@@ -276,7 +270,7 @@ func TestSetCurrentThemeAndRestartSkipsRestartInReloadMode(t *testing.T) {
 
 	readCalls := 0
 	restartCalls := 0
-	withThemeRestartFuncs(t,
+	deps := themeRestartDeps(
 		func() (updater.RuntimeInfo, error) {
 			readCalls++
 			return updater.RuntimeInfo{}, nil
@@ -287,7 +281,7 @@ func TestSetCurrentThemeAndRestartSkipsRestartInReloadMode(t *testing.T) {
 		},
 	)
 
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID)
+	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
 	if err != nil {
 		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
 	}
@@ -324,7 +318,7 @@ func TestSetCurrentThemeAndRestartRequiresManualRestartWhenRuntimeUnavailable(t 
 	createThemeRecord(t, dbx, "theme-a", 1)
 	nextTheme := createThemeRecord(t, dbx, "theme-b", 0)
 
-	withThemeRestartFuncs(t,
+	deps := themeRestartDeps(
 		func() (updater.RuntimeInfo, error) {
 			return updater.RuntimeInfo{}, errors.New("daemon mode is not active")
 		},
@@ -334,7 +328,7 @@ func TestSetCurrentThemeAndRestartRequiresManualRestartWhenRuntimeUnavailable(t 
 		},
 	)
 
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID)
+	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
 	if err != nil {
 		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
 	}
@@ -362,7 +356,7 @@ func TestSetCurrentThemeAndRestartRequiresManualRestartOnRestartFailure(t *testi
 	createThemeRecord(t, dbx, "theme-a", 1)
 	nextTheme := createThemeRecord(t, dbx, "theme-b", 0)
 
-	withThemeRestartFuncs(t,
+	deps := themeRestartDeps(
 		func() (updater.RuntimeInfo, error) {
 			return updater.RuntimeInfo{PID: 4321, Executable: "/tmp/swaves"}, nil
 		},
@@ -371,7 +365,7 @@ func TestSetCurrentThemeAndRestartRequiresManualRestartOnRestartFailure(t *testi
 		},
 	)
 
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID)
+	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
 	if err != nil {
 		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
 	}
@@ -654,7 +648,7 @@ func TestSetCurrentThemeAndRestartSkipsWhenAlreadyCurrent(t *testing.T) {
 
 	readCalls := 0
 	restartCalls := 0
-	withThemeRestartFuncs(t,
+	deps := themeRestartDeps(
 		func() (updater.RuntimeInfo, error) {
 			readCalls++
 			return updater.RuntimeInfo{}, nil
@@ -665,7 +659,7 @@ func TestSetCurrentThemeAndRestartSkipsWhenAlreadyCurrent(t *testing.T) {
 		},
 	)
 
-	result, err := setCurrentThemeAndRestart(dbx, currentTheme.ID)
+	result, err := setCurrentThemeAndRestart(dbx, currentTheme.ID, deps)
 	if err != nil {
 		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
 	}

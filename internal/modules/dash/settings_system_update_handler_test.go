@@ -7,16 +7,6 @@ import (
 	"swaves/internal/platform/updater"
 )
 
-func withLatestReleaseCheck(t *testing.T, fn func(currentVersion string, goos string, goarch string) (updater.CheckResult, error)) {
-	t.Helper()
-
-	original := checkLatestRelease
-	checkLatestRelease = fn
-	t.Cleanup(func() {
-		checkLatestRelease = original
-	})
-}
-
 func TestLoadLatestVersionInfo(t *testing.T) {
 	tests := []struct {
 		name                  string
@@ -69,11 +59,9 @@ func TestLoadLatestVersionInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withLatestReleaseCheck(t, func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+			latestInfo := loadLatestVersionInfo(func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
 				return tt.checkResult, tt.checkErr
-			})
-
-			latestInfo := loadLatestVersionInfo(
+			},
 				tt.currentVersion,
 				"linux",
 				"amd64",
@@ -109,15 +97,9 @@ func TestBuildSystemUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *test
 }
 
 func TestSystemUpdateSupportStateDisablesManualUpdateWithoutDaemon(t *testing.T) {
-	original := readActiveRuntimeInfo
-	readActiveRuntimeInfo = func() (updater.RuntimeInfo, error) {
+	state := systemUpdateSupportState(func() (updater.RuntimeInfo, error) {
 		return updater.RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
-	}
-	t.Cleanup(func() {
-		readActiveRuntimeInfo = original
-	})
-
-	state := systemUpdateSupportState(true)
+	}, true)
 	if state.ManualUpdateEnabled {
 		t.Fatal("expected manual update to be disabled without daemon mode")
 	}

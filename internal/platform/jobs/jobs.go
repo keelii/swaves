@@ -13,7 +13,6 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
-	"swaves/internal/platform/updater"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/types"
@@ -29,8 +28,6 @@ const (
 func jobMessage(message string) *string {
 	return &message
 }
-
-var checkLatestAppRelease = updater.CheckLatestRelease
 
 // DatabaseBackupJob 数据库备份任务
 func DatabaseBackupJob(reg *Registry) (*string, error) {
@@ -383,7 +380,7 @@ func CheckAppUpdateJob(reg *Registry) (*string, error) {
 		return nil, nil
 	}
 
-	result, err := checkLatestAppRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+	result, err := reg.resolvedAppUpdateDeps().checkLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return nil, err
 	}

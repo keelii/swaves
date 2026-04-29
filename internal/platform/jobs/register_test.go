@@ -356,33 +356,35 @@ func TestRunRemoteBackupNowDisabledReturnsMessage(t *testing.T) {
 
 func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
 	dbx := openJobTestDB(t)
-	oldCheck := checkLatestAppRelease
 	oldVersion := buildinfo.Version
 	oldCommit := buildinfo.Commit
 	oldBuildTime := buildinfo.BuildTime
 	buildinfo.Version = "v1.2.3"
 	buildinfo.Commit = "test"
 	buildinfo.BuildTime = "2026-04-05T00:00:00Z"
-	checkLatestAppRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
-		return updater.CheckResult{
-			CurrentVersion:       currentVersion,
-			CurrentVersionStable: true,
-			LatestVersion:        "v1.2.4",
-			LatestReleaseURL:     updater.ReleaseTagURL("v1.2.4"),
-			HasUpgrade:           true,
-			Target: &updater.ReleaseTarget{
-				Archive: updater.ReleaseAsset{Name: "swaves_v1.2.4_linux_amd64.tar.gz"},
-			},
-		}, nil
-	}
 	defer func() {
-		checkLatestAppRelease = oldCheck
 		buildinfo.Version = oldVersion
 		buildinfo.Commit = oldCommit
 		buildinfo.BuildTime = oldBuildTime
 	}()
 
-	msg, err := CheckAppUpdateJob(&Registry{DB: dbx})
+	msg, err := CheckAppUpdateJob(&Registry{
+		DB: dbx,
+		appUpdate: appUpdateDeps{
+			checkLatestRelease: func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+				return updater.CheckResult{
+					CurrentVersion:       currentVersion,
+					CurrentVersionStable: true,
+					LatestVersion:        "v1.2.4",
+					LatestReleaseURL:     updater.ReleaseTagURL("v1.2.4"),
+					HasUpgrade:           true,
+					Target: &updater.ReleaseTarget{
+						Archive: updater.ReleaseAsset{Name: "swaves_v1.2.4_linux_amd64.tar.gz"},
+					},
+				}, nil
+			},
+		},
+	})
 	if err != nil {
 		t.Fatalf("CheckAppUpdateJob failed: %v", err)
 	}
@@ -402,24 +404,13 @@ func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
 func TestExecuteTaskCheckAppUpdateNoUpgradeDoesNotRecordRun(t *testing.T) {
 	dbx := openJobTestDB(t)
 	task := mustGetTaskByCode(t, dbx, "check_app_update")
-	oldCheck := checkLatestAppRelease
 	oldVersion := buildinfo.Version
 	oldCommit := buildinfo.Commit
 	oldBuildTime := buildinfo.BuildTime
 	buildinfo.Version = "v1.2.3"
 	buildinfo.Commit = "test"
 	buildinfo.BuildTime = "2026-04-05T00:00:00Z"
-	checkLatestAppRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
-		return updater.CheckResult{
-			CurrentVersion:       currentVersion,
-			CurrentVersionStable: true,
-			LatestVersion:        currentVersion,
-			HasUpgrade:           false,
-			Target:               nil,
-		}, nil
-	}
 	defer func() {
-		checkLatestAppRelease = oldCheck
 		buildinfo.Version = oldVersion
 		buildinfo.Commit = oldCommit
 		buildinfo.BuildTime = oldBuildTime
@@ -433,6 +424,17 @@ func TestExecuteTaskCheckAppUpdateNoUpgradeDoesNotRecordRun(t *testing.T) {
 			},
 		},
 		DB: dbx,
+		appUpdate: appUpdateDeps{
+			checkLatestRelease: func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
+				return updater.CheckResult{
+					CurrentVersion:       currentVersion,
+					CurrentVersionStable: true,
+					LatestVersion:        currentVersion,
+					HasUpgrade:           false,
+					Target:               nil,
+				}, nil
+			},
+		},
 	})
 
 	ExecuteTask(dbx, task)
