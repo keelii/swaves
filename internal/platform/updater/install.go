@@ -28,36 +28,10 @@ type InstallResult struct {
 	Reason         string
 }
 
-type installDeps struct {
-	currentExecutable     func() (string, error)
-	signalProcess         func(pid int) error
-	readActiveRuntimeInfo func() (RuntimeInfo, error)
-}
-
-func defaultInstallDeps() installDeps {
-	return installDeps{
-		currentExecutable:     os.Executable,
-		signalProcess:         defaultSignalProcess,
-		readActiveRuntimeInfo: ReadActiveRuntimeInfo,
-	}
-}
-
-func resolvedInstallDeps(deps installDeps) installDeps {
-	resolved := defaultInstallDeps()
-	if deps.currentExecutable != nil {
-		resolved.currentExecutable = deps.currentExecutable
-	}
-	if deps.signalProcess != nil {
-		resolved.signalProcess = deps.signalProcess
-	}
-	if deps.readActiveRuntimeInfo != nil {
-		resolved.readActiveRuntimeInfo = deps.readActiveRuntimeInfo
-	}
-	return resolved
-}
-
 var (
-	installMu sync.Mutex
+	installMu             sync.Mutex
+	currentExecutableFunc = os.Executable
+	signalProcessFunc     = defaultSignalProcess
 )
 
 type executableRollback func() error
@@ -67,18 +41,13 @@ func InstallLatestRelease(currentVersion string, goos string, goarch string) (In
 }
 
 func RestartActiveRuntime() (int, error) {
-	return restartActiveRuntimeWithDeps(defaultInstallDeps())
-}
-
-func restartActiveRuntimeWithDeps(deps installDeps) (int, error) {
-	deps = resolvedInstallDeps(deps)
-	runtimeInfo, err := deps.readActiveRuntimeInfo()
+	runtimeInfo, err := readActiveRuntimeInfo()
 	if err != nil {
 		logger.Error("[update] restart active runtime failed to read active runtime: err=%v", err)
 		return 0, err
 	}
 	logger.Info("[update] restart active runtime signaling master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
-	if err := deps.signalProcess(runtimeInfo.PID); err != nil {
+	if err := signalProcessFunc(runtimeInfo.PID); err != nil {
 		logger.Error("[update] restart active runtime signal failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return 0, fmt.Errorf("signal master restart failed: %w", err)
 	}
@@ -91,11 +60,6 @@ func InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) 
 }
 
 func InstallLocalReleaseArchive(archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
-	return installLocalReleaseArchiveWithDeps(defaultInstallDeps(), archiveName, archivePath, currentVersion, goos, goarch)
-}
-
-func installLocalReleaseArchiveWithDeps(deps installDeps, archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
-	deps = resolvedInstallDeps(deps)
 	installMu.Lock()
 	defer installMu.Unlock()
 
@@ -119,7 +83,7 @@ func installLocalReleaseArchiveWithDeps(deps installDeps, archiveName string, ar
 	result.LatestVersion = version
 	logger.Info("[update] manual install archive validated: archive=%s version=%s", result.ArchiveName, result.LatestVersion)
 
-	runtimeInfo, err := deps.readActiveRuntimeInfo()
+	runtimeInfo, err := readActiveRuntimeInfo()
 	hasActiveMaster := err == nil
 	if hasActiveMaster {
 		logger.Info("[update] manual install using active master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
@@ -127,7 +91,7 @@ func installLocalReleaseArchiveWithDeps(deps installDeps, archiveName string, ar
 		logger.Info("[update] manual install without daemon-mode master: err=%v", err)
 	}
 
-	installTargetDir, err := installTargetDirectoryWithDeps(deps, runtimeInfo, hasActiveMaster)
+	installTargetDir, err := installTargetDirectory(runtimeInfo, hasActiveMaster)
 	if err != nil {
 		logger.Error("[update] manual install resolve target dir failed: archive=%s err=%v", result.ArchiveName, err)
 		return result, err
@@ -153,12 +117,12 @@ func installLocalReleaseArchiveWithDeps(deps installDeps, archiveName string, ar
 
 	if hasActiveMaster {
 		logger.Info("[update] manual install replacing executable via active master: master_pid=%d", runtimeInfo.PID)
-		rollback, err := replaceExecutableWithRollback(deps, extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
+		rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
 		if err != nil {
 			logger.Error("[update] manual install replace executable failed: archive=%s master_pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
 			return result, err
 		}
-		if err := deps.signalProcess(runtimeInfo.PID); err != nil {
+		if err := signalProcessFunc(runtimeInfo.PID); err != nil {
 			if rollbackErr := rollback(); rollbackErr != nil {
 				logger.Error("[update] manual install restart signal failed and rollback failed: archive=%s master_pid=%d err=%v rollback_err=%v", result.ArchiveName, runtimeInfo.PID, err, rollbackErr)
 				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
@@ -174,7 +138,7 @@ func installLocalReleaseArchiveWithDeps(deps installDeps, archiveName string, ar
 		return result, nil
 	}
 
-	targetPath, err := currentInstallExecutableWithDeps(deps)
+	targetPath, err := currentInstallExecutable()
 	if err != nil {
 		logger.Error("[update] manual install resolve current executable failed: archive=%s err=%v", result.ArchiveName, err)
 		return result, err
@@ -191,17 +155,12 @@ func installLocalReleaseArchiveWithDeps(deps installDeps, archiveName string, ar
 }
 
 func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
-	return c.installLatestReleaseWithDeps(defaultInstallDeps(), currentVersion, goos, goarch)
-}
-
-func (c Client) installLatestReleaseWithDeps(deps installDeps, currentVersion string, goos string, goarch string) (InstallResult, error) {
-	deps = resolvedInstallDeps(deps)
 	installMu.Lock()
 	defer installMu.Unlock()
 
 	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
 	logger.Info("[update] auto install start: current=%s target=%s/%s", versionLabel(result.CurrentVersion), goos, goarch)
-	runtimeInfo, err := deps.readActiveRuntimeInfo()
+	runtimeInfo, err := readActiveRuntimeInfo()
 	if err != nil {
 		logger.Warn("[update] auto install unavailable: err=%v", err)
 		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
@@ -284,12 +243,12 @@ func (c Client) installLatestReleaseWithDeps(deps installDeps, currentVersion st
 		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
 	}
 	logger.Info("[update] auto install replacing executable: master_pid=%d target=%s", runtimeInfo.PID, runtimeInfo.Executable)
-	rollback, err := replaceExecutableWithRollback(deps, extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
+	rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
 	if err != nil {
 		logger.Error("[update] auto install replace executable failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return result, err
 	}
-	if err := deps.signalProcess(runtimeInfo.PID); err != nil {
+	if err := signalProcessFunc(runtimeInfo.PID); err != nil {
 		if rollbackErr := rollback(); rollbackErr != nil {
 			logger.Error("[update] auto install restart signal failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
 			return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
@@ -306,11 +265,6 @@ func (c Client) installLatestReleaseWithDeps(deps installDeps, currentVersion st
 }
 
 func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
-	return c.installLatestReleaseCLIWithDeps(defaultInstallDeps(), currentVersion, goos, goarch)
-}
-
-func (c Client) installLatestReleaseCLIWithDeps(deps installDeps, currentVersion string, goos string, goarch string) (InstallResult, error) {
-	deps = resolvedInstallDeps(deps)
 	installMu.Lock()
 	defer installMu.Unlock()
 
@@ -356,7 +310,7 @@ func (c Client) installLatestReleaseCLIWithDeps(deps installDeps, currentVersion
 		}
 	}
 
-	targetPath, err := currentInstallExecutableWithDeps(deps)
+	targetPath, err := currentInstallExecutable()
 	if err != nil {
 		logger.Error("[update] cli install resolve current executable failed: err=%v", err)
 		return result, err
@@ -404,9 +358,9 @@ func (c Client) installLatestReleaseCLIWithDeps(deps installDeps, currentVersion
 	}
 
 	result.Installed = true
-	if runtimeInfo, ok := activeRuntimeForExecutableWithDeps(deps, targetPath); ok {
+	if runtimeInfo, ok := activeRuntimeForExecutable(targetPath); ok {
 		logger.Info("[update] cli install restarting active master: master_pid=%d target=%s", runtimeInfo.PID, targetPath)
-		if err := deps.signalProcess(runtimeInfo.PID); err != nil {
+		if err := signalProcessFunc(runtimeInfo.PID); err != nil {
 			if rollbackErr := rollback(); rollbackErr != nil {
 				logger.Error("[update] cli install restart active master failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
 				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
@@ -559,20 +513,19 @@ func defaultSignalProcess(pid int) error {
 	return process.Signal(syscall.SIGHUP)
 }
 
-func installTargetDirectoryWithDeps(deps installDeps, runtimeInfo RuntimeInfo, hasActiveMaster bool) (string, error) {
+func installTargetDirectory(runtimeInfo RuntimeInfo, hasActiveMaster bool) (string, error) {
 	if hasActiveMaster {
 		return filepath.Dir(runtimeInfo.Executable), nil
 	}
-	targetPath, err := currentInstallExecutableWithDeps(deps)
+	targetPath, err := currentInstallExecutable()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Dir(targetPath), nil
 }
 
-func currentInstallExecutableWithDeps(deps installDeps) (string, error) {
-	deps = resolvedInstallDeps(deps)
-	path, err := deps.currentExecutable()
+func currentInstallExecutable() (string, error) {
+	path, err := currentExecutableFunc()
 	if err != nil {
 		return "", fmt.Errorf("resolve current executable failed: %w", err)
 	}
@@ -583,14 +536,13 @@ func currentInstallExecutableWithDeps(deps installDeps) (string, error) {
 	return path, nil
 }
 
-func activeRuntimeForExecutableWithDeps(deps installDeps, targetPath string) (RuntimeInfo, bool) {
+func activeRuntimeForExecutable(targetPath string) (RuntimeInfo, bool) {
 	targetPath = strings.TrimSpace(targetPath)
 	if targetPath == "" {
 		return RuntimeInfo{}, false
 	}
 
-	deps = resolvedInstallDeps(deps)
-	runtimeInfo, err := deps.readActiveRuntimeInfo()
+	runtimeInfo, err := readActiveRuntimeInfo()
 	if err != nil {
 		return RuntimeInfo{}, false
 	}
@@ -632,14 +584,14 @@ func replaceExecutableAtPathWithRollback(nextPath string, targetPath string, bac
 	return restore, nil
 }
 
-func replaceExecutableWithRollback(deps installDeps, nextPath string, runtimeInfo RuntimeInfo, backupPath string) (executableRollback, error) {
-	if err := ensureRuntimeInstallTargetWithDeps(deps, runtimeInfo); err != nil {
+func replaceExecutableWithRollback(nextPath string, runtimeInfo RuntimeInfo, backupPath string) (executableRollback, error) {
+	if err := ensureRuntimeInstallTarget(runtimeInfo); err != nil {
 		return nil, err
 	}
 	return replaceExecutableAtPathWithRollback(nextPath, runtimeInfo.Executable, backupPath)
 }
 
-func ensureRuntimeInstallTargetWithDeps(deps installDeps, expected RuntimeInfo) error {
+func ensureRuntimeInstallTarget(expected RuntimeInfo) error {
 	expected.Executable = strings.TrimSpace(expected.Executable)
 	if expected.PID <= 0 {
 		return fmt.Errorf("runtime pid is required")
@@ -648,8 +600,7 @@ func ensureRuntimeInstallTargetWithDeps(deps installDeps, expected RuntimeInfo) 
 		return fmt.Errorf("runtime executable is required")
 	}
 
-	deps = resolvedInstallDeps(deps)
-	active, err := deps.readActiveRuntimeInfo()
+	active, err := readActiveRuntimeInfo()
 	if err != nil {
 		return fmt.Errorf("revalidate active master failed: %w", err)
 	}

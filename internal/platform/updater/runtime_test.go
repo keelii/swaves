@@ -6,14 +6,6 @@ import (
 	"testing"
 )
 
-func runtimeTestDeps(userCacheDir func() (string, error)) runtimeDeps {
-	deps := defaultRuntimeDeps()
-	if userCacheDir != nil {
-		deps.osUserCacheDir = userCacheDir
-	}
-	return deps
-}
-
 func withUpdaterWorkingDir(t *testing.T, dir string) {
 	t.Helper()
 
@@ -78,7 +70,7 @@ func TestWriteRuntimeInfoUsesDefaultProcessCachePath(t *testing.T) {
 		t.Fatalf("runtime info file missing at %s: %v", want, err)
 	}
 
-	info, err := readRuntimeInfoWithDeps(defaultRuntimeDeps())
+	info, err := ReadRuntimeInfo()
 	if err != nil {
 		t.Fatalf("ReadRuntimeInfo failed: %v", err)
 	}
@@ -121,8 +113,10 @@ func TestReadRuntimeInfoFallsBackToLegacyUserCachePath(t *testing.T) {
 	resetRuntimeCacheRoot(t)
 
 	legacyBase := t.TempDir()
-	deps := runtimeTestDeps(func() (string, error) {
-		return legacyBase, nil
+	withUpdaterHooks(t, updaterTestHooks{
+		userCacheDir: func() (string, error) {
+			return legacyBase, nil
+		},
 	})
 
 	legacyPath := filepath.Join(legacyBase, "swaves", "master_runtime.json")
@@ -133,7 +127,7 @@ func TestReadRuntimeInfoFallsBackToLegacyUserCachePath(t *testing.T) {
 		t.Fatalf("WriteFile failed: %v", err)
 	}
 
-	info, err := readRuntimeInfoWithDeps(deps)
+	info, err := ReadRuntimeInfo()
 	if err != nil {
 		t.Fatalf("ReadRuntimeInfo failed: %v", err)
 	}
@@ -150,8 +144,10 @@ func TestReadRuntimeInfoFallsBackToLegacyProcessCachePath(t *testing.T) {
 	withUpdaterWorkingDir(t, base)
 	resetRuntimeCacheRoot(t)
 
-	deps := runtimeTestDeps(func() (string, error) {
-		return filepath.Join(base, "non-existent-user-cache"), nil
+	withUpdaterHooks(t, updaterTestHooks{
+		userCacheDir: func() (string, error) {
+			return filepath.Join(base, "non-existent-user-cache"), nil
+		},
 	})
 
 	legacyPath := filepath.Join(base, ".cache", "swaves", "master_runtime.json")
@@ -162,7 +158,7 @@ func TestReadRuntimeInfoFallsBackToLegacyProcessCachePath(t *testing.T) {
 		t.Fatalf("WriteFile failed: %v", err)
 	}
 
-	info, err := readRuntimeInfoWithDeps(deps)
+	info, err := ReadRuntimeInfo()
 	if err != nil {
 		t.Fatalf("ReadRuntimeInfo failed: %v", err)
 	}
@@ -190,7 +186,7 @@ func TestReadRuntimeInfoFallsBackToLegacyConfiguredCachePath(t *testing.T) {
 		t.Fatalf("WriteFile failed: %v", err)
 	}
 
-	info, err := readRuntimeInfoWithDeps(defaultRuntimeDeps())
+	info, err := ReadRuntimeInfo()
 	if err != nil {
 		t.Fatalf("ReadRuntimeInfo failed: %v", err)
 	}
@@ -208,11 +204,13 @@ func TestReadRuntimeInfoReturnsInactiveWhenCurrentAndLegacyPathsAreMissing(t *te
 	resetRuntimeCacheRoot(t)
 
 	legacyBase := t.TempDir()
-	deps := runtimeTestDeps(func() (string, error) {
-		return legacyBase, nil
+	withUpdaterHooks(t, updaterTestHooks{
+		userCacheDir: func() (string, error) {
+			return legacyBase, nil
+		},
 	})
 
-	if _, err := readRuntimeInfoWithDeps(deps); err == nil || err.Error() != "daemon mode is not active" {
+	if _, err := ReadRuntimeInfo(); err == nil || err.Error() != "daemon mode is not active" {
 		t.Fatalf("ReadRuntimeInfo err = %v, want daemon mode is not active", err)
 	}
 }
