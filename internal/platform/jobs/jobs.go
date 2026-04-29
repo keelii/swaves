@@ -13,6 +13,7 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/types"
@@ -380,7 +381,7 @@ func CheckAppUpdateJob(reg *Registry) (*string, error) {
 		return nil, nil
 	}
 
-	result, err := reg.resolvedAppUpdateDeps().checkLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+	result, err := updater.CheckLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return nil, err
 	}

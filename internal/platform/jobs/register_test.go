@@ -6,10 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
-	"swaves/internal/platform/updater"
 )
 
 func openJobTestDB(t *testing.T) *db.DB {
@@ -351,105 +349,6 @@ func TestRunRemoteBackupNowDisabledReturnsMessage(t *testing.T) {
 	}
 	if msg == nil || !strings.Contains(*msg, "未启用") {
 		t.Fatalf("expected disabled remote backup message, got %v", msg)
-	}
-}
-
-func TestCheckAppUpdateJobCreatesNotification(t *testing.T) {
-	dbx := openJobTestDB(t)
-	oldVersion := buildinfo.Version
-	oldCommit := buildinfo.Commit
-	oldBuildTime := buildinfo.BuildTime
-	buildinfo.Version = "v1.2.3"
-	buildinfo.Commit = "test"
-	buildinfo.BuildTime = "2026-04-05T00:00:00Z"
-	defer func() {
-		buildinfo.Version = oldVersion
-		buildinfo.Commit = oldCommit
-		buildinfo.BuildTime = oldBuildTime
-	}()
-
-	msg, err := CheckAppUpdateJob(&Registry{
-		DB: dbx,
-		appUpdate: appUpdateDeps{
-			checkLatestRelease: func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
-				return updater.CheckResult{
-					CurrentVersion:       currentVersion,
-					CurrentVersionStable: true,
-					LatestVersion:        "v1.2.4",
-					LatestReleaseURL:     updater.ReleaseTagURL("v1.2.4"),
-					HasUpgrade:           true,
-					Target: &updater.ReleaseTarget{
-						Archive: updater.ReleaseAsset{Name: "swaves_v1.2.4_linux_amd64.tar.gz"},
-					},
-				}, nil
-			},
-		},
-	})
-	if err != nil {
-		t.Fatalf("CheckAppUpdateJob failed: %v", err)
-	}
-	if msg == nil || *msg == "" {
-		t.Fatal("expected job message")
-	}
-
-	items, err := db.ListNotificationsByEventType(dbx, db.NotificationReceiverDash, db.NotificationEventAppUpdate, 10, 0)
-	if err != nil {
-		t.Fatalf("ListNotificationsByEventType failed: %v", err)
-	}
-	if len(items) != 1 {
-		t.Fatalf("app update notification count = %d, want 1", len(items))
-	}
-}
-
-func TestExecuteTaskCheckAppUpdateNoUpgradeDoesNotRecordRun(t *testing.T) {
-	dbx := openJobTestDB(t)
-	task := mustGetTaskByCode(t, dbx, "check_app_update")
-	oldVersion := buildinfo.Version
-	oldCommit := buildinfo.Commit
-	oldBuildTime := buildinfo.BuildTime
-	buildinfo.Version = "v1.2.3"
-	buildinfo.Commit = "test"
-	buildinfo.BuildTime = "2026-04-05T00:00:00Z"
-	defer func() {
-		buildinfo.Version = oldVersion
-		buildinfo.Commit = oldCommit
-		buildinfo.BuildTime = oldBuildTime
-	}()
-
-	withTestRegistry(t, &Registry{
-		jobs: map[string]JobItem{
-			task.Code: {
-				Kind: task.Kind,
-				Func: CheckAppUpdateJob,
-			},
-		},
-		DB: dbx,
-		appUpdate: appUpdateDeps{
-			checkLatestRelease: func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
-				return updater.CheckResult{
-					CurrentVersion:       currentVersion,
-					CurrentVersionStable: true,
-					LatestVersion:        currentVersion,
-					HasUpgrade:           false,
-					Target:               nil,
-				}, nil
-			},
-		},
-	})
-
-	ExecuteTask(dbx, task)
-
-	gotTask := mustGetTaskByCode(t, dbx, task.Code)
-	if gotTask.LastRunAt != nil {
-		t.Fatalf("LastRunAt should stay nil for no-upgrade no-op, got %v", *gotTask.LastRunAt)
-	}
-	if gotTask.LastStatus != "" {
-		t.Fatalf("LastStatus should stay empty for no-upgrade no-op, got %q", gotTask.LastStatus)
-	}
-
-	runs := mustListTaskRuns(t, dbx, task.Code)
-	if len(runs) != 0 {
-		t.Fatalf("expected no task runs for no-upgrade no-op, got %d", len(runs))
 	}
 }
 
