@@ -7,10 +7,7 @@ import (
 )
 
 func TestInjectDefaultTitle(t *testing.T) {
-	dbx := newSiteTestDB(t)
-	if dbx == nil {
-		t.Fatal("expected test database")
-	}
+	newSiteTestDB(t)
 
 	t.Run("injects route title when missing", func(t *testing.T) {
 		data := fiber.Map{}
