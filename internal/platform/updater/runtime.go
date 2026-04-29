@@ -8,6 +8,7 @@ import (
 	"strings"
 	"swaves/internal/platform/logger"
 	"swaves/internal/shared/pathutil"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -19,20 +20,62 @@ type RuntimeInfo struct {
 	UpdatedAt  int64  `json:"updated_at"`
 }
 
-var runtimeInfoPath = defaultRuntimeInfoPath
-
 var (
 	processExists     = defaultProcessExists
 	currentExecutable = os.Executable
 	osUserCacheDir    = os.UserCacheDir
+	runtimeCacheRoot  string
+	runtimeCacheMu    sync.RWMutex
 )
 
 func RuntimeInfoPath() string {
-	return runtimeInfoPath()
+	return DefaultRuntimeInfoPath()
 }
 
-func defaultRuntimeInfoPath() string {
-	path, err := pathutil.ResolveProcessCachePath("updater", "master_runtime.json")
+func ConfigureRuntimeCacheRoot(sqliteFile string) error {
+	root, err := pathutil.EnsureDatabaseCacheRoot(sqliteFile)
+	if err != nil {
+		return err
+	}
+	runtimeCacheMu.Lock()
+	runtimeCacheRoot = root
+	runtimeCacheMu.Unlock()
+	logger.Info("[update] runtime cache root configured: sqlite=%s cache_root=%s", strings.TrimSpace(sqliteFile), root)
+	return nil
+}
+
+func RuntimeCacheRoot() (string, error) {
+	runtimeCacheMu.RLock()
+	root := strings.TrimSpace(runtimeCacheRoot)
+	runtimeCacheMu.RUnlock()
+	if root != "" {
+		return root, nil
+	}
+	root, err := pathutil.ResolveProcessCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	return root, nil
+}
+
+func RuntimeCachePath(parts ...string) (string, error) {
+	root, err := RuntimeCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	segments := []string{root}
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		segments = append(segments, part)
+	}
+	return filepath.Join(segments...), nil
+}
+
+func DefaultRuntimeInfoPath() string {
+	path, err := RuntimeCachePath("updater", "master_runtime.json")
 	if err == nil && strings.TrimSpace(path) != "" {
 		return path
 	}
@@ -47,6 +90,9 @@ func legacyRuntimeInfoPaths() []string {
 	}
 	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil && strings.TrimSpace(processCachePath) != "" {
 		paths = append(paths, processCachePath)
+	}
+	if runtimeCachePath, err := RuntimeCachePath("swaves", "master_runtime.json"); err == nil && strings.TrimSpace(runtimeCachePath) != "" {
+		paths = append(paths, runtimeCachePath)
 	}
 	paths = append(paths, filepath.Join(os.TempDir(), "swaves_master_runtime.json"))
 	return paths

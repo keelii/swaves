@@ -17,13 +17,17 @@ import (
 	"testing"
 )
 
-func withRuntimeInfoPath(t *testing.T, path string) {
+func withRuntimeCacheRoot(t *testing.T, root string) {
 	t.Helper()
 
-	oldRuntimePath := runtimeInfoPath
-	runtimeInfoPath = func() string { return path }
+	runtimeCacheMu.Lock()
+	oldRoot := runtimeCacheRoot
+	runtimeCacheRoot = root
+	runtimeCacheMu.Unlock()
 	t.Cleanup(func() {
-		runtimeInfoPath = oldRuntimePath
+		runtimeCacheMu.Lock()
+		runtimeCacheRoot = oldRoot
+		runtimeCacheMu.Unlock()
 	})
 }
 
@@ -68,9 +72,8 @@ func mustWriteRuntime(t *testing.T, info RuntimeInfo) {
 
 func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
@@ -137,8 +140,7 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 
 func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: filepath.Join(tmpDir, "swaves")})
 
 	var signaledPID atomic.Int64
@@ -161,9 +163,8 @@ func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
 
 func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	mustWriteExecutable(t, executablePath, "same-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 1001, Executable: executablePath})
@@ -215,9 +216,8 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 
 func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
@@ -266,9 +266,8 @@ func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
 
 func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	withProcessHooks(t, func(pid int) bool { return false }, func(pid int) error {
 		t.Fatalf("signalProcess should not be called without daemon mode, got pid=%d", pid)
@@ -367,9 +366,8 @@ func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testin
 
 func TestInstallLatestReleaseCLIRestartsMatchingActiveMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
@@ -438,9 +436,8 @@ func TestInstallLatestReleaseCLIRestartsMatchingActiveMaster(t *testing.T) {
 
 func TestInstallLatestReleaseCLIRollsBackWhenRestartingMatchingActiveMasterFails(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
@@ -519,8 +516,7 @@ func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 
 func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 
 	executablePath := filepath.Join(tmpDir, "swaves")
 	mustWriteExecutable(t, executablePath, "old-binary")
@@ -577,9 +573,8 @@ func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(
 
 func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		return errors.New("restart failed")
@@ -634,9 +629,8 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 
 func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	withCurrentExecutablePath(t, executablePath)
 	signalCalled := false
 	withProcessHooks(t, func(pid int) bool { return pid == 4321 || pid == 9999 }, func(pid int) error {

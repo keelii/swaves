@@ -322,6 +322,24 @@ func TestRunLocalBackupNowBypassesInterval(t *testing.T) {
 	}
 }
 
+func TestResolveLocalBackupDirForSQLiteUsesDatabaseCacheRoot(t *testing.T) {
+	base := t.TempDir()
+	got := ResolveLocalBackupDirForSQLite(db.DefaultBackupDir, filepath.Join(base, "data.sqlite"))
+	want := filepath.Join(base, ".cache", "backups")
+	if got != want {
+		t.Fatalf("ResolveLocalBackupDirForSQLite = %q, want %q", got, want)
+	}
+}
+
+func TestResolveLocalBackupDirForSQLiteKeepsWritesInsideCacheRoot(t *testing.T) {
+	base := t.TempDir()
+	got := ResolveLocalBackupDirForSQLite("../outside", filepath.Join(base, "data.sqlite"))
+	want := filepath.Join(base, ".cache", "backups")
+	if got != want {
+		t.Fatalf("ResolveLocalBackupDirForSQLite = %q, want %q", got, want)
+	}
+}
+
 func TestRunRemoteBackupNowDisabledReturnsMessage(t *testing.T) {
 	dbx := openJobTestDB(t)
 	withTaskSettings(t, map[string]string{"sync_push_enabled": "0"})

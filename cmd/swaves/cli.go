@@ -380,6 +380,9 @@ func parseMainConfig(args []string) (mainConfig, error) {
 	if cfg.AppConfig.SqliteFile == "" {
 		return cfg, errors.New("sqlite file is required")
 	}
+	if err := updater.ConfigureRuntimeCacheRoot(cfg.AppConfig.SqliteFile); err != nil {
+		return cfg, err
+	}
 
 	return cfg, nil
 }

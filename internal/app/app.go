@@ -17,6 +17,7 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
 	"swaves/internal/platform/view"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
@@ -41,6 +42,9 @@ type SwavesApp struct {
 func NewApp(appCfg types.AppConfig) SwavesApp {
 	if err := validateAppConfig(appCfg); err != nil {
 		logger.Fatal("invalid app config: %v", err)
+	}
+	if err := updater.ConfigureRuntimeCacheRoot(appCfg.SqliteFile); err != nil {
+		logger.Fatal("invalid runtime cache root: %v", err)
 	}
 
 	globalStore := store.NewGlobalStore(db.Open(db.Options{

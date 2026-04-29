@@ -15,6 +15,7 @@ import (
 	"swaves/internal/platform/store"
 	"swaves/internal/platform/updater"
 	"swaves/internal/shared/helper"
+	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/types"
 	"time"
 )
@@ -74,7 +75,7 @@ func RunRemoteBackupNow(dbx *db.DB) (*string, error) {
 }
 
 func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*string, bool, error) {
-	backupDir := resolveBackupDir(cfg.Dir)
+	backupDir := resolveBackupDirForSQLite(cfg.Dir, cfg.SqliteFile)
 	logger.Info("[backup] local backup start: dir=%s interval=%s max_count=%d check_interval=%t", backupDir, cfg.Interval, cfg.MaxCount, checkInterval)
 
 	if err := helper.EnsureDir(backupDir, 0755); err != nil {
@@ -115,9 +116,10 @@ func runLocalBackup(dbx *db.DB, cfg localBackupConfig, checkInterval bool) (*str
 }
 
 type localBackupConfig struct {
-	Dir      string
-	Interval time.Duration
-	MaxCount int
+	Dir        string
+	SqliteFile string
+	Interval   time.Duration
+	MaxCount   int
 }
 
 func loadLocalBackupConfig(reg *Registry) localBackupConfig {
@@ -142,9 +144,10 @@ func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 	}
 
 	return localBackupConfig{
-		Dir:      dir,
-		Interval: time.Duration(intervalMin) * time.Minute,
-		MaxCount: maxCount,
+		Dir:        dir,
+		SqliteFile: reg.Config.SqliteFile,
+		Interval:   time.Duration(intervalMin) * time.Minute,
+		MaxCount:   maxCount,
 	}
 }
 
@@ -168,6 +171,36 @@ func resolveBackupDir(dir string) string {
 	return ResolveLocalBackupDir(dir)
 }
 
+func ResolveLocalBackupDirForSQLite(dir string, sqliteFile string) string {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		dir = db.DefaultBackupDir
+	}
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	cacheRoot, err := pathutil.ResolveDatabaseCacheRoot(sqliteFile)
+	if err != nil {
+		logger.Warn("[backup] resolve sqlite cache root error: sqlite=%s err=%v", strings.TrimSpace(sqliteFile), err)
+		return ResolveLocalBackupDir(dir)
+	}
+
+	rel := filepath.Clean(dir)
+	if rel == ".cache" {
+		return cacheRoot
+	}
+	rel = strings.TrimPrefix(rel, ".cache"+string(os.PathSeparator))
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		logger.Warn("[backup] relative backup dir outside cache root ignored: dir=%s cache_root=%s", dir, cacheRoot)
+		return filepath.Join(cacheRoot, "backups")
+	}
+	return filepath.Join(cacheRoot, rel)
+}
+
+func resolveBackupDirForSQLite(dir string, sqliteFile string) string {
+	return ResolveLocalBackupDirForSQLite(dir, sqliteFile)
+}
+
 // migrateBackupDir moves .sqlite backup files from the legacy default "backups/"
 // directory to the current default ".cache/backups/" when no custom backup directory
 // has been configured by the user.
@@ -176,8 +209,15 @@ func migrateBackupDir() {
 		return
 	}
 
-	oldDir := resolveBackupDir(db.LegacyBackupDir)
-	newDir := resolveBackupDir(db.DefaultBackupDir)
+	sqliteFile := ""
+	registryMu.RLock()
+	if registry != nil {
+		sqliteFile = registry.Config.SqliteFile
+	}
+	registryMu.RUnlock()
+
+	oldDir := resolveLegacyBackupDirForSQLite(db.LegacyBackupDir, sqliteFile)
+	newDir := resolveBackupDirForSQLite(db.DefaultBackupDir, sqliteFile)
 	if oldDir == newDir {
 		return
 	}
@@ -227,6 +267,26 @@ func migrateBackupDir() {
 			logger.Warn("[backup] migrate: remove old dir failed: dir=%s err=%v", oldDir, err)
 		}
 	}
+}
+
+func resolveLegacyBackupDirForSQLite(dir string, sqliteFile string) string {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		dir = db.LegacyBackupDir
+	}
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	sqliteFile = strings.TrimSpace(sqliteFile)
+	if sqliteFile == "" {
+		return ResolveLocalBackupDir(dir)
+	}
+	absPath, err := filepath.Abs(sqliteFile)
+	if err != nil {
+		logger.Warn("[backup] resolve sqlite dir error: sqlite=%s err=%v", sqliteFile, err)
+		return ResolveLocalBackupDir(dir)
+	}
+	return filepath.Join(filepath.Dir(absPath), dir)
 }
 
 func latestLocalBackupAt(backupDir string) (time.Time, error) {
