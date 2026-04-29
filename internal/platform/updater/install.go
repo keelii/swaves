@@ -249,7 +249,7 @@ func (c Client) installRelease(req installRequest) (InstallResult, error) {
 		result.RestartedPID = activeRuntime.PID
 	}
 
-	result.Reason = installSuccessReason(req.source.kind, prepared.latestVersion, result.RestartedPID > 0)
+	result.Reason = installSuccessReason(prepared.latestVersion, result.RestartedPID > 0)
 	logger.Info("[update] install success: source=%s latest=%s target=%s master_pid=%d", req.source.kind, versionLabel(result.LatestVersion), targetPath, result.RestartedPID)
 	return result, nil
 }
@@ -316,7 +316,7 @@ func prepareLocalArchive(archiveName string, archivePath string, goos string, go
 	}, nil
 }
 
-func installSuccessReason(_ installSourceKind, latestVersion string, restarted bool) string {
+func installSuccessReason(latestVersion string, restarted bool) string {
 	latestVersion = strings.TrimSpace(latestVersion)
 	if latestVersion == "" {
 		latestVersion = "unknown version"
@@ -447,16 +447,11 @@ func extractReleaseBinary(archivePath string, dstDir string, expectedName string
 			continue
 		}
 
-		rawName := strings.TrimSpace(header.Name)
-		cleanName := path.Clean(strings.TrimPrefix(rawName, "/"))
-		if rawName == "" || cleanName == "." || cleanName == ".." || strings.HasPrefix(cleanName, "../") {
+		name, ok := safeArchiveEntryBaseName(header.Name)
+		if !ok || name != expectedName {
 			continue
 		}
-		name := filepath.Base(cleanName)
-		if name == "" || name == "." || name == string(filepath.Separator) || name != expectedName {
-			continue
-		}
-		dstPath := filepath.Join(dstDir, name)
+		dstPath := filepath.Join(dstDir, expectedName)
 		out, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 		if err != nil {
 			return "", fmt.Errorf("create extracted binary failed: %w", err)
@@ -472,6 +467,28 @@ func extractReleaseBinary(archivePath string, dstDir string, expectedName string
 	}
 
 	return "", fmt.Errorf("release binary %q not found in archive", expectedName)
+}
+
+func safeArchiveEntryBaseName(rawName string) (string, bool) {
+	rawName = strings.TrimSpace(rawName)
+	if rawName == "" || path.IsAbs(rawName) {
+		return "", false
+	}
+	cleanName := path.Clean(strings.TrimPrefix(rawName, "/"))
+	if cleanName == "." || cleanName == ".." {
+		return "", false
+	}
+	parts := strings.Split(cleanName, "/")
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." {
+			return "", false
+		}
+	}
+	name := path.Base(cleanName)
+	if name == "" || name == "." || name == "/" {
+		return "", false
+	}
+	return name, true
 }
 
 func defaultSignalProcess(pid int) error {
