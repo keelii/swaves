@@ -33,8 +33,13 @@ func mustLoadRegressionView(t *testing.T) *FiberView {
 func mustLoadRegressionSiteView(t *testing.T) *FiberView {
 	t.Helper()
 
+	templateRoot, err := filepath.Abs(testTemplateRoot())
+	if err != nil {
+		t.Fatalf("resolve regression template root failed: %v", err)
+	}
+	withViewWorkingDir(t, t.TempDir())
 	sqliteFile := filepath.Join(t.TempDir(), "site-runtime.sqlite")
-	themeRoot, err := MaterializeBuiltinThemeCache(sqliteFile, testTemplateRoot(), nil)
+	themeRoot, err := MaterializeBuiltinThemeCache(sqliteFile, templateRoot, nil)
 	if err != nil {
 		t.Fatalf("materialize builtin theme cache failed: %v", err)
 	}

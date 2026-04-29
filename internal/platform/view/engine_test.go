@@ -17,6 +17,23 @@ func testTemplateRoot() string {
 	return filepath.Clean(filepath.Join("..", "..", "..", "web", "templates"))
 }
 
+func withViewWorkingDir(t *testing.T, dir string) {
+	t.Helper()
+
+	original, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%s) failed: %v", dir, err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(original); err != nil {
+			t.Fatalf("restore working directory failed: %v", err)
+		}
+	})
+}
+
 func TestMiniJinjaViewLoadTemplates(t *testing.T) {
 	view, _ := NewViewEngine(testTemplateRoot(), false)
 	if err := view.Load(); err != nil {
@@ -100,6 +117,9 @@ func TestFormatHumanSize(t *testing.T) {
 }
 
 func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
+	base := t.TempDir()
+	withViewWorkingDir(t, base)
+
 	dbPath := filepath.Join(t.TempDir(), "data.sqlite")
 	templateRoot := t.TempDir()
 	model := db.Open(db.Options{DSN: dbPath})
@@ -191,7 +211,9 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 }
 
 func TestResetThemeCacheRootClearsSiblingThemes(t *testing.T) {
-	cacheRoot := filepath.Join(t.TempDir(), ".cache", "themes")
+	base := t.TempDir()
+	withViewWorkingDir(t, base)
+	cacheRoot := filepath.Join(base, ".cache", "themes")
 	targetRoot := filepath.Join(cacheRoot, "current")
 	siblingRoot := filepath.Join(cacheRoot, "builtin")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {

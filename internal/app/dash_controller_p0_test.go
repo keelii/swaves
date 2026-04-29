@@ -31,7 +31,9 @@ var postEditPathPattern = regexp.MustCompile(`/dash/posts/([0-9]+)/edit`)
 func newControllerP0TestApp(t *testing.T) SwavesApp {
 	t.Helper()
 
-	dbPath := filepath.Join(t.TempDir(), "controller-p0.sqlite")
+	base := t.TempDir()
+	withControllerP0WorkingDir(t, base)
+	dbPath := filepath.Join(base, "controller-p0.sqlite")
 	prepareInstalledAppDB(t, dbPath)
 	middleware.DashLoginRateLimitResetAll()
 	return NewApp(types.AppConfig{

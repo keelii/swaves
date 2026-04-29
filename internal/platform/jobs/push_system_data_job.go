@@ -14,6 +14,7 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/store"
+	"swaves/internal/shared/pathutil"
 	"time"
 )
 
@@ -53,7 +54,7 @@ func runRemoteBackupJob(reg *Registry, allowNoOp bool) (*string, error) {
 		return jobMessage("远程数据备份未启用，跳过"), nil
 	}
 
-	tmpDir, err := os.MkdirTemp("", "swaves-sync-push-*")
+	tmpDir, err := pathutil.CreateProcessCacheTempDir("swaves-sync-push-*", "backups", "remote")
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir failed: %w", err)
 	}

@@ -12,6 +12,7 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/updater"
+	"swaves/internal/shared/pathutil"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -252,7 +253,7 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	}
 	defer func() { _ = src.Close() }()
 
-	tmpDir, err := os.MkdirTemp("", ".swaves-manual-upgrade-")
+	tmpDir, err := pathutil.CreateProcessCacheTempDir(".swaves-manual-upgrade-", "updater", "manual")
 	if err != nil {
 		logger.Error("[dash] manual update create temp dir failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "创建临时目录失败："+err.Error())

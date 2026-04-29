@@ -12,6 +12,7 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -478,16 +479,15 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 生成导出文件名（包含时间戳）
 	name := strings.ToLower(c.App().Config().AppName) + "_export"
 
-	logger.Info("export to: tmp_dir=%s name=%s", os.TempDir(), name)
-
 	// 创建临时目录
-	tmpDir, err := os.MkdirTemp(os.TempDir(), name+"-")
+	tmpDir, err := pathutil.CreateProcessCacheTempDir(name+"-", "exports")
 	if err != nil {
 		return renderImportView(c, fiber.Map{
 			"ImportExportTab": importExportTabExport,
 			"Error":           "Failed to create export directory: " + err.Error(),
 		})
 	}
+	logger.Info("export to: tmp_dir=%s name=%s", tmpDir, name)
 	cleanupTmpDir := func() {
 		if removeErr := os.RemoveAll(tmpDir); removeErr != nil {
 			logger.Warn("export cleanup temp dir failed: dir=%s err=%v", tmpDir, removeErr)

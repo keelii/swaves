@@ -39,7 +39,9 @@ func prepareInstalledAppDB(t *testing.T, dbPath string) {
 func newInstalledTestApp(t *testing.T, sqliteName string) SwavesApp {
 	t.Helper()
 
-	dbPath := filepath.Join(t.TempDir(), sqliteName)
+	base := t.TempDir()
+	withControllerP0WorkingDir(t, base)
+	dbPath := filepath.Join(base, sqliteName)
 	prepareInstalledAppDB(t, dbPath)
 	swv := NewApp(types.AppConfig{
 		SqliteFile: dbPath,
@@ -259,6 +261,7 @@ func TestNewAppLoadsCurrentThemeFromCache(t *testing.T) {
 		t.Fatalf("close prepared model failed: %v", err)
 	}
 
+	withControllerP0WorkingDir(t, t.TempDir())
 	swv := NewApp(types.AppConfig{
 		SqliteFile: dbPath,
 		ListenAddr: ":0",
@@ -278,7 +281,11 @@ func TestNewAppLoadsCurrentThemeFromCache(t *testing.T) {
 	}
 	assertResponseBodyContains(t, resp, "theme-cache-home")
 
-	cachedHome, err := os.ReadFile(filepath.Join(filepath.Dir(dbPath), ".cache", "themes", "runtime-theme", "home.html"))
+	themeCacheRoot, err := view.ResolveThemeCacheRoot(dbPath)
+	if err != nil {
+		t.Fatalf("ResolveThemeCacheRoot failed: %v", err)
+	}
+	cachedHome, err := os.ReadFile(filepath.Join(themeCacheRoot, "runtime-theme", "home.html"))
 	if err != nil {
 		t.Fatalf("read cached home template failed: %v", err)
 	}
@@ -574,7 +581,9 @@ func TestResolveProjectPathFindsFromNestedWorkingDir(t *testing.T) {
 }
 
 func TestInstallFlowRedirectsThenInitializesSettings(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "install.sqlite")
+	base := t.TempDir()
+	withControllerP0WorkingDir(t, base)
+	dbPath := filepath.Join(base, "install.sqlite")
 	swv := NewApp(types.AppConfig{
 		SqliteFile: dbPath,
 		ListenAddr: ":0",
@@ -639,7 +648,9 @@ func TestInstallFlowRedirectsThenInitializesSettings(t *testing.T) {
 }
 
 func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "install-fields.sqlite")
+	base := t.TempDir()
+	withControllerP0WorkingDir(t, base)
+	dbPath := filepath.Join(base, "install-fields.sqlite")
 	swv := NewApp(types.AppConfig{
 		SqliteFile: dbPath,
 		ListenAddr: ":0",
@@ -738,7 +749,9 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 }
 
 func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "install-site-url.sqlite")
+	base := t.TempDir()
+	withControllerP0WorkingDir(t, base)
+	dbPath := filepath.Join(base, "install-site-url.sqlite")
 	swv := NewApp(types.AppConfig{
 		SqliteFile: dbPath,
 		ListenAddr: ":0",

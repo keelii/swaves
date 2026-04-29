@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"swaves/internal/platform/logger"
+	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/semverutil"
 	"sync"
 	"syscall"
@@ -35,11 +36,26 @@ var (
 
 type executableRollback func() error
 
+func ensureUpdaterCacheReady() error {
+	cacheDir, err := pathutil.EnsureProcessCacheDir("updater")
+	if err != nil {
+		return fmt.Errorf("prepare updater cache dir failed: %w", err)
+	}
+	if err := pathutil.ValidateProcessCachePath(cacheDir); err != nil {
+		return fmt.Errorf("validate updater cache dir failed: %w", err)
+	}
+	return nil
+}
+
 func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
 }
 
 func RestartActiveRuntime() (int, error) {
+	if err := ensureUpdaterCacheReady(); err != nil {
+		logger.Error("[update] restart active runtime cache precheck failed: err=%v", err)
+		return 0, err
+	}
 	runtimeInfo, err := ReadActiveRuntimeInfo()
 	if err != nil {
 		logger.Error("[update] restart active runtime failed to read active runtime: err=%v", err)
@@ -61,6 +77,10 @@ func InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) 
 func InstallLocalReleaseArchive(archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
 	installMu.Lock()
 	defer installMu.Unlock()
+	if err := ensureUpdaterCacheReady(); err != nil {
+		logger.Error("[update] manual install cache precheck failed: archive=%s err=%v", strings.TrimSpace(archiveName), err)
+		return InstallResult{CurrentVersion: strings.TrimSpace(currentVersion), ArchiveName: filepath.Base(strings.TrimSpace(archiveName))}, err
+	}
 
 	archiveName = strings.TrimSpace(archiveName)
 	archivePath = strings.TrimSpace(archivePath)
@@ -156,6 +176,10 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	installMu.Lock()
 	defer installMu.Unlock()
+	if err := ensureUpdaterCacheReady(); err != nil {
+		logger.Error("[update] auto install cache precheck failed: err=%v", err)
+		return InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}, err
+	}
 
 	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
 	logger.Info("[update] auto install start: current=%s target=%s/%s", versionLabel(result.CurrentVersion), goos, goarch)
@@ -266,6 +290,10 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	installMu.Lock()
 	defer installMu.Unlock()
+	if err := ensureUpdaterCacheReady(); err != nil {
+		logger.Error("[update] cli install cache precheck failed: err=%v", err)
+		return InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}, err
+	}
 
 	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
 	logger.Info("[update] cli install start: current=%s target=%s/%s", versionLabel(result.CurrentVersion), goos, goarch)

@@ -10,6 +10,7 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/themefiles"
+	"swaves/internal/shared/pathutil"
 )
 
 const (
@@ -22,12 +23,12 @@ var runtimeThemeSharedFiles = []string{
 	"include/math.html",
 }
 
-func ResolveThemeCacheRoot(sqliteFile string) (string, error) {
-	absPath, err := filepath.Abs(sqliteFile)
+func ResolveThemeCacheRoot(_ string) (string, error) {
+	cacheRoot, err := pathutil.ResolveProcessCachePath("themes")
 	if err != nil {
 		return "", fmt.Errorf("resolve theme cache root failed: %w", err)
 	}
-	return filepath.Join(filepath.Dir(absPath), ".cache", "themes"), nil
+	return cacheRoot, nil
 }
 
 func MaterializeCurrentThemeCache(model *db.DB, sqliteFile string, templateRoot string, templateFS fs.FS) (string, error) {
