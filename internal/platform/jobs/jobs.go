@@ -13,6 +13,7 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/types"

@@ -7,10 +7,8 @@ import (
 	"testing"
 
 	"swaves/internal/platform/db"
-	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/session"
 )
 
 func TestCloneInstallDefaultSettingsIncludesCrawlerBlockSetting(t *testing.T) {
