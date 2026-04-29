@@ -99,7 +99,7 @@ func systemUpdateSupportState(readActiveRuntimeInfo func() (updater.RuntimeInfo,
 	state.ManualUpdateEnabled = true
 	runtimeInfo, err := readActiveRuntimeInfo()
 	if err != nil {
-		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新和系统重启不可用；手动上传安装包后需自行重启服务。"
+		state.GlobalUpdateMessage = "daemon-mode 未启用时，自动更新和系统重启不可用，手动上传安装包后需自行重启服务。"
 		return state
 	}
 
