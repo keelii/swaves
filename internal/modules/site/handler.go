@@ -249,15 +249,13 @@ func injectDefaultTitle(routeName, view string, data fiber.Map) {
 		data["Title"] = buildPageTitle("Tags")
 	}
 
-	if _, hasTitle := data["Title"]; hasTitle {
-		return
-	}
-
-	switch view {
-	case "404.html":
-		data["Title"] = "404 Not Found"
-	case "error.html":
-		data["Title"] = "Error"
+	if _, hasTitle := data["Title"]; !hasTitle {
+		switch view {
+		case "404.html":
+			data["Title"] = "404 Not Found"
+		case "error.html":
+			data["Title"] = "Error"
+		}
 	}
 }
 
