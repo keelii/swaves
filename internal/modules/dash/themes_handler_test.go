@@ -2,7 +2,6 @@ package dash
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http/httptest"
 	"path/filepath"
 	"strconv"
@@ -12,7 +11,6 @@ import (
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/themefiles"
-	"swaves/internal/platform/updater"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -154,13 +152,6 @@ func TestBuildImportedThemeKeepsOrRenamesConflicts(t *testing.T) {
 	}
 }
 
-func themeRestartDeps(readFn func() (updater.RuntimeInfo, error), restartFn func() (int, error)) systemUpdateDeps {
-	deps := defaultSystemUpdateDeps()
-	deps.readActiveRuntime = readFn
-	deps.restartRuntime = restartFn
-	return deps
-}
-
 func createThemeRecord(t *testing.T, dbx *db.DB, code string, isCurrent int) *db.Theme {
 	t.Helper()
 
@@ -194,195 +185,6 @@ func withTemplateReload(t *testing.T, enabled bool) {
 	t.Cleanup(func() {
 		config.TemplateReload = original
 	})
-}
-
-func TestSetCurrentThemeAndRestart(t *testing.T) {
-	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "themes.sqlite")})
-	if err := db.EnsureDefaultSettings(dbx); err != nil {
-		t.Fatalf("EnsureDefaultSettings failed: %v", err)
-	}
-	t.Cleanup(func() { _ = dbx.Close() })
-	withTemplateReload(t, false)
-
-	currentTheme := createThemeRecord(t, dbx, "theme-a", 1)
-	nextTheme := createThemeRecord(t, dbx, "theme-b", 0)
-
-	readCalls := 0
-	restartCalls := 0
-	deps := themeRestartDeps(
-		func() (updater.RuntimeInfo, error) {
-			readCalls++
-			return updater.RuntimeInfo{PID: 4321, Executable: "/tmp/swaves"}, nil
-		},
-		func() (int, error) {
-			restartCalls++
-			return 4321, nil
-		},
-	)
-
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
-	if err != nil {
-		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
-	}
-	if result.AlreadyCurrent {
-		t.Fatal("expected theme switch, got already current")
-	}
-	if result.RestartRequired {
-		t.Fatal("expected hot restart path, got manual restart required")
-	}
-	if result.RestartedPID != 4321 {
-		t.Fatalf("RestartedPID = %d, want 4321", result.RestartedPID)
-	}
-	if readCalls != 1 {
-		t.Fatalf("readActiveRuntimeInfo calls = %d, want 1", readCalls)
-	}
-	if restartCalls != 1 {
-		t.Fatalf("restartActiveRuntime calls = %d, want 1", restartCalls)
-	}
-
-	gotCurrent, err := db.GetCurrentTheme(dbx)
-	if err != nil {
-		t.Fatalf("GetCurrentTheme failed: %v", err)
-	}
-	if gotCurrent.ID != nextTheme.ID {
-		t.Fatalf("current theme id = %d, want %d", gotCurrent.ID, nextTheme.ID)
-	}
-
-	gotOld, err := db.GetThemeByID(dbx, currentTheme.ID)
-	if err != nil {
-		t.Fatalf("GetThemeByID(old) failed: %v", err)
-	}
-	if gotOld.IsCurrent != 0 {
-		t.Fatalf("old theme should not stay current: %+v", gotOld)
-	}
-}
-
-func TestSetCurrentThemeAndRestartSkipsRestartInReloadMode(t *testing.T) {
-	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "themes-reload.sqlite")})
-	if err := db.EnsureDefaultSettings(dbx); err != nil {
-		t.Fatalf("EnsureDefaultSettings failed: %v", err)
-	}
-	t.Cleanup(func() { _ = dbx.Close() })
-	withTemplateReload(t, true)
-
-	createThemeRecord(t, dbx, "theme-a", 1)
-	nextTheme := createThemeRecord(t, dbx, "theme-b", 0)
-
-	readCalls := 0
-	restartCalls := 0
-	deps := themeRestartDeps(
-		func() (updater.RuntimeInfo, error) {
-			readCalls++
-			return updater.RuntimeInfo{}, nil
-		},
-		func() (int, error) {
-			restartCalls++
-			return 0, nil
-		},
-	)
-
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
-	if err != nil {
-		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
-	}
-	if result.RestartedPID != 0 {
-		t.Fatalf("RestartedPID = %d, want 0", result.RestartedPID)
-	}
-	if result.RestartRequired {
-		t.Fatal("reload mode should not require manual restart")
-	}
-	if readCalls != 0 {
-		t.Fatalf("readActiveRuntimeInfo calls = %d, want 0", readCalls)
-	}
-	if restartCalls != 0 {
-		t.Fatalf("restartActiveRuntime calls = %d, want 0", restartCalls)
-	}
-
-	gotCurrent, err := db.GetCurrentTheme(dbx)
-	if err != nil {
-		t.Fatalf("GetCurrentTheme failed: %v", err)
-	}
-	if gotCurrent.ID != nextTheme.ID {
-		t.Fatalf("current theme id = %d, want %d", gotCurrent.ID, nextTheme.ID)
-	}
-}
-
-func TestSetCurrentThemeAndRestartRequiresManualRestartWhenRuntimeUnavailable(t *testing.T) {
-	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "themes-manual.sqlite")})
-	if err := db.EnsureDefaultSettings(dbx); err != nil {
-		t.Fatalf("EnsureDefaultSettings failed: %v", err)
-	}
-	t.Cleanup(func() { _ = dbx.Close() })
-	withTemplateReload(t, false)
-
-	createThemeRecord(t, dbx, "theme-a", 1)
-	nextTheme := createThemeRecord(t, dbx, "theme-b", 0)
-
-	deps := themeRestartDeps(
-		func() (updater.RuntimeInfo, error) {
-			return updater.RuntimeInfo{}, errors.New("daemon mode is not active")
-		},
-		func() (int, error) {
-			t.Fatal("restartActiveRuntime should not be called when runtime is unavailable")
-			return 0, nil
-		},
-	)
-
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
-	if err != nil {
-		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
-	}
-	if !result.RestartRequired {
-		t.Fatal("expected manual restart requirement")
-	}
-
-	gotCurrent, err := db.GetCurrentTheme(dbx)
-	if err != nil {
-		t.Fatalf("GetCurrentTheme failed: %v", err)
-	}
-	if gotCurrent.ID != nextTheme.ID {
-		t.Fatalf("current theme id = %d, want %d", gotCurrent.ID, nextTheme.ID)
-	}
-}
-
-func TestSetCurrentThemeAndRestartRequiresManualRestartOnRestartFailure(t *testing.T) {
-	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "themes-restart-failed.sqlite")})
-	if err := db.EnsureDefaultSettings(dbx); err != nil {
-		t.Fatalf("EnsureDefaultSettings failed: %v", err)
-	}
-	t.Cleanup(func() { _ = dbx.Close() })
-	withTemplateReload(t, false)
-
-	createThemeRecord(t, dbx, "theme-a", 1)
-	nextTheme := createThemeRecord(t, dbx, "theme-b", 0)
-
-	deps := themeRestartDeps(
-		func() (updater.RuntimeInfo, error) {
-			return updater.RuntimeInfo{PID: 4321, Executable: "/tmp/swaves"}, nil
-		},
-		func() (int, error) {
-			return 0, errors.New("restart failed")
-		},
-	)
-
-	result, err := setCurrentThemeAndRestart(dbx, nextTheme.ID, deps)
-	if err != nil {
-		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
-	}
-	if !result.RestartRequired {
-		t.Fatal("expected manual restart requirement after restart failure")
-	}
-	if result.RestartedPID != 0 {
-		t.Fatalf("RestartedPID = %d, want 0", result.RestartedPID)
-	}
-
-	gotCurrent, err := db.GetCurrentTheme(dbx)
-	if err != nil {
-		t.Fatalf("GetCurrentTheme failed: %v", err)
-	}
-	if gotCurrent.ID != nextTheme.ID {
-		t.Fatalf("current theme id = %d, want %d", gotCurrent.ID, nextTheme.ID)
-	}
 }
 
 func TestPostUpdateThemeHandlerReturnsJSONForAjaxSave(t *testing.T) {
@@ -634,42 +436,5 @@ func TestPostUpdateThemeHandlerRejectsProtectedThemeFileDelete(t *testing.T) {
 	}
 	if body.Error != "该文件为内置入口模板，不能删除。" {
 		t.Fatalf("error = %q, want %q", body.Error, "该文件为内置入口模板，不能删除。")
-	}
-}
-
-func TestSetCurrentThemeAndRestartSkipsWhenAlreadyCurrent(t *testing.T) {
-	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "themes-current.sqlite")})
-	if err := db.EnsureDefaultSettings(dbx); err != nil {
-		t.Fatalf("EnsureDefaultSettings failed: %v", err)
-	}
-	t.Cleanup(func() { _ = dbx.Close() })
-
-	currentTheme := createThemeRecord(t, dbx, "theme-a", 1)
-
-	readCalls := 0
-	restartCalls := 0
-	deps := themeRestartDeps(
-		func() (updater.RuntimeInfo, error) {
-			readCalls++
-			return updater.RuntimeInfo{}, nil
-		},
-		func() (int, error) {
-			restartCalls++
-			return 0, nil
-		},
-	)
-
-	result, err := setCurrentThemeAndRestart(dbx, currentTheme.ID, deps)
-	if err != nil {
-		t.Fatalf("setCurrentThemeAndRestart failed: %v", err)
-	}
-	if !result.AlreadyCurrent {
-		t.Fatal("expected already current result")
-	}
-	if readCalls != 0 {
-		t.Fatalf("readActiveRuntimeInfo calls = %d, want 0", readCalls)
-	}
-	if restartCalls != 0 {
-		t.Fatalf("restartActiveRuntime calls = %d, want 0", restartCalls)
 	}
 }

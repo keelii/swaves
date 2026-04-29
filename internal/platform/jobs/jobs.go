@@ -380,7 +380,7 @@ func CheckAppUpdateJob(reg *Registry) (*string, error) {
 		return nil, nil
 	}
 
-	result, err := reg.resolvedAppUpdateDeps().checkLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+	result, err := updater.CheckLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return nil, err
 	}

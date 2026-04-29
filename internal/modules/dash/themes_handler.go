@@ -10,6 +10,7 @@ import (
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/themefiles"
+	"swaves/internal/platform/updater"
 	"time"
 
 	"swaves/internal/platform/db"
@@ -318,7 +319,7 @@ func (h *Handler) respondThemeEditUpdate(c fiber.Ctx, returnJSON bool, themeID, 
 	)
 }
 
-func setCurrentThemeAndRestart(model *db.DB, id int64, deps systemUpdateDeps) (themeSwitchResult, error) {
+func setCurrentThemeAndRestart(model *db.DB, id int64) (themeSwitchResult, error) {
 	result := themeSwitchResult{}
 
 	theme, err := db.GetThemeByID(model, id)
@@ -341,13 +342,13 @@ func setCurrentThemeAndRestart(model *db.DB, id int64, deps systemUpdateDeps) (t
 		result.RestartRequired = true
 		return result, nil
 	}
-	if _, err := deps.readActiveRuntime(); err != nil {
+	if _, err := updater.ReadActiveRuntimeInfo(); err != nil {
 		logger.Warn("[theme] current theme updated without hot reload: id=%d err=%v", id, err)
 		result.RestartRequired = true
 		return result, nil
 	}
 
-	pid, err := deps.restartRuntime()
+	pid, err := updater.RestartActiveRuntime()
 	if err != nil {
 		logger.Error("[theme] current theme updated but restart signal failed: id=%d err=%v", id, err)
 		result.RestartRequired = true
@@ -582,7 +583,7 @@ func (h *Handler) PostSetCurrentThemeHandler(c fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	result, err := setCurrentThemeAndRestart(h.Model, id, h.resolvedSystemUpdateDeps())
+	result, err := setCurrentThemeAndRestart(h.Model, id)
 	if err != nil {
 		logger.Error("[theme] switch current theme failed: id=%d ip=%s err=%v", id, c.IP(), err)
 		return h.redirectToDashRouteWithError(c, "dash.themes.list", nil, nil, err.Error())

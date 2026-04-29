@@ -21,10 +21,8 @@ type RuntimeInfo struct {
 }
 
 var (
-	runtimeCacheRoot  string
-	runtimeCacheMu    sync.RWMutex
-	processExistsFunc = defaultProcessExists
-	userCacheDirFunc  = os.UserCacheDir
+	runtimeCacheRoot string
+	runtimeCacheMu   sync.RWMutex
 )
 
 func RuntimeInfoPath() string {
@@ -97,7 +95,7 @@ func legacyRuntimeInfoPaths() []string {
 	}
 
 	var paths []string
-	if cacheDir, err := userCacheDirFunc(); err == nil {
+	if cacheDir, err := os.UserCacheDir(); err == nil {
 		paths = append(paths, add(filepath.Join(cacheDir, "swaves", "master_runtime.json"))...)
 	}
 	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil {
@@ -208,7 +206,7 @@ func readActiveRuntimeInfo() (RuntimeInfo, error) {
 	if err != nil {
 		return RuntimeInfo{}, err
 	}
-	if !processExistsFunc(info.PID) {
+	if !defaultProcessExists(info.PID) {
 		logger.Warn("[update] active runtime missing process: master_pid=%d executable=%s", info.PID, info.Executable)
 		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d", info.PID)
 	}

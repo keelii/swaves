@@ -143,8 +143,6 @@ func loadLatestVersionInfo(checkLatestRelease func(currentVersion string, goos s
 }
 
 func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
-	deps := h.resolvedSystemUpdateDeps()
-
 	settings, err := ListAllSettings(h.Model)
 	if err != nil {
 		return err
@@ -163,8 +161,8 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 		latestVersion = notify.ParseAppUpdateVersion(latestNotification.AggregateKey)
 		latestReleaseURL = notify.ParseAppUpdateReleaseURL(latestNotification.AggregateKey)
 	}
-	latestInfo := loadLatestVersionInfo(deps.checkLatestRelease, buildinfo.Version, runtime.GOOS, runtime.GOARCH, latestVersion, latestReleaseURL)
-	viewState := systemUpdateSupportState(deps.readActiveRuntime, latestInfo.AutoUpdateEnabled)
+	latestInfo := loadLatestVersionInfo(updater.CheckLatestRelease, buildinfo.Version, runtime.GOOS, runtime.GOARCH, latestVersion, latestReleaseURL)
+	viewState := systemUpdateSupportState(updater.ReadActiveRuntimeInfo, latestInfo.AutoUpdateEnabled)
 
 	return RenderDashView(c, "dash/settings_system_update.html", fiber.Map{
 		"Title":                    "系统更新",
@@ -185,14 +183,12 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) PostSettingsSystemRestartHandler(c fiber.Ctx) error {
-	deps := h.resolvedSystemUpdateDeps()
-
 	if runtime.GOOS == "windows" {
 		logger.Warn("[dash] system restart blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持系统重启")
 	}
 
-	pid, err := deps.restartRuntime()
+	pid, err := updater.RestartActiveRuntime()
 	if err != nil {
 		logger.Error("[dash] system restart failed: ip=%s err=%v", c.IP(), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "系统重启失败："+err.Error())
@@ -205,15 +201,13 @@ func (h *Handler) PostSettingsSystemRestartHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) PostSettingsSystemAutoUpdateHandler(c fiber.Ctx) error {
-	deps := h.resolvedSystemUpdateDeps()
-
 	if runtime.GOOS == "windows" {
 		logger.Warn("[dash] auto update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持 daemon-mode 自动更新")
 	}
 
 	logger.Info("[dash] auto update requested: ip=%s current=%s target=%s/%s", c.IP(), versionLabel(buildinfo.Version), runtime.GOOS, runtime.GOARCH)
-	result, err := deps.installLatest(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+	result, err := updater.InstallLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		logger.Error("[dash] auto update failed: ip=%s current=%s err=%v", c.IP(), versionLabel(buildinfo.Version), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, err.Error())
@@ -231,13 +225,11 @@ func (h *Handler) PostSettingsSystemAutoUpdateHandler(c fiber.Ctx) error {
 }
 
 func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
-	deps := h.resolvedSystemUpdateDeps()
-
 	if runtime.GOOS == "windows" {
 		logger.Warn("[dash] manual update blocked: ip=%s platform=%s/%s", c.IP(), runtime.GOOS, runtime.GOARCH)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "Windows 暂不支持 daemon-mode 自动更新")
 	}
-	if _, err := deps.readActiveRuntime(); err != nil {
+	if _, err := updater.ReadActiveRuntimeInfo(); err != nil {
 		logger.Warn("[dash] manual update blocked: ip=%s err=%v", c.IP(), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "当前 daemon-mode master 不可用，无法执行手动更新："+err.Error())
 	}
@@ -280,7 +272,7 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "关闭临时安装包失败："+err.Error())
 	}
 
-	result, err := deps.installLocal(archiveName, archivePath, buildinfo.Version, runtime.GOOS, runtime.GOARCH)
+	result, err := updater.InstallLocalReleaseArchive(archiveName, archivePath, buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		logger.Error("[dash] manual update failed: ip=%s archive=%s err=%v", c.IP(), archiveName, err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, err.Error())

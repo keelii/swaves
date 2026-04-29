@@ -29,9 +29,7 @@ type InstallResult struct {
 }
 
 var (
-	installMu             sync.Mutex
-	currentExecutableFunc = os.Executable
-	signalProcessFunc     = defaultSignalProcess
+	installMu sync.Mutex
 )
 
 type executableRollback func() error
@@ -47,7 +45,7 @@ func RestartActiveRuntime() (int, error) {
 		return 0, err
 	}
 	logger.Info("[update] restart active runtime signaling master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
-	if err := signalProcessFunc(runtimeInfo.PID); err != nil {
+	if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
 		logger.Error("[update] restart active runtime signal failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return 0, fmt.Errorf("signal master restart failed: %w", err)
 	}
@@ -122,7 +120,7 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 			logger.Error("[update] manual install replace executable failed: archive=%s master_pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
 			return result, err
 		}
-		if err := signalProcessFunc(runtimeInfo.PID); err != nil {
+		if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
 			if rollbackErr := rollback(); rollbackErr != nil {
 				logger.Error("[update] manual install restart signal failed and rollback failed: archive=%s master_pid=%d err=%v rollback_err=%v", result.ArchiveName, runtimeInfo.PID, err, rollbackErr)
 				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
@@ -248,7 +246,7 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 		logger.Error("[update] auto install replace executable failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return result, err
 	}
-	if err := signalProcessFunc(runtimeInfo.PID); err != nil {
+	if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
 		if rollbackErr := rollback(); rollbackErr != nil {
 			logger.Error("[update] auto install restart signal failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
 			return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
@@ -360,7 +358,7 @@ func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goar
 	result.Installed = true
 	if runtimeInfo, ok := activeRuntimeForExecutable(targetPath); ok {
 		logger.Info("[update] cli install restarting active master: master_pid=%d target=%s", runtimeInfo.PID, targetPath)
-		if err := signalProcessFunc(runtimeInfo.PID); err != nil {
+		if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
 			if rollbackErr := rollback(); rollbackErr != nil {
 				logger.Error("[update] cli install restart active master failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
 				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
@@ -525,7 +523,7 @@ func installTargetDirectory(runtimeInfo RuntimeInfo, hasActiveMaster bool) (stri
 }
 
 func currentInstallExecutable() (string, error) {
-	path, err := currentExecutableFunc()
+	path, err := os.Executable()
 	if err != nil {
 		return "", fmt.Errorf("resolve current executable failed: %w", err)
 	}

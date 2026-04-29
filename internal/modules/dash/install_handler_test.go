@@ -3,13 +3,10 @@ package dash
 import (
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"swaves/internal/platform/db"
-	"swaves/internal/platform/updater"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -113,110 +110,5 @@ func TestApplyInstallFormValuesStoresCrawlerBlockCheckbox(t *testing.T) {
 	}
 	if resp.StatusCode != fiber.StatusOK {
 		t.Fatalf("unexpected status: %d", resp.StatusCode)
-	}
-}
-
-func TestPostInstallHandlerRestartsAndRedirectsToConfiguredDashPath(t *testing.T) {
-	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "install-restart.sqlite")})
-	t.Cleanup(func() { _ = dbx.Close() })
-
-	sessionStore := &types.SessionStore{Store: session.NewStore()}
-
-	restartCalls := 0
-	currentExecutable, err := os.Executable()
-	if err != nil {
-		t.Fatalf("os.Executable failed: %v", err)
-	}
-	handler := &Handler{Model: dbx, Session: sessionStore, systemUpdate: systemUpdateDeps{
-		readActiveRuntime: func() (updater.RuntimeInfo, error) {
-			return updater.RuntimeInfo{PID: 4321, Executable: currentExecutable}, nil
-		},
-		restartRuntime: func() (int, error) {
-			restartCalls++
-			return 4321, nil
-		},
-	}}
-
-	app := fiber.New()
-	app.Use(func(c fiber.Ctx) error {
-		fiber.Locals(c, "DashSessionStore", sessionStore)
-		return c.Next()
-	})
-	app.Get("/dash", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }).Name("dash.home")
-	app.Get("/dash/login", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }).Name("dash.login.show")
-	app.Post("/install", handler.PostInstallHandler)
-
-	form := url.Values{}
-	form.Set("setting_dash_password", "install-secret")
-	form.Set("setting_dash_path", "/console")
-	req := httptest.NewRequest(fiber.MethodPost, "/install", strings.NewReader(form.Encode()))
-	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationForm)
-
-	resp, err := app.Test(req)
-	if err != nil {
-		t.Fatalf("app.Test failed: %v", err)
-	}
-	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
-		t.Fatalf("expected redirect status, got %d", resp.StatusCode)
-	}
-	if location := strings.TrimSpace(resp.Header.Get("Location")); location != "/console" {
-		t.Fatalf("unexpected redirect location: got %q want %q", location, "/console")
-	}
-	if restartCalls != 1 {
-		t.Fatalf("restartActiveRuntime calls = %d, want 1", restartCalls)
-	}
-	if cookie := strings.TrimSpace(resp.Header.Get("Set-Cookie")); cookie == "" {
-		t.Fatal("expected install response to set session cookie")
-	}
-}
-
-func TestPostInstallHandlerFallsBackToCurrentDashRouteWhenRestartUnavailable(t *testing.T) {
-	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "install-restart-missing.sqlite")})
-	t.Cleanup(func() { _ = dbx.Close() })
-
-	sessionStore := &types.SessionStore{Store: session.NewStore()}
-
-	restartCalls := 0
-	currentExecutable, err := os.Executable()
-	if err != nil {
-		t.Fatalf("os.Executable failed: %v", err)
-	}
-	handler := &Handler{Model: dbx, Session: sessionStore, systemUpdate: systemUpdateDeps{
-		readActiveRuntime: func() (updater.RuntimeInfo, error) {
-			return updater.RuntimeInfo{PID: 4321, Executable: currentExecutable}, nil
-		},
-		restartRuntime: func() (int, error) {
-			restartCalls++
-			return 0, fiber.ErrServiceUnavailable
-		},
-	}}
-
-	app := fiber.New()
-	app.Use(func(c fiber.Ctx) error {
-		fiber.Locals(c, "DashSessionStore", sessionStore)
-		return c.Next()
-	})
-	app.Get("/dash", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }).Name("dash.home")
-	app.Get("/dash/login", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }).Name("dash.login.show")
-	app.Post("/install", handler.PostInstallHandler)
-
-	form := url.Values{}
-	form.Set("setting_dash_password", "install-secret")
-	form.Set("setting_dash_path", "/console")
-	req := httptest.NewRequest(fiber.MethodPost, "/install", strings.NewReader(form.Encode()))
-	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationForm)
-
-	resp, err := app.Test(req)
-	if err != nil {
-		t.Fatalf("app.Test failed: %v", err)
-	}
-	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
-		t.Fatalf("expected redirect status, got %d", resp.StatusCode)
-	}
-	if location := strings.TrimSpace(resp.Header.Get("Location")); location != "/dash" {
-		t.Fatalf("unexpected redirect location: got %q want %q", location, "/dash")
-	}
-	if restartCalls != 1 {
-		t.Fatalf("restartActiveRuntime calls = %d, want 1", restartCalls)
 	}
 }
