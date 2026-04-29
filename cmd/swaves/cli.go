@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	defaultBackupDir    = updater.DefaultBackupDir
 	defaultListenAddr   = ":4096"
 	defaultAppName      = "swaves"
 	defaultDaemonMode   = 1
@@ -43,7 +42,7 @@ const (
 )
 
 var (
-	flagBackupDir    = flag.String(flagBackupDirKey, defaultBackupDir, flagBackupDirUsage)
+	flagBackupDir    = flag.String(flagBackupDirKey, updater.DefaultBackupDir, flagBackupDirUsage)
 	flagListenAddr   = flag.String(flagListenAddrKey, defaultListenAddr, flagListenAddrUsage)
 	flagAppName      = flag.String(flagAppNameKey, defaultAppName, flagAppNameUsage)
 	flagEnableSQLLog = flag.Bool(flagEnableSQLLogKey, config.EnableSQLLog, flagEnableSQLLogUsage)
@@ -389,7 +388,7 @@ func parseMainConfig(args []string) (mainConfig, error) {
 
 func defaultAppConfig() types.AppConfig {
 	return types.AppConfig{
-		BackupDir:    defaultBackupDir,
+		BackupDir:    updater.DefaultBackupDir,
 		ListenAddr:   defaultListenAddr,
 		AppName:      defaultAppName,
 		EnableSQLLog: config.EnableSQLLog,
