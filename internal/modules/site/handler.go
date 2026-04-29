@@ -31,6 +31,11 @@ type Handler struct {
 	Views   fiber.Views
 }
 
+const (
+	siteNotFoundTitle = "404 Not Found"
+	siteErrorTitle    = "Error"
+)
+
 func (h Handler) trackSiteUV(c fiber.Ctx) {
 	h.trackEntityUV(c, db.UVEntitySite, 0)
 }
@@ -240,9 +245,9 @@ func injectDefaultTitle(routeName, view string, data fiber.Map) {
 	case "site.home":
 		data["Title"] = buildPageTitle("")
 	case "site.not_found":
-		data["Title"] = "404 Not Found"
+		data["Title"] = siteNotFoundTitle
 	case "site.error":
-		data["Title"] = "Error"
+		data["Title"] = siteErrorTitle
 	case "site.categories":
 		data["Title"] = buildPageTitle("Categories")
 	case "site.tags":
@@ -252,9 +257,9 @@ func injectDefaultTitle(routeName, view string, data fiber.Map) {
 	if _, hasTitle := data["Title"]; !hasTitle {
 		switch view {
 		case "404.html":
-			data["Title"] = "404 Not Found"
+			data["Title"] = siteNotFoundTitle
 		case "error.html":
-			data["Title"] = "Error"
+			data["Title"] = siteErrorTitle
 		}
 	}
 }

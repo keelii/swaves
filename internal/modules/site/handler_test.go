@@ -7,8 +7,6 @@ import (
 )
 
 func TestInjectDefaultTitle(t *testing.T) {
-	newSiteTestDB(t)
-
 	t.Run("injects route title when missing", func(t *testing.T) {
 		data := fiber.Map{}
 		injectDefaultTitle("site.categories", "list.html", data)
@@ -36,7 +34,7 @@ func TestInjectDefaultTitle(t *testing.T) {
 	t.Run("falls back to view title for shared error pages", func(t *testing.T) {
 		data := fiber.Map{}
 		injectDefaultTitle("site.post.detail", "404.html", data)
-		if got := data["Title"]; got != "404 Not Found" {
+		if got := data["Title"]; got != siteNotFoundTitle {
 			t.Fatalf("unexpected fallback title: %#v", got)
 		}
 	})
