@@ -212,7 +212,6 @@ func (h Handler) redirectNotFound(c fiber.Ctx) error {
 
 	c.Status(fiber.StatusNotFound)
 	return h.renderView(c, "404.html", fiber.Map{
-		"Title":     fmt.Sprintf("404 Not Found [%s]", "redirectNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
@@ -232,18 +231,39 @@ func (h Handler) ensureLikePostExists(postID int64) (db.Post, error) {
 	return post, nil
 }
 
+func injectDefaultTitle(routeName string, data fiber.Map) {
+	if _, hasTitle := data["Title"]; hasTitle {
+		return
+	}
+
+	switch routeName {
+	case "site.home":
+		data["Title"] = buildPageTitle("")
+	case "site.not_found":
+		data["Title"] = "404 Not Found"
+	case "site.error":
+		data["Title"] = "Error"
+	case "site.categories":
+		data["Title"] = buildPageTitle("Categories")
+	case "site.tags":
+		data["Title"] = buildPageTitle("Tags")
+	}
+}
+
 func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
 	if data == nil {
 		data = fiber.Map{}
 	}
 
-	data["UrlPath"] = c.Path()
-	data["Query"] = c.Queries()
-	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 	routeName := ""
 	if route := c.Route(); route != nil {
 		routeName = strings.TrimSpace(route.Name)
 	}
+	injectDefaultTitle(routeName, data)
+
+	data["UrlPath"] = c.Path()
+	data["Query"] = c.Queries()
+	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 	data["RouteName"] = routeName
 
 	//// 注入 Locals
@@ -272,7 +292,6 @@ func (h Handler) GetNotFound(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusNotFound)
 	return h.renderView(c, "404.html", fiber.Map{
-		"Title":     fmt.Sprintf("404 Not Found [%s]", "GetNotFound"),
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
@@ -283,7 +302,6 @@ func (h Handler) GetError(c fiber.Ctx) error {
 	returnURL := normalizeErrorReturnURL(c.Query("returnUrl"))
 	c.Status(fiber.StatusInternalServerError)
 	return h.renderView(c, "error.html", fiber.Map{
-		"Title":     "Error",
 		"Pages":     ListPages(h.Model),
 		"ReturnURL": returnURL,
 		"ReqID":     requestid.FromContext(c),
@@ -297,7 +315,6 @@ func (h Handler) GetHome(c fiber.Ctx) error {
 	h.trackSiteUV(c)
 
 	return h.renderView(c, "home.html", fiber.Map{
-		"Title":        buildPageTitle(""),
 		"CanonicalURL": absoluteSiteURL(c, share.GetBasePath()),
 		"Articles":     templatePosts,
 		"Pages":        ListPages(h.Model),
@@ -489,7 +506,6 @@ func (h Handler) GetCategoryIndex(c fiber.Ctx) error {
 	pages := ListPages(h.Model)
 	h.trackSiteUV(c)
 	return h.renderView(c, "list.html", fiber.Map{
-		"Title":        buildPageTitle("Categories"),
 		"CanonicalURL": absoluteSiteURL(c, share.GetCategoryPrefix()),
 		"Pages":        pages,
 		"List":         categories,
@@ -505,7 +521,6 @@ func (h Handler) GetTagIndex(c fiber.Ctx) error {
 
 	h.trackSiteUV(c)
 	return h.renderView(c, "list.html", fiber.Map{
-		"Title":        buildPageTitle("Tags"),
 		"CanonicalURL": absoluteSiteURL(c, share.GetTagPrefix()),
 		"Pages":        ListPages(h.Model),
 		"List":         tags,
