@@ -20,6 +20,11 @@ type RuntimeInfo struct {
 	UpdatedAt  int64  `json:"updated_at"`
 }
 
+const (
+	CacheDir        = ".cache"
+	RuntimeInfoFile = CacheDir + "/master_runtime.json"
+)
+
 var (
 	runtimeCacheRoot string
 	runtimeCacheMu   sync.RWMutex
@@ -55,57 +60,21 @@ func RuntimeCacheRoot() (string, error) {
 	return root, nil
 }
 
-func RuntimeCachePath(parts ...string) (string, error) {
+func RuntimeCachePath() (string, error) {
 	root, err := RuntimeCacheRoot()
 	if err != nil {
 		return "", err
 	}
-	segments := []string{root}
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		segments = append(segments, part)
-	}
-	return filepath.Join(segments...), nil
+	return filepath.Join(filepath.Dir(root), RuntimeInfoFile), nil
 }
 
 func DefaultRuntimeInfoPath() string {
-	path, err := RuntimeCachePath("updater", "master_runtime.json")
+	path, err := RuntimeCachePath()
 	if err == nil && strings.TrimSpace(path) != "" {
 		return path
 	}
 	logger.Warn("[update] resolve runtime info path fallback: err=%v", err)
-	return filepath.Join(".cache", "updater", "master_runtime.json")
-}
-
-func legacyRuntimeInfoPaths() []string {
-	seen := make(map[string]struct{})
-	add := func(p string) []string {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			return nil
-		}
-		if _, ok := seen[p]; ok {
-			return nil
-		}
-		seen[p] = struct{}{}
-		return []string{p}
-	}
-
-	var paths []string
-	if cacheDir, err := os.UserCacheDir(); err == nil {
-		paths = append(paths, add(filepath.Join(cacheDir, "swaves", "master_runtime.json"))...)
-	}
-	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil {
-		paths = append(paths, add(processCachePath)...)
-	}
-	if runtimeCachePath, err := RuntimeCachePath("swaves", "master_runtime.json"); err == nil {
-		paths = append(paths, add(runtimeCachePath)...)
-	}
-	paths = append(paths, add(filepath.Join(os.TempDir(), "swaves_master_runtime.json"))...)
-	return paths
+	return RuntimeInfoFile
 }
 
 func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {
@@ -173,22 +142,6 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 	}
 	if !os.IsNotExist(err) {
 		return RuntimeInfo{}, err
-	}
-
-	logger.Warn("[update] read runtime info missing at current path: path=%s", path)
-	for _, legacyPath := range legacyRuntimeInfoPaths() {
-		legacyPath = strings.TrimSpace(legacyPath)
-		if legacyPath == "" || legacyPath == path {
-			continue
-		}
-		info, legacyErr := readRuntimeInfoAtPath(legacyPath)
-		if legacyErr == nil {
-			logger.Warn("[update] read runtime info fallback to legacy path: path=%s", legacyPath)
-			return info, nil
-		}
-		if !os.IsNotExist(legacyErr) {
-			return RuntimeInfo{}, legacyErr
-		}
 	}
 	return RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
 }
