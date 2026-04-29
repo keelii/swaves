@@ -97,8 +97,8 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		signaledPID.Store(int64(pid))
-		return nil
+			signaledPID.Store(int64(pid))
+			return nil
 		},
 	})
 
@@ -165,8 +165,8 @@ func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
 	withUpdaterHooks(t, updaterTestHooks{
 		processExists: func(pid int) bool { return pid == 4321 },
 		signalProcess: func(pid int) error {
-		signaledPID.Store(int64(pid))
-		return nil
+			signaledPID.Store(int64(pid))
+			return nil
 		},
 	})
 
@@ -194,8 +194,8 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		t.Fatalf("signalProcess should not be called, got pid=%d", pid)
-		return nil
+			t.Fatalf("signalProcess should not be called, got pid=%d", pid)
+			return nil
 		},
 	})
 
@@ -254,8 +254,8 @@ func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		signaledPID.Store(int64(pid))
-		return nil
+			signaledPID.Store(int64(pid))
+			return nil
 		},
 	})
 
@@ -305,8 +305,8 @@ func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T)
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		t.Fatalf("signalProcess should not be called without daemon mode, got pid=%d", pid)
-		return nil
+			t.Fatalf("signalProcess should not be called without daemon mode, got pid=%d", pid)
+			return nil
 		},
 	})
 	mustWriteExecutable(t, executablePath, "old-binary")
@@ -418,8 +418,8 @@ func TestInstallLatestReleaseCLIRestartsMatchingActiveMaster(t *testing.T) {
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		signaledPID.Store(int64(pid))
-		return nil
+			signaledPID.Store(int64(pid))
+			return nil
 		},
 	})
 
@@ -492,7 +492,7 @@ func TestInstallLatestReleaseCLIRollsBackWhenRestartingMatchingActiveMasterFails
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		return errors.New("restart failed")
+			return errors.New("restart failed")
 		},
 	})
 
@@ -579,8 +579,8 @@ func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		signaledPID.Store(int64(pid))
-		return nil
+			signaledPID.Store(int64(pid))
+			return nil
 		},
 	})
 
@@ -637,7 +637,7 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		return errors.New("restart failed")
+			return errors.New("restart failed")
 		},
 	})
 
@@ -699,8 +699,8 @@ func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 			return executablePath, nil
 		},
 		signalProcess: func(pid int) error {
-		signalCalled = true
-		return nil
+			signalCalled = true
+			return nil
 		},
 	})
 

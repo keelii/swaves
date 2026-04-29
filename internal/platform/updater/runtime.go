@@ -21,8 +21,8 @@ type RuntimeInfo struct {
 }
 
 var (
-	runtimeCacheRoot string
-	runtimeCacheMu   sync.RWMutex
+	runtimeCacheRoot  string
+	runtimeCacheMu    sync.RWMutex
 	processExistsFunc = defaultProcessExists
 	userCacheDirFunc  = os.UserCacheDir
 )
