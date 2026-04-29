@@ -31,19 +31,6 @@ type Handler struct {
 	Views   fiber.Views
 }
 
-func (h Handler) trackSiteUV(c fiber.Ctx) {
-	h.trackEntityUV(c, db.UVEntitySite, 0)
-}
-
-func (h Handler) trackUV(c fiber.Ctx, entityType db.UVEntityType, entityID int64) {
-	if !entityType.IsValid() || entityID <= 0 {
-		h.trackSiteUV(c)
-		return
-	}
-
-	h.trackEntityUV(c, entityType, entityID)
-}
-
 func (h Handler) trackEntityUV(c fiber.Ctx, entityType db.UVEntityType, entityID int64) {
 	visitorID := middleware.GetOrCreateVisitorID(c, "")
 	if visitorID == "" {
@@ -240,11 +227,7 @@ func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
 	data["UrlPath"] = c.Path()
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
-	routeName := ""
-	if route := c.Route(); route != nil {
-		routeName = strings.TrimSpace(route.Name)
-	}
-	data["RouteName"] = routeName
+	data["RouteName"] = currentRouteName(c)
 
 	//// 注入 Locals
 	//c.Context().VisitUserValues(func(k []byte, v interface{}) {
@@ -294,7 +277,6 @@ func (h Handler) GetHome(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager, false)
 	templatePosts := ToTemplatePosts(articles)
-	h.trackSiteUV(c)
 
 	return h.renderView(c, "home.html", fiber.Map{
 		"Title":        buildPageTitle(""),
@@ -341,7 +323,7 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 		return h.redirectNotFound(c)
 	}
 
-	h.trackUV(c, db.UVEntityPost, post.Post.ID)
+	declareTrackUVEntity(c, db.UVEntityPost, post.Post.ID)
 	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 	templatePost := ToTemplatePost(post)
 
@@ -442,6 +424,7 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 		return h.redirectNotFound(c)
 	}
 
+	declareTrackUVEntity(c, db.UVEntityPost, post.Post.ID)
 	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 	templatePost := ToTemplatePost(post)
 
@@ -487,7 +470,6 @@ func (h Handler) GetCategoryIndex(c fiber.Ctx) error {
 	}
 
 	pages := ListPages(h.Model)
-	h.trackSiteUV(c)
 	return h.renderView(c, "list.html", fiber.Map{
 		"Title":        buildPageTitle("Categories"),
 		"CanonicalURL": absoluteSiteURL(c, share.GetCategoryPrefix()),
@@ -503,7 +485,6 @@ func (h Handler) GetTagIndex(c fiber.Ctx) error {
 		return h.redirectError(c)
 	}
 
-	h.trackSiteUV(c)
 	return h.renderView(c, "list.html", fiber.Map{
 		"Title":        buildPageTitle("Tags"),
 		"CanonicalURL": absoluteSiteURL(c, share.GetTagPrefix()),
@@ -519,7 +500,7 @@ func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 		return h.redirectNotFound(c)
 	}
 
-	h.trackUV(c, db.UVEntityCategory, category.ID)
+	declareTrackUVEntity(c, db.UVEntityCategory, category.ID)
 
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
 
@@ -542,7 +523,7 @@ func (h Handler) GetTagDetail(c fiber.Ctx) error {
 		return h.redirectNotFound(c)
 	}
 
-	h.trackUV(c, db.UVEntityTag, tag.ID)
+	declareTrackUVEntity(c, db.UVEntityTag, tag.ID)
 
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
 

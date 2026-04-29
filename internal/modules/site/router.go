@@ -17,6 +17,7 @@ func RegisterRouter(app *fiber.App, gStore *store.GlobalStore, views fiber.Views
 
 	uiGroup := app.Group(share.GetBasePath())
 	uiGroup.Use(middleware.EnsureVisitorID(""))
+	uiGroup.Use(handler.trackSiteUVMiddleware())
 
 	uiGroup.Post("/_action/like/:postID", handler.PostEntityLike).Name("site.action.like")
 	uiGroup.Post("/_action/comment/:postID", commentRateLimitMiddleware(), handler.PostComment).Name("site.action.comment")
