@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -470,24 +471,21 @@ func extractReleaseBinary(archivePath string, dstDir string, expectedName string
 
 func safeArchiveEntryBaseName(rawName string) (string, bool) {
 	rawName = strings.TrimSpace(rawName)
-	if rawName == "" {
+	if rawName == "" || strings.HasPrefix(rawName, "/") || strings.HasPrefix(rawName, "\\") || strings.Contains(rawName, "\\") {
 		return "", false
 	}
-	nativeName := strings.ReplaceAll(rawName, "/", string(filepath.Separator))
-	nativeName = filepath.Clean(nativeName)
-	if filepath.IsAbs(nativeName) || nativeName == "." || nativeName == ".." {
+	cleanName := path.Clean(rawName)
+	if cleanName == "." || cleanName == ".." || strings.HasPrefix(cleanName, "../") {
 		return "", false
 	}
-	parts := strings.FieldsFunc(nativeName, func(r rune) bool {
-		return r == '/' || r == '\\'
-	})
+	parts := strings.Split(cleanName, "/")
 	for _, part := range parts {
 		if part == "" || part == "." || part == ".." {
 			return "", false
 		}
 	}
-	name := filepath.Base(nativeName)
-	if name == "" || name == "." || name == string(filepath.Separator) {
+	name := path.Base(cleanName)
+	if name == "" || name == "." || name == "/" {
 		return "", false
 	}
 	return name, true
