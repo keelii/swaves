@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"swaves/internal/platform/updater"
 	"testing"
 
 	"swaves/internal/platform/db"
@@ -322,7 +323,7 @@ func TestRunLocalBackupNowBypassesInterval(t *testing.T) {
 
 func TestResolveLocalBackupDirForSQLiteUsesDatabaseCacheRoot(t *testing.T) {
 	base := t.TempDir()
-	got := ResolveLocalBackupDirForSQLite(db.DefaultBackupDir, filepath.Join(base, "data.sqlite"))
+	got := ResolveLocalBackupDirForSQLite(updater.DefaultBackupDir, filepath.Join(base, "data.sqlite"))
 	want := filepath.Join(base, ".cache", "backups")
 	if got != want {
 		t.Fatalf("ResolveLocalBackupDirForSQLite = %q, want %q", got, want)
@@ -386,7 +387,7 @@ func TestMigrateBackupDir(t *testing.T) {
 	base := t.TempDir()
 	withWorkingDir(t, base)
 
-	oldDir := filepath.Join(base, db.LegacyBackupDir)
+	oldDir := filepath.Join(base, updater.LegacyBackupDir)
 	newDir := filepath.Join(base, ".cache", "backups")
 
 	if err := os.MkdirAll(oldDir, 0755); err != nil {
@@ -420,7 +421,7 @@ func TestMigrateBackupDirSkipsWhenCustomDirSet(t *testing.T) {
 	base := t.TempDir()
 	withWorkingDir(t, base)
 
-	oldDir := filepath.Join(base, db.LegacyBackupDir)
+	oldDir := filepath.Join(base, updater.LegacyBackupDir)
 	if err := os.MkdirAll(oldDir, 0755); err != nil {
 		t.Fatalf("MkdirAll old dir failed: %v", err)
 	}
@@ -442,7 +443,7 @@ func TestMigrateBackupDirSkipsExistingDestination(t *testing.T) {
 	base := t.TempDir()
 	withWorkingDir(t, base)
 
-	oldDir := filepath.Join(base, db.LegacyBackupDir)
+	oldDir := filepath.Join(base, updater.LegacyBackupDir)
 	newDir := filepath.Join(base, ".cache", "backups")
 
 	if err := os.MkdirAll(oldDir, 0755); err != nil {

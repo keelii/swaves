@@ -21,9 +21,12 @@ type RuntimeInfo struct {
 }
 
 const (
-	CacheDir        = ".cache"
+	RuntimeCacheDir = ".cache"
 	RuntimeInfoName = "master_runtime.json"
+	LegacyBackupDir = "backups"
 )
+
+var DefaultBackupDir = filepath.Join(RuntimeCacheDir, "backups")
 
 var (
 	runtimeCacheRoot string
@@ -78,7 +81,7 @@ func DefaultRuntimeInfoPath() string {
 }
 
 func runtimeInfoRelativePath() string {
-	return filepath.Join(CacheDir, RuntimeInfoName)
+	return filepath.Join(RuntimeCacheDir, RuntimeInfoName)
 }
 
 func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	defaultBackupDir    = db.DefaultBackupDir
+	defaultBackupDir    = updater.DefaultBackupDir
 	defaultListenAddr   = ":4096"
 	defaultAppName      = "swaves"
 	defaultDaemonMode   = 1

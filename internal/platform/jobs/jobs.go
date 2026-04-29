@@ -123,7 +123,7 @@ type localBackupConfig struct {
 func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 	defaultDir := strings.TrimSpace(reg.Config.BackupDir)
 	if defaultDir == "" {
-		defaultDir = db.DefaultBackupDir
+		defaultDir = updater.DefaultBackupDir
 	}
 
 	dir := strings.TrimSpace(store.GetSetting(settingBackupLocalDir))
@@ -152,7 +152,7 @@ func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 func ResolveLocalBackupDir(dir string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		dir = db.DefaultBackupDir
+		dir = updater.DefaultBackupDir
 	}
 	if filepath.IsAbs(dir) {
 		return dir
@@ -168,7 +168,7 @@ func ResolveLocalBackupDir(dir string) string {
 func ResolveLocalBackupDirForSQLite(dir string, sqliteFile string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		dir = db.DefaultBackupDir
+		dir = updater.DefaultBackupDir
 	}
 	if filepath.IsAbs(dir) {
 		return dir
@@ -199,7 +199,7 @@ func resolveBackupDirForSQLite(dir string, sqliteFile string) string {
 // directory to the current default ".cache/backups/" when no custom backup directory
 // has been configured by the user.
 func migrateBackupDir() {
-	if strings.TrimSpace(store.GetSetting(settingBackupLocalDir)) == db.DefaultBackupDir {
+	if strings.TrimSpace(store.GetSetting(settingBackupLocalDir)) == updater.DefaultBackupDir {
 		return
 	}
 
@@ -210,8 +210,8 @@ func migrateBackupDir() {
 	}
 	registryMu.RUnlock()
 
-	oldDir := resolveLegacyBackupDirForSQLite(db.LegacyBackupDir, sqliteFile)
-	newDir := resolveBackupDirForSQLite(db.DefaultBackupDir, sqliteFile)
+	oldDir := resolveLegacyBackupDirForSQLite(updater.LegacyBackupDir, sqliteFile)
+	newDir := resolveBackupDirForSQLite(updater.DefaultBackupDir, sqliteFile)
 	if oldDir == newDir {
 		return
 	}
@@ -266,7 +266,7 @@ func migrateBackupDir() {
 func resolveLegacyBackupDirForSQLite(dir string, sqliteFile string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		dir = db.LegacyBackupDir
+		dir = updater.LegacyBackupDir
 	}
 	if filepath.IsAbs(dir) {
 		return dir
