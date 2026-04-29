@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -315,16 +316,13 @@ func prepareLocalArchive(archiveName string, archivePath string, goos string, go
 	}, nil
 }
 
-func installSuccessReason(sourceKind installSourceKind, latestVersion string, restarted bool) string {
+func installSuccessReason(_ installSourceKind, latestVersion string, restarted bool) string {
 	latestVersion = strings.TrimSpace(latestVersion)
 	if latestVersion == "" {
 		latestVersion = "unknown version"
 	}
 	if restarted {
 		return fmt.Sprintf("upgraded to %s", latestVersion)
-	}
-	if sourceKind == installSourceLatestRelease {
-		return fmt.Sprintf("installed %s to current executable", latestVersion)
 	}
 	return fmt.Sprintf("installed %s to current executable", latestVersion)
 }
@@ -449,7 +447,12 @@ func extractReleaseBinary(archivePath string, dstDir string, expectedName string
 			continue
 		}
 
-		name := filepath.Base(strings.TrimSpace(header.Name))
+		rawName := strings.TrimSpace(header.Name)
+		cleanName := path.Clean(strings.TrimPrefix(rawName, "/"))
+		if rawName == "" || cleanName == "." || cleanName == ".." || strings.HasPrefix(cleanName, "../") {
+			continue
+		}
+		name := filepath.Base(cleanName)
 		if name == "" || name == "." || name == string(filepath.Separator) || name != expectedName {
 			continue
 		}

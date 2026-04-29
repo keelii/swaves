@@ -251,7 +251,7 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	}
 	if err := os.MkdirAll(manualUploadRoot, 0o755); err != nil {
 		logger.Error("[dash] manual update create upload cache root failed: ip=%s archive=%s dir=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), manualUploadRoot, err)
-		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "创建上传缓存目录失败："+err.Error())
+		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "确保上传缓存目录失败："+err.Error())
 	}
 	tmpDir, err := os.MkdirTemp(manualUploadRoot, ".swaves-manual-upgrade-")
 	if err != nil {

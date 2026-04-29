@@ -309,6 +309,16 @@ func buildTarGzArchiveEntries(t *testing.T, entries []archiveEntry) []byte {
 	return buf.Bytes()
 }
 
+type roundTripFunc func(req *http.Request) (*http.Response, error)
+
+func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
+func newHTTPResponse(status int, body string) *http.Response {
+	return newHTTPBytesResponse(status, []byte(body))
+}
+
 func newHTTPBytesResponse(status int, body []byte) *http.Response {
 	return &http.Response{
 		StatusCode: status,
