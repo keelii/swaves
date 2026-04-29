@@ -23,7 +23,6 @@ type RuntimeInfo struct {
 const (
 	RuntimeCacheDir = ".cache"
 	RuntimeInfoName = "master_runtime.json"
-	LegacyBackupDir = "backups"
 )
 
 var DefaultBackupDir = filepath.Join(RuntimeCacheDir, "backups")
