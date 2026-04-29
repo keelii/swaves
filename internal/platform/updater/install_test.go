@@ -42,6 +42,11 @@ func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 	}
 }
 
+type archiveEntry struct {
+	name    string
+	content []byte
+}
+
 func buildTarGzArchiveEntries(t *testing.T, entries []archiveEntry) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -62,11 +67,6 @@ func buildTarGzArchiveEntries(t *testing.T, entries []archiveEntry) []byte {
 		t.Fatalf("Close gzip writer failed: %v", err)
 	}
 	return buf.Bytes()
-}
-
-type archiveEntry struct {
-	name    string
-	content []byte
 }
 
 type roundTripFunc func(req *http.Request) (*http.Response, error)
