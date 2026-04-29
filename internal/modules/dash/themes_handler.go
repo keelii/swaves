@@ -318,7 +318,7 @@ func (h *Handler) respondThemeEditUpdate(c fiber.Ctx, returnJSON bool, themeID, 
 	)
 }
 
-func setCurrentThemeAndRestart(model *db.DB, id int64) (themeSwitchResult, error) {
+func setCurrentThemeAndRestart(model *db.DB, id int64, deps systemUpdateDeps) (themeSwitchResult, error) {
 	result := themeSwitchResult{}
 
 	theme, err := db.GetThemeByID(model, id)
@@ -341,13 +341,13 @@ func setCurrentThemeAndRestart(model *db.DB, id int64) (themeSwitchResult, error
 		result.RestartRequired = true
 		return result, nil
 	}
-	if _, err := readActiveRuntimeInfo(); err != nil {
+	if _, err := deps.readActiveRuntime(); err != nil {
 		logger.Warn("[theme] current theme updated without hot reload: id=%d err=%v", id, err)
 		result.RestartRequired = true
 		return result, nil
 	}
 
-	pid, err := restartActiveRuntime()
+	pid, err := deps.restartRuntime()
 	if err != nil {
 		logger.Error("[theme] current theme updated but restart signal failed: id=%d err=%v", id, err)
 		result.RestartRequired = true
@@ -582,7 +582,7 @@ func (h *Handler) PostSetCurrentThemeHandler(c fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	result, err := setCurrentThemeAndRestart(h.Model, id)
+	result, err := setCurrentThemeAndRestart(h.Model, id, h.resolvedSystemUpdateDeps())
 	if err != nil {
 		logger.Error("[theme] switch current theme failed: id=%d ip=%s err=%v", id, c.IP(), err)
 		return h.redirectToDashRouteWithError(c, "dash.themes.list", nil, nil, err.Error())

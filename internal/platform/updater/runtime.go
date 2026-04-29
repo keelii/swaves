@@ -8,6 +8,7 @@ import (
 	"strings"
 	"swaves/internal/platform/logger"
 	"swaves/internal/shared/pathutil"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -19,20 +20,82 @@ type RuntimeInfo struct {
 	UpdatedAt  int64  `json:"updated_at"`
 }
 
-var runtimeInfoPath = defaultRuntimeInfoPath
+type runtimeDeps struct {
+	processExists  func(pid int) bool
+	osUserCacheDir func() (string, error)
+}
+
+func defaultRuntimeDeps() runtimeDeps {
+	return runtimeDeps{
+		processExists:  defaultProcessExists,
+		osUserCacheDir: os.UserCacheDir,
+	}
+}
+
+func resolvedRuntimeDeps(deps runtimeDeps) runtimeDeps {
+	resolved := defaultRuntimeDeps()
+	if deps.processExists != nil {
+		resolved.processExists = deps.processExists
+	}
+	if deps.osUserCacheDir != nil {
+		resolved.osUserCacheDir = deps.osUserCacheDir
+	}
+	return resolved
+}
 
 var (
-	processExists     = defaultProcessExists
-	currentExecutable = os.Executable
-	osUserCacheDir    = os.UserCacheDir
+	runtimeCacheRoot string
+	runtimeCacheMu   sync.RWMutex
 )
 
 func RuntimeInfoPath() string {
-	return runtimeInfoPath()
+	return DefaultRuntimeInfoPath()
 }
 
-func defaultRuntimeInfoPath() string {
-	path, err := pathutil.ResolveProcessCachePath("updater", "master_runtime.json")
+func ConfigureRuntimeCacheRoot(sqliteFile string) error {
+	root, err := pathutil.EnsureDatabaseCacheRoot(sqliteFile)
+	if err != nil {
+		return err
+	}
+	runtimeCacheMu.Lock()
+	runtimeCacheRoot = root
+	runtimeCacheMu.Unlock()
+	logger.Info("[update] runtime cache root configured: sqlite=%s cache_root=%s", strings.TrimSpace(sqliteFile), root)
+	return nil
+}
+
+func RuntimeCacheRoot() (string, error) {
+	runtimeCacheMu.RLock()
+	root := strings.TrimSpace(runtimeCacheRoot)
+	runtimeCacheMu.RUnlock()
+	if root != "" {
+		return root, nil
+	}
+	root, err := pathutil.ResolveProcessCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	return root, nil
+}
+
+func RuntimeCachePath(parts ...string) (string, error) {
+	root, err := RuntimeCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	segments := []string{root}
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		segments = append(segments, part)
+	}
+	return filepath.Join(segments...), nil
+}
+
+func DefaultRuntimeInfoPath() string {
+	path, err := RuntimeCachePath("updater", "master_runtime.json")
 	if err == nil && strings.TrimSpace(path) != "" {
 		return path
 	}
@@ -40,15 +103,32 @@ func defaultRuntimeInfoPath() string {
 	return filepath.Join(".cache", "updater", "master_runtime.json")
 }
 
-func legacyRuntimeInfoPaths() []string {
-	paths := make([]string, 0, 3)
-	if cacheDir, err := osUserCacheDir(); err == nil && strings.TrimSpace(cacheDir) != "" {
-		paths = append(paths, filepath.Join(cacheDir, "swaves", "master_runtime.json"))
+func legacyRuntimeInfoPathsWithDeps(deps runtimeDeps) []string {
+	deps = resolvedRuntimeDeps(deps)
+	seen := make(map[string]struct{})
+	add := func(p string) []string {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return nil
+		}
+		if _, ok := seen[p]; ok {
+			return nil
+		}
+		seen[p] = struct{}{}
+		return []string{p}
 	}
-	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil && strings.TrimSpace(processCachePath) != "" {
-		paths = append(paths, processCachePath)
+
+	var paths []string
+	if cacheDir, err := deps.osUserCacheDir(); err == nil {
+		paths = append(paths, add(filepath.Join(cacheDir, "swaves", "master_runtime.json"))...)
 	}
-	paths = append(paths, filepath.Join(os.TempDir(), "swaves_master_runtime.json"))
+	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil {
+		paths = append(paths, add(processCachePath)...)
+	}
+	if runtimeCachePath, err := RuntimeCachePath("swaves", "master_runtime.json"); err == nil {
+		paths = append(paths, add(runtimeCachePath)...)
+	}
+	paths = append(paths, add(filepath.Join(os.TempDir(), "swaves_master_runtime.json"))...)
 	return paths
 }
 
@@ -110,6 +190,11 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 }
 
 func ReadRuntimeInfo() (RuntimeInfo, error) {
+	return readRuntimeInfoWithDeps(defaultRuntimeDeps())
+}
+
+func readRuntimeInfoWithDeps(deps runtimeDeps) (RuntimeInfo, error) {
+	deps = resolvedRuntimeDeps(deps)
 	path := RuntimeInfoPath()
 	info, err := readRuntimeInfoAtPath(path)
 	if err == nil {
@@ -120,7 +205,7 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 	}
 
 	logger.Warn("[update] read runtime info missing at current path: path=%s", path)
-	for _, legacyPath := range legacyRuntimeInfoPaths() {
+	for _, legacyPath := range legacyRuntimeInfoPathsWithDeps(deps) {
 		legacyPath = strings.TrimSpace(legacyPath)
 		if legacyPath == "" || legacyPath == path {
 			continue
@@ -138,11 +223,16 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
-	info, err := ReadRuntimeInfo()
+	return readActiveRuntimeInfoWithDeps(defaultRuntimeDeps())
+}
+
+func readActiveRuntimeInfoWithDeps(deps runtimeDeps) (RuntimeInfo, error) {
+	deps = resolvedRuntimeDeps(deps)
+	info, err := readRuntimeInfoWithDeps(deps)
 	if err != nil {
 		return RuntimeInfo{}, err
 	}
-	if !processExists(info.PID) {
+	if !deps.processExists(info.PID) {
 		logger.Warn("[update] active runtime missing process: master_pid=%d executable=%s", info.PID, info.Executable)
 		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d", info.PID)
 	}

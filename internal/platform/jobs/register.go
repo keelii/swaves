@@ -8,6 +8,7 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
 	"swaves/internal/shared/types"
 	"sync"
 	"sync/atomic"
@@ -22,6 +23,16 @@ import (
 // - (nil, nil): 任务无动作（no-op），不更新任务最后状态和最后执行时间，不记录 TaskRun
 type JobFunc func(reg *Registry) (*string, error)
 
+type appUpdateDeps struct {
+	checkLatestRelease func(currentVersion string, goos string, goarch string) (updater.CheckResult, error)
+}
+
+func defaultAppUpdateDeps() appUpdateDeps {
+	return appUpdateDeps{
+		checkLatestRelease: updater.CheckLatestRelease,
+	}
+}
+
 var (
 	registry            *Registry
 	registryMu          sync.RWMutex
@@ -30,15 +41,27 @@ var (
 )
 
 type Registry struct {
-	jobs    map[string]JobItem
-	running map[string]bool
-	DB      *db.DB
-	Config  types.AppConfig
-	cron    *cron.Cron
+	jobs      map[string]JobItem
+	running   map[string]bool
+	DB        *db.DB
+	Config    types.AppConfig
+	cron      *cron.Cron
+	appUpdate appUpdateDeps
 
 	cronStopMu      sync.Mutex
 	cronStopCtx     context.Context
 	cronStopStarted bool
+}
+
+func (r *Registry) resolvedAppUpdateDeps() appUpdateDeps {
+	deps := defaultAppUpdateDeps()
+	if r == nil {
+		return deps
+	}
+	if r.appUpdate.checkLatestRelease != nil {
+		deps.checkLatestRelease = r.appUpdate.checkLatestRelease
+	}
+	return deps
 }
 
 type JobItem struct {
@@ -58,10 +81,11 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 	}
 
 	reg := &Registry{
-		jobs:    make(map[string]JobItem),
-		running: make(map[string]bool),
-		DB:      gStore.Model,
-		Config:  config,
+		jobs:      make(map[string]JobItem),
+		running:   make(map[string]bool),
+		DB:        gStore.Model,
+		Config:    config,
+		appUpdate: defaultAppUpdateDeps(),
 	}
 	registryMu.Lock()
 	registry = reg

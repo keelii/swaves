@@ -34,11 +34,6 @@ type RestoreStatus struct {
 	UpdatedAt int64  `json:"updated_at"`
 }
 
-var (
-	restoreRequestPath = defaultRestoreRequestPath
-	restoreStatusPath  = defaultRestoreStatusPath
-)
-
 func defaultRestoreRequestPath() string {
 	return filepath.Join(filepath.Dir(RuntimeInfoPath()), "restore_request.json")
 }
@@ -48,6 +43,10 @@ func defaultRestoreStatusPath() string {
 }
 
 func WriteRestoreRequest(request RestoreRequest) error {
+	return WriteRestoreRequestAtPath(defaultRestoreRequestPath(), request)
+}
+
+func WriteRestoreRequestAtPath(path string, request RestoreRequest) error {
 	request.Source = strings.TrimSpace(request.Source)
 	if request.Source == "" {
 		return fmt.Errorf("restore source is required")
@@ -55,12 +54,16 @@ func WriteRestoreRequest(request RestoreRequest) error {
 	if request.RequestedAt <= 0 {
 		request.RequestedAt = time.Now().Unix()
 	}
-	return writeRestoreJSON(restoreRequestPath(), request)
+	return writeRestoreJSON(path, request)
 }
 
 func ReadRestoreRequest() (RestoreRequest, error) {
+	return ReadRestoreRequestAtPath(defaultRestoreRequestPath())
+}
+
+func ReadRestoreRequestAtPath(path string) (RestoreRequest, error) {
 	var request RestoreRequest
-	if err := readRestoreJSON(restoreRequestPath(), &request); err != nil {
+	if err := readRestoreJSON(path, &request); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return RestoreRequest{}, ErrRestoreRequestNotFound
 		}
@@ -74,22 +77,34 @@ func ReadRestoreRequest() (RestoreRequest, error) {
 }
 
 func RemoveRestoreRequest() error {
-	return removeRestoreFile(restoreRequestPath())
+	return RemoveRestoreRequestAtPath(defaultRestoreRequestPath())
+}
+
+func RemoveRestoreRequestAtPath(path string) error {
+	return removeRestoreFile(path)
 }
 
 func WriteRestoreStatus(status RestoreStatus) error {
+	return WriteRestoreStatusAtPath(defaultRestoreStatusPath(), status)
+}
+
+func WriteRestoreStatusAtPath(path string, status RestoreStatus) error {
 	if strings.TrimSpace(status.State) == "" {
 		status.State = RestoreStatusIdle
 	}
 	if status.UpdatedAt <= 0 {
 		status.UpdatedAt = time.Now().Unix()
 	}
-	return writeRestoreJSON(restoreStatusPath(), status)
+	return writeRestoreJSON(path, status)
 }
 
 func ReadRestoreStatus() (RestoreStatus, error) {
+	return ReadRestoreStatusAtPath(defaultRestoreStatusPath())
+}
+
+func ReadRestoreStatusAtPath(path string) (RestoreStatus, error) {
 	var status RestoreStatus
-	if err := readRestoreJSON(restoreStatusPath(), &status); err != nil {
+	if err := readRestoreJSON(path, &status); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return RestoreStatus{State: RestoreStatusIdle}, nil
 		}

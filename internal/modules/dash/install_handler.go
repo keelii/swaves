@@ -413,8 +413,9 @@ func (h *Handler) PostInstallHandler(c fiber.Ctx) error {
 	}
 	targetDashHomePath := installDashPath(settings)
 	targetPath := targetDashHomePath
+	deps := h.resolvedSystemUpdateDeps()
 
-	runtimeInfo, runtimeErr := readActiveRuntimeInfo()
+	runtimeInfo, runtimeErr := deps.readActiveRuntime()
 	currentExecutable := currentExecutablePath()
 	if runtimeErr != nil || currentExecutable == "" || filepath.Clean(strings.TrimSpace(runtimeInfo.Executable)) != currentExecutable {
 		notice := "安装已完成，请重启服务后让新路径配置生效。"
@@ -433,7 +434,7 @@ func (h *Handler) PostInstallHandler(c fiber.Ctx) error {
 		return h.redirectToDashRoute(c, "dash.login.show", nil, nil)
 	}
 
-	pid, restartErr := restartActiveRuntime()
+	pid, restartErr := deps.restartRuntime()
 	if restartErr != nil {
 		logger.Warn("[install] restart request failed after install: ip=%s target=%s err=%v", c.IP(), targetPath, restartErr)
 		notice := "安装已完成，请重启服务后让新路径配置生效。"

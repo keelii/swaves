@@ -121,26 +121,21 @@ func TestPostInstallHandlerRestartsAndRedirectsToConfiguredDashPath(t *testing.T
 	t.Cleanup(func() { _ = dbx.Close() })
 
 	sessionStore := &types.SessionStore{Store: session.NewStore()}
-	handler := &Handler{Model: dbx, Session: sessionStore}
 
 	restartCalls := 0
 	currentExecutable, err := os.Executable()
 	if err != nil {
 		t.Fatalf("os.Executable failed: %v", err)
 	}
-	originalRead := readActiveRuntimeInfo
-	originalRestart := restartActiveRuntime
-	readActiveRuntimeInfo = func() (updater.RuntimeInfo, error) {
-		return updater.RuntimeInfo{PID: 4321, Executable: currentExecutable}, nil
-	}
-	restartActiveRuntime = func() (int, error) {
-		restartCalls++
-		return 4321, nil
-	}
-	t.Cleanup(func() {
-		readActiveRuntimeInfo = originalRead
-		restartActiveRuntime = originalRestart
-	})
+	handler := &Handler{Model: dbx, Session: sessionStore, systemUpdate: systemUpdateDeps{
+		readActiveRuntime: func() (updater.RuntimeInfo, error) {
+			return updater.RuntimeInfo{PID: 4321, Executable: currentExecutable}, nil
+		},
+		restartRuntime: func() (int, error) {
+			restartCalls++
+			return 4321, nil
+		},
+	}}
 
 	app := fiber.New()
 	app.Use(func(c fiber.Ctx) error {
@@ -180,26 +175,21 @@ func TestPostInstallHandlerFallsBackToCurrentDashRouteWhenRestartUnavailable(t *
 	t.Cleanup(func() { _ = dbx.Close() })
 
 	sessionStore := &types.SessionStore{Store: session.NewStore()}
-	handler := &Handler{Model: dbx, Session: sessionStore}
 
 	restartCalls := 0
 	currentExecutable, err := os.Executable()
 	if err != nil {
 		t.Fatalf("os.Executable failed: %v", err)
 	}
-	originalRead := readActiveRuntimeInfo
-	originalRestart := restartActiveRuntime
-	readActiveRuntimeInfo = func() (updater.RuntimeInfo, error) {
-		return updater.RuntimeInfo{PID: 4321, Executable: currentExecutable}, nil
-	}
-	restartActiveRuntime = func() (int, error) {
-		restartCalls++
-		return 0, fiber.ErrServiceUnavailable
-	}
-	t.Cleanup(func() {
-		readActiveRuntimeInfo = originalRead
-		restartActiveRuntime = originalRestart
-	})
+	handler := &Handler{Model: dbx, Session: sessionStore, systemUpdate: systemUpdateDeps{
+		readActiveRuntime: func() (updater.RuntimeInfo, error) {
+			return updater.RuntimeInfo{PID: 4321, Executable: currentExecutable}, nil
+		},
+		restartRuntime: func() (int, error) {
+			restartCalls++
+			return 0, fiber.ErrServiceUnavailable
+		},
+	}}
 
 	app := fiber.New()
 	app.Use(func(c fiber.Ctx) error {

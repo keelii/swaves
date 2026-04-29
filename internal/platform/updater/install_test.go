@@ -17,37 +17,41 @@ import (
 	"testing"
 )
 
-func withRuntimeInfoPath(t *testing.T, path string) {
+func withRuntimeCacheRoot(t *testing.T, root string) {
 	t.Helper()
 
-	oldRuntimePath := runtimeInfoPath
-	runtimeInfoPath = func() string { return path }
+	runtimeCacheMu.Lock()
+	oldRoot := runtimeCacheRoot
+	runtimeCacheRoot = root
+	runtimeCacheMu.Unlock()
 	t.Cleanup(func() {
-		runtimeInfoPath = oldRuntimePath
+		runtimeCacheMu.Lock()
+		runtimeCacheRoot = oldRoot
+		runtimeCacheMu.Unlock()
 	})
 }
 
-func withCurrentExecutablePath(t *testing.T, path string) {
-	t.Helper()
-
-	oldCurrentExecutable := currentExecutable
-	currentExecutable = func() (string, error) { return path, nil }
-	t.Cleanup(func() {
-		currentExecutable = oldCurrentExecutable
-	})
+func runtimeDepsForProcess(exists func(pid int) bool) runtimeDeps {
+	deps := defaultRuntimeDeps()
+	if exists != nil {
+		deps.processExists = exists
+	}
+	return deps
 }
 
-func withProcessHooks(t *testing.T, exists func(pid int) bool, signal func(pid int) error) {
-	t.Helper()
-
-	oldProcessExists := processExists
-	oldSignalProcess := signalProcess
-	processExists = exists
-	signalProcess = signal
-	t.Cleanup(func() {
-		processExists = oldProcessExists
-		signalProcess = oldSignalProcess
-	})
+func installTestDeps(path string, exists func(pid int) bool, signal func(pid int) error) installDeps {
+	deps := defaultInstallDeps()
+	if strings.TrimSpace(path) != "" {
+		deps.currentExecutable = func() (string, error) { return path, nil }
+	}
+	if signal != nil {
+		deps.signalProcess = signal
+	}
+	runtimeDeps := runtimeDepsForProcess(exists)
+	deps.readActiveRuntimeInfo = func() (RuntimeInfo, error) {
+		return readActiveRuntimeInfoWithDeps(runtimeDeps)
+	}
+	return deps
 }
 
 func mustWriteExecutable(t *testing.T, path string, content string) {
@@ -68,15 +72,13 @@ func mustWriteRuntime(t *testing.T, info RuntimeInfo) {
 
 func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	var signaledPID atomic.Int64
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
 	})
@@ -112,7 +114,7 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 		})},
 	}
 
-	result, err := client.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	result, err := client.installLatestReleaseWithDeps(deps, "v1.2.3", "linux", "amd64")
 	if err != nil {
 		t.Fatalf("InstallLatestRelease failed: %v", err)
 	}
@@ -137,17 +139,16 @@ func TestInstallLatestReleaseReplacesExecutableAndSignalsMaster(t *testing.T) {
 
 func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: filepath.Join(tmpDir, "swaves")})
 
 	var signaledPID atomic.Int64
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+	deps := installTestDeps("", func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
 	})
 
-	pid, err := RestartActiveRuntime()
+	pid, err := restartActiveRuntimeWithDeps(deps)
 	if err != nil {
 		t.Fatalf("RestartActiveRuntime failed: %v", err)
 	}
@@ -161,13 +162,11 @@ func TestRestartActiveRuntimeSignalsMaster(t *testing.T) {
 
 func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	mustWriteExecutable(t, executablePath, "same-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 1001, Executable: executablePath})
-	withProcessHooks(t, func(pid int) bool { return pid == 1001 }, func(pid int) error {
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 1001 }, func(pid int) error {
 		t.Fatalf("signalProcess should not be called, got pid=%d", pid)
 		return nil
 	})
@@ -193,7 +192,7 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 		})},
 	}
 
-	result, err := client.InstallLatestRelease("v1.2.4", "linux", "amd64")
+	result, err := client.installLatestReleaseWithDeps(deps, "v1.2.4", "linux", "amd64")
 	if err != nil {
 		t.Fatalf("InstallLatestRelease failed: %v", err)
 	}
@@ -215,15 +214,13 @@ func TestInstallLatestReleaseNoOpWhenAlreadyLatest(t *testing.T) {
 
 func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	var signaledPID atomic.Int64
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
 	})
@@ -235,7 +232,7 @@ func TestInstallLocalReleaseArchiveReplacesExecutableAndSignalsMaster(t *testing
 		t.Fatalf("write local archive failed: %v", err)
 	}
 
-	result, err := InstallLocalReleaseArchive(archiveName, archivePath, "v1.2.3", "linux", "amd64")
+	result, err := installLocalReleaseArchiveWithDeps(deps, archiveName, archivePath, "v1.2.3", "linux", "amd64")
 	if err != nil {
 		t.Fatalf("InstallLocalReleaseArchive failed: %v", err)
 	}
@@ -266,11 +263,9 @@ func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
 
 func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
-	withProcessHooks(t, func(pid int) bool { return false }, func(pid int) error {
+	withRuntimeCacheRoot(t, tmpDir)
+	deps := installTestDeps(executablePath, func(pid int) bool { return false }, func(pid int) error {
 		t.Fatalf("signalProcess should not be called without daemon mode, got pid=%d", pid)
 		return nil
 	})
@@ -283,7 +278,7 @@ func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T)
 		t.Fatalf("write local archive failed: %v", err)
 	}
 
-	result, err := InstallLocalReleaseArchive(archiveName, archivePath, "v1.2.3", "linux", "amd64")
+	result, err := installLocalReleaseArchiveWithDeps(deps, archiveName, archivePath, "v1.2.3", "linux", "amd64")
 	if err != nil {
 		t.Fatalf("InstallLocalReleaseArchive failed: %v", err)
 	}
@@ -309,7 +304,7 @@ func TestInstallLocalReleaseArchiveReplacesExecutableWithoutDaemon(t *testing.T)
 func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testing.T) {
 	tmpDir := t.TempDir()
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withCurrentExecutablePath(t, executablePath)
+	deps := installTestDeps(executablePath, nil, nil)
 	mustWriteExecutable(t, executablePath, "old-binary")
 
 	archiveData := buildTarGzArchive(t, "swaves_v1.2.4_linux_amd64", []byte("new-binary"))
@@ -342,7 +337,7 @@ func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testin
 		})},
 	}
 
-	result, err := client.InstallLatestReleaseCLI("v1.2.3", "linux", "amd64")
+	result, err := client.installLatestReleaseCLIWithDeps(deps, "v1.2.3", "linux", "amd64")
 	if err != nil {
 		t.Fatalf("InstallLatestReleaseCLI failed: %v", err)
 	}
@@ -367,15 +362,13 @@ func TestInstallLatestReleaseCLIReplacesCurrentExecutableWithoutDaemon(t *testin
 
 func TestInstallLatestReleaseCLIRestartsMatchingActiveMaster(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	var signaledPID atomic.Int64
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
 	})
@@ -410,7 +403,7 @@ func TestInstallLatestReleaseCLIRestartsMatchingActiveMaster(t *testing.T) {
 		})},
 	}
 
-	result, err := client.InstallLatestReleaseCLI("v1.2.3", "linux", "amd64")
+	result, err := client.installLatestReleaseCLIWithDeps(deps, "v1.2.3", "linux", "amd64")
 	if err != nil {
 		t.Fatalf("InstallLatestReleaseCLI failed: %v", err)
 	}
@@ -438,14 +431,12 @@ func TestInstallLatestReleaseCLIRestartsMatchingActiveMaster(t *testing.T) {
 
 func TestInstallLatestReleaseCLIRollsBackWhenRestartingMatchingActiveMasterFails(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		return errors.New("restart failed")
 	})
 
@@ -479,7 +470,7 @@ func TestInstallLatestReleaseCLIRollsBackWhenRestartingMatchingActiveMasterFails
 		})},
 	}
 
-	_, err := client.InstallLatestReleaseCLI("v1.2.3", "linux", "amd64")
+	_, err := client.installLatestReleaseCLIWithDeps(deps, "v1.2.3", "linux", "amd64")
 	if err == nil || !strings.Contains(err.Error(), "signal master restart failed") {
 		t.Fatalf("expected signal failure, got %v", err)
 	}
@@ -519,15 +510,14 @@ func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 
 func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
-	withRuntimeInfoPath(t, runtimePath)
+	withRuntimeCacheRoot(t, tmpDir)
 
 	executablePath := filepath.Join(tmpDir, "swaves")
 	mustWriteExecutable(t, executablePath, "old-binary")
 	mustWriteRuntime(t, RuntimeInfo{PID: 4321, Executable: executablePath})
 
 	var signaledPID atomic.Int64
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		signaledPID.Store(int64(pid))
 		return nil
 	})
@@ -563,7 +553,7 @@ func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(
 		})},
 	}
 
-	result, err := client.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	result, err := client.installLatestReleaseWithDeps(deps, "v1.2.3", "linux", "amd64")
 	if err != nil {
 		t.Fatalf("InstallLatestRelease failed: %v", err)
 	}
@@ -577,11 +567,9 @@ func TestInstallLatestReleaseAllowsExecutableReplacementWhileMasterKeepsRunning(
 
 func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 }, func(pid int) error {
+	withRuntimeCacheRoot(t, tmpDir)
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 4321 }, func(pid int) error {
 		return errors.New("restart failed")
 	})
 
@@ -618,7 +606,7 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 		})},
 	}
 
-	_, err := client.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	_, err := client.installLatestReleaseWithDeps(deps, "v1.2.3", "linux", "amd64")
 	if err == nil || !strings.Contains(err.Error(), "signal master restart failed") {
 		t.Fatalf("expected signal failure, got %v", err)
 	}
@@ -634,12 +622,10 @@ func TestInstallLatestReleaseRollsBackWhenSignalFails(t *testing.T) {
 
 func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 	tmpDir := t.TempDir()
-	runtimePath := filepath.Join(tmpDir, "runtime.json")
 	executablePath := filepath.Join(tmpDir, "swaves")
-	withRuntimeInfoPath(t, runtimePath)
-	withCurrentExecutablePath(t, executablePath)
+	withRuntimeCacheRoot(t, tmpDir)
 	signalCalled := false
-	withProcessHooks(t, func(pid int) bool { return pid == 4321 || pid == 9999 }, func(pid int) error {
+	deps := installTestDeps(executablePath, func(pid int) bool { return pid == 4321 || pid == 9999 }, func(pid int) error {
 		signalCalled = true
 		return nil
 	})
@@ -680,7 +666,7 @@ func TestInstallLatestReleaseRejectsRuntimeChangeBeforeReplace(t *testing.T) {
 		})},
 	}
 
-	_, err := client.InstallLatestRelease("v1.2.3", "linux", "amd64")
+	_, err := client.installLatestReleaseWithDeps(deps, "v1.2.3", "linux", "amd64")
 	if err == nil || !strings.Contains(err.Error(), "runtime pid changed") {
 		t.Fatalf("expected runtime change error, got %v", err)
 	}
