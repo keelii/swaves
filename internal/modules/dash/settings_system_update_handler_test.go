@@ -96,12 +96,12 @@ func TestBuildSystemUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *test
 	}
 }
 
-func TestSystemUpdateSupportStateDisablesManualUpdateWithoutDaemon(t *testing.T) {
+func TestSystemUpdateSupportStateWithoutDaemon(t *testing.T) {
 	state := systemUpdateSupportState(func() (updater.RuntimeInfo, error) {
 		return updater.RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
 	}, true)
-	if state.ManualUpdateEnabled {
-		t.Fatal("expected manual update to be disabled without daemon mode")
+	if !state.ManualUpdateEnabled {
+		t.Fatal("expected manual update to be enabled without daemon mode")
 	}
 	if state.AutoUpdateEnabled {
 		t.Fatal("expected auto update to be disabled without daemon mode")
