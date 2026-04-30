@@ -18,6 +18,44 @@ import (
 	"syscall"
 )
 
+// ArchiveSource identifies where the binary archive comes from.
+type ArchiveSource int
+
+const (
+	// ArchiveSourceRemote downloads the archive from a GitHub release.
+	ArchiveSourceRemote ArchiveSource = iota
+	// ArchiveSourceLocal uses an archive already present on disk.
+	ArchiveSourceLocal
+)
+
+// InstallSource describes a versioned binary archive to be installed.
+// For ArchiveSourceRemote, set Kind only; the release target is resolved
+// from GitHub during Install.
+// For ArchiveSourceLocal, set Kind, ArchiveName, ArchivePath, and Version.
+type InstallSource struct {
+	Kind        ArchiveSource
+	ArchiveName string         // archive filename (e.g. swaves_v1.2.3_linux_amd64.tar.gz)
+	ArchivePath string         // on-disk path; required for ArchiveSourceLocal
+	Target      *ReleaseTarget // populated internally for ArchiveSourceRemote after release check
+	Version     string         // target version label
+}
+
+// RestartPolicy controls how a running daemon master is handled after install.
+type RestartPolicy int
+
+const (
+	// RestartRequireMaster requires an active daemon master; fails if none is
+	// running. Installs to the master's executable and always signals a restart.
+	RestartRequireMaster RestartPolicy = iota
+	// RestartIfMatchingMaster installs to the current executable. Signals a
+	// restart only when an active master's executable matches the installed path.
+	RestartIfMatchingMaster
+	// RestartWithMasterFallback installs to the active master's executable and
+	// signals a restart when a master is running; otherwise installs to the
+	// current executable without restarting.
+	RestartWithMasterFallback
+)
+
 type InstallResult struct {
 	CurrentVersion string
 	LatestVersion  string
@@ -34,8 +72,197 @@ var (
 
 type executableRollback func() error
 
-func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
-	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
+// Install is the single core installation function. It resolves the archive
+// (downloading from GitHub or reading a local file), extracts the binary,
+// replaces the target executable, and optionally restarts the daemon master
+// according to policy. All three public entry-points are thin wrappers around
+// this function.
+func (c Client) Install(source InstallSource, currentVersion string, goos string, goarch string, policy RestartPolicy) (InstallResult, error) {
+	installMu.Lock()
+	defer installMu.Unlock()
+
+	currentVersion = strings.TrimSpace(currentVersion)
+	result := InstallResult{CurrentVersion: currentVersion}
+	logger.Info("[update] install start: source=%s current=%s target=%s/%s policy=%s",
+		archiveSourceLabel(source.Kind), versionLabel(currentVersion), goos, goarch, restartPolicyLabel(policy))
+
+	// --- Step 1: Determine target executable and restart configuration ---
+	// Done before any network I/O so we fail fast (especially for RestartRequireMaster).
+	targetPath, restartRuntimeInfo, err := resolveInstallTarget(policy)
+	if err != nil {
+		logger.Warn("[update] install target resolution failed: policy=%s err=%v", restartPolicyLabel(policy), err)
+		return result, err
+	}
+	restartPID := 0
+	if restartRuntimeInfo != nil {
+		restartPID = restartRuntimeInfo.PID
+	}
+	logger.Info("[update] install target resolved: target=%s restart_pid=%d", targetPath, restartPID)
+
+	// --- Step 2: Prepare archive ---
+	// Remote: check release, skip if already up-to-date, download + verify.
+	// Local: archive is already on disk; version and path are set in source.
+	var archivePath string
+	switch source.Kind {
+	case ArchiveSourceRemote:
+		check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
+		if err != nil {
+			logger.Error("[update] install release check failed: current=%s target=%s/%s err=%v", versionLabel(currentVersion), goos, goarch, err)
+			return result, err
+		}
+		result.LatestVersion = check.LatestVersion
+		result.ReleaseURL = check.LatestReleaseURL
+		if check.Target == nil {
+			resolvedGOOS := goos
+			resolvedGOARCH := goarch
+			if strings.TrimSpace(resolvedGOOS) == "" {
+				resolvedGOOS = runtime.GOOS
+			}
+			if strings.TrimSpace(resolvedGOARCH) == "" {
+				resolvedGOARCH = runtime.GOARCH
+			}
+			logger.Warn("[update] install unsupported target: target=%s/%s", resolvedGOOS, resolvedGOARCH)
+			return result, fmt.Errorf("automatic upgrade is not supported on %s/%s", resolvedGOOS, resolvedGOARCH)
+		}
+		result.ArchiveName = check.Target.Archive.Name
+		source.Target = check.Target
+		source.Version = check.LatestVersion
+		logger.Info("[update] install release check result: latest=%s archive=%s reason=%s",
+			versionLabel(result.LatestVersion), result.ArchiveName, strings.TrimSpace(check.Reason))
+
+		if semverutil.IsStable(currentVersion) {
+			cmp, err := semverutil.Compare(currentVersion, check.LatestVersion)
+			if err != nil {
+				logger.Error("[update] install semver compare failed: current=%s latest=%s err=%v", currentVersion, check.LatestVersion, err)
+				return result, err
+			}
+			if cmp >= 0 {
+				result.Reason = check.Reason
+				logger.Info("[update] install skipped: current=%s latest=%s reason=%s", versionLabel(currentVersion), versionLabel(result.LatestVersion), strings.TrimSpace(result.Reason))
+				return result, nil
+			}
+		}
+
+	case ArchiveSourceLocal:
+		result.ArchiveName = filepath.Base(source.ArchiveName)
+		result.LatestVersion = source.Version
+		archivePath = source.ArchivePath
+		logger.Info("[update] install local archive: archive=%s version=%s path=%s", result.ArchiveName, result.LatestVersion, archivePath)
+	}
+
+	// --- Step 3: Create temp dir adjacent to the target executable ---
+	tmpDir, err := os.MkdirTemp(filepath.Dir(targetPath), ".swaves-upgrade-")
+	if err != nil {
+		logger.Error("[update] install create temp dir failed: target=%s err=%v", targetPath, err)
+		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// --- Step 4: Download remote archive + checksum and verify ---
+	if source.Kind == ArchiveSourceRemote {
+		archivePath = filepath.Join(tmpDir, source.Target.Archive.Name)
+		logger.Info("[update] install downloading archive: url=%s dst=%s", source.Target.Archive.DownloadURL, archivePath)
+		if err := c.downloadToFile(source.Target.Archive.DownloadURL, archivePath); err != nil {
+			logger.Error("[update] install download archive failed: url=%s err=%v", source.Target.Archive.DownloadURL, err)
+			return result, err
+		}
+		checksumPath := filepath.Join(tmpDir, source.Target.Checksum.Name)
+		logger.Info("[update] install downloading checksum: url=%s dst=%s", source.Target.Checksum.DownloadURL, checksumPath)
+		if err := c.downloadToFile(source.Target.Checksum.DownloadURL, checksumPath); err != nil {
+			logger.Error("[update] install download checksum failed: url=%s err=%v", source.Target.Checksum.DownloadURL, err)
+			return result, err
+		}
+		if err := verifyChecksumFile(archivePath, checksumPath); err != nil {
+			logger.Error("[update] install checksum verify failed: archive=%s err=%v", archivePath, err)
+			return result, err
+		}
+		logger.Info("[update] install checksum verified: archive=%s", archivePath)
+	}
+
+	// --- Step 5: Extract binary and make it executable ---
+	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(result.ArchiveName))
+	if err != nil {
+		logger.Error("[update] install extract failed: archive=%s err=%v", archivePath, err)
+		return result, err
+	}
+	logger.Info("[update] install extracted binary: path=%s", extractedPath)
+	if err := os.Chmod(extractedPath, 0755); err != nil {
+		logger.Error("[update] install chmod failed: path=%s err=%v", extractedPath, err)
+		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
+	}
+
+	// --- Step 6: Replace target executable (with rollback support) ---
+	backupPath := filepath.Join(tmpDir, ".swaves-executable-backup")
+	var rollback executableRollback
+	if restartRuntimeInfo != nil {
+		logger.Info("[update] install replacing executable via master: master_pid=%d target=%s", restartPID, targetPath)
+		rollback, err = replaceExecutableWithRollback(extractedPath, *restartRuntimeInfo, backupPath)
+	} else {
+		logger.Info("[update] install replacing executable: target=%s", targetPath)
+		rollback, err = replaceExecutableAtPathWithRollback(extractedPath, targetPath, backupPath)
+	}
+	if err != nil {
+		logger.Error("[update] install replace executable failed: target=%s err=%v", targetPath, err)
+		return result, err
+	}
+
+	// --- Step 7: Signal master restart when required ---
+	if restartPID > 0 {
+		if err := defaultSignalProcess(restartPID); err != nil {
+			if rollbackErr := rollback(); rollbackErr != nil {
+				logger.Error("[update] install restart signal failed and rollback failed: master_pid=%d err=%v rollback_err=%v", restartPID, err, rollbackErr)
+				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
+			}
+			logger.Error("[update] install restart signal failed: master_pid=%d err=%v", restartPID, err)
+			return result, fmt.Errorf("signal master restart failed: %w", err)
+		}
+		result.RestartedPID = restartPID
+		result.Reason = fmt.Sprintf("upgraded to %s", source.Version)
+		logger.Info("[update] install success: version=%s master_pid=%d", versionLabel(result.LatestVersion), restartPID)
+	} else {
+		result.Reason = fmt.Sprintf("installed %s, restart required", source.Version)
+		logger.Info("[update] install success: version=%s restart_required=true", versionLabel(result.LatestVersion))
+	}
+	result.Installed = true
+	return result, nil
+}
+
+// resolveInstallTarget determines the target executable path and, when
+// applicable, the RuntimeInfo of the master to restart. A non-nil RuntimeInfo
+// in the return value means a restart is expected.
+func resolveInstallTarget(policy RestartPolicy) (targetPath string, ri *RuntimeInfo, err error) {
+	switch policy {
+	case RestartRequireMaster:
+		info, err := ReadActiveRuntimeInfo()
+		if err != nil {
+			return "", nil, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
+		}
+		return info.Executable, &info, nil
+
+	case RestartIfMatchingMaster:
+		path, err := currentInstallExecutable()
+		if err != nil {
+			return "", nil, err
+		}
+		if info, ok := activeRuntimeForExecutable(path); ok {
+			return path, &info, nil
+		}
+		return path, nil, nil
+
+	case RestartWithMasterFallback:
+		info, err := ReadActiveRuntimeInfo()
+		if err == nil {
+			return info.Executable, &info, nil
+		}
+		path, err := currentInstallExecutable()
+		if err != nil {
+			return "", nil, err
+		}
+		return path, nil, nil
+
+	default:
+		return "", nil, fmt.Errorf("unknown restart policy: %d", policy)
+	}
 }
 
 func RestartActiveRuntime() (int, error) {
@@ -53,14 +280,46 @@ func RestartActiveRuntime() (int, error) {
 	return runtimeInfo.PID, nil
 }
 
+// InstallLatestRelease is the background auto-update entry point. It requires
+// an active daemon master, downloads the latest stable release from GitHub, and
+// signals the master to restart after installation.
+func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
+	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
+}
+
+func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
+	logger.Info("[update] auto install requested: current=%s target=%s/%s", versionLabel(currentVersion), goos, goarch)
+	result, err := c.Install(InstallSource{Kind: ArchiveSourceRemote}, currentVersion, goos, goarch, RestartRequireMaster)
+	if err != nil {
+		logger.Error("[update] auto install failed: current=%s err=%v", versionLabel(currentVersion), err)
+	} else {
+		logger.Info("[update] auto install done: installed=%t master_pid=%d", result.Installed, result.RestartedPID)
+	}
+	return result, err
+}
+
+// InstallLatestReleaseCLI is the CLI upgrade entry point. It downloads the
+// latest stable release from GitHub, installs it to the current executable, and
+// restarts the daemon master if it is running the same executable.
 func InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestReleaseCLI(currentVersion, goos, goarch)
 }
 
-func InstallLocalReleaseArchive(archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
-	installMu.Lock()
-	defer installMu.Unlock()
+func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
+	logger.Info("[update] cli install requested: current=%s target=%s/%s", versionLabel(currentVersion), goos, goarch)
+	result, err := c.Install(InstallSource{Kind: ArchiveSourceRemote}, currentVersion, goos, goarch, RestartIfMatchingMaster)
+	if err != nil {
+		logger.Error("[update] cli install failed: current=%s err=%v", versionLabel(currentVersion), err)
+	} else {
+		logger.Info("[update] cli install done: installed=%t master_pid=%d", result.Installed, result.RestartedPID)
+	}
+	return result, err
+}
 
+// InstallLocalReleaseArchive is the admin upload entry point. It validates the
+// uploaded archive name, then installs via the unified core: using the daemon
+// master when available, otherwise replacing the current executable directly.
+func InstallLocalReleaseArchive(archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
 	archiveName = strings.TrimSpace(archiveName)
 	archivePath = strings.TrimSpace(archivePath)
 	result := InstallResult{
@@ -71,310 +330,51 @@ func InstallLocalReleaseArchive(archiveName string, archivePath string, currentV
 		logger.Warn("[update] manual install rejected: archive path is empty name=%s", result.ArchiveName)
 		return result, fmt.Errorf("local release archive path is required")
 	}
-	logger.Info("[update] manual install start: current=%s archive=%s target=%s/%s", versionLabel(result.CurrentVersion), result.ArchiveName, goos, goarch)
+	logger.Info("[update] manual install requested: current=%s archive=%s target=%s/%s", versionLabel(result.CurrentVersion), result.ArchiveName, goos, goarch)
 
 	version, err := validateLocalArchiveName(result.ArchiveName, goos, goarch)
 	if err != nil {
 		logger.Warn("[update] manual install validation failed: archive=%s target=%s/%s err=%v", result.ArchiveName, goos, goarch, err)
 		return result, err
 	}
-	result.LatestVersion = version
-	logger.Info("[update] manual install archive validated: archive=%s version=%s", result.ArchiveName, result.LatestVersion)
 
-	runtimeInfo, err := ReadActiveRuntimeInfo()
-	hasActiveMaster := err == nil
-	if hasActiveMaster {
-		logger.Info("[update] manual install using active master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
+	source := InstallSource{
+		Kind:        ArchiveSourceLocal,
+		ArchiveName: archiveName,
+		ArchivePath: archivePath,
+		Version:     version,
+	}
+	result, err = DefaultClient().Install(source, currentVersion, goos, goarch, RestartWithMasterFallback)
+	if err != nil {
+		logger.Error("[update] manual install failed: archive=%s err=%v", filepath.Base(archiveName), err)
 	} else {
-		logger.Info("[update] manual install without daemon-mode master: err=%v", err)
+		logger.Info("[update] manual install done: installed=%t master_pid=%d", result.Installed, result.RestartedPID)
 	}
-
-	installTargetDir, err := installTargetDirectory(runtimeInfo, hasActiveMaster)
-	if err != nil {
-		logger.Error("[update] manual install resolve target dir failed: archive=%s err=%v", result.ArchiveName, err)
-		return result, err
-	}
-
-	tmpDir, err := os.MkdirTemp(installTargetDir, ".swaves-upgrade-")
-	if err != nil {
-		logger.Error("[update] manual install create temp dir failed: archive=%s dir=%s err=%v", result.ArchiveName, installTargetDir, err)
-		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(result.ArchiveName))
-	if err != nil {
-		logger.Error("[update] manual install extract failed: archive=%s err=%v", result.ArchiveName, err)
-		return result, err
-	}
-	logger.Info("[update] manual install extracted binary: archive=%s extracted=%s", result.ArchiveName, extractedPath)
-	if err := os.Chmod(extractedPath, 0755); err != nil {
-		logger.Error("[update] manual install chmod failed: path=%s err=%v", extractedPath, err)
-		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
-	}
-
-	if hasActiveMaster {
-		logger.Info("[update] manual install replacing executable via active master: master_pid=%d", runtimeInfo.PID)
-		rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
-		if err != nil {
-			logger.Error("[update] manual install replace executable failed: archive=%s master_pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
-			return result, err
-		}
-		if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
-			if rollbackErr := rollback(); rollbackErr != nil {
-				logger.Error("[update] manual install restart signal failed and rollback failed: archive=%s master_pid=%d err=%v rollback_err=%v", result.ArchiveName, runtimeInfo.PID, err, rollbackErr)
-				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
-			}
-			logger.Error("[update] manual install restart signal failed: archive=%s master_pid=%d err=%v", result.ArchiveName, runtimeInfo.PID, err)
-			return result, fmt.Errorf("signal master restart failed: %w", err)
-		}
-
-		result.Installed = true
-		result.RestartedPID = runtimeInfo.PID
-		result.Reason = fmt.Sprintf("upgraded to %s", version)
-		logger.Info("[update] manual install success: version=%s master_pid=%d", result.LatestVersion, result.RestartedPID)
-		return result, nil
-	}
-
-	targetPath, err := currentInstallExecutable()
-	if err != nil {
-		logger.Error("[update] manual install resolve current executable failed: archive=%s err=%v", result.ArchiveName, err)
-		return result, err
-	}
-	logger.Info("[update] manual install replacing current executable without daemon-mode: target=%s", targetPath)
-	if _, err := replaceExecutableAtPathWithRollback(extractedPath, targetPath, filepath.Join(tmpDir, ".swaves-executable-backup")); err != nil {
-		logger.Error("[update] manual install replace current executable failed: archive=%s target=%s err=%v", result.ArchiveName, targetPath, err)
-		return result, err
-	}
-	result.Installed = true
-	result.Reason = fmt.Sprintf("installed %s, restart required", version)
-	logger.Info("[update] manual install success: version=%s restart_required=true", result.LatestVersion)
-	return result, nil
+	return result, err
 }
 
-func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
-	installMu.Lock()
-	defer installMu.Unlock()
-
-	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
-	logger.Info("[update] auto install start: current=%s target=%s/%s", versionLabel(result.CurrentVersion), goos, goarch)
-	runtimeInfo, err := ReadActiveRuntimeInfo()
-	if err != nil {
-		logger.Warn("[update] auto install unavailable: err=%v", err)
-		return result, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
+func archiveSourceLabel(kind ArchiveSource) string {
+	switch kind {
+	case ArchiveSourceRemote:
+		return "remote"
+	case ArchiveSourceLocal:
+		return "local"
+	default:
+		return "unknown"
 	}
-	logger.Info("[update] auto install active master detected: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
-
-	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
-	if err != nil {
-		logger.Error("[update] auto install release check failed: current=%s target=%s/%s err=%v", versionLabel(result.CurrentVersion), goos, goarch, err)
-		return result, err
-	}
-	result.LatestVersion = check.LatestVersion
-	result.ReleaseURL = check.LatestReleaseURL
-	logger.Info("[update] auto install release check result: latest=%s archive=%s reason=%s", versionLabel(result.LatestVersion), func() string {
-		if check.Target == nil {
-			return ""
-		}
-		return check.Target.Archive.Name
-	}(), strings.TrimSpace(check.Reason))
-	if check.Target == nil {
-		if strings.TrimSpace(goos) == "" {
-			goos = runtime.GOOS
-		}
-		if strings.TrimSpace(goarch) == "" {
-			goarch = runtime.GOARCH
-		}
-		logger.Warn("[update] auto install unsupported target: target=%s/%s", goos, goarch)
-		return result, fmt.Errorf("automatic upgrade is not supported on %s/%s", goos, goarch)
-	}
-	result.ArchiveName = check.Target.Archive.Name
-
-	stableCurrent := semverutil.IsStable(currentVersion)
-	if stableCurrent {
-		cmp, err := semverutil.Compare(currentVersion, check.LatestVersion)
-		if err != nil {
-			logger.Error("[update] auto install semver compare failed: current=%s latest=%s err=%v", currentVersion, check.LatestVersion, err)
-			return result, err
-		}
-		if cmp >= 0 {
-			result.Reason = check.Reason
-			logger.Info("[update] auto install skipped: current=%s latest=%s reason=%s", versionLabel(result.CurrentVersion), versionLabel(result.LatestVersion), strings.TrimSpace(result.Reason))
-			return result, nil
-		}
-	}
-
-	tmpDir, err := os.MkdirTemp(filepath.Dir(runtimeInfo.Executable), ".swaves-upgrade-")
-	if err != nil {
-		logger.Error("[update] auto install create temp dir failed: executable=%s err=%v", runtimeInfo.Executable, err)
-		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	archivePath := filepath.Join(tmpDir, check.Target.Archive.Name)
-	logger.Info("[update] auto install downloading archive: url=%s dst=%s", check.Target.Archive.DownloadURL, archivePath)
-	if err := c.downloadToFile(check.Target.Archive.DownloadURL, archivePath); err != nil {
-		logger.Error("[update] auto install download archive failed: url=%s err=%v", check.Target.Archive.DownloadURL, err)
-		return result, err
-	}
-
-	checksumPath := filepath.Join(tmpDir, check.Target.Checksum.Name)
-	logger.Info("[update] auto install downloading checksum: url=%s dst=%s", check.Target.Checksum.DownloadURL, checksumPath)
-	if err := c.downloadToFile(check.Target.Checksum.DownloadURL, checksumPath); err != nil {
-		logger.Error("[update] auto install download checksum failed: url=%s err=%v", check.Target.Checksum.DownloadURL, err)
-		return result, err
-	}
-	if err := verifyChecksumFile(archivePath, checksumPath); err != nil {
-		logger.Error("[update] auto install checksum verify failed: archive=%s checksum=%s err=%v", archivePath, checksumPath, err)
-		return result, err
-	}
-	logger.Info("[update] auto install checksum verified: archive=%s", archivePath)
-
-	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(check.Target.Archive.Name))
-	if err != nil {
-		logger.Error("[update] auto install extract failed: archive=%s err=%v", archivePath, err)
-		return result, err
-	}
-	logger.Info("[update] auto install extracted binary: path=%s", extractedPath)
-	if err := os.Chmod(extractedPath, 0755); err != nil {
-		logger.Error("[update] auto install chmod failed: path=%s err=%v", extractedPath, err)
-		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
-	}
-	logger.Info("[update] auto install replacing executable: master_pid=%d target=%s", runtimeInfo.PID, runtimeInfo.Executable)
-	rollback, err := replaceExecutableWithRollback(extractedPath, runtimeInfo, filepath.Join(tmpDir, ".swaves-executable-backup"))
-	if err != nil {
-		logger.Error("[update] auto install replace executable failed: master_pid=%d err=%v", runtimeInfo.PID, err)
-		return result, err
-	}
-	if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
-		if rollbackErr := rollback(); rollbackErr != nil {
-			logger.Error("[update] auto install restart signal failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
-			return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
-		}
-		logger.Error("[update] auto install restart signal failed: master_pid=%d err=%v", runtimeInfo.PID, err)
-		return result, fmt.Errorf("signal master restart failed: %w", err)
-	}
-
-	result.Installed = true
-	result.RestartedPID = runtimeInfo.PID
-	result.Reason = fmt.Sprintf("upgraded to %s", check.LatestVersion)
-	logger.Info("[update] auto install success: version=%s master_pid=%d", versionLabel(result.LatestVersion), result.RestartedPID)
-	return result, nil
 }
 
-func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
-	installMu.Lock()
-	defer installMu.Unlock()
-
-	result := InstallResult{CurrentVersion: strings.TrimSpace(currentVersion)}
-	logger.Info("[update] cli install start: current=%s target=%s/%s", versionLabel(result.CurrentVersion), goos, goarch)
-
-	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
-	if err != nil {
-		logger.Error("[update] cli install release check failed: current=%s target=%s/%s err=%v", versionLabel(result.CurrentVersion), goos, goarch, err)
-		return result, err
+func restartPolicyLabel(policy RestartPolicy) string {
+	switch policy {
+	case RestartRequireMaster:
+		return "require-master"
+	case RestartIfMatchingMaster:
+		return "if-matching-master"
+	case RestartWithMasterFallback:
+		return "with-master-fallback"
+	default:
+		return "unknown"
 	}
-	result.LatestVersion = check.LatestVersion
-	result.ReleaseURL = check.LatestReleaseURL
-	logger.Info("[update] cli install release check result: latest=%s archive=%s reason=%s", versionLabel(result.LatestVersion), func() string {
-		if check.Target == nil {
-			return ""
-		}
-		return check.Target.Archive.Name
-	}(), strings.TrimSpace(check.Reason))
-	if check.Target == nil {
-		if strings.TrimSpace(goos) == "" {
-			goos = runtime.GOOS
-		}
-		if strings.TrimSpace(goarch) == "" {
-			goarch = runtime.GOARCH
-		}
-		logger.Warn("[update] cli install unsupported target: target=%s/%s", goos, goarch)
-		return result, fmt.Errorf("automatic upgrade is not supported on %s/%s", goos, goarch)
-	}
-	result.ArchiveName = check.Target.Archive.Name
-
-	stableCurrent := semverutil.IsStable(currentVersion)
-	if stableCurrent {
-		cmp, err := semverutil.Compare(currentVersion, check.LatestVersion)
-		if err != nil {
-			logger.Error("[update] cli install semver compare failed: current=%s latest=%s err=%v", currentVersion, check.LatestVersion, err)
-			return result, err
-		}
-		if cmp >= 0 {
-			result.Reason = check.Reason
-			logger.Info("[update] cli install skipped: current=%s latest=%s reason=%s", versionLabel(result.CurrentVersion), versionLabel(result.LatestVersion), strings.TrimSpace(result.Reason))
-			return result, nil
-		}
-	}
-
-	targetPath, err := currentInstallExecutable()
-	if err != nil {
-		logger.Error("[update] cli install resolve current executable failed: err=%v", err)
-		return result, err
-	}
-
-	tmpDir, err := os.MkdirTemp(filepath.Dir(targetPath), ".swaves-upgrade-")
-	if err != nil {
-		logger.Error("[update] cli install create temp dir failed: target=%s err=%v", targetPath, err)
-		return result, fmt.Errorf("create upgrade temp dir failed: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	archivePath := filepath.Join(tmpDir, check.Target.Archive.Name)
-	logger.Info("[update] cli install downloading archive: url=%s dst=%s", check.Target.Archive.DownloadURL, archivePath)
-	if err := c.downloadToFile(check.Target.Archive.DownloadURL, archivePath); err != nil {
-		logger.Error("[update] cli install download archive failed: url=%s err=%v", check.Target.Archive.DownloadURL, err)
-		return result, err
-	}
-
-	checksumPath := filepath.Join(tmpDir, check.Target.Checksum.Name)
-	logger.Info("[update] cli install downloading checksum: url=%s dst=%s", check.Target.Checksum.DownloadURL, checksumPath)
-	if err := c.downloadToFile(check.Target.Checksum.DownloadURL, checksumPath); err != nil {
-		logger.Error("[update] cli install download checksum failed: url=%s err=%v", check.Target.Checksum.DownloadURL, err)
-		return result, err
-	}
-	if err := verifyChecksumFile(archivePath, checksumPath); err != nil {
-		logger.Error("[update] cli install checksum verify failed: archive=%s checksum=%s err=%v", archivePath, checksumPath, err)
-		return result, err
-	}
-
-	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(check.Target.Archive.Name))
-	if err != nil {
-		logger.Error("[update] cli install extract failed: archive=%s err=%v", archivePath, err)
-		return result, err
-	}
-	if err := os.Chmod(extractedPath, 0755); err != nil {
-		logger.Error("[update] cli install chmod failed: path=%s err=%v", extractedPath, err)
-		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
-	}
-	logger.Info("[update] cli install replacing current executable: target=%s", targetPath)
-	rollback, err := replaceExecutableAtPathWithRollback(extractedPath, targetPath, filepath.Join(tmpDir, ".swaves-executable-backup"))
-	if err != nil {
-		logger.Error("[update] cli install replace current executable failed: target=%s err=%v", targetPath, err)
-		return result, err
-	}
-
-	result.Installed = true
-	if runtimeInfo, ok := activeRuntimeForExecutable(targetPath); ok {
-		logger.Info("[update] cli install restarting active master: master_pid=%d target=%s", runtimeInfo.PID, targetPath)
-		if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
-			if rollbackErr := rollback(); rollbackErr != nil {
-				logger.Error("[update] cli install restart active master failed and rollback failed: master_pid=%d err=%v rollback_err=%v", runtimeInfo.PID, err, rollbackErr)
-				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
-			}
-			logger.Error("[update] cli install restart active master failed: master_pid=%d err=%v", runtimeInfo.PID, err)
-			return result, fmt.Errorf("signal master restart failed: %w", err)
-		}
-		result.RestartedPID = runtimeInfo.PID
-		result.Reason = fmt.Sprintf("installed %s to current executable and restarted master", check.LatestVersion)
-		logger.Info("[update] cli install success: version=%s target=%s master_pid=%d", versionLabel(result.LatestVersion), targetPath, result.RestartedPID)
-		return result, nil
-	}
-
-	result.Reason = fmt.Sprintf("installed %s to current executable", check.LatestVersion)
-	logger.Info("[update] cli install success: version=%s target=%s", versionLabel(result.LatestVersion), targetPath)
-	return result, nil
 }
 
 func versionLabel(version string) string {
@@ -509,17 +509,6 @@ func defaultSignalProcess(pid int) error {
 		return err
 	}
 	return process.Signal(syscall.SIGHUP)
-}
-
-func installTargetDirectory(runtimeInfo RuntimeInfo, hasActiveMaster bool) (string, error) {
-	if hasActiveMaster {
-		return filepath.Dir(runtimeInfo.Executable), nil
-	}
-	targetPath, err := currentInstallExecutable()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Dir(targetPath), nil
 }
 
 func currentInstallExecutable() (string, error) {
