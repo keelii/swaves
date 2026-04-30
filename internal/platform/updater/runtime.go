@@ -2,6 +2,7 @@ package updater
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,6 +27,13 @@ const (
 )
 
 var DefaultBackupDir = filepath.Join(RuntimeCacheDir, "backups")
+
+var (
+	// ErrRuntimeInfoNotFound 表示 runtime info 文件不存在，通常意味着从未以 daemon-mode=1 启动过。
+	ErrRuntimeInfoNotFound = errors.New("runtime info file not found")
+	// ErrMasterNotRunning 表示 runtime info 文件存在但 master 进程已不在运行。
+	ErrMasterNotRunning = errors.New("master process is not running")
+)
 
 var (
 	runtimeCacheRoot string
@@ -146,7 +154,7 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 		return RuntimeInfo{}, err
 	}
 	logger.Warn("[update] runtime info file missing: path=%s", path)
-	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s", path)
+	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s: %w", path, ErrRuntimeInfoNotFound)
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
@@ -156,7 +164,7 @@ func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
 	}
 	if !defaultProcessExists(info.PID) {
 		logger.Warn("[update] active runtime missing process: master_pid=%d executable=%s", info.PID, info.Executable)
-		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d", info.PID)
+		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d: %w", info.PID, ErrMasterNotRunning)
 	}
 	return info, nil
 }
