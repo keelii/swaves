@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -230,7 +231,13 @@ func resolveInstallTarget(policy RestartPolicy) (targetPath string, ri *RuntimeI
 	case RestartRequireMaster:
 		info, err := ReadActiveRuntimeInfo()
 		if err != nil {
-			return "", nil, fmt.Errorf("automatic upgrade requires daemon-mode=1 and an active master process: %w", err)
+			if errors.Is(err, ErrRuntimeInfoNotFound) {
+				return "", nil, fmt.Errorf("automatic upgrade requires daemon-mode=1: no active master found: %w", err)
+			}
+			if errors.Is(err, ErrMasterNotRunning) {
+				return "", nil, fmt.Errorf("automatic upgrade requires an active master process: master has stopped: %w", err)
+			}
+			return "", nil, fmt.Errorf("automatic upgrade failed to read active master: %w", err)
 		}
 		return info.Executable, &info, nil
 
