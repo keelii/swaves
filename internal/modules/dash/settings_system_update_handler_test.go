@@ -109,6 +109,9 @@ func TestSystemUpdateSupportStateWithoutDaemon(t *testing.T) {
 	if state.RestartEnabled {
 		t.Fatal("expected restart to be disabled without daemon mode")
 	}
+	if state.GlobalUpdateMessage != "" {
+		t.Fatalf("expected no global message without daemon mode, got %q", state.GlobalUpdateMessage)
+	}
 }
 
 func TestParseRefreshDelaySeconds(t *testing.T) {
