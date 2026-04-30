@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"swaves/internal/platform/updater"
 	"testing"
 
 	"swaves/internal/platform/db"
@@ -322,7 +323,7 @@ func TestRunLocalBackupNowBypassesInterval(t *testing.T) {
 
 func TestResolveLocalBackupDirForSQLiteUsesDatabaseCacheRoot(t *testing.T) {
 	base := t.TempDir()
-	got := ResolveLocalBackupDirForSQLite(db.DefaultBackupDir, filepath.Join(base, "data.sqlite"))
+	got := ResolveLocalBackupDirForSQLite(updater.DefaultBackupDir, filepath.Join(base, "data.sqlite"))
 	want := filepath.Join(base, ".cache", "backups")
 	if got != want {
 		t.Fatalf("ResolveLocalBackupDirForSQLite = %q, want %q", got, want)
@@ -379,96 +380,5 @@ func TestExecuteTaskClearExpiredNotificationsNoOpDoesNotRecordRun(t *testing.T) 
 	runs := mustListTaskRuns(t, dbx, task.Code)
 	if len(runs) != 0 {
 		t.Fatalf("expected no task runs for clear notifications no-op, got %d", len(runs))
-	}
-}
-
-func TestMigrateBackupDir(t *testing.T) {
-	base := t.TempDir()
-	withWorkingDir(t, base)
-
-	oldDir := filepath.Join(base, db.LegacyBackupDir)
-	newDir := filepath.Join(base, ".cache", "backups")
-
-	if err := os.MkdirAll(oldDir, 0755); err != nil {
-		t.Fatalf("MkdirAll old dir failed: %v", err)
-	}
-
-	backupFiles := []string{"backup-a.sqlite", "backup-b.sqlite"}
-
-	// Write two fake backup files in the old dir.
-	for _, name := range backupFiles {
-		if err := os.WriteFile(filepath.Join(oldDir, name), []byte("data"), 0644); err != nil {
-			t.Fatalf("WriteFile %s failed: %v", name, err)
-		}
-	}
-
-	// No custom backup_local_dir setting → migration should run.
-	withTaskSettings(t, map[string]string{})
-	migrateBackupDir()
-
-	for _, name := range backupFiles {
-		if _, err := os.Stat(filepath.Join(newDir, name)); err != nil {
-			t.Errorf("expected %s in new dir, got: %v", name, err)
-		}
-		if _, err := os.Stat(filepath.Join(oldDir, name)); err == nil {
-			t.Errorf("expected %s to be removed from old dir after migration", name)
-		}
-	}
-}
-
-func TestMigrateBackupDirSkipsWhenCustomDirSet(t *testing.T) {
-	base := t.TempDir()
-	withWorkingDir(t, base)
-
-	oldDir := filepath.Join(base, db.LegacyBackupDir)
-	if err := os.MkdirAll(oldDir, 0755); err != nil {
-		t.Fatalf("MkdirAll old dir failed: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(oldDir, "backup-x.sqlite"), []byte("data"), 0644); err != nil {
-		t.Fatalf("WriteFile failed: %v", err)
-	}
-
-	// Custom backup_local_dir is set → migration must not run.
-	withTaskSettings(t, map[string]string{settingBackupLocalDir: "/custom/path"})
-	migrateBackupDir()
-
-	// File should still be in old dir.
-	//if _, err := os.Stat(filepath.Join(oldDir, "backup-x.sqlite")); err != nil {
-	//	t.Errorf("file should still be in old dir when custom dir is set: %v", err)
-	//}
-}
-
-func TestMigrateBackupDirSkipsExistingDestination(t *testing.T) {
-	base := t.TempDir()
-	withWorkingDir(t, base)
-
-	oldDir := filepath.Join(base, db.LegacyBackupDir)
-	newDir := filepath.Join(base, ".cache", "backups")
-
-	if err := os.MkdirAll(oldDir, 0755); err != nil {
-		t.Fatalf("MkdirAll old dir failed: %v", err)
-	}
-	if err := os.MkdirAll(newDir, 0755); err != nil {
-		t.Fatalf("MkdirAll new dir failed: %v", err)
-	}
-
-	existingContent := []byte("new-version")
-	if err := os.WriteFile(filepath.Join(newDir, "backup-dup.sqlite"), existingContent, 0644); err != nil {
-		t.Fatalf("WriteFile new dir failed: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(oldDir, "backup-dup.sqlite"), []byte("old-version"), 0644); err != nil {
-		t.Fatalf("WriteFile old dir failed: %v", err)
-	}
-
-	withTaskSettings(t, map[string]string{})
-	migrateBackupDir()
-
-	// Destination file must not be overwritten.
-	got, err := os.ReadFile(filepath.Join(newDir, "backup-dup.sqlite"))
-	if err != nil {
-		t.Fatalf("ReadFile failed: %v", err)
-	}
-	if string(got) != string(existingContent) {
-		t.Errorf("destination file was overwritten: got %q, want %q", got, existingContent)
 	}
 }

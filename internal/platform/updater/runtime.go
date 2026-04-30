@@ -20,14 +20,17 @@ type RuntimeInfo struct {
 	UpdatedAt  int64  `json:"updated_at"`
 }
 
+const (
+	RuntimeCacheDir = ".cache"
+	RuntimeInfoName = "master_runtime.json"
+)
+
+var DefaultBackupDir = filepath.Join(RuntimeCacheDir, "backups")
+
 var (
 	runtimeCacheRoot string
 	runtimeCacheMu   sync.RWMutex
 )
-
-func RuntimeInfoPath() string {
-	return DefaultRuntimeInfoPath()
-}
 
 func ConfigureRuntimeCacheRoot(sqliteFile string) error {
 	root, err := pathutil.EnsureDatabaseCacheRoot(sqliteFile)
@@ -55,57 +58,25 @@ func RuntimeCacheRoot() (string, error) {
 	return root, nil
 }
 
-func RuntimeCachePath(parts ...string) (string, error) {
+func RuntimeCachePath() (string, error) {
 	root, err := RuntimeCacheRoot()
 	if err != nil {
 		return "", err
 	}
-	segments := []string{root}
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		segments = append(segments, part)
-	}
-	return filepath.Join(segments...), nil
+	return filepath.Join(root, RuntimeInfoName), nil
 }
 
-func DefaultRuntimeInfoPath() string {
-	path, err := RuntimeCachePath("updater", "master_runtime.json")
+func RuntimeInfoPath() string {
+	path, err := RuntimeCachePath()
 	if err == nil && strings.TrimSpace(path) != "" {
 		return path
 	}
 	logger.Warn("[update] resolve runtime info path fallback: err=%v", err)
-	return filepath.Join(".cache", "updater", "master_runtime.json")
+	return runtimeInfoRelativePath()
 }
 
-func legacyRuntimeInfoPaths() []string {
-	seen := make(map[string]struct{})
-	add := func(p string) []string {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			return nil
-		}
-		if _, ok := seen[p]; ok {
-			return nil
-		}
-		seen[p] = struct{}{}
-		return []string{p}
-	}
-
-	var paths []string
-	if cacheDir, err := os.UserCacheDir(); err == nil {
-		paths = append(paths, add(filepath.Join(cacheDir, "swaves", "master_runtime.json"))...)
-	}
-	if processCachePath, err := pathutil.ResolveProcessCachePath("swaves", "master_runtime.json"); err == nil {
-		paths = append(paths, add(processCachePath)...)
-	}
-	if runtimeCachePath, err := RuntimeCachePath("swaves", "master_runtime.json"); err == nil {
-		paths = append(paths, add(runtimeCachePath)...)
-	}
-	paths = append(paths, add(filepath.Join(os.TempDir(), "swaves_master_runtime.json"))...)
-	return paths
+func runtimeInfoRelativePath() string {
+	return filepath.Join(RuntimeCacheDir, RuntimeInfoName)
 }
 
 func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {
@@ -166,10 +137,6 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 }
 
 func ReadRuntimeInfo() (RuntimeInfo, error) {
-	return readRuntimeInfo()
-}
-
-func readRuntimeInfo() (RuntimeInfo, error) {
 	path := RuntimeInfoPath()
 	info, err := readRuntimeInfoAtPath(path)
 	if err == nil {
@@ -178,31 +145,12 @@ func readRuntimeInfo() (RuntimeInfo, error) {
 	if !os.IsNotExist(err) {
 		return RuntimeInfo{}, err
 	}
-
-	logger.Warn("[update] read runtime info missing at current path: path=%s", path)
-	for _, legacyPath := range legacyRuntimeInfoPaths() {
-		legacyPath = strings.TrimSpace(legacyPath)
-		if legacyPath == "" || legacyPath == path {
-			continue
-		}
-		info, legacyErr := readRuntimeInfoAtPath(legacyPath)
-		if legacyErr == nil {
-			logger.Warn("[update] read runtime info fallback to legacy path: path=%s", legacyPath)
-			return info, nil
-		}
-		if !os.IsNotExist(legacyErr) {
-			return RuntimeInfo{}, legacyErr
-		}
-	}
-	return RuntimeInfo{}, fmt.Errorf("daemon mode is not active")
+	logger.Warn("[update] runtime info file missing: path=%s", path)
+	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s", path)
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
-	return readActiveRuntimeInfo()
-}
-
-func readActiveRuntimeInfo() (RuntimeInfo, error) {
-	info, err := readRuntimeInfo()
+	info, err := ReadRuntimeInfo()
 	if err != nil {
 		return RuntimeInfo{}, err
 	}
@@ -230,9 +178,6 @@ func RemoveRuntimeInfo() error {
 	if err != nil && !os.IsNotExist(err) {
 		logger.Error("[update] remove runtime info failed: path=%s err=%v", path, err)
 		return fmt.Errorf("remove runtime info failed: %w", err)
-	}
-	if err == nil {
-		return nil
 	}
 	return nil
 }

@@ -403,7 +403,7 @@ func TestParseAppConfigUsesDefaultFlags(t *testing.T) {
 		t.Fatalf("parseAppConfig failed: %v", err)
 	}
 
-	if cfg.BackupDir != db.DefaultBackupDir {
+	if cfg.BackupDir != updater.DefaultBackupDir {
 		t.Fatalf("unexpected default backup dir: %q", cfg.BackupDir)
 	}
 	if cfg.ListenAddr != defaultListenAddr {

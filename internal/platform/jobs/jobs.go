@@ -123,7 +123,7 @@ type localBackupConfig struct {
 func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 	defaultDir := strings.TrimSpace(reg.Config.BackupDir)
 	if defaultDir == "" {
-		defaultDir = db.DefaultBackupDir
+		defaultDir = updater.DefaultBackupDir
 	}
 
 	dir := strings.TrimSpace(store.GetSetting(settingBackupLocalDir))
@@ -152,7 +152,7 @@ func loadLocalBackupConfig(reg *Registry) localBackupConfig {
 func ResolveLocalBackupDir(dir string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		dir = db.DefaultBackupDir
+		dir = updater.DefaultBackupDir
 	}
 	if filepath.IsAbs(dir) {
 		return dir
@@ -168,7 +168,7 @@ func ResolveLocalBackupDir(dir string) string {
 func ResolveLocalBackupDirForSQLite(dir string, sqliteFile string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		dir = db.DefaultBackupDir
+		dir = updater.DefaultBackupDir
 	}
 	if filepath.IsAbs(dir) {
 		return dir
@@ -193,94 +193,6 @@ func ResolveLocalBackupDirForSQLite(dir string, sqliteFile string) string {
 
 func resolveBackupDirForSQLite(dir string, sqliteFile string) string {
 	return ResolveLocalBackupDirForSQLite(dir, sqliteFile)
-}
-
-// migrateBackupDir moves .sqlite backup files from the legacy default "backups/"
-// directory to the current default ".cache/backups/" when no custom backup directory
-// has been configured by the user.
-func migrateBackupDir() {
-	if strings.TrimSpace(store.GetSetting(settingBackupLocalDir)) == db.DefaultBackupDir {
-		return
-	}
-
-	sqliteFile := ""
-	registryMu.RLock()
-	if registry != nil {
-		sqliteFile = registry.Config.SqliteFile
-	}
-	registryMu.RUnlock()
-
-	oldDir := resolveLegacyBackupDirForSQLite(db.LegacyBackupDir, sqliteFile)
-	newDir := resolveBackupDirForSQLite(db.DefaultBackupDir, sqliteFile)
-	if oldDir == newDir {
-		return
-	}
-
-	entries, err := os.ReadDir(oldDir)
-	if err != nil {
-		logger.Warn("[backup] migrate: read legacy dir failed: dir=%s err=%v", oldDir, err)
-		return
-	}
-
-	logger.Warn("[backup] migrate: old dir=%s dir=%s entries=%s", oldDir, newDir, entries)
-
-	var filesToMove []string
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".sqlite") {
-			filesToMove = append(filesToMove, entry.Name())
-		}
-	}
-	if len(filesToMove) == 0 {
-		return
-	}
-
-	if err := helper.EnsureDir(newDir, 0755); err != nil {
-		logger.Warn("[backup] migrate: create target dir failed: dir=%s err=%v", newDir, err)
-		return
-	}
-
-	moved := 0
-	for _, name := range filesToMove {
-		src := filepath.Join(oldDir, name)
-		dst := filepath.Join(newDir, name)
-		if _, err := os.Stat(dst); err == nil {
-			continue
-		}
-		if err := os.Rename(src, dst); err != nil {
-			logger.Warn("[backup] migrate: move file failed: src=%s dst=%s err=%v", src, dst, err)
-			continue
-		}
-		moved++
-	}
-
-	if moved > 0 {
-		logger.Info("[backup] migrate: moved %d backup file(s) from %s to %s", moved, oldDir, newDir)
-		// delete old dir
-		err := os.RemoveAll(oldDir)
-		if err != nil {
-			logger.Warn("[backup] migrate: remove old dir failed: dir=%s err=%v", oldDir, err)
-		}
-	}
-}
-
-func resolveLegacyBackupDirForSQLite(dir string, sqliteFile string) string {
-	dir = strings.TrimSpace(dir)
-	if dir == "" {
-		dir = db.LegacyBackupDir
-	}
-	if filepath.IsAbs(dir) {
-		return dir
-	}
-	sqliteFile = strings.TrimSpace(sqliteFile)
-	if sqliteFile == "" {
-		return ResolveLocalBackupDir(dir)
-	}
-	absPath, err := filepath.Abs(sqliteFile)
-	if err != nil {
-		logger.Warn("[backup] resolve sqlite dir error: sqlite=%s err=%v", sqliteFile, err)
-		return ResolveLocalBackupDir(dir)
-	}
-	return filepath.Join(filepath.Dir(absPath), dir)
 }
 
 func latestLocalBackupAt(backupDir string) (time.Time, error) {
