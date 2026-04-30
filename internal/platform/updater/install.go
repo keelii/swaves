@@ -18,41 +18,39 @@ import (
 	"syscall"
 )
 
-// ArchiveSource identifies where the binary archive comes from.
+// ArchiveSource 标识二进制归档的来源类型。
 type ArchiveSource int
 
 const (
-	// ArchiveSourceRemote downloads the archive from a GitHub release.
+	// ArchiveSourceRemote 从 GitHub Release 下载归档。
 	ArchiveSourceRemote ArchiveSource = iota
-	// ArchiveSourceLocal uses an archive already present on disk.
+	// ArchiveSourceLocal 使用已在磁盘上的本地归档文件。
 	ArchiveSourceLocal
 )
 
-// InstallSource describes a versioned binary archive to be installed.
-// For ArchiveSourceRemote, set Kind only; the release target is resolved
-// from GitHub during Install.
-// For ArchiveSourceLocal, set Kind, ArchiveName, ArchivePath, and Version.
+// InstallSource 描述一次安装所需的归档信息。
+// ArchiveSourceRemote：只需设置 Kind，Release 目标在 Install 执行时从 GitHub 解析。
+// ArchiveSourceLocal：需同时设置 Kind、ArchiveName、ArchivePath 和 Version。
 type InstallSource struct {
 	Kind        ArchiveSource
-	ArchiveName string         // archive filename (e.g. swaves_v1.2.3_linux_amd64.tar.gz)
-	ArchivePath string         // on-disk path; required for ArchiveSourceLocal
-	Target      *ReleaseTarget // populated internally for ArchiveSourceRemote after release check
-	Version     string         // target version label
+	ArchiveName string         // 归档文件名，如 swaves_v1.2.3_linux_amd64.tar.gz
+	ArchivePath string         // 磁盘路径，ArchiveSourceLocal 时必填
+	Target      *ReleaseTarget // 内部字段，ArchiveSourceRemote 完成发布检查后填充
+	Version     string         // 目标版本标签
 }
 
-// RestartPolicy controls how a running daemon master is handled after install.
+// RestartPolicy 控制安装完成后如何处理正在运行的 daemon master。
 type RestartPolicy int
 
 const (
-	// RestartRequireMaster requires an active daemon master; fails if none is
-	// running. Installs to the master's executable and always signals a restart.
+	// RestartRequireMaster 要求存在活跃的 daemon master，否则直接失败。
+	// 安装到 master 的可执行文件路径，完成后始终发送重启信号。
 	RestartRequireMaster RestartPolicy = iota
-	// RestartIfMatchingMaster installs to the current executable. Signals a
-	// restart only when an active master's executable matches the installed path.
+	// RestartIfMatchingMaster 安装到当前可执行文件路径。
+	// 仅当活跃 master 的可执行路径与安装路径一致时才发送重启信号。
 	RestartIfMatchingMaster
-	// RestartWithMasterFallback installs to the active master's executable and
-	// signals a restart when a master is running; otherwise installs to the
-	// current executable without restarting.
+	// RestartWithMasterFallback 优先使用活跃 master：安装到 master 的可执行路径并重启；
+	// 若无活跃 master，则安装到当前可执行文件路径，不触发重启。
 	RestartWithMasterFallback
 )
 
@@ -72,11 +70,9 @@ var (
 
 type executableRollback func() error
 
-// Install is the single core installation function. It resolves the archive
-// (downloading from GitHub or reading a local file), extracts the binary,
-// replaces the target executable, and optionally restarts the daemon master
-// according to policy. All three public entry-points are thin wrappers around
-// this function.
+// Install 是统一的核心安装函数。它解析归档来源（从 GitHub 下载或读取本地文件），
+// 提取二进制文件，替换目标可执行文件，并根据 policy 决定是否重启 daemon master。
+// 三个公开入口函数均是本函数的薄封装。
 func (c Client) Install(source InstallSource, currentVersion string, goos string, goarch string, policy RestartPolicy) (InstallResult, error) {
 	installMu.Lock()
 	defer installMu.Unlock()
@@ -86,8 +82,8 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 	logger.Info("[update] install start: source=%s current=%s target=%s/%s policy=%s",
 		archiveSourceLabel(source.Kind), versionLabel(currentVersion), goos, goarch, restartPolicyLabel(policy))
 
-	// --- Step 1: Determine target executable and restart configuration ---
-	// Done before any network I/O so we fail fast (especially for RestartRequireMaster).
+	// 步骤一：解析目标可执行文件路径及重启配置
+	// 在任何网络 I/O 之前执行，对 RestartRequireMaster 可快速失败。
 	targetPath, restartRuntimeInfo, err := resolveInstallTarget(policy)
 	if err != nil {
 		logger.Warn("[update] install target resolution failed: policy=%s err=%v", restartPolicyLabel(policy), err)
@@ -99,9 +95,9 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 	}
 	logger.Info("[update] install target resolved: target=%s restart_pid=%d", targetPath, restartPID)
 
-	// --- Step 2: Prepare archive ---
-	// Remote: check release, skip if already up-to-date, download + verify.
-	// Local: archive is already on disk; version and path are set in source.
+	// 步骤二：准备归档文件
+	// 远端来源：检查发布版本，若已是最新则跳过，否则下载并校验 checksum。
+	// 本地来源：归档已在磁盘，版本和路径直接从 source 读取。
 	var archivePath string
 	switch source.Kind {
 	case ArchiveSourceRemote:
@@ -150,7 +146,7 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 		logger.Info("[update] install local archive: archive=%s version=%s path=%s", result.ArchiveName, result.LatestVersion, archivePath)
 	}
 
-	// --- Step 3: Create temp dir adjacent to the target executable ---
+	// 步骤三：在目标可执行文件所在目录下创建临时目录
 	tmpDir, err := os.MkdirTemp(filepath.Dir(targetPath), ".swaves-upgrade-")
 	if err != nil {
 		logger.Error("[update] install create temp dir failed: target=%s err=%v", targetPath, err)
@@ -158,7 +154,7 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	// --- Step 4: Download remote archive + checksum and verify ---
+	// 步骤四：下载远端归档及 checksum 并校验
 	if source.Kind == ArchiveSourceRemote {
 		archivePath = filepath.Join(tmpDir, source.Target.Archive.Name)
 		logger.Info("[update] install downloading archive: url=%s dst=%s", source.Target.Archive.DownloadURL, archivePath)
@@ -179,7 +175,7 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 		logger.Info("[update] install checksum verified: archive=%s", archivePath)
 	}
 
-	// --- Step 5: Extract binary and make it executable ---
+	// 步骤五：解包二进制并赋予可执行权限
 	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, expectedReleaseBinaryName(result.ArchiveName))
 	if err != nil {
 		logger.Error("[update] install extract failed: archive=%s err=%v", archivePath, err)
@@ -191,7 +187,7 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 		return result, fmt.Errorf("chmod extracted binary failed: %w", err)
 	}
 
-	// --- Step 6: Replace target executable (with rollback support) ---
+	// 步骤六：替换目标可执行文件（支持回滚）
 	backupPath := filepath.Join(tmpDir, ".swaves-executable-backup")
 	var rollback executableRollback
 	if restartRuntimeInfo != nil {
@@ -206,7 +202,7 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 		return result, err
 	}
 
-	// --- Step 7: Signal master restart when required ---
+	// 步骤七：需要时向 master 发送重启信号
 	if restartPID > 0 {
 		if err := defaultSignalProcess(restartPID); err != nil {
 			if rollbackErr := rollback(); rollbackErr != nil {
@@ -227,9 +223,8 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 	return result, nil
 }
 
-// resolveInstallTarget determines the target executable path and, when
-// applicable, the RuntimeInfo of the master to restart. A non-nil RuntimeInfo
-// in the return value means a restart is expected.
+// resolveInstallTarget 根据重启策略解析目标可执行文件路径及（可选的）待重启
+// master 的 RuntimeInfo。返回值中 RuntimeInfo 非 nil 表示需要触发重启。
 func resolveInstallTarget(policy RestartPolicy) (targetPath string, ri *RuntimeInfo, err error) {
 	switch policy {
 	case RestartRequireMaster:
@@ -280,9 +275,8 @@ func RestartActiveRuntime() (int, error) {
 	return runtimeInfo.PID, nil
 }
 
-// InstallLatestRelease is the background auto-update entry point. It requires
-// an active daemon master, downloads the latest stable release from GitHub, and
-// signals the master to restart after installation.
+// InstallLatestRelease 是后台自动更新入口。要求存在活跃的 daemon master，
+// 从 GitHub 下载最新稳定版本并在安装完成后重启 master。
 func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
 }
@@ -298,9 +292,8 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 	return result, err
 }
 
-// InstallLatestReleaseCLI is the CLI upgrade entry point. It downloads the
-// latest stable release from GitHub, installs it to the current executable, and
-// restarts the daemon master if it is running the same executable.
+// InstallLatestReleaseCLI 是命令行升级入口。从 GitHub 下载最新稳定版本，
+// 安装到当前可执行文件路径；若活跃 master 的可执行路径与之一致，则同时重启 master。
 func InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestReleaseCLI(currentVersion, goos, goarch)
 }
@@ -316,9 +309,8 @@ func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goar
 	return result, err
 }
 
-// InstallLocalReleaseArchive is the admin upload entry point. It validates the
-// uploaded archive name, then installs via the unified core: using the daemon
-// master when available, otherwise replacing the current executable directly.
+// InstallLocalReleaseArchive 是管理后台上传更新入口。先校验上传的归档文件名，
+// 再调用统一核心：有活跃 master 时通过 master 安装，否则直接替换当前可执行文件。
 func InstallLocalReleaseArchive(archiveName string, archivePath string, currentVersion string, goos string, goarch string) (InstallResult, error) {
 	archiveName = strings.TrimSpace(archiveName)
 	archivePath = strings.TrimSpace(archivePath)

@@ -17,7 +17,7 @@ import (
 
 func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
 	if _, err := validateLocalArchiveName("swaves_v1.2.4_darwin_arm64.tar.gz", "linux", "amd64"); err == nil {
-		t.Fatal("expected wrong platform archive to be rejected")
+		t.Fatal("期望平台不匹配的归档被拒绝")
 	}
 }
 
@@ -29,19 +29,19 @@ func TestExtractReleaseBinarySkipsNonTargetFiles(t *testing.T) {
 		{name: "swaves_v1.2.4_linux_amd64", content: []byte("new-binary")},
 	})
 	if err := os.WriteFile(archivePath, archiveData, 0o644); err != nil {
-		t.Fatalf("write archive failed: %v", err)
+		t.Fatalf("写入归档失败: %v", err)
 	}
 
 	extractedPath, err := extractReleaseBinary(archivePath, tmpDir, "swaves_v1.2.4_linux_amd64")
 	if err != nil {
-		t.Fatalf("extractReleaseBinary failed: %v", err)
+		t.Fatalf("extractReleaseBinary 失败: %v", err)
 	}
 	got, err := os.ReadFile(extractedPath)
 	if err != nil {
-		t.Fatalf("ReadFile failed: %v", err)
+		t.Fatalf("ReadFile 失败: %v", err)
 	}
 	if string(got) != "new-binary" {
-		t.Fatalf("unexpected extracted contents: %q", string(got))
+		t.Fatalf("解压内容不符合预期: %q", string(got))
 	}
 }
 
@@ -56,10 +56,10 @@ func TestInstallRequireMasterFailsWithoutActiveMaster(t *testing.T) {
 	source := InstallSource{Kind: ArchiveSourceRemote}
 	_, err := DefaultClient().Install(source, "v1.2.3", "linux", "amd64", RestartRequireMaster)
 	if err == nil {
-		t.Fatal("Install with RestartRequireMaster expected to fail without active master")
+		t.Fatal("RestartRequireMaster 策略在无活跃 master 时应返回错误")
 	}
 	if !strings.Contains(err.Error(), "daemon-mode") {
-		t.Fatalf("unexpected error message: %q", err.Error())
+		t.Fatalf("错误消息不符合预期: %q", err.Error())
 	}
 }
 
@@ -86,13 +86,13 @@ func TestInstallRemoteSkipsWhenAlreadyAtLatest(t *testing.T) {
 
 	result, err := client.Install(InstallSource{Kind: ArchiveSourceRemote}, "v1.2.4", "linux", "amd64", RestartIfMatchingMaster)
 	if err != nil {
-		t.Fatalf("Install failed: %v", err)
+		t.Fatalf("Install 失败: %v", err)
 	}
 	if result.Installed {
-		t.Fatal("expected no install when already at latest")
+		t.Fatal("已是最新版本时不应执行安装")
 	}
 	if result.LatestVersion != "v1.2.4" {
-		t.Fatalf("unexpected LatestVersion: %q", result.LatestVersion)
+		t.Fatalf("LatestVersion 不符合预期: %q", result.LatestVersion)
 	}
 }
 
@@ -119,10 +119,10 @@ func TestInstallRemoteSkipsWhenNewerThanLatest(t *testing.T) {
 
 	result, err := client.Install(InstallSource{Kind: ArchiveSourceRemote}, "v1.2.4", "linux", "amd64", RestartIfMatchingMaster)
 	if err != nil {
-		t.Fatalf("Install failed: %v", err)
+		t.Fatalf("Install 失败: %v", err)
 	}
 	if result.Installed {
-		t.Fatal("expected no install when current version is newer")
+		t.Fatal("当前版本更新时不应执行安装")
 	}
 }
 
@@ -131,7 +131,7 @@ func TestInstallRemoteSkipsWhenNewerThanLatest(t *testing.T) {
 func TestInstallLocalSourceRejectsEmptyArchivePath(t *testing.T) {
 	_, err := InstallLocalReleaseArchive("swaves_v1.2.4_linux_amd64.tar.gz", "", "v1.2.3", "linux", "amd64")
 	if err == nil {
-		t.Fatal("expected error when archive path is empty")
+		t.Fatal("归档路径为空时应返回错误")
 	}
 }
 
@@ -140,7 +140,7 @@ func TestInstallLocalSourceRejectsEmptyArchivePath(t *testing.T) {
 func TestInstallLocalSourceRejectsWrongPlatform(t *testing.T) {
 	_, err := InstallLocalReleaseArchive("swaves_v1.2.4_darwin_arm64.tar.gz", "/tmp/fake.tar.gz", "v1.2.3", "linux", "amd64")
 	if err == nil {
-		t.Fatal("expected platform mismatch error")
+		t.Fatal("平台不匹配时应返回错误")
 	}
 }
 
@@ -153,7 +153,7 @@ func TestResolveInstallTargetRequireMasterFailsWithoutRuntime(t *testing.T) {
 
 	_, _, err := resolveInstallTarget(RestartRequireMaster)
 	if err == nil {
-		t.Fatal("resolveInstallTarget expected to fail without runtime info")
+		t.Fatal("无运行时信息文件时 resolveInstallTarget 应失败")
 	}
 }
 
@@ -167,13 +167,13 @@ func TestResolveInstallTargetWithMasterFallbackNoMasterReturnsCurrentExe(t *test
 
 	path, ri, err := resolveInstallTarget(RestartWithMasterFallback)
 	if err != nil {
-		t.Fatalf("resolveInstallTarget failed: %v", err)
+		t.Fatalf("resolveInstallTarget 失败: %v", err)
 	}
 	if ri != nil {
-		t.Fatalf("expected nil RuntimeInfo when no master, got PID=%d", ri.PID)
+		t.Fatalf("无活跃 master 时 RuntimeInfo 应为 nil，实际 PID=%d", ri.PID)
 	}
 	if strings.TrimSpace(path) == "" {
-		t.Fatal("expected non-empty target path")
+		t.Fatal("目标路径不应为空")
 	}
 }
 
@@ -186,13 +186,13 @@ func TestResolveInstallTargetIfMatchingMasterNoMasterReturnsNilRI(t *testing.T) 
 
 	path, ri, err := resolveInstallTarget(RestartIfMatchingMaster)
 	if err != nil {
-		t.Fatalf("resolveInstallTarget failed: %v", err)
+		t.Fatalf("resolveInstallTarget 失败: %v", err)
 	}
 	if ri != nil {
-		t.Fatalf("expected nil RuntimeInfo when no matching master, got PID=%d", ri.PID)
+		t.Fatalf("无匹配 master 时 RuntimeInfo 应为 nil，实际 PID=%d", ri.PID)
 	}
 	if strings.TrimSpace(path) == "" {
-		t.Fatal("expected non-empty target path")
+		t.Fatal("目标路径不应为空")
 	}
 }
 
@@ -205,38 +205,38 @@ func TestReplaceExecutableAtPathRollsBackOnExplicitCall(t *testing.T) {
 	backupPath := filepath.Join(tmpDir, "swaves_backup")
 
 	if err := os.WriteFile(targetPath, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write target failed: %v", err)
+		t.Fatalf("写入目标文件失败: %v", err)
 	}
 	if err := os.WriteFile(newPath, []byte("new-binary"), 0755); err != nil {
-		t.Fatalf("write new failed: %v", err)
+		t.Fatalf("写入新文件失败: %v", err)
 	}
 
 	rollback, err := replaceExecutableAtPathWithRollback(newPath, targetPath, backupPath)
 	if err != nil {
-		t.Fatalf("replaceExecutableAtPathWithRollback failed: %v", err)
+		t.Fatalf("replaceExecutableAtPathWithRollback 失败: %v", err)
 	}
 
 	// 验证新二进制已替换
 	got, err := os.ReadFile(targetPath)
 	if err != nil {
-		t.Fatalf("ReadFile after replace failed: %v", err)
+		t.Fatalf("替换后 ReadFile 失败: %v", err)
 	}
 	if string(got) != "new-binary" {
-		t.Fatalf("expected new-binary after replace, got %q", string(got))
+		t.Fatalf("替换后内容=%q，期望 new-binary", string(got))
 	}
 
 	// 执行回滚
 	if err := rollback(); err != nil {
-		t.Fatalf("rollback failed: %v", err)
+		t.Fatalf("rollback 失败: %v", err)
 	}
 
 	// 验证原始二进制已还原
 	got, err = os.ReadFile(targetPath)
 	if err != nil {
-		t.Fatalf("ReadFile after rollback failed: %v", err)
+		t.Fatalf("回滚后 ReadFile 失败: %v", err)
 	}
 	if string(got) != "old-binary" {
-		t.Fatalf("expected old-binary after rollback, got %q", string(got))
+		t.Fatalf("回滚后内容=%q，期望 old-binary", string(got))
 	}
 }
 
@@ -249,7 +249,7 @@ func TestReplaceExecutableAtPathRollsBackOnExplicitCall(t *testing.T) {
 // 本测试仅在 Linux 上运行，因为 daemon-mode 重启依赖 SIGHUP。
 func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 	if runtime.GOOS != "linux" {
-		t.Skip("daemon-mode restart via SIGHUP is only supported on Linux")
+		t.Skip("仅 Linux 支持通过 SIGHUP 重启 daemon master")
 	}
 
 	tmpDir := t.TempDir()
@@ -259,7 +259,7 @@ func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 	// 启动一个可以接收 SIGHUP 并退出的子进程（sleep 对 SIGHUP 默认动作是终止）
 	cmd := exec.Command("sleep", "3600")
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("start background process failed: %v", err)
+		t.Fatalf("启动后台进程失败: %v", err)
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill() })
 	sleepPID := cmd.Process.Pid
@@ -267,10 +267,10 @@ func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 	// 建立指向 tmpDir 内假可执行文件的运行时信息
 	fakeExe := filepath.Join(tmpDir, "swaves")
 	if err := os.WriteFile(fakeExe, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write fake executable failed: %v", err)
+		t.Fatalf("写入假可执行文件失败: %v", err)
 	}
 	if err := WriteRuntimeInfo(RuntimeInfo{PID: sleepPID, Executable: fakeExe}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+		t.Fatalf("WriteRuntimeInfo 失败: %v", err)
 	}
 
 	// 构建包含新二进制的归档
@@ -280,7 +280,7 @@ func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 		{name: "swaves_v1.2.4_linux_amd64", content: []byte("new-binary")},
 	})
 	if err := os.WriteFile(archivePath, archiveData, 0o644); err != nil {
-		t.Fatalf("write archive failed: %v", err)
+		t.Fatalf("写入归档失败: %v", err)
 	}
 
 	source := InstallSource{
@@ -291,25 +291,25 @@ func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 	}
 	result, err := DefaultClient().Install(source, "v1.2.3", "linux", "amd64", RestartWithMasterFallback)
 	if err != nil {
-		t.Fatalf("Install failed: %v", err)
+		t.Fatalf("Install 失败: %v", err)
 	}
 	if !result.Installed {
-		t.Fatal("expected result.Installed=true")
+		t.Fatal("result.Installed 应为 true")
 	}
 	if result.RestartedPID != sleepPID {
-		t.Fatalf("RestartedPID=%d, want %d", result.RestartedPID, sleepPID)
+		t.Fatalf("RestartedPID=%d，期望 %d", result.RestartedPID, sleepPID)
 	}
 	if result.LatestVersion != "v1.2.4" {
-		t.Fatalf("LatestVersion=%q, want v1.2.4", result.LatestVersion)
+		t.Fatalf("LatestVersion=%q，期望 v1.2.4", result.LatestVersion)
 	}
 
 	// 验证新二进制已写入假可执行路径
 	got, err := os.ReadFile(fakeExe)
 	if err != nil {
-		t.Fatalf("ReadFile fakeExe failed: %v", err)
+		t.Fatalf("ReadFile fakeExe 失败: %v", err)
 	}
 	if string(got) != "new-binary" {
-		t.Fatalf("fakeExe content=%q, want new-binary", string(got))
+		t.Fatalf("fakeExe 内容=%q，期望 new-binary", string(got))
 	}
 }
 
@@ -317,7 +317,7 @@ func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 // RestartRequireMaster 在有活跃 master 时完成安装并重启 master。
 func TestInstallLocalSourceRequireMasterWithActiveMasterInstalls(t *testing.T) {
 	if runtime.GOOS != "linux" {
-		t.Skip("daemon-mode restart via SIGHUP is only supported on Linux")
+		t.Skip("仅 Linux 支持通过 SIGHUP 重启 daemon master")
 	}
 
 	tmpDir := t.TempDir()
@@ -326,17 +326,17 @@ func TestInstallLocalSourceRequireMasterWithActiveMasterInstalls(t *testing.T) {
 
 	cmd := exec.Command("sleep", "3600")
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("start background process failed: %v", err)
+		t.Fatalf("启动后台进程失败: %v", err)
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill() })
 	sleepPID := cmd.Process.Pid
 
 	fakeExe := filepath.Join(tmpDir, "swaves")
 	if err := os.WriteFile(fakeExe, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write fake executable failed: %v", err)
+		t.Fatalf("写入假可执行文件失败: %v", err)
 	}
 	if err := WriteRuntimeInfo(RuntimeInfo{PID: sleepPID, Executable: fakeExe}); err != nil {
-		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+		t.Fatalf("WriteRuntimeInfo 失败: %v", err)
 	}
 
 	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
@@ -345,7 +345,7 @@ func TestInstallLocalSourceRequireMasterWithActiveMasterInstalls(t *testing.T) {
 		{name: "swaves_v1.2.4_linux_amd64", content: []byte("new-binary")},
 	})
 	if err := os.WriteFile(archivePath, archiveData, 0o644); err != nil {
-		t.Fatalf("write archive failed: %v", err)
+		t.Fatalf("写入归档失败: %v", err)
 	}
 
 	source := InstallSource{
@@ -356,13 +356,13 @@ func TestInstallLocalSourceRequireMasterWithActiveMasterInstalls(t *testing.T) {
 	}
 	result, err := DefaultClient().Install(source, "v1.2.3", "linux", "amd64", RestartRequireMaster)
 	if err != nil {
-		t.Fatalf("Install failed: %v", err)
+		t.Fatalf("Install 失败: %v", err)
 	}
 	if !result.Installed {
-		t.Fatal("expected result.Installed=true")
+		t.Fatal("result.Installed 应为 true")
 	}
 	if result.RestartedPID != sleepPID {
-		t.Fatalf("RestartedPID=%d, want %d", result.RestartedPID, sleepPID)
+		t.Fatalf("RestartedPID=%d，期望 %d", result.RestartedPID, sleepPID)
 	}
 }
 
@@ -370,7 +370,7 @@ func TestInstallLocalSourceRequireMasterWithActiveMasterInstalls(t *testing.T) {
 // 回滚机制能将原始可执行文件还原。使用不存在的 PID 模拟信号失败。
 func TestInstallLocalSourceSignalFailureTriggersRollback(t *testing.T) {
 	if runtime.GOOS != "linux" {
-		t.Skip("signal-based rollback test only applies on Linux")
+		t.Skip("基于信号的回滚测试仅适用于 Linux")
 	}
 
 	tmpDir := t.TempDir()
@@ -381,18 +381,18 @@ func TestInstallLocalSourceSignalFailureTriggersRollback(t *testing.T) {
 	// 但随后杀死该进程使信号发送失败。
 	cmd := exec.Command("sleep", "3600")
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("start background process failed: %v", err)
+		t.Fatalf("启动后台进程失败: %v", err)
 	}
 	sleepPID := cmd.Process.Pid
 	// 立即杀死进程，使后续 SIGHUP 信号失败
 	if err := cmd.Process.Kill(); err != nil {
-		t.Fatalf("kill process failed: %v", err)
+		t.Fatalf("杀死进程失败: %v", err)
 	}
 	_ = cmd.Wait()
 
 	fakeExe := filepath.Join(tmpDir, "swaves")
 	if err := os.WriteFile(fakeExe, []byte("old-binary"), 0755); err != nil {
-		t.Fatalf("write fake executable failed: %v", err)
+		t.Fatalf("写入假可执行文件失败: %v", err)
 	}
 	// 写入指向已死进程的运行时信息
 	// 注意：ReadActiveRuntimeInfo 会检查进程是否存在，若不存在则返回错误，
@@ -406,31 +406,31 @@ func TestInstallLocalSourceSignalFailureTriggersRollback(t *testing.T) {
 	backupPath := filepath.Join(tmpDir, "swaves_backup")
 
 	if err := os.WriteFile(targetPath, []byte("original"), 0755); err != nil {
-		t.Fatalf("write target failed: %v", err)
+		t.Fatalf("写入目标文件失败: %v", err)
 	}
 	if err := os.WriteFile(newPath, []byte("replacement"), 0755); err != nil {
-		t.Fatalf("write new path failed: %v", err)
+		t.Fatalf("写入新文件失败: %v", err)
 	}
 
 	rollback, err := replaceExecutableAtPathWithRollback(newPath, targetPath, backupPath)
 	if err != nil {
-		t.Fatalf("replaceExecutableAtPathWithRollback failed: %v", err)
+		t.Fatalf("replaceExecutableAtPathWithRollback 失败: %v", err)
 	}
 
 	// 模拟信号失败后触发回滚
 	if err := rollback(); err != nil {
-		t.Fatalf("rollback failed: %v", err)
+		t.Fatalf("rollback 失败: %v", err)
 	}
 
 	got, err := os.ReadFile(targetPath)
 	if err != nil {
-		t.Fatalf("ReadFile after rollback failed: %v", err)
+		t.Fatalf("回滚后 ReadFile 失败: %v", err)
 	}
 	if string(got) != "original" {
-		t.Fatalf("after rollback content=%q, want original", string(got))
+		t.Fatalf("回滚后内容=%q，期望 original", string(got))
 	}
 	if _, err := os.Stat(backupPath); !os.IsNotExist(err) {
-		t.Fatal("backup file should be removed after rollback")
+		t.Fatal("回滚后备份文件应已被删除")
 	}
 }
 
@@ -452,17 +452,17 @@ func TestAllThreeEntryPointsUseUnifiedSourceAndPolicyTypes(t *testing.T) {
 	// InstallLatestRelease：RestartRequireMaster，无活跃 master 时优先返回 master 错误
 	_, err1 := errClient.InstallLatestRelease("v1.2.3", "linux", "amd64")
 	if err1 == nil || !strings.Contains(err1.Error(), "daemon-mode") {
-		t.Fatalf("InstallLatestRelease: expected daemon-mode error, got %v", err1)
+		t.Fatalf("InstallLatestRelease: 期望 daemon-mode 错误，实际: %v", err1)
 	}
 
 	// InstallLatestReleaseCLI：RestartIfMatchingMaster，无活跃 master 时走发布检查
 	// 发布检查失败（HTTP 500）→ 应返回发布检查失败错误
 	_, err2 := errClient.InstallLatestReleaseCLI("v1.2.3", "linux", "amd64")
 	if err2 == nil {
-		t.Fatal("InstallLatestReleaseCLI: expected release check error")
+		t.Fatal("InstallLatestReleaseCLI: 应返回发布检查失败错误")
 	}
 	if strings.Contains(err2.Error(), "daemon-mode") {
-		t.Fatalf("InstallLatestReleaseCLI should not require daemon-mode, got: %v", err2)
+		t.Fatalf("InstallLatestReleaseCLI 不应要求 daemon-mode，实际: %v", err2)
 	}
 }
 
