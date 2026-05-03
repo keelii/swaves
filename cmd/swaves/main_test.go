@@ -236,6 +236,8 @@ func TestRunUtilityCommandUpgradeCheck(t *testing.T) {
 }
 
 func TestRunUtilityCommandUpgradeInstallsCurrentExecutableWithoutMaster(t *testing.T) {
+	t.Setenv("SWAVES_SQLITE_FILE", filepath.Join(t.TempDir(), "data.sqlite"))
+
 	oldInstall := installLatestRelease
 	installLatestRelease = func(currentVersion string, goos string, goarch string) (updater.InstallResult, error) {
 		return updater.InstallResult{
@@ -271,6 +273,28 @@ func TestRunUtilityCommandUpgradeInstallsCurrentExecutableWithoutMaster(t *testi
 	}
 	if !strings.Contains(out, "reason:  installed v1.2.4 to current executable") {
 		t.Fatalf("unexpected stdout: %q", out)
+	}
+}
+
+func TestRunUtilityCommandUpgradeRequiresSQLiteFile(t *testing.T) {
+	oldInstall := installLatestRelease
+	installLatestRelease = func(currentVersion string, goos string, goarch string) (updater.InstallResult, error) {
+		t.Fatal("installLatestRelease should not run without SWAVES_SQLITE_FILE")
+		return updater.InstallResult{}, nil
+	}
+	defer func() { installLatestRelease = oldInstall }()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"upgrade"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected upgrade to be handled")
+	}
+	if exitCode != 2 {
+		t.Fatalf("unexpected exit code: %d", exitCode)
+	}
+	if !strings.Contains(stderr.String(), "SWAVES_SQLITE_FILE is required for upgrade") {
+		t.Fatalf("unexpected stderr: %q", stderr.String())
 	}
 }
 

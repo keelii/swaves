@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 )
 
@@ -30,11 +32,23 @@ func resetRuntimeCacheRoot(t *testing.T) {
 	runtimeCacheMu.Lock()
 	original := runtimeCacheRoot
 	runtimeCacheRoot = ""
+	runtimeExecutableVerificationUnsupportedLogOnce = sync.Once{}
 	runtimeCacheMu.Unlock()
 	t.Cleanup(func() {
 		runtimeCacheMu.Lock()
 		runtimeCacheRoot = original
+		runtimeExecutableVerificationUnsupportedLogOnce = sync.Once{}
 		runtimeCacheMu.Unlock()
+	})
+}
+
+func stubRuntimeProcessExecutablePath(t *testing.T, fn func(pid int) (string, bool, error)) {
+	t.Helper()
+
+	original := runtimeProcessExecutablePath
+	runtimeProcessExecutablePath = fn
+	t.Cleanup(func() {
+		runtimeProcessExecutablePath = original
 	})
 }
 
@@ -108,6 +122,28 @@ func TestConfigureRuntimeCacheRootUsesSQLiteDirectory(t *testing.T) {
 	}
 }
 
+func TestCreateUpgradeTempDirUsesUpdaterCacheRoot(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+
+	if err := ConfigureRuntimeCacheRoot(filepath.Join(base, "data.sqlite")); err != nil {
+		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
+	}
+
+	got, err := CreateUpgradeTempDir(".swaves-upgrade-")
+	if err != nil {
+		t.Fatalf("CreateUpgradeTempDir failed: %v", err)
+	}
+
+	wantParent := filepath.Join(base, ".cache", UpgradeCacheDirName)
+	if filepath.Dir(got) != wantParent {
+		t.Fatalf("upgrade temp dir parent = %q, want %q", filepath.Dir(got), wantParent)
+	}
+	if info, err := os.Stat(got); err != nil || !info.IsDir() {
+		t.Fatalf("upgrade temp dir missing or not dir: info=%v err=%v", info, err)
+	}
+}
+
 func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
 	base := t.TempDir()
 	withUpdaterWorkingDir(t, base)
@@ -125,5 +161,59 @@ func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
 	want := "runtime info file not found: path=" + filepath.Join(wd, runtimeInfoRelativePath())
 	if !strings.Contains(err.Error(), want) {
 		t.Fatalf("ReadRuntimeInfo error = %q, want substring %q", err.Error(), want)
+	}
+}
+
+func TestReadActiveRuntimeInfoRejectsExecutableMismatch(t *testing.T) {
+	base := t.TempDir()
+	withUpdaterWorkingDir(t, base)
+	resetRuntimeCacheRoot(t)
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return filepath.Join(base, "other"), true, nil
+	})
+
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: os.Getpid(), Executable: filepath.Join(base, "swaves")}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	_, err := ReadActiveRuntimeInfo()
+	if err == nil {
+		t.Fatal("ReadActiveRuntimeInfo error = nil, want executable mismatch")
+	}
+	if !strings.Contains(err.Error(), "master process executable mismatch") {
+		t.Fatalf("ReadActiveRuntimeInfo error = %q, want executable mismatch", err.Error())
+	}
+}
+
+func TestReadActiveRuntimeInfoAllowsUnsupportedExecutableVerification(t *testing.T) {
+	base := t.TempDir()
+	withUpdaterWorkingDir(t, base)
+	resetRuntimeCacheRoot(t)
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return "", false, nil
+	})
+
+	want := RuntimeInfo{PID: os.Getpid(), Executable: filepath.Join(base, "swaves")}
+	if err := WriteRuntimeInfo(want); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	got, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadActiveRuntimeInfo failed: %v", err)
+	}
+	if got.PID != want.PID || got.Executable != want.Executable {
+		t.Fatalf("ReadActiveRuntimeInfo = %#v, want %#v", got, want)
+	}
+}
+
+func TestProcessExecutablePermissionErrorIsUnsupported(t *testing.T) {
+	for _, err := range []error{syscall.EACCES, syscall.EPERM} {
+		if !isProcessExecutablePermissionError(err) {
+			t.Fatalf("isProcessExecutablePermissionError(%v) = false, want true", err)
+		}
+	}
+	if isProcessExecutablePermissionError(os.ErrNotExist) {
+		t.Fatal("isProcessExecutablePermissionError(os.ErrNotExist) = true, want false")
 	}
 }

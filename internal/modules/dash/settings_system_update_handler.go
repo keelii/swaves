@@ -88,6 +88,13 @@ func parseRefreshDelaySeconds(raw string) int {
 	return seconds
 }
 
+func systemUpdateRefreshQuery(result updater.InstallResult) map[string]string {
+	if result.RestartedPID <= 0 {
+		return nil
+	}
+	return map[string]string{"refresh": strconv.Itoa(defaultRefreshDelaySeconds)}
+}
+
 func systemUpdateSupportState(readActiveRuntimeInfo func() (updater.RuntimeInfo, error), autoUpdateEnabled bool) systemUpdateViewState {
 	state := systemUpdateViewState{}
 
@@ -214,14 +221,7 @@ func (h *Handler) PostSettingsSystemAutoUpdateHandler(c fiber.Ctx) error {
 	}
 	logger.Info("[dash] auto update completed: ip=%s latest=%s installed=%t master_pid=%d", c.IP(), versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
-	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
-		"refresh": func() string {
-			if result.RestartedPID > 0 {
-				return strconv.Itoa(defaultRefreshDelaySeconds)
-			}
-			return ""
-		}(),
-	}, buildSystemUpdateNotice(result))
+	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, systemUpdateRefreshQuery(result), buildSystemUpdateNotice(result))
 }
 
 func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
@@ -244,7 +244,7 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	}
 	defer func() { _ = src.Close() }()
 
-	tmpDir, err := os.MkdirTemp("", ".swaves-manual-upgrade-")
+	tmpDir, err := updater.CreateUpgradeTempDir(".swaves-manual-upgrade-")
 	if err != nil {
 		logger.Error("[dash] manual update create temp dir failed: ip=%s archive=%s err=%v", c.IP(), filepath.Base(fileHeader.Filename), err)
 		return h.redirectToDashRouteWithError(c, "dash.settings.system_update", nil, nil, "创建临时目录失败："+err.Error())
@@ -275,12 +275,5 @@ func (h *Handler) PostSettingsSystemManualUpdateHandler(c fiber.Ctx) error {
 	}
 	logger.Info("[dash] manual update completed: ip=%s archive=%s latest=%s installed=%t master_pid=%d", c.IP(), archiveName, versionLabel(result.LatestVersion), result.Installed, result.RestartedPID)
 
-	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, map[string]string{
-		"refresh": func() string {
-			if result.RestartedPID > 0 {
-				return strconv.Itoa(defaultRefreshDelaySeconds)
-			}
-			return ""
-		}(),
-	}, buildSystemUpdateNotice(result))
+	return h.redirectToDashRouteWithNotice(c, "dash.settings.system_update", nil, systemUpdateRefreshQuery(result), buildSystemUpdateNotice(result))
 }
