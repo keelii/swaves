@@ -1704,7 +1704,7 @@ a.ui-icon-btn[disabled] {
 .status-grid.cols-3 .status-slot.left,
 .status-grid.cols-3 .status-slot.center,
 .status-grid.cols-3 .status-slot.right {
-  flex: 1 1 0;
+  /*flex: 1 1 0;*/
 }
 
 .status-slot.center {
@@ -1713,6 +1713,23 @@ a.ui-icon-btn[disabled] {
 
 .status-slot.right {
   justify-content: flex-end;
+}
+
+body.is-mobile .main-status-bar .list-status-grid {
+  justify-content: space-between;
+}
+
+body.is-mobile .main-status-bar .list-status-grid .status-slot.left,
+body.is-mobile .main-status-bar .list-status-grid .status-slot.right {
+  flex: 0 1 auto;
+}
+
+body.is-mobile .main-status-bar .list-status-grid .status-slot.center:empty {
+  display: none;
+}
+
+body.is-mobile .main-status-bar .list-status-grid .status-slot.right .ui-tags[aria-label="分页"] {
+  flex-wrap: nowrap;
 }
 
 .app-window:has(.post-editor-workspace.source-mode) .main-status-bar .status-slot.center.disabled {

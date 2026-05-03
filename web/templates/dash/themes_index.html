@@ -40,7 +40,7 @@
           <th>{{ sui.TableThId() }}</th>
           <th>名称</th>
           <th class="hide-mobile">作者</th>
-          <th>状态</th>
+          <th class="hide-mobile">状态</th>
           <th>当前</th>
           <th class="hide-mobile">内置</th>
           <th class="hide-mobile">版本</th>
@@ -56,7 +56,7 @@
               <a href="{{ UrlFor('dash.themes.edit', id=theme.ID) }}" title="{{ theme.Code }}">{{ theme.Name }}</a>
             </td>
             <td class="hide-mobile">{{ theme.Author or '-' }}</td>
-            <td>
+            <td class="hide-mobile">
               {% if theme.Status == "published" %}
                 <span class="ui-badge success">已发布</span>
               {% elif theme.Status == "draft" %}
@@ -68,7 +68,7 @@
             <td>{% if theme.IsCurrent == 1 %}<span class="ui-badge success">是</span>{% else %}-{% endif %}</td>
             <td class="hide-mobile">{% if theme.IsBuiltin == 1 %}<span class="ui-badge">是</span>{% else %}-{% endif %}</td>
             <td class="hide-mobile">{{ theme.Version }}</td>
-            <td>{{ theme.UpdatedAt | formatTime }}</td>
+            <td>{{ theme.UpdatedAt | relativeTime }}</td>
             <td class="no-padding">
               <div class="cell-actions">
                 {{ sui.LinkIcon("square-pen", UrlFor('dash.themes.edit', id=theme.ID), attrs='aria-label="编辑" data-title="编辑"') }}

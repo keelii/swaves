@@ -22,10 +22,10 @@
         <tr>
           <th>{{ sui.TableThId() }}</th>
           <th>名称</th>
-          <th>描述</th>
+          <th class="hide-mobile">描述</th>
           <th class="hide-mobile">调度</th>
           <th class="cell-6 hide-mobile">状态</th>
-          <th class="cell-6">最后状态</th>
+          <th class="cell-6 hide-mobile">最后状态</th>
           <th>执行记录</th>
           <th>最后执行时间</th>
           <th>操作</th>
@@ -38,7 +38,7 @@
             <td>
               <div>{{ task.Name }}({{ task.Code }})</div>
             </td>
-            <td>{% if task.Description %}{{ task.Description }}{% else %}-{% endif %}</td>
+            <td class="hide-mobile">{% if task.Description %}{{ task.Description }}{% else %}-{% endif %}</td>
             <td class="hide-mobile">{{ TaskScheduleLabels[task.ID] }}</td>
             <td class="hide-mobile">
               {% if task.Enabled == 1 %}
@@ -47,7 +47,7 @@
                 <span class="ui-badge draft">停用</span>
               {% endif %}
             </td>
-            <td>
+            <td class="hide-mobile">
               {% if task.LastStatus == "success" %}
                 <span class="ui-badge success">成功</span>
               {% elif task.LastStatus == "error" %}
