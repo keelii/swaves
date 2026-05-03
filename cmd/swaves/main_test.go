@@ -447,7 +447,7 @@ func TestRunUtilityCommandUpgradeRequiresSQLiteFileWhenInferenceFails(t *testing
 	if exitCode != 2 {
 		t.Fatalf("unexpected exit code: %d", exitCode)
 	}
-	if !strings.Contains(stderr.String(), "SWAVES_SQLITE_FILE is required for upgrade") {
+	if !strings.Contains(stderr.String(), "SWAVES_SQLITE_FILE is required for upgrade when runtime launch info is unavailable") {
 		t.Fatalf("unexpected stderr: %q", stderr.String())
 	}
 }

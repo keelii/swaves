@@ -324,11 +324,11 @@ func configureUpgradeCacheRoot() error {
 func upgradeSQLiteFileFromRuntime() (string, error) {
 	info, err := readRuntimeInfo()
 	if err != nil {
-		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade")
+		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade when runtime launch info is unavailable")
 	}
 	sqliteFile := runtimeSQLiteFile(info)
 	if sqliteFile == "" {
-		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade")
+		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade when runtime launch info does not include a sqlite file")
 	}
 	return sqliteFile, nil
 }
@@ -654,7 +654,7 @@ Usage:
 
 	Notes:
 	  upgrade --check only checks the latest stable GitHub release for the current platform.
-	  upgrade requires SWAVES_SQLITE_FILE so temporary files stay under the database .cache directory.
+	  upgrade uses SWAVES_SQLITE_FILE when provided; otherwise it reads runtime launch info.
 	  upgrade downloads the latest stable GitHub release for the current platform and replaces the current executable.
 	`) + "\n"
 }

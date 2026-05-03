@@ -215,6 +215,16 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 	if !os.IsNotExist(err) {
 		return RuntimeInfo{}, err
 	}
+	if err := MigrateRuntimeInfo(); err != nil {
+		return RuntimeInfo{}, err
+	}
+	info, err = readRuntimeInfoAtPath(path)
+	if err == nil {
+		return info, nil
+	}
+	if !os.IsNotExist(err) {
+		return RuntimeInfo{}, err
+	}
 	logger.Warn("[update] runtime info file missing: path=%s", path)
 	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s: %w", path, ErrRuntimeInfoNotFound)
 }

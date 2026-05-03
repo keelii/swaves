@@ -103,14 +103,14 @@ func systemUpdateSupportState(readActiveRuntimeInfo func() (updater.RuntimeInfo,
 		return state
 	}
 
+	state.AutoUpdateEnabled = autoUpdateEnabled
+	state.ManualUpdateEnabled = true
+
 	runtimeInfo, err := readActiveRuntimeInfo()
 	if err != nil {
-		state.ManualUpdateEnabled = true
 		return state
 	}
 
-	state.AutoUpdateEnabled = autoUpdateEnabled
-	state.ManualUpdateEnabled = true
 	state.RestartEnabled = true
 	state.SystemRuntimePID = runtimeInfo.PID
 	return state

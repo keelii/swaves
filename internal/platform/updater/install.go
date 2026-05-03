@@ -310,6 +310,7 @@ func resolveInstallTarget(policy RestartPolicy) (targetPath string, ri *RuntimeI
 		if err == nil {
 			return info.Executable, &info, nil
 		}
+		logger.Warn("[update] active master unavailable, fallback to current executable: err=%v", err)
 		path, err := currentInstallExecutable()
 		if err != nil {
 			return "", nil, err
@@ -336,15 +337,15 @@ func RestartActiveRuntime() (int, error) {
 	return runtimeInfo.PID, nil
 }
 
-// InstallLatestRelease 是后台自动更新入口。要求存在活跃的 daemon master，
-// 从 GitHub 下载最新稳定版本并在安装完成后重启 master。
+// InstallLatestRelease 是后台自动更新入口。从 GitHub 下载最新稳定版本；
+// 有活跃 master 时安装后重启，否则安装到当前可执行文件并要求手动重启。
 func InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestRelease(currentVersion, goos, goarch)
 }
 
 func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	logger.Info("[update] auto install requested: current=%s target=%s/%s", versionLabel(currentVersion), goos, goarch)
-	result, err := c.Install(InstallSource{Kind: ArchiveSourceRemote}, currentVersion, goos, goarch, RestartRequireMaster)
+	result, err := c.Install(InstallSource{Kind: ArchiveSourceRemote}, currentVersion, goos, goarch, RestartWithMasterFallback)
 	if err != nil {
 		logger.Error("[update] auto install failed: current=%s err=%v", versionLabel(currentVersion), err)
 	} else {
@@ -569,7 +570,7 @@ func currentInstallExecutable() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve current executable failed: %w", err)
 	}
-	path = strings.TrimSpace(path)
+	path = cleanExecutablePath(path)
 	if path == "" {
 		return "", fmt.Errorf("current executable is empty")
 	}

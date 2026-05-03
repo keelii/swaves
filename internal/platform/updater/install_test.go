@@ -565,9 +565,9 @@ func TestInstallLocalSourceSignalFailureTriggersRollback(t *testing.T) {
 	}
 }
 
-// TestAllThreeEntryPointsCallUnifiedInstall 通过反射验证三个顶层入口均调用
-// 同一核心逻辑——当 HTTP 服务不可用时，远端来源均返回相同类型的错误。
-// 本测试确保 InstallLatestRelease / InstallLatestReleaseCLI 均走远端来源路径。
+// TestAllThreeEntryPointsUseUnifiedSourceAndPolicyTypes 确保
+// InstallLatestRelease / InstallLatestReleaseCLI 均走远端来源路径；
+// 没有活跃 master 时也不应提前因为 daemon-mode 失败。
 func TestAllThreeEntryPointsUseUnifiedSourceAndPolicyTypes(t *testing.T) {
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
@@ -581,10 +581,14 @@ func TestAllThreeEntryPointsUseUnifiedSourceAndPolicyTypes(t *testing.T) {
 		})},
 	}
 
-	// InstallLatestRelease：RestartRequireMaster，无活跃 master 时优先返回 master 错误
+	// InstallLatestRelease：RestartWithMasterFallback，无活跃 master 时走发布检查
+	// 发布检查失败（HTTP 500）→ 应返回发布检查失败错误
 	_, err1 := errClient.InstallLatestRelease("v1.2.3", "linux", "amd64")
-	if err1 == nil || !strings.Contains(err1.Error(), "daemon-mode") {
-		t.Fatalf("InstallLatestRelease: 期望 daemon-mode 错误，实际: %v", err1)
+	if err1 == nil {
+		t.Fatal("InstallLatestRelease: 应返回发布检查失败错误")
+	}
+	if strings.Contains(err1.Error(), "daemon-mode") {
+		t.Fatalf("InstallLatestRelease 不应要求 daemon-mode，实际: %v", err1)
 	}
 
 	// InstallLatestReleaseCLI：RestartIfMatchingMaster，无活跃 master 时走发布检查

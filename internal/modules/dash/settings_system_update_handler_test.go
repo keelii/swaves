@@ -103,8 +103,8 @@ func TestSystemUpdateSupportStateWithoutDaemon(t *testing.T) {
 	if !state.ManualUpdateEnabled {
 		t.Fatal("expected manual update to be enabled without daemon mode")
 	}
-	if state.AutoUpdateEnabled {
-		t.Fatal("expected auto update to be disabled without daemon mode")
+	if !state.AutoUpdateEnabled {
+		t.Fatal("expected auto update to stay enabled without daemon mode")
 	}
 	if state.RestartEnabled {
 		t.Fatal("expected restart to be disabled without daemon mode")
