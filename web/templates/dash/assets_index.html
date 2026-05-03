@@ -118,11 +118,10 @@
         <th>{{ sui.TableThId() }}</th>
         <th>类型</th>
         <th>服务</th>
-        <th>文件名</th>
+        <th>文件</th>
         <th>备注</th>
-        <th>链接</th>
         <th class="cell-6">大小</th>
-        <th class="cell-12">创建时间</th>
+        <th class="cell-12 hide-mobile">创建时间</th>
         <th class="cell-9">操作</th>
       </tr>
     </thead>
@@ -132,18 +131,17 @@
           <td>{{ sui.TableTdId(assetItem.id) }}</td>
           <td>{{ assetKindLabelMap[assetItem.kind] }}</td>
           <td>{{ assetProviderLabelMap[assetItem.provider] }}</td>
-          <td>{{ assetItem.original_name }}</td>
-          <td>{% if assetItem.remark %}{{ assetItem.remark }}{% else %}-{% endif %}</td>
           <td>
             {% if assetItem.file_url %}
-              <a href="{{ assetItem.file_url }}" target="_blank" rel="noopener" class="asset-cell-url" title="{{ assetItem.file_url }}">{{ assetItem.file_url }}</a>
+              <a href="{{ assetItem.file_url }}" target="_blank" rel="noopener" class="asset-cell-url" title="{{ assetItem.file_url }}">{{ assetItem.original_name }}</a>
             {% else %}
-              -
+              {{ assetItem.original_name }}
             {% endif %}
           </td>
+          <td>{% if assetItem.remark %}{{ assetItem.remark }}{% else %}-{% endif %}</td>
           <td>{{ assetItem.size_bytes | humanSize }}</td>
-          <td>{{ assetItem.created_at | formatTime }}</td>
-          <td class="cell-6">
+          <td class="hide-mobile">{{ assetItem.created_at | formatTime }}</td>
+          <td class="no-padding">
             <div class="row-actions asset-row-actions">
               {% if assetItem.file_url %}
                 {{ sui.IconAction("link-2", "复制图片链接", "asset-copy-url", attrs=HtmlAttrs({"data-url": assetItem.file_url, "data-title": "复制图片链接"})) }}

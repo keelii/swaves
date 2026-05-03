@@ -78,7 +78,7 @@
             <td>{{ file.Name }}</td>
             <td>{{ file.ModifiedAt | relativeTime }}</td>
             <td>{{ file.Size | humanSize }}</td>
-            <td>
+            <td class="no-padding">
               <div class="cell-actions">
                 {{ sui.LinkIcon("download", UrlFor('dash.backup_restore.download', {}, {"backup_file": file.Name}), attrs='aria-label="下载" data-title="下载"') }}
                 <form method="post" action="{{ UrlFor('dash.backup_restore.local') }}" data-confirm-title="确认恢复" data-confirm-message="确定使用这个本地备份恢复数据库吗？当前数据库会被替换，注意管理后密码也会恢复。">

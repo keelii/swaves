@@ -28,6 +28,23 @@ var protectedThemeFilePaths = map[string]struct{}{
 	"post.html":   {},
 }
 
+func themeStatusOptions() []map[string]string {
+	return []map[string]string{
+		{"value": "draft", "label": "草稿"},
+		{"value": "published", "label": "已发布"},
+	}
+}
+
+func normalizeThemeStatus(raw string) (string, bool) {
+	raw = strings.TrimSpace(strings.ToLower(raw))
+	switch raw {
+	case "draft", "published":
+		return raw, true
+	default:
+		return "", false
+	}
+}
+
 func isProtectedThemeFilePath(path string) bool {
 	path, ok := themefiles.NormalizePath(path)
 	if !ok {
@@ -287,6 +304,7 @@ func themeEditViewData(theme db.Theme, files map[string]string, currentFile stri
 		"Title":               "编辑主题",
 		"Error":               errorMessage,
 		"Theme":               theme,
+		"ThemeStatusOptions":  themeStatusOptions(),
 		"ThemeFiles":          files,
 		"ThemeFilePaths":      themefiles.SortedPaths(files),
 		"ThemeProtectedFiles": themeProtectedFileFlags(files),
@@ -329,6 +347,9 @@ func setCurrentThemeAndRestart(model *db.DB, id int64) (themeSwitchResult, error
 	if theme.IsCurrent == 1 {
 		result.AlreadyCurrent = true
 		return result, nil
+	}
+	if theme.Status == "draft" {
+		return result, fmt.Errorf("草稿主题不能应用为当前主题。")
 	}
 
 	if err := db.SetThemeCurrent(model, id); err != nil {
@@ -554,6 +575,15 @@ func (h *Handler) PostUpdateThemeHandler(c fiber.Ctx) error {
 	theme.Description = strings.TrimSpace(c.FormValue("description"))
 	theme.CurrentFile = currentFile
 	theme.Files = filesJSON
+	if rawStatus := strings.TrimSpace(c.FormValue("status")); rawStatus != "" {
+		nextStatus, ok := normalizeThemeStatus(rawStatus)
+		if !ok {
+			return renderEdit("主题状态无效。")
+		}
+		theme.Status = nextStatus
+	} else if theme.Status == "" {
+		theme.Status = "draft"
+	}
 	if theme.Name == "" {
 		return renderEdit("主题名称不能为空。")
 	}

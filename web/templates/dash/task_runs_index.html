@@ -22,7 +22,7 @@
           <th>耗时（毫秒）</th>
           <th>开始时间</th>
           <th>结束时间</th>
-          <th>创建时间</th>
+          <th class="hide-mobile">创建时间</th>
         </tr>
       </thead>
       <tbody>
@@ -40,7 +40,7 @@
           <td>{{ run.Duration }}</td>
           <td>{{ run.StartedAt | formatTime }}</td>
           <td>{{ run.FinishedAt | formatTime }}</td>
-          <td>{{ run.CreatedAt | formatTime }}</td>
+          <td class="hide-mobile">{{ run.CreatedAt | formatTime }}</td>
         </tr>
         {% endfor %}
       </tbody>

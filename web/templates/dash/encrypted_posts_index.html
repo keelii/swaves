@@ -55,7 +55,7 @@
         <td>{{ post.Slug }}</td>
         <td>{% if post.ExpiresAt %}{{ post.ExpiresAt | formatTime }}{% else %}永不过期{% endif %}</td>
         <td>{{ post.UpdatedAt | relativeTime }}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             {{ sui.LinkIcon("square-pen", UrlFor('dash.encrypted_posts.edit', id=post.ID), attrs='aria-label="编辑" data-title="编辑"') }}
             <form method="post" action="{{ UrlFor('dash.encrypted_posts.delete', id=post.ID) }}">

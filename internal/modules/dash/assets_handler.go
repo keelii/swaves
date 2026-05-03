@@ -525,6 +525,7 @@ func assetProviderLabelMap() map[string]string {
 	for _, item := range assetProviderOptions {
 		result[item.Value] = item.Label
 	}
+	result["s3"] = "S3"
 	return result
 }
 

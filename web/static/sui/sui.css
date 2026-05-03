@@ -1916,6 +1916,9 @@ a.ui-icon-btn[disabled] {
 .data-table tbody td:not(.no-padding) {
   padding: 6px var(--app-spacing);
 }
+.data-table .no-padding .cell-actions {
+  gap: 0;
+}
 .data-table tbody td {
   border-bottom: var(--app-border-width) solid var(--app-border);
   vertical-align: middle;
@@ -1995,6 +1998,27 @@ a.ui-icon-btn[disabled] {
 
 .data-table tbody tr:hover td:not([colsapn]) {
   background: var(--app-table-row-hover-bg);
+}
+
+body.is-mobile .hide-mobile {
+  display: none !important;
+}
+
+.data-table .cell-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.data-table .cell-main-title {
+  min-width: 0;
+}
+
+.data-table .cell-main-meta {
+  color: var(--app-text-soft);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
 }
 
 .content-editor {

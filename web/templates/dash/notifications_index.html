@@ -48,10 +48,10 @@
     <thead>
       <tr>
         <th>{{ sui.TableThId() }}</th>
-        <th>类型</th>
+        <th class="hide-mobile">类型</th>
         <th>标题</th>
         <th>内容</th>
-        <th>聚合次数</th>
+        <th class="hide-mobile">聚合次数</th>
         <th>状态</th>
         <th>更新时间</th>
         <th>操作</th>
@@ -62,7 +62,7 @@
         {% set isUnread = item.ReadAt == none %}
         <tr data-notification-row data-notification-id="{{ item.ID }}" data-notification-read="{{ 0 if isUnread else 1 }}" data-batch-delete-id="{{ item.ID }}">
           <td>{{ sui.TableTdId(item.ID) }}</td>
-          <td>
+          <td class="hide-mobile">
             {% if item.EventType == "post_like" %}
               点赞
             {% elif item.EventType == "comment" %}
@@ -88,7 +88,7 @@
               {% endif %}
             </div>
           </td>
-          <td>{{ item.AggregateCount }}</td>
+          <td class="hide-mobile">{{ item.AggregateCount }}</td>
           <td>
             <span data-role="notification-status">
               {% if isUnread %}
@@ -99,7 +99,7 @@
             </span>
           </td>
           <td>{{ item.UpdatedAt | relativeTime }}</td>
-          <td data-role="notification-actions">
+          <td class="no-padding" data-role="notification-actions">
             {{ sui.IconAction("square-check", "标记已读", attrs='data-role="notification-mark-read" data-id="' ~ item.ID ~ '" data-title="标记已读"' ~ (' hidden' if not isUnread else '')) }}
             {{ sui.IconAction("trash-2", "删除", "danger", attrs='data-role="notification-delete" data-id="' ~ item.ID ~ '" data-title="删除"' ~ (' hidden' if isUnread else '')) }}
           </td>

@@ -915,6 +915,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	updateForm := url.Values{}
 	updateForm.Set("name", "Controller Theme Updated")
 	updateForm.Set("author", "tester")
+	updateForm.Set("status", "published")
 	updateForm.Set("description", "updated description")
 	updateForm.Set("current_file", "home.html")
 	updateForm.Set("current_content", "<h1>updated theme</h1>")
@@ -939,6 +940,9 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	if updatedTheme.CurrentFile != "home.html" || updatedTheme.Version != createdTheme.Version+1 {
 		t.Fatalf("unexpected updated theme state: %+v", updatedTheme)
 	}
+	if updatedTheme.Status != "published" {
+		t.Fatalf("updated theme status = %q, want published", updatedTheme.Status)
+	}
 	var updatedFiles map[string]string
 	if err := json.Unmarshal([]byte(updatedTheme.Files), &updatedFiles); err != nil {
 		t.Fatalf("decode updated theme files failed: %v", err)
@@ -960,6 +964,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 	createFileForm := url.Values{}
 	createFileForm.Set("name", updatedTheme.Name)
 	createFileForm.Set("author", updatedTheme.Author)
+	createFileForm.Set("status", updatedTheme.Status)
 	createFileForm.Set("description", updatedTheme.Description)
 	createFileForm.Set("current_file", "home.html")
 	createFileForm.Set("current_content", updatedFiles["home.html"])
@@ -989,6 +994,42 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 		t.Fatalf("expected current file switch to new file, got %q", themeAfterNewFile.CurrentFile)
 	}
 
+	draftThemeID, err := db.CreateTheme(swv.Store.Model, &db.Theme{
+		Name:        "Draft Theme",
+		Code:        fmt.Sprintf("draft-theme-%d", time.Now().UnixNano()),
+		Description: "draft",
+		Author:      "tester",
+		Files:       `{"home.html":"<h1>draft</h1>"}`,
+		CurrentFile: "home.html",
+		Status:      "draft",
+		Version:     1,
+		CreatedAt:   time.Now().Unix(),
+		UpdatedAt:   time.Now().Unix(),
+	})
+	if err != nil {
+		t.Fatalf("CreateTheme(draft) failed: %v", err)
+	}
+
+	csrfToken, cookieKV, _ = fetchCSRFToken(t, swv, "/dash/themes", cookieKV, "themes-table")
+	draftSetCurrentResp := requestControllerP0(t, swv, fiber.MethodPost, fmt.Sprintf("/dash/themes/%d/set-current", draftThemeID), url.Values{
+		"_csrf_token": []string{csrfToken},
+	}, cookieKV, map[string]string{
+		"X-CSRF-Token": csrfToken,
+	})
+	if draftSetCurrentResp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected draft set current redirect 303, got %d", draftSetCurrentResp.StatusCode)
+	}
+	cookieKV = mergeCookieKV(cookieKV, draftSetCurrentResp)
+	currentAfterDraftAttempt, err := db.GetCurrentTheme(swv.Store.Model)
+	if err != nil {
+		t.Fatalf("GetCurrentTheme after draft attempt failed: %v", err)
+	}
+	if currentAfterDraftAttempt.ID == draftThemeID {
+		t.Fatalf("draft theme should not become current: %+v", currentAfterDraftAttempt)
+	}
+	draftListResp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/themes", nil, cookieKV, nil)
+	assertTemplateRendered(t, draftListResp, fiber.StatusOK, "草稿主题不能应用为当前主题。", "Draft Theme")
+
 	secondThemeID, err := db.CreateTheme(swv.Store.Model, &db.Theme{
 		Name:        "Second Theme",
 		Code:        fmt.Sprintf("second-theme-%d", time.Now().UnixNano()),
@@ -996,7 +1037,7 @@ func TestDashControllerP0_ThemeLifecycle(t *testing.T) {
 		Author:      "tester",
 		Files:       `{"home.html":"<h1>second</h1>"}`,
 		CurrentFile: "home.html",
-		Status:      "draft",
+		Status:      "published",
 		Version:     1,
 		CreatedAt:   time.Now().Unix(),
 		UpdatedAt:   time.Now().Unix(),
@@ -1044,7 +1085,7 @@ func TestDashControllerP0_ThemeSetCurrentShowsManualRestartNoticeWhenHotReloadUn
 		Author:      "tester",
 		Files:       `{"home.html":"<h1>manual restart</h1>"}`,
 		CurrentFile: "home.html",
-		Status:      "draft",
+		Status:      "published",
 		Version:     1,
 		CreatedAt:   nowUnix,
 		UpdatedAt:   nowUnix,

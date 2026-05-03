@@ -60,10 +60,10 @@
           <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="全选" />
         </th>
         <th>标题</th>
-        <th>标签</th>
-        <th>分类</th>
+        <th class="hide-mobile">标签</th>
+        <th class="hide-mobile">分类</th>
         <th>状态</th>
-        <th>UV</th>
+        <th class="hide-mobile">UV</th>
         <th>更新时间</th>
         <th>操作</th>
       </tr>
@@ -79,12 +79,12 @@
             <a href="javascript:;" aria-label="打开文章">Node.js 作者 Ryan Dahl 的故事</a>
           </div>
         </td>
-        <td class="cell-tags">人物, Node.js</td>
-        <td class="cell-cat">fe</td>
+        <td class="cell-tags hide-mobile">人物, Node.js</td>
+        <td class="cell-cat hide-mobile">fe</td>
         <td><span class="ui-badge success">已发布</span></td>
-        <td>124</td>
+        <td class="hide-mobile">124</td>
         <td>16 小时前</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions" aria-label="操作">
             {{ sui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
             {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
@@ -103,12 +103,12 @@
             <a href="javascript:;" aria-label="打开文章">React 随想：状态管理的边界</a>
           </div>
         </td>
-        <td class="cell-tags">react, architecture</td>
-        <td class="cell-cat">fe</td>
+        <td class="cell-tags hide-mobile">react, architecture</td>
+        <td class="cell-cat hide-mobile">fe</td>
         <td><span class="ui-badge success">已发布</span></td>
-        <td>67</td>
+        <td class="hide-mobile">67</td>
         <td>1 天前</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions" aria-label="操作">
             {{ sui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
             {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="复制链接"') }}
@@ -127,12 +127,12 @@
             <a href="javascript:;" aria-label="打开文章">相信数字还是相信直觉</a>
           </div>
         </td>
-        <td class="cell-tags">思考</td>
-        <td class="cell-cat">concept</td>
+        <td class="cell-tags hide-mobile">思考</td>
+        <td class="cell-cat hide-mobile">concept</td>
         <td><span class="ui-badge draft">草稿</span></td>
-        <td>0</td>
+        <td class="hide-mobile">0</td>
         <td>2 天前</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions" aria-label="操作">
             {{ sui.LinkIcon("square-pen", "javascript:;", attrs='aria-label="编辑" data-title="编辑"') }}
             {{ sui.LinkIcon("link-2", "javascript:;", attrs='aria-label="复制链接" data-title="disabled: 无法点击" disabled tabindex="-1"') }}

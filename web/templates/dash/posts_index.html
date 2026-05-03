@@ -55,10 +55,10 @@
       <tr>
         <th>{{ sui.TableThId() }}</th>
         <th>标题</th>
-        <th>标签</th>
-        <th>分类</th>
+        <th class="hide-mobile">标签</th>
+        <th class="hide-mobile">分类</th>
         <th>状态</th>
-        <th>UV</th>
+        <th class="hide-mobile">UV</th>
         <th>更新时间</th>
         <th>操作</th>
       </tr>
@@ -75,7 +75,7 @@
             <a href="{{ UrlFor('dash.posts.edit', id=postWithRelation.Post.ID) }}">{{ highlightPostTitle }}</a>
           </div>
         </td>
-        <td class="">
+        <td class="hide-mobile">
           {% if postWithRelation.Tags %}
             {% set tagSep = joiner(", ") %}
             {% for item in postWithRelation.Tags %}{{ tagSep() }}<a href="{{ UrlFor('dash.posts.list', {"kind":KindQuery, "q":SearchQuery, "category":FilterCategoryIDStr, "tag":item.ID}) }}">{{ item.Name }}</a>{% endfor %}
@@ -83,7 +83,7 @@
             -
           {% endif %}
         </td>
-        <td class="">
+        <td class="hide-mobile">
           {% if postWithRelation.Category %}
             <a href="{{ UrlFor('dash.posts.list', {"kind":KindQuery, "q":SearchQuery, "tag":FilterTagIDStr, "category":postWithRelation.Category.ID}) }}">{{ postWithRelation.Category.Name }}</a>
           {% else %}
@@ -91,7 +91,7 @@
           {% endif %}
         </td>
         <td>{{ sui.PostStatusBadge(postWithRelation.Post.Status) }}</td>
-        <td>{{ PostUVMap[postWithRelation.Post.ID] }}</td>
+        <td class="hide-mobile">{{ PostUVMap[postWithRelation.Post.ID] }}</td>
         <td>{{ postWithRelation.Post.UpdatedAt | relativeTime }}</td>
         <td class="no-padding">
           <div class="cell-actions">

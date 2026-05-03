@@ -60,7 +60,7 @@
         <td>{{ postItem.Slug }}</td>
         <td>{{ sui.PostStatusBadge(postItem.Status) }}</td>
         <td>{% if postItem.DeletedAt %}{{ postItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.posts.restore', id=postItem.ID) }}">
               {{ _csrf_token() }}
@@ -104,7 +104,7 @@
         <td>{{ encryptedPostItem.Title }}</td>
         <td>{{ encryptedPostItem.Slug }}</td>
         <td>{% if encryptedPostItem.DeletedAt %}{{ encryptedPostItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.encrypted_posts.restore', id=encryptedPostItem.ID) }}">
               {{ _csrf_token() }}
@@ -148,7 +148,7 @@
         <td>{{ tagItem.Name }}</td>
         <td>{{ tagItem.Slug }}</td>
         <td>{% if tagItem.DeletedAt %}{{ tagItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.tags.restore', id=tagItem.ID) }}">
               {{ _csrf_token() }}
@@ -196,7 +196,7 @@
         <td>{% if categoryItem.ParentID == 0 %}-{% else %}{{ categoryItem.ParentID }}{% endif %}</td>
         <td>{{ categoryItem.Description }}</td>
         <td>{% if categoryItem.DeletedAt %}{{ categoryItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.categories.restore', id=categoryItem.ID) }}">
               {{ _csrf_token() }}
@@ -240,7 +240,7 @@
         <td>{{ redirectItem.From }}</td>
         <td>{{ redirectItem.To }}</td>
         <td>{% if redirectItem.DeletedAt %}{{ redirectItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.redirects.restore', id=redirectItem.ID) }}">
               {{ _csrf_token() }}
@@ -288,7 +288,7 @@
         <td>{{ themeItem.Author or '-' }}</td>
         <td>{% if themeItem.IsBuiltin == 1 %}<span class="ui-badge">是</span>{% else %}-{% endif %}</td>
         <td>{% if themeItem.DeletedAt %}{{ themeItem.DeletedAt | relativeTime }}{% else %}-{% endif %}</td>
-        <td>
+        <td class="no-padding">
           <div class="cell-actions">
             <form method="post" action="{{ UrlFor('dash.trash.themes.restore', id=themeItem.ID) }}">
               {{ _csrf_token() }}

@@ -39,12 +39,11 @@
         <tr>
           <th>{{ sui.TableThId() }}</th>
           <th>名称</th>
-          <th>编码</th>
-          <th>作者</th>
+          <th class="hide-mobile">作者</th>
           <th>状态</th>
           <th>当前</th>
-          <th>内置</th>
-          <th>版本</th>
+          <th class="hide-mobile">内置</th>
+          <th class="hide-mobile">版本</th>
           <th>更新时间</th>
           <th>操作</th>
         </tr>
@@ -53,15 +52,24 @@
         {% for theme in Themes %}
           <tr>
             <td>{{ sui.TableTdId(theme.ID) }}</td>
-            <td>{{ theme.Name }}</td>
-            <td>{{ theme.Code }}</td>
-            <td>{{ theme.Author or '-' }}</td>
-            <td>{{ theme.Status }}</td>
-            <td>{% if theme.IsCurrent == 1 %}<span class="ui-badge success">是</span>{% else %}-{% endif %}</td>
-            <td>{% if theme.IsBuiltin == 1 %}<span class="ui-badge">是</span>{% else %}-{% endif %}</td>
-            <td>{{ theme.Version }}</td>
-            <td>{{ theme.UpdatedAt | formatTime }}</td>
             <td>
+              <a href="{{ UrlFor('dash.themes.edit', id=theme.ID) }}" title="{{ theme.Code }}">{{ theme.Name }}</a>
+            </td>
+            <td class="hide-mobile">{{ theme.Author or '-' }}</td>
+            <td>
+              {% if theme.Status == "published" %}
+                <span class="ui-badge success">已发布</span>
+              {% elif theme.Status == "draft" %}
+                <span class="ui-badge draft">草稿</span>
+              {% else %}
+                <span class="ui-badge">{{ theme.Status }}</span>
+              {% endif %}
+            </td>
+            <td>{% if theme.IsCurrent == 1 %}<span class="ui-badge success">是</span>{% else %}-{% endif %}</td>
+            <td class="hide-mobile">{% if theme.IsBuiltin == 1 %}<span class="ui-badge">是</span>{% else %}-{% endif %}</td>
+            <td class="hide-mobile">{{ theme.Version }}</td>
+            <td>{{ theme.UpdatedAt | formatTime }}</td>
+            <td class="no-padding">
               <div class="cell-actions">
                 {{ sui.LinkIcon("square-pen", UrlFor('dash.themes.edit', id=theme.ID), attrs='aria-label="编辑" data-title="编辑"') }}
                 {{ sui.LinkIcon("download", UrlFor('dash.themes.export', id=theme.ID), attrs='aria-label="导出" data-title="导出"') }}
@@ -75,7 +83,7 @@
                   {{ sui.IconAction("trash-2", "删除", attrs='data-title="删除"', button_type="submit") }}
                 </form>
                 {% endif %}
-                {% if theme.IsCurrent != 1 %}
+                {% if theme.IsCurrent != 1 and theme.Status != "draft" %}
                 <form method="post" action="{{ UrlFor('dash.themes.set_current', id=theme.ID) }}">
                   {{ _csrf_token() }}
                   {{ sui.IconAction("circle-check-big", "设为当前", attrs='data-title="设为当前"', button_type="submit") }}

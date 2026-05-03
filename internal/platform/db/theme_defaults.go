@@ -58,7 +58,7 @@ func newDefaultTheme() (*Theme, error) {
 		Author:      "swaves",
 		Files:       string(filesJSON),
 		CurrentFile: "home.html",
-		Status:      "draft",
+		Status:      "published",
 		IsCurrent:   1,
 		IsBuiltin:   1,
 		Version:     1,

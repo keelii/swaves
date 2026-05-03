@@ -33,7 +33,7 @@
     <th>作者</th>
     <th>内容</th>
     <th>状态</th>
-    <th>时间</th>
+    <th class="hide-mobile">时间</th>
     <th>操作</th>
   </tr>
   </thead>
@@ -70,7 +70,7 @@
           <span class="ui-badge draft">待审核</span>
         {% endif %}{% endif %}
       </td>
-      <td>{{ comment.CreatedAt | relativeTime }}</td>
+      <td class="hide-mobile">{{ comment.CreatedAt | relativeTime }}</td>
       <td>
         <div class="cell-actions">
           {% if comment.Status != "approved" %}

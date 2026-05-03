@@ -128,7 +128,7 @@
 {% endblock %}
 {% block window_toolbar_main_right %}
 <div class="app-valign">
-  {% if Theme.IsCurrent != 1 %}
+  {% if Theme.IsCurrent != 1 and Theme.Status != "draft" %}
     <form method="post" action="{{ UrlFor('dash.themes.set_current', id=Theme.ID) }}">
       {{ _csrf_token() }}
       {{ sui.Button("设为当前", "outline", attrs='type="submit"') }}
@@ -183,6 +183,7 @@
           <div class="ui-form" style="padding-right: var(--app-spacing);">
             {{ sui.Field("主题编码", sui.Input(id="theme-code", value=Theme.Code, attrs="disabled"), id="theme-code") }}
             {{ sui.Field("主题名称", sui.Input(id="theme-name", name="name", value=Theme.Name, placeholder="主题名称", attrs="required"), id="theme-name", required=true) }}
+            {{ sui.Field("状态", sui.SelectInput(ThemeStatusOptions, id="theme-status", name="status", value=Theme.Status), id="theme-status") }}
             {{ sui.Field("作者", sui.Input(id="theme-author", name="author", value=Theme.Author, placeholder="主题作者"), id="theme-author") }}
             {{ sui.Field("描述", sui.Textarea(id="theme-description", name="description", value=Theme.Description, rows=3, placeholder="主题说明"), id="theme-description") }}
           </div>
@@ -338,6 +339,7 @@
         syncEditorValue(ctx);
         return JSON.stringify({
           name: ctx.form.elements.name ? ctx.form.elements.name.value : '',
+          status: ctx.form.elements.status ? ctx.form.elements.status.value : '',
           author: ctx.form.elements.author ? ctx.form.elements.author.value : '',
           description: ctx.form.elements.description ? ctx.form.elements.description.value : '',
           current_content: ctx.textarea.value || ''

@@ -23,12 +23,11 @@
         <tr>
           <th>{{ sui.TableThId() }}</th>
           <th>名称</th>
-          <th>URL 标识</th>
-          <th>父级</th>
-          <th>描述</th>
-          <th>排序</th>
-          <th>文章数量</th>
-          <th>创建时间</th>
+          <th class="hide-mobile">父级</th>
+          <th class="hide-mobile">描述</th>
+          <th class="hide-mobile">排序</th>
+          <th class="hide-mobile">文章数量</th>
+          <th class="hide-mobile">创建时间</th>
           <th>更新时间</th>
           <th>操作</th>
         </tr>
@@ -37,24 +36,24 @@
         {% for category in Categories %}
           <tr data-batch-delete-id="{{ category.ID }}">
             <td>{{ sui.TableTdId(category.ID) }}</td>
-            <td>{{ category.Name }}</td>
             <td>
-              <a href="{{ GetCategoryUrl(category.Slug) }}" target="_blank" rel="noopener">{{ category.Slug }}</a>
+              <a href="{{ UrlFor('dash.categories.edit', id=category.ID) }}" title="{{ category.Slug }}">{{ category.Name }}</a>
             </td>
-            <td>
+            <td class="hide-mobile">
               {% if category.ParentID == 0 %}
                 -
               {% else %}
                 {{ ParentMap[category.ID] }}
               {% endif %}
             </td>
-            <td>
+            <td class="hide-mobile">
               <div class="cell-s-content">
-                {% if category.Description %}{{ category.Description }}{% else %}-{% endif %}</td>
+                {% if category.Description %}{{ category.Description }}{% else %}-{% endif %}
               </div>
-            <td>{{ category.Sort }}</td>
-            <td><a href="{{ UrlFor('dash.posts.list', {"kind":"0", "category":category.ID}) }}">{{ PostCounts[category.ID] }}</a></td>
-            <td>{{ category.CreatedAt | relativeTime }}</td>
+            </td>
+            <td class="hide-mobile">{{ category.Sort }}</td>
+            <td class="hide-mobile"><a href="{{ UrlFor('dash.posts.list', {"kind":"0", "category":category.ID}) }}">{{ PostCounts[category.ID] }}</a></td>
+            <td class="hide-mobile">{{ category.CreatedAt | relativeTime }}</td>
             <td>{{ category.UpdatedAt | relativeTime }}</td>
             <td class="no-padding">
               <div class="cell-actions">
