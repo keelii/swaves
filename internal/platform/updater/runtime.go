@@ -38,8 +38,9 @@ var (
 )
 
 var (
-	runtimeCacheRoot string
-	runtimeCacheMu   sync.RWMutex
+	runtimeCacheRoot                                string
+	runtimeCacheMu                                  sync.RWMutex
+	runtimeExecutableVerificationUnsupportedLogOnce sync.Once
 )
 
 var runtimeProcessExecutablePath = processExecutablePath
@@ -218,7 +219,9 @@ func verifyRuntimeExecutable(info RuntimeInfo) error {
 		return fmt.Errorf("verify master executable failed: pid=%d: %w", info.PID, err)
 	}
 	if !supported {
-		logger.Warn("[update] active runtime executable verification unavailable on %s", runtime.GOOS)
+		runtimeExecutableVerificationUnsupportedLogOnce.Do(func() {
+			logger.Info("[update] active runtime executable verification unavailable on %s", runtime.GOOS)
+		})
 		return nil
 	}
 	if !sameExecutablePath(actual, info.Executable) {
@@ -236,9 +239,16 @@ func processExecutablePath(pid int) (string, bool, error) {
 		if os.IsNotExist(err) {
 			return "", true, ErrMasterNotRunning
 		}
+		if isProcessExecutablePermissionError(err) {
+			return "", false, nil
+		}
 		return "", true, err
 	}
 	return path, true, nil
+}
+
+func isProcessExecutablePermissionError(err error) bool {
+	return errors.Is(err, syscall.EACCES) || errors.Is(err, syscall.EPERM)
 }
 
 func sameExecutablePath(left string, right string) bool {

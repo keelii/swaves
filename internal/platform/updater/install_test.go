@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestInstallLocalReleaseArchiveRejectsWrongPlatform(t *testing.T) {
@@ -237,6 +238,47 @@ func TestReplaceExecutableAtPathRollsBackOnExplicitCall(t *testing.T) {
 	}
 	if string(got) != "old-binary" {
 		t.Fatalf("回滚后内容=%q，期望 old-binary", string(got))
+	}
+}
+
+func TestCopyFilePreservesModeAndModTime(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("mode bits are not portable on Windows")
+	}
+
+	tmpDir := t.TempDir()
+	srcPath := filepath.Join(tmpDir, "src")
+	dstPath := filepath.Join(tmpDir, "dst")
+	mode := os.FileMode(02755)
+	modTime := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+
+	if err := os.WriteFile(srcPath, []byte("binary"), mode); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	if err := os.Chmod(srcPath, mode); err != nil {
+		t.Fatalf("Chmod failed: %v", err)
+	}
+	if err := os.Chtimes(srcPath, modTime, modTime); err != nil {
+		t.Fatalf("Chtimes failed: %v", err)
+	}
+	srcInfo, err := os.Stat(srcPath)
+	if err != nil {
+		t.Fatalf("source Stat failed: %v", err)
+	}
+
+	if err := copyFile(srcPath, dstPath); err != nil {
+		t.Fatalf("copyFile failed: %v", err)
+	}
+
+	info, err := os.Stat(dstPath)
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+	if info.Mode() != srcInfo.Mode() {
+		t.Fatalf("mode=%v, want %v", info.Mode(), srcInfo.Mode())
+	}
+	if !info.ModTime().Equal(srcInfo.ModTime()) {
+		t.Fatalf("modtime=%v, want %v", info.ModTime(), srcInfo.ModTime())
 	}
 }
 

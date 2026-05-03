@@ -669,6 +669,12 @@ func copyFile(srcPath string, dstPath string) error {
 	if err := dst.Close(); err != nil {
 		return err
 	}
+	if err := os.Chmod(dstPath, info.Mode()); err != nil {
+		return err
+	}
+	if err := os.Chtimes(dstPath, info.ModTime(), info.ModTime()); err != nil {
+		return err
+	}
 	return nil
 }
 

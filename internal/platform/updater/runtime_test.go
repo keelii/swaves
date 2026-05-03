@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 )
 
@@ -30,10 +32,12 @@ func resetRuntimeCacheRoot(t *testing.T) {
 	runtimeCacheMu.Lock()
 	original := runtimeCacheRoot
 	runtimeCacheRoot = ""
+	runtimeExecutableVerificationUnsupportedLogOnce = sync.Once{}
 	runtimeCacheMu.Unlock()
 	t.Cleanup(func() {
 		runtimeCacheMu.Lock()
 		runtimeCacheRoot = original
+		runtimeExecutableVerificationUnsupportedLogOnce = sync.Once{}
 		runtimeCacheMu.Unlock()
 	})
 }
@@ -178,5 +182,38 @@ func TestReadActiveRuntimeInfoRejectsExecutableMismatch(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "master process executable mismatch") {
 		t.Fatalf("ReadActiveRuntimeInfo error = %q, want executable mismatch", err.Error())
+	}
+}
+
+func TestReadActiveRuntimeInfoAllowsUnsupportedExecutableVerification(t *testing.T) {
+	base := t.TempDir()
+	withUpdaterWorkingDir(t, base)
+	resetRuntimeCacheRoot(t)
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return "", false, nil
+	})
+
+	want := RuntimeInfo{PID: os.Getpid(), Executable: filepath.Join(base, "swaves")}
+	if err := WriteRuntimeInfo(want); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	got, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadActiveRuntimeInfo failed: %v", err)
+	}
+	if got.PID != want.PID || got.Executable != want.Executable {
+		t.Fatalf("ReadActiveRuntimeInfo = %#v, want %#v", got, want)
+	}
+}
+
+func TestProcessExecutablePermissionErrorIsUnsupported(t *testing.T) {
+	for _, err := range []error{syscall.EACCES, syscall.EPERM} {
+		if !isProcessExecutablePermissionError(err) {
+			t.Fatalf("isProcessExecutablePermissionError(%v) = false, want true", err)
+		}
+	}
+	if isProcessExecutablePermissionError(os.ErrNotExist) {
+		t.Fatal("isProcessExecutablePermissionError(os.ErrNotExist) = true, want false")
 	}
 }
