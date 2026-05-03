@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -259,6 +260,38 @@ func TestRunUtilityCommandRuntimeVersionHandlesMissingRuntimeInfo(t *testing.T) 
 	}
 	if !strings.Contains(out, "runtime info file not found") {
 		t.Fatalf("expected runtime error in stdout, got %q", out)
+	}
+}
+
+func TestReadRuntimeInfoForUtilityCommandReadsWorkingDirectoryCache(t *testing.T) {
+	tmpDir := t.TempDir()
+	withCLIWorkingDir(t, tmpDir)
+	if err := updater.ConfigureRuntimeCacheRoot(filepath.Join(tmpDir, "other", "data.sqlite")); err != nil {
+		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
+	}
+	t.Cleanup(func() { resetCLIRuntimeCacheRoot(t) })
+	resetCLIRuntimeCacheRoot(t)
+
+	cacheRoot := filepath.Join(tmpDir, updater.RuntimeCacheDir)
+	if err := updater.MigrateRuntimeInfoAtCacheRoot(cacheRoot); err != nil {
+		t.Fatalf("MigrateRuntimeInfoAtCacheRoot failed: %v", err)
+	}
+	if err := writeRuntimeInfoForCLITest(cacheRoot, updater.RuntimeInfo{
+		PID:        1003,
+		Executable: filepath.Join(tmpDir, "swaves"),
+		Args:       []string{filepath.Join(tmpDir, "swaves"), "data.sqlite"},
+		WorkingDir: tmpDir,
+		SQLiteFile: "data.sqlite",
+	}); err != nil {
+		t.Fatalf("writeRuntimeInfoForCLITest failed: %v", err)
+	}
+
+	info, err := readRuntimeInfoForUtilityCommand()
+	if err != nil {
+		t.Fatalf("readRuntimeInfoForUtilityCommand failed: %v", err)
+	}
+	if got := runtimeSQLiteFile(info); got != filepath.Join(tmpDir, "data.sqlite") {
+		t.Fatalf("runtime sqlite file = %q, want %q", got, filepath.Join(tmpDir, "data.sqlite"))
 	}
 }
 
@@ -716,4 +749,35 @@ func TestParseAppConfigRejectsInvalidEnvBool(t *testing.T) {
 	if !strings.Contains(err.Error(), "invalid SWAVES_ENABLE_SQL_LOG") {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func withCLIWorkingDir(t *testing.T, dir string) {
+	t.Helper()
+
+	original, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%s) failed: %v", dir, err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(original); err != nil {
+			t.Fatalf("restore working directory failed: %v", err)
+		}
+	})
+}
+
+func resetCLIRuntimeCacheRoot(t *testing.T) {
+	t.Helper()
+	if err := updater.ConfigureRuntimeCacheRoot(filepath.Join(t.TempDir(), "data.sqlite")); err != nil {
+		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
+	}
+}
+
+func writeRuntimeInfoForCLITest(cacheRoot string, info updater.RuntimeInfo) error {
+	if err := updater.ConfigureRuntimeCacheRoot(filepath.Join(filepath.Dir(cacheRoot), "data.sqlite")); err != nil {
+		return err
+	}
+	return updater.WriteRuntimeInfo(info)
 }

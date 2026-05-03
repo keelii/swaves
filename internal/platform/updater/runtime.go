@@ -98,6 +98,14 @@ func RuntimeCachePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return RuntimeInfoPathAtCacheRoot(root)
+}
+
+func RuntimeInfoPathAtCacheRoot(root string) (string, error) {
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return "", fmt.Errorf("runtime cache root is required")
+	}
 	return filepath.Join(root, RuntimeInfoName), nil
 }
 
@@ -211,13 +219,27 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s: %w", path, ErrRuntimeInfoNotFound)
 }
 
+func ReadRuntimeInfoAtCacheRoot(root string) (RuntimeInfo, error) {
+	path, err := RuntimeInfoPathAtCacheRoot(root)
+	if err != nil {
+		return RuntimeInfo{}, err
+	}
+	return readRuntimeInfoAtPath(path)
+}
+
 func MigrateRuntimeInfo() error {
 	root, err := RuntimeCacheRoot()
 	if err != nil {
 		return err
 	}
+	return MigrateRuntimeInfoAtCacheRoot(root)
+}
 
-	currentPath := filepath.Join(root, RuntimeInfoName)
+func MigrateRuntimeInfoAtCacheRoot(root string) error {
+	currentPath, err := RuntimeInfoPathAtCacheRoot(root)
+	if err != nil {
+		return err
+	}
 	if _, err := os.Stat(currentPath); err == nil {
 		return nil
 	} else if !os.IsNotExist(err) {

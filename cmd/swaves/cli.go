@@ -53,7 +53,7 @@ var (
 
 var checkLatestRelease = updater.CheckLatestRelease
 var installLatestRelease = updater.InstallLatestReleaseCLI
-var readRuntimeInfo = updater.ReadRuntimeInfo
+var readRuntimeInfo = readRuntimeInfoForUtilityCommand
 
 type mainConfig struct {
 	AppConfig   types.AppConfig
@@ -280,6 +280,29 @@ func fallbackVersionLabel(version string) string {
 		return "unknown"
 	}
 	return version
+}
+
+func readRuntimeInfoForUtilityCommand() (updater.RuntimeInfo, error) {
+	root, err := utilityRuntimeCacheRoot()
+	if err != nil {
+		return updater.RuntimeInfo{}, err
+	}
+	if err := updater.MigrateRuntimeInfoAtCacheRoot(root); err != nil {
+		return updater.RuntimeInfo{}, err
+	}
+	return updater.ReadRuntimeInfoAtCacheRoot(root)
+}
+
+func utilityRuntimeCacheRoot() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolve working directory failed: %w", err)
+	}
+	wd = strings.TrimSpace(wd)
+	if wd == "" {
+		return "", fmt.Errorf("resolve working directory failed: empty working directory")
+	}
+	return filepath.Join(wd, updater.RuntimeCacheDir), nil
 }
 
 func configureUpgradeCacheRoot() error {
