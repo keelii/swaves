@@ -837,6 +837,12 @@ button.ui-icon-btn:active:not(:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.is-mobile .ui-icon-btn {
+  padding: 0 5px;
+}
+.is-mobile .ui-page-ellipsis {
+  padding: 0;
+}
 
 a.ui-icon-btn[disabled] {
   pointer-events: none;
@@ -1583,6 +1589,7 @@ a.ui-icon-btn[disabled] {
   display: flex;
   align-items: center;
   gap: var(--app-gap-2);
+  justify-content: space-between;
 }
 
 .app-main-toolbar .left {
@@ -1609,7 +1616,7 @@ a.ui-icon-btn[disabled] {
 .app-toolbar-slot.left,
 .app-toolbar-slot.center,
 .app-toolbar-slot.right {
-  flex: 1 1 0;
+  /*flex: 1 1 0;*/
 }
 
 .app-window .app-panel-toolbar.main-toggle-hidden [data-role="toggle-menu-collapse"],
@@ -2018,6 +2025,11 @@ body.is-mobile .main-status-bar .list-status-grid .status-slot.right .ui-tags[ar
 }
 
 body.is-mobile .hide-mobile {
+  display: none !important;
+}
+
+body.is-mobile .data-table[data-role="data-table"] thead th:first-child,
+body.is-mobile .data-table[data-role="data-table"] tbody td:first-child {
   display: none !important;
 }
 
