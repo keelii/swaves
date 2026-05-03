@@ -45,9 +45,21 @@ func resetRuntimeCacheRoot(t *testing.T) {
 
 func configureTestRuntimeCacheRoot(t *testing.T, base string) {
 	t.Helper()
-	if err := ConfigureRuntimeCacheRoot(filepath.Join(base, "data.sqlite")); err != nil {
+	configureTestRuntimeCacheRootWithSQLite(t, filepath.Join(base, "data.sqlite"))
+}
+
+func configureTestRuntimeCacheRootWithSQLite(t *testing.T, sqliteFile string) {
+	t.Helper()
+	if err := ConfigureRuntimeCacheRoot(sqliteFile); err != nil {
 		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
 	}
+}
+
+func setTestRuntimeCacheRoot(t *testing.T, root string) {
+	t.Helper()
+	runtimeCacheMu.Lock()
+	runtimeCacheRoot = root
+	runtimeCacheMu.Unlock()
 }
 
 func stubRuntimeProcessExecutablePath(t *testing.T, fn func(pid int) (string, bool, error)) {
@@ -134,6 +146,66 @@ func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
 	want := "runtime info file not found: path=" + filepath.Join(base, RuntimeCacheDir, RuntimeInfoName)
 	if !strings.Contains(err.Error(), want) {
 		t.Fatalf("ReadRuntimeInfo error = %q, want substring %q", err.Error(), want)
+	}
+}
+
+func TestConfigureRuntimeCacheRootMigratesRuntimeInfoFromUpdaterPath(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+
+	root := filepath.Join(base, RuntimeCacheDir)
+	setTestRuntimeCacheRoot(t, root)
+	want := RuntimeInfo{PID: 1234, Executable: filepath.Join(base, "swaves")}
+	fallbackPath := filepath.Join(root, UpgradeCacheDirName, RuntimeInfoName)
+	if err := writeRuntimeInfoAtPath(fallbackPath, want); err != nil {
+		t.Fatalf("writeRuntimeInfoAtPath fallback failed: %v", err)
+	}
+
+	configureTestRuntimeCacheRootWithSQLite(t, filepath.Join(base, "data.sqlite"))
+
+	currentPath := filepath.Join(root, RuntimeInfoName)
+	if _, err := os.Stat(currentPath); err != nil {
+		t.Fatalf("expected runtime info to migrate to current path: %v", err)
+	}
+	if _, err := os.Stat(fallbackPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected source runtime info removed after migration, got err=%v", err)
+	}
+	got, err := ReadRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadRuntimeInfo failed: %v", err)
+	}
+	if got.PID != want.PID || got.Executable != want.Executable {
+		t.Fatalf("ReadRuntimeInfo = %#v, want %#v", got, want)
+	}
+}
+
+func TestConfigureRuntimeCacheRootMigratesRuntimeInfoFromPreviousSwavesPath(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+
+	root := filepath.Join(base, RuntimeCacheDir)
+	setTestRuntimeCacheRoot(t, root)
+	want := RuntimeInfo{PID: 1234, Executable: filepath.Join(base, "swaves")}
+	fallbackPath := filepath.Join(root, previousRuntimeCacheDirName, RuntimeInfoName)
+	if err := writeRuntimeInfoAtPath(fallbackPath, want); err != nil {
+		t.Fatalf("writeRuntimeInfoAtPath fallback failed: %v", err)
+	}
+
+	configureTestRuntimeCacheRootWithSQLite(t, filepath.Join(base, "data.sqlite"))
+
+	currentPath := filepath.Join(root, RuntimeInfoName)
+	if _, err := os.Stat(currentPath); err != nil {
+		t.Fatalf("expected runtime info to migrate to current path: %v", err)
+	}
+	if _, err := os.Stat(fallbackPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected source runtime info removed after migration, got err=%v", err)
+	}
+	got, err := ReadRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadRuntimeInfo failed: %v", err)
+	}
+	if got.PID != want.PID || got.Executable != want.Executable {
+		t.Fatalf("ReadRuntimeInfo = %#v, want %#v", got, want)
 	}
 }
 
