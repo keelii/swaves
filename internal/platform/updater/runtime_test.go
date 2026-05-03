@@ -38,6 +38,16 @@ func resetRuntimeCacheRoot(t *testing.T) {
 	})
 }
 
+func stubRuntimeProcessExecutablePath(t *testing.T, fn func(pid int) (string, bool, error)) {
+	t.Helper()
+
+	original := runtimeProcessExecutablePath
+	runtimeProcessExecutablePath = fn
+	t.Cleanup(func() {
+		runtimeProcessExecutablePath = original
+	})
+}
+
 func TestRuntimeInfoPathUsesProcessCacheRoot(t *testing.T) {
 	base := t.TempDir()
 	withUpdaterWorkingDir(t, base)
@@ -108,6 +118,28 @@ func TestConfigureRuntimeCacheRootUsesSQLiteDirectory(t *testing.T) {
 	}
 }
 
+func TestCreateUpgradeTempDirUsesUpdaterCacheRoot(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+
+	if err := ConfigureRuntimeCacheRoot(filepath.Join(base, "data.sqlite")); err != nil {
+		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
+	}
+
+	got, err := CreateUpgradeTempDir(".swaves-upgrade-")
+	if err != nil {
+		t.Fatalf("CreateUpgradeTempDir failed: %v", err)
+	}
+
+	wantParent := filepath.Join(base, ".cache", UpgradeCacheDirName)
+	if filepath.Dir(got) != wantParent {
+		t.Fatalf("upgrade temp dir parent = %q, want %q", filepath.Dir(got), wantParent)
+	}
+	if info, err := os.Stat(got); err != nil || !info.IsDir() {
+		t.Fatalf("upgrade temp dir missing or not dir: info=%v err=%v", info, err)
+	}
+}
+
 func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
 	base := t.TempDir()
 	withUpdaterWorkingDir(t, base)
@@ -125,5 +157,26 @@ func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
 	want := "runtime info file not found: path=" + filepath.Join(wd, runtimeInfoRelativePath())
 	if !strings.Contains(err.Error(), want) {
 		t.Fatalf("ReadRuntimeInfo error = %q, want substring %q", err.Error(), want)
+	}
+}
+
+func TestReadActiveRuntimeInfoRejectsExecutableMismatch(t *testing.T) {
+	base := t.TempDir()
+	withUpdaterWorkingDir(t, base)
+	resetRuntimeCacheRoot(t)
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return filepath.Join(base, "other"), true, nil
+	})
+
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: os.Getpid(), Executable: filepath.Join(base, "swaves")}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	_, err := ReadActiveRuntimeInfo()
+	if err == nil {
+		t.Fatal("ReadActiveRuntimeInfo error = nil, want executable mismatch")
+	}
+	if !strings.Contains(err.Error(), "master process executable mismatch") {
+		t.Fatalf("ReadActiveRuntimeInfo error = %q, want executable mismatch", err.Error())
 	}
 }

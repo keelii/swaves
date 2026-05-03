@@ -203,6 +203,10 @@ func runUpgradeCommand(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 	if !checkOnly {
+		if err := configureUpgradeCacheRoot(); err != nil {
+			_, _ = fmt.Fprintf(stderr, "upgrade failed: %v\n", err)
+			return 2
+		}
 		result, err := installLatestRelease(buildinfo.Version, runtime.GOOS, runtime.GOARCH)
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "upgrade failed: %v\n", err)
@@ -267,6 +271,18 @@ func fallbackVersionLabel(version string) string {
 		return "unknown"
 	}
 	return version
+}
+
+func configureUpgradeCacheRoot() error {
+	cfg := defaultAppConfig()
+	if err := applyEnvAppConfig(&cfg); err != nil {
+		return err
+	}
+	normalizeAppConfig(&cfg)
+	if cfg.SqliteFile == "" {
+		return fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade")
+	}
+	return updater.ConfigureRuntimeCacheRoot(cfg.SqliteFile)
 }
 
 func hashPassword(raw string) (string, error) {
@@ -524,6 +540,7 @@ Usage:
 
 	Notes:
 	  upgrade --check only checks the latest stable GitHub release for the current platform.
+	  upgrade requires SWAVES_SQLITE_FILE so temporary files stay under the database .cache directory.
 	  upgrade downloads the latest stable GitHub release for the current platform and replaces the current executable.
 	`) + "\n"
 }

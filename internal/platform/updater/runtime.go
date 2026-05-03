@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"swaves/internal/platform/logger"
 	"swaves/internal/shared/pathutil"
@@ -22,8 +23,9 @@ type RuntimeInfo struct {
 }
 
 const (
-	RuntimeCacheDir = ".cache"
-	RuntimeInfoName = "master_runtime.json"
+	RuntimeCacheDir     = ".cache"
+	RuntimeInfoName     = "master_runtime.json"
+	UpgradeCacheDirName = "updater"
 )
 
 var DefaultBackupDir = filepath.Join(RuntimeCacheDir, "backups")
@@ -39,6 +41,8 @@ var (
 	runtimeCacheRoot string
 	runtimeCacheMu   sync.RWMutex
 )
+
+var runtimeProcessExecutablePath = processExecutablePath
 
 func ConfigureRuntimeCacheRoot(sqliteFile string) error {
 	root, err := pathutil.EnsureDatabaseCacheRoot(sqliteFile)
@@ -72,6 +76,30 @@ func RuntimeCachePath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(root, RuntimeInfoName), nil
+}
+
+func UpgradeCacheDir() (string, error) {
+	root, err := RuntimeCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(root, UpgradeCacheDirName)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("create updater cache dir failed: %w", err)
+	}
+	return dir, nil
+}
+
+func CreateUpgradeTempDir(pattern string) (string, error) {
+	root, err := UpgradeCacheDir()
+	if err != nil {
+		return "", err
+	}
+	dir, err := os.MkdirTemp(root, pattern)
+	if err != nil {
+		return "", fmt.Errorf("create updater temp dir failed: %w", err)
+	}
+	return dir, nil
 }
 
 func RuntimeInfoPath() string {
@@ -166,6 +194,10 @@ func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
 		logger.Warn("[update] active runtime missing process: master_pid=%d executable=%s", info.PID, info.Executable)
 		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d: %w", info.PID, ErrMasterNotRunning)
 	}
+	if err := verifyRuntimeExecutable(info); err != nil {
+		logger.Warn("[update] active runtime executable verification failed: master_pid=%d executable=%s err=%v", info.PID, info.Executable, err)
+		return RuntimeInfo{}, err
+	}
 	return info, nil
 }
 
@@ -178,6 +210,54 @@ func defaultProcessExists(pid int) bool {
 		return false
 	}
 	return proc.Signal(syscall.Signal(0)) == nil
+}
+
+func verifyRuntimeExecutable(info RuntimeInfo) error {
+	actual, supported, err := runtimeProcessExecutablePath(info.PID)
+	if err != nil {
+		return fmt.Errorf("verify master executable failed: pid=%d: %w", info.PID, err)
+	}
+	if !supported {
+		logger.Warn("[update] active runtime executable verification unavailable on %s", runtime.GOOS)
+		return nil
+	}
+	if !sameExecutablePath(actual, info.Executable) {
+		return fmt.Errorf("master process executable mismatch: pid=%d expected=%s actual=%s: %w", info.PID, info.Executable, actual, ErrMasterNotRunning)
+	}
+	return nil
+}
+
+func processExecutablePath(pid int) (string, bool, error) {
+	if runtime.GOOS != "linux" {
+		return "", false, nil
+	}
+	path, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", true, ErrMasterNotRunning
+		}
+		return "", true, err
+	}
+	return path, true, nil
+}
+
+func sameExecutablePath(left string, right string) bool {
+	return cleanExecutablePath(left) == cleanExecutablePath(right)
+}
+
+func cleanExecutablePath(path string) string {
+	path = strings.TrimSpace(path)
+	path = strings.TrimSuffix(path, " (deleted)")
+	if path == "" {
+		return ""
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	if absPath, err := filepath.Abs(path); err == nil {
+		path = absPath
+	}
+	return filepath.Clean(path)
 }
 
 func RemoveRuntimeInfo() error {

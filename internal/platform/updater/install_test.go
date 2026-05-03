@@ -272,6 +272,9 @@ func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 	if err := WriteRuntimeInfo(RuntimeInfo{PID: sleepPID, Executable: fakeExe}); err != nil {
 		t.Fatalf("WriteRuntimeInfo 失败: %v", err)
 	}
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return fakeExe, true, nil
+	})
 
 	// 构建包含新二进制的归档
 	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
@@ -338,6 +341,9 @@ func TestInstallLocalSourceRequireMasterWithActiveMasterInstalls(t *testing.T) {
 	if err := WriteRuntimeInfo(RuntimeInfo{PID: sleepPID, Executable: fakeExe}); err != nil {
 		t.Fatalf("WriteRuntimeInfo 失败: %v", err)
 	}
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return fakeExe, true, nil
+	})
 
 	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
 	archivePath := filepath.Join(tmpDir, archiveName)
@@ -506,4 +512,3 @@ func newHTTPResponse(status int, body string) *http.Response {
 		Body:       io.NopCloser(strings.NewReader(body)),
 	}
 }
-
