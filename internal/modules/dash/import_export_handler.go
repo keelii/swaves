@@ -12,6 +12,7 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/shared/pathutil"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -478,16 +479,14 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 	// 生成导出文件名（包含时间戳）
 	name := strings.ToLower(c.App().Config().AppName) + "_export"
 
-	logger.Info("export to: tmp_dir=%s name=%s", os.TempDir(), name)
-
-	// 创建临时目录
-	tmpDir, err := os.MkdirTemp(os.TempDir(), name+"-")
+	tmpDir, err := createExportTempDir(h.Model.DSN, name)
 	if err != nil {
 		return renderImportView(c, fiber.Map{
 			"ImportExportTab": importExportTabExport,
 			"Error":           "Failed to create export directory: " + err.Error(),
 		})
 	}
+	logger.Info("export to: tmp_dir=%s name=%s", tmpDir, name)
 	cleanupTmpDir := func() {
 		if removeErr := os.RemoveAll(tmpDir); removeErr != nil {
 			logger.Warn("export cleanup temp dir failed: dir=%s err=%v", tmpDir, removeErr)
@@ -518,6 +517,18 @@ func (h *Handler) GetExportDownloadHandler(c fiber.Ctx) error {
 		})
 	}
 	return c.SendStream(stream)
+}
+
+func createExportTempDir(sqliteFile string, name string) (string, error) {
+	cacheRoot, err := pathutil.EnsureDatabaseCacheRoot(sqliteFile)
+	if err != nil {
+		return "", err
+	}
+	exportRoot := filepath.Join(cacheRoot, "exports")
+	if err := os.MkdirAll(exportRoot, 0o755); err != nil {
+		return "", fmt.Errorf("create export cache dir failed: %w", err)
+	}
+	return os.MkdirTemp(exportRoot, name+"-")
 }
 
 type cleanupFileStream struct {

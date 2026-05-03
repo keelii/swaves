@@ -164,7 +164,7 @@
     }
   </style>
 </head>
-<body>
+<body{% if IsMobile %} class="is-mobile"{% endif %}>
   <main class="install-page">
     {% if Error %}
       <div class="install-error">

@@ -110,10 +110,11 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 	target := installTarget{Path: targetPath, RuntimeInfo: restartRuntimeInfo}
 	logger.Info("[update] install target resolved: target=%s restart_pid=%d", target.Path, target.RestartPID())
 
-	pkg, skipped, err := c.prepareInstallPackage(source, currentVersion, goos, goarch, &result)
+	pkg, preparedResult, skipped, err := c.prepareInstallPackage(source, currentVersion, goos, goarch, result)
 	if err != nil {
 		return result, err
 	}
+	result = preparedResult
 	if skipped {
 		return result, nil
 	}
@@ -135,22 +136,22 @@ func (c Client) Install(source InstallSource, currentVersion string, goos string
 	return installPreparedPackage(result, pkg, target, tmpDir)
 }
 
-func (c Client) prepareInstallPackage(source InstallSource, currentVersion string, goos string, goarch string, result *InstallResult) (releasePackage, bool, error) {
+func (c Client) prepareInstallPackage(source InstallSource, currentVersion string, goos string, goarch string, result InstallResult) (releasePackage, InstallResult, bool, error) {
 	switch source.Kind {
 	case ArchiveSourceRemote:
 		return c.prepareRemotePackage(currentVersion, goos, goarch, result)
 	case ArchiveSourceLocal:
 		return prepareLocalPackage(source, result)
 	default:
-		return releasePackage{}, false, fmt.Errorf("unknown archive source: %d", source.Kind)
+		return releasePackage{}, result, false, fmt.Errorf("unknown archive source: %d", source.Kind)
 	}
 }
 
-func (c Client) prepareRemotePackage(currentVersion string, goos string, goarch string, result *InstallResult) (releasePackage, bool, error) {
+func (c Client) prepareRemotePackage(currentVersion string, goos string, goarch string, result InstallResult) (releasePackage, InstallResult, bool, error) {
 	check, err := c.CheckLatestRelease(currentVersion, goos, goarch)
 	if err != nil {
 		logger.Error("[update] install release check failed: current=%s target=%s/%s err=%v", versionLabel(currentVersion), goos, goarch, err)
-		return releasePackage{}, false, err
+		return releasePackage{}, result, false, err
 	}
 
 	result.LatestVersion = check.LatestVersion
@@ -158,24 +159,17 @@ func (c Client) prepareRemotePackage(currentVersion string, goos string, goarch 
 	if check.Target == nil {
 		resolvedGOOS, resolvedGOARCH := releasePlatform(goos, goarch)
 		logger.Warn("[update] install unsupported target: target=%s/%s", resolvedGOOS, resolvedGOARCH)
-		return releasePackage{}, false, fmt.Errorf("automatic upgrade is not supported on %s/%s", resolvedGOOS, resolvedGOARCH)
+		return releasePackage{}, result, false, fmt.Errorf("automatic upgrade is not supported on %s/%s", resolvedGOOS, resolvedGOARCH)
 	}
 
 	result.ArchiveName = check.Target.Archive.Name
 	logger.Info("[update] install release check result: latest=%s archive=%s reason=%s",
 		versionLabel(result.LatestVersion), result.ArchiveName, strings.TrimSpace(check.Reason))
 
-	if semverutil.IsStable(currentVersion) {
-		cmp, err := semverutil.Compare(currentVersion, check.LatestVersion)
-		if err != nil {
-			logger.Error("[update] install semver compare failed: current=%s latest=%s err=%v", currentVersion, check.LatestVersion, err)
-			return releasePackage{}, false, err
-		}
-		if cmp >= 0 {
-			result.Reason = check.Reason
-			logger.Info("[update] install skipped: current=%s latest=%s reason=%s", versionLabel(currentVersion), versionLabel(result.LatestVersion), strings.TrimSpace(result.Reason))
-			return releasePackage{}, true, nil
-		}
+	if !check.HasUpgrade {
+		result.Reason = check.Reason
+		logger.Info("[update] install skipped: current=%s latest=%s reason=%s", versionLabel(currentVersion), versionLabel(result.LatestVersion), strings.TrimSpace(result.Reason))
+		return releasePackage{}, result, true, nil
 	}
 
 	return releasePackage{
@@ -185,10 +179,10 @@ func (c Client) prepareRemotePackage(currentVersion string, goos string, goarch 
 		ArchiveURL:   check.Target.Archive.DownloadURL,
 		ChecksumName: check.Target.Checksum.Name,
 		ChecksumURL:  check.Target.Checksum.DownloadURL,
-	}, false, nil
+	}, result, false, nil
 }
 
-func prepareLocalPackage(source InstallSource, result *InstallResult) (releasePackage, bool, error) {
+func prepareLocalPackage(source InstallSource, result InstallResult) (releasePackage, InstallResult, bool, error) {
 	pkg := releasePackage{
 		Source:      ArchiveSourceLocal,
 		Version:     source.Version,
@@ -198,7 +192,7 @@ func prepareLocalPackage(source InstallSource, result *InstallResult) (releasePa
 	result.ArchiveName = pkg.ArchiveName
 	result.LatestVersion = pkg.Version
 	logger.Info("[update] install local archive: archive=%s version=%s path=%s", result.ArchiveName, result.LatestVersion, pkg.ArchivePath)
-	return pkg, false, nil
+	return pkg, result, false, nil
 }
 
 func (c Client) downloadReleasePackage(pkg releasePackage, tmpDir string) (releasePackage, error) {
@@ -635,16 +629,37 @@ func moveFile(srcPath string, dstPath string) error {
 		if !errors.Is(err, syscall.EXDEV) {
 			return err
 		}
-		if err := copyFile(srcPath, dstPath); err != nil {
-			_ = os.Remove(dstPath)
+		tmpPath, err := copyFileToTargetDir(srcPath, dstPath)
+		if err != nil {
+			return err
+		}
+		if err := os.Rename(tmpPath, dstPath); err != nil {
+			_ = os.Remove(tmpPath)
 			return err
 		}
 		if err := os.Remove(srcPath); err != nil {
-			_ = os.Remove(dstPath)
 			return err
 		}
 	}
 	return nil
+}
+
+func copyFileToTargetDir(srcPath string, dstPath string) (string, error) {
+	dstDir := filepath.Dir(dstPath)
+	tmp, err := os.CreateTemp(dstDir, ".swaves-copy-*")
+	if err != nil {
+		return "", err
+	}
+	tmpPath := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return "", err
+	}
+	if err := copyFile(srcPath, tmpPath); err != nil {
+		_ = os.Remove(tmpPath)
+		return "", err
+	}
+	return tmpPath, nil
 }
 
 func copyFile(srcPath string, dstPath string) error {

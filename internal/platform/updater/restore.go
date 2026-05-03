@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	RestoreCacheDirName         = "restore"
 	RestoreStatusIdle           = "idle"
 	RestoreStatusPending        = "pending"
 	RestoreStatusStoppingWorker = "stopping_worker"
@@ -34,16 +35,52 @@ type RestoreStatus struct {
 	UpdatedAt int64  `json:"updated_at"`
 }
 
-func defaultRestoreRequestPath() string {
-	return filepath.Join(filepath.Dir(RuntimeInfoPath()), "restore_request.json")
+func RestoreCacheDir() (string, error) {
+	root, err := RuntimeCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(root, RestoreCacheDirName)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("create restore cache dir failed: %w", err)
+	}
+	return dir, nil
 }
 
-func defaultRestoreStatusPath() string {
-	return filepath.Join(filepath.Dir(RuntimeInfoPath()), "restore_status.json")
+func CreateRestoreTempFile(pattern string) (*os.File, error) {
+	dir, err := RestoreCacheDir()
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.CreateTemp(dir, pattern)
+	if err != nil {
+		return nil, fmt.Errorf("create restore temp file failed: %w", err)
+	}
+	return file, nil
+}
+
+func defaultRestoreRequestPath() (string, error) {
+	path, err := RuntimeInfoPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(path), "restore_request.json"), nil
+}
+
+func defaultRestoreStatusPath() (string, error) {
+	path, err := RuntimeInfoPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(path), "restore_status.json"), nil
 }
 
 func WriteRestoreRequest(request RestoreRequest) error {
-	return WriteRestoreRequestAtPath(defaultRestoreRequestPath(), request)
+	path, err := defaultRestoreRequestPath()
+	if err != nil {
+		return err
+	}
+	return WriteRestoreRequestAtPath(path, request)
 }
 
 func WriteRestoreRequestAtPath(path string, request RestoreRequest) error {
@@ -58,7 +95,11 @@ func WriteRestoreRequestAtPath(path string, request RestoreRequest) error {
 }
 
 func ReadRestoreRequest() (RestoreRequest, error) {
-	return ReadRestoreRequestAtPath(defaultRestoreRequestPath())
+	path, err := defaultRestoreRequestPath()
+	if err != nil {
+		return RestoreRequest{}, err
+	}
+	return ReadRestoreRequestAtPath(path)
 }
 
 func ReadRestoreRequestAtPath(path string) (RestoreRequest, error) {
@@ -77,7 +118,11 @@ func ReadRestoreRequestAtPath(path string) (RestoreRequest, error) {
 }
 
 func RemoveRestoreRequest() error {
-	return RemoveRestoreRequestAtPath(defaultRestoreRequestPath())
+	path, err := defaultRestoreRequestPath()
+	if err != nil {
+		return err
+	}
+	return RemoveRestoreRequestAtPath(path)
 }
 
 func RemoveRestoreRequestAtPath(path string) error {
@@ -85,7 +130,11 @@ func RemoveRestoreRequestAtPath(path string) error {
 }
 
 func WriteRestoreStatus(status RestoreStatus) error {
-	return WriteRestoreStatusAtPath(defaultRestoreStatusPath(), status)
+	path, err := defaultRestoreStatusPath()
+	if err != nil {
+		return err
+	}
+	return WriteRestoreStatusAtPath(path, status)
 }
 
 func WriteRestoreStatusAtPath(path string, status RestoreStatus) error {
@@ -99,7 +148,11 @@ func WriteRestoreStatusAtPath(path string, status RestoreStatus) error {
 }
 
 func ReadRestoreStatus() (RestoreStatus, error) {
-	return ReadRestoreStatusAtPath(defaultRestoreStatusPath())
+	path, err := defaultRestoreStatusPath()
+	if err != nil {
+		return RestoreStatus{}, err
+	}
+	return ReadRestoreStatusAtPath(path)
 }
 
 func ReadRestoreStatusAtPath(path string) (RestoreStatus, error) {

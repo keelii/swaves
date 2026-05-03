@@ -466,7 +466,7 @@ func restoreWorkerProcess(listener net.Listener, active *workerProcess, cfg supe
 
 func cleanupRestoreSource(sourcePath string) {
 	base := filepath.Base(strings.TrimSpace(sourcePath))
-	if !strings.HasPrefix(base, ".swaves-restore-") {
+	if !strings.HasPrefix(base, ".swaves-restore-upload-") {
 		if strings.TrimSpace(sourcePath) != "" {
 			logger.Info("[master] cleanup restore source skipped: path=%s reason=not_managed_temp", sourcePath)
 		}
@@ -495,17 +495,40 @@ func replaceSQLiteDatabase(targetPath string, sourcePath string) (string, error)
 		return "", err
 	}
 
-	targetDir := filepath.Dir(targetPath)
-	if targetDir == "" {
-		targetDir = "."
+	stagedFile, err := updater.CreateRestoreTempFile(".swaves-restore-stage-*.sqlite")
+	if err != nil {
+		logger.Error("[master] replace sqlite database create staged file failed: err=%v", err)
+		return "", err
 	}
-	stagedPath := filepath.Join(targetDir, fmt.Sprintf(".swaves-restore-stage-%d.sqlite", time.Now().UnixNano()))
+	stagedPath := stagedFile.Name()
+	if err := stagedFile.Close(); err != nil {
+		_ = os.Remove(stagedPath)
+		logger.Error("[master] replace sqlite database close staged file failed: staged=%s err=%v", stagedPath, err)
+		return "", err
+	}
 	if err := copyFile(sourcePath, stagedPath); err != nil {
 		logger.Error("[master] replace sqlite database stage copy failed: source=%s staged=%s err=%v", sourcePath, stagedPath, err)
 		return "", fmt.Errorf("stage restore database failed: %w", err)
 	}
 
-	rollbackPath := filepath.Join(targetDir, fmt.Sprintf(".swaves-restore-backup-%d.sqlite", time.Now().UnixNano()))
+	rollbackFile, err := updater.CreateRestoreTempFile(".swaves-restore-backup-*.sqlite")
+	if err != nil {
+		_ = os.Remove(stagedPath)
+		logger.Error("[master] replace sqlite database create rollback file failed: err=%v", err)
+		return "", err
+	}
+	rollbackPath := rollbackFile.Name()
+	if err := rollbackFile.Close(); err != nil {
+		_ = os.Remove(stagedPath)
+		_ = os.Remove(rollbackPath)
+		logger.Error("[master] replace sqlite database close rollback file failed: rollback=%s err=%v", rollbackPath, err)
+		return "", err
+	}
+	if err := os.Remove(rollbackPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		_ = os.Remove(stagedPath)
+		logger.Error("[master] replace sqlite database remove rollback placeholder failed: rollback=%s err=%v", rollbackPath, err)
+		return "", fmt.Errorf("prepare rollback database path failed: %w", err)
+	}
 	renamedOld := false
 	defer func() {
 		if !renamedOld {

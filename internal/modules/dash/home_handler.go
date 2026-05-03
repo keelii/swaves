@@ -3,6 +3,7 @@ package dash
 import (
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/shared/webutil"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -78,6 +79,7 @@ func RenderDashView(c fiber.Ctx, view string, data fiber.Map, layout string) err
 	data["RouteName"] = routeName
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
+	data["IsMobile"] = webutil.IsMobileRequest(c)
 	data["_csrf_token_value"] = fiber.Locals[string](c, "CsrfToken")
 	data["NotificationUnreadCount"] = fiber.Locals[int](c, "DashNotificationUnreadCount")
 	injectDashFlash(c, data)

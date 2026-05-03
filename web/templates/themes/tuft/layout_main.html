@@ -16,7 +16,7 @@
   {% endif %}
   {% block head_extra %}{% endblock %}
 </head>
-<body>
+<body{% if IsMobile %} class="is-mobile"{% endif %}>
   <main>
       {% block content %}{% endblock %}
   </main>

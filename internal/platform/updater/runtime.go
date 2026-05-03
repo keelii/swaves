@@ -35,6 +35,8 @@ var (
 	ErrRuntimeInfoNotFound = errors.New("runtime info file not found")
 	// ErrMasterNotRunning 表示 runtime info 文件存在但 master 进程已不在运行。
 	ErrMasterNotRunning = errors.New("master process is not running")
+	// ErrRuntimeCacheRootNotConfigured 表示运行时缓存根目录尚未由 SQLite 文件位置配置。
+	ErrRuntimeCacheRootNotConfigured = errors.New("runtime cache root is not configured")
 )
 
 var (
@@ -64,11 +66,7 @@ func RuntimeCacheRoot() (string, error) {
 	if root != "" {
 		return root, nil
 	}
-	root, err := pathutil.ResolveProcessCacheRoot()
-	if err != nil {
-		return "", err
-	}
-	return root, nil
+	return "", fmt.Errorf("runtime cache root is not configured: call ConfigureRuntimeCacheRoot first: %w", ErrRuntimeCacheRootNotConfigured)
 }
 
 func RuntimeCachePath() (string, error) {
@@ -103,17 +101,8 @@ func CreateUpgradeTempDir(pattern string) (string, error) {
 	return dir, nil
 }
 
-func RuntimeInfoPath() string {
-	path, err := RuntimeCachePath()
-	if err == nil && strings.TrimSpace(path) != "" {
-		return path
-	}
-	logger.Warn("[update] resolve runtime info path fallback: err=%v", err)
-	return runtimeInfoRelativePath()
-}
-
-func runtimeInfoRelativePath() string {
-	return filepath.Join(RuntimeCacheDir, RuntimeInfoName)
+func RuntimeInfoPath() (string, error) {
+	return RuntimeCachePath()
 }
 
 func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {
@@ -155,7 +144,11 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 		info.UpdatedAt = time.Now().Unix()
 	}
 
-	path := RuntimeInfoPath()
+	path, err := RuntimeInfoPath()
+	if err != nil {
+		logger.Error("[update] write runtime info path failed: err=%v", err)
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		logger.Error("[update] write runtime info create dir failed: path=%s err=%v", path, err)
 		return fmt.Errorf("create runtime dir failed: %w", err)
@@ -174,7 +167,11 @@ func WriteRuntimeInfo(info RuntimeInfo) error {
 }
 
 func ReadRuntimeInfo() (RuntimeInfo, error) {
-	path := RuntimeInfoPath()
+	path, err := RuntimeInfoPath()
+	if err != nil {
+		logger.Error("[update] read runtime info path failed: err=%v", err)
+		return RuntimeInfo{}, err
+	}
 	info, err := readRuntimeInfoAtPath(path)
 	if err == nil {
 		return info, nil
@@ -271,8 +268,12 @@ func cleanExecutablePath(path string) string {
 }
 
 func RemoveRuntimeInfo() error {
-	path := RuntimeInfoPath()
-	err := os.Remove(path)
+	path, err := RuntimeInfoPath()
+	if err != nil {
+		logger.Error("[update] remove runtime info path failed: err=%v", err)
+		return err
+	}
+	err = os.Remove(path)
 	if err != nil && !os.IsNotExist(err) {
 		logger.Error("[update] remove runtime info failed: path=%s err=%v", path, err)
 		return fmt.Errorf("remove runtime info failed: %w", err)

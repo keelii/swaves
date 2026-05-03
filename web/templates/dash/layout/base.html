@@ -23,7 +23,7 @@
   </script>
   {% block head_extra %}{% endblock %}
 </head>
-<body{% if Settings("mode") == "dark" %} data-theme="dark"{% endif %}>
+<body{% if IsMobile %} class="is-mobile"{% endif %}{% if Settings("mode") == "dark" %} data-theme="dark"{% endif %}>
 
 {% block body %}
   {% block content %}{% endblock %}

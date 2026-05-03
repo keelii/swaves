@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"swaves/internal/platform/updater"
 )
 
 func TestRunSupervisorRequiresWorkerCallback(t *testing.T) {
@@ -175,6 +177,7 @@ func (fakeListener) Addr() net.Addr            { return &net.TCPAddr{} }
 
 func TestReplaceSQLiteDatabaseReplacesTargetAndCleansRuntimeFiles(t *testing.T) {
 	tmpDir := t.TempDir()
+	configureSupervisorTestRuntimeCacheRoot(t, tmpDir)
 	targetPath := filepath.Join(tmpDir, "data.sqlite")
 	sourcePath := filepath.Join(tmpDir, "restore.sqlite")
 	if err := os.WriteFile(targetPath, []byte("old"), 0o644); err != nil {
@@ -211,6 +214,9 @@ func TestReplaceSQLiteDatabaseReplacesTargetAndCleansRuntimeFiles(t *testing.T) 
 	if _, err := os.Stat(rollbackPath); err != nil {
 		t.Fatalf("expected rollback path to exist: %v", err)
 	}
+	if filepath.Dir(rollbackPath) != filepath.Join(tmpDir, ".cache", updater.RestoreCacheDirName) {
+		t.Fatalf("rollback dir=%q, want restore cache dir", filepath.Dir(rollbackPath))
+	}
 }
 
 func TestRollbackSQLiteDatabaseRestoresOriginalFile(t *testing.T) {
@@ -237,5 +243,12 @@ func TestRollbackSQLiteDatabaseRestoresOriginalFile(t *testing.T) {
 	}
 	if _, err := os.Stat(rollbackPath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected rollback path removed, got err=%v", err)
+	}
+}
+
+func configureSupervisorTestRuntimeCacheRoot(t *testing.T, base string) {
+	t.Helper()
+	if err := updater.ConfigureRuntimeCacheRoot(filepath.Join(base, "data.sqlite")); err != nil {
+		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
 	}
 }

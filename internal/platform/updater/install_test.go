@@ -53,6 +53,7 @@ func TestInstallRequireMasterFailsWithoutActiveMaster(t *testing.T) {
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
 	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
 
 	source := InstallSource{Kind: ArchiveSourceRemote}
 	_, err := DefaultClient().Install(source, "v1.2.3", "linux", "amd64", RestartRequireMaster)
@@ -127,6 +128,48 @@ func TestInstallRemoteSkipsWhenNewerThanLatest(t *testing.T) {
 	}
 }
 
+// TestInstallRemoteSkipsNonReleaseCurrentVersion 验证 install 和 check 对
+// 非稳定版本的语义保持一致：只返回当前版本不可判断，不继续下载或安装。
+func TestInstallRemoteSkipsNonReleaseCurrentVersion(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
+
+	requests := 0
+	client := Client{
+		BaseURL: "https://example.test/latest",
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requests++
+			body := fmt.Sprintf(`{
+				"tag_name":"v1.2.4",
+				"html_url":"%s",
+				"published_at":"2026-04-05T00:00:00Z",
+				"draft":false,
+				"prerelease":false,
+				"assets":[
+					{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz"},
+					{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz.sha256"}
+				]
+			}`, ReleaseTagURL("v1.2.4"))
+			return newHTTPResponse(http.StatusOK, body), nil
+		})},
+	}
+
+	result, err := client.Install(InstallSource{Kind: ArchiveSourceRemote}, "dev", "linux", "amd64", RestartIfMatchingMaster)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	if result.Installed {
+		t.Fatal("非稳定当前版本不应执行安装")
+	}
+	if result.Reason != "current version is not a stable release version" {
+		t.Fatalf("Reason=%q，期望 current version is not a stable release version", result.Reason)
+	}
+	if requests != 1 {
+		t.Fatalf("HTTP requests=%d，期望只检查 latest release 一次", requests)
+	}
+}
+
 // TestInstallLocalSourceRejectsEmptyArchivePath 验证本地来源缺少归档路径时
 // 直接返回错误。
 func TestInstallLocalSourceRejectsEmptyArchivePath(t *testing.T) {
@@ -151,6 +194,7 @@ func TestResolveInstallTargetRequireMasterFailsWithoutRuntime(t *testing.T) {
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
 	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
 
 	_, _, err := resolveInstallTarget(RestartRequireMaster)
 	if err == nil {
@@ -165,6 +209,7 @@ func TestResolveInstallTargetWithMasterFallbackNoMasterReturnsCurrentExe(t *test
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
 	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
 
 	path, ri, err := resolveInstallTarget(RestartWithMasterFallback)
 	if err != nil {
@@ -184,6 +229,7 @@ func TestResolveInstallTargetIfMatchingMasterNoMasterReturnsNilRI(t *testing.T) 
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
 	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
 
 	path, ri, err := resolveInstallTarget(RestartIfMatchingMaster)
 	if err != nil {
@@ -282,6 +328,41 @@ func TestCopyFilePreservesModeAndModTime(t *testing.T) {
 	}
 }
 
+func TestCopyFileToTargetDirUsesDestinationDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	dstDir := filepath.Join(tmpDir, "dst")
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		t.Fatalf("MkdirAll src failed: %v", err)
+	}
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		t.Fatalf("MkdirAll dst failed: %v", err)
+	}
+
+	srcPath := filepath.Join(srcDir, "swaves")
+	dstPath := filepath.Join(dstDir, "swaves")
+	if err := os.WriteFile(srcPath, []byte("binary"), 0755); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	tmpPath, err := copyFileToTargetDir(srcPath, dstPath)
+	if err != nil {
+		t.Fatalf("copyFileToTargetDir failed: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpPath) }()
+
+	if filepath.Dir(tmpPath) != dstDir {
+		t.Fatalf("temp copy dir=%q, want %q", filepath.Dir(tmpPath), dstDir)
+	}
+	got, err := os.ReadFile(tmpPath)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if string(got) != "binary" {
+		t.Fatalf("copied content=%q, want binary", string(got))
+	}
+}
+
 // TestInstallLocalSourceWithActiveMasterRestartsAndInstalls 验证
 // RestartWithMasterFallback 在有活跃 master 时：
 //   - 将新二进制安装到 master 的可执行路径
@@ -297,6 +378,7 @@ func TestInstallLocalSourceWithActiveMasterRestartsAndInstalls(t *testing.T) {
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
 	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
 
 	// 启动一个可以接收 SIGHUP 并退出的子进程（sleep 对 SIGHUP 默认动作是终止）
 	cmd := exec.Command("sleep", "3600")
@@ -368,6 +450,7 @@ func TestInstallLocalSourceRequireMasterWithActiveMasterInstalls(t *testing.T) {
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
 	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
 
 	cmd := exec.Command("sleep", "3600")
 	if err := cmd.Start(); err != nil {
@@ -489,6 +572,7 @@ func TestAllThreeEntryPointsUseUnifiedSourceAndPolicyTypes(t *testing.T) {
 	tmpDir := t.TempDir()
 	withUpdaterWorkingDir(t, tmpDir)
 	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
 
 	errClient := Client{
 		BaseURL: "https://example.test/latest",

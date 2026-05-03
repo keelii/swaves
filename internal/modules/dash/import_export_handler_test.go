@@ -151,6 +151,22 @@ func TestDeleteLocalRestoreBackup(t *testing.T) {
 	}
 }
 
+func TestCreateExportTempDirUsesDatabaseCacheRoot(t *testing.T) {
+	base := t.TempDir()
+	dbPath := filepath.Join(base, "data.sqlite")
+
+	tmpDir, err := createExportTempDir(dbPath, "swaves_export")
+	if err != nil {
+		t.Fatalf("createExportTempDir failed: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	wantParent := filepath.Join(base, ".cache", "exports")
+	if filepath.Dir(tmpDir) != wantParent {
+		t.Fatalf("export temp parent=%q, want %q", filepath.Dir(tmpDir), wantParent)
+	}
+}
+
 func TestValidateRestoreSQLiteFileAcceptsPrefixedTables(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "restore.sqlite")
 

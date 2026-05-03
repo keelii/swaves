@@ -565,16 +565,7 @@ func (h *Handler) saveRestoreUpload(fileHeader *multipart.FileHeader) (string, e
 		return "", fmt.Errorf("仅支持上传 .sqlite 文件")
 	}
 
-	dbPath := strings.TrimSpace(h.Model.DSN)
-	if dbPath == "" {
-		return "", fmt.Errorf("无法定位当前数据库文件")
-	}
-
-	tmpDir := filepath.Dir(dbPath)
-	if tmpDir == "" {
-		tmpDir = "."
-	}
-	tmpFile, err := os.CreateTemp(tmpDir, ".swaves-restore-*.sqlite")
+	tmpFile, err := updater.CreateRestoreTempFile(".swaves-restore-upload-*.sqlite")
 	if err != nil {
 		return "", fmt.Errorf("创建上传临时文件失败：%w", err)
 	}

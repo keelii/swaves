@@ -278,6 +278,7 @@ func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
 	data["UrlPath"] = c.Path()
 	data["Query"] = c.Queries()
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
+	data["IsMobile"] = webutil.IsMobileRequest(c)
 	data["RouteName"] = routeName
 
 	//// 注入 Locals

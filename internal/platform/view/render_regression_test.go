@@ -891,6 +891,30 @@ func TestRenderSUILayoutIncludesFavicon(t *testing.T) {
 	}
 }
 
+func TestRenderLayoutsUseInitialMobileClass(t *testing.T) {
+	view := mustLoadRegressionView(t)
+	siteView := mustLoadRegressionSiteView(t)
+
+	for _, item := range []struct {
+		name     string
+		view     *FiberView
+		template string
+	}{
+		{name: "dash", view: view, template: "dash/layout/base.html"},
+		{name: "sui", view: view, template: "sui/layout/base.html"},
+		{name: "site", view: siteView, template: "layout_main.html"},
+	} {
+		t.Run(item.name, func(t *testing.T) {
+			rendered := mustRenderRegressionTemplate(t, item.view, item.template, map[string]any{
+				"IsMobile": true,
+			})
+			if !strings.Contains(rendered, `<body class="is-mobile"`) {
+				t.Fatalf("expected initial mobile class in %s layout", item.template)
+			}
+		})
+	}
+}
+
 func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 	view := newMiniJinjaView(testTemplateRoot(), false)
 	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {

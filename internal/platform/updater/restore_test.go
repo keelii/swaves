@@ -2,6 +2,7 @@ package updater
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -41,5 +42,26 @@ func TestRestoreStatusDefaultsToIdle(t *testing.T) {
 	}
 	if status.State != RestoreStatusIdle {
 		t.Fatalf("unexpected default status=%q", status.State)
+	}
+}
+
+func TestCreateRestoreTempFileUsesRestoreCacheRoot(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, base)
+
+	file, err := CreateRestoreTempFile(".swaves-restore-upload-*.sqlite")
+	if err != nil {
+		t.Fatalf("CreateRestoreTempFile failed: %v", err)
+	}
+	path := file.Name()
+	if err := file.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	defer func() { _ = os.Remove(path) }()
+
+	wantDir := filepath.Join(base, ".cache", RestoreCacheDirName)
+	if filepath.Dir(path) != wantDir {
+		t.Fatalf("restore temp dir=%q, want %q", filepath.Dir(path), wantDir)
 	}
 }

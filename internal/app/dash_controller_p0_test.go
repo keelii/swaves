@@ -425,6 +425,20 @@ func TestDashControllerP0_MenuCollapsedSettingAppliesToRenderedPage(t *testing.T
 	}
 }
 
+func TestDashControllerP0_MobileRequestAddsBodyClass(t *testing.T) {
+	swv := newControllerP0TestApp(t)
+	defer swv.Shutdown()
+
+	cookieKV := loginAsDash(t, swv)
+	resp := requestControllerP0(t, swv, fiber.MethodGet, "/dash/posts/new", nil, cookieKV, map[string]string{
+		"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+	})
+	body := assertTemplateRendered(t, resp, fiber.StatusOK, `id="post-title"`)
+	if !strings.Contains(body, `<body class="is-mobile"`) {
+		t.Fatalf("expected mobile body class, body=%q", body)
+	}
+}
+
 func TestDashControllerP0_PostLifecycle(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()
