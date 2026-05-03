@@ -26,6 +26,8 @@ const (
 	RuntimeCacheDir     = ".cache"
 	RuntimeInfoName     = "master_runtime.json"
 	UpgradeCacheDirName = "updater"
+
+	previousRuntimeCacheDirName = "swaves"
 )
 
 var DefaultBackupDir = filepath.Join(RuntimeCacheDir, "backups")
@@ -47,6 +49,20 @@ var (
 
 var runtimeProcessExecutablePath = processExecutablePath
 
+func normalizeRuntimeInfo(info RuntimeInfo) (RuntimeInfo, error) {
+	if info.PID <= 0 {
+		return RuntimeInfo{}, fmt.Errorf("runtime pid is required")
+	}
+	info.Executable = strings.TrimSpace(info.Executable)
+	if info.Executable == "" {
+		return RuntimeInfo{}, fmt.Errorf("runtime executable is required")
+	}
+	if info.UpdatedAt <= 0 {
+		info.UpdatedAt = time.Now().Unix()
+	}
+	return info, nil
+}
+
 func ConfigureRuntimeCacheRoot(sqliteFile string) error {
 	root, err := pathutil.EnsureDatabaseCacheRoot(sqliteFile)
 	if err != nil {
@@ -56,6 +72,9 @@ func ConfigureRuntimeCacheRoot(sqliteFile string) error {
 	runtimeCacheRoot = root
 	runtimeCacheMu.Unlock()
 	logger.Info("[update] runtime cache root configured: sqlite=%s cache_root=%s", strings.TrimSpace(sqliteFile), root)
+	if err := MigrateRuntimeInfo(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -133,20 +152,22 @@ func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {
 }
 
 func WriteRuntimeInfo(info RuntimeInfo) error {
-	if info.PID <= 0 {
-		return fmt.Errorf("runtime pid is required")
-	}
-	info.Executable = strings.TrimSpace(info.Executable)
-	if info.Executable == "" {
-		return fmt.Errorf("runtime executable is required")
-	}
-	if info.UpdatedAt <= 0 {
-		info.UpdatedAt = time.Now().Unix()
+	info, err := normalizeRuntimeInfo(info)
+	if err != nil {
+		return err
 	}
 
 	path, err := RuntimeInfoPath()
 	if err != nil {
 		logger.Error("[update] write runtime info path failed: err=%v", err)
+		return err
+	}
+	return writeRuntimeInfoAtPath(path, info)
+}
+
+func writeRuntimeInfoAtPath(path string, info RuntimeInfo) error {
+	info, err := normalizeRuntimeInfo(info)
+	if err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -181,6 +202,62 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 	}
 	logger.Warn("[update] runtime info file missing: path=%s", path)
 	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s: %w", path, ErrRuntimeInfoNotFound)
+}
+
+func MigrateRuntimeInfo() error {
+	root, err := RuntimeCacheRoot()
+	if err != nil {
+		return err
+	}
+
+	currentPath := filepath.Join(root, RuntimeInfoName)
+	if _, err := os.Stat(currentPath); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		logger.Error("[update] runtime info migration stat current failed: path=%s err=%v", currentPath, err)
+		return fmt.Errorf("stat runtime info failed: %w", err)
+	}
+
+	for _, sourcePath := range runtimeInfoMigrationSourcePaths(root, currentPath) {
+		if _, err := os.Stat(sourcePath); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			logger.Error("[update] runtime info migration stat source failed: path=%s err=%v", sourcePath, err)
+			return fmt.Errorf("stat runtime info migration source failed: %w", err)
+		}
+		if err := os.Rename(sourcePath, currentPath); err != nil {
+			logger.Error("[update] runtime info migration failed: source=%s target=%s err=%v", sourcePath, currentPath, err)
+			return fmt.Errorf("migrate runtime info failed: %w", err)
+		}
+		logger.Info("[update] runtime info migrated: source=%s target=%s", sourcePath, currentPath)
+		return nil
+	}
+	return nil
+}
+
+func runtimeInfoMigrationSourcePaths(root string, currentPath string) []string {
+	return uniqueRuntimeInfoPaths(currentPath,
+		filepath.Join(root, UpgradeCacheDirName, RuntimeInfoName),
+		filepath.Join(root, previousRuntimeCacheDirName, RuntimeInfoName),
+	)
+}
+
+func uniqueRuntimeInfoPaths(currentPath string, candidates ...string) []string {
+	paths := make([]string, 0, len(candidates))
+	seen := map[string]struct{}{filepath.Clean(currentPath): {}}
+	for _, candidate := range candidates {
+		candidate = filepath.Clean(strings.TrimSpace(candidate))
+		if candidate == "" {
+			continue
+		}
+		if _, ok := seen[candidate]; ok {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		paths = append(paths, candidate)
+	}
+	return paths
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
