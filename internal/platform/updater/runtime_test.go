@@ -149,6 +149,40 @@ func TestReadRuntimeInfoReturnsMissingFileError(t *testing.T) {
 	}
 }
 
+func TestWriteRuntimeInfoPersistsRuntimeLaunchDetails(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+
+	configureTestRuntimeCacheRoot(t, base)
+
+	want := RuntimeInfo{
+		PID:        1234,
+		Executable: filepath.Join(base, "swaves"),
+		Args:       []string{filepath.Join(base, "swaves"), "data.sqlite"},
+		WorkingDir: base,
+		SQLiteFile: "data.sqlite",
+	}
+	if err := WriteRuntimeInfo(want); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	got, err := ReadRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadRuntimeInfo failed: %v", err)
+	}
+	if got.PID != want.PID || got.Executable != want.Executable || got.WorkingDir != want.WorkingDir || got.SQLiteFile != want.SQLiteFile {
+		t.Fatalf("ReadRuntimeInfo = %#v, want %#v", got, want)
+	}
+	if len(got.Args) != len(want.Args) {
+		t.Fatalf("runtime args length = %d, want %d", len(got.Args), len(want.Args))
+	}
+	for i := range want.Args {
+		if got.Args[i] != want.Args[i] {
+			t.Fatalf("runtime args[%d] = %q, want %q", i, got.Args[i], want.Args[i])
+		}
+	}
+}
+
 func TestConfigureRuntimeCacheRootMigratesRuntimeInfoFromUpdaterPath(t *testing.T) {
 	base := t.TempDir()
 	resetRuntimeCacheRoot(t)

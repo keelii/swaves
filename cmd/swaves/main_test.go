@@ -197,6 +197,71 @@ func TestRunUtilityCommandVersionSubcommand(t *testing.T) {
 	}
 }
 
+func TestRunUtilityCommandRuntimeVersionPrintsRuntimeInfo(t *testing.T) {
+	oldRead := readRuntimeInfo
+	readRuntimeInfo = func() (updater.RuntimeInfo, error) {
+		return updater.RuntimeInfo{
+			PID:        1003,
+			Executable: "/home/ubuntu/swaves",
+			Args:       []string{"/home/ubuntu/swaves", "data.sqlite"},
+			WorkingDir: "/home/ubuntu",
+			SQLiteFile: "data.sqlite",
+		}, nil
+	}
+	defer func() { readRuntimeInfo = oldRead }()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"-V"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected -V to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+
+	out := stdout.String()
+	for _, want := range []string{
+		"runtime:",
+		"active: yes",
+		"pid: 1003",
+		"executable: /home/ubuntu/swaves",
+		"working_dir: /home/ubuntu",
+		"sqlite_file: /home/ubuntu/data.sqlite",
+		"args: /home/ubuntu/swaves data.sqlite",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected %q in stdout, got %q", want, out)
+		}
+	}
+}
+
+func TestRunUtilityCommandRuntimeVersionHandlesMissingRuntimeInfo(t *testing.T) {
+	oldRead := readRuntimeInfo
+	readRuntimeInfo = func() (updater.RuntimeInfo, error) {
+		return updater.RuntimeInfo{}, errors.New("runtime info file not found")
+	}
+	defer func() { readRuntimeInfo = oldRead }()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"-V"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected -V to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+
+	out := stdout.String()
+	if !strings.Contains(out, "active: no") {
+		t.Fatalf("expected inactive runtime in stdout, got %q", out)
+	}
+	if !strings.Contains(out, "runtime info file not found") {
+		t.Fatalf("expected runtime error in stdout, got %q", out)
+	}
+}
+
 func TestRunUtilityCommandUpgradeCheck(t *testing.T) {
 	oldCheck := checkLatestRelease
 	checkLatestRelease = func(currentVersion string, goos string, goarch string) (updater.CheckResult, error) {
@@ -276,7 +341,63 @@ func TestRunUtilityCommandUpgradeInstallsCurrentExecutableWithoutMaster(t *testi
 	}
 }
 
-func TestRunUtilityCommandUpgradeRequiresSQLiteFile(t *testing.T) {
+func TestRunUtilityCommandUpgradeUsesInferredSQLiteFile(t *testing.T) {
+	t.Setenv("SWAVES_SQLITE_FILE", "")
+	tmpDir := t.TempDir()
+
+	oldRead := readRuntimeInfo
+	readRuntimeInfo = func() (updater.RuntimeInfo, error) {
+		return updater.RuntimeInfo{
+			PID:        1234,
+			Executable: filepath.Join(tmpDir, "swaves"),
+			Args:       []string{filepath.Join(tmpDir, "swaves"), "data.sqlite"},
+			WorkingDir: tmpDir,
+			SQLiteFile: "data.sqlite",
+		}, nil
+	}
+	defer func() { readRuntimeInfo = oldRead }()
+
+	oldInstall := installLatestRelease
+	installLatestRelease = func(currentVersion string, goos string, goarch string) (updater.InstallResult, error) {
+		return updater.InstallResult{
+			CurrentVersion: currentVersion,
+			LatestVersion:  "v1.2.4",
+			ArchiveName:    "swaves_v1.2.4_linux_amd64.tar.gz",
+			Installed:      true,
+			RestartedPID:   1234,
+			Reason:         "upgraded to v1.2.4",
+		}, nil
+	}
+	defer func() { installLatestRelease = oldInstall }()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	handled, exitCode := runUtilityCommand([]string{"upgrade"}, &stdout, &stderr)
+	if !handled {
+		t.Fatal("expected upgrade to be handled")
+	}
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
+	}
+
+	out := stdout.String()
+	if !strings.Contains(out, "status:  upgraded") {
+		t.Fatalf("unexpected stdout: %q", out)
+	}
+	if !strings.Contains(out, "master:  1234") {
+		t.Fatalf("unexpected stdout: %q", out)
+	}
+}
+
+func TestRunUtilityCommandUpgradeRequiresSQLiteFileWhenInferenceFails(t *testing.T) {
+	t.Setenv("SWAVES_SQLITE_FILE", "")
+
+	oldRead := readRuntimeInfo
+	readRuntimeInfo = func() (updater.RuntimeInfo, error) {
+		return updater.RuntimeInfo{}, errors.New("runtime info file not found")
+	}
+	defer func() { readRuntimeInfo = oldRead }()
+
 	oldInstall := installLatestRelease
 	installLatestRelease = func(currentVersion string, goos string, goarch string) (updater.InstallResult, error) {
 		t.Fatal("installLatestRelease should not run without SWAVES_SQLITE_FILE")

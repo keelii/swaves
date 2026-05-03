@@ -81,9 +81,16 @@ func runSupervisor(cfg supervisorConfig) error {
 		return fmt.Errorf("resolve executable failed: %w", err)
 	}
 	cfg.ExecutablePath = execPath
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("resolve working directory failed: %w", err)
+	}
 	if err := updater.WriteRuntimeInfo(updater.RuntimeInfo{
 		PID:        os.Getpid(),
 		Executable: execPath,
+		Args:       append([]string{execPath}, cfg.Args...),
+		WorkingDir: workingDir,
+		SQLiteFile: cfg.SqliteFile,
 	}); err != nil {
 		return err
 	}

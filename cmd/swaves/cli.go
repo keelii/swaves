@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -52,6 +53,7 @@ var (
 
 var checkLatestRelease = updater.CheckLatestRelease
 var installLatestRelease = updater.InstallLatestReleaseCLI
+var readRuntimeInfo = updater.ReadRuntimeInfo
 
 type mainConfig struct {
 	AppConfig   types.AppConfig
@@ -124,6 +126,13 @@ func runUtilityCommand(args []string, stdout io.Writer, stderr io.Writer) (bool,
 			return true, 2
 		}
 		_, _ = fmt.Fprint(stdout, buildinfo.Summary())
+		return true, 0
+	case "-V":
+		if len(args) > 1 {
+			_, _ = fmt.Fprintf(stderr, "unexpected extra arguments for -V: %s\n\n%s", strings.Join(args[1:], " "), versionUsage())
+			return true, 2
+		}
+		_, _ = fmt.Fprint(stdout, runtimeSummary())
 		return true, 0
 	case "upgrade":
 		return true, runUpgradeCommand(args[1:], stdout, stderr)
@@ -280,9 +289,91 @@ func configureUpgradeCacheRoot() error {
 	}
 	normalizeAppConfig(&cfg)
 	if cfg.SqliteFile == "" {
-		return fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade")
+		sqliteFile, err := upgradeSQLiteFileFromRuntime()
+		if err != nil {
+			return err
+		}
+		cfg.SqliteFile = sqliteFile
 	}
 	return updater.ConfigureRuntimeCacheRoot(cfg.SqliteFile)
+}
+
+func upgradeSQLiteFileFromRuntime() (string, error) {
+	info, err := readRuntimeInfo()
+	if err != nil {
+		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade")
+	}
+	sqliteFile := runtimeSQLiteFile(info)
+	if sqliteFile == "" {
+		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade")
+	}
+	return sqliteFile, nil
+}
+
+func runtimeSQLiteFile(info updater.RuntimeInfo) string {
+	sqliteFile := strings.TrimSpace(info.SQLiteFile)
+	if sqliteFile == "" {
+		sqliteFile = sqliteFileFromRuntimeArgs(info.Args)
+	}
+	if sqliteFile == "" {
+		return ""
+	}
+	if filepath.IsAbs(sqliteFile) {
+		return filepath.Clean(sqliteFile)
+	}
+
+	workingDir := strings.TrimSpace(info.WorkingDir)
+	if workingDir == "" {
+		return ""
+	}
+	return filepath.Clean(filepath.Join(workingDir, sqliteFile))
+}
+
+func sqliteFileFromRuntimeArgs(args []string) string {
+	if len(args) > 1 {
+		args = args[1:]
+	}
+	for _, arg := range args {
+		arg = strings.TrimSpace(arg)
+		if arg == "" || strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return arg
+	}
+	return ""
+}
+
+func runtimeSummary() string {
+	var out strings.Builder
+	out.WriteString(buildinfo.Summary())
+	out.WriteString("runtime:\n")
+
+	info, err := readRuntimeInfo()
+	if err != nil {
+		out.WriteString("  active: no\n")
+		out.WriteString("  error: " + err.Error() + "\n")
+		return out.String()
+	}
+
+	out.WriteString("  active: yes\n")
+	out.WriteString(fmt.Sprintf("  pid: %d\n", info.PID))
+	out.WriteString("  executable: " + fallbackRuntimeValue(info.Executable) + "\n")
+	out.WriteString("  working_dir: " + fallbackRuntimeValue(info.WorkingDir) + "\n")
+	out.WriteString("  sqlite_file: " + fallbackRuntimeValue(runtimeSQLiteFile(info)) + "\n")
+	if len(info.Args) > 0 {
+		out.WriteString("  args: " + strings.Join(info.Args, " ") + "\n")
+	} else {
+		out.WriteString("  args: unknown\n")
+	}
+	return out.String()
+}
+
+func fallbackRuntimeValue(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "unknown"
+	}
+	return value
 }
 
 func hashPassword(raw string) (string, error) {

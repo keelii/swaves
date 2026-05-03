@@ -16,10 +16,13 @@ import (
 )
 
 type RuntimeInfo struct {
-	PID        int    `json:"pid"`
-	Executable string `json:"executable"`
-	Version    string `json:"version"`
-	UpdatedAt  int64  `json:"updated_at"`
+	PID        int      `json:"pid"`
+	Executable string   `json:"executable"`
+	Version    string   `json:"version"`
+	Args       []string `json:"args,omitempty"`
+	WorkingDir string   `json:"working_dir,omitempty"`
+	SQLiteFile string   `json:"sqlite_file,omitempty"`
+	UpdatedAt  int64    `json:"updated_at"`
 }
 
 const (
@@ -60,6 +63,8 @@ func normalizeRuntimeInfo(info RuntimeInfo) (RuntimeInfo, error) {
 	if info.UpdatedAt <= 0 {
 		info.UpdatedAt = time.Now().Unix()
 	}
+	info.WorkingDir = strings.TrimSpace(info.WorkingDir)
+	info.SQLiteFile = strings.TrimSpace(info.SQLiteFile)
 	return info, nil
 }
 
@@ -148,6 +153,8 @@ func readRuntimeInfoAtPath(path string) (RuntimeInfo, error) {
 		logger.Error("[update] runtime info invalid executable: path=%s", path)
 		return RuntimeInfo{}, fmt.Errorf("runtime info executable is invalid")
 	}
+	info.WorkingDir = strings.TrimSpace(info.WorkingDir)
+	info.SQLiteFile = strings.TrimSpace(info.SQLiteFile)
 	return info, nil
 }
 
