@@ -306,6 +306,62 @@ func TestResolveInstallTargetIfMatchingMasterNoMasterReturnsNilRI(t *testing.T) 
 	}
 }
 
+func TestInstallLatestReleaseCLIUsesMasterFallbackPolicy(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
+
+	exePath := filepath.Join(tmpDir, "swaves")
+	if err := os.WriteFile(exePath, []byte("old-binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile exe failed: %v", err)
+	}
+	if err := WriteRuntimeInfo(RuntimeInfo{PID: os.Getpid(), Executable: exePath}); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+	actual := filepath.Join(tmpDir, RuntimeCacheDir, UpgradeCacheDirName, ".swaves-upgrade-123", ".swaves-executable-backup") + " (deleted)"
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return actual, true, nil
+	})
+	signaledPID := 0
+	stubInstallSignalProcess(t, func(pid int) error {
+		signaledPID = pid
+		return nil
+	})
+
+	archiveName := "swaves_v1.2.4_linux_amd64.tar.gz"
+	archivePath := filepath.Join(tmpDir, archiveName)
+	archiveData := buildTarGzArchiveEntries(t, []archiveEntry{
+		{name: "swaves_v1.2.4_linux_amd64", content: []byte("new-binary")},
+	})
+	if err := os.WriteFile(archivePath, archiveData, 0o644); err != nil {
+		t.Fatalf("WriteFile archive failed: %v", err)
+	}
+
+	source := InstallSource{
+		Kind:        ArchiveSourceLocal,
+		ArchiveName: archiveName,
+		ArchivePath: archivePath,
+		Version:     "v1.2.4",
+	}
+	result, err := DefaultClient().Install(source, "v1.2.3", "linux", "amd64", RestartWithMasterFallback)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	if !result.Installed {
+		t.Fatal("result.Installed should be true")
+	}
+	if result.RestartedPID != os.Getpid() || signaledPID != os.Getpid() {
+		t.Fatalf("restart pid result=%d signaled=%d want %d", result.RestartedPID, signaledPID, os.Getpid())
+	}
+	got, err := os.ReadFile(exePath)
+	if err != nil {
+		t.Fatalf("ReadFile exe failed: %v", err)
+	}
+	if string(got) != "new-binary" {
+		t.Fatalf("exe content=%q, want new-binary", string(got))
+	}
+}
+
 // TestReplaceExecutableAtPathRollsBackOnExplicitCall 验证 rollback 函数被调用时
 // 能将原始可执行文件恢复到目标路径。
 func TestReplaceExecutableAtPathRollsBackOnExplicitCall(t *testing.T) {

@@ -88,6 +88,28 @@ func ConfigureRuntimeCacheRoot(sqliteFile string) error {
 	return nil
 }
 
+func ConfigureRuntimeCacheRootAt(root string) error {
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return fmt.Errorf("runtime cache root is required")
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolve runtime cache root failed: %w", err)
+	}
+	absRoot = filepath.Clean(absRoot)
+	if err := os.MkdirAll(absRoot, 0755); err != nil {
+		return fmt.Errorf("create runtime cache root failed: %w", err)
+	}
+
+	runtimeCacheMu.Lock()
+	runtimeCacheRoot = absRoot
+	runtimeSQLiteFile = ""
+	runtimeCacheMu.Unlock()
+	logger.Info("[update] runtime cache root configured: cache_root=%s", absRoot)
+	return nil
+}
+
 func RuntimeCacheRoot() (string, error) {
 	runtimeCacheMu.RLock()
 	root := strings.TrimSpace(runtimeCacheRoot)
@@ -356,17 +378,16 @@ func isDeletedUpgradeBackupExecutable(actual string) bool {
 		return false
 	}
 	actual = strings.TrimSuffix(actual, " (deleted)")
-	if filepath.Base(actual) != ".swaves-executable-backup" {
-		return false
-	}
-
-	root, err := RuntimeCacheRoot()
-	if err != nil {
-		return false
-	}
 	actual = filepath.Clean(actual)
-	upgradeRoot := filepath.Clean(filepath.Join(root, UpgradeCacheDirName))
-	return strings.HasPrefix(actual, upgradeRoot+string(os.PathSeparator))
+	parts := strings.Split(actual, string(os.PathSeparator))
+	if len(parts) < 4 || parts[len(parts)-1] != ".swaves-executable-backup" {
+		return false
+	}
+	upgradeDir := parts[len(parts)-2]
+	if !strings.HasPrefix(upgradeDir, ".swaves-upgrade-") {
+		return false
+	}
+	return parts[len(parts)-3] == UpgradeCacheDirName && parts[len(parts)-4] == RuntimeCacheDir
 }
 
 func processExecutablePath(pid int) (string, bool, error) {

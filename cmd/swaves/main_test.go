@@ -419,8 +419,11 @@ func TestRunUtilityCommandUpgradeUsesInferredSQLiteFile(t *testing.T) {
 	}
 }
 
-func TestRunUtilityCommandUpgradeRequiresSQLiteFileWhenInferenceFails(t *testing.T) {
+func TestRunUtilityCommandUpgradeUsesWorkingDirectoryCacheWhenInferenceFails(t *testing.T) {
 	t.Setenv("SWAVES_SQLITE_FILE", "")
+	tmpDir := t.TempDir()
+	withCLIWorkingDir(t, tmpDir)
+	t.Cleanup(func() { resetCLIRuntimeCacheRoot(t) })
 
 	oldRead := readRuntimeInfo
 	readRuntimeInfo = func() (updater.RuntimeInfo, error) {
@@ -430,8 +433,25 @@ func TestRunUtilityCommandUpgradeRequiresSQLiteFileWhenInferenceFails(t *testing
 
 	oldInstall := installLatestRelease
 	installLatestRelease = func(currentVersion string, goos string, goarch string) (updater.InstallResult, error) {
-		t.Fatal("installLatestRelease should not run without SWAVES_SQLITE_FILE")
-		return updater.InstallResult{}, nil
+		probeDir, err := updater.CreateUpgradeTempDir(".probe-")
+		if err != nil {
+			t.Fatalf("CreateUpgradeTempDir failed: %v", err)
+		}
+		t.Cleanup(func() { _ = os.RemoveAll(probeDir) })
+		wantParent := filepath.Join(tmpDir, updater.RuntimeCacheDir, updater.UpgradeCacheDirName)
+		if resolved, err := filepath.EvalSymlinks(wantParent); err == nil {
+			wantParent = resolved
+		}
+		if filepath.Dir(probeDir) != wantParent {
+			t.Fatalf("upgrade temp dir parent = %q, want %q", filepath.Dir(probeDir), wantParent)
+		}
+		return updater.InstallResult{
+			CurrentVersion: currentVersion,
+			LatestVersion:  "v1.2.4",
+			ArchiveName:    "swaves_v1.2.4_linux_amd64.tar.gz",
+			Installed:      true,
+			Reason:         "installed v1.2.4 to current executable",
+		}, nil
 	}
 	defer func() { installLatestRelease = oldInstall }()
 
@@ -441,11 +461,14 @@ func TestRunUtilityCommandUpgradeRequiresSQLiteFileWhenInferenceFails(t *testing
 	if !handled {
 		t.Fatal("expected upgrade to be handled")
 	}
-	if exitCode != 2 {
-		t.Fatalf("unexpected exit code: %d", exitCode)
+	if exitCode != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%q", exitCode, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "SWAVES_SQLITE_FILE is required for upgrade when runtime launch info is unavailable") {
+	if strings.TrimSpace(stderr.String()) != "" {
 		t.Fatalf("unexpected stderr: %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "status:  upgraded") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
 	}
 }
 

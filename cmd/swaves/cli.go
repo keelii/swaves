@@ -308,26 +308,27 @@ func configureUpgradeCacheRoot() error {
 		return err
 	}
 	normalizeAppConfig(&cfg)
-	if cfg.SqliteFile == "" {
-		sqliteFile, err := upgradeSQLiteFileFromRuntime()
-		if err != nil {
-			return err
-		}
-		cfg.SqliteFile = sqliteFile
+	if cfg.SqliteFile != "" {
+		return updater.ConfigureRuntimeCacheRoot(cfg.SqliteFile)
 	}
-	return updater.ConfigureRuntimeCacheRoot(cfg.SqliteFile)
+
+	if sqliteFile := upgradeSQLiteFileFromRuntime(); sqliteFile != "" {
+		return updater.ConfigureRuntimeCacheRoot(sqliteFile)
+	}
+
+	root, err := utilityRuntimeCacheRoot()
+	if err != nil {
+		return err
+	}
+	return updater.ConfigureRuntimeCacheRootAt(root)
 }
 
-func upgradeSQLiteFileFromRuntime() (string, error) {
+func upgradeSQLiteFileFromRuntime() string {
 	info, err := readRuntimeInfo()
 	if err != nil {
-		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade when runtime launch info is unavailable")
+		return ""
 	}
-	sqliteFile := runtimeSQLiteFile(info)
-	if sqliteFile == "" {
-		return "", fmt.Errorf("SWAVES_SQLITE_FILE is required for upgrade when runtime launch info does not include a sqlite file")
-	}
-	return sqliteFile, nil
+	return runtimeSQLiteFile(info)
 }
 
 func runtimeSQLiteFile(info updater.RuntimeInfo) string {
@@ -651,7 +652,7 @@ Usage:
 
 	Notes:
 	  upgrade --check only checks the latest stable GitHub release for the current platform.
-	  upgrade uses SWAVES_SQLITE_FILE when provided; otherwise it reads runtime launch info.
+	  upgrade uses SWAVES_SQLITE_FILE when provided; otherwise it reads runtime launch info or uses .cache in the current directory for updater files.
 	  upgrade downloads the latest stable GitHub release for the current platform and replaces the current executable.
 	`) + "\n"
 }

@@ -109,6 +109,28 @@ func TestConfigureRuntimeCacheRootUsesSQLiteDirectory(t *testing.T) {
 	}
 }
 
+func TestConfigureRuntimeCacheRootAtUsesExplicitDirectory(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+
+	root := filepath.Join(base, RuntimeCacheDir)
+	if err := ConfigureRuntimeCacheRootAt(root); err != nil {
+		t.Fatalf("ConfigureRuntimeCacheRootAt failed: %v", err)
+	}
+
+	got, err := RuntimeInfoPath()
+	if err != nil {
+		t.Fatalf("RuntimeInfoPath failed: %v", err)
+	}
+	want := filepath.Join(root, RuntimeInfoName)
+	if got != want {
+		t.Fatalf("RuntimeInfoPath = %q, want %q", got, want)
+	}
+	if _, err := RuntimeSQLiteFile(); !errors.Is(err, ErrRuntimeCacheRootNotConfigured) {
+		t.Fatalf("RuntimeSQLiteFile error = %v, want ErrRuntimeCacheRootNotConfigured", err)
+	}
+}
+
 func TestCreateUpgradeTempDirUsesUpdaterCacheRoot(t *testing.T) {
 	base := t.TempDir()
 	resetRuntimeCacheRoot(t)

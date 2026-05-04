@@ -380,15 +380,15 @@ func (c Client) InstallLatestRelease(currentVersion string, goos string, goarch 
 	return result, err
 }
 
-// InstallLatestReleaseCLI 是命令行升级入口。从 GitHub 下载最新稳定版本，
-// 安装到当前可执行文件路径；若活跃 master 的可执行路径与之一致，则同时重启 master。
+// InstallLatestReleaseCLI 是命令行升级入口。从 GitHub 下载最新稳定版本；
+// 有活跃 master 时安装到 master 的可执行路径并重启，否则安装到当前可执行文件。
 func InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	return DefaultClient().InstallLatestReleaseCLI(currentVersion, goos, goarch)
 }
 
 func (c Client) InstallLatestReleaseCLI(currentVersion string, goos string, goarch string) (InstallResult, error) {
 	logger.Info("[update] cli install requested: current=%s target=%s/%s", versionLabel(currentVersion), goos, goarch)
-	result, err := c.Install(InstallSource{Kind: ArchiveSourceRemote}, currentVersion, goos, goarch, RestartIfMatchingMaster)
+	result, err := c.Install(InstallSource{Kind: ArchiveSourceRemote}, currentVersion, goos, goarch, RestartWithMasterFallback)
 	if err != nil {
 		logger.Error("[update] cli install failed: current=%s err=%v", versionLabel(currentVersion), err)
 	} else {
