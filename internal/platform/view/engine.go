@@ -35,7 +35,10 @@ type FiberView struct {
 	sharedTemplateRoot string
 	templateNamesFunc  func() ([]string, error)
 	clearOnRender      bool
-	mu                 sync.Mutex
+	// Guards template cache invalidation. Normal production renders only take
+	// the shared side so they can run concurrently; Load and dev reload take the
+	// exclusive side so ClearTemplates cannot race with an active render.
+	mu sync.RWMutex
 }
 
 var (
@@ -214,19 +217,26 @@ func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...st
 		}()
 	}
 
-	v.mu.Lock()
-	trace.Step("wait_lock")
-	defer v.mu.Unlock()
-
-	acquired := templatecore.AcquireViewContext(binding)
-	trace.Step("acquire_context")
-
 	if v.clearOnRender {
+		v.mu.Lock()
+		trace.Step("wait_lock")
+		defer v.mu.Unlock()
+
+		// In template reload mode, keep the clear+load+render cycle serialized so
+		// one request cannot invalidate templates while another request is using
+		// the previous template set.
 		v.env.ClearTemplates()
 		trace.Step("clear_templates")
 	} else {
+		v.mu.RLock()
+		trace.Step("wait_lock")
+		defer v.mu.RUnlock()
+
 		trace.Step("reuse_templates")
 	}
+
+	acquired := templatecore.AcquireViewContext(binding)
+	trace.Step("acquire_context")
 
 	templateName, err := normalizeTemplateName(name)
 	if err != nil {
