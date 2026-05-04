@@ -322,6 +322,53 @@ func TestListPublishedPostsAndPages(t *testing.T) {
 	}
 }
 
+func TestPublishedPostListUsesPublishedIndex(t *testing.T) {
+	db := openTestDB(t)
+
+	var indexName string
+	err := db.QueryRow(`
+		SELECT name
+		FROM sqlite_master
+		WHERE type = 'index'
+		  AND tbl_name = ?
+		  AND name = 'idx_posts_status_kind_deleted_published'
+	`, string(TablePosts)).Scan(&indexName)
+	if err != nil {
+		t.Fatalf("expected published post list index: %v", err)
+	}
+
+	rows, err := db.Query(`
+		EXPLAIN QUERY PLAN
+		SELECT id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at
+		FROM `+string(TablePosts)+`
+		WHERE status = ? AND kind = ? AND deleted_at IS NULL
+		ORDER BY published_at DESC, id DESC
+		LIMIT ?
+	`, "published", PostKindPost, 100)
+	if err != nil {
+		t.Fatalf("explain published post list query: %v", err)
+	}
+	defer rows.Close()
+
+	var planParts []string
+	for rows.Next() {
+		var id, parent, notUsed int
+		var detail string
+		if err := rows.Scan(&id, &parent, &notUsed, &detail); err != nil {
+			t.Fatalf("scan query plan: %v", err)
+		}
+		planParts = append(planParts, detail)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("query plan rows: %v", err)
+	}
+
+	plan := strings.Join(planParts, "\n")
+	if !strings.Contains(plan, "idx_posts_status_kind_deleted_published") {
+		t.Fatalf("published post list query should use index, plan:\n%s", plan)
+	}
+}
+
 func TestListPostsFiltersAndRelations(t *testing.T) {
 	db := openTestDB(t)
 

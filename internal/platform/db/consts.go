@@ -48,6 +48,8 @@ const InitialSQL = `
 	);
 	INSERT OR IGNORE INTO ` + TablePosts + ` (id, title, slug, content, status, kind, comment_enabled, published_at, created_at, updated_at) VALUES
 		(1, '留言板', 'comments', '> 声音是一种机械波，而博客是一种思想波。', 'published', 1, 1, strftime('%s','now'), strftime('%s','now'), strftime('%s','now'));
+	CREATE INDEX IF NOT EXISTS idx_posts_status_kind_deleted_published
+	ON ` + TablePosts + ` (status, kind, deleted_at, published_at DESC, id DESC);
 
 	CREATE TABLE IF NOT EXISTS ` + TableComments + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
