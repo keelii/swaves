@@ -67,9 +67,9 @@ func buildSystemUpdateNotice(result updater.InstallResult) string {
 			return "已开始切换到新版本，服务会自动重启。"
 		}
 		if strings.TrimSpace(result.LatestVersion) != "" {
-			return fmt.Sprintf("已安装 %s，请手动重启服务后生效。", versionLabel(result.LatestVersion))
+			return fmt.Sprintf("已安装 %s，请手动重启服务后生效[kill -HUP PID]。", versionLabel(result.LatestVersion))
 		}
-		return "安装包已写入当前可执行文件，请手动重启服务后生效。"
+		return "安装包已写入当前可执行文件，请手动重启服务后生效[kill -HUP PID]。"
 	}
 	if strings.TrimSpace(result.Reason) != "" {
 		return result.Reason

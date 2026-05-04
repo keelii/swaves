@@ -1150,7 +1150,7 @@ a.ui-icon-btn[disabled] {
 .ui-radio-field {
   display: inline-flex;
   align-items: center;
-  gap: var(--app-gap-2);
+  gap: var(--app-gap-1);
   min-width: 0;
   user-select: none;
   cursor: pointer;
@@ -1193,7 +1193,8 @@ a.ui-icon-btn[disabled] {
 }
 
 .ui-fieldset-content {
-  min-width: 0;
+  display: inline-flex;
+  gap: var(--app-gap-5);
 }
 
 .ui-pill {

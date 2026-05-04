@@ -66,7 +66,7 @@
 {% macro Input(id="", name="", value="", type="text", placeholder="", attrs="", prefix="") %}
 {% if prefix %}
 <span class="ui-input-prefix-group">
-  <span class="ui-input-prefix">{{ prefix }}</span>
+  <span class="ui-input-prefix" data-prefix="{{ prefix }}">{{ prefix }}</span>
   <input type="{{ type }}" class="ui-input ui-input-prefix-control"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if value is not none and value != "" %} value="{{ value }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
 </span>
 {% else %}

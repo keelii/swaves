@@ -119,51 +119,51 @@ var settingSectionOrderByArea = map[string][]string{
 var settingSectionMetaByCode = map[string]settingSectionMeta{
 	settingSectionSite: {
 		Label:       "站点信息",
-		Description: "配置公开站点的标题、访问地址、语言和页面基础信息。",
+		Description: "配置公开站点的标题、访问地址、语言和页面基础信息",
 	},
 	settingSectionAuthor: {
 		Label:       "作者信息",
-		Description: "配置公开文章和站点中使用的作者身份信息。",
+		Description: "配置公开文章和站点中使用的作者身份信息",
 	},
 	settingSectionContent: {
 		Label:       "内容链接",
-		Description: "配置页面、文章、分类和标签的公开访问地址。修改后可能影响既有链接。",
+		Description: "配置页面、文章、分类和标签的公开访问地址修改后可能影响既有链接",
 	},
 	settingSectionDisplay: {
 		Label:       "用户界面",
-		Description: "配置站点默认显示模式和列表阅读体验。",
+		Description: "配置站点默认显示模式和列表阅读体验",
 	},
 	settingSectionIntegrations: {
 		Label:       "统计与集成",
-		Description: "配置公开站点的统计分析与外部集成。",
+		Description: "配置公开站点的统计分析与外部集成",
 	},
 	settingSectionSecurity: {
 		Label:       "后台访问与安全",
-		Description: "配置管理后台入口地址和登录安全信息。",
+		Description: "配置管理后台入口地址和登录安全信息",
 	},
 	settingSectionEditor: {
 		Label:       "编辑器",
-		Description: "配置文章编辑页的默认模式和文字显示。",
+		Description: "配置文章编辑页的默认模式和文字显示",
 	},
 	settingSectionLayout: {
 		Label:       "用户界面",
-		Description: "配置后台站点名称、导航与默认布局状态。",
+		Description: "配置后台站点名称、导航与默认布局状态",
 	},
 	settingSectionAssets: {
 		Label:       "资源与云服务",
-		Description: "配置资源上传服务及其访问凭据。",
+		Description: "配置资源上传服务及其访问凭据",
 	},
 	settingSectionBackup: {
 		Label:       "备份与同步",
-		Description: "配置本地备份策略和远程备份目标。",
+		Description: "配置本地备份策略和远程备份目标",
 	},
 	settingSectionNotifications: {
 		Label:       "通知与任务",
-		Description: "配置站点互动和后台任务的通知策略。",
+		Description: "配置站点互动和后台任务的通知策略",
 	},
 	settingSectionOther: {
 		Label:       "其他设置",
-		Description: "暂未归入标准信息结构的设置项。",
+		Description: "暂未归入标准信息结构的设置项",
 	},
 }
 
