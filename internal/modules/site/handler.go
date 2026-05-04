@@ -26,10 +26,11 @@ import (
 )
 
 type Handler struct {
-	Model   *db.DB
-	Session *types.SessionStore
-	Service *Service
-	Views   fiber.Views
+	Model     *db.DB
+	Session   *types.SessionStore
+	Service   *Service
+	Views     fiber.Views
+	UVTracker *UVTracker
 }
 
 const (
@@ -65,14 +66,25 @@ func (h Handler) trackEntityUV(c fiber.Ctx, entityType db.UVEntityType, entityID
 		return
 	}
 
-	if _, err := db.UpsertUVUnique(h.Model, entityType, entityID, visitorID); err != nil {
-		logger.Warn("track entity uv failed: %v", err)
-		trace.Step("upsert")
-		trace.Finish(perftrace.Field("err", true))
+	if h.UVTracker != nil {
+		h.UVTracker.Track(entityType, entityID, visitorID)
+		trace.Step("enqueue")
+		trace.Finish(perftrace.Field("mode", "async"))
 		return
 	}
+
+	updated, err := db.UpsertUVUnique(h.Model, entityType, entityID, visitorID)
 	trace.Step("upsert")
-	trace.Finish(perftrace.Field("err", false))
+	if err != nil {
+		logger.Warn("track entity uv failed: %v", err)
+		trace.Finish(perftrace.Field("mode", "sync"), perftrace.Field("err", true))
+		return
+	}
+	trace.Finish(
+		perftrace.Field("mode", "sync"),
+		perftrace.Field("updated", updated),
+		perftrace.Field("err", false),
+	)
 }
 
 func (h Handler) getEntityUVCount(entityType db.UVEntityType, entityID int64) int {
@@ -816,11 +828,16 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 	return webutil.RedirectTo(c, redirectPath)
 }
 
-func NewHandler(gStore *store.GlobalStore, service *Service, views fiber.Views) *Handler {
+func NewHandler(gStore *store.GlobalStore, service *Service, views fiber.Views, uvTracker ...*UVTracker) *Handler {
+	var tracker *UVTracker
+	if len(uvTracker) > 0 {
+		tracker = uvTracker[0]
+	}
 	return &Handler{
-		Model:   gStore.Model,
-		Session: gStore.Session,
-		Service: service,
-		Views:   views,
+		Model:     gStore.Model,
+		Session:   gStore.Session,
+		Service:   service,
+		Views:     views,
+		UVTracker: tracker,
 	}
 }

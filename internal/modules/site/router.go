@@ -8,11 +8,12 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterRouter(app *fiber.App, gStore *store.GlobalStore, views fiber.Views) {
+func RegisterRouter(app *fiber.App, gStore *store.GlobalStore, views fiber.Views, uvTracker ...*UVTracker) {
 	handler := NewHandler(
 		gStore,
 		NewService(gStore.Model),
 		views,
+		uvTracker...,
 	)
 
 	uiGroup := app.Group(share.GetBasePath())

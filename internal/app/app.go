@@ -37,6 +37,7 @@ type SwavesApp struct {
 	Config  *types.AppConfig
 	Store   *store.GlobalStore
 	Tracker *middleware.RequestTracker
+	UV      *site.UVTracker
 }
 
 func NewApp(appCfg types.AppConfig) SwavesApp {
@@ -57,6 +58,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	viewEngine, initURLResolver := newRuntimeViewEngine()
 	siteViews, initSiteURLResolver := newSiteRuntimeViewEngine(globalStore.Model, appCfg.SqliteFile)
 	requestTracker := middleware.NewRequestTracker()
+	uvTracker := site.NewUVTracker(globalStore.Model)
 
 	app := fiber.New(fiber.Config{
 		AppName:       appCfg.AppName,
@@ -129,7 +131,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	app.Use(requestTracker.Middleware())
 	dash.RegisterRouter(app, globalStore)
 	sui.RegisterRouter(app, globalStore)
-	site.RegisterRouter(app, globalStore, siteViews)
+	site.RegisterRouter(app, globalStore, siteViews, uvTracker)
 	api.RegisterRouter(app)
 
 	return SwavesApp{
@@ -137,6 +139,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		Store:   globalStore,
 		Config:  &appCfg,
 		Tracker: requestTracker,
+		UV:      uvTracker,
 	}
 }
 
@@ -274,6 +277,10 @@ func (swv *SwavesApp) Shutdown() {
 	logger.Info("[app] shutdown start: app=%s", appName)
 	job.DestroyRegistry()
 	logger.Info("[app] shutdown jobs destroyed: app=%s", appName)
+	if swv.UV != nil {
+		swv.UV.Close()
+		logger.Info("[app] shutdown uv tracker closed: app=%s", appName)
+	}
 	if swv.Store != nil {
 		swv.Store.Close()
 		logger.Info("[app] shutdown store closed: app=%s", appName)
