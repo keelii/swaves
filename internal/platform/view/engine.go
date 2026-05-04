@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"swaves/internal/platform/config"
+	"swaves/internal/platform/perftrace"
 	"swaves/internal/shared/share"
 	"sync"
 	"time"
@@ -187,34 +188,72 @@ func (v *FiberView) Load() error {
 	return nil
 }
 
-func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...string) error {
+func (v *FiberView) Render(out io.Writer, name string, binding any, layout ...string) (err error) {
 	if v == nil || v.env == nil {
 		return errFiberViewNil
 	}
+
+	var trace *perftrace.Trace
+	var contextKeys int
+	var outputBytes int
+	if perftrace.Enabled() {
+		outputBytes = -1
+		trace = perftrace.Start("view.render",
+			perftrace.Field("template", name),
+			perftrace.Field("clear_on_render", v.clearOnRender),
+		)
+		defer func() {
+			fields := []string{
+				perftrace.Field("context_keys", contextKeys),
+				perftrace.Field("err", err != nil),
+			}
+			if outputBytes >= 0 {
+				fields = append(fields, perftrace.Field("bytes", outputBytes))
+			}
+			trace.Finish(fields...)
+		}()
+	}
+
 	v.mu.Lock()
+	trace.Step("wait_lock")
 	defer v.mu.Unlock()
 
 	acquired := templatecore.AcquireViewContext(binding)
+	trace.Step("acquire_context")
 
 	if v.clearOnRender {
 		v.env.ClearTemplates()
+		trace.Step("clear_templates")
+	} else {
+		trace.Step("reuse_templates")
 	}
 
 	templateName, err := normalizeTemplateName(name)
 	if err != nil {
 		return err
 	}
+	trace.Step("normalize_template")
 	_ = layout
 
 	tmpl, err := v.env.GetTemplate(templateName)
 	if err != nil {
 		return fmt.Errorf("load template %q failed: %w", templateName, err)
 	}
+	trace.Step("get_template")
+
 	context := make(map[string]value.Value, len(acquired))
 	for key, raw := range acquired {
 		context[key] = value.FromAny(wrapMapLookup(raw))
 	}
-	return tmpl.RenderToWrite(context, out)
+	contextKeys = len(context)
+	trace.Step("build_context")
+
+	err = tmpl.RenderToWrite(context, out)
+	if sized, ok := out.(interface{ Len() int }); ok {
+		outputBytes = sized.Len()
+	}
+	trace.Step("render_to_write")
+	return err
 }
 
 func (v *FiberView) loadTemplateNames() ([]string, error) {

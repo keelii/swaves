@@ -292,6 +292,19 @@ func injectDefaultTitle(routeName, view string, data fiber.Map) {
 }
 
 func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
+	var trace *perftrace.Trace
+	if perftrace.Enabled() {
+		routeName := ""
+		if route := c.Route(); route != nil {
+			routeName = strings.TrimSpace(route.Name)
+		}
+		trace = perftrace.Start("site.render_view",
+			perftrace.Field("template", view),
+			perftrace.Field("route", routeName),
+			perftrace.Field("path", c.Path()),
+		)
+	}
+
 	if data == nil {
 		data = fiber.Map{}
 	}
@@ -307,6 +320,7 @@ func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
 	data["IsLogin"] = fiber.Locals[bool](c, "IsLogin")
 	data["IsMobile"] = webutil.IsMobileRequest(c)
 	data["RouteName"] = routeName
+	trace.Step("prepare_context")
 
 	//// 注入 Locals
 	//c.Context().VisitUserValues(func(k []byte, v interface{}) {
@@ -315,15 +329,30 @@ func (h Handler) renderView(c fiber.Ctx, view string, data fiber.Map) error {
 	//})
 
 	if h.Views == nil {
-		return c.Render(view, data)
+		err := c.Render(view, data)
+		trace.Step("fiber_render")
+		trace.Finish(perftrace.Field("err", err != nil))
+		return err
 	}
 
 	var out bytes.Buffer
 	if err := h.Views.Render(&out, view, data); err != nil {
+		trace.Step("view_render")
+		trace.Finish(
+			perftrace.Field("bytes", out.Len()),
+			perftrace.Field("err", true),
+		)
 		return err
 	}
+	trace.Step("view_render")
 	c.Type("html", "utf-8")
-	return c.SendString(out.String())
+	err := c.SendString(out.String())
+	trace.Step("send_string")
+	trace.Finish(
+		perftrace.Field("bytes", out.Len()),
+		perftrace.Field("err", err != nil),
+	)
+	return err
 }
 
 func (h Handler) GetDate(c fiber.Ctx) error {
