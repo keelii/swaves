@@ -45,6 +45,12 @@ test: ## Run the full Go test suitethe local executable
 		go build -trimpath -buildvcs=false -ldflags "$(GO_LDFLAGS)" \
 		-o swaves ./cmd/swaves
 
+binary: ## Build the local executable
+	@mkdir -p $(GOCACHE)
+	GOCACHE=$(GOCACHE) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		go build -trimpath -buildvcs=false -ldflags "$(GO_LDFLAGS)" \
+		-o swaves ./cmd/swaves
+
 build: fe binary ## Build frontend bundles and the local executable
 
 release: ## Build and package the release executable with version metadata
