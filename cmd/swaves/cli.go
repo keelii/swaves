@@ -287,9 +287,6 @@ func readRuntimeInfoForUtilityCommand() (updater.RuntimeInfo, error) {
 	if err != nil {
 		return updater.RuntimeInfo{}, err
 	}
-	if err := updater.MigrateRuntimeInfoAtCacheRoot(root); err != nil {
-		return updater.RuntimeInfo{}, err
-	}
 	return updater.ReadRuntimeInfoAtCacheRoot(root)
 }
 

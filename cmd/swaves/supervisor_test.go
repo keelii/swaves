@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"swaves/internal/platform/updater"
@@ -139,6 +140,33 @@ func TestEnvFDMissingValue(t *testing.T) {
 	}
 }
 
+func TestWorkerEnvForSupervisorIncludesRuntimeMasterInfo(t *testing.T) {
+	cfg := supervisorConfig{
+		ExecutablePath: "/tmp/swaves",
+		SqliteFile:     "/tmp/data.sqlite",
+	}
+
+	env := workerEnvForSupervisor(cfg)
+
+	for _, want := range []string{
+		workerModeEnv + "=1",
+		updater.RuntimeMasterPIDEnv + "=",
+		updater.RuntimeMasterExecutableEnv + "=/tmp/swaves",
+	} {
+		if !envHasPrefix(env, want) {
+			t.Fatalf("expected env to contain %q, got %v", want, env)
+		}
+	}
+}
+
+func TestResolveRuntimeSQLiteFileMakesRelativePathAbsolute(t *testing.T) {
+	got := resolveRuntimeSQLiteFile("data.sqlite", "/home/ubuntu")
+	want := filepath.Join("/home/ubuntu", "data.sqlite")
+	if got != want {
+		t.Fatalf("resolveRuntimeSQLiteFile = %q, want %q", got, want)
+	}
+}
+
 func TestWorkerArgsAppendsInternalWorkerFlag(t *testing.T) {
 	args := workerArgs([]string{"data.sqlite", "--daemon-mode=1"})
 	if len(args) != 3 {
@@ -174,6 +202,15 @@ type fakeListener struct{}
 func (fakeListener) Accept() (net.Conn, error) { return nil, errors.New("not implemented") }
 func (fakeListener) Close() error              { return nil }
 func (fakeListener) Addr() net.Addr            { return &net.TCPAddr{} }
+
+func envHasPrefix(env []string, prefix string) bool {
+	for _, value := range env {
+		if strings.HasPrefix(value, prefix) {
+			return true
+		}
+	}
+	return false
+}
 
 func TestReplaceSQLiteDatabaseReplacesTargetAndCleansRuntimeFiles(t *testing.T) {
 	tmpDir := t.TempDir()

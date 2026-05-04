@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"swaves/internal/platform/logger"
 	"swaves/internal/shared/pathutil"
@@ -30,7 +31,8 @@ const (
 	RuntimeInfoName     = "master_runtime.json"
 	UpgradeCacheDirName = "updater"
 
-	previousRuntimeCacheDirName = "swaves"
+	RuntimeMasterPIDEnv        = "SWAVES_MASTER_PID"
+	RuntimeMasterExecutableEnv = "SWAVES_MASTER_EXECUTABLE"
 )
 
 var DefaultBackupDir = filepath.Join(RuntimeCacheDir, "backups")
@@ -46,6 +48,7 @@ var (
 
 var (
 	runtimeCacheRoot                                string
+	runtimeSQLiteFile                               string
 	runtimeCacheMu                                  sync.RWMutex
 	runtimeExecutableVerificationUnsupportedLogOnce sync.Once
 )
@@ -73,13 +76,15 @@ func ConfigureRuntimeCacheRoot(sqliteFile string) error {
 	if err != nil {
 		return err
 	}
+	resolvedSQLiteFile, err := filepath.Abs(strings.TrimSpace(sqliteFile))
+	if err != nil {
+		return fmt.Errorf("resolve runtime sqlite file failed: %w", err)
+	}
 	runtimeCacheMu.Lock()
 	runtimeCacheRoot = root
+	runtimeSQLiteFile = filepath.Clean(resolvedSQLiteFile)
 	runtimeCacheMu.Unlock()
 	logger.Info("[update] runtime cache root configured: sqlite=%s cache_root=%s", strings.TrimSpace(sqliteFile), root)
-	if err := MigrateRuntimeInfo(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -91,6 +96,16 @@ func RuntimeCacheRoot() (string, error) {
 		return root, nil
 	}
 	return "", fmt.Errorf("runtime cache root is not configured: call ConfigureRuntimeCacheRoot first: %w", ErrRuntimeCacheRootNotConfigured)
+}
+
+func RuntimeSQLiteFile() (string, error) {
+	runtimeCacheMu.RLock()
+	sqliteFile := strings.TrimSpace(runtimeSQLiteFile)
+	runtimeCacheMu.RUnlock()
+	if sqliteFile != "" {
+		return sqliteFile, nil
+	}
+	return "", fmt.Errorf("runtime sqlite file is not configured: call ConfigureRuntimeCacheRoot first: %w", ErrRuntimeCacheRootNotConfigured)
 }
 
 func RuntimeCachePath() (string, error) {
@@ -215,15 +230,12 @@ func ReadRuntimeInfo() (RuntimeInfo, error) {
 	if !os.IsNotExist(err) {
 		return RuntimeInfo{}, err
 	}
-	if err := MigrateRuntimeInfo(); err != nil {
-		return RuntimeInfo{}, err
-	}
-	info, err = readRuntimeInfoAtPath(path)
-	if err == nil {
+	info, repairErr := RepairRuntimeInfoFromEnv()
+	if repairErr == nil {
 		return info, nil
 	}
-	if !os.IsNotExist(err) {
-		return RuntimeInfo{}, err
+	if !errors.Is(repairErr, ErrRuntimeInfoNotFound) {
+		return RuntimeInfo{}, repairErr
 	}
 	logger.Warn("[update] runtime info file missing: path=%s", path)
 	return RuntimeInfo{}, fmt.Errorf("runtime info file not found: path=%s: %w", path, ErrRuntimeInfoNotFound)
@@ -237,80 +249,71 @@ func ReadRuntimeInfoAtCacheRoot(root string) (RuntimeInfo, error) {
 	return readRuntimeInfoAtPath(path)
 }
 
-func MigrateRuntimeInfo() error {
-	root, err := RuntimeCacheRoot()
+func ReadRuntimeInfoFromEnv() (RuntimeInfo, error) {
+	rawPID := strings.TrimSpace(os.Getenv(RuntimeMasterPIDEnv))
+	if rawPID == "" {
+		return RuntimeInfo{}, fmt.Errorf("runtime env is not configured: %w", ErrRuntimeInfoNotFound)
+	}
+	pid, err := strconv.Atoi(rawPID)
 	if err != nil {
-		return err
+		return RuntimeInfo{}, fmt.Errorf("runtime env pid is invalid: %w", err)
 	}
-	return MigrateRuntimeInfoAtCacheRoot(root)
+
+	return normalizeRuntimeInfo(RuntimeInfo{
+		PID:        pid,
+		Executable: os.Getenv(RuntimeMasterExecutableEnv),
+	})
 }
 
-func MigrateRuntimeInfoAtCacheRoot(root string) error {
-	currentPath, err := RuntimeInfoPathAtCacheRoot(root)
+func RepairRuntimeInfoFromEnv() (RuntimeInfo, error) {
+	info, err := ReadRuntimeInfoFromEnv()
 	if err != nil {
-		return err
+		return RuntimeInfo{}, err
 	}
-	if _, err := os.Stat(currentPath); err == nil {
-		return nil
-	} else if !os.IsNotExist(err) {
-		logger.Error("[update] runtime info migration stat current failed: path=%s err=%v", currentPath, err)
-		return fmt.Errorf("stat runtime info failed: %w", err)
+	sqliteFile, err := RuntimeSQLiteFile()
+	if err != nil {
+		return RuntimeInfo{}, err
 	}
-
-	for _, sourcePath := range runtimeInfoMigrationSourcePaths(root, currentPath) {
-		if _, err := os.Stat(sourcePath); err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			logger.Error("[update] runtime info migration stat source failed: path=%s err=%v", sourcePath, err)
-			return fmt.Errorf("stat runtime info migration source failed: %w", err)
-		}
-		if err := os.Rename(sourcePath, currentPath); err != nil {
-			logger.Error("[update] runtime info migration failed: source=%s target=%s err=%v", sourcePath, currentPath, err)
-			return fmt.Errorf("migrate runtime info failed: %w", err)
-		}
-		logger.Info("[update] runtime info migrated: source=%s target=%s", sourcePath, currentPath)
-		return nil
+	info.SQLiteFile = sqliteFile
+	path, err := RuntimeInfoPath()
+	if err != nil {
+		return RuntimeInfo{}, err
 	}
-	return nil
-}
-
-func runtimeInfoMigrationSourcePaths(root string, currentPath string) []string {
-	return uniqueRuntimeInfoPaths(currentPath,
-		filepath.Join(root, UpgradeCacheDirName, RuntimeInfoName),
-		filepath.Join(root, previousRuntimeCacheDirName, RuntimeInfoName),
-	)
-}
-
-func uniqueRuntimeInfoPaths(currentPath string, candidates ...string) []string {
-	paths := make([]string, 0, len(candidates))
-	seen := map[string]struct{}{filepath.Clean(currentPath): {}}
-	for _, candidate := range candidates {
-		candidate = filepath.Clean(strings.TrimSpace(candidate))
-		if candidate == "" {
-			continue
-		}
-		if _, ok := seen[candidate]; ok {
-			continue
-		}
-		seen[candidate] = struct{}{}
-		paths = append(paths, candidate)
+	if err := writeRuntimeInfoAtPath(path, info); err != nil {
+		return RuntimeInfo{}, err
 	}
-	return paths
+	logger.Info("[update] runtime info repaired from worker env: path=%s master_pid=%d executable=%s", path, info.PID, info.Executable)
+	return info, nil
 }
 
 func ReadActiveRuntimeInfo() (RuntimeInfo, error) {
 	info, err := ReadRuntimeInfo()
 	if err != nil {
-		return RuntimeInfo{}, err
+		envInfo, envErr := ReadRuntimeInfoFromEnv()
+		if envErr != nil {
+			return RuntimeInfo{}, err
+		}
+		info = envInfo
 	}
 	if !defaultProcessExists(info.PID) {
 		logger.Warn("[update] active runtime missing process: master_pid=%d executable=%s", info.PID, info.Executable)
-		return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d: %w", info.PID, ErrMasterNotRunning)
+		envInfo, envErr := ReadRuntimeInfoFromEnv()
+		if envErr != nil || envInfo.PID == info.PID {
+			return RuntimeInfo{}, fmt.Errorf("master process is not running: pid=%d: %w", info.PID, ErrMasterNotRunning)
+		}
+		info = envInfo
 	}
 	if err := verifyRuntimeExecutable(info); err != nil {
 		logger.Warn("[update] active runtime executable verification failed: master_pid=%d executable=%s err=%v", info.PID, info.Executable, err)
-		return RuntimeInfo{}, err
+		envInfo, envErr := ReadRuntimeInfoFromEnv()
+		if envErr != nil || envInfo.PID == info.PID {
+			return RuntimeInfo{}, err
+		}
+		info = envInfo
+		if err := verifyRuntimeExecutable(info); err != nil {
+			logger.Warn("[update] active runtime env executable verification failed: master_pid=%d executable=%s err=%v", info.PID, info.Executable, err)
+			return RuntimeInfo{}, err
+		}
 	}
 	return info, nil
 }
@@ -338,9 +341,32 @@ func verifyRuntimeExecutable(info RuntimeInfo) error {
 		return nil
 	}
 	if !sameExecutablePath(actual, info.Executable) {
+		if isDeletedUpgradeBackupExecutable(actual) {
+			logger.Warn("[update] active runtime executable is deleted upgrade backup, accepting runtime info for restart: master_pid=%d actual=%s expected=%s", info.PID, actual, info.Executable)
+			return nil
+		}
 		return fmt.Errorf("master process executable mismatch: pid=%d expected=%s actual=%s: %w", info.PID, info.Executable, actual, ErrMasterNotRunning)
 	}
 	return nil
+}
+
+func isDeletedUpgradeBackupExecutable(actual string) bool {
+	actual = strings.TrimSpace(actual)
+	if !strings.HasSuffix(actual, " (deleted)") {
+		return false
+	}
+	actual = strings.TrimSuffix(actual, " (deleted)")
+	if filepath.Base(actual) != ".swaves-executable-backup" {
+		return false
+	}
+
+	root, err := RuntimeCacheRoot()
+	if err != nil {
+		return false
+	}
+	actual = filepath.Clean(actual)
+	upgradeRoot := filepath.Clean(filepath.Join(root, UpgradeCacheDirName))
+	return strings.HasPrefix(actual, upgradeRoot+string(os.PathSeparator))
 }
 
 func processExecutablePath(pid int) (string, bool, error) {

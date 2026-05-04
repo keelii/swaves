@@ -85,15 +85,17 @@ func runSupervisor(cfg supervisorConfig) error {
 	if err != nil {
 		return fmt.Errorf("resolve working directory failed: %w", err)
 	}
+	sqliteFile := resolveRuntimeSQLiteFile(cfg.SqliteFile, workingDir)
 	if err := updater.WriteRuntimeInfo(updater.RuntimeInfo{
 		PID:        os.Getpid(),
 		Executable: execPath,
 		Args:       append([]string{execPath}, cfg.Args...),
 		WorkingDir: workingDir,
-		SQLiteFile: cfg.SqliteFile,
+		SQLiteFile: sqliteFile,
 	}); err != nil {
 		return err
 	}
+	cfg.SqliteFile = sqliteFile
 	defer func() { _ = updater.RemoveRuntimeInfo() }()
 
 	ln, err := net.Listen("tcp", cfg.ListenAddr)
@@ -211,7 +213,7 @@ func spawnWorker(listener net.Listener, cfg supervisorConfig) (*workerProcess, e
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.ExtraFiles = []*os.File{listenerDup, readyWriter}
-	cmd.Env = workerEnv()
+	cmd.Env = workerEnvForSupervisor(cfg)
 	if err := cmd.Start(); err != nil {
 		_ = readyReader.Close()
 		logger.Error("[master] spawn worker start process failed: executable=%s err=%v", execPath, err)
@@ -274,6 +276,25 @@ func workerEnv() []string {
 		workerListenerFDEnv+"="+strconv.Itoa(workerListenerFD),
 		workerReadyFDEnv+"="+strconv.Itoa(workerReadyFD),
 	)
+}
+
+func workerEnvForSupervisor(cfg supervisorConfig) []string {
+	return append(workerEnv(),
+		updater.RuntimeMasterPIDEnv+"="+strconv.Itoa(os.Getpid()),
+		updater.RuntimeMasterExecutableEnv+"="+strings.TrimSpace(cfg.ExecutablePath),
+	)
+}
+
+func resolveRuntimeSQLiteFile(sqliteFile string, workingDir string) string {
+	sqliteFile = strings.TrimSpace(sqliteFile)
+	if sqliteFile == "" || filepath.IsAbs(sqliteFile) {
+		return filepath.Clean(sqliteFile)
+	}
+	workingDir = strings.TrimSpace(workingDir)
+	if workingDir == "" {
+		return sqliteFile
+	}
+	return filepath.Clean(filepath.Join(workingDir, sqliteFile))
 }
 
 func workerArgs(args []string) []string {

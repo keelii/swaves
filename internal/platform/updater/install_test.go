@@ -68,6 +68,10 @@ func TestInstallRequireMasterFailsWithoutActiveMaster(t *testing.T) {
 // TestInstallRemoteSkipsWhenAlreadyAtLatest 验证当前版本已是最新稳定版时，
 // 远端更新路径直接返回 no-op，不尝试下载或安装。
 func TestInstallRemoteSkipsWhenAlreadyAtLatest(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
+
 	client := Client{
 		BaseURL: "https://example.test/latest",
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -95,6 +99,65 @@ func TestInstallRemoteSkipsWhenAlreadyAtLatest(t *testing.T) {
 	}
 	if result.LatestVersion != "v1.2.4" {
 		t.Fatalf("LatestVersion 不符合预期: %q", result.LatestVersion)
+	}
+}
+
+func TestInstallRemoteSkipsWhenAlreadyAtLatestRestartsReplacedRuntime(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, tmpDir)
+
+	exePath := filepath.Join(tmpDir, "swaves")
+	if err := os.WriteFile(exePath, []byte("new-binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile exe failed: %v", err)
+	}
+	want := RuntimeInfo{PID: os.Getpid(), Executable: exePath}
+	if err := WriteRuntimeInfo(want); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+	actual := filepath.Join(tmpDir, RuntimeCacheDir, UpgradeCacheDirName, ".swaves-upgrade-123", ".swaves-executable-backup") + " (deleted)"
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return actual, true, nil
+	})
+	stubInstallCurrentExecutable(t, func() (string, error) {
+		return exePath, nil
+	})
+	signaledPID := 0
+	stubInstallSignalProcess(t, func(pid int) error {
+		signaledPID = pid
+		return nil
+	})
+
+	client := Client{
+		BaseURL: "https://example.test/latest",
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := fmt.Sprintf(`{
+				"tag_name":"v1.2.4",
+				"html_url":"%s",
+				"published_at":"2026-04-05T00:00:00Z",
+				"draft":false,
+				"prerelease":false,
+				"assets":[
+					{"name":"swaves_v1.2.4_linux_amd64.tar.gz","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz"},
+					{"name":"swaves_v1.2.4_linux_amd64.tar.gz.sha256","browser_download_url":"https://example.test/swaves_v1.2.4_linux_amd64.tar.gz.sha256"}
+				]
+			}`, ReleaseTagURL("v1.2.4"))
+			return newHTTPResponse(http.StatusOK, body), nil
+		})},
+	}
+
+	result, err := client.Install(InstallSource{Kind: ArchiveSourceRemote}, "v1.2.4", "linux", "amd64", RestartIfMatchingMaster)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	if result.Installed {
+		t.Fatal("already latest should not reinstall")
+	}
+	if result.RestartedPID != os.Getpid() || signaledPID != os.Getpid() {
+		t.Fatalf("restart pid result=%d signaled=%d want %d", result.RestartedPID, signaledPID, os.Getpid())
+	}
+	if result.Reason != "current executable is already upgraded, restart requested" {
+		t.Fatalf("Reason=%q", result.Reason)
 	}
 }
 
@@ -270,6 +333,9 @@ func TestReplaceExecutableAtPathRollsBackOnExplicitCall(t *testing.T) {
 	}
 	if string(got) != "new-binary" {
 		t.Fatalf("替换后内容=%q，期望 new-binary", string(got))
+	}
+	if backup, err := os.ReadFile(backupPath); err != nil || string(backup) != "old-binary" {
+		t.Fatalf("备份内容=%q err=%v，期望 old-binary", string(backup), err)
 	}
 
 	// 执行回滚
@@ -605,6 +671,24 @@ func TestAllThreeEntryPointsUseUnifiedSourceAndPolicyTypes(t *testing.T) {
 type archiveEntry struct {
 	name    string
 	content []byte
+}
+
+func stubInstallCurrentExecutable(t *testing.T, fn func() (string, error)) {
+	t.Helper()
+	original := installCurrentExePath
+	installCurrentExePath = fn
+	t.Cleanup(func() {
+		installCurrentExePath = original
+	})
+}
+
+func stubInstallSignalProcess(t *testing.T, fn func(pid int) error) {
+	t.Helper()
+	original := installSignalProcess
+	installSignalProcess = fn
+	t.Cleanup(func() {
+		installSignalProcess = original
+	})
 }
 
 func buildTarGzArchiveEntries(t *testing.T, entries []archiveEntry) []byte {

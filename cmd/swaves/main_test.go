@@ -273,9 +273,6 @@ func TestReadRuntimeInfoForUtilityCommandReadsWorkingDirectoryCache(t *testing.T
 	resetCLIRuntimeCacheRoot(t)
 
 	cacheRoot := filepath.Join(tmpDir, updater.RuntimeCacheDir)
-	if err := updater.MigrateRuntimeInfoAtCacheRoot(cacheRoot); err != nil {
-		t.Fatalf("MigrateRuntimeInfoAtCacheRoot failed: %v", err)
-	}
 	if err := writeRuntimeInfoForCLITest(cacheRoot, updater.RuntimeInfo{
 		PID:        1003,
 		Executable: filepath.Join(tmpDir, "swaves"),

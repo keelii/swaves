@@ -65,7 +65,9 @@ type InstallResult struct {
 }
 
 var (
-	installMu sync.Mutex
+	installMu             sync.Mutex
+	installSignalProcess  = defaultSignalProcess
+	installCurrentExePath = currentExecutablePath
 )
 
 type executableRollback func() error
@@ -168,6 +170,10 @@ func (c Client) prepareRemotePackage(currentVersion string, goos string, goarch 
 
 	if !check.HasUpgrade {
 		result.Reason = check.Reason
+		if restartedPID := restartAlreadyInstalledRuntime(); restartedPID > 0 {
+			result.RestartedPID = restartedPID
+			result.Reason = "current executable is already upgraded, restart requested"
+		}
 		logger.Info("[update] install skipped: current=%s latest=%s reason=%s", versionLabel(currentVersion), versionLabel(result.LatestVersion), strings.TrimSpace(result.Reason))
 		return releasePackage{}, result, true, nil
 	}
@@ -247,7 +253,7 @@ func installPreparedPackage(result InstallResult, pkg releasePackage, target ins
 
 	restartPID := target.RestartPID()
 	if restartPID > 0 {
-		if err := defaultSignalProcess(restartPID); err != nil {
+		if err := installSignalProcess(restartPID); err != nil {
 			if rollbackErr := rollback(); rollbackErr != nil {
 				logger.Error("[update] install restart signal failed and rollback failed: master_pid=%d err=%v rollback_err=%v", restartPID, err, rollbackErr)
 				return result, fmt.Errorf("signal master restart failed: %w (rollback failed: %v)", err, rollbackErr)
@@ -264,6 +270,26 @@ func installPreparedPackage(result InstallResult, pkg releasePackage, target ins
 	}
 	result.Installed = true
 	return result, nil
+}
+
+func restartAlreadyInstalledRuntime() int {
+	info, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		return 0
+	}
+	currentPath, err := currentInstallExecutable()
+	if err != nil {
+		return 0
+	}
+	if !sameExecutablePath(info.Executable, currentPath) {
+		return 0
+	}
+	if err := installSignalProcess(info.PID); err != nil {
+		logger.Warn("[update] already upgraded runtime restart failed: master_pid=%d err=%v", info.PID, err)
+		return 0
+	}
+	logger.Info("[update] already upgraded runtime restart requested: master_pid=%d", info.PID)
+	return info.PID
 }
 
 func releasePlatform(goos string, goarch string) (string, string) {
@@ -329,7 +355,7 @@ func RestartActiveRuntime() (int, error) {
 		return 0, err
 	}
 	logger.Info("[update] restart active runtime signaling master: master_pid=%d executable=%s", runtimeInfo.PID, runtimeInfo.Executable)
-	if err := defaultSignalProcess(runtimeInfo.PID); err != nil {
+	if err := installSignalProcess(runtimeInfo.PID); err != nil {
 		logger.Error("[update] restart active runtime signal failed: master_pid=%d err=%v", runtimeInfo.PID, err)
 		return 0, fmt.Errorf("signal master restart failed: %w", err)
 	}
@@ -566,7 +592,7 @@ func defaultSignalProcess(pid int) error {
 }
 
 func currentInstallExecutable() (string, error) {
-	path, err := os.Executable()
+	path, err := installCurrentExePath()
 	if err != nil {
 		return "", fmt.Errorf("resolve current executable failed: %w", err)
 	}
@@ -575,6 +601,10 @@ func currentInstallExecutable() (string, error) {
 		return "", fmt.Errorf("current executable is empty")
 	}
 	return path, nil
+}
+
+func currentExecutablePath() (string, error) {
+	return os.Executable()
 }
 
 func activeRuntimeForExecutable(targetPath string) (RuntimeInfo, bool) {
@@ -601,7 +631,7 @@ func replaceExecutableAtPathWithRollback(nextPath string, targetPath string, bac
 		return nil, fmt.Errorf("replace executable paths are required")
 	}
 
-	if err := moveFile(targetPath, backupPath); err != nil {
+	if err := copyFile(targetPath, backupPath); err != nil {
 		return nil, fmt.Errorf("backup executable failed: %w", err)
 	}
 

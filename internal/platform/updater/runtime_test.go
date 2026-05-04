@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -32,12 +33,15 @@ func resetRuntimeCacheRoot(t *testing.T) {
 
 	runtimeCacheMu.Lock()
 	original := runtimeCacheRoot
+	originalSQLiteFile := runtimeSQLiteFile
 	runtimeCacheRoot = ""
+	runtimeSQLiteFile = ""
 	runtimeExecutableVerificationUnsupportedLogOnce = sync.Once{}
 	runtimeCacheMu.Unlock()
 	t.Cleanup(func() {
 		runtimeCacheMu.Lock()
 		runtimeCacheRoot = original
+		runtimeSQLiteFile = originalSQLiteFile
 		runtimeExecutableVerificationUnsupportedLogOnce = sync.Once{}
 		runtimeCacheMu.Unlock()
 	})
@@ -53,13 +57,6 @@ func configureTestRuntimeCacheRootWithSQLite(t *testing.T, sqliteFile string) {
 	if err := ConfigureRuntimeCacheRoot(sqliteFile); err != nil {
 		t.Fatalf("ConfigureRuntimeCacheRoot failed: %v", err)
 	}
-}
-
-func setTestRuntimeCacheRoot(t *testing.T, root string) {
-	t.Helper()
-	runtimeCacheMu.Lock()
-	runtimeCacheRoot = root
-	runtimeCacheMu.Unlock()
 }
 
 func stubRuntimeProcessExecutablePath(t *testing.T, fn func(pid int) (string, bool, error)) {
@@ -183,66 +180,6 @@ func TestWriteRuntimeInfoPersistsRuntimeLaunchDetails(t *testing.T) {
 	}
 }
 
-func TestConfigureRuntimeCacheRootMigratesRuntimeInfoFromUpdaterPath(t *testing.T) {
-	base := t.TempDir()
-	resetRuntimeCacheRoot(t)
-
-	root := filepath.Join(base, RuntimeCacheDir)
-	setTestRuntimeCacheRoot(t, root)
-	want := RuntimeInfo{PID: 1234, Executable: filepath.Join(base, "swaves")}
-	fallbackPath := filepath.Join(root, UpgradeCacheDirName, RuntimeInfoName)
-	if err := writeRuntimeInfoAtPath(fallbackPath, want); err != nil {
-		t.Fatalf("writeRuntimeInfoAtPath fallback failed: %v", err)
-	}
-
-	configureTestRuntimeCacheRootWithSQLite(t, filepath.Join(base, "data.sqlite"))
-
-	currentPath := filepath.Join(root, RuntimeInfoName)
-	if _, err := os.Stat(currentPath); err != nil {
-		t.Fatalf("expected runtime info to migrate to current path: %v", err)
-	}
-	if _, err := os.Stat(fallbackPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected source runtime info removed after migration, got err=%v", err)
-	}
-	got, err := ReadRuntimeInfo()
-	if err != nil {
-		t.Fatalf("ReadRuntimeInfo failed: %v", err)
-	}
-	if got.PID != want.PID || got.Executable != want.Executable {
-		t.Fatalf("ReadRuntimeInfo = %#v, want %#v", got, want)
-	}
-}
-
-func TestConfigureRuntimeCacheRootMigratesRuntimeInfoFromPreviousSwavesPath(t *testing.T) {
-	base := t.TempDir()
-	resetRuntimeCacheRoot(t)
-
-	root := filepath.Join(base, RuntimeCacheDir)
-	setTestRuntimeCacheRoot(t, root)
-	want := RuntimeInfo{PID: 1234, Executable: filepath.Join(base, "swaves")}
-	fallbackPath := filepath.Join(root, previousRuntimeCacheDirName, RuntimeInfoName)
-	if err := writeRuntimeInfoAtPath(fallbackPath, want); err != nil {
-		t.Fatalf("writeRuntimeInfoAtPath fallback failed: %v", err)
-	}
-
-	configureTestRuntimeCacheRootWithSQLite(t, filepath.Join(base, "data.sqlite"))
-
-	currentPath := filepath.Join(root, RuntimeInfoName)
-	if _, err := os.Stat(currentPath); err != nil {
-		t.Fatalf("expected runtime info to migrate to current path: %v", err)
-	}
-	if _, err := os.Stat(fallbackPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected source runtime info removed after migration, got err=%v", err)
-	}
-	got, err := ReadRuntimeInfo()
-	if err != nil {
-		t.Fatalf("ReadRuntimeInfo failed: %v", err)
-	}
-	if got.PID != want.PID || got.Executable != want.Executable {
-		t.Fatalf("ReadRuntimeInfo = %#v, want %#v", got, want)
-	}
-}
-
 func TestReadActiveRuntimeInfoRejectsExecutableMismatch(t *testing.T) {
 	base := t.TempDir()
 	resetRuntimeCacheRoot(t)
@@ -262,6 +199,75 @@ func TestReadActiveRuntimeInfoRejectsExecutableMismatch(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "master process executable mismatch") {
 		t.Fatalf("ReadActiveRuntimeInfo error = %q, want executable mismatch", err.Error())
+	}
+}
+
+func TestReadActiveRuntimeInfoAllowsDeletedUpgradeBackupExecutable(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, base)
+
+	actual := filepath.Join(base, RuntimeCacheDir, UpgradeCacheDirName, ".swaves-upgrade-123", ".swaves-executable-backup") + " (deleted)"
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return actual, true, nil
+	})
+
+	want := RuntimeInfo{PID: os.Getpid(), Executable: filepath.Join(base, "swaves")}
+	if err := WriteRuntimeInfo(want); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	got, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadActiveRuntimeInfo failed: %v", err)
+	}
+	if got.PID != want.PID || got.Executable != want.Executable {
+		t.Fatalf("ReadActiveRuntimeInfo = %#v, want %#v", got, want)
+	}
+}
+
+func TestReadActiveRuntimeInfoFallsBackToEnvRuntimeInfo(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, base)
+
+	t.Setenv(RuntimeMasterPIDEnv, strconv.Itoa(os.Getpid()))
+	t.Setenv(RuntimeMasterExecutableEnv, filepath.Join(base, "swaves"))
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return filepath.Join(base, "swaves"), true, nil
+	})
+
+	got, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadActiveRuntimeInfo failed: %v", err)
+	}
+	if got.PID != os.Getpid() || got.Executable != filepath.Join(base, "swaves") || got.SQLiteFile != filepath.Join(base, "data.sqlite") {
+		t.Fatalf("ReadActiveRuntimeInfo = %#v", got)
+	}
+}
+
+func TestReadRuntimeInfoRepairsMissingFileFromEnv(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, base)
+
+	t.Setenv(RuntimeMasterPIDEnv, strconv.Itoa(os.Getpid()))
+	t.Setenv(RuntimeMasterExecutableEnv, filepath.Join(base, "swaves"))
+
+	got, err := ReadRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadRuntimeInfo failed: %v", err)
+	}
+	if got.PID != os.Getpid() || got.Executable != filepath.Join(base, "swaves") || got.SQLiteFile != filepath.Join(base, "data.sqlite") {
+		t.Fatalf("ReadRuntimeInfo = %#v", got)
+	}
+
+	path, err := RuntimeInfoPath()
+	if err != nil {
+		t.Fatalf("RuntimeInfoPath failed: %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected repaired runtime info file: %v", err)
 	}
 }
 
