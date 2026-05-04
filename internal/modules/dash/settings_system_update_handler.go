@@ -1,11 +1,9 @@
 package dash
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -14,13 +12,11 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/notify"
 	"swaves/internal/platform/updater"
-	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 const defaultRefreshDelaySeconds = 3
-const executableVersionProbeTimeout = 2 * time.Second
 
 type latestVersionInfo struct {
 	Version           string
@@ -38,17 +34,6 @@ type systemUpdateViewState struct {
 	SystemRuntimePID     int
 	SystemRuntimePath    string
 }
-
-type systemRuntimeDiagnostic struct {
-	ExecutablePath   string
-	InstalledVersion string
-	Message          string
-	Title            string
-	Level            string
-	Mismatch         bool
-}
-
-var readSystemExecutableVersion = readSystemExecutableVersionFromCommand
 
 func versionLabel(version string) string {
 	version = strings.TrimSpace(version)
@@ -135,86 +120,6 @@ func systemUpdateSupportState(readActiveRuntimeInfo func() (updater.RuntimeInfo,
 	return state
 }
 
-func buildSystemRuntimeDiagnostic(readExecutableVersion func(string) (string, error), executablePath string, currentVersion string) systemRuntimeDiagnostic {
-	diagnostic := systemRuntimeDiagnostic{
-		ExecutablePath: strings.TrimSpace(executablePath),
-	}
-	if diagnostic.ExecutablePath == "" {
-		return diagnostic
-	}
-
-	installedVersion, err := readExecutableVersion(diagnostic.ExecutablePath)
-	if err != nil {
-		diagnostic.Title = "运行时诊断"
-		diagnostic.Level = "warning"
-		diagnostic.Message = "无法读取运行中服务对应的可执行文件版本：" + err.Error()
-		return diagnostic
-	}
-
-	diagnostic.InstalledVersion = versionLabel(installedVersion)
-	if diagnostic.InstalledVersion != versionLabel(currentVersion) {
-		diagnostic.Title = "运行版本异常"
-		diagnostic.Level = "danger"
-		diagnostic.Mismatch = true
-		diagnostic.Message = fmt.Sprintf(
-			"检测到可执行文件版本为 %s，但当前运行中的服务仍是 %s。上一次更新已写入磁盘但未完成重启，请执行系统重启。可执行文件：%s",
-			diagnostic.InstalledVersion,
-			versionLabel(currentVersion),
-			diagnostic.ExecutablePath,
-		)
-	}
-	return diagnostic
-}
-
-func readSystemExecutableVersionFromCommand(executablePath string) (string, error) {
-	executablePath = strings.TrimSpace(executablePath)
-	if executablePath == "" {
-		return "", fmt.Errorf("executable path is empty")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), executableVersionProbeTimeout)
-	defer cancel()
-
-	out, err := exec.CommandContext(ctx, executablePath, "-v").CombinedOutput()
-	if ctx.Err() != nil {
-		return "", fmt.Errorf("command timed out: %w", ctx.Err())
-	}
-	output := compactDiagnosticOutput(string(out))
-	if err != nil {
-		if output == "" {
-			return "", fmt.Errorf("command failed: %w", err)
-		}
-		return "", fmt.Errorf("command failed: %w: %s", err, output)
-	}
-
-	version := parseSystemExecutableVersionOutput(string(out))
-	if version == "" {
-		if output == "" {
-			output = "empty output"
-		}
-		return "", fmt.Errorf("unrecognized version output: %s", output)
-	}
-	return version, nil
-}
-
-func parseSystemExecutableVersionOutput(output string) string {
-	for _, line := range strings.Split(output, "\n") {
-		fields := strings.Fields(strings.TrimSpace(line))
-		if len(fields) >= 2 && fields[0] == "swaves" {
-			return fields[1]
-		}
-	}
-	return ""
-}
-
-func compactDiagnosticOutput(output string) string {
-	output = strings.Join(strings.Fields(output), " ")
-	if len(output) > 160 {
-		return output[:160] + "..."
-	}
-	return output
-}
-
 func loadLatestVersionInfo(checkLatestRelease func(currentVersion string, goos string, goarch string) (updater.CheckResult, error), currentVersion string, goos string, goarch string, fallbackVersion string, fallbackReleaseURL string) latestVersionInfo {
 	currentVersion = strings.TrimSpace(currentVersion)
 	fallbackVersion = strings.TrimSpace(fallbackVersion)
@@ -273,14 +178,6 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 		logger.Warn("[dash] system update runtime unavailable: ip=%s current=%s message=%s",
 			c.IP(), versionLabel(buildinfo.Version), viewState.RuntimeStatusMessage)
 	}
-	runtimeDiagnostic := buildSystemRuntimeDiagnostic(readSystemExecutableVersion, viewState.SystemRuntimePath, buildinfo.Version)
-	if runtimeDiagnostic.Mismatch {
-		logger.Warn("[dash] system update runtime version mismatch: ip=%s running=%s executable_version=%s executable=%s master_pid=%d",
-			c.IP(), versionLabel(buildinfo.Version), runtimeDiagnostic.InstalledVersion, runtimeDiagnostic.ExecutablePath, viewState.SystemRuntimePID)
-	} else if runtimeDiagnostic.Message != "" {
-		logger.Warn("[dash] system update runtime diagnostic failed: ip=%s running=%s executable=%s message=%s master_pid=%d",
-			c.IP(), versionLabel(buildinfo.Version), runtimeDiagnostic.ExecutablePath, runtimeDiagnostic.Message, viewState.SystemRuntimePID)
-	}
 
 	return RenderDashView(c, "dash/settings_system_update.html", fiber.Map{
 		"Title":                    "系统更新",
@@ -299,10 +196,6 @@ func (h *Handler) GetSettingsSystemUpdateHandler(c fiber.Ctx) error {
 		"SystemUpdateRefreshDelay": parseRefreshDelaySeconds(c.Query("refresh")),
 		"SystemRuntimePID":         viewState.SystemRuntimePID,
 		"SystemRuntimePath":        viewState.SystemRuntimePath,
-		"RuntimeDiagnosticTitle":   runtimeDiagnostic.Title,
-		"RuntimeDiagnosticMessage": runtimeDiagnostic.Message,
-		"RuntimeDiagnosticLevel":   runtimeDiagnostic.Level,
-		"InstalledVersion":         runtimeDiagnostic.InstalledVersion,
 	}, "")
 }
 

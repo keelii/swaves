@@ -619,7 +619,6 @@ func TestRenderDashSettingsSystemUpdateShowsRestartAction(t *testing.T) {
 		"AutoUpdateEnabled":   true,
 		"ManualUpdateEnabled": true,
 		"RestartEnabled":      true,
-		"InstalledVersion":    "v1.0.2",
 		"SystemRuntimePath":   "/home/ubuntu/swaves",
 	})
 	if !strings.Contains(rendered, "系统更新") {
@@ -631,8 +630,8 @@ func TestRenderDashSettingsSystemUpdateShowsRestartAction(t *testing.T) {
 	if !strings.Contains(rendered, "system-update-restart-form") {
 		t.Fatalf("expected restart form in settings_system_update")
 	}
-	if !strings.Contains(rendered, "可执行文件版本") {
-		t.Fatalf("expected executable version in settings_system_update")
+	if strings.Contains(rendered, "可执行文件版本") {
+		t.Fatalf("did not expect executable version in settings_system_update")
 	}
 }
 
