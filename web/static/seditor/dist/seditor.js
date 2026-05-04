@@ -20725,8 +20725,11 @@ var SEditor = (() => {
     var base3 = $from.start();
     return { from: base3 + start, to: base3 + end };
   }
+  function normalizeCommandName(name) {
+    return (name || "").trim();
+  }
   function isCommandActive(schema2, name, state) {
-    var cmd = String(name || "").trim();
+    var cmd = normalizeCommandName(name);
     switch (cmd) {
       case "bold":
         return isMarkActive(state, schema2.marks.strong);
@@ -20749,7 +20752,7 @@ var SEditor = (() => {
     var em = schema2.marks.em;
     var link2 = schema2.marks.link;
     var blockquote2 = schema2.nodes.blockquote;
-    switch (String(name || "").trim()) {
+    switch (normalizeCommandName(name)) {
       case "bold":
         return strong ? toggleMark(strong) : null;
       case "italic":
@@ -20939,7 +20942,7 @@ var SEditor = (() => {
         }
         var visibleWhen = String(el.getAttribute("data-seditor-visible-when") || "").trim();
         bindings.push({ el, name, command, visibleWhen });
-        if (toggleCommands[String(name || "").trim()]) {
+        if (toggleCommands[normalizeCommandName(name)]) {
           el.setAttribute("aria-pressed", "false");
         }
         el.addEventListener("click", function(e) {
