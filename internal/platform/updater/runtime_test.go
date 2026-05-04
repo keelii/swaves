@@ -248,6 +248,31 @@ func TestReadActiveRuntimeInfoAllowsDeletedUpgradeBackupExecutable(t *testing.T)
 	}
 }
 
+func TestReadActiveRuntimeInfoAllowsDeletedInstallDirUpgradeBackupExecutable(t *testing.T) {
+	base := t.TempDir()
+	resetRuntimeCacheRoot(t)
+	configureTestRuntimeCacheRoot(t, base)
+
+	expected := filepath.Join(base, "bin", "swaves")
+	actual := filepath.Join(base, "bin", ".swaves-upgrade-123", ".swaves-executable-backup") + " (deleted)"
+	stubRuntimeProcessExecutablePath(t, func(pid int) (string, bool, error) {
+		return actual, true, nil
+	})
+
+	want := RuntimeInfo{PID: os.Getpid(), Executable: expected}
+	if err := WriteRuntimeInfo(want); err != nil {
+		t.Fatalf("WriteRuntimeInfo failed: %v", err)
+	}
+
+	got, err := ReadActiveRuntimeInfo()
+	if err != nil {
+		t.Fatalf("ReadActiveRuntimeInfo failed: %v", err)
+	}
+	if got.PID != want.PID || got.Executable != want.Executable {
+		t.Fatalf("ReadActiveRuntimeInfo = %#v, want %#v", got, want)
+	}
+}
+
 func TestReadActiveRuntimeInfoFallsBackToEnvRuntimeInfo(t *testing.T) {
 	base := t.TempDir()
 	resetRuntimeCacheRoot(t)

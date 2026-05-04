@@ -363,7 +363,7 @@ func verifyRuntimeExecutable(info RuntimeInfo) error {
 		return nil
 	}
 	if !sameExecutablePath(actual, info.Executable) {
-		if isDeletedUpgradeBackupExecutable(actual) {
+		if isDeletedUpgradeBackupExecutable(actual, info.Executable) {
 			logger.Warn("[update] active runtime executable is deleted upgrade backup, accepting runtime info for restart: master_pid=%d actual=%s expected=%s", info.PID, actual, info.Executable)
 			return nil
 		}
@@ -372,7 +372,7 @@ func verifyRuntimeExecutable(info RuntimeInfo) error {
 	return nil
 }
 
-func isDeletedUpgradeBackupExecutable(actual string) bool {
+func isDeletedUpgradeBackupExecutable(actual string, expected string) bool {
 	actual = strings.TrimSpace(actual)
 	if !strings.HasSuffix(actual, " (deleted)") {
 		return false
@@ -387,7 +387,14 @@ func isDeletedUpgradeBackupExecutable(actual string) bool {
 	if !strings.HasPrefix(upgradeDir, ".swaves-upgrade-") {
 		return false
 	}
-	return parts[len(parts)-3] == UpgradeCacheDirName && parts[len(parts)-4] == RuntimeCacheDir
+	if parts[len(parts)-3] == UpgradeCacheDirName && parts[len(parts)-4] == RuntimeCacheDir {
+		return true
+	}
+
+	// Older upgrade flows created the temporary backup next to the installed
+	// executable. A daemon still running that deleted backup is valid: signaling
+	// it is exactly how the already-upgraded binary takes over.
+	return filepath.Dir(filepath.Dir(actual)) == filepath.Dir(cleanExecutablePath(expected))
 }
 
 func processExecutablePath(pid int) (string, bool, error) {
