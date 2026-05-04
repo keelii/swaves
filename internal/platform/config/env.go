@@ -35,6 +35,7 @@ var (
 	EnableSQLLog          = shouldEnableSQLLog(AppEnv)
 	EnablePerfTrace       = envBool("SWAVES_PERF_TRACE")
 	PerfTraceMinMS        = envInt("SWAVES_PERF_TRACE_MIN_MS", 0)
+	HTTPBodyLimit         = readPositiveEnvInt("SWAVES_BODY_LIMIT", DefaultHTTPBodyLimit)
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
 )
@@ -107,6 +108,15 @@ func envInt(name string, defaultValue int) int {
 	parsed, err := strconv.Atoi(strings.TrimSpace(value))
 	if err != nil {
 		logger.Warn("invalid integer environment %s=%q, using default %d", name, value, defaultValue)
+		return defaultValue
+	}
+	return parsed
+}
+
+func readPositiveEnvInt(name string, defaultValue int) int {
+	parsed := envInt(name, defaultValue)
+	if parsed <= 0 {
+		logger.Warn("invalid positive integer environment %s=%d, using default %d", name, parsed, defaultValue)
 		return defaultValue
 	}
 	return parsed

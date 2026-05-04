@@ -12,6 +12,8 @@ const LoginRoutePath = "/dash/login"
 
 const GlobalSettingKey = "settings"
 
+const DefaultHTTPBodyLimit = 10 * 1024 * 1024
+
 const BaseTimeFormat = "2006-01-02 15:04:05"
 
 // const ArticleTimeFormat = "2006-01-02 15:04:05"

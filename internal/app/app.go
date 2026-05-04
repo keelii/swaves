@@ -64,7 +64,7 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 		AppName:       appCfg.AppName,
 		CaseSensitive: true,
 		Views:         viewEngine,
-		BodyLimit:     10 * 1024 * 1024, // 10MB
+		BodyLimit:     config.HTTPBodyLimit,
 		ReadTimeout:   15 * time.Second,
 		IdleTimeout:   5 * time.Second,
 		ProxyHeader:   fiber.HeaderXForwardedFor,

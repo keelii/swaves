@@ -108,3 +108,33 @@ func TestShouldEnableSQLLog(t *testing.T) {
 		})
 	}
 }
+
+func TestReadPositiveEnvInt(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  *string
+		want int
+	}{
+		{name: "missing uses default", want: 42},
+		{name: "valid", raw: strPtr("2048"), want: 2048},
+		{name: "valid with spaces", raw: strPtr(" 4096 "), want: 4096},
+		{name: "invalid uses default", raw: strPtr("large"), want: 42},
+		{name: "zero uses default", raw: strPtr("0"), want: 42},
+		{name: "negative uses default", raw: strPtr("-1"), want: 42},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.raw != nil {
+				t.Setenv("SWAVES_BODY_LIMIT_TEST", *tc.raw)
+			}
+			if got := readPositiveEnvInt("SWAVES_BODY_LIMIT_TEST", 42); got != tc.want {
+				t.Fatalf("readPositiveEnvInt() = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+func strPtr(value string) *string {
+	return &value
+}
