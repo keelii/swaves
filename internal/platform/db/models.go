@@ -2111,7 +2111,7 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination, withCont
 	opts := ReadOptions{
 		SelectFields: selectFields,
 		WhereClause:  "status = ? AND kind = ?",
-		OrderBy:      "published_at DESC",
+		OrderBy:      "published_at DESC, id DESC",
 		WhereArgs:    []interface{}{"published", kind},
 		Limit:        pager.PageSize,
 	}
@@ -2154,7 +2154,7 @@ func ListPublishedPages(db *DB) []Post {
 	results, err := Read(db, specPosts, ReadOptions{
 		SelectFields: "id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		WhereClause:  "status = ? AND kind = ?",
-		OrderBy:      "published_at DESC",
+		OrderBy:      "published_at DESC, id DESC",
 		WhereArgs:    []interface{}{"published", PostKindPage},
 	}, func(rows *sql.Rows) (interface{}, error) {
 		p, err := scanPost(rows, false)

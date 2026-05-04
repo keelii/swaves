@@ -97,51 +97,6 @@ func TestBuildSystemUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *test
 	}
 }
 
-func TestBuildSystemRuntimeDiagnosticDetectsVersionMismatch(t *testing.T) {
-	got := buildSystemRuntimeDiagnostic(func(path string) (string, error) {
-		if path != "/home/ubuntu/swaves" {
-			t.Fatalf("unexpected executable path: %q", path)
-		}
-		return "v0.0.77", nil
-	}, "/home/ubuntu/swaves", "v0.0.74")
-
-	if !got.Mismatch {
-		t.Fatal("expected mismatch")
-	}
-	if got.Level != "danger" {
-		t.Fatalf("Level=%q, want danger", got.Level)
-	}
-	if !strings.Contains(got.Message, "可执行文件版本为 v0.0.77") {
-		t.Fatalf("unexpected message: %q", got.Message)
-	}
-	if !strings.Contains(got.Message, "当前运行中的服务仍是 v0.0.74") {
-		t.Fatalf("unexpected message: %q", got.Message)
-	}
-}
-
-func TestBuildSystemRuntimeDiagnosticReportsProbeFailure(t *testing.T) {
-	got := buildSystemRuntimeDiagnostic(func(path string) (string, error) {
-		return "", fmt.Errorf("permission denied")
-	}, "/home/ubuntu/swaves", "v0.0.74")
-
-	if got.Mismatch {
-		t.Fatal("probe failure should not be version mismatch")
-	}
-	if got.Level != "warning" {
-		t.Fatalf("Level=%q, want warning", got.Level)
-	}
-	if !strings.Contains(got.Message, "无法读取运行中服务对应的可执行文件版本") {
-		t.Fatalf("unexpected message: %q", got.Message)
-	}
-}
-
-func TestParseSystemExecutableVersionOutput(t *testing.T) {
-	got := parseSystemExecutableVersionOutput("swaves v0.0.77\ncommit: abc\n")
-	if got != "v0.0.77" {
-		t.Fatalf("version=%q, want v0.0.77", got)
-	}
-}
-
 func TestSystemUpdateSupportStateWithoutDaemon(t *testing.T) {
 	state := systemUpdateSupportState(func() (updater.RuntimeInfo, error) {
 		return updater.RuntimeInfo{}, fmt.Errorf("daemon mode is not active")

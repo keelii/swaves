@@ -263,12 +263,6 @@
         {{ sui.Alert(RuntimeStatusMessage, kind="warning", title="运行时状态", inline=true) }}
       </div>
     {% endif %}
-    {% if RuntimeDiagnosticMessage %}
-      <div class="system-update-banner">
-        {{ sui.Alert(RuntimeDiagnosticMessage, kind=(RuntimeDiagnosticLevel if RuntimeDiagnosticLevel else "warning"), title=(RuntimeDiagnosticTitle if RuntimeDiagnosticTitle else "运行时诊断"), inline=true) }}
-      </div>
-    {% endif %}
-
     <div class="settings-card-list">
       <section class="settings-card is-emphasis">
         <header class="settings-card-header">
@@ -284,15 +278,6 @@
               </div>
               <span class="system-update-value">{{ CurrentVersion }}</span>
             </div>
-            {% if InstalledVersion %}
-              <div class="system-update-item">
-                <div class="system-update-label">
-                  <span>可执行文件版本</span>
-                  {% if SystemRuntimePath %}<span>{{ SystemRuntimePath }}</span>{% endif %}
-                </div>
-                <span class="system-update-value">{{ InstalledVersion }}</span>
-              </div>
-            {% endif %}
             <div class="system-update-item">
               <div class="system-update-label">
                 <span>最新版本</span>

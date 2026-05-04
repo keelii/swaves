@@ -24,7 +24,7 @@ ifeq ($(strip $(TAG_BUMP)),)
 TAG_BUMP := patch
 endif
 
-.PHONY: help fe ceditor seditor test build release tag major minor patch clean
+.PHONY: help fe ceditor seditor test binary build release tag major minor patch clean
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -41,13 +41,16 @@ fe: ceditor seditor ## Build both frontend editor bundles
 
 test: ## Run the full Go test suite
 	@mkdir -p $(GOCACHE)
-	GOCACHE=$(GOCACHE) go test ./...
+	GOCACHE=$(GOCACHE) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		go test ./...
 
-build: fe ## Build frontend bundles and the local executable
+binary: ## Build the local executable
 	@mkdir -p $(GOCACHE)
 	GOCACHE=$(GOCACHE) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		go build -trimpath -buildvcs=false -ldflags "$(GO_LDFLAGS)" \
 		-o swaves ./cmd/swaves
+
+build: fe binary ## Build frontend bundles and the local executable
 
 release: ## Build and package the release executable with version metadata
 	@mkdir -p $(GOCACHE)

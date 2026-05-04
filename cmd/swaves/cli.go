@@ -606,7 +606,8 @@ Usage:
   swaves upgrade --check
   swaves hash-password <raw-password>
   swaves set-admin-password <sqlite-file> <raw-password>
-  swaves <sqlite-file> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] [--enable-sql-log=<bool>] [--daemon-mode=<0|1>] [--max-failures=<n>]
+  swaves <sqlite-file> [--backup-dir=<dir>] [--listen-addr=<addr>] [--app-name=<name>] 
+					   [--enable-sql-log=<bool>] [--daemon-mode=<0|1>] [--max-failures=<n>]
 
 Environment:
   SWAVES_SQLITE_FILE
@@ -621,8 +622,8 @@ Priority:
   command line > environment variables > defaults
 
 Notes:
-  set-admin-password updates settings.dash_password in the sqlite file and prints the stored bcrypt hash.
-  SWAVES_ENSURE_DEFAULT_SETTINGS=true only enables EnsureDefaultSettings when SWAVES_ENV=dev.
+  set-admin-password updates settings.dash_password in the sqlite file and prints the stored bcrypt 
+  hash. SWAVES_ENSURE_DEFAULT_SETTINGS=true only enables EnsureDefaultSettings when SWAVES_ENV=dev.
 
 Examples:
   ./swaves --version
