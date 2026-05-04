@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -319,6 +320,27 @@ func TestListPublishedPostsAndPages(t *testing.T) {
 		if p.Kind != PostKindPage {
 			t.Fatalf("expected page kind, got %v", p.Kind)
 		}
+	}
+}
+
+func TestListPublishedPagesBreaksPublishedAtTiesByIDDesc(t *testing.T) {
+	db := openTestDB(t)
+
+	first := mustCreatePost(t, db, "published", PostKindPage, 12345)
+	second := mustCreatePost(t, db, "published", PostKindPage, 12345)
+	third := mustCreatePost(t, db, "published", PostKindPage, 12345)
+
+	pages := ListPublishedPages(db)
+	var tiedIDs []int64
+	for _, page := range pages {
+		if page.PublishedAt == 12345 {
+			tiedIDs = append(tiedIDs, page.ID)
+		}
+	}
+
+	want := []int64{third.ID, second.ID, first.ID}
+	if !reflect.DeepEqual(tiedIDs, want) {
+		t.Fatalf("ListPublishedPages tied order = %v, want %v", tiedIDs, want)
 	}
 }
 
