@@ -713,8 +713,8 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	if !strings.Contains(body, `class="install-sep-label">后台</span>`) {
 		t.Fatal("install page should render backend separator label")
 	}
-	if !strings.Contains(body, `id="install-post-url-preview"`) {
-		t.Fatal("install page should render post url preview alert")
+	if strings.Contains(body, `id="install-post-url-preview"`) {
+		t.Fatal("install page should not render post url preview alert")
 	}
 
 	expectedOrder := []string{
@@ -737,7 +737,7 @@ func TestInstallPageOnlyShowsKeySettings(t *testing.T) {
 	}
 }
 
-func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
+func TestInstallPageHidesSiteURLAndPostURLPreview(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "install-site-url.sqlite")
 	swv := NewApp(types.AppConfig{
 		SqliteFile: dbPath,
@@ -747,14 +747,17 @@ func TestInstallPagePrefillsSiteURLFromCurrentPageAddress(t *testing.T) {
 	defer swv.Shutdown()
 
 	resp := requestControllerP0(t, swv, fiber.MethodGet, "http://127.0.0.1:4321/install", nil, "", nil)
-	body := assertTemplateRendered(t, resp, fiber.StatusOK, `文章 URL 样例`)
+	body := assertTemplateRendered(t, resp, fiber.StatusOK, `name="setting_site_title"`)
 	if strings.Contains(body, `id="setting_site_url"`) {
 		t.Fatalf("install page should not expose site_url input, body=%q", body)
 	}
-	if !strings.Contains(body, `文章 URL 样例`) {
-		t.Fatalf("install page should show post url preview title, body=%q", body)
+	if strings.Contains(body, `id="install-post-url-preview"`) {
+		t.Fatalf("install page should not expose post url preview alert, body=%q", body)
 	}
-	if !strings.Contains(body, `http:&#x2f;&#x2f;127.0.0.1:4321&#x2f;2024&#x2f;01&#x2f;02&#x2f;hello-world`) {
-		t.Fatalf("install page should prefill post url preview from current page address, body=%q", body)
+	if strings.Contains(body, `文章 URL 样例`) {
+		t.Fatalf("install page should not show post url preview title, body=%q", body)
+	}
+	if strings.Contains(body, `http:&#x2f;&#x2f;127.0.0.1:4321&#x2f;2024&#x2f;01&#x2f;02&#x2f;hello-world`) {
+		t.Fatalf("install page should not render post url preview from current page address, body=%q", body)
 	}
 }

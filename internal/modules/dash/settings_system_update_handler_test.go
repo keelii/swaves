@@ -91,7 +91,7 @@ func TestBuildSystemUpdateNoticeRequiresManualRestartWhenNoMasterRestart(t *test
 		Installed:     true,
 		LatestVersion: "v0.0.17",
 	})
-	want := "已安装 v0.0.17，请手动重启服务后生效。"
+	want := "已安装 v0.0.17，请手动重启服务后生效[kill -HUP PID]。"
 	if got != want {
 		t.Fatalf("buildSystemUpdateNotice() = %q, want %q", got, want)
 	}
