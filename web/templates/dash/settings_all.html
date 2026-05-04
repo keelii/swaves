@@ -752,14 +752,6 @@ document.addEventListener('DOMContentLoaded', function() {
     return raw;
   }
 
-  function renderPrefixLiteral(raw) {
-    var normalized = normalizePrefixLiteral(raw);
-    if (normalized === '/') {
-      return '/';
-    }
-    return '/' + normalized + '/';
-  }
-
   function syncPrefixLegends() {
     var baseInput = basePathContainer ? basePathContainer.querySelector('input,textarea,select') : null;
     var basePrefix = normalizePrefixLiteral(baseInput ? baseInput.value : '');
@@ -770,12 +762,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.querySelectorAll('[data-prefix-default]').forEach(function(input) {
       var sourceCode = (input.getAttribute('data-prefix-source-code') || '').trim();
-      var prefixText = (input.getAttribute('data-prefix-default') || '').trim() || '/';
+      var prefixText = (input.getAttribute('data-prefix-default') || '').trim();
       var prefixGroup;
       var prefixNode;
 
       if (sourceCode === 'base_path') {
-        prefixText = basePrefix;
+        // Only URL path prefixes derive their legend from base_path; literal
+        // prefixes such as ".cache/" must stay exactly as configured.
+        prefixText = basePrefix === '/' ? '/' : '/' + basePrefix + '/';
+      } else if (!prefixText) {
+        prefixText = '/';
       }
 
       prefixGroup = input.closest('.ui-input-prefix-group');
@@ -785,7 +781,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       prefixNode = prefixGroup.querySelector('.ui-input-prefix');
       if (prefixNode) {
-        prefixNode.textContent = renderPrefixLiteral(prefixText);
+        prefixNode.textContent = prefixText;
       }
     });
   }

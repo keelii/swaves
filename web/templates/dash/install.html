@@ -345,14 +345,6 @@
       return raw;
     }
 
-    function renderPrefixLiteral(raw) {
-      var normalized = normalizePrefixLiteral(raw);
-      if (normalized === '/') {
-        return '/';
-      }
-      return '/' + normalized + '/';
-    }
-
     function readPreviewDefault(name) {
       if (!installForm) {
         return '';
@@ -447,12 +439,16 @@
 
       document.querySelectorAll('[data-prefix-default]').forEach(function(input) {
         var sourceCode = (input.getAttribute('data-prefix-source-code') || '').trim();
-        var prefixText = (input.getAttribute('data-prefix-default') || '').trim() || '/';
+        var prefixText = (input.getAttribute('data-prefix-default') || '').trim();
         var prefixGroup = input.closest('.ui-input-prefix-group');
         var prefixNode;
 
         if (sourceCode === 'base_path') {
-          prefixText = basePrefix;
+          // Only URL path prefixes derive their legend from base_path; literal
+          // prefixes such as ".cache/" must stay exactly as configured.
+          prefixText = basePrefix === '/' ? '/' : '/' + basePrefix + '/';
+        } else if (!prefixText) {
+          prefixText = '/';
         }
 
         if (!prefixGroup) {
@@ -461,7 +457,7 @@
 
         prefixNode = prefixGroup.querySelector('.ui-input-prefix');
         if (prefixNode) {
-          prefixNode.textContent = renderPrefixLiteral(prefixText);
+          prefixNode.textContent = prefixText;
         }
       });
     }
