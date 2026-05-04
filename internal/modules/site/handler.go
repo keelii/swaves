@@ -12,6 +12,7 @@ import (
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/platform/notify"
+	"swaves/internal/platform/perftrace"
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/pathutil"
@@ -50,14 +51,28 @@ func (h Handler) trackUV(c fiber.Ctx, entityType db.UVEntityType, entityID int64
 }
 
 func (h Handler) trackEntityUV(c fiber.Ctx, entityType db.UVEntityType, entityID int64) {
+	var trace *perftrace.Trace
+	if perftrace.Enabled() {
+		trace = perftrace.Start("site.track_uv",
+			perftrace.Field("entity_type", entityType),
+			perftrace.Field("entity_id", entityID),
+		)
+	}
 	visitorID := middleware.GetOrCreateVisitorID(c, "")
+	trace.Step("visitor_id")
 	if visitorID == "" {
+		trace.Finish(perftrace.Field("skipped", "empty_visitor"))
 		return
 	}
 
 	if _, err := db.UpsertUVUnique(h.Model, entityType, entityID, visitorID); err != nil {
 		logger.Warn("track entity uv failed: %v", err)
+		trace.Step("upsert")
+		trace.Finish(perftrace.Field("err", true))
+		return
 	}
+	trace.Step("upsert")
+	trace.Finish(perftrace.Field("err", false))
 }
 
 func (h Handler) getEntityUVCount(entityType db.UVEntityType, entityID int64) int {
@@ -324,17 +339,39 @@ func (h Handler) GetError(c fiber.Ctx) error {
 }
 
 func (h Handler) GetHome(c fiber.Ctx) error {
+	var trace *perftrace.Trace
+	if perftrace.Enabled() {
+		trace = perftrace.Start("site.home",
+			perftrace.Field("path", c.Path()),
+			perftrace.Field("url", c.OriginalURL()),
+		)
+	}
 	pager := middleware.GetPagination(c)
+	trace.Step("pagination")
 	articles := ListDisplayPosts(h.Model, db.PostKindPost, &pager, false)
+	trace.Step("list_posts")
 	templatePosts := ToTemplatePosts(articles)
+	trace.Step("template_posts")
 	h.trackSiteUV(c)
+	trace.Step("track_uv")
+	pages := ListPages(h.Model)
+	trace.Step("list_pages")
 
-	return h.renderView(c, "home.html", fiber.Map{
+	err := h.renderView(c, "home.html", fiber.Map{
 		"CanonicalURL": absoluteSiteURL(c, share.GetBasePath()),
 		"Articles":     templatePosts,
-		"Pages":        ListPages(h.Model),
+		"Pages":        pages,
 		"Pager":        pager,
 	})
+	trace.Step("render")
+	trace.Finish(
+		perftrace.Field("articles", len(templatePosts)),
+		perftrace.Field("pages", len(pages)),
+		perftrace.Field("page", pager.Page),
+		perftrace.Field("page_size", pager.PageSize),
+		perftrace.Field("err", err != nil),
+	)
+	return err
 }
 func (h Handler) GetRaw(c fiber.Ctx) error {
 	filename := c.Params("*")

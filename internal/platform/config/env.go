@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"swaves/internal/platform/logger"
 )
@@ -32,6 +33,8 @@ var (
 
 	TemplateReload        = EnvIsNot(envProd)
 	EnableSQLLog          = shouldEnableSQLLog(AppEnv)
+	EnablePerfTrace       = envBool("SWAVES_PERF_TRACE")
+	PerfTraceMinMS        = envInt("SWAVES_PERF_TRACE_MIN_MS", 0)
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
 )
@@ -93,4 +96,18 @@ func envBool(name string) bool {
 	default:
 		return false
 	}
+}
+
+func envInt(name string, defaultValue int) int {
+	value, ok := os.LookupEnv(name)
+	if !ok {
+		return defaultValue
+	}
+
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		logger.Warn("invalid integer environment %s=%q, using default %d", name, value, defaultValue)
+		return defaultValue
+	}
+	return parsed
 }

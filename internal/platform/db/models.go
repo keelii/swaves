@@ -13,6 +13,7 @@ import (
 	"strings"
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/perftrace"
 	"swaves/internal/shared/types"
 	"sync/atomic"
 	"time"
@@ -2074,6 +2075,13 @@ func CountDeletedTags(db *DB) (int, error) {
 // ListPublishedPosts 分页列出已发布文章，返回 []Post。
 // withContent 为 false 时不查询 content 字段，适用于仅需元数据的场景（如首页列表、sitemap）。
 func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination, withContent bool) []Post {
+	var trace *perftrace.Trace
+	if perftrace.Enabled() {
+		trace = perftrace.Start("db.list_published_posts",
+			perftrace.Field("kind", kind),
+			perftrace.Field("with_content", withContent),
+		)
+	}
 	if pager == nil {
 		pager = &types.Pagination{}
 	}
@@ -2085,8 +2093,10 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination, withCont
 	}
 
 	total, err := Count(db, specPosts, "status = ? AND kind = ?", []interface{}{"published", kind})
+	trace.Step("count")
 	if err != nil {
 		logger.Error("[db] ListPublishedPosts Count: %v", err)
+		trace.Finish(perftrace.Field("err", "count"))
 		return []Post{}
 	}
 	if kind == PostKindPage {
@@ -2115,19 +2125,32 @@ func ListPublishedPosts(db *DB, kind PostKind, pager *types.Pagination, withCont
 		}
 		return p, nil
 	})
+	trace.Step("read")
 	if err != nil {
 		logger.Error("[db] ListPublishedPosts Read: %v", err)
+		trace.Finish(perftrace.Field("err", "read"))
 		return []Post{}
 	}
 	res := make([]Post, len(results))
 	for i, v := range results {
 		res[i] = v.(Post)
 	}
+	trace.Step("scan_results")
 	pager.Total = total
 	pager.Num = (pager.Total + pager.PageSize - 1) / pager.PageSize
+	trace.Finish(
+		perftrace.Field("rows", len(res)),
+		perftrace.Field("total", total),
+		perftrace.Field("page", pager.Page),
+		perftrace.Field("page_size", pager.PageSize),
+	)
 	return res
 }
 func ListPublishedPages(db *DB) []Post {
+	var trace *perftrace.Trace
+	if perftrace.Enabled() {
+		trace = perftrace.Start("db.list_published_pages")
+	}
 	results, err := Read(db, specPosts, ReadOptions{
 		SelectFields: "id, title, slug, status, kind, comment_enabled, created_at, updated_at, published_at, deleted_at",
 		WhereClause:  "status = ? AND kind = ?",
@@ -2140,14 +2163,18 @@ func ListPublishedPages(db *DB) []Post {
 		}
 		return p, nil
 	})
+	trace.Step("read")
 	if err != nil {
 		logger.Error("[db] ListPublishedPages Read: %v", err)
+		trace.Finish(perftrace.Field("err", "read"))
 		return []Post{}
 	}
 	res := make([]Post, len(results))
 	for i, v := range results {
 		res[i] = v.(Post)
 	}
+	trace.Step("scan_results")
+	trace.Finish(perftrace.Field("rows", len(res)))
 	return res
 }
 

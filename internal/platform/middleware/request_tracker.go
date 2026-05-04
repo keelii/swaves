@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"swaves/internal/platform/perftrace"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -59,7 +60,28 @@ func (rt *RequestTracker) Middleware() fiber.Handler {
 		rt.add(info)
 		defer rt.remove(id)
 
-		return c.Next()
+		var trace *perftrace.Trace
+		if perftrace.Enabled() {
+			trace = perftrace.Start("http.request",
+				perftrace.Field("req_id", reqID),
+				perftrace.Field("method", info.Method),
+				perftrace.Field("path", info.Path),
+				perftrace.Field("ip", info.IP),
+			)
+		}
+		err := c.Next()
+		if trace != nil {
+			routeName := ""
+			if route := c.Route(); route != nil {
+				routeName = strings.TrimSpace(route.Name)
+			}
+			trace.Finish(
+				perftrace.Field("route", emptyRequestField(routeName)),
+				perftrace.Field("status", c.Response().StatusCode()),
+				perftrace.Field("err", err != nil),
+			)
+		}
+		return err
 	}
 }
 
@@ -143,4 +165,12 @@ func (rt *RequestTracker) remove(id int64) {
 		return
 	}
 	rt.mu.Unlock()
+}
+
+func emptyRequestField(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "-"
+	}
+	return value
 }

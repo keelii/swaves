@@ -6,6 +6,7 @@ import (
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
+	"swaves/internal/platform/perftrace"
 	"swaves/internal/shared/md"
 	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
@@ -20,9 +21,17 @@ func NewService(db *db.DB) *Service {
 }
 
 func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination, withContent bool) []DisplayPost {
+	var trace *perftrace.Trace
+	if perftrace.Enabled() {
+		trace = perftrace.Start("site.list_display_posts",
+			perftrace.Field("kind", kind),
+			perftrace.Field("with_content", withContent),
+		)
+	}
 	var res []DisplayPost
 
 	articles := db.ListPublishedPosts(dbx, kind, pager, withContent)
+	trace.Step("db_list_published_posts")
 
 	for _, p := range articles {
 		var html string
@@ -35,13 +44,30 @@ func ListDisplayPosts(dbx *db.DB, kind db.PostKind, pager *types.Pagination, wit
 			HTML:     html,
 		})
 	}
+	trace.Step("build_display_posts")
+	page := 0
+	pageSize := 0
+	if pager != nil {
+		page = pager.Page
+		pageSize = pager.PageSize
+	}
+	trace.Finish(
+		perftrace.Field("posts", len(res)),
+		perftrace.Field("page", page),
+		perftrace.Field("page_size", pageSize),
+	)
 
 	return res
 }
 func ListPages(dbx *db.DB) []DisplayPostInfo {
+	var trace *perftrace.Trace
+	if perftrace.Enabled() {
+		trace = perftrace.Start("site.list_pages")
+	}
 	var res []DisplayPostInfo
 
 	pages := db.ListPublishedPages(dbx)
+	trace.Step("db_list_published_pages")
 	for _, p := range pages {
 		res = append(res, DisplayPostInfo{
 			ID:          p.ID,
@@ -53,6 +79,8 @@ func ListPages(dbx *db.DB) []DisplayPostInfo {
 			UpdatedAt:   p.UpdatedAt,
 		})
 	}
+	trace.Step("build_pages")
+	trace.Finish(perftrace.Field("pages", len(res)))
 	return res
 }
 
