@@ -45,8 +45,8 @@
 </button>
 {% endmacro %}
 
-{% macro IconAction(icon_name, aria_label, kind="", disabled=false, attrs="") %}
-<button type="button" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
+{% macro IconAction(icon_name, aria_label, kind="", disabled=false, attrs="", button_type="button") %}
+<button type="{{ button_type }}" class="ui-icon-btn {{ kind }}" aria-label="{{ aria_label }}"{% if disabled %} disabled{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
   {{ LucideIcon(icon_name, 16) }}
 </button>
 {% endmacro %}
@@ -66,7 +66,7 @@
 {% macro Input(id="", name="", value="", type="text", placeholder="", attrs="", prefix="") %}
 {% if prefix %}
 <span class="ui-input-prefix-group">
-  <span class="ui-input-prefix">{{ prefix }}</span>
+  <span class="ui-input-prefix" data-prefix="{{ prefix }}">{{ prefix }}</span>
   <input type="{{ type }}" class="ui-input ui-input-prefix-control"{% if id %} id="{{ id }}"{% endif %}{% if name %} name="{{ name }}"{% endif %}{% if value is not none and value != "" %} value="{{ value }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %} />
 </span>
 {% else %}
@@ -163,6 +163,21 @@
   </div>
 </div>
 {% endif %}
+{% endmacro %}
+
+{% macro Details(label, body="", open=false, icon_name="", attrs="") %}
+<details class="ui-details"{% if open %} open{% endif %}{% if attrs %} {{ attrs | safe }}{% endif %}>
+  <summary class="ui-details-summary">
+    <span class="ui-details-caret" aria-hidden="true">{{ LucideIcon("chevron-right", 16) }}</span>
+    {% if icon_name %}
+      <span class="ui-details-icon" aria-hidden="true">{{ LucideIcon(icon_name, 16) }}</span>
+    {% endif %}
+    <span class="ui-details-label">{{ label }}</span>
+  </summary>
+  <div class="ui-details-content">
+    {{ body | safe }}
+  </div>
+</details>
 {% endmacro %}
 
 {% macro Field(label, control, id="", help="", error="", required=false, label_tag="label", attrs="") %}
@@ -273,6 +288,30 @@
     {% endfor %}
   </select>
 </div>
+{% endmacro %}
+
+{% macro TableThId(label="ID") %}
+  <span class="cell-id">{{ label }}</span>
+  <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="全选" />
+{% endmacro %}
+
+{% macro TableTdId(label="-") %}
+  <div class="cell-td-id">
+    <span class="cell-id">{{ label }}</span>
+    <input class="cell-checkbox ui-checkbox" type="checkbox" aria-label="选择" />
+  </div>
+{% endmacro %}
+
+{% macro PostStatusBadge(status) %}
+{% if status == "published" %}
+  <span class="ui-badge success">已发布</span>
+{% elif status == "importing" %}
+  <span class="ui-badge draft">导入中</span>
+{% elif status == "draft" %}
+  <span class="ui-badge draft">草稿</span>
+{% else %}
+  <span class="ui-badge">{{ status }}</span>
+{% endif %}
 {% endmacro %}
 
 {% macro Pager(current=1, total=1, href_prefix="javascript:;", page_param="page") %}

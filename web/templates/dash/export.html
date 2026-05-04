@@ -1,5 +1,5 @@
 {% extends "dash/layout/layout_detail.html" %}
-{% import "dash/include/ui.html" as sui %}
+{% import "sui/include/ui.html" as sui %}
 {% block page_actions %}
   {{ sui.LinkButton("导出数据库", "primary", href=UrlFor('dash.export.download')) }}
 {% endblock %}

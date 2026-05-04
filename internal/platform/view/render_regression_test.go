@@ -687,6 +687,59 @@ func TestRenderDashSettingsAllWithSettingView(t *testing.T) {
 	}
 }
 
+func TestRenderDashSettingsAllKeepsLiteralPrefixLegends(t *testing.T) {
+	view := mustLoadRegressionView(t)
+
+	areas := []dash.SettingAreaView{
+		{
+			Code:  "backend",
+			Label: "后台",
+			Sections: []dash.SettingSectionView{
+				{
+					Code:        "backup",
+					Label:       "备份",
+					Description: "配置本地备份目录。",
+					Cards: []dash.SettingCardView{
+						{
+							Code:  "local",
+							Label: "本地备份",
+							Settings: []dash.SettingView{
+								{
+									Setting: db.Setting{
+										Kind:        db.SettingKindBackupSync,
+										Name:        "本地备份目录",
+										Code:        "backup_local_dir",
+										Type:        "prefix-field",
+										PrefixValue: ".cache/",
+										Value:       "backups",
+									},
+									AttrsParsed: map[string]any{},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	rendered := mustRenderRegressionTemplate(t, view, "dash/settings_all.html", map[string]any{
+		"SettingAreas":              areas,
+		"ActiveArea":                areas[0],
+		"ActiveSection":             areas[0].Sections[0],
+		"ContentRoutingSectionCode": "content",
+	})
+	if !strings.Contains(rendered, `data-prefix=".cache&#x2f;"`) || !strings.Contains(rendered, `.cache&#x2f;</span>`) {
+		t.Fatalf("expected literal backup prefix .cache/ to render unchanged, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, `data-prefix-source-code="" data-prefix-default=".cache/"`) {
+		t.Fatalf("expected backup prefix to stay independent of base_path, got: %s", rendered)
+	}
+	if strings.Contains(rendered, "renderPrefixLiteral") {
+		t.Fatalf("expected settings page to avoid broad prefix reformatting helper, got: %s", rendered)
+	}
+}
+
 func TestRenderDashMonitorWithMapGranularities(t *testing.T) {
 	view := mustLoadRegressionView(t)
 

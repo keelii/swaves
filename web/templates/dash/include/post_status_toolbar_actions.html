@@ -1,4 +1,4 @@
-{% import "dash/include/ui.html" as sui %}
+{% import "sui/include/ui.html" as sui %}
 {% set isRegularPostEditor = (DraftCategoryID is defined) or (Category is defined) %}
 {% set isEditMode = Post is defined %}
 {% set showLinkAction = (not isRegularPostEditor) or isEditMode %}

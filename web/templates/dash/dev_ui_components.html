@@ -1,5 +1,5 @@
 {% extends "dash/layout/layout_detail.html" %}
-{% import "dash/macro/ui.html" as ui %}
+{% import "sui/include/ui.html" as sui %}
 {% block page_actions %}{% endblock %}
 {% block content %}
 
@@ -157,11 +157,9 @@
 
 <section style="margin-bottom: 2em;">
   <h3>.tag（圆角标签 + 删除 icon）</h3>
-  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">使用 ui.tag_item(label, remove_href)：传入标签文本；需删除 icon 时传 remove_href。</p>
+  <p style="color: var(--muted-foreground); font-size: 0.9em; margin-top: 0.25em;">使用 sui.Tags(values)：传入标签文本列表。</p>
   <div class="inline-flex items-center gap-4" style="flex-wrap: wrap;">
-    {{ ui.tag_item("标签一", "#") }}
-    {{ ui.tag_item("标签二") }}
-    {{ ui.tag_item("可删除", "#") }}
+    {{ sui.Tags(["标签一", "标签二", "可删除"]) }}
   </div>
 </section>
 
