@@ -33,6 +33,7 @@ func InitSettings(gStore *GlobalStore) {
 
 func ReloadSettings(gStore *GlobalStore) error {
 	if gStore == nil || gStore.IsClosed() {
+		logger.Warn("ReloadSettings skipped: store is nil or closed")
 		return nil
 	}
 
@@ -97,7 +98,7 @@ func GetSettingInt(code string, defaultValue int) int {
 func GetSettingMap() map[string]string {
 	s, ok := Settings.Load().(map[string]string)
 	if !ok {
-		storeSettingsMap(map[string]string{})
+		logger.Error("settings atomic value has unexpected type, returning empty map")
 		return map[string]string{}
 	}
 	return s

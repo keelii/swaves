@@ -84,6 +84,7 @@ func InitRedirects(gStore *GlobalStore) {
 
 func ReloadRedirects(gStore *GlobalStore) error {
 	if gStore == nil || gStore.IsClosed() {
+		logger.Warn("ReloadRedirects skipped: store is nil or closed")
 		return nil
 	}
 
@@ -127,7 +128,7 @@ func ReloadRedirects(gStore *GlobalStore) error {
 func GetRedirect(path string) (RedirectRule, bool) {
 	m, ok := Redirects.Load().(map[string]RedirectRule)
 	if !ok {
-		storeRedirectMap(map[string]RedirectRule{}, nil)
+		logger.Error("redirects atomic value has unexpected type, returning empty")
 		return RedirectRule{}, false
 	}
 
@@ -150,7 +151,7 @@ func GetRedirect(path string) (RedirectRule, bool) {
 func GetRedirectMap() map[string]RedirectRule {
 	m, ok := Redirects.Load().(map[string]RedirectRule)
 	if !ok {
-		storeRedirectMap(map[string]RedirectRule{}, nil)
+		logger.Error("redirects atomic value has unexpected type, returning empty map")
 		return map[string]RedirectRule{}
 	}
 	return m
