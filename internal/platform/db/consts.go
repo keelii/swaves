@@ -487,30 +487,6 @@ var settingSubKindOrder = map[string][]string{
 	},
 }
 
-var SettingKindLabels = map[string]string{
-	SettingKindSiteBasics:         "站点基础",
-	SettingKindAuthorInfo:         "作者信息",
-	SettingKindContentRouting:     "内容与路由",
-	SettingKindBackupSync:         "备份与同步",
-	SettingKindThirdPartyServices: "第三方服务",
-	SettingKindDashSecurity:       "后台安全",
-	SettingKindNotifications:      "消息通知",
-	SettingKindUIExperience:       "界面体验",
-}
-
-var SettingSubKindLabels = map[string]map[string]string{
-	SettingKindThirdPartyServices: {
-		SettingSubKindSEE:      "S.EE",
-		SettingSubKindImageKit: "ImageKit",
-		SettingSubKindS3:       "Amazon S3",
-		SettingSubKindGeneral:  "通用",
-	},
-	SettingKindDashSecurity: {
-		SettingSubKindGeneral: "通用",
-		SettingSubKindAsset:   "资源",
-	},
-}
-
 var BooleanOptions = `[{"label": "开启", "value": "1"}, {"label": "关闭", "value": "0"}]`
 var DefaultSettings = []Setting{
 	{Sort: 10, Kind: SettingKindSiteBasics, Name: "访问地址", Code: "site_url", Type: "text", Value: "", Description: "站点地址，不包括路径"},
