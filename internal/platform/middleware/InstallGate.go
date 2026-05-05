@@ -8,40 +8,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func normalizeInstallPath(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" || path == "/" {
-		return "/install"
-	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	if len(path) > 1 {
-		path = strings.TrimRight(path, "/")
-	}
-	if path == "" {
-		return "/install"
-	}
-	return path
-}
-
-func normalizeRequestPath(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" {
-		return "/"
-	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	if len(path) > 1 {
-		path = strings.TrimRight(path, "/")
-	}
-	if path == "" {
-		return "/"
-	}
-	return path
-}
-
 func isStaticAssetPath(path string) bool {
 	return path == "/static" || strings.HasPrefix(path, "/static/") || strings.HasPrefix(path, "/sui")
 }

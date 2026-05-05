@@ -242,7 +242,7 @@ var settingLocationsByCode = map[string]settingLocation{
 	"site_desc":                             {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"site_keywords":                         {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"site_copyright":                        {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
-	db.SettingCodeBlockSearchEngineCrawlers: {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
+	"block_search_engine_crawlers":          {Area: settingAreaFrontend, Section: settingSectionSite, Card: "identity"},
 	"language":                              {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},
 	"charset":                               {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},
 	"timezone":                              {Area: settingAreaFrontend, Section: settingSectionSite, Card: "locale"},

@@ -19,7 +19,6 @@ import (
 	"swaves/internal/platform/store"
 	"swaves/internal/platform/updater"
 	"swaves/internal/platform/view"
-	"swaves/internal/shared/share"
 	"swaves/internal/shared/types"
 	"swaves/internal/shared/webutil"
 	webassets "swaves/web"
@@ -91,10 +90,6 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 
 			logger.Error("[http] method=%s code=%d msg=%s path=%s ip=%s referer=%s ua=%s",
 				c.Method(), code, msg, c.Path(), c.IP(), c.Referer(), c.UserAgent())
-
-			if strings.HasPrefix(c.Path(), share.GetDashUrl()) {
-				return c.Status(code).SendString(msg)
-			}
 
 			return c.Status(code).SendString(msg)
 		},

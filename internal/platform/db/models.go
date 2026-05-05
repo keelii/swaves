@@ -5150,6 +5150,18 @@ func IsErrDuplicateComment(err error) bool {
 	return errors.Is(err, errDuplicateCommentSentinel)
 }
 
+// IsErrUniqueConstraint 判断 err 是否为 SQLite UNIQUE 约束冲突错误
+func IsErrUniqueConstraint(err error) bool {
+	if err == nil {
+		return false
+	}
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) {
+		return sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique
+	}
+	return false
+}
+
 type Category struct {
 	ID          int64
 	ParentID    int64 // 0表示顶级分类

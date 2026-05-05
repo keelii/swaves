@@ -68,28 +68,28 @@ func InitRegistry(gStore *store.GlobalStore, config types.AppConfig) {
 	registryMu.Unlock()
 
 	// Internal jobs
-	RegisterJob("database_backup", JobItem{
+	registerJob("database_backup", JobItem{
 		Kind: db.TaskInternal,
 		Func: DatabaseBackupJob,
 	}) // 注册数据库备份任务
 
 	// 过期加密文章自动删除（用户可在任务管理中创建，建议 schedule 如 @daily）
-	RegisterJob("clear_encrypted_posts", JobItem{
+	registerJob("clear_encrypted_posts", JobItem{
 		Kind: db.TaskInternal,
 		Func: DeleteExpiredEncryptedPostsJob,
 	})
 
-	RegisterJob("clear_notifications", JobItem{
+	registerJob("clear_notifications", JobItem{
 		Kind: db.TaskInternal,
 		Func: ClearExpiredNotificationsJob,
 	})
 
-	RegisterJob("check_app_update", JobItem{
+	registerJob("check_app_update", JobItem{
 		Kind: db.TaskInternal,
 		Func: CheckAppUpdateJob,
 	})
 
-	RegisterJob("remote_backup_data", JobItem{
+	registerJob("remote_backup_data", JobItem{
 		Kind: db.TaskUser,
 		Func: PushSystemDataJob,
 	})
@@ -158,10 +158,6 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 		logger.Warn("[task] registry not initialized for task: %s", t.Code)
 		return
 	}
-	if shouldSkipTaskExecution(t) {
-		return
-	}
-
 	startAt := time.Now()
 	jobItem, ok := reg.jobs[t.Code]
 	if !ok {
@@ -229,10 +225,6 @@ func ExecuteTask(dbx *db.DB, t db.Task) {
 	}
 }
 
-func shouldSkipTaskExecution(_ db.Task) bool {
-	return false
-}
-
 func notifyTaskResult(dbx *db.DB, task db.Task, status string, message string) {
 	normalizedStatus := strings.ToLower(strings.TrimSpace(status))
 	if normalizedStatus == "success" {
@@ -249,7 +241,7 @@ func notifyTaskResult(dbx *db.DB, task db.Task, status string, message string) {
 }
 
 // 注册 Job
-func RegisterJob(code string, job JobItem) {
+func registerJob(code string, job JobItem) {
 	registryMu.RLock()
 	reg := registry
 	registryMu.RUnlock()
