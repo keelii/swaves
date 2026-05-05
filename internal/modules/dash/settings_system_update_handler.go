@@ -127,12 +127,11 @@ func loadLatestVersionInfo(checkLatestRelease func(currentVersion string, goos s
 
 	result, err := checkLatestRelease(currentVersion, goos, goarch)
 	if err != nil {
-		hasSystemUpdate := currentVersion == "" || fallbackVersion == "" || fallbackVersion != currentVersion
 		return latestVersionInfo{
 			Version:           fallbackVersion,
 			ReleaseURL:        fallbackReleaseURL,
-			HasSystemUpdate:   hasSystemUpdate,
-			AutoUpdateEnabled: hasSystemUpdate,
+			HasSystemUpdate:   false,
+			AutoUpdateEnabled: false,
 		}
 	}
 

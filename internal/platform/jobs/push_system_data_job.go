@@ -14,6 +14,7 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/store"
+	"swaves/internal/platform/updater"
 	"time"
 )
 
@@ -53,7 +54,7 @@ func runRemoteBackupJob(reg *Registry, allowNoOp bool) (*string, error) {
 		return jobMessage("远程数据备份未启用，跳过"), nil
 	}
 
-	tmpDir, err := os.MkdirTemp("", "swaves-sync-push-*")
+	tmpDir, err := updater.CreateUpgradeTempDir("swaves-sync-push-")
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir failed: %w", err)
 	}
@@ -245,7 +246,7 @@ func createRemoteBackupAssetRecordByUpload(dbx *db.DB, providerName string, snap
 		return id, nil
 	}
 
-	if strings.Contains(strings.ToLower(err.Error()), "unique constraint failed") {
+	if db.IsErrUniqueConstraint(err) {
 		existing, getErr := db.GetAssetByProviderAssetID(dbx, item.Provider, item.ProviderAssetID)
 		if getErr == nil {
 			return existing.ID, nil

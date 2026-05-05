@@ -40,8 +40,8 @@ func TestLoadLatestVersionInfo(t *testing.T) {
 			checkErr:              fmt.Errorf("boom"),
 			wantVersion:           "v0.0.11",
 			wantReleaseURL:        updater.ReleaseTagURL("v0.0.11"),
-			wantHasSystemUpdate:   true,
-			wantAutoUpdateEnabled: true,
+			wantHasSystemUpdate:   false,
+			wantAutoUpdateEnabled: false,
 		},
 		{
 			name:            "disables auto update when already latest",
