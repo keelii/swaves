@@ -24,6 +24,9 @@ func mustLoadRegressionView(t *testing.T) *FiberView {
 	if !ok {
 		t.Fatal("expected FiberView from NewViewEngine")
 	}
+	registerViewFunc(fiberView.env, func(name string, params map[string]string, query map[string]string) (string, error) {
+		return "/__test__/" + strings.ReplaceAll(name, ".", "/"), nil
+	})
 	if err := fiberView.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
@@ -44,6 +47,9 @@ func mustLoadRegressionSiteView(t *testing.T) *FiberView {
 	if !ok {
 		t.Fatal("expected FiberView from NewViewEngine")
 	}
+	registerViewFunc(fiberView.env, func(name string, params map[string]string, query map[string]string) (string, error) {
+		return "/__test__/" + strings.ReplaceAll(name, ".", "/"), nil
+	})
 	if err := fiberView.Load(); err != nil {
 		t.Fatalf("load site templates failed: %v", err)
 	}
@@ -61,7 +67,32 @@ func mustLoadRegressionViewWithResolver(t *testing.T) (*FiberView, func(app *fib
 	if err := fiberView.Load(); err != nil {
 		t.Fatalf("load templates failed: %v", err)
 	}
-	return fiberView, initURLResolver
+	return fiberView, func(app *fiber.App) {
+		app.Post("/__test__/dash/api/settings/dash-ui", func(c fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusNoContent)
+		}).Name("dash.settings.api.ui_state.update")
+		app.Get("/__test__/dash/api/notifications/unread-count", func(c fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusNoContent)
+		}).Name("dash.notifications.api.unread_count")
+		app.Post("/__test__/dash/api/notifications/read", func(c fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusNoContent)
+		}).Name("dash.notifications.api.read")
+		app.Post("/__test__/dash/api/notifications/read-all", func(c fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusNoContent)
+		}).Name("dash.notifications.api.read_all")
+		app.Post("/__test__/dash/api/notifications/delete", func(c fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusNoContent)
+		}).Name("dash.notifications.api.delete")
+		initURLResolver(app)
+		resolver := newURLForResolver(app)
+		registerViewFunc(fiberView.env, func(name string, params map[string]string, query map[string]string) (string, error) {
+			path, err := resolver(name, params, query)
+			if err != nil {
+				return "/__test__/" + strings.ReplaceAll(name, ".", "/"), nil
+			}
+			return path, nil
+		})
+	}
 }
 
 func mustRenderRegressionTemplate(t *testing.T, view *FiberView, template string, context map[string]any) string {
@@ -72,6 +103,20 @@ func mustRenderRegressionTemplate(t *testing.T, view *FiberView, template string
 		t.Fatalf("render %s failed: %v", template, err)
 	}
 	return out.String()
+}
+
+func registerDashShellRoutes(app *fiber.App) {
+	app.Get("/__test__/dash", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.home")
+	app.Get("/__test__/dash/posts", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.posts.list")
+	app.Get("/__test__/dash/assets", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.assets.list")
+	app.Get("/__test__/dash/comments", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.comments.list")
+	app.Get("/__test__/dash/notifications", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.notifications.list")
+	app.Get("/__test__/dash/categories", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.categories.list")
+	app.Get("/__test__/dash/import", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.import.show")
+	app.Post("/__test__/dash/import", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.import.submit")
+	app.Get("/__test__/dash/themes", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.themes.list")
+	app.Get("/__test__/dash/trash", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.trash.list")
+	app.Get("/__test__/dash/monitor", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.monitor")
 }
 
 func withRegressionSettings(t *testing.T, settings map[string]string) {
@@ -425,6 +470,7 @@ func TestRenderDashBackupRestoreShowsRestoreControls(t *testing.T) {
 	view, initURLResolver := mustLoadRegressionViewWithResolver(t)
 
 	app := fiber.New()
+	registerDashShellRoutes(app)
 	app.Get("/dash/backup-restore", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.show")
 	app.Get("/dash/backup-restore/download", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.download")
 	app.Get("/dash/backup-restore/status", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.backup_restore.status")
@@ -494,7 +540,7 @@ func TestRenderDashImportShowsExportTab(t *testing.T) {
 	view, initURLResolver := mustLoadRegressionViewWithResolver(t)
 
 	app := fiber.New()
-	app.Get("/dash/import", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.import.show")
+	registerDashShellRoutes(app)
 	app.Get("/dash/export/download", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }).Name("dash.export.download")
 	initURLResolver(app)
 

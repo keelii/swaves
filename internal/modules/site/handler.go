@@ -2,7 +2,6 @@ package site
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -488,6 +487,7 @@ func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRe
 	}
 
 	var post *DisplayPostWithRelation
+	var err error
 
 	if t == "page" {
 		post, err = GetPostBySlugWithError(h.Model, ist)

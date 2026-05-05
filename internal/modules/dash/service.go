@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/logger"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/md"
 	"swaves/internal/shared/pathutil"
@@ -1645,9 +1646,11 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 			tagIDs = append(tagIDs, tag.ID)
 			continue
 		}
+		logger.Error("apply import preview tag failed: post_id=%d tag=%q err=%v", postID, tagName, err)
 		relationErrors = append(relationErrors, fmt.Errorf("create tag %q failed: %w", tagName, err))
 	}
 	if err := db.SetPostTags(dbx, postID, tagIDs); err != nil {
+		logger.Error("apply import preview tags relation failed: post_id=%d tags=%v err=%v", postID, tagIDs, err)
 		relationErrors = append(relationErrors, fmt.Errorf("set post tags failed: %w", err))
 	}
 
@@ -1662,6 +1665,7 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 	for _, categoryName := range categoryNames {
 		category, err := CreateCategoryByName(dbx, categoryName, createdAt)
 		if err != nil {
+			logger.Error("apply import preview category failed: post_id=%d category=%q err=%v", postID, categoryName, err)
 			relationErrors = append(relationErrors, fmt.Errorf("create category %q failed: %w", categoryName, err))
 			continue
 		}
@@ -1671,6 +1675,7 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 	if primaryCategory != "" {
 		if categoryID, ok := categoryIDByName[primaryCategory]; ok {
 			if err := db.SetPostCategory(dbx, postID, categoryID); err != nil {
+				logger.Error("apply import preview category relation failed: post_id=%d category_id=%d err=%v", postID, categoryID, err)
 				relationErrors = append(relationErrors, fmt.Errorf("set post category failed: %w", err))
 			}
 			return errors.Join(relationErrors...)
@@ -1678,6 +1683,7 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 	}
 
 	if err := db.SetPostCategory(dbx, postID, 0); err != nil {
+		logger.Error("apply import preview clear category failed: post_id=%d err=%v", postID, err)
 		relationErrors = append(relationErrors, fmt.Errorf("clear post category failed: %w", err))
 	}
 	return errors.Join(relationErrors...)
