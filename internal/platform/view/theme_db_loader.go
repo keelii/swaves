@@ -30,7 +30,7 @@ func newThemeDBViewEngine(model *db.DB, sharedDir string, sharedFS fs.FS, reload
 		},
 		reload,
 	)
-	registerViewFunc(view.env, urlForStore.URLFor)
+	registerViewFunc(view.env, urlForStore.ResolveURL)
 	initURLResolver := func(app *fiber.App) {
 		urlForStore.SetResolver(newURLForResolver(app))
 	}

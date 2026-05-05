@@ -16,7 +16,7 @@ import (
 	"github.com/mitsuhiko/minijinja/minijinja-go/v2/value"
 )
 
-func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) string) {
+func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) (string, error)) {
 	env.AddFunction("LucideIcon", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		name := ""
 		size := "16"
@@ -64,7 +64,11 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		}
 		params = compactStringMap(params)
 		query = compactStringMap(query)
-		return value.FromString(urlFor(name, params, query)), nil
+		resolved, err := urlFor(name, params, query)
+		if err != nil {
+			return value.Undefined(), fmt.Errorf("UrlFor resolve failed for %s: %w", strings.TrimSpace(name), err)
+		}
+		return value.FromString(resolved), nil
 	})
 	env.AddFunction("PagerURL", func(st *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		pageRaw := ""
@@ -119,7 +123,11 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		}
 		query["page"] = strconv.Itoa(page)
 		query = compactStringMap(query)
-		return value.FromString(urlFor(routeName, nil, query)), nil
+		resolved, err := urlFor(routeName, nil, query)
+		if err != nil {
+			return value.Undefined(), fmt.Errorf("PagerURL resolve failed for %s: %w", routeName, err)
+		}
+		return value.FromString(resolved), nil
 	})
 	env.AddFunction("Settings", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		if len(args) == 0 {

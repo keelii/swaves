@@ -58,6 +58,21 @@ func TestRedirectFlashMessagesAreStoredInSession(t *testing.T) {
 	app.Post("/dash/login", func(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNoContent)
 	}).Name("dash.login.submit")
+	app.Post("/dash/api/settings/dash-ui", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	}).Name("dash.settings.api.ui_state.update")
+	app.Get("/dash/api/notifications/unread-count", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	}).Name("dash.notifications.api.unread_count")
+	app.Post("/dash/api/notifications/read", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	}).Name("dash.notifications.api.read")
+	app.Post("/dash/api/notifications/read-all", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	}).Name("dash.notifications.api.read_all")
+	app.Post("/dash/api/notifications/delete", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	}).Name("dash.notifications.api.delete")
 	initURLResolver(app)
 
 	firstReq := httptest.NewRequest(fiber.MethodGet, "/source", nil)

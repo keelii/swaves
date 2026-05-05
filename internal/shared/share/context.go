@@ -1,6 +1,7 @@
 package share
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
@@ -34,31 +35,39 @@ func (s *URLForStore) SetResolver(resolver URLForResolver) {
 }
 
 func (s *URLForStore) URLFor(name string, params map[string]string, query map[string]string) string {
+	resolved, err := s.ResolveURL(name, params, query)
+	if err != nil {
+		logger.Error("[url_for] resolve failed: name=%s err=%v", name, err)
+		return ""
+	}
+	return resolved
+}
+
+func (s *URLForStore) ResolveURL(name string, params map[string]string, query map[string]string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		logger.Warn("[url_for] skip resolve: empty route name")
-		return ""
+		return "", fmt.Errorf("empty route name")
 	}
 
 	if s == nil {
-		logger.Warn("[url_for] skip resolve: store is nil (name=%s)", name)
-		return ""
+		return "", fmt.Errorf("store is nil")
 	}
 
 	s.mu.RLock()
 	resolver := s.resolver
 	s.mu.RUnlock()
 	if resolver == nil {
-		logger.Warn("[url_for] skip resolve: resolver is nil (name=%s)", name)
-		return ""
+		return "", fmt.Errorf("resolver is nil")
 	}
 
 	resolved, err := resolver(name, params, query)
 	if err != nil {
-		logger.Error("[url_for] resolve failed: name=%s err=%v", name, err)
-		return ""
+		return "", err
 	}
-	return resolved
+	if strings.TrimSpace(resolved) == "" {
+		return "", fmt.Errorf("resolved url is empty")
+	}
+	return resolved, nil
 }
 
 var defaultURLForStore = NewURLForStore()

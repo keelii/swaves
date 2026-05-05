@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/logger"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/md"
 	"swaves/internal/shared/pathutil"
@@ -18,6 +19,7 @@ import (
 )
 
 var ErrInvalidPassword = errors.New("invalid password")
+var runImportPreviewRelations = applyImportPreviewRelations
 
 type Service struct {
 	DB *db.DB
@@ -1634,17 +1636,22 @@ func formatImportCreatedAt(createdAtUnix int64) string {
 	return time.Unix(createdAtUnix, 0).Format("2006-01-02 15:04:05")
 }
 
-func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem, createdAt int64) {
+func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem, createdAt int64) error {
 	tagNames := splitAndNormalizeCSV(item.Tags)
 	tagIDs := make([]int64, 0, len(tagNames))
+	var importRelationErrors []error
 	for _, tagName := range tagNames {
 		tag, err := CreateTagByName(dbx, tagName, createdAt)
 		if err == nil {
 			tagIDs = append(tagIDs, tag.ID)
+			continue
 		}
+		logger.Error("apply import preview tag failed: post_id=%d tag=%q err=%v", postID, tagName, err)
+		importRelationErrors = append(importRelationErrors, fmt.Errorf("create tag %q failed: %w", tagName, err))
 	}
 	if err := db.SetPostTags(dbx, postID, tagIDs); err != nil {
-		// tag 关联失败不影响主流程
+		logger.Error("apply import preview tags relation failed: post_id=%d tags=%v err=%v", postID, tagIDs, err)
+		importRelationErrors = append(importRelationErrors, fmt.Errorf("set post tags failed: %w", err))
 	}
 
 	primaryCategory := normalizeImportListValue(item.Category)
@@ -1658,6 +1665,8 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 	for _, categoryName := range categoryNames {
 		category, err := CreateCategoryByName(dbx, categoryName, createdAt)
 		if err != nil {
+			logger.Error("apply import preview category failed: post_id=%d category=%q err=%v", postID, categoryName, err)
+			importRelationErrors = append(importRelationErrors, fmt.Errorf("create category %q failed: %w", categoryName, err))
 			continue
 		}
 		categoryIDByName[categoryName] = category.ID
@@ -1666,15 +1675,18 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 	if primaryCategory != "" {
 		if categoryID, ok := categoryIDByName[primaryCategory]; ok {
 			if err := db.SetPostCategory(dbx, postID, categoryID); err != nil {
-				// category 关联失败不影响主流程
+				logger.Error("apply import preview category relation failed: post_id=%d category_id=%d err=%v", postID, categoryID, err)
+				importRelationErrors = append(importRelationErrors, fmt.Errorf("set post category failed: %w", err))
 			}
-			return
+			return errors.Join(importRelationErrors...)
 		}
 	}
 
 	if err := db.SetPostCategory(dbx, postID, 0); err != nil {
-		// category 关联失败不影响主流程
+		logger.Error("apply import preview clear category failed: post_id=%d err=%v", postID, err)
+		importRelationErrors = append(importRelationErrors, fmt.Errorf("clear post category failed: %w", err))
 	}
+	return errors.Join(importRelationErrors...)
 }
 
 // extractTitleFromMarkdown 从 markdown 内容中提取指定级别的标题
@@ -2312,7 +2324,9 @@ func ImportPreviewItemAsImportingService(dbx *db.DB, item PreviewPostItem) (Prev
 
 	item.PostID = id
 	item.ContentPreview = buildImportContentPreview(item.Content)
-	applyImportPreviewRelations(dbx, id, item, createdAt)
+	if err := runImportPreviewRelations(dbx, id, item, createdAt); err != nil {
+		return item, err
+	}
 	return item, nil
 }
 
@@ -2388,7 +2402,9 @@ func SaveImportPreviewItemService(dbx *db.DB, item PreviewPostItem) (PreviewPost
 		return item, errors.New(item.Filename + ": " + err.Error())
 	}
 
-	applyImportPreviewRelations(dbx, item.PostID, normalizedItem, createdAt)
+	if err := runImportPreviewRelations(dbx, item.PostID, normalizedItem, createdAt); err != nil {
+		return item, err
+	}
 	normalizedItem.ContentPreview = buildImportContentPreview(normalizedItem.Content)
 	return normalizedItem, nil
 }
@@ -2426,8 +2442,7 @@ func ConfirmImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
 	}
 
 	normalizedItem.PostID = item.PostID
-	applyImportPreviewRelations(dbx, item.PostID, normalizedItem, createdAt)
-	return nil
+	return runImportPreviewRelations(dbx, item.PostID, normalizedItem, createdAt)
 }
 
 type ImportConfirmAllResult struct {
@@ -2507,9 +2522,7 @@ func ImportPreviewItemService(dbx *db.DB, item PreviewPostItem) error {
 		return errors.New(item.Filename + ": " + err.Error())
 	}
 
-	applyImportPreviewRelations(dbx, post.ID, item, createdAt)
-
-	return nil
+	return runImportPreviewRelations(dbx, post.ID, item, createdAt)
 }
 
 // ImportPreviewService 从预览数据导入到数据库
