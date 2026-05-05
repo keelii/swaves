@@ -1,10 +1,14 @@
 package dash
 
 import (
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
 	"swaves/internal/platform/db"
+	"swaves/internal/platform/store"
+
+	"github.com/gofiber/fiber/v3"
 )
 
 func findSettingArea(areas []SettingAreaView, code string) *SettingAreaView {
@@ -242,5 +246,45 @@ func TestListAllSettingsDoesNotBackfillMissingDefaults(t *testing.T) {
 
 	if _, err := db.GetSettingByCode(dbx, db.SettingCodeBlockSearchEngineCrawlers); !db.IsErrNotFound(err) {
 		t.Fatalf("expected %q to stay missing after list, got %v", db.SettingCodeBlockSearchEngineCrawlers, err)
+	}
+}
+
+func TestPostUpdateThemeModeSettingAPIRollsBackWhenReloadFails(t *testing.T) {
+	dbx := openDashTestDB(t)
+	handler := &Handler{Model: dbx}
+	app := fiber.New()
+	app.Post("/test", func(c fiber.Ctx) error {
+		return handler.postUpdateThemeModeSettingAPIHandler(c, "dark")
+	})
+
+	setting, err := db.GetSettingByCode(dbx, settingCodeThemeMode)
+	if err != nil {
+		t.Fatalf("get initial setting failed: %v", err)
+	}
+	previousValue := setting.Value
+
+	previousReload := reloadSettingsForUpdate
+	reloadSettingsForUpdate = func(*store.GlobalStore) error {
+		return fiber.ErrInternalServerError
+	}
+	t.Cleanup(func() {
+		reloadSettingsForUpdate = previousReload
+	})
+
+	req := httptest.NewRequest("POST", "/test", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, fiber.StatusInternalServerError)
+	}
+
+	after, err := db.GetSettingByCode(dbx, settingCodeThemeMode)
+	if err != nil {
+		t.Fatalf("get rolled back setting failed: %v", err)
+	}
+	if after.Value != previousValue {
+		t.Fatalf("setting value = %q, want rollback to %q", after.Value, previousValue)
 	}
 }

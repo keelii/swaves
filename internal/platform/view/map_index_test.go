@@ -13,7 +13,7 @@ func TestZZMapIndexNumericKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	view := newMiniJinjaView(tempDir, false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string { return name })
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) (string, error) { return name, nil })
 	if err := view.Load(); err != nil {
 		t.Fatal(err)
 	}

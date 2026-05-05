@@ -1,7 +1,12 @@
 package site
 
 import (
+	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"swaves/internal/platform/db"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -38,4 +43,28 @@ func TestInjectDefaultTitle(t *testing.T) {
 			t.Fatalf("unexpected fallback title: %#v", got)
 		}
 	})
+}
+
+func TestGetPostByArticleRedirectsToErrorOnLookupFailure(t *testing.T) {
+	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "site.sqlite")})
+	if err := dbx.Close(); err != nil {
+		t.Fatalf("close test db failed: %v", err)
+	}
+
+	app := fiber.New()
+	handler := Handler{Model: dbx}
+	app.Get("/:ist", handler.GetPostByArticle)
+
+	req := httptest.NewRequest("GET", "/demo", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusFound {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, fiber.StatusFound)
+	}
+	location := resp.Header.Get("Location")
+	if !strings.HasPrefix(location, "/error") {
+		t.Fatalf("unexpected redirect location: %q", location)
+	}
 }

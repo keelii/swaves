@@ -22,12 +22,12 @@ func mustWriteTemplateFile(t *testing.T, root string, relativeName string, sourc
 	}
 }
 
-func mustLoadMiniJinjaTestView(t *testing.T, root string, resolver func(name string, params map[string]string, query map[string]string) string) *FiberView {
+func mustLoadMiniJinjaTestView(t *testing.T, root string, resolver func(name string, params map[string]string, query map[string]string) (string, error)) *FiberView {
 	t.Helper()
 
 	if resolver == nil {
-		resolver = func(name string, params map[string]string, query map[string]string) string {
-			return name
+		resolver = func(name string, params map[string]string, query map[string]string) (string, error) {
+			return name, nil
 		}
 	}
 
@@ -302,11 +302,11 @@ func TestURLForSupportsKeywordArguments(t *testing.T) {
 	var capturedName string
 	var capturedParams map[string]string
 	var capturedQuery map[string]string
-	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
 		capturedName = name
 		capturedParams = params
 		capturedQuery = query
-		return "ok"
+		return "ok", nil
 	})
 
 	var out bytes.Buffer
@@ -334,9 +334,9 @@ func TestURLForKeywordArgumentsOverrideMapValues(t *testing.T) {
 	}
 
 	var capturedParams map[string]string
-	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
 		capturedParams = params
-		return "ok"
+		return "ok", nil
 	})
 
 	var out bytes.Buffer
@@ -360,10 +360,10 @@ func TestURLForDropsBlankParamsAndQuery(t *testing.T) {
 
 	var capturedParams map[string]string
 	var capturedQuery map[string]string
-	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
 		capturedParams = params
 		capturedQuery = query
-		return "ok"
+		return "ok", nil
 	})
 
 	var out bytes.Buffer
@@ -406,9 +406,9 @@ func TestURLForDropsBlankKeywordArguments(t *testing.T) {
 	}
 
 	var capturedParams map[string]string
-	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
 		capturedParams = params
-		return "ok"
+		return "ok", nil
 	})
 
 	var out bytes.Buffer
@@ -426,6 +426,26 @@ func TestURLForDropsBlankKeywordArguments(t *testing.T) {
 	}
 }
 
+func TestURLForReturnsRenderErrorWhenResolverFails(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "page.html"), []byte(`{{ UrlFor('dash.posts.edit', id=PostID) }}`), 0o644); err != nil {
+		t.Fatalf("write page template failed: %v", err)
+	}
+
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
+		return "", os.ErrNotExist
+	})
+
+	var out bytes.Buffer
+	err := view.Render(&out, "page.html", map[string]any{"PostID": 7})
+	if err == nil {
+		t.Fatal("expected render error when UrlFor resolver fails")
+	}
+	if !strings.Contains(err.Error(), "UrlFor resolve failed") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestPagerURLUsesContextRouteAndQuery(t *testing.T) {
 	tempDir := t.TempDir()
 	if err := os.WriteFile(
@@ -439,11 +459,11 @@ func TestPagerURLUsesContextRouteAndQuery(t *testing.T) {
 	var capturedName string
 	var capturedParams map[string]string
 	var capturedQuery map[string]string
-	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
 		capturedName = name
 		capturedParams = params
 		capturedQuery = query
-		return "ok"
+		return "ok", nil
 	})
 
 	var out bytes.Buffer
@@ -482,10 +502,10 @@ func TestPagerURLUsesExplicitRouteAndQuery(t *testing.T) {
 
 	var capturedName string
 	var capturedQuery map[string]string
-	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
 		capturedName = name
 		capturedQuery = query
-		return "ok"
+		return "ok", nil
 	})
 
 	var out bytes.Buffer
@@ -523,10 +543,10 @@ func TestPagerURLAllowsKeywordArguments(t *testing.T) {
 
 	var capturedName string
 	var capturedQuery map[string]string
-	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) string {
+	view := mustLoadMiniJinjaTestView(t, tempDir, func(name string, params map[string]string, query map[string]string) (string, error) {
 		capturedName = name
 		capturedQuery = query
-		return "resolved"
+		return "resolved", nil
 	})
 
 	var out bytes.Buffer

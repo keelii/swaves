@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"errors"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -254,5 +255,42 @@ func TestSaveImportPreviewItemServiceKeepsExistingContentWhenFormOmitsContent(t 
 	post := mustGetPostAnyStatus(t, dbx, staged.PostID)
 	if post.Content != "full body content" {
 		t.Fatalf("expected post content unchanged, got %q", post.Content)
+	}
+}
+
+func TestConfirmImportPreviewItemServiceReturnsRelationErrors(t *testing.T) {
+	dbx := newImportPreviewTestDB(t)
+
+	staged := mustStageImportingItem(t, dbx, PreviewPostItem{
+		Title:     "Relation Error",
+		Slug:      "relation-error",
+		Content:   "body",
+		Status:    "draft",
+		Kind:      "0",
+		CreatedAt: "2024-01-01 00:00:00",
+	})
+
+	previousRunner := runImportPreviewRelations
+	runImportPreviewRelations = func(dbx *db.DB, postID int64, item PreviewPostItem, createdAt int64) error {
+		return errors.New("relation failed")
+	}
+	t.Cleanup(func() {
+		runImportPreviewRelations = previousRunner
+	})
+
+	err := ConfirmImportPreviewItemService(dbx, PreviewPostItem{
+		PostID:    staged.PostID,
+		Title:     staged.Title,
+		Slug:      staged.Slug,
+		Content:   staged.Content,
+		Status:    "draft",
+		Kind:      "0",
+		CreatedAt: staged.CreatedAt,
+	})
+	if err == nil {
+		t.Fatal("expected relation error")
+	}
+	if err.Error() != "relation failed" {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
