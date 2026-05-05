@@ -37,7 +37,7 @@ func (s *URLForStore) SetResolver(resolver URLForResolver) {
 func (s *URLForStore) URLFor(name string, params map[string]string, query map[string]string) string {
 	resolved, err := s.ResolveURL(name, params, query)
 	if err != nil {
-		logger.Error("[url_for] resolve failed: name=%s err=%v", strings.TrimSpace(name), err)
+		logger.Error("[url_for] resolve failed: name=%s err=%v", name, err)
 		return ""
 	}
 	return resolved

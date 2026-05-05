@@ -483,7 +483,7 @@ func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRe
 	ist, ext := h.getIST(c)
 
 	if ext != "" && ext != share.GetPostExt() {
-		return nil, db.ErrNotFound("site.getPostByIDSlugTitle.ext")
+		return nil, db.ErrNotFound("site.post.invalid_extension")
 	}
 
 	var post *DisplayPostWithRelation
@@ -498,7 +498,7 @@ func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRe
 		if share.PostNameIsID() {
 			id, err := strconv.ParseInt(strings.TrimSpace(ist), 10, 64)
 			if err != nil {
-				return nil, db.ErrNotFound("site.getPostByIDSlugTitle.invalid_id")
+				return nil, db.ErrNotFound("site.post.invalid_id")
 			}
 			post, err = GetPostByIDWithError(h.Model, id)
 			if err != nil {
