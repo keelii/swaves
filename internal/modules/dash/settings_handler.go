@@ -969,14 +969,20 @@ func (h *Handler) updateSettingValueAndReload(code string, value string) error {
 		return err
 	}
 	if err := reloadSettingsForUpdate(&store.GlobalStore{Model: h.Model}); err != nil {
-		if restoreErr := UpdateSettingValueService(h.Model, code, previousValue); restoreErr != nil {
-			logger.Error("[settings] rollback %s after reload failure failed: err=%v", code, restoreErr)
-		} else if restoreReloadErr := reloadSettingsForUpdate(&store.GlobalStore{Model: h.Model}); restoreReloadErr != nil {
-			logger.Error("[settings] reload settings cache failed after rollback %s: err=%v", code, restoreReloadErr)
-		}
+		h.rollbackSettingValueAfterReloadFailure(code, previousValue)
 		return err
 	}
 	return nil
+}
+
+func (h *Handler) rollbackSettingValueAfterReloadFailure(code string, previousValue string) {
+	if restoreErr := UpdateSettingValueService(h.Model, code, previousValue); restoreErr != nil {
+		logger.Error("[settings] rollback %s after reload failure failed: err=%v", code, restoreErr)
+		return
+	}
+	if restoreReloadErr := reloadSettingsForUpdate(&store.GlobalStore{Model: h.Model}); restoreReloadErr != nil {
+		logger.Error("[settings] reload settings cache failed after rollback %s: err=%v", code, restoreReloadErr)
+	}
 }
 
 func (h *Handler) postUpdateThemeModeSettingAPIHandler(c fiber.Ctx, rawValue string) error {

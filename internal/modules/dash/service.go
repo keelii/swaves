@@ -1639,7 +1639,7 @@ func formatImportCreatedAt(createdAtUnix int64) string {
 func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem, createdAt int64) error {
 	tagNames := splitAndNormalizeCSV(item.Tags)
 	tagIDs := make([]int64, 0, len(tagNames))
-	var relationErrors []error
+	var importRelationErrors []error
 	for _, tagName := range tagNames {
 		tag, err := CreateTagByName(dbx, tagName, createdAt)
 		if err == nil {
@@ -1647,11 +1647,11 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 			continue
 		}
 		logger.Error("apply import preview tag failed: post_id=%d tag=%q err=%v", postID, tagName, err)
-		relationErrors = append(relationErrors, fmt.Errorf("create tag %q failed: %w", tagName, err))
+		importRelationErrors = append(importRelationErrors, fmt.Errorf("create tag %q failed: %w", tagName, err))
 	}
 	if err := db.SetPostTags(dbx, postID, tagIDs); err != nil {
 		logger.Error("apply import preview tags relation failed: post_id=%d tags=%v err=%v", postID, tagIDs, err)
-		relationErrors = append(relationErrors, fmt.Errorf("set post tags failed: %w", err))
+		importRelationErrors = append(importRelationErrors, fmt.Errorf("set post tags failed: %w", err))
 	}
 
 	primaryCategory := normalizeImportListValue(item.Category)
@@ -1666,7 +1666,7 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 		category, err := CreateCategoryByName(dbx, categoryName, createdAt)
 		if err != nil {
 			logger.Error("apply import preview category failed: post_id=%d category=%q err=%v", postID, categoryName, err)
-			relationErrors = append(relationErrors, fmt.Errorf("create category %q failed: %w", categoryName, err))
+			importRelationErrors = append(importRelationErrors, fmt.Errorf("create category %q failed: %w", categoryName, err))
 			continue
 		}
 		categoryIDByName[categoryName] = category.ID
@@ -1676,17 +1676,17 @@ func applyImportPreviewRelations(dbx *db.DB, postID int64, item PreviewPostItem,
 		if categoryID, ok := categoryIDByName[primaryCategory]; ok {
 			if err := db.SetPostCategory(dbx, postID, categoryID); err != nil {
 				logger.Error("apply import preview category relation failed: post_id=%d category_id=%d err=%v", postID, categoryID, err)
-				relationErrors = append(relationErrors, fmt.Errorf("set post category failed: %w", err))
+				importRelationErrors = append(importRelationErrors, fmt.Errorf("set post category failed: %w", err))
 			}
-			return errors.Join(relationErrors...)
+			return errors.Join(importRelationErrors...)
 		}
 	}
 
 	if err := db.SetPostCategory(dbx, postID, 0); err != nil {
 		logger.Error("apply import preview clear category failed: post_id=%d err=%v", postID, err)
-		relationErrors = append(relationErrors, fmt.Errorf("clear post category failed: %w", err))
+		importRelationErrors = append(importRelationErrors, fmt.Errorf("clear post category failed: %w", err))
 	}
-	return errors.Join(relationErrors...)
+	return errors.Join(importRelationErrors...)
 }
 
 // extractTitleFromMarkdown 从 markdown 内容中提取指定级别的标题

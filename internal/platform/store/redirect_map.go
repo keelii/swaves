@@ -98,12 +98,12 @@ func ReloadRedirects(gStore *GlobalStore) error {
 
 	redirectMap := make(map[string]RedirectRule, len(m))
 	patterns := make([]compiledRedirectRule, 0, len(m))
-	var invalidRules []error
+	var invalidRuleErrors []error
 	for from, redirect := range m {
 		if redirect_rule.HasPattern(from) || redirect_rule.HasPattern(redirect.To) {
 			rule, compileErr := redirect_rule.Compile(from, redirect.To)
 			if compileErr != nil {
-				invalidRules = append(invalidRules, fmt.Errorf("from=%s to=%s: %w", from, redirect.To, compileErr))
+				invalidRuleErrors = append(invalidRuleErrors, fmt.Errorf("from=%s to=%s: %w", from, redirect.To, compileErr))
 				continue
 			}
 			patterns = append(patterns, compiledRedirectRule{
@@ -118,8 +118,8 @@ func ReloadRedirects(gStore *GlobalStore) error {
 			Status: redirect.Status,
 		}
 	}
-	if len(invalidRules) > 0 {
-		return errors.Join(invalidRules...)
+	if len(invalidRuleErrors) > 0 {
+		return errors.Join(invalidRuleErrors...)
 	}
 
 	if len(patterns) > 1 {
