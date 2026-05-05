@@ -133,7 +133,7 @@ func NewViewEngineFS(templateFS fs.FS, reload bool) (fiber.Views, func(app *fibe
 func newViewEngine(dir string, templateFS fs.FS, sharedDir string, sharedFS fs.FS, reload bool) (fiber.Views, func(app *fiber.App)) {
 	urlForStore := share.NewURLForStore()
 	view := newMiniJinjaViewWithFS(dir, templateFS, sharedDir, sharedFS, reload)
-	registerViewFunc(view.env, urlForStore.URLFor)
+	registerViewFunc(view.env, urlForStore.ResolveURL)
 	initURLResolver := func(app *fiber.App) {
 		urlForStore.SetResolver(newURLForResolver(app))
 	}
@@ -530,7 +530,7 @@ func wrapMapLookup(raw any) any {
 	return &templateMapLookup{data: raw}
 }
 
-func registerViewFunc(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) string) {
+func registerViewFunc(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) (string, error)) {
 	registerViewGlobals(env)
 	registerViewFilters(env)
 	registerViewFunctions(env, urlFor)

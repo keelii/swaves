@@ -416,9 +416,12 @@ func (h Handler) GetHome(c fiber.Ctx) error {
 }
 func (h Handler) GetRaw(c fiber.Ctx) error {
 	filename := c.Params("*")
-	post := GetPostBySlugRaw(h.Model, filename)
-	if post == nil {
-		return c.Status(fiber.StatusNotFound).SendString("not found")
+	post, err := GetPostBySlugRawWithError(h.Model, filename)
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			return c.Status(fiber.StatusNotFound).SendString("not found")
+		}
+		return h.redirectError(c)
 	}
 	if !helper.IsSlug(filename) {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid filename")
@@ -438,7 +441,10 @@ func (h Handler) GetPostByDateAndSlug(c fiber.Ctx) error {
 
 	post, err := h.getPostByIDSlugTitle(c, "post")
 	if err != nil {
-		return h.redirectNotFound(c)
+		if db.IsErrNotFound(err) {
+			return h.redirectNotFound(c)
+		}
+		return h.redirectError(c)
 	}
 
 	if post == nil {
@@ -478,28 +484,40 @@ func (h Handler) getPostByIDSlugTitle(c fiber.Ctx, t string) (*DisplayPostWithRe
 	ist, ext := h.getIST(c)
 
 	if ext != "" && ext != share.GetPostExt() {
-		return nil, errors.New(fmt.Sprintf("%s not found", share.GetPostExt()))
+		return nil, db.ErrNotFound("site.getPostByIDSlugTitle.ext")
 	}
 
 	var post *DisplayPostWithRelation
 
 	if t == "page" {
-		post = GetPostBySlug(h.Model, ist)
+		post, err = GetPostBySlugWithError(h.Model, ist)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		if share.PostNameIsID() {
 			id, err := strconv.ParseInt(strings.TrimSpace(ist), 10, 64)
 			if err != nil {
-				return nil, errors.New("invalid post identifier in url")
+				return nil, db.ErrNotFound("site.getPostByIDSlugTitle.invalid_id")
 			}
-			post = GetPostByID(h.Model, id)
+			post, err = GetPostByIDWithError(h.Model, id)
+			if err != nil {
+				return nil, err
+			}
 		} else if share.PostNameIsTitle() {
 			title := ist
 			if unescapedTitle, err := url.PathUnescape(ist); err == nil {
 				title = unescapedTitle
 			}
-			post = GetPostByTitle(h.Model, title)
+			post, err = GetPostByTitleWithError(h.Model, title)
+			if err != nil {
+				return nil, err
+			}
 		} else {
-			post = GetPostBySlug(h.Model, ist)
+			post, err = GetPostBySlugWithError(h.Model, ist)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -546,7 +564,10 @@ func (h Handler) GetPostByDefault(c fiber.Ctx) error {
 func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 	post, err := h.getPostByIDSlugTitle(c, t)
 	if err != nil {
-		return h.redirectNotFound(c)
+		if db.IsErrNotFound(err) {
+			return h.redirectNotFound(c)
+		}
+		return h.redirectError(c)
 	}
 	if post == nil {
 		return h.redirectNotFound(c)
@@ -622,14 +643,20 @@ func (h Handler) GetTagIndex(c fiber.Ctx) error {
 func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	slug := c.Params("categorySlug")
-	category := GetCategoryBySlug(h.Model, slug)
-	if category == nil {
-		return h.redirectNotFound(c)
+	category, err := GetCategoryBySlugWithError(h.Model, slug)
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			return h.redirectNotFound(c)
+		}
+		return h.redirectError(c)
 	}
 
 	h.trackUV(c, db.UVEntityCategory, category.ID)
 
 	posts := ListPostsByCategory(h.Model, category.ID, &pager)
+	if posts == nil {
+		return h.redirectError(c)
+	}
 
 	return h.renderView(c, "detail.html", fiber.Map{
 		"Title":           buildPageTitle(category.Name),
@@ -645,14 +672,20 @@ func (h Handler) GetCategoryDetail(c fiber.Ctx) error {
 func (h Handler) GetTagDetail(c fiber.Ctx) error {
 	pager := middleware.GetPagination(c)
 	slug := c.Params("tagSlug")
-	tag := GetTagBySlug(h.Model, slug)
-	if tag == nil {
-		return h.redirectNotFound(c)
+	tag, err := GetTagBySlugWithError(h.Model, slug)
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			return h.redirectNotFound(c)
+		}
+		return h.redirectError(c)
 	}
 
 	h.trackUV(c, db.UVEntityTag, tag.ID)
 
 	posts := ListPostsByTag(h.Model, tag.ID, &pager)
+	if posts == nil {
+		return h.redirectError(c)
+	}
 
 	return h.renderView(c, "detail.html", fiber.Map{
 		"Title":           buildPageTitle(tag.Name),

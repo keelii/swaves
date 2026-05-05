@@ -974,14 +974,14 @@ func TestRenderLayoutsUseInitialMobileClass(t *testing.T) {
 
 func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 	view := newMiniJinjaView(testTemplateRoot(), false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) (string, error) {
 		switch name {
 		case "dash.monitor.data":
-			return "/dash/api/monitor"
+			return "/dash/api/monitor", nil
 		case "dash.monitor":
-			return "/dash/monitor"
+			return "/dash/monitor", nil
 		default:
-			return "/"
+			return "/", nil
 		}
 	})
 	if err := view.Load(); err != nil {
@@ -1007,20 +1007,20 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 
 func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 	view := newMiniJinjaView(testTemplateRoot(), false)
-	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) string {
+	registerViewFunc(view.env, func(name string, params map[string]string, query map[string]string) (string, error) {
 		switch name {
 		case "dash.import.submit":
-			return "/dash/import"
+			return "/dash/import", nil
 		case "dash.import.parse_item":
-			return "/dash/import/parse-item"
+			return "/dash/import/parse-item", nil
 		case "dash.import.confirm_item":
-			return "/dash/import/confirm-item"
+			return "/dash/import/confirm-item", nil
 		case "dash.import.cancel":
-			return "/dash/import/cancel"
+			return "/dash/import/cancel", nil
 		case "dash.posts.list":
-			return "/dash/posts"
+			return "/dash/posts", nil
 		default:
-			return "/"
+			return "/", nil
 		}
 	})
 	if err := view.Load(); err != nil {

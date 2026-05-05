@@ -101,46 +101,74 @@ func postToPostInfo(p *db.Post) *DisplayPostInfo {
 }
 
 func GetPostByID(dbx *db.DB, id int64) *DisplayPostWithRelation {
-	p, err := db.GetPostByIDWithRelation(dbx, id)
+	post, err := GetPostByIDWithError(dbx, id)
 	if err != nil {
 		logger.Warn("get post by id failed: id=%d err=%v", id, err)
 		return nil
 	}
+	return post
+}
 
-	return toDisplayPostWithRelation(dbx, p)
+func GetPostByIDWithError(dbx *db.DB, id int64) (*DisplayPostWithRelation, error) {
+	p, err := db.GetPostByIDWithRelation(dbx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toDisplayPostWithRelation(dbx, p), nil
 }
 func GetPostBySlug(dbx *db.DB, slug string) *DisplayPostWithRelation {
-	p, err := db.GetPostBySlugWithRelation(dbx, slug)
+	post, err := GetPostBySlugWithError(dbx, slug)
 	if err != nil {
 		logger.Warn("get post by slug failed: slug=%s err=%v", slug, err)
 		return nil
 	}
+	return post
+}
 
-	return toDisplayPostWithRelation(dbx, p)
+func GetPostBySlugWithError(dbx *db.DB, slug string) (*DisplayPostWithRelation, error) {
+	p, err := db.GetPostBySlugWithRelation(dbx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return toDisplayPostWithRelation(dbx, p), nil
 }
 func GetPostByTitle(dbx *db.DB, ist string) *DisplayPostWithRelation {
+	post, err := GetPostByTitleWithError(dbx, ist)
+	if err != nil {
+		logger.Warn("get post by title failed: title=%s err=%v", ist, err)
+		return nil
+	}
+	return post
+}
+
+func GetPostByTitleWithError(dbx *db.DB, ist string) (*DisplayPostWithRelation, error) {
 	title, err := url.PathUnescape(ist)
 	if err != nil {
-		logger.Warn("failed to unescape title: raw=%s err=%v", ist, err)
-		return nil
+		return nil, err
 	}
 
 	p, err := db.GetPostByTitleWithRelation(dbx, title)
 	if err != nil {
-		logger.Warn("get post by title failed: title=%s err=%v", title, err)
-		return nil
+		return nil, err
 	}
-
-	return toDisplayPostWithRelation(dbx, p)
+	return toDisplayPostWithRelation(dbx, p), nil
 }
 
 func GetPostBySlugRaw(dbx *db.DB, slug string) *db.Post {
-	p, err := db.GetPostBySlug(dbx, slug)
+	post, err := GetPostBySlugRawWithError(dbx, slug)
 	if err != nil {
 		logger.Warn("get post by slug raw failed: slug=%s err=%v", slug, err)
 		return nil
 	}
-	return &p
+	return post
+}
+
+func GetPostBySlugRawWithError(dbx *db.DB, slug string) (*db.Post, error) {
+	p, err := db.GetPostBySlug(dbx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 func toDisplayPostWithRelation(dbx *db.DB, p db.PostWithRelation) *DisplayPostWithRelation {
@@ -273,7 +301,8 @@ func CountApprovedComments(dbx *db.DB, postID int64) int {
 func ListCategories(dbx *db.DB) []*DisplayCategoryNode {
 	res, err := db.ListCategories(dbx, true)
 	if err != nil {
-		return []*DisplayCategoryNode{}
+		logger.Error("list categories failed: %v", err)
+		return nil
 	}
 
 	if len(res) == 0 {
@@ -382,7 +411,8 @@ func ListCategories(dbx *db.DB) []*DisplayCategoryNode {
 func ListTags(dbx *db.DB) []DisplayItem {
 	res, err := db.ListTags(dbx, true)
 	if err != nil {
-		return []DisplayItem{}
+		logger.Error("list tags failed: %v", err)
+		return nil
 	}
 	var items []DisplayItem
 	for _, c := range res {
@@ -400,10 +430,18 @@ func ListTags(dbx *db.DB) []DisplayItem {
 }
 
 func GetCategoryBySlug(dbx *db.DB, slug string) *DisplayItem {
-	category, err := db.GetCategoryBySlug(dbx, slug)
+	category, err := GetCategoryBySlugWithError(dbx, slug)
 	if err != nil {
 		logger.Warn("get category by slug failed: slug=%s err=%v", slug, err)
 		return nil
+	}
+	return category
+}
+
+func GetCategoryBySlugWithError(dbx *db.DB, slug string) (*DisplayItem, error) {
+	category, err := db.GetCategoryBySlug(dbx, slug)
+	if err != nil {
+		return nil, err
 	}
 
 	return &DisplayItem{
@@ -415,13 +453,21 @@ func GetCategoryBySlug(dbx *db.DB, slug string) *DisplayItem {
 		PostCount:   category.PostCount,
 		CreatedAt:   category.CreatedAt,
 		UpdatedAt:   category.UpdatedAt,
-	}
+	}, nil
 }
 func GetTagBySlug(dbx *db.DB, slug string) *DisplayItem {
-	tag, err := db.GetTagBySlug(dbx, slug)
+	tag, err := GetTagBySlugWithError(dbx, slug)
 	if err != nil {
 		logger.Warn("get tag by slug failed: slug=%s err=%v", slug, err)
 		return nil
+	}
+	return tag
+}
+
+func GetTagBySlugWithError(dbx *db.DB, slug string) (*DisplayItem, error) {
+	tag, err := db.GetTagBySlug(dbx, slug)
+	if err != nil {
+		return nil, err
 	}
 	return &DisplayItem{
 		ID:        tag.ID,
@@ -431,7 +477,7 @@ func GetTagBySlug(dbx *db.DB, slug string) *DisplayItem {
 		PostCount: tag.PostCount,
 		CreatedAt: tag.CreatedAt,
 		UpdatedAt: tag.UpdatedAt,
-	}
+	}, nil
 }
 func ListPostsByCategory(dbx *db.DB, categoryID int64, pager *types.Pagination) []DisplayPostRelativeInfo {
 	var res []DisplayPostRelativeInfo
@@ -444,7 +490,8 @@ func ListPostsByCategory(dbx *db.DB, categoryID int64, pager *types.Pagination) 
 		WithContent: false,
 	})
 	if err != nil {
-		return []DisplayPostRelativeInfo{}
+		logger.Error("list posts by category failed: category_id=%d err=%v", categoryID, err)
+		return nil
 	}
 
 	for _, p := range posts {
@@ -474,7 +521,8 @@ func ListPostsByTag(dbx *db.DB, tagID int64, pager *types.Pagination) []DisplayP
 		WithContent: false,
 	})
 	if err != nil {
-		return []DisplayPostRelativeInfo{}
+		logger.Error("list posts by tag failed: tag_id=%d err=%v", tagID, err)
+		return nil
 	}
 
 	for _, p := range posts {

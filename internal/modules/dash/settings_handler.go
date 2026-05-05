@@ -63,6 +63,8 @@ type settingCardMeta struct {
 	Description string
 }
 
+var reloadSettingsForUpdate = store.ReloadSettings
+
 const (
 	settingCodeDashNavWidth  = "dash_nav_width"
 	settingCodeDashMenuState = "dash_full_main_open"
@@ -927,15 +929,12 @@ func (h *Handler) postUpdateDashNavWidthSettingAPIHandler(c fiber.Ctx, rawValue 
 		})
 	}
 
-	if err := UpdateSettingValueService(h.Model, settingCodeDashNavWidth, strconv.Itoa(width)); err != nil {
+	if err := h.updateSettingValueAndReload(settingCodeDashNavWidth, strconv.Itoa(width)); err != nil {
 		logger.Error("[settings] update dash_nav_width failed: value=%d err=%v", width, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": "保存导航栏宽度失败，请稍后重试",
 		})
-	}
-	if err := store.ReloadSettings(&store.GlobalStore{Model: h.Model}); err != nil {
-		logger.Warn("[settings] reload settings cache failed after %s update: err=%v", settingCodeDashNavWidth, err)
 	}
 
 	return c.JSON(fiber.Map{
@@ -959,6 +958,27 @@ func normalizeThemeModeValue(raw string) string {
 	}
 }
 
+func (h *Handler) updateSettingValueAndReload(code string, value string) error {
+	current, err := GetSettingByCode(h.Model, code)
+	if err != nil {
+		return err
+	}
+	previousValue := current.Value
+
+	if err := UpdateSettingValueService(h.Model, code, value); err != nil {
+		return err
+	}
+	if err := reloadSettingsForUpdate(&store.GlobalStore{Model: h.Model}); err != nil {
+		if restoreErr := UpdateSettingValueService(h.Model, code, previousValue); restoreErr != nil {
+			logger.Error("[settings] rollback %s after reload failure failed: err=%v", code, restoreErr)
+		} else if restoreReloadErr := reloadSettingsForUpdate(&store.GlobalStore{Model: h.Model}); restoreReloadErr != nil {
+			logger.Error("[settings] reload settings cache failed after rollback %s: err=%v", code, restoreReloadErr)
+		}
+		return err
+	}
+	return nil
+}
+
 func (h *Handler) postUpdateThemeModeSettingAPIHandler(c fiber.Ctx, rawValue string) error {
 	value := normalizeThemeModeValue(rawValue)
 	if value == "" {
@@ -969,15 +989,12 @@ func (h *Handler) postUpdateThemeModeSettingAPIHandler(c fiber.Ctx, rawValue str
 		})
 	}
 
-	if err := UpdateSettingValueService(h.Model, settingCodeThemeMode, value); err != nil {
+	if err := h.updateSettingValueAndReload(settingCodeThemeMode, value); err != nil {
 		logger.Error("[settings] update %s failed: value=%s err=%v", settingCodeThemeMode, value, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": "保存界面模式失败，请稍后重试",
 		})
-	}
-	if err := store.ReloadSettings(&store.GlobalStore{Model: h.Model}); err != nil {
-		logger.Warn("[settings] reload settings cache failed after %s update: err=%v", settingCodeThemeMode, err)
 	}
 
 	return c.JSON(fiber.Map{
@@ -1011,15 +1028,12 @@ func (h *Handler) postUpdateBoolSettingAPIHandler(c fiber.Ctx, code string, name
 		})
 	}
 
-	if err := UpdateSettingValueService(h.Model, code, value); err != nil {
+	if err := h.updateSettingValueAndReload(code, value); err != nil {
 		logger.Error("[settings] update %s failed: value=%s err=%v", code, value, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"ok":    false,
 			"error": "保存" + name + "失败，请稍后重试",
 		})
-	}
-	if err := store.ReloadSettings(&store.GlobalStore{Model: h.Model}); err != nil {
-		logger.Warn("[settings] reload settings cache failed after %s update: err=%v", code, err)
 	}
 
 	return c.JSON(fiber.Map{
