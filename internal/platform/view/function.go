@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	HTML "html"
-	"net/url"
 	"strconv"
 	"strings"
 	"swaves/internal/platform/buildinfo"
@@ -28,14 +27,7 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		if version == "" {
 			return value.FromSafeString(HTML.EscapeString(p)), nil
 		}
-		u, err := url.Parse(p)
-		if err != nil {
-			return value.Undefined(), fmt.Errorf("StaticUrl: invalid path %q: %w", p, err)
-		}
-		q := u.Query()
-		q.Set("v", version)
-		u.RawQuery = q.Encode()
-		return value.FromSafeString(HTML.EscapeString(u.String())), nil
+		return value.FromSafeString(HTML.EscapeString(p + "?v=" + version)), nil
 	})
 	env.AddFunction("LucideIcon", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		name := ""
