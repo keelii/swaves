@@ -7,9 +7,9 @@
   {% include "inc_meta.html" %}
   {% include "include/favicon.html" %}
 
-  <link rel="stylesheet" href="/static/site/tufte-css/tufte.min.css">
-  <link rel="stylesheet" href="/static/site/style.css">
-  <script src="/static/site/main.js"></script>
+  <link rel="stylesheet" href="{{ StaticUrl('/static/site/tufte-css/tufte.min.css') }}">
+  <link rel="stylesheet" href="{{ StaticUrl('/static/site/style.css') }}">
+  <script src="{{ StaticUrl('/static/site/main.js') }}"></script>
 
   {% if Settings("ga4_id") %}
     {% include "inc_ga.html" %}

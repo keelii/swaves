@@ -10,7 +10,7 @@
   </style>
 
   {% include "include/favicon.html" %}
-  <link rel="stylesheet" href="/static/sui/sui.css">
+  <link rel="stylesheet" href="{{ StaticUrl('/static/sui/sui.css') }}">
   {% block head_extra %}{% endblock %}
 </head>
 <body{% if IsMobile %} class="is-mobile"{% endif %}{% if Settings("mode") == "dark" %} data-theme="dark"{% endif %}>

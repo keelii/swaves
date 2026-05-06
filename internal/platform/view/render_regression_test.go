@@ -256,7 +256,7 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 	if !strings.Contains(rendered, "<p>hello</p>") {
 		t.Fatalf("expected rendered html content")
 	}
-	if !strings.Contains(rendered, "/static/katex/katex.min.css") {
+	if !strings.Contains(rendered, `/static/katex/katex.min.css`) {
 		t.Fatalf("expected math assets on site post detail")
 	}
 }
@@ -945,7 +945,7 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	if !strings.Contains(rendered, `/static/favicon.svg?v=2`) {
+	if !strings.Contains(rendered, `/static/favicon.svg?v=`) {
 		t.Fatalf("expected favicon link in site layout")
 	}
 	if strings.Contains(rendered, `/static/katex/katex.min.css`) {
@@ -989,7 +989,7 @@ func TestRenderSUILayoutIncludesFavicon(t *testing.T) {
 	view := mustLoadRegressionView(t)
 
 	rendered := mustRenderRegressionTemplate(t, view, "sui/layout/base.html", map[string]any{})
-	if !strings.Contains(rendered, `/static/favicon.svg?v=2`) {
+	if !strings.Contains(rendered, `/static/favicon.svg?v=`) {
 		t.Fatalf("expected favicon link in sui layout")
 	}
 }
