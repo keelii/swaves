@@ -691,15 +691,18 @@ func (h *Handler) GetExportThemeHandler(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	body, err := json.MarshalIndent(payload, "", "  ")
-	if err != nil {
+	var buf strings.Builder
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(payload); err != nil {
 		return err
 	}
 
 	filename := fmt.Sprintf("%s.json", theme.Code)
 	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	c.Set("Content-Type", "application/json; charset=utf-8")
-	return c.SendStream(strings.NewReader(string(body)))
+	return c.SendStream(strings.NewReader(buf.String()))
 }
 
 func (h *Handler) PostImportThemeHandler(c fiber.Ctx) error {
