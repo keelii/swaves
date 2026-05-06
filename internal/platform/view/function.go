@@ -28,7 +28,14 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		if version == "" {
 			return value.FromSafeString(HTML.EscapeString(p)), nil
 		}
-		return value.FromSafeString(HTML.EscapeString(p) + "?v=" + url.QueryEscape(version)), nil
+		u, err := url.Parse(p)
+		if err != nil {
+			return value.Undefined(), fmt.Errorf("StaticUrl: invalid path %q: %w", p, err)
+		}
+		q := u.Query()
+		q.Set("v", version)
+		u.RawQuery = q.Encode()
+		return value.FromSafeString(HTML.EscapeString(u.String())), nil
 	})
 	env.AddFunction("LucideIcon", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		name := ""
