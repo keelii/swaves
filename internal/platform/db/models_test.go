@@ -1285,7 +1285,7 @@ func TestEnsureDefaultSettingsCreatesDefaultTheme(t *testing.T) {
 	}
 }
 
-func TestEnsureDefaultThemeKeepsExistingDefaultThemeContent(t *testing.T) {
+func TestEnsureDefaultThemeSyncsBuiltinThemeFiles(t *testing.T) {
 	db := openEmptyTestDB(t)
 
 	defaultTheme, err := GetThemeByCode(db, DefaultThemeCode)
@@ -1323,14 +1323,18 @@ func TestEnsureDefaultThemeKeepsExistingDefaultThemeContent(t *testing.T) {
 	if err := json.Unmarshal([]byte(defaultTheme.Files), &files); err != nil {
 		t.Fatalf("unmarshal template files failed: %v", err)
 	}
-	if got := files["home.html"]; got != `{% extends "site/layout/layout.html" %}` {
-		t.Fatalf("home template should remain customized, got: %s", got)
+	embeddedFiles, err := loadDefaultThemeFiles()
+	if err != nil {
+		t.Fatalf("loadDefaultThemeFiles failed: %v", err)
 	}
-	if defaultTheme.Description != "legacy" {
-		t.Fatalf("description should remain customized: %+v", defaultTheme)
+	if got, want := files["home.html"], embeddedFiles["home.html"]; got != want {
+		t.Fatalf("builtin home template should be synced to embedded content, got: %s", got)
 	}
-	if defaultTheme.Author != "legacy" {
-		t.Fatalf("author should remain customized: %+v", defaultTheme)
+	if defaultTheme.Description != "内置默认主题" {
+		t.Fatalf("description should be synced to embedded default: %+v", defaultTheme)
+	}
+	if defaultTheme.Author != "swaves" {
+		t.Fatalf("author should be synced to embedded default: %+v", defaultTheme)
 	}
 }
 

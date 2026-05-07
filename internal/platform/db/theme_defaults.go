@@ -123,6 +123,11 @@ func syncDefaultTheme(db *DB, theme *Theme) error {
 func EnsureDefaultTheme(db *DB) error {
 	theme, err := GetThemeByCode(db, DefaultThemeCode)
 	if err == nil {
+		if theme.IsBuiltin == 1 {
+			if err := syncDefaultTheme(db, theme); err != nil {
+				return err
+			}
+		}
 		return ensureDefaultThemeCurrent(db, theme)
 	}
 	if !IsErrNotFound(err) {

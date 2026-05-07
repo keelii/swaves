@@ -6,6 +6,7 @@ import (
 	HTML "html"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/buildinfo"
 	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/store"
@@ -17,6 +18,17 @@ import (
 )
 
 func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, params map[string]string, query map[string]string) (string, error)) {
+	env.AddFunction("StaticUrl", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
+		if len(args) == 0 {
+			return value.Undefined(), errors.New("StaticUrl requires path argument")
+		}
+		p := strings.TrimSpace(toStringValue(args[0].Raw()))
+		version := strings.TrimSpace(buildinfo.Version)
+		if version == "" {
+			return value.FromSafeString(HTML.EscapeString(p)), nil
+		}
+		return value.FromSafeString(HTML.EscapeString(p + "?v=" + version)), nil
+	})
 	env.AddFunction("LucideIcon", func(_ *minijinja.State, args []value.Value, kwargs map[string]value.Value) (value.Value, error) {
 		name := ""
 		size := "16"

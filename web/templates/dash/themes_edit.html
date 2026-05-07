@@ -2,8 +2,8 @@
 {% import "sui/include/ui.html" as sui %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="/static/ceditor/ceditor.css">
-<script src="/static/ceditor/dist/ceditor.min.js"></script>
+<link rel="stylesheet" href="{{ StaticUrl('/static/ceditor/ceditor.css') }}">
+<script src="{{ StaticUrl('/static/ceditor/dist/ceditor.min.js') }}"></script>
 <style>
   .app-window:has(.theme-editor-page) .app-main-body {
     overflow: hidden;

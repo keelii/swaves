@@ -10,9 +10,9 @@
   </style>
 
   {% include "include/favicon.html" %}
-  <link rel="stylesheet" href="/static/sui/sui.css">
+  <link rel="stylesheet" href="{{ StaticUrl('/static/sui/sui.css') }}">
   <meta name="robots" content="noindex, nofollow" />
-  <script src="/static/dash/main.js"></script>
+  <script src="{{ StaticUrl('/static/dash/main.js') }}"></script>
   <script>
     window.cfg = window.cfg || {};
     window.cfg.uiStateSaveURL = {{ UrlFor('dash.settings.api.ui_state.update') | tojson }};
