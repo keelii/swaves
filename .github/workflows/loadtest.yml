@@ -70,9 +70,7 @@ jobs:
           sqlite_file="${cache_dir}/loadtest.sqlite"
           log_file="${cache_dir}/swaves.log"
           listen_port="54096"
-          pprof_port="54097"
           listen_addr="127.0.0.1:${listen_port}"
-          pprof_addr="127.0.0.1:${pprof_port}"
           target_url="http://${listen_addr}/"
           wrk_threads="1"
           wrk_connections="100"
@@ -89,7 +87,6 @@ jobs:
             SWAVES_SQLITE_FILE="${sqlite_file}" \
             SWAVES_LISTEN_ADDR="${listen_addr}" \
             SWAVES_DAEMON_MODE=0 \
-            SWAVES_PPROF_ADDR="${pprof_addr}" \
             go run ./cmd/swaves \
             >"${log_file}" 2>&1 &
           app_pid=$!
@@ -117,20 +114,12 @@ jobs:
             exit 1
           fi
 
-          # Collect a CPU profile concurrently with the load test (30s, matching wrk duration)
-          profile_file="${cache_dir}/cpu.pprof"
-          curl -sfS "http://${pprof_addr}/debug/pprof/profile?seconds=30" -o "${profile_file}" &
-          pprof_pid=$!
-
           wrk \
             -t"${wrk_threads}" \
             -c"${wrk_connections}" \
             -d"${wrk_duration}" \
             --latency \
             "${target_url}" | tee result.txt
-
-          # Wait for profile collection to finish (it runs longer than wrk on purpose)
-          wait "${pprof_pid}" && echo "profile saved: ${profile_file}" || echo "profile collection failed (non-fatal)"
 
       - name: Build PR comment body
         if: always()
@@ -180,7 +169,6 @@ jobs:
             comment.md
             result.txt
             .cache/loadtest/swaves.log
-            .cache/loadtest/cpu.pprof
           if-no-files-found: error
 
   comment:

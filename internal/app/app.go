@@ -16,7 +16,6 @@ import (
 	"swaves/internal/platform/jobs"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
-	"swaves/internal/platform/profiling"
 	"swaves/internal/platform/store"
 	"swaves/internal/platform/updater"
 	"swaves/internal/platform/view"
@@ -47,7 +46,6 @@ func NewApp(appCfg types.AppConfig) SwavesApp {
 	if err := updater.ConfigureRuntimeCacheRoot(appCfg.SqliteFile); err != nil {
 		logger.Fatal("invalid runtime cache root: %v", err)
 	}
-	profiling.StartPprofServer(config.PprofAddr)
 
 	globalStore := store.NewGlobalStore(db.Open(db.Options{
 		DSN:          appCfg.SqliteFile,
