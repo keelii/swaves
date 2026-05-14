@@ -19,12 +19,17 @@ RELEASE_BIN_PATH := $(RELEASE_BASENAME)
 RELEASE_ARCHIVE := $(RELEASE_BASENAME).tar.gz
 RELEASE_SHA256 := $(RELEASE_ARCHIVE).sha256
 
+PGO_PROFILE_ADDR     ?= 127.0.0.1:6060
+PGO_PROFILE_DURATION ?= 30
+PGO_PROFILE_DIR      ?= profiles
+PGO_FILE             := cmd/swaves/default.pgo
+
 TAG_BUMP := $(word 2,$(MAKECMDGOALS))
 ifeq ($(strip $(TAG_BUMP)),)
 TAG_BUMP := patch
 endif
 
-.PHONY: help fe ceditor seditor test binary build release tag major minor patch clean
+.PHONY: help fe ceditor seditor test binary build release pgo-collect pgo-merge tag major minor patch clean
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -47,7 +52,7 @@ test: ## Run the full Go test suite
 binary: ## Build the local executable
 	@mkdir -p $(GOCACHE)
 	GOCACHE=$(GOCACHE) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -trimpath -buildvcs=false -ldflags "$(GO_LDFLAGS)" \
+		go build -trimpath -buildvcs=false -pgo=auto -ldflags "$(GO_LDFLAGS)" \
 		-o swaves ./cmd/swaves
 
 build: fe binary ## Build frontend bundles and the local executable
@@ -55,7 +60,7 @@ build: fe binary ## Build frontend bundles and the local executable
 release: ## Build and package the release executable with version metadata
 	@mkdir -p $(GOCACHE)
 	GOCACHE=$(GOCACHE) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -trimpath -buildvcs=false -ldflags "$(GO_LDFLAGS)" \
+		go build -trimpath -buildvcs=false -pgo=auto -ldflags "$(GO_LDFLAGS)" \
 		-o $(RELEASE_BIN_PATH) ./cmd/swaves
 	@rm -f $(RELEASE_ARCHIVE) $(RELEASE_SHA256)
 	tar -czf "$(RELEASE_ARCHIVE)" "$(RELEASE_BIN_PATH)"
@@ -67,6 +72,23 @@ release: ## Build and package the release executable with version metadata
 		echo "missing shasum/sha256sum" >&2; \
 		exit 1; \
 	fi
+
+pgo-collect: ## Collect a 30s CPU profile from a running swaves (requires SWAVES_PPROF_ADDR=$(PGO_PROFILE_ADDR))
+	@mkdir -p $(PGO_PROFILE_DIR)
+	@ts=$$(date +%Y%m%d_%H%M%S); \
+	out=$(PGO_PROFILE_DIR)/cpu_$$ts.pprof; \
+	echo "==> collecting $(PGO_PROFILE_DURATION)s CPU profile from http://$(PGO_PROFILE_ADDR)/debug/pprof/profile"; \
+	curl -sfS "http://$(PGO_PROFILE_ADDR)/debug/pprof/profile?seconds=$(PGO_PROFILE_DURATION)" -o "$$out" \
+		&& echo "==> saved $$out" \
+		|| { echo "==> collection failed — is SWAVES_PPROF_ADDR=$(PGO_PROFILE_ADDR) set on the running instance?"; exit 1; }
+
+pgo-merge: ## Merge all profiles in profiles/ into cmd/swaves/default.pgo, then rebuild
+	@if [ -z "$$(ls $(PGO_PROFILE_DIR)/*.pprof 2>/dev/null)" ]; then \
+		echo "==> no .pprof files found in $(PGO_PROFILE_DIR)/"; exit 1; \
+	fi
+	go tool pprof -proto -output $(PGO_FILE) $(PGO_PROFILE_DIR)/*.pprof
+	@echo "==> merged profile written to $(PGO_FILE)"
+	@echo "==> rebuild with: make binary"
 
 tag: ## Pull latest changes, bump remote semver tag, and push branch with the new tag
 	@set -eu; \

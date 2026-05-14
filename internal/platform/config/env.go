@@ -36,6 +36,7 @@ var (
 	EnablePerfTrace       = envBool("SWAVES_PERF_TRACE")
 	PerfTraceMinMS        = envInt("SWAVES_PERF_TRACE_MIN_MS", 0)
 	HTTPBodyLimit         = readPositiveEnvInt("SWAVES_BODY_LIMIT", DefaultHTTPBodyLimit)
+	PprofAddr             = strings.TrimSpace(os.Getenv("SWAVES_PPROF_ADDR"))
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
 )
