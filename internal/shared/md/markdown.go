@@ -204,6 +204,16 @@ func guessFenceLanguage(content string) string {
 		return "html"
 	case strings.Contains(lower, "fn main("):
 		return "rust"
+	case strings.Contains(lower, "#include <") || (strings.Contains(lower, "int main(") && strings.Contains(lower, "{")):
+		return "c"
+	case strings.Contains(lower, "(defun ") || strings.Contains(lower, "(define ") || strings.Contains(lower, "(let (") || strings.Contains(lower, "(lambda "):
+		return "lisp"
+	case strings.Contains(lower, "cmake_minimum_required(") || strings.Contains(lower, "add_executable(") || (strings.Contains(lower, "project(") && strings.Contains(lower, "find_package(")):
+		return "cmake"
+	case strings.Contains(lower, "server {") || strings.Contains(lower, "location /") || strings.Contains(lower, "proxy_pass "):
+		return "nginx"
+	case strings.Contains(lower, "{{") && (strings.Contains(lower, "}}") || strings.Contains(lower, "{%")):
+		return "jinja"
 	}
 
 	return ""
