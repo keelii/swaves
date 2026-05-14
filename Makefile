@@ -57,6 +57,9 @@ release: ## Build and package the release executable with version metadata
 	GOCACHE=$(GOCACHE) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		go build -trimpath -buildvcs=false -ldflags "$(GO_LDFLAGS)" \
 		-o $(RELEASE_BIN_PATH) ./cmd/swaves
+	@if command -v upx >/dev/null 2>&1; then \
+		upx --best --lzma "$(RELEASE_BIN_PATH)"; \
+	fi
 	@rm -f $(RELEASE_ARCHIVE) $(RELEASE_SHA256)
 	tar -czf "$(RELEASE_ARCHIVE)" "$(RELEASE_BIN_PATH)"
 	@if command -v shasum >/dev/null 2>&1; then \
