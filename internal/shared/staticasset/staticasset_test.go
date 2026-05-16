@@ -24,6 +24,7 @@ func TestIsVendoredStaticAsset(t *testing.T) {
 func TestAppOwnedStaticAssetsUseBuildVersion(t *testing.T) {
 	for _, pathValue := range []string{
 		"/static/site/style.css",
+		"/static/site/content-assets.js",
 		"/static/site/main.js",
 		"/static/sui/sui.css",
 		"/static/dash/main.js",

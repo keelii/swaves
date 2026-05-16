@@ -317,6 +317,9 @@ func TestNewSiteRuntimeViewEngineUsesCurrentThemeFromDBInReloadMode(t *testing.T
 	if err := os.WriteFile(filepath.Join(includeRoot, "favicon.html"), []byte("favicon"), 0o644); err != nil {
 		t.Fatalf("write favicon include failed: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(includeRoot, "content_assets.html"), []byte("content-assets"), 0o644); err != nil {
+		t.Fatalf("write content assets include failed: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(includeRoot, "math.html"), []byte("math"), 0o644); err != nil {
 		t.Fatalf("write math include failed: %v", err)
 	}

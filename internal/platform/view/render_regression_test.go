@@ -257,26 +257,24 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 	if !strings.Contains(rendered, "<p>hello</p>") {
 		t.Fatalf("expected rendered html content")
 	}
-	if !strings.Contains(rendered, `/static/katex/katex.min.css`) {
-		t.Fatalf("expected math assets on site post detail")
+	if !strings.Contains(rendered, `/static/site/content-assets.js?v=`) {
+		t.Fatalf("expected site content asset loader on post detail")
 	}
-	if strings.Contains(rendered, `/static/katex/katex.min.css?v=`) {
-		t.Fatalf("expected katex asset to omit build version query")
+	if strings.Contains(rendered, `data-katex-`) ||
+		strings.Contains(rendered, `data-mermaid-`) ||
+		strings.Contains(rendered, `data-svg-pan-zoom-`) {
+		t.Fatalf("expected content asset URLs to stay decoupled from template markup")
 	}
-	if !strings.Contains(rendered, `/static/mermaid/mermaid.min.js`) {
-		t.Fatalf("expected mermaid assets on site post detail")
+	if strings.Contains(rendered, `<link rel="stylesheet" href="/static/katex/katex.min.css"`) {
+		t.Fatalf("expected katex stylesheet to be loaded dynamically")
 	}
-	if strings.Contains(rendered, `/static/mermaid/mermaid.min.js?v=`) {
-		t.Fatalf("expected mermaid asset to omit build version query")
+	if strings.Contains(rendered, `<script defer src="/static/katex/katex.min.js"`) ||
+		strings.Contains(rendered, `<script defer src="/static/mermaid/mermaid.min.js"`) ||
+		strings.Contains(rendered, `<script defer src="/static/svg-pan-zoom/svg-pan-zoom.min.js"`) {
+		t.Fatalf("expected heavy content scripts to be loaded dynamically")
 	}
-	if !strings.Contains(rendered, `/static/svg-pan-zoom/svg-pan-zoom.min.js`) {
-		t.Fatalf("expected svg-pan-zoom assets on site post detail")
-	}
-	if strings.Contains(rendered, `/static/svg-pan-zoom/svg-pan-zoom.min.js?v=`) {
-		t.Fatalf("expected svg-pan-zoom asset to omit build version query")
-	}
-	if !strings.Contains(rendered, `/static/site/mermaid-init.js?v=`) {
-		t.Fatalf("expected mermaid initializer to use build-versioned app asset")
+	if strings.Contains(rendered, `/static/site/mermaid-init.js?v=`) {
+		t.Fatalf("expected mermaid initializer to be loaded dynamically")
 	}
 }
 

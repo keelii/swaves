@@ -18,6 +18,7 @@ const (
 )
 
 var runtimeThemeSharedFiles = []string{
+	"include/content_assets.html",
 	"include/favicon.html",
 	"include/math.html",
 	"include/mermaid.html",

@@ -38,6 +38,7 @@ import (
 //go:embed static/dash/trash-index.js
 //go:embed static/robots.txt
 //go:embed static/site/comment-reply.js
+//go:embed static/site/content-assets.js
 //go:embed static/site/like-action.js
 //go:embed static/site/main.js
 //go:embed static/site/mermaid-init.js
