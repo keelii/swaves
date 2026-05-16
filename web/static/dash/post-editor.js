@@ -1,0 +1,672 @@
+  document.addEventListener("DOMContentLoaded", function() {
+    var workspace = document.querySelector('[data-role="post-editor-workspace"]');
+    var initialNotice = workspace ? (workspace.getAttribute("data-initial-notice") || "") : "";
+    var initialError = workspace ? (workspace.getAttribute("data-initial-error") || "") : "";
+    var titleInput = document.getElementById("post-title");
+    var textarea = document.getElementById("post-content");
+    var wordCount = document.getElementById("post-editor-word-count");
+    var slugInput = document.getElementById("post-slug");
+    var tocPane = document.querySelector('[data-role="post-editor-toc-pane"]');
+    var tocBody = document.querySelector('[data-role="post-editor-toc-body"]');
+    var wysiwygMount = document.querySelector('[data-role="post-editor-wysiwyg"]');
+    var tocToggleButton = document.querySelector('[data-role="toggle-post-toc"]');
+    var sourceToggleButton = document.querySelector('[data-role="toggle-post-source"]');
+    var autoSyncSlug = !!(workspace && workspace.getAttribute("data-auto-sync-slug") === "1");
+    var slugAPIURL = workspace ? (workspace.getAttribute("data-slug-api-url") || "") : "";
+    var markdownTOCAPIURL = workspace ? (workspace.getAttribute("data-markdown-toc-api-url") || "") : "";
+    var uiStateSaveURL = workspace ? (workspace.getAttribute("data-ui-state-save-url") || "") : "";
+    var slugSyncTimer = null;
+    var slugSyncSeq = 0;
+    var tocSyncTimer = null;
+    var tocSyncSeq = 0;
+    var tocLatestMarkdown = "";
+    var tocAvailable = false;
+    var preserveInitialTOC = !!(tocBody && (tocBody.innerHTML || "").trim());
+    var tocPreferredOpen = !!(workspace && workspace.getAttribute("data-toc-preferred-open") === "1");
+    var sourcePreferredOpen = !!(workspace && workspace.getAttribute("data-source-preferred-open") === "1");
+    var tocOpenPersisting = false;
+    var tocOpenQueued = null;
+    var tocOpenLastSaved = tocPreferredOpen ? "1" : "0";
+    var sourceModePersisting = false;
+    var sourceModeQueued = null;
+    var sourceModeLastSaved = sourcePreferredOpen ? "1" : "0";
+    var sourceMode = sourcePreferredOpen;
+    var sourceModeEnabled = false;
+    var headingIDRunePattern = null;
+    try {
+      headingIDRunePattern = new RegExp("^[\\p{L}\\p{N}]$", "u");
+    } catch (error) {
+      headingIDRunePattern = null;
+    }
+
+    function showInitialToast(kind, title, message) {
+      var text = message || "";
+      if (!text) {
+        return;
+      }
+      window.DashAppUI.toast.show({
+        kind: kind,
+        title: title,
+        message: text,
+        duration: 5000
+      });
+    }
+
+    if (initialNotice) {
+      showInitialToast("success", "操作完成", initialNotice);
+    }
+    if (initialError) {
+      showInitialToast("danger", "保存失败", initialError);
+    }
+
+    function getEditorRoot() {
+      if (!workspace || !workspace.querySelector) {
+        return null;
+      }
+      return workspace.querySelector(".content .ProseMirror");
+    }
+
+    function getEditorHeadingNodes() {
+      var root = getEditorRoot();
+      if (!root || !root.querySelectorAll) {
+        return [];
+      }
+      return Array.prototype.slice.call(root.querySelectorAll("h1, h2, h3, h4, h5, h6"));
+    }
+
+    function normalizeTOCAnchor(href) {
+      var text = (href || "").trim();
+      if (text.charAt(0) === "#") {
+        text = text.slice(1);
+      }
+      if (!text) {
+        return "";
+      }
+      try {
+        return decodeURIComponent(text);
+      } catch (error) {
+        return text;
+      }
+    }
+
+    function isHeadingIDRune(char) {
+      if (!char) {
+        return false;
+      }
+      if (char === "-") {
+        return true;
+      }
+      if ((char >= "0" && char <= "9") || (char >= "A" && char <= "Z") || (char >= "a" && char <= "z")) {
+        return true;
+      }
+      return !!(headingIDRunePattern && headingIDRunePattern.test(char));
+    }
+
+    function buildHeadingAnchorID(text) {
+      var source = (text == null ? "" : text).trim().replace(/ /g, "-");
+      var out = "";
+      for (var i = 0; i < source.length; i += 1) {
+        var char = source.charAt(i);
+        if (isHeadingIDRune(char)) {
+          out += char;
+        }
+      }
+      return out || "heading";
+    }
+
+    function syncTOCHeadingMapping() {
+      if (!tocBody || !tocBody.querySelectorAll) {
+        return;
+      }
+
+      var links = tocBody.querySelectorAll('.toc-list a[href^="#"]');
+      if (!links || links.length === 0) {
+        return;
+      }
+
+      var headings = getEditorHeadingNodes();
+      var headingEntries = [];
+      var headingMap = {};
+
+      for (var i = 0; i < headings.length; i += 1) {
+        var headingNode = headings[i];
+        var anchorID = buildHeadingAnchorID(headingNode.textContent || "");
+        var entry = { index: i, id: anchorID };
+        headingEntries.push(entry);
+        if (!headingMap[anchorID]) {
+          headingMap[anchorID] = [];
+        }
+        headingMap[anchorID].push(entry);
+      }
+
+      var anchorHitCount = {};
+      for (var linkIndex = 0; linkIndex < links.length; linkIndex += 1) {
+        var link = links[linkIndex];
+        var anchor = normalizeTOCAnchor(link.getAttribute("href"));
+        var anchorOffset = anchorHitCount[anchor] || 0;
+        anchorHitCount[anchor] = anchorOffset + 1;
+
+        var targetEntry = null;
+        var matchedEntries = headingMap[anchor];
+        if (matchedEntries && anchorOffset < matchedEntries.length) {
+          targetEntry = matchedEntries[anchorOffset];
+        } else if (linkIndex < headingEntries.length) {
+          targetEntry = headingEntries[linkIndex];
+        }
+
+        if (targetEntry) {
+          link.setAttribute("data-heading-index", targetEntry.index);
+        } else {
+          link.removeAttribute("data-heading-index");
+        }
+      }
+    }
+
+    function focusEditorRoot() {
+      var root = getEditorRoot();
+      if (!root || typeof root.focus !== "function") {
+        return;
+      }
+      try {
+        root.focus({ preventScroll: true });
+      } catch (error) {
+        root.focus();
+      }
+    }
+
+    function moveCaretToNodeStart(node) {
+      if (!node || typeof document.createRange !== "function" || typeof window.getSelection !== "function") {
+        return;
+      }
+      var selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      var range = document.createRange();
+      range.selectNodeContents(node);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    function focusEditorHeadingByIndex(index) {
+      if (typeof index !== "number" || !isFinite(index) || index < 0) {
+        return false;
+      }
+
+      var headings = getEditorHeadingNodes();
+      if (index >= headings.length) {
+        return false;
+      }
+
+      var heading = headings[index];
+      if (!heading) {
+        return false;
+      }
+
+      if (typeof heading.scrollIntoView === "function") {
+        heading.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest"
+        });
+      }
+
+      focusEditorRoot();
+      moveCaretToNodeStart(heading);
+      return true;
+    }
+
+    function scrollToTOCLinkTarget(link) {
+      if (!link || typeof link.getAttribute !== "function") {
+        return false;
+      }
+
+      syncTOCHeadingMapping();
+      var value = link.getAttribute("data-heading-index");
+      if (value == null || value === "") {
+        return false;
+      }
+
+      var parsed = Number(value);
+      if (!isFinite(parsed)) {
+        return false;
+      }
+      return focusEditorHeadingByIndex(parsed);
+    }
+
+    function updateWordCount(nextMarkdown) {
+      if (!wordCount) {
+        return;
+      }
+      var text = "";
+      if (titleInput) {
+        text += (titleInput.value || "") + "\n";
+      }
+      if (typeof nextMarkdown === "string") {
+        text += nextMarkdown;
+      } else if (textarea) {
+        text += textarea.value || "";
+      }
+      text = text.replace(/\s+/g, "").trim();
+      wordCount.textContent = "字数 " + text.length;
+    }
+
+    function refreshSourceToggleButton() {
+      if (!sourceToggleButton) {
+        return;
+      }
+      sourceToggleButton.hidden = !sourceModeEnabled;
+      sourceToggleButton.classList.toggle("selected", sourceMode);
+      sourceToggleButton.setAttribute("aria-pressed", sourceMode ? "true" : "false");
+      sourceToggleButton.setAttribute("data-title", sourceMode ? "切换可视化编辑" : "切换源码编辑");
+      sourceToggleButton.textContent = sourceMode ? "可视" : "源码";
+    }
+
+    function refreshTOCToggleButton() {
+      if (!tocToggleButton) {
+        return;
+      }
+      tocToggleButton.hidden = !tocAvailable;
+      var active = !!(tocAvailable && workspace && workspace.classList.contains("toc-open"));
+      tocToggleButton.classList.toggle("selected", active);
+      tocToggleButton.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+
+    function syncTextareaFromEditor() {
+      if (!textarea || !window.__seditor || typeof window.__seditor.getMarkdown !== "function") {
+        return;
+      }
+      try {
+        textarea.value = window.__seditor.getMarkdown() || "";
+      } catch (error) {
+        // Ignore sync failures and keep previous textarea value.
+      }
+    }
+
+    function syncEditorFromTextarea() {
+      if (!textarea || !window.__seditor || typeof window.__seditor.setMarkdown !== "function") {
+        return;
+      }
+      window.__seditor.setMarkdown(textarea.value || "");
+    }
+
+    function postUIStateSetting(code, value) {
+      if (!uiStateSaveURL) {
+        return null;
+      }
+      return window.DashApp.postUIStateSetting(uiStateSaveURL, code, value);
+    }
+
+    function queueSaveSourceMode(nextSourceMode) {
+      if (!uiStateSaveURL) {
+        return;
+      }
+      var value = nextSourceMode ? "1" : "0";
+      if (sourceModeLastSaved === value && !sourceModePersisting) {
+        return;
+      }
+      sourceModeQueued = value;
+      if (!sourceModePersisting) {
+        flushSaveSourceMode();
+      }
+    }
+
+    function flushSaveSourceMode() {
+      if (sourceModePersisting || sourceModeQueued === null) {
+        return;
+      }
+      if (!uiStateSaveURL) {
+        sourceModeQueued = null;
+        return;
+      }
+
+      var value = sourceModeQueued;
+      sourceModeQueued = null;
+      sourceModePersisting = true;
+
+      postUIStateSetting("dash_post_editor_source_mode", value).then(function(result) {
+        if (!result.ok || !result.body || result.body.ok !== true) {
+          var message = result && result.body && result.body.error ? result.body.error : "unknown error";
+          console.warn("save source mode failed: value=" + value + " message=" + message);
+          return;
+        }
+        sourceModeLastSaved = value;
+      }).catch(function(error) {
+        console.warn("save source mode request failed", error);
+      }).then(function() {
+        sourceModePersisting = false;
+        if (sourceModeQueued !== null && sourceModeQueued !== value) {
+          flushSaveSourceMode();
+        }
+      });
+    }
+
+    function setSourceMode(nextSourceMode, options) {
+      if (!workspace || !textarea || !sourceModeEnabled) {
+        return;
+      }
+
+      var nextMode = !!nextSourceMode;
+      var force = !!(options && options.force);
+      if (!force && nextMode === sourceMode) {
+        return;
+      }
+
+      var persist = !(options && options.persist === false);
+
+      sourceMode = nextMode;
+      workspace.classList.toggle("source-mode", sourceMode);
+      textarea.hidden = !sourceMode;
+
+      if (sourceMode) {
+        syncTextareaFromEditor();
+        updateWordCount(textarea.value);
+        scheduleTOCSync(textarea.value);
+        if (!options || options.focus !== false) {
+          textarea.focus();
+        }
+      } else {
+        syncEditorFromTextarea();
+        syncTOCHeadingMapping();
+        applyTOCOpenState(tocPreferredOpen, false);
+        updateWordCount(textarea.value);
+        scheduleTOCSync(textarea.value);
+        if (!options || options.focus !== false) {
+          focusEditorRoot();
+        }
+      }
+
+      refreshSourceToggleButton();
+      refreshTOCToggleButton();
+      if (persist) {
+        queueSaveSourceMode(sourceMode);
+      }
+    }
+
+    function syncSlugFromTitle() {
+      if (!autoSyncSlug || !titleInput || !slugInput || !slugAPIURL) {
+        return;
+      }
+
+      var name = (titleInput.value || "").trim();
+      if (!name) {
+        slugInput.value = "";
+        return;
+      }
+
+      var seq = ++slugSyncSeq;
+      var requestURL = new URL(slugAPIURL, window.location.origin);
+      requestURL.searchParams.set("name", name);
+
+      window.sfetchJSON(requestURL.toString(), {
+        method: "GET",
+      }).then(function(response) {
+        if (!response || !response.ok) {
+          return null;
+        }
+        return response.body;
+      }).then(function(json) {
+        if (seq !== slugSyncSeq) {
+          return;
+        }
+        if (json && json.data) {
+          slugInput.value = json.data;
+        }
+        }).catch(function(err) {
+          console.warn("slug sync failed", err);
+        });
+      }
+
+    function queueSaveTOCOpenState(open) {
+      if (!uiStateSaveURL) {
+        return;
+      }
+      var value = open ? "1" : "0";
+      if (tocOpenLastSaved === value && !tocOpenPersisting) {
+        return;
+      }
+      tocOpenQueued = value;
+      if (!tocOpenPersisting) {
+        flushSaveTOCOpenState();
+      }
+    }
+
+    function flushSaveTOCOpenState() {
+      if (tocOpenPersisting || tocOpenQueued === null) {
+        return;
+      }
+      if (!uiStateSaveURL) {
+        tocOpenQueued = null;
+        return;
+      }
+
+      var value = tocOpenQueued;
+      tocOpenQueued = null;
+      tocOpenPersisting = true;
+
+      postUIStateSetting("dash_post_editor_toc_open", value).then(function(result) {
+        if (!result.ok || !result.body || result.body.ok !== true) {
+          var message = result && result.body && result.body.error ? result.body.error : "unknown error";
+          console.warn("save toc open state failed: value=" + value + " message=" + message);
+          return;
+        }
+        tocOpenLastSaved = value;
+      }).catch(function(error) {
+        console.warn("save toc open state request failed", error);
+      }).then(function() {
+        tocOpenPersisting = false;
+        if (tocOpenQueued !== null && tocOpenQueued !== value) {
+          flushSaveTOCOpenState();
+        }
+      });
+    }
+
+    function applyTOCOpenState(open, persist) {
+      var nextOpen = !!open && tocAvailable;
+      if (workspace) {
+        workspace.classList.toggle("toc-open", nextOpen);
+      }
+      if (tocPane && tocPane.setAttribute) {
+        tocPane.setAttribute("aria-hidden", nextOpen ? "false" : "true");
+      }
+      if (tocToggleButton) {
+        tocToggleButton.classList.toggle("selected", nextOpen);
+        tocToggleButton.setAttribute("aria-pressed", nextOpen ? "true" : "false");
+      }
+      if (persist) {
+        tocPreferredOpen = nextOpen;
+        queueSaveTOCOpenState(nextOpen);
+      }
+    }
+
+    function setTOCAvailable(available) {
+      tocAvailable = !!available;
+      refreshTOCToggleButton();
+      if (!tocAvailable) {
+        applyTOCOpenState(false, false);
+        if (tocPane) {
+          tocPane.hidden = true;
+        }
+        return;
+      }
+      if (tocPane) {
+        tocPane.hidden = false;
+      }
+      applyTOCOpenState(tocPreferredOpen, false);
+    }
+
+    function renderTOC(markdown) {
+      if (!tocBody || !markdownTOCAPIURL) {
+        setTOCAvailable(false);
+        return;
+      }
+
+      var source = (markdown || "").trim();
+      if (!source) {
+        tocBody.innerHTML = "";
+        setTOCAvailable(false);
+        return;
+      }
+
+      var seq = ++tocSyncSeq;
+      window.sfetchJSON(markdownTOCAPIURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: source })
+      }).then(function(result) {
+        if (seq !== tocSyncSeq) {
+          return;
+        }
+        if (!result.ok || !result.body || typeof result.body.data !== "string") {
+          tocBody.innerHTML = "";
+          setTOCAvailable(false);
+          return;
+        }
+        var tocHTML = (result.body.data || "").trim();
+        if (!tocHTML) {
+          tocBody.innerHTML = "";
+          setTOCAvailable(false);
+          return;
+        }
+        tocBody.innerHTML = tocHTML;
+        var toggle = tocBody.querySelector(".toc-toggle");
+        if (toggle && toggle.parentNode) {
+          toggle.parentNode.removeChild(toggle);
+        }
+        syncTOCHeadingMapping();
+        setTOCAvailable(true);
+      }).catch(function(err) {
+        console.warn("toc render failed", err);
+        if (seq !== tocSyncSeq) {
+          return;
+        }
+        tocBody.innerHTML = "";
+        setTOCAvailable(false);
+      });
+    }
+
+    function scheduleTOCSync(nextMarkdown) {
+      if (preserveInitialTOC) {
+        preserveInitialTOC = false;
+        return;
+      }
+      tocLatestMarkdown = typeof nextMarkdown === "string" ? nextMarkdown : ((textarea && textarea.value) || "");
+      if (tocSyncTimer) {
+        window.clearTimeout(tocSyncTimer);
+      }
+      tocSyncTimer = window.setTimeout(function() {
+        renderTOC(tocLatestMarkdown);
+      }, 260);
+    }
+
+    function scheduleSlugSync() {
+      if (slugSyncTimer) {
+        window.clearTimeout(slugSyncTimer);
+      }
+      slugSyncTimer = window.setTimeout(syncSlugFromTitle, 160);
+    }
+
+    if (tocBody) {
+      var initialTOCHTML = (tocBody.innerHTML || "").trim();
+      if (initialTOCHTML) {
+        var initialToggle = tocBody.querySelector(".toc-toggle");
+        if (initialToggle && initialToggle.parentNode) {
+          initialToggle.parentNode.removeChild(initialToggle);
+        }
+        setTOCAvailable(true);
+      } else {
+        setTOCAvailable(false);
+      }
+    } else {
+      setTOCAvailable(false);
+    }
+
+    if (tocToggleButton) {
+      tocToggleButton.addEventListener("click", function(event) {
+        event.preventDefault();
+        if (!tocAvailable) {
+          return;
+        }
+        var nextOpen = !(workspace && workspace.classList.contains("toc-open"));
+        applyTOCOpenState(nextOpen, true);
+      });
+    }
+    if (sourceToggleButton) {
+      sourceToggleButton.addEventListener("click", function(event) {
+        event.preventDefault();
+        if (!sourceModeEnabled) {
+          return;
+        }
+        setSourceMode(!sourceMode, { focus: true });
+      });
+    }
+
+    if (tocBody) {
+      tocBody.addEventListener("click", function(event) {
+        var target = event.target;
+        if (!target || !target.closest) {
+          return;
+        }
+        var link = target.closest('a[href^="#"]');
+        if (link) {
+          event.preventDefault();
+          if (sourceMode) {
+            return;
+          }
+          scrollToTOCLinkTarget(link);
+        }
+      });
+    }
+
+    document.addEventListener("keydown", function(event) {
+      if (!tocAvailable || !workspace || !workspace.classList || !workspace.classList.contains("toc-open")) {
+        return;
+      }
+      if (event.key === "Escape") {
+        applyTOCOpenState(false, true);
+      }
+    });
+
+    if (!window.SEditor || typeof window.SEditor.init !== "function" || !wysiwygMount) {
+      sourceModeEnabled = false;
+      sourceMode = true;
+      if (workspace) {
+        workspace.classList.add("source-mode");
+      }
+      if (textarea) {
+        textarea.hidden = false;
+      }
+      refreshSourceToggleButton();
+      refreshTOCToggleButton();
+      updateWordCount();
+      return;
+    }
+
+    sourceModeEnabled = true;
+    refreshSourceToggleButton();
+    window.__seditor = window.SEditor.init({
+      mount: '[data-role="post-editor-wysiwyg"]',
+      textarea: "#post-content",
+      placeholder: "输入内容",
+      onChange: function(markdown) {
+        updateWordCount(markdown);
+        scheduleTOCSync(markdown);
+      }
+    });
+
+    if (titleInput) {
+      titleInput.addEventListener("input", updateWordCount);
+      titleInput.addEventListener("input", scheduleSlugSync);
+    }
+    if (textarea) {
+      textarea.addEventListener("input", updateWordCount);
+      textarea.addEventListener("input", function() {
+        scheduleTOCSync();
+      });
+    }
+
+    setSourceMode(sourcePreferredOpen, { focus: false, force: true, persist: false });
+    updateWordCount();
+    syncSlugFromTitle();
+  });

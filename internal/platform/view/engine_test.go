@@ -115,6 +115,9 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(templateRoot, "include", "math.html"), []byte("math"), 0o644); err != nil {
 		t.Fatalf("write math include failed: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(templateRoot, "include", "mermaid.html"), []byte("mermaid"), 0o644); err != nil {
+		t.Fatalf("write mermaid include failed: %v", err)
+	}
 
 	files, err := json.Marshal(map[string]string{
 		"site/home.html":           "legacy-home",
@@ -166,6 +169,7 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	assertCachedThemeFile("layout_archive.html", "archive-layout")
 	assertCachedThemeFile(filepath.Join("include", "favicon.html"), "favicon")
 	assertCachedThemeFile(filepath.Join("include", "math.html"), "math")
+	assertCachedThemeFile(filepath.Join("include", "mermaid.html"), "mermaid")
 
 	cacheBase, err := ResolveThemeCacheRoot(dbPath)
 	if err != nil {

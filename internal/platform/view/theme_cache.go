@@ -20,6 +20,7 @@ const (
 var runtimeThemeSharedFiles = []string{
 	"include/favicon.html",
 	"include/math.html",
+	"include/mermaid.html",
 }
 
 func ResolveThemeCacheRoot(sqliteFile string) (string, error) {
