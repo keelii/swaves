@@ -113,6 +113,7 @@
 - handlers 负责流程编排，不要内嵌复杂 SQL 逻辑。
 - 可复用 JS 工具统一沉淀到 `web/static/dash/main.js` 及站点对应入口。
 - 共享 JS 工具优先使用原生 DOM API，不应依赖额外库。
+- 不得随意新增 `normalizeXXX`、`legacyXXX` 或类似兜底/兼容代码；如确有必要，必须先获得负责人明确批准。
 
 ### 11) 环境变量与配置卫生
 

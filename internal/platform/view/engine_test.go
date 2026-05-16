@@ -109,6 +109,9 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(templateRoot, "include"), 0o755); err != nil {
 		t.Fatalf("create include root failed: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(templateRoot, "include", "content_assets.html"), []byte("content-assets"), 0o644); err != nil {
+		t.Fatalf("write content assets include failed: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(templateRoot, "include", "favicon.html"), []byte("favicon"), 0o644); err != nil {
 		t.Fatalf("write favicon include failed: %v", err)
 	}
@@ -167,6 +170,7 @@ func TestMaterializeCurrentThemeCacheWritesFlatThemeFiles(t *testing.T) {
 	assertCachedThemeFile("layout_main.html", "layout")
 	assertCachedThemeFile("macro_content.html", "macro")
 	assertCachedThemeFile("layout_archive.html", "archive-layout")
+	assertCachedThemeFile(filepath.Join("include", "content_assets.html"), "content-assets")
 	assertCachedThemeFile(filepath.Join("include", "favicon.html"), "favicon")
 	assertCachedThemeFile(filepath.Join("include", "math.html"), "math")
 	assertCachedThemeFile(filepath.Join("include", "mermaid.html"), "mermaid")

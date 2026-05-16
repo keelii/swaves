@@ -35,6 +35,7 @@ func TestStaticFSIncludesStaticFiles(t *testing.T) {
 		"dash/redirects-index.js",
 		"dash/categories-tree.js",
 		"dash/settings-system-update.js",
+		"site/content-assets.js",
 		"site/mermaid-init.js",
 		"site/like-action.js",
 		"sui/post-edit.js",

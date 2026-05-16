@@ -1,5 +1,6 @@
-  document.addEventListener("DOMContentLoaded", function() {
+  (function () {
     var activeMermaidViewer = null;
+    var mermaidEventsReady = false;
 
     function buildMermaidFullscreenButton() {
       var button = document.createElement("button");
@@ -110,33 +111,46 @@
       document.querySelectorAll(".mermaid").forEach(enableMermaidPanZoom);
     }
 
-    document.addEventListener("keydown", function(event) {
-      if (event.key === "Escape" && activeMermaidViewer) {
-        exitMermaidPageFullscreen(activeMermaidViewer);
+    function installMermaidEvents() {
+      if (mermaidEventsReady) {
+        return;
       }
-    });
+      mermaidEventsReady = true;
 
-    window.addEventListener("resize", function() {
-      document.querySelectorAll(".mermaid").forEach(resizeMermaidPanZoom);
-    });
+      document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape" && activeMermaidViewer) {
+          exitMermaidPageFullscreen(activeMermaidViewer);
+        }
+      });
 
-    if (!window.mermaid || typeof window.mermaid.initialize !== "function") {
-      console.warn("mermaid runtime is unavailable");
-      return;
-    }
-    window.mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: "strict"
-    });
-    if (typeof window.mermaid.run === "function") {
-      window.mermaid.run({
-        querySelector: ".mermaid",
-        suppressErrors: true
-      }).then(function() {
-        enableMermaidPanZoomAll();
-      }).catch(function(error) {
-        console.warn("mermaid render failed", error);
-        enableMermaidPanZoomAll();
+      window.addEventListener("resize", function() {
+        document.querySelectorAll(".mermaid").forEach(resizeMermaidPanZoom);
       });
     }
-  });
+
+    function initializeMermaid() {
+      installMermaidEvents();
+
+      if (!window.mermaid || typeof window.mermaid.initialize !== "function") {
+        console.warn("mermaid runtime is unavailable");
+        return;
+      }
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "strict"
+      });
+      if (typeof window.mermaid.run === "function") {
+        window.mermaid.run({
+          querySelector: ".mermaid",
+          suppressErrors: true
+        }).then(function() {
+          enableMermaidPanZoomAll();
+        }).catch(function(error) {
+          console.warn("mermaid render failed", error);
+          enableMermaidPanZoomAll();
+        });
+      }
+    }
+
+    window.initMermaid = initializeMermaid;
+  })();

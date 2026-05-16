@@ -20,10 +20,9 @@
       button.dataset.liked = liked ? "1" : "0";
     }
 
-    async function handleLikeSubmit(event) {
+    async function handleLikeSubmit(event, form) {
       event.preventDefault();
 
-      var form = event.currentTarget;
       var button = form.querySelector("[data-like-button]");
       if (!button || button.disabled) {
         return;
@@ -58,8 +57,15 @@
       }
     }
 
-    var forms = document.querySelectorAll("[data-like-form]");
-    forms.forEach(function (form) {
-      form.addEventListener("submit", handleLikeSubmit);
+    document.addEventListener("submit", function (event) {
+      var target = event.target;
+      if (!target || typeof target.closest !== "function") {
+        return;
+      }
+      var form = target.closest("[data-like-form]");
+      if (!form) {
+        return;
+      }
+      handleLikeSubmit(event, form);
     });
   })();

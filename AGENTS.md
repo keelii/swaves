@@ -52,6 +52,7 @@ Any exception must be explicitly approved, and the owner must confirm whether th
 - Keep DB logic in models, keep handlers orchestration-focused.
 - Centralize shared frontend navigation/redirect helpers; avoid ad-hoc `window.location.*` usage.
 - Keep env definitions centralized and clean.
+- Do not add `normalizeXXX`, `legacyXXX`, or similar fallback/compatibility code casually. If such code is truly necessary, get explicit owner approval before implementing it.
 - Preserve file history when moving/renaming (prefer tracked move).
 - Treat tests and PR checklist as a merge gate; run `go test ./...`.
 
