@@ -142,17 +142,5 @@
   <p>暂无分类</p>
 {% endif %}
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  var selects = document.querySelectorAll('form.category-parent-form select[name="categories"]');
-  selects.forEach(function(select) {
-    select.addEventListener('change', function() {
-      var form = select.closest('form');
-      if (form) {
-        form.submit();
-      }
-    });
-  });
-});
-</script>
+<script src="{{ StaticUrl('/static/dash/categories-tree.js') }}"></script>
 {% endblock %}

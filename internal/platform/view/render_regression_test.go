@@ -2,6 +2,7 @@ package view
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -259,6 +260,24 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 	if !strings.Contains(rendered, `/static/katex/katex.min.css`) {
 		t.Fatalf("expected math assets on site post detail")
 	}
+	if strings.Contains(rendered, `/static/katex/katex.min.css?v=`) {
+		t.Fatalf("expected katex asset to omit build version query")
+	}
+	if !strings.Contains(rendered, `/static/mermaid/mermaid.min.js`) {
+		t.Fatalf("expected mermaid assets on site post detail")
+	}
+	if strings.Contains(rendered, `/static/mermaid/mermaid.min.js?v=`) {
+		t.Fatalf("expected mermaid asset to omit build version query")
+	}
+	if !strings.Contains(rendered, `/static/svg-pan-zoom/svg-pan-zoom.min.js`) {
+		t.Fatalf("expected svg-pan-zoom assets on site post detail")
+	}
+	if strings.Contains(rendered, `/static/svg-pan-zoom/svg-pan-zoom.min.js?v=`) {
+		t.Fatalf("expected svg-pan-zoom asset to omit build version query")
+	}
+	if !strings.Contains(rendered, `/static/site/mermaid-init.js?v=`) {
+		t.Fatalf("expected mermaid initializer to use build-versioned app asset")
+	}
 }
 
 func TestRenderSitePostWithCommentTree(t *testing.T) {
@@ -391,11 +410,21 @@ func TestRenderDashPostsNewShowsError(t *testing.T) {
 	if !strings.Contains(rendered, "slug already exists") {
 		t.Fatalf("expected post editor error message rendered, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `window.DashAppUI.toast.show({`) {
-		t.Fatalf("expected post editor to use sui toast api, got: %s", rendered)
+	if !strings.Contains(rendered, `data-initial-error="slug already exists"`) {
+		t.Fatalf("expected post editor error to be exposed to external script, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `"保存失败"`) {
-		t.Fatalf("expected post editor error toast rendered, got: %s", rendered)
+	if !strings.Contains(rendered, `/static/dash/post-editor.js?v=`) {
+		t.Fatalf("expected post editor behavior to be loaded from external app asset, got: %s", rendered)
+	}
+	script, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "static", "dash", "post-editor.js"))
+	if err != nil {
+		t.Fatalf("read post editor script failed: %v", err)
+	}
+	if !strings.Contains(string(script), `window.DashAppUI.toast.show({`) {
+		t.Fatalf("expected post editor script to use sui toast api")
+	}
+	if !strings.Contains(string(script), `"保存失败"`) {
+		t.Fatalf("expected post editor script to show error toast title")
 	}
 }
 
@@ -463,6 +492,9 @@ func TestRenderDashImportWithoutFeedback(t *testing.T) {
 	}
 	if !strings.Contains(rendered, `data-role="ui-file-upload"`) {
 		t.Fatalf("expected import page to use standard file upload component")
+	}
+	if !strings.Contains(rendered, `/static/dash/import.js?v=`) {
+		t.Fatalf("expected import page behavior to be loaded from external app asset")
 	}
 }
 
@@ -798,8 +830,8 @@ func TestRenderDashMonitorWithMapGranularities(t *testing.T) {
 	if rendered == "" {
 		t.Fatalf("expected non-empty render output")
 	}
-	if !strings.Contains(rendered, "function bindChartTooltips()") {
-		t.Fatalf("expected monitor page to include chart tooltip binding logic")
+	if !strings.Contains(rendered, `/static/dash/monitor.js?v=`) {
+		t.Fatalf("expected monitor page behavior to be loaded from external app asset")
 	}
 }
 
@@ -812,11 +844,18 @@ func TestRenderDashMonitorUsesJSONFieldNamesForLatestValues(t *testing.T) {
 		},
 		"ActiveGranularity": "1m",
 	})
-	if !strings.Contains(rendered, "pid_cpu: formatPercent(pid.cpu)") {
-		t.Fatalf("expected monitor page to read pid cpu from json field name, got: %s", rendered)
+	if !strings.Contains(rendered, `data-monitor-api-url`) {
+		t.Fatalf("expected monitor page to expose external script config, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, "os_ram: formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram)") {
-		t.Fatalf("expected monitor page to read os ram from json field names, got: %s", rendered)
+	script, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "static", "dash", "monitor.js"))
+	if err != nil {
+		t.Fatalf("read monitor script failed: %v", err)
+	}
+	if !strings.Contains(string(script), "pid_cpu: formatPercent(pid.cpu)") {
+		t.Fatalf("expected monitor script to read pid cpu from json field name")
+	}
+	if !strings.Contains(string(script), "os_ram: formatBytes(os.ram) + ' / ' + formatBytes(os.total_ram)") {
+		t.Fatalf("expected monitor script to read os ram from json field names")
 	}
 }
 
@@ -948,6 +987,18 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	if !strings.Contains(rendered, `/static/favicon.svg?v=`) {
 		t.Fatalf("expected favicon link in site layout")
 	}
+	if !strings.Contains(rendered, `/static/site/tufte-css/tufte.min.css"`) {
+		t.Fatalf("expected tufte css link without build version query")
+	}
+	if strings.Contains(rendered, `/static/site/tufte-css/tufte.min.css?v=`) {
+		t.Fatalf("expected tufte css asset to omit build version query")
+	}
+	if !strings.Contains(rendered, `/static/site/style.css?v=`) {
+		t.Fatalf("expected site css link to include build version query")
+	}
+	if !strings.Contains(rendered, `/static/site/main.js?v=`) {
+		t.Fatalf("expected site script link to include build version query")
+	}
 	if strings.Contains(rendered, `/static/katex/katex.min.css`) {
 		t.Fatalf("expected site layout not to include math assets by default")
 	}
@@ -1040,14 +1091,24 @@ func TestRenderMonitorJSURLsAreNotHTMLEscaped(t *testing.T) {
 		},
 		"ActiveGranularity": "1m",
 	})
-	if strings.Contains(rendered, "var monitorAPIURL = '&#x2f;") {
-		t.Fatalf("expected monitor js api url not to be html escaped")
+	if !strings.Contains(rendered, `data-monitor-api-url="&#x2f;dash&#x2f;api&#x2f;monitor"`) {
+		t.Fatalf("expected monitor api url in data attribute, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `var monitorAPIURL = "/dash/api/monitor";`) {
-		t.Fatalf("expected monitor api url in output, got: %s", rendered)
+	if !strings.Contains(rendered, `data-monitor-page-url="&#x2f;dash&#x2f;monitor"`) {
+		t.Fatalf("expected monitor base url in data attribute, got: %s", rendered)
 	}
-	if !strings.Contains(rendered, `var monitorPageURL = "/dash/monitor";`) {
-		t.Fatalf("expected monitor base url in output, got: %s", rendered)
+	if !strings.Contains(rendered, `/static/dash/monitor.js?v=`) {
+		t.Fatalf("expected monitor page behavior to be loaded from external app asset, got: %s", rendered)
+	}
+	script, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "static", "dash", "monitor.js"))
+	if err != nil {
+		t.Fatalf("read monitor script failed: %v", err)
+	}
+	if !strings.Contains(string(script), `getAttribute('data-monitor-api-url')`) {
+		t.Fatalf("expected monitor script to read api url from data attribute")
+	}
+	if !strings.Contains(string(script), `getAttribute('data-monitor-page-url')`) {
+		t.Fatalf("expected monitor script to read page url from data attribute")
 	}
 }
 
@@ -1082,16 +1143,26 @@ func TestRenderImportJSURLsAndCategoryOptionsAreNotHTMLEscaped(t *testing.T) {
 			{Name: "文娱"},
 		},
 	})
-	if strings.Contains(rendered, "var parseItemURL = '&#x2f;dash&#x2f;import&#x2f;parse-item';") {
-		t.Fatalf("expected parse-item url in js not to be html escaped")
+	if !strings.Contains(rendered, `data-parse-item-url="&#x2f;dash&#x2f;import&#x2f;parse-item"`) {
+		t.Fatalf("expected parse-item url in data attribute, got: %s", rendered)
 	}
 	if strings.Contains(rendered, "&quot;生活&quot;") {
-		t.Fatalf("expected category options in js not to be html escaped")
+		t.Fatalf("expected category option value not to be quote-escaped")
 	}
-	if !strings.Contains(rendered, `var parseItemURL = "/dash/import/parse-item";`) {
-		t.Fatalf("expected parse-item url in output, got: %s", rendered)
-	}
-	if !strings.Contains(rendered, `"生活"`) {
+	if !strings.Contains(rendered, `<option value="生活"></option>`) {
 		t.Fatalf("expected category option in output, got: %s", rendered)
+	}
+	if !strings.Contains(rendered, `/static/dash/import.js?v=`) {
+		t.Fatalf("expected import page behavior to be loaded from external app asset, got: %s", rendered)
+	}
+	script, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "static", "dash", "import.js"))
+	if err != nil {
+		t.Fatalf("read import script failed: %v", err)
+	}
+	if !strings.Contains(string(script), `getAttribute('data-parse-item-url')`) {
+		t.Fatalf("expected import script to read parse-item url from data attribute")
+	}
+	if !strings.Contains(string(script), `#import-base-category-options option`) {
+		t.Fatalf("expected import script to read category options from template markup")
 	}
 }

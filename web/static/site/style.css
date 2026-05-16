@@ -249,3 +249,72 @@ article table thead th {
 .katex-display {
   width: 55%;
 }
+
+.mermaid-viewer {
+  position: relative;
+  width: 55%;
+}
+.mermaid {
+  width: 100%;
+  overflow-x: auto;
+  padding: 0;
+  background: transparent;
+}
+.mermaid-pan-zoom {
+  height: min(70vh, 640px);
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+.mermaid-fullscreen-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+}
+.mermaid-fullscreen-button svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+.mermaid-page-fullscreen-active {
+  overflow: hidden;
+}
+.mermaid-page-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: auto;
+  background: #fff;
+}
+.mermaid-page-fullscreen .mermaid-pan-zoom {
+  height: 100vh;
+  margin: 0;
+  border: 0;
+}
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+@media (max-width: 760px) {
+  .katex-display,
+  .mermaid-viewer,
+  .mermaid {
+    width: 100%;
+  }
+  .mermaid-pan-zoom {
+    min-height: 260px;
+  }
+}

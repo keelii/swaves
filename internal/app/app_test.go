@@ -18,6 +18,7 @@ import (
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/platform/view"
+	"swaves/internal/shared/staticasset"
 	"swaves/internal/shared/types"
 
 	"github.com/gofiber/fiber/v3"
@@ -379,6 +380,53 @@ func TestNewSiteRuntimeViewEngineUsesCurrentThemeFromDBInReloadMode(t *testing.T
 	}
 	if strings.Contains(out.String(), "local-theme-home") {
 		t.Fatalf("expected reload mode to ignore local theme source, got: %s", out.String())
+	}
+}
+
+func TestStaticMiddlewareCachesVendoredAssets(t *testing.T) {
+	withControllerP0TemplateReload(t, false)
+	swv := newInstalledTestApp(t, "static-cache.sqlite")
+
+	for _, pathValue := range []string{
+		"/static/katex/katex.min.js",
+		"/static/katex/fonts/KaTeX_Main-Regular.woff2",
+		"/static/mermaid/mermaid.min.js",
+		"/static/svg-pan-zoom/svg-pan-zoom.min.js",
+		"/static/site/tufte-css/tufte.min.css",
+	} {
+		t.Run(pathValue, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, pathValue, nil)
+			resp, err := swv.App.Test(req)
+			if err != nil {
+				t.Fatalf("static request failed: %v", err)
+			}
+			if resp.StatusCode != fiber.StatusOK {
+				t.Fatalf("static status = %d, want %d", resp.StatusCode, fiber.StatusOK)
+			}
+			if got := resp.Header.Get(fiber.HeaderCacheControl); got != staticasset.VendoredCacheControl {
+				t.Fatalf("Cache-Control = %q, want %q", got, staticasset.VendoredCacheControl)
+			}
+		})
+	}
+}
+
+func TestStaticMiddlewareCachesAppOwnedAssetsForOneDay(t *testing.T) {
+	withControllerP0TemplateReload(t, false)
+	swv := newInstalledTestApp(t, "static-app-cache.sqlite")
+
+	req := httptest.NewRequest(http.MethodGet, "/static/site/style.css", nil)
+	resp, err := swv.App.Test(req)
+	if err != nil {
+		t.Fatalf("static request failed: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("static status = %d, want %d", resp.StatusCode, fiber.StatusOK)
+	}
+	if got := resp.Header.Get(fiber.HeaderCacheControl); got != staticasset.AppCacheControl {
+		t.Fatalf("Cache-Control = %q, want %q", got, staticasset.AppCacheControl)
+	}
+	if got := resp.Header.Get(fiber.HeaderCacheControl); strings.Contains(got, "immutable") {
+		t.Fatalf("expected app-owned static asset not to be immutable, got %q", got)
 	}
 }
 

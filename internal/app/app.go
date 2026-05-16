@@ -19,6 +19,7 @@ import (
 	"swaves/internal/platform/store"
 	"swaves/internal/platform/updater"
 	"swaves/internal/platform/view"
+	"swaves/internal/shared/staticasset"
 	"swaves/internal/shared/types"
 	"swaves/internal/shared/webutil"
 	webassets "swaves/web"
@@ -189,10 +190,23 @@ func newSiteRuntimeViewEngine(model *db.DB, sqliteFile string) (fiber.Views, fun
 
 func newStaticMiddleware() fiber.Handler {
 	staticRoot := resolveProjectPath("web/static")
-	if config.TemplateReload && pathExists(staticRoot) {
-		return static.New(staticRoot)
+	staticConfig := static.Config{
+		ModifyResponse: setStaticCacheHeaders,
 	}
-	return static.New("", static.Config{FS: webassets.StaticFS()})
+	if config.TemplateReload && pathExists(staticRoot) {
+		return static.New(staticRoot, staticConfig)
+	}
+	staticConfig.FS = webassets.StaticFS()
+	return static.New("", staticConfig)
+}
+
+func setStaticCacheHeaders(c fiber.Ctx) error {
+	if staticasset.IsVendored(c.Path()) {
+		c.Set(fiber.HeaderCacheControl, staticasset.VendoredCacheControl)
+		return nil
+	}
+	c.Set(fiber.HeaderCacheControl, staticasset.AppCacheControl)
+	return nil
 }
 
 func validateAppConfig(appCfg types.AppConfig) error {

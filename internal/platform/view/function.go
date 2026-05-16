@@ -12,6 +12,7 @@ import (
 	"swaves/internal/platform/store"
 	"swaves/internal/shared/helper"
 	"swaves/internal/shared/share"
+	"swaves/internal/shared/staticasset"
 
 	minijinja "github.com/mitsuhiko/minijinja/minijinja-go/v2"
 	"github.com/mitsuhiko/minijinja/minijinja-go/v2/value"
@@ -25,6 +26,9 @@ func registerViewFunctions(env *minijinja.Environment, urlFor func(name string, 
 		p := strings.TrimSpace(toStringValue(args[0].Raw()))
 		version := strings.TrimSpace(buildinfo.Version)
 		if version == "" {
+			return value.FromSafeString(HTML.EscapeString(p)), nil
+		}
+		if !staticasset.ShouldUseBuildVersion(p) {
 			return value.FromSafeString(HTML.EscapeString(p)), nil
 		}
 		return value.FromSafeString(HTML.EscapeString(p + "?v=" + version)), nil

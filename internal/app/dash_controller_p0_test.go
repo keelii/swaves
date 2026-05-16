@@ -251,8 +251,8 @@ func TestDashControllerP0_TrashPageRendersTrashScripts(t *testing.T) {
 		`data-batch-restore-url=`,
 		`batch-restore`,
 		`trash-empty-confirm-dialog`,
-		`bindBatchAction(batchRestore, {`,
-		`successIDsKey: 'restored_ids'`,
+		`/static/dash/layout-multiselect.js?v=`,
+		`/static/dash/trash-index.js?v=`,
 	)
 }
 

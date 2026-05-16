@@ -58,6 +58,9 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 		goldmark.WithExtensions(extensions...),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
+			parser.WithASTTransformers(
+				util.Prioritized(&MermaidTransformer{}, 100),
+			),
 			//parser.WithIDs(NewUnicodeIDs()),
 		),
 		goldmark.WithRendererOptions(
@@ -66,6 +69,7 @@ func ParseMarkdown(text string, includeTOC bool) *MarkdownResult {
 			html.WithXHTML(),
 			renderer.WithNodeRenderers(
 				util.Prioritized(&TOCContainerHTMLRenderer{}, 100),
+				util.Prioritized(NewMermaidHTMLRenderer(html.WithXHTML()), 300),
 				util.Prioritized(&FigureRenderer{}, 500),
 			),
 		),

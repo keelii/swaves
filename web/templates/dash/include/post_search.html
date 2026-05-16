@@ -10,34 +10,4 @@
   {% if FilterCategoryIDStr %}<input type="hidden" name="category" value="{{ FilterCategoryIDStr }}">{% endif %}
   <input class="ui-input post-search" type="search" name="q" value="{{ SearchQuery }}"{% if SearchQuery %} autofocus{% endif %} placeholder="搜索标题、内容" id="posts-search-input">
 </form>
-<script>
-(function(){
-  var form = document.getElementById('posts-search-form');
-  var input = document.getElementById('posts-search-input');
-  if (!form || !input) return;
-
-  function focusSearchToEnd() {
-    if (!input.value) {
-      return;
-    }
-    window.requestAnimationFrame(function() {
-      input.focus({ preventScroll: true });
-      var end = input.value.length;
-      input.setSelectionRange(end, end);
-    });
-  }
-
-  focusSearchToEnd();
-
-  input.addEventListener('search', function() {
-    form.requestSubmit();
-  });
-
-  input.addEventListener('input', function(event){
-    if (event instanceof InputEvent) {
-      return;
-    }
-    form.requestSubmit();
-  });
-})();
-</script>
+<script src="{{ StaticUrl('/static/dash/post-search.js') }}"></script>

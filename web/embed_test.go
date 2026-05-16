@@ -24,6 +24,25 @@ func TestStaticFSIncludesStaticFiles(t *testing.T) {
 	if _, err := fs.ReadFile(StaticFS(), "katex/katex.min.js"); err != nil {
 		t.Fatalf("read embedded minified katex asset failed: %v", err)
 	}
+	if _, err := fs.ReadFile(StaticFS(), "svg-pan-zoom/svg-pan-zoom.min.js"); err != nil {
+		t.Fatalf("read embedded svg-pan-zoom asset failed: %v", err)
+	}
+	for _, name := range []string{
+		"dash/layout-shared.js",
+		"dash/post-editor.js",
+		"dash/import.js",
+		"dash/themes-index.js",
+		"dash/redirects-index.js",
+		"dash/categories-tree.js",
+		"dash/settings-system-update.js",
+		"site/mermaid-init.js",
+		"site/like-action.js",
+		"sui/post-edit.js",
+	} {
+		if _, err := fs.ReadFile(StaticFS(), name); err != nil {
+			t.Fatalf("read embedded extracted js asset %q failed: %v", name, err)
+		}
+	}
 }
 
 func TestStaticFSExcludesUncompressedDuplicateAssets(t *testing.T) {
