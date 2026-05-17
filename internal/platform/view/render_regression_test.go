@@ -424,6 +424,10 @@ func TestRenderDashPostsNewShowsError(t *testing.T) {
 	if !strings.Contains(string(script), `"保存失败"`) {
 		t.Fatalf("expected post editor script to show error toast title")
 	}
+	if !strings.Contains(string(script), `refreshMermaidPreviews`) ||
+		!strings.Contains(string(script), `requestAnimationFrame(refreshEditorMermaidPreviews)`) {
+		t.Fatalf("expected post editor script to refresh mermaid previews after leaving source mode")
+	}
 }
 
 func TestRenderStatusMainPaginationFallsBackToRouteContext(t *testing.T) {
@@ -928,6 +932,9 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 	}
 	if !strings.Contains(seditorScriptText, `seditor-mermaid-preview-fullscreen`) {
 		t.Fatalf("expected seditor bundle to include mermaid fullscreen preview controls")
+	}
+	if !strings.Contains(seditorScriptText, `refreshMermaidPreviews`) {
+		t.Fatalf("expected seditor bundle to expose mermaid preview refresh")
 	}
 }
 

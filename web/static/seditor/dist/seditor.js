@@ -19255,11 +19255,35 @@ var SEditor = (() => {
       if (!panZoom) {
         return;
       }
-      panZoom.destroy();
+      try {
+        panZoom.destroy();
+      } catch (error2) {
+        console.warn("destroy mermaid pan/zoom failed", error2);
+      }
       panZoom = null;
+    }
+    function isMermaidPanZoomReady(svg) {
+      if (!svg || !dom.isConnected) {
+        return false;
+      }
+      var diagramRect = diagram.getBoundingClientRect();
+      var svgRect = svg.getBoundingClientRect();
+      if (diagramRect.width <= 0 || diagramRect.height <= 0 || svgRect.width <= 0 || svgRect.height <= 0) {
+        return false;
+      }
+      try {
+        var matrix = svg.getScreenCTM();
+        return !!(matrix && Math.abs(matrix.a * matrix.d - matrix.b * matrix.c) > 1e-6);
+      } catch (error2) {
+        return false;
+      }
     }
     function resetPanZoom() {
       if (!panZoom) {
+        return;
+      }
+      var svg = diagram.querySelector("svg");
+      if (!isMermaidPanZoomReady(svg)) {
         return;
       }
       panZoom.resize();
@@ -19272,9 +19296,35 @@ var SEditor = (() => {
       if (!panZoom) {
         return;
       }
-      panZoom.resize();
-      panZoom.fit();
-      panZoom.center();
+      var svg = diagram.querySelector("svg");
+      if (!isMermaidPanZoomReady(svg)) {
+        return;
+      }
+      try {
+        panZoom.resize();
+        panZoom.fit();
+        panZoom.center();
+      } catch (error2) {
+        console.warn("refresh mermaid pan/zoom failed", error2);
+        destroyPanZoom();
+      }
+    }
+    function refreshPanZoom() {
+      var svg = diagram.querySelector("svg");
+      if (!svg) {
+        return;
+      }
+      if (!panZoom) {
+        enablePanZoom();
+        return;
+      }
+      resizePanZoom();
+    }
+    function schedulePanZoomRefresh() {
+      window.requestAnimationFrame(function() {
+        refreshPanZoom();
+        window.requestAnimationFrame(refreshPanZoom);
+      });
     }
     function enablePanZoom() {
       destroyPanZoom();
@@ -19288,14 +19338,25 @@ var SEditor = (() => {
       svg.style.maxWidth = "none";
       svg.style.width = "100%";
       svg.style.height = "100%";
-      panZoom = window.svgPanZoom(svg, {
-        controlIconsEnabled: false,
-        fit: true,
-        center: true,
-        minZoom: 0.25,
-        maxZoom: 8,
-        zoomScaleSensitivity: 0.3
-      });
+      if (!isMermaidPanZoomReady(svg)) {
+        button.hidden = true;
+        return;
+      }
+      try {
+        panZoom = window.svgPanZoom(svg, {
+          controlIconsEnabled: false,
+          fit: true,
+          center: true,
+          minZoom: 0.25,
+          maxZoom: 8,
+          zoomScaleSensitivity: 0.3
+        });
+      } catch (error2) {
+        panZoom = null;
+        button.hidden = true;
+        console.warn("init mermaid pan/zoom failed", error2);
+        return;
+      }
       button.hidden = false;
     }
     function render(nextNode) {
@@ -19319,6 +19380,7 @@ var SEditor = (() => {
           result.bindFunctions(diagram);
         }
         enablePanZoom();
+        schedulePanZoomRefresh();
       }).catch(function(error2) {
         if (seq !== renderSeq) {
           return;
@@ -19354,6 +19416,9 @@ var SEditor = (() => {
       },
       stopEvent: function() {
         return true;
+      },
+      refresh: function() {
+        schedulePanZoomRefresh();
       },
       destroy: function() {
         exitMermaidPreviewFullscreen(dom);
@@ -21328,10 +21393,32 @@ var SEditor = (() => {
       return markdown;
     }
     var commandControls = null;
+    var mermaidPreviewRefreshers = [];
+    function refreshMermaidPreviews() {
+      mermaidPreviewRefreshers.slice().forEach(function(refresh) {
+        refresh();
+      });
+    }
+    function createTrackedMermaidPreviewNodeView(node) {
+      var nodeView = createMermaidPreviewNodeView(node);
+      if (!nodeView) {
+        return null;
+      }
+      mermaidPreviewRefreshers.push(nodeView.refresh);
+      var destroy = nodeView.destroy;
+      nodeView.destroy = function() {
+        var index = mermaidPreviewRefreshers.indexOf(nodeView.refresh);
+        if (index !== -1) {
+          mermaidPreviewRefreshers.splice(index, 1);
+        }
+        destroy();
+      };
+      return nodeView;
+    }
     view = new EditorView(mount, {
       state,
       nodeViews: {
-        code_block: createMermaidPreviewNodeView
+        code_block: createTrackedMermaidPreviewNodeView
       },
       dispatchTransaction: function(tr) {
         var nextState = view.state.apply(tr);
@@ -21365,6 +21452,7 @@ var SEditor = (() => {
       focus: function() {
         view.focus();
       },
+      refreshMermaidPreviews,
       destroy: function() {
         view.destroy();
       }

@@ -291,6 +291,13 @@
       window.__seditor.setMarkdown(textarea.value || "");
     }
 
+    function refreshEditorMermaidPreviews() {
+      if (!window.__seditor || typeof window.__seditor.refreshMermaidPreviews !== "function") {
+        return;
+      }
+      window.__seditor.refreshMermaidPreviews();
+    }
+
     function postUIStateSetting(code, value) {
       if (!uiStateSaveURL) {
         return null;
@@ -372,6 +379,7 @@
         applyTOCOpenState(tocPreferredOpen, false);
         updateWordCount(textarea.value);
         scheduleTOCSync(textarea.value);
+        window.requestAnimationFrame(refreshEditorMermaidPreviews);
         if (!options || options.focus !== false) {
           focusEditorRoot();
         }
