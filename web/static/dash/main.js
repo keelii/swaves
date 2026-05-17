@@ -52,6 +52,100 @@ function closeDialog(target) {
   return true;
 }
 
+function onReady(callback) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", callback, { once: true });
+    return;
+  }
+  callback();
+}
+
+function assetLoadPromises() {
+  if (!window.__swavesAssetLoadPromises) {
+    window.__swavesAssetLoadPromises = {};
+  }
+  return window.__swavesAssetLoadPromises;
+}
+
+function loadStyle(href) {
+  if (!href) {
+    return Promise.resolve();
+  }
+  var key = "style:" + href;
+  var promises = assetLoadPromises();
+  if (promises[key]) {
+    return promises[key];
+  }
+  var existingLinks = document.querySelectorAll('link[rel="stylesheet"]');
+  for (var linkIndex = 0; linkIndex < existingLinks.length; linkIndex += 1) {
+    if (existingLinks[linkIndex].getAttribute("href") === href) {
+      promises[key] = Promise.resolve();
+      return promises[key];
+    }
+  }
+  promises[key] = new Promise(function(resolve, reject) {
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.onload = resolve;
+    link.onerror = function() {
+      reject(new Error("failed to load stylesheet: " + href));
+    };
+    document.head.appendChild(link);
+  });
+  return promises[key];
+}
+
+function loadScript(src) {
+  if (!src) {
+    return Promise.resolve();
+  }
+  var key = "script:" + src;
+  var promises = assetLoadPromises();
+  if (promises[key]) {
+    return promises[key];
+  }
+  var existingScripts = document.querySelectorAll("script[src]");
+  for (var scriptIndex = 0; scriptIndex < existingScripts.length; scriptIndex += 1) {
+    if (existingScripts[scriptIndex].getAttribute("src") === src) {
+      promises[key] = Promise.resolve();
+      return promises[key];
+    }
+  }
+  promises[key] = new Promise(function(resolve, reject) {
+    var script = document.createElement("script");
+    script.async = true;
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = function() {
+      reject(new Error("failed to load script: " + src));
+    };
+    document.head.appendChild(script);
+  });
+  return promises[key];
+}
+
+function loadResource(resource) {
+  if (!resource) {
+    return Promise.resolve();
+  }
+  if (/\.css(?:[?#]|$)/i.test(resource)) {
+    return loadStyle(resource);
+  }
+  return loadScript(resource);
+}
+
+function loadResources(resources) {
+  if (!Array.isArray(resources) || resources.length === 0) {
+    return Promise.resolve();
+  }
+  return resources.reduce(function(chain, resource) {
+    return chain.then(function() {
+      return loadResource(resource);
+    });
+  }, Promise.resolve());
+}
+
 function notify(message, title, options) {
   var opts = options || {};
   var msg = String(message == null ? "" : message);
@@ -528,10 +622,12 @@ function installSFetch() {
 }
 
 installSFetch();
+window.loadStyle = loadStyle;
+window.loadScript = loadScript;
+window.loadResources = loadResources;
+window.onReady = onReady;
 window.DashApp = window.DashApp || {};
 window.DashApp.postUIStateSetting = postUIStateSetting;
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initDashMainBehaviors, { once: true });
-} else {
+onReady(function() {
   initDashMainBehaviors();
-}
+});

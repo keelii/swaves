@@ -898,6 +898,37 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 	if !strings.Contains(rendered, `/static/seditor/dist/seditor.min.js`) {
 		t.Fatalf("expected rendered output to contain seditor script include")
 	}
+	dashMainIndex := strings.Index(rendered, `/static/dash/main.js?v=`)
+	seditorIndex := strings.Index(rendered, `/static/seditor/dist/seditor.min.js?v=`)
+	if dashMainIndex < 0 {
+		t.Fatalf("expected rendered output to contain dash main script include")
+	}
+	if seditorIndex < 0 {
+		t.Fatalf("expected rendered output to contain versioned seditor script include")
+	}
+	if dashMainIndex > seditorIndex {
+		t.Fatalf("expected dash main script to load before seditor script")
+	}
+	if strings.Contains(rendered, `/static/mermaid/mermaid.min.js`) {
+		t.Fatalf("expected mermaid runtime to be loaded dynamically by seditor")
+	}
+	seditorScript, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "static", "seditor", "dist", "seditor.min.js"))
+	if err != nil {
+		t.Fatalf("read seditor script failed: %v", err)
+	}
+	seditorScriptText := string(seditorScript)
+	if !strings.Contains(seditorScriptText, `window.loadResources`) ||
+		!strings.Contains(seditorScriptText, `/static/mermaid/mermaid.min.js`) {
+		t.Fatalf("expected seditor bundle to load mermaid dynamically")
+	}
+	if !strings.Contains(seditorScriptText, `/static/svg-pan-zoom/svg-pan-zoom.min.js`) ||
+		!strings.Contains(seditorScriptText, `window.svgPanZoom`) ||
+		!strings.Contains(seditorScriptText, `seditor-mermaid-diagram-panzoom`) {
+		t.Fatalf("expected seditor bundle to include mermaid pan/zoom preview controls")
+	}
+	if !strings.Contains(seditorScriptText, `seditor-mermaid-preview-fullscreen`) {
+		t.Fatalf("expected seditor bundle to include mermaid fullscreen preview controls")
+	}
 }
 
 func TestRenderSiteHomeWithDisplayPosts(t *testing.T) {
@@ -1040,6 +1071,9 @@ func TestRenderSUILayoutIncludesFavicon(t *testing.T) {
 	rendered := mustRenderRegressionTemplate(t, view, "sui/layout/base.html", map[string]any{})
 	if !strings.Contains(rendered, `/static/favicon.svg?v=`) {
 		t.Fatalf("expected favicon link in sui layout")
+	}
+	if !strings.Contains(rendered, `/static/dash/main.js?v=`) {
+		t.Fatalf("expected sui layout to include shared admin main runtime")
 	}
 }
 

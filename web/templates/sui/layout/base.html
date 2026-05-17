@@ -11,6 +11,7 @@
 
   {% include "include/favicon.html" %}
   <link rel="stylesheet" href="{{ StaticUrl('/static/sui/sui.css') }}">
+  <script src="{{ StaticUrl('/static/dash/main.js') }}"></script>
   {% block head_extra %}{% endblock %}
 </head>
 <body{% if IsMobile %} class="is-mobile"{% endif %}{% if Settings("mode") == "dark" %} data-theme="dark"{% endif %}>

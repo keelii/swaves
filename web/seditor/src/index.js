@@ -52,6 +52,341 @@ function ensurePlaceholderStyles() {
   document.head.appendChild(el);
 }
 
+function ensureMermaidPreviewStyles() {
+  if (typeof document === "undefined") {
+    return;
+  }
+  var id = "seditor-mermaid-preview-styles";
+  if (document.getElementById(id)) {
+    return;
+  }
+
+  var el = document.createElement("style");
+  el.id = id;
+  el.textContent = `
+.seditor-root .ProseMirror .seditor-mermaid-preview {
+  position: relative;
+  border: 1px solid var(--app-border, #d1d5db);
+  background: var(--app-panel-bg, #fff);
+  margin: 1.4em 0;
+  padding: var(--app-spacing, 12px);
+  overflow: auto;
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+.seditor-root .ProseMirror .seditor-mermaid-diagram-panzoom {
+  height: min(60vh, 560px);
+  min-height: 280px;
+  overflow: hidden;
+}
+.seditor-root .ProseMirror .seditor-mermaid-diagram-panzoom svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview-error {
+  color: var(--app-danger, #b91c1c);
+  white-space: pre-wrap;
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--app-border, #d1d5db);
+  border-radius: 4px;
+  background: var(--app-panel-bg, #fff);
+  color: var(--app-text, #111827);
+  cursor: pointer;
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview-button[hidden] {
+  display: none;
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview-button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.seditor-mermaid-preview-fullscreen-active {
+  overflow: hidden;
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview.seditor-mermaid-preview-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  margin: 0;
+  padding: 52px 16px 16px;
+  border: 0;
+  background: var(--app-panel-bg, #fff);
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview.seditor-mermaid-preview-fullscreen .seditor-mermaid-diagram {
+  height: calc(100vh - 68px);
+  min-height: 0;
+}
+.seditor-root .ProseMirror .seditor-mermaid-preview.seditor-mermaid-preview-fullscreen svg {
+  max-width: none;
+}
+`;
+  document.head.appendChild(el);
+}
+
+function isMermaidCodeBlock(node) {
+  if (!node || !node.type || node.type.name !== "code_block") {
+    return false;
+  }
+  var params = node.attrs && node.attrs.params ? String(node.attrs.params) : "";
+  var lang = params.trim().split(/\s+/)[0];
+  return lang.toLowerCase() === "mermaid";
+}
+
+var nextMermaidPreviewID = 1;
+var activeMermaidPreview = null;
+var activeMermaidPreviewResizer = null;
+var mermaidPreviewEventsReady = false;
+
+function buildMermaidPreviewButton() {
+  var button = document.createElement("button");
+  button.type = "button";
+  button.className = "seditor-mermaid-preview-button";
+  button.setAttribute("aria-label", "最大化图表");
+  button.setAttribute("title", "最大化图表");
+  button.setAttribute("aria-pressed", "false");
+  button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16"><path d="M2 2h4v1.5H3.5V6H2V2Zm8 0h4v4h-1.5V3.5H10V2ZM3.5 10v2.5H6V14H2v-4h1.5Zm9 2.5V10H14v4h-4v-1.5h2.5Z"></path></svg>';
+  return button;
+}
+
+function setMermaidPreviewButtonState(button, fullscreen) {
+  if (!button) {
+    return;
+  }
+  var label = fullscreen ? "退出最大化" : "最大化图表";
+  button.setAttribute("aria-label", label);
+  button.setAttribute("title", label);
+  button.setAttribute("aria-pressed", fullscreen ? "true" : "false");
+}
+
+function findMermaidPreviewButton(preview) {
+  return preview ? preview.querySelector(".seditor-mermaid-preview-button") : null;
+}
+
+function exitMermaidPreviewFullscreen(preview) {
+  if (!preview || !preview.classList.contains("seditor-mermaid-preview-fullscreen")) {
+    return;
+  }
+  preview.classList.remove("seditor-mermaid-preview-fullscreen");
+  document.documentElement.classList.remove("seditor-mermaid-preview-fullscreen-active");
+  if (activeMermaidPreview === preview) {
+    activeMermaidPreview = null;
+    if (activeMermaidPreviewResizer) {
+      window.setTimeout(activeMermaidPreviewResizer, 0);
+    }
+    activeMermaidPreviewResizer = null;
+  }
+  setMermaidPreviewButtonState(findMermaidPreviewButton(preview), false);
+}
+
+function enterMermaidPreviewFullscreen(preview, resizePreview) {
+  if (!preview || preview.classList.contains("seditor-mermaid-preview-fullscreen")) {
+    return;
+  }
+  if (activeMermaidPreview) {
+    exitMermaidPreviewFullscreen(activeMermaidPreview);
+  }
+  preview.classList.add("seditor-mermaid-preview-fullscreen");
+  document.documentElement.classList.add("seditor-mermaid-preview-fullscreen-active");
+  activeMermaidPreview = preview;
+  activeMermaidPreviewResizer = resizePreview;
+  setMermaidPreviewButtonState(findMermaidPreviewButton(preview), true);
+  if (activeMermaidPreviewResizer) {
+    window.setTimeout(activeMermaidPreviewResizer, 0);
+  }
+}
+
+function toggleMermaidPreviewFullscreen(preview, resizePreview) {
+  if (preview.classList.contains("seditor-mermaid-preview-fullscreen")) {
+    exitMermaidPreviewFullscreen(preview);
+    return;
+  }
+  enterMermaidPreviewFullscreen(preview, resizePreview);
+}
+
+function installMermaidPreviewEvents() {
+  if (mermaidPreviewEventsReady) {
+    return;
+  }
+  mermaidPreviewEventsReady = true;
+  document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape" && activeMermaidPreview) {
+      exitMermaidPreviewFullscreen(activeMermaidPreview);
+    }
+  });
+}
+
+function loadMermaidPreviewRuntime() {
+  return window.loadResources([
+    "/static/mermaid/mermaid.min.js",
+    "/static/svg-pan-zoom/svg-pan-zoom.min.js"
+  ]).then(function() {
+    window.mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict"
+    });
+  });
+}
+
+function createMermaidPreviewNodeView(node) {
+  if (!isMermaidCodeBlock(node)) {
+    return null;
+  }
+
+  ensureMermaidPreviewStyles();
+
+  var dom = document.createElement("div");
+  var diagram = document.createElement("div");
+  var button = buildMermaidPreviewButton();
+  dom.className = "seditor-mermaid-preview";
+  dom.setAttribute("contenteditable", "false");
+  diagram.className = "seditor-mermaid-diagram";
+  dom.appendChild(diagram);
+  button.hidden = true;
+  dom.appendChild(button);
+  installMermaidPreviewEvents();
+
+  var previewID = "seditor-mermaid-preview-" + nextMermaidPreviewID;
+  nextMermaidPreviewID += 1;
+
+  var renderSeq = 0;
+  var panZoom = null;
+
+  function destroyPanZoom() {
+    if (!panZoom) {
+      return;
+    }
+    panZoom.destroy();
+    panZoom = null;
+  }
+
+  function resetPanZoom() {
+    if (!panZoom) {
+      return;
+    }
+    panZoom.resize();
+    panZoom.resetZoom();
+    panZoom.resetPan();
+    panZoom.fit();
+    panZoom.center();
+  }
+
+  function resizePanZoom() {
+    if (!panZoom) {
+      return;
+    }
+    panZoom.resize();
+    panZoom.fit();
+    panZoom.center();
+  }
+
+  function enablePanZoom() {
+    destroyPanZoom();
+    var svg = diagram.querySelector("svg");
+    if (!svg) {
+      diagram.classList.remove("seditor-mermaid-diagram-panzoom");
+      button.hidden = true;
+      return;
+    }
+    diagram.classList.add("seditor-mermaid-diagram-panzoom");
+    svg.style.maxWidth = "none";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+    panZoom = window.svgPanZoom(svg, {
+      controlIconsEnabled: false,
+      fit: true,
+      center: true,
+      minZoom: 0.25,
+      maxZoom: 8,
+      zoomScaleSensitivity: 0.3
+    });
+    button.hidden = false;
+  }
+
+  function render(nextNode) {
+    var source = nextNode.textContent || "";
+    var seq = renderSeq + 1;
+    renderSeq = seq;
+    destroyPanZoom();
+    diagram.removeAttribute("data-processed");
+    diagram.classList.remove("seditor-mermaid-diagram-panzoom");
+    diagram.textContent = source;
+    diagram.className = "seditor-mermaid-diagram";
+    button.hidden = true;
+    loadMermaidPreviewRuntime().then(function() {
+      return window.mermaid.render(previewID, source);
+    }).then(function(result) {
+      if (seq !== renderSeq) {
+        return;
+      }
+      diagram.innerHTML = result.svg || "";
+      if (typeof result.bindFunctions === "function") {
+        result.bindFunctions(diagram);
+      }
+      enablePanZoom();
+    }).catch(function(error) {
+      if (seq !== renderSeq) {
+        return;
+      }
+      destroyPanZoom();
+      diagram.classList.remove("seditor-mermaid-diagram-panzoom");
+      diagram.className = "seditor-mermaid-preview-error";
+      diagram.textContent = error && error.message ? error.message : "Mermaid render failed.";
+      button.hidden = true;
+    });
+  }
+
+  button.addEventListener("click", function(event) {
+    event.preventDefault();
+    toggleMermaidPreviewFullscreen(dom, resizePanZoom);
+  });
+
+  render(node);
+
+  return {
+    dom: dom,
+    update: function(nextNode) {
+      if (!isMermaidCodeBlock(nextNode)) {
+        return false;
+      }
+      if (nextNode.textContent !== node.textContent || nextNode.attrs.params !== node.attrs.params) {
+        node = nextNode;
+        render(nextNode);
+      } else {
+        node = nextNode;
+      }
+      return true;
+    },
+    ignoreMutation: function() {
+      return true;
+    },
+    stopEvent: function() {
+      return true;
+    },
+    destroy: function() {
+      exitMermaidPreviewFullscreen(dom);
+      destroyPanZoom();
+    }
+  };
+}
+
 function buildSchema() {
   var tableSpec = {
     group: "block",
@@ -2261,6 +2596,9 @@ export function init(options) {
 
   view = new EditorView(mount, {
     state: state,
+    nodeViews: {
+      code_block: createMermaidPreviewNodeView
+    },
     dispatchTransaction: function(tr) {
       var nextState = view.state.apply(tr);
       view.updateState(nextState);
