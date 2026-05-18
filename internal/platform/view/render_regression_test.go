@@ -269,7 +269,7 @@ func TestRenderSitePostWithEmbeddedDisplayPost(t *testing.T) {
 		t.Fatalf("expected katex stylesheet to be loaded dynamically")
 	}
 	if strings.Contains(rendered, `<script defer src="/static/katex/katex.min.js"`) ||
-		strings.Contains(rendered, `<script defer src="/static/mermaid/mermaid.min.js"`) ||
+		strings.Contains(rendered, `<script defer src="/static/mermaid/mermaid.tiny.js"`) ||
 		strings.Contains(rendered, `<script defer src="/static/svg-pan-zoom/svg-pan-zoom.min.js"`) {
 		t.Fatalf("expected heavy content scripts to be loaded dynamically")
 	}
@@ -913,7 +913,7 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 	if dashMainIndex > seditorIndex {
 		t.Fatalf("expected dash main script to load before seditor script")
 	}
-	if strings.Contains(rendered, `/static/mermaid/mermaid.min.js`) {
+	if strings.Contains(rendered, `/static/mermaid/mermaid.tiny.js`) {
 		t.Fatalf("expected mermaid runtime to be loaded dynamically by seditor")
 	}
 	seditorScript, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "static", "seditor", "dist", "seditor.min.js"))
@@ -922,7 +922,7 @@ func TestRenderDashPostsEditContainsSEditorMount(t *testing.T) {
 	}
 	seditorScriptText := string(seditorScript)
 	if !strings.Contains(seditorScriptText, `window.loadResources`) ||
-		!strings.Contains(seditorScriptText, `/static/mermaid/mermaid.min.js`) {
+		!strings.Contains(seditorScriptText, `/static/mermaid/mermaid.tiny.js`) {
 		t.Fatalf("expected seditor bundle to load mermaid dynamically")
 	}
 	if !strings.Contains(seditorScriptText, `/static/svg-pan-zoom/svg-pan-zoom.min.js`) ||

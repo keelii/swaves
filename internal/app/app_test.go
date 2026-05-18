@@ -393,7 +393,7 @@ func TestStaticMiddlewareCachesVendoredAssets(t *testing.T) {
 	for _, pathValue := range []string{
 		"/static/katex/katex.min.js",
 		"/static/katex/fonts/KaTeX_Main-Regular.woff2",
-		"/static/mermaid/mermaid.min.js",
+		"/static/mermaid/mermaid.tiny.js",
 		"/static/svg-pan-zoom/svg-pan-zoom.min.js",
 		"/static/site/tufte-css/tufte.min.css",
 	} {

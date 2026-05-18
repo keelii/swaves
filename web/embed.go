@@ -50,7 +50,7 @@ import (
 //go:embed static/katex/katex.min.js
 //go:embed static/katex/contrib/auto-render.min.js
 //go:embed static/katex/fonts
-//go:embed static/mermaid/mermaid.min.js
+//go:embed static/mermaid/mermaid.tiny.js
 //go:embed static/svg-pan-zoom/svg-pan-zoom.min.js
 var embeddedFiles embed.FS
 

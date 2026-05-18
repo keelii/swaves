@@ -19223,7 +19223,7 @@ var SEditor = (() => {
   }
   function loadMermaidPreviewRuntime() {
     return window.loadResources([
-      "/static/mermaid/mermaid.min.js",
+      "/static/mermaid/mermaid.tiny.js",
       "/static/svg-pan-zoom/svg-pan-zoom.min.js"
     ]).then(function() {
       window.mermaid.initialize({

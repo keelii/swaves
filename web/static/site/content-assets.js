@@ -100,7 +100,7 @@
     async function loadMermaid() {
       try {
         await window.loadResources([
-          "/static/mermaid/mermaid.min.js",
+          "/static/mermaid/mermaid.tiny.js",
           "/static/svg-pan-zoom/svg-pan-zoom.min.js",
           "/static/site/mermaid-init.js"
         ]);
