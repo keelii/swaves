@@ -573,6 +573,7 @@ func (h Handler) getPostByIST(c fiber.Ctx, t string) error {
 		return h.redirectNotFound(c)
 	}
 
+	h.trackUV(c, db.UVEntityPost, post.Post.ID)
 	readUV, likeCount, liked, comments, commentCount, commentPager, commentFeedback, commentForm, captchaRequired, commentCaptcha := h.funcName(c, post)
 	templatePost := ToTemplatePost(post)
 
