@@ -1,12 +1,13 @@
 use std::sync::{Arc, OnceLock};
 
 use anyhow::Result;
+use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use tracing::{error, info};
 
 use crate::{db, web::AppState};
 
-static SCHEDULER: OnceLock<JobScheduler> = OnceLock::new();
+static SCHEDULER: OnceLock<Mutex<JobScheduler>> = OnceLock::new();
 
 pub async fn start(state: Arc<AppState>) -> Result<()> {
     if SCHEDULER.get().is_some() {
@@ -35,12 +36,13 @@ pub async fn start(state: Arc<AppState>) -> Result<()> {
     scheduler.start().await?;
     info!("job scheduler started");
 
-    let _ = SCHEDULER.set(scheduler);
+    let _ = SCHEDULER.set(Mutex::new(scheduler));
     Ok(())
 }
 
 pub async fn stop() {
     if let Some(scheduler) = SCHEDULER.get() {
+        let mut scheduler = scheduler.lock().await;
         let _ = scheduler.shutdown().await;
         info!("job scheduler stopped");
     }

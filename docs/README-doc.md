@@ -42,6 +42,8 @@
 - [模板 API](./template_api.md)
 - [SUI dash 路由映射](./sui-dash-route-mapping.md)
 - [性能测试说明](./perf-test.md)
+- [Rust 全量替代 POC](./rust-full-replacement-poc.md)
+- [Rust POC 对等检查清单](./rust-poc-parity-checklist.md)
 
 ## 立即体验
 
