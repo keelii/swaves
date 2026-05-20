@@ -21,7 +21,9 @@ pub async fn start(state: Arc<AppState>) -> Result<()> {
         Box::pin(async move {
             match state.db.lock() {
                 Ok(conn) => {
-                    if let Err(err) = db::record_task_run(&conn, "heartbeat", "ok", "scheduler tick") {
+                    if let Err(err) =
+                        db::record_task_run(&conn, "heartbeat", "ok", "scheduler tick")
+                    {
                         error!(error = %err, "failed to record task run");
                     }
                 }

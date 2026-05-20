@@ -13,7 +13,10 @@ use clap::Parser;
 use tracing::info;
 
 #[derive(Parser, Debug, Clone)]
-#[command(name = "swaves-rs", about = "Experimental full-replacement Rust POC for swaves")]
+#[command(
+    name = "swaves-rs",
+    about = "Experimental full-replacement Rust POC for swaves"
+)]
 struct Cli {
     /// SQLite file path (same semantic target as Go runtime)
     sqlite_file: String,
@@ -37,7 +40,10 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt().with_target(false).compact().init();
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .compact()
+        .init();
 
     let cli = Cli::parse();
     let runtime = app::Runtime::new(cli.sqlite_file.clone())?;

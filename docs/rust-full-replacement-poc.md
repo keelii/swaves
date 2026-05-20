@@ -13,6 +13,7 @@
 - CLI + supervisor/worker + 信号退出。
 - 最小 `site + dash + api` 路由。
 - SQLite 接入与任务状态写回。
+- Go `InitialSQL` 复用，避免 Rust 侧重复维护 schema。
 - MiniJinja 渲染探针与 `url_for` helper。
 - `.cache` / `updater` 路径约束实现。
 
@@ -37,4 +38,3 @@
 ## 当前实现位置
 
 - `experimental/rust-poc/`
-

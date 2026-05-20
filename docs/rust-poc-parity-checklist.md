@@ -10,7 +10,7 @@
 - [x] MiniJinja 渲染探针（含 `url_for`）
 - [x] Markdown 基础渲染链
 - [x] `.cache` 与 `.cache/updater` 目录约束
-- [ ] 对齐 Go `InitialSQL` 全量语义
+- [x] 对齐 Go `InitialSQL` 全量语义
 - [ ] 对齐 Go 路由全集与关键 handler 行为
 - [ ] 对齐错误日志上下文与用户可操作报错
 - [ ] 对齐任务注册全集与启动/关闭幂等性
