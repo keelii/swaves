@@ -12,7 +12,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
-use crate::{cache::RuntimeCachePaths, db, markdown, routes, view};
+use crate::{cache::RuntimeCachePaths, db, htmlutil, markdown, routes, view};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -53,8 +53,8 @@ async fn site_home(State(state): State<Arc<AppState>>) -> Html<String> {
     let routes = routes::route_table();
     let body = format!(
         "<h1>site</h1><p>sqlite: {}</p><p>cache: {}</p><ul><li><a href=\"{}\">dash</a></li><li><a href=\"{}\">api health</a></li><li><a href=\"{}\">template probe</a></li></ul>",
-        html_escape(&state.sqlite_file),
-        html_escape(&state.cache.root.display().to_string()),
+        htmlutil::escape(&state.sqlite_file),
+        htmlutil::escape(&state.cache.root.display().to_string()),
         routes["dash.home"],
         routes["api.health"],
         routes["api.template_probe"],
@@ -128,9 +128,9 @@ async fn dash_posts(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
             body.push_str(&format!(
                 "<li>#{} {} <small>{} / {} / {}</small></li>",
                 post.id,
-                html_escape(&post.title),
-                html_escape(&post.slug),
-                html_escape(&post.status),
+                htmlutil::escape(&post.title),
+                htmlutil::escape(&post.slug),
+                htmlutil::escape(&post.status),
                 post.published_at
             ));
         }
@@ -164,10 +164,10 @@ async fn dash_tasks(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
         for task in tasks {
             body.push_str(&format!(
                 "<li><a href=\"/dash/tasks/{}/runs\">{}</a> <small>enabled={} last_status={}</small></li>",
-                html_escape(&task.code),
-                html_escape(&task.name),
+                htmlutil::escape(&task.code),
+                htmlutil::escape(&task.name),
                 task.enabled,
-                html_escape(&task.last_status)
+                htmlutil::escape(&task.last_status)
             ));
         }
     }
@@ -212,13 +212,16 @@ async fn dash_task_runs(
         ));
     }
 
-    let mut body = format!("<h1>task runs</h1><p>code: {}</p><ul>", html_escape(&code));
+    let mut body = format!(
+        "<h1>task runs</h1><p>code: {}</p><ul>",
+        htmlutil::escape(&code)
+    );
     for run in runs {
         body.push_str(&format!(
             "<li>#{} {} <small>{} / {}</small></li>",
             run.id,
-            html_escape(&run.status),
-            html_escape(&run.message),
+            htmlutil::escape(&run.status),
+            htmlutil::escape(&run.message),
             run.created_at
         ));
     }
@@ -257,8 +260,8 @@ async fn api_slug(Query(query): Query<SlugQuery>) -> Json<DataResponse<String>> 
 #[derive(Deserialize)]
 struct MarkdownRequest {
     content: String,
-    #[allow(dead_code)]
-    toc: Option<bool>,
+    #[serde(default, rename = "toc")]
+    _toc: Option<bool>,
 }
 
 async fn api_markdown(
@@ -412,25 +415,10 @@ fn make_slug(input: &str) -> String {
 fn render_error_page(title: &str, message: &str, action: &str) -> String {
     format!(
         "<h1>{}</h1><p>{}</p><p>action: {}</p>",
-        html_escape(title),
-        html_escape(message),
-        html_escape(action)
+        htmlutil::escape(title),
+        htmlutil::escape(message),
+        htmlutil::escape(action)
     )
-}
-
-fn html_escape(input: &str) -> String {
-    let mut escaped = String::with_capacity(input.len());
-    for ch in input.chars() {
-        match ch {
-            '&' => escaped.push_str("&amp;"),
-            '<' => escaped.push_str("&lt;"),
-            '>' => escaped.push_str("&gt;"),
-            '"' => escaped.push_str("&quot;"),
-            '\'' => escaped.push_str("&#39;"),
-            _ => escaped.push(ch),
-        }
-    }
-    escaped
 }
 
 #[cfg(test)]

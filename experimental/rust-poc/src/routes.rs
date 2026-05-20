@@ -14,7 +14,7 @@ pub const API_MARKDOWN: &str = "/api/markdown";
 pub const API_MARKDOWN_TOC: &str = "/api/markdown/toc";
 pub const API_TEMPLATE_PROBE: &str = "/api/template-probe";
 
-const ROUTE_PAIRS: [(&str, &str); 12] = [
+const ROUTE_PAIRS: &[(&str, &str)] = &[
     ("site.home", SITE_HOME),
     ("site.not_found", SITE_NOT_FOUND),
     ("site.error", SITE_ERROR),
@@ -30,5 +30,5 @@ const ROUTE_PAIRS: [(&str, &str); 12] = [
 ];
 
 pub fn route_table() -> BTreeMap<&'static str, &'static str> {
-    ROUTE_PAIRS.into_iter().collect()
+    ROUTE_PAIRS.iter().copied().collect()
 }

@@ -1,6 +1,7 @@
 mod app;
 mod cache;
 mod db;
+mod htmlutil;
 mod jobs;
 mod markdown;
 mod routes;
@@ -26,7 +27,7 @@ struct Cli {
     #[arg(long, default_value = "127.0.0.1:4096")]
     listen_addr: SocketAddr,
 
-    /// Disable daemon/supervisor mode for this POC run
+    /// Enable daemon/supervisor mode for this POC run
     #[arg(long, default_value_t = true)]
     daemon_mode: bool,
 

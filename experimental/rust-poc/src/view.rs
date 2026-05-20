@@ -50,7 +50,7 @@ fn build_env() -> Environment<'static> {
     env
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn render_health(app_name: &str) -> Result<String> {
     let env = build_env();
     let tpl = env.get_template(TEMPLATE_HEALTH)?;

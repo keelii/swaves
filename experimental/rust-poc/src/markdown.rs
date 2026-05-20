@@ -1,13 +1,9 @@
 use pulldown_cmark::{html, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
-pub fn render_markdown(input: &str) -> String {
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_TABLES);
-    options.insert(Options::ENABLE_TASKLISTS);
-    options.insert(Options::ENABLE_STRIKETHROUGH);
-    options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
+use crate::htmlutil;
 
-    let parser = Parser::new_ext(input, options);
+pub fn render_markdown(input: &str) -> String {
+    let parser = Parser::new_ext(input, markdown_options());
     let mut output = String::new();
     html::push_html(&mut output, parser);
     output
@@ -23,7 +19,7 @@ pub fn render_markdown_toc(input: &str) -> String {
         String::from(r#"<div class="toc"><h2 class="toc-title">目录</h2><ol class="toc-list">"#);
     for heading in headings {
         output.push_str("<li>");
-        output.push_str(&html_escape(&heading));
+        output.push_str(&htmlutil::escape(&heading));
         output.push_str("</li>");
     }
     output.push_str("</ol></div>");
@@ -76,21 +72,6 @@ fn markdown_options() -> Options {
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
     options
-}
-
-fn html_escape(input: &str) -> String {
-    let mut escaped = String::with_capacity(input.len());
-    for ch in input.chars() {
-        match ch {
-            '&' => escaped.push_str("&amp;"),
-            '<' => escaped.push_str("&lt;"),
-            '>' => escaped.push_str("&gt;"),
-            '"' => escaped.push_str("&quot;"),
-            '\'' => escaped.push_str("&#39;"),
-            _ => escaped.push(ch),
-        }
-    }
-    escaped
 }
 
 #[cfg(test)]
