@@ -59,7 +59,7 @@ pub fn list_posts(conn: &Connection, limit: usize) -> Result<Vec<PostListItem>> 
          ORDER BY id DESC
          LIMIT ?1",
     )?;
-    let rows = stmt.query_map([limit as i64], |row| {
+    let rows = stmt.query_map((limit as i64,), |row| {
         Ok(PostListItem {
             id: row.get(0)?,
             title: row.get(1)?,
@@ -84,7 +84,7 @@ pub fn list_tasks(conn: &Connection, limit: usize) -> Result<Vec<TaskListItem>> 
          ORDER BY id DESC
          LIMIT ?1",
     )?;
-    let rows = stmt.query_map([limit as i64], |row| {
+    let rows = stmt.query_map((limit as i64,), |row| {
         Ok(TaskListItem {
             code: row.get(0)?,
             name: row.get(1)?,

@@ -132,7 +132,8 @@ fn compact_number_with_unit(value: f64, unit: &str) -> String {
         return format!("{:.0}{unit}", value.round());
     }
     let text = format!("{:.1}", (value * 10.0).round() / 10.0);
-    format!("{}{unit}", text.trim_end_matches(".0"))
+    let text = text.strip_suffix(".0").unwrap_or(&text);
+    format!("{text}{unit}")
 }
 
 #[cfg(test)]

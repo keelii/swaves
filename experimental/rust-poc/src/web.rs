@@ -253,7 +253,7 @@ struct DataResponse<T> {
 }
 
 async fn api_slug(Query(query): Query<SlugQuery>) -> Json<DataResponse<String>> {
-    let slug = make_slug(query.name.unwrap_or_default().as_str());
+    let slug = make_slug(query.name.as_deref().unwrap_or(""));
     Json(DataResponse { data: slug })
 }
 
