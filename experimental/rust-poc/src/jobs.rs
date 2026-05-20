@@ -16,7 +16,7 @@ pub async fn start(state: Arc<AppState>) -> Result<()> {
 
     let scheduler = JobScheduler::new().await?;
     let state_for_job = state.clone();
-    let job = Job::new_async("1/30 * * * * *", move |_uuid, _l| {
+    let job = Job::new_async("1/30 * * * * *", move |_uuid, _scheduler_lock| {
         let state = state_for_job.clone();
         Box::pin(async move {
             match state.db.lock() {

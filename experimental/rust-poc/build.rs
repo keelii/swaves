@@ -34,13 +34,16 @@ fn parse_table_names(source: &str) -> BTreeMap<String, String> {
         }
 
         let mut parts = trimmed.splitn(2, "TableName = ");
-        let name = parts
-            .next()
-            .expect("table name prefix")
-            .split_whitespace()
-            .next()
-            .expect("table const name");
-        let raw_value = parts.next().expect("table name value").trim();
+        let Some(name_part) = parts.next() else {
+            panic!("failed to parse table const prefix from line: {trimmed}");
+        };
+        let Some(name) = name_part.split_whitespace().next() else {
+            panic!("failed to parse table const name from line: {trimmed}");
+        };
+        let Some(raw_value) = parts.next() else {
+            panic!("failed to parse table const value from line: {trimmed}");
+        };
+        let raw_value = raw_value.trim();
         let Some(value) = raw_value
             .strip_prefix('"')
             .and_then(|v| v.strip_suffix('"'))
@@ -55,8 +58,31 @@ fn parse_table_names(source: &str) -> BTreeMap<String, String> {
 
 fn extract_initial_sql_expr(source: &str) -> Option<&str> {
     let start = source.find("const InitialSQL = ")? + "const InitialSQL = ".len();
-    let end = source[start..].find("\nconst InternalLang = `")? + start;
-    Some(&source[start..end])
+    let expr = &source[start..];
+    let mut in_raw_string = false;
+    let mut saw_expression = false;
+
+    for (idx, ch) in expr.char_indices() {
+        if ch == '`' {
+            in_raw_string = !in_raw_string;
+            saw_expression = true;
+            continue;
+        }
+
+        if in_raw_string {
+            continue;
+        }
+
+        if !ch.is_whitespace() && ch != '+' {
+            saw_expression = true;
+        }
+
+        if saw_expression && expr[idx..].starts_with("\nconst ") {
+            return Some(&expr[..idx]);
+        }
+    }
+
+    None
 }
 
 fn render_go_concat_expr(expr: &str, table_names: &BTreeMap<String, String>) -> String {
