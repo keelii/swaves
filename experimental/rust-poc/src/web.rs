@@ -29,6 +29,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/dash", get(dash_home))
         .route("/api/health", get(api_health))
         .route("/api/markdown", get(api_markdown_preview))
+        .route("/api/template-probe", get(api_template_probe))
         .with_state(state)
 }
 
@@ -63,9 +64,8 @@ async fn api_markdown_preview() -> Html<String> {
     Html(markdown::render_markdown(markdown))
 }
 
-#[allow(dead_code)]
-async fn template_probe() -> Html<String> {
-    match view::render_health("swaves-rs") {
+async fn api_template_probe() -> Html<String> {
+    match view::render_template_probe("swaves-rs") {
         Ok(html) => Html(html),
         Err(err) => Html(format!("template error: {}", html_escape(&err.to_string()))),
     }

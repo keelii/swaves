@@ -15,6 +15,7 @@
 - SQLite 接入与任务状态写回。
 - Go `InitialSQL` 复用，避免 Rust 侧重复维护 schema。
 - MiniJinja 渲染探针与 `url_for` helper。
+- 模板 loader + include/path join/filter/function 组合探针。
 - `.cache` / `updater` 路径约束实现。
 
 ### P1（下一阶段）

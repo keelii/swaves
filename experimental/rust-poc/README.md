@@ -15,7 +15,7 @@
 - 数据层：SQLite 初始化与任务运行状态回写示例。
 - 数据层：直接复用 Go `InitialSQL` 作为 schema 真源。
 - 任务系统：cron 调度心跳任务并写入 `t_task_runs`。
-- 模板与渲染：MiniJinja `url_for` 函数示例。
+- 模板与渲染：MiniJinja `url_for`、relative include、path join、filter 组合示例。
 - Markdown：基础 markdown->html 渲染。
 - 文件与缓存：`.cache` 与 `.cache/updater` 路径约束。
 
@@ -36,4 +36,4 @@ cargo run -- ../../data.sqlite --listen-addr 127.0.0.1:4096
 
 1. 补齐 `site + dash + api` 的关键真实路由与业务处理。
 2. 建立对等验收集（响应、错误、任务生命周期、性能基线）。
-3. 对齐模板 include/filter/function/path 复杂组合行为。
+3. 对齐 Go 路由全集与关键 handler 行为。

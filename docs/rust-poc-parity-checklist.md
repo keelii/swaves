@@ -14,5 +14,5 @@
 - [ ] 对齐 Go 路由全集与关键 handler 行为
 - [ ] 对齐错误日志上下文与用户可操作报错
 - [ ] 对齐任务注册全集与启动/关闭幂等性
-- [ ] 对齐模板 include/filter/function/path 复杂组合
+- [x] 对齐模板 include/filter/function/path 复杂组合
 - [ ] 建立性能基线并与 Go 对照
