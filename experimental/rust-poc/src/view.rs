@@ -3,6 +3,8 @@ use std::{borrow::Cow, collections::BTreeMap, path::Path};
 use anyhow::Result;
 use minijinja::{context, value::Value, Environment, UndefinedBehavior};
 
+use crate::routes;
+
 const TEMPLATE_HEALTH: &str = "health.html";
 const TEMPLATE_PROBE_PAGE: &str = "probe/page.html";
 const TEMPLATE_PROBE_MACROS: &str = "probe/macros.html";
@@ -29,17 +31,9 @@ fn template_sources() -> BTreeMap<&'static str, &'static str> {
     ])
 }
 
-fn route_table() -> BTreeMap<&'static str, &'static str> {
-    BTreeMap::from([
-        ("api.health", "/api/health"),
-        ("site.home", "/"),
-        ("dash.home", "/dash"),
-    ])
-}
-
 fn build_env() -> Environment<'static> {
     let templates = template_sources();
-    let routes = route_table();
+    let routes = routes::route_table();
 
     let mut env = Environment::new();
     env.set_undefined_behavior(UndefinedBehavior::Lenient);

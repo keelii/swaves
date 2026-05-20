@@ -3,6 +3,7 @@ mod cache;
 mod db;
 mod jobs;
 mod markdown;
+mod routes;
 mod view;
 mod web;
 

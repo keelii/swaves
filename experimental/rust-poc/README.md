@@ -12,6 +12,7 @@
 
 - 启动与进程模型：CLI + supervisor/worker + Ctrl+C 优雅退出。
 - Web 与路由：最小 `site + dash + api` 路由。
+- Web 与路由：补到关键 handler 子集（`/api/slug`、`/api/markdown`、`/dash/posts`、`/dash/tasks`）。
 - 数据层：SQLite 初始化与任务运行状态回写示例。
 - 数据层：直接复用 Go `InitialSQL` 作为 schema 真源。
 - 任务系统：cron 调度心跳任务并写入 `t_task_runs`。
@@ -34,6 +35,6 @@ cargo run -- ../../data.sqlite --listen-addr 127.0.0.1:4096
 
 ## 下一步
 
-1. 补齐 `site + dash + api` 的关键真实路由与业务处理。
+1. 继续补齐 `site + dash + api` 的剩余真实路由与业务处理。
 2. 建立对等验收集（响应、错误、任务生命周期、性能基线）。
 3. 对齐 Go 路由全集与关键 handler 行为。

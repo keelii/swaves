@@ -1,5 +1,6 @@
 use anyhow::Result;
 use rusqlite::Connection;
+use serde::Serialize;
 
 const INITIAL_SQL: &str = include_str!(concat!(env!("OUT_DIR"), "/initial_sql.sql"));
 
@@ -22,6 +23,110 @@ pub fn record_task_run(
         (task_code, status, message, now, now, 0_i64, now),
     )?;
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PostListItem {
+    pub id: i64,
+    pub title: String,
+    pub slug: String,
+    pub status: String,
+    pub published_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TaskListItem {
+    pub code: String,
+    pub name: String,
+    pub enabled: i64,
+    pub last_status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TaskRunListItem {
+    pub id: i64,
+    pub task_code: String,
+    pub status: String,
+    pub message: String,
+    pub created_at: i64,
+}
+
+pub fn list_posts(conn: &Connection, limit: usize) -> Result<Vec<PostListItem>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, title, slug, status, published_at
+         FROM t_posts
+         WHERE deleted_at IS NULL
+         ORDER BY id DESC
+         LIMIT ?1",
+    )?;
+    let rows = stmt.query_map([limit as i64], |row| {
+        Ok(PostListItem {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            slug: row.get(2)?,
+            status: row.get(3)?,
+            published_at: row.get(4)?,
+        })
+    })?;
+
+    let mut items = Vec::new();
+    for row in rows {
+        items.push(row?);
+    }
+    Ok(items)
+}
+
+pub fn list_tasks(conn: &Connection, limit: usize) -> Result<Vec<TaskListItem>> {
+    let mut stmt = conn.prepare(
+        "SELECT code, name, enabled, COALESCE(last_status, '')
+         FROM t_tasks
+         WHERE deleted_at IS NULL
+         ORDER BY id DESC
+         LIMIT ?1",
+    )?;
+    let rows = stmt.query_map([limit as i64], |row| {
+        Ok(TaskListItem {
+            code: row.get(0)?,
+            name: row.get(1)?,
+            enabled: row.get(2)?,
+            last_status: row.get(3)?,
+        })
+    })?;
+
+    let mut items = Vec::new();
+    for row in rows {
+        items.push(row?);
+    }
+    Ok(items)
+}
+
+pub fn list_task_runs(
+    conn: &Connection,
+    task_code: &str,
+    limit: usize,
+) -> Result<Vec<TaskRunListItem>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, task_code, status, message, created_at
+         FROM t_task_runs
+         WHERE task_code = ?1
+         ORDER BY id DESC
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map((task_code, limit as i64), |row| {
+        Ok(TaskRunListItem {
+            id: row.get(0)?,
+            task_code: row.get(1)?,
+            status: row.get(2)?,
+            message: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    })?;
+
+    let mut items = Vec::new();
+    for row in rows {
+        items.push(row?);
+    }
+    Ok(items)
 }
 
 fn unix_now() -> i64 {
