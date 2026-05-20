@@ -109,11 +109,14 @@ fn render_go_concat_expr(expr: &str, table_names: &BTreeMap<String, String>) -> 
                         break;
                     }
                 }
-                if let Some(value) = table_names.get(&ident) {
-                    rendered.push_str(value);
-                }
+                let Some(value) = table_names.get(&ident) else {
+                    panic!("unexpected identifier in InitialSQL expression: {ident}");
+                };
+                rendered.push_str(value);
             }
-            _ => {}
+            '+' => {}
+            c if c.is_whitespace() => {}
+            other => panic!("unexpected token in InitialSQL expression: {other}"),
         }
     }
 
