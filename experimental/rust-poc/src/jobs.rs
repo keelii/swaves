@@ -152,6 +152,23 @@ pub async fn stop() {
     info!(registered_tasks = job_count, "job scheduler stopped");
 }
 
+pub async fn trigger_task(state: Arc<AppState>, task_code: &str) -> Result<()> {
+    let task = {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|err| anyhow::anyhow!("db mutex poisoned during task lookup: {err}"))?;
+        db::get_task_by_code(&conn, task_code)?
+    };
+
+    let task = task.ok_or_else(|| anyhow::anyhow!("task not found: {task_code}"))?;
+    let job_func = registered_job(task.code.as_str())
+        .ok_or_else(|| anyhow::anyhow!("job not registered: {}", task.code))?;
+
+    execute_task(state, task.code.as_str(), job_func).await;
+    Ok(())
+}
+
 fn scheduler_state() -> &'static Mutex<Option<SchedulerRuntime>> {
     SCHEDULER.get_or_init(|| Mutex::new(None))
 }
@@ -340,6 +357,30 @@ mod tests {
                 task.code
             );
         }
+        drop(conn);
+
+        stop().await;
+    }
+
+    #[tokio::test]
+    async fn trigger_task_updates_status_and_creates_run() {
+        let state = build_state();
+        start(state.clone()).await.expect("start scheduler");
+
+        trigger_task(state.clone(), "clear_notifications")
+            .await
+            .expect("trigger builtin task");
+
+        let conn = state.db.lock().expect("lock sqlite");
+        let task = db::get_task_by_code(&conn, "clear_notifications")
+            .expect("query task by code")
+            .expect("task exists");
+        assert_eq!(task.last_status, "error");
+
+        let runs = db::list_task_runs(&conn, "clear_notifications", 10).expect("list task runs");
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].status, "error");
+        assert!(runs[0].message.contains("clear notifications job"));
         drop(conn);
 
         stop().await;

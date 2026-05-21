@@ -4,7 +4,7 @@ use axum::{
     extract::rejection::JsonRejection,
     extract::{Path, Query, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -12,7 +12,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
-use crate::{cache::RuntimeCachePaths, db, htmlutil, markdown, routes, view};
+use crate::{cache::RuntimeCachePaths, db, htmlutil, jobs, markdown, routes, view};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -40,6 +40,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route(routes::DASH_LOGIN_SHOW, get(dash_login))
         .route(routes::DASH_POSTS_LIST, get(dash_posts))
         .route(routes::DASH_TASKS_LIST, get(dash_tasks))
+        .route(routes::DASH_TASKS_TRIGGER, post(dash_trigger_task))
         .route(routes::DASH_TASKS_RUNS, get(dash_task_runs))
         .route(routes::API_HEALTH, get(api_health))
         .route(routes::API_SLUG, get(api_slug))
@@ -163,11 +164,13 @@ async fn dash_tasks(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
     } else {
         for task in tasks {
             body.push_str(&format!(
-                "<li><a href=\"/dash/tasks/{}/runs\">{}</a> <small>enabled={} last_status={}</small></li>",
+                "<li><a href=\"/dash/tasks/{}/runs\">{}</a> <small>enabled={} last_status={}</small> \
+                 <form method=\"post\" action=\"/dash/tasks/{}/trigger\" style=\"display:inline\"><button type=\"submit\">trigger</button></form></li>",
                 htmlutil::escape(&task.code),
                 htmlutil::escape(&task.name),
                 task.enabled,
-                htmlutil::escape(&task.last_status)
+                htmlutil::escape(&task.last_status),
+                htmlutil::escape(&task.code)
             ));
         }
     }
@@ -225,8 +228,66 @@ async fn dash_task_runs(
             run.created_at
         ));
     }
-    body.push_str("</ul>");
+    body.push_str(&format!(
+        "</ul><form method=\"post\" action=\"/dash/tasks/{}/trigger\"><button type=\"submit\">trigger again</button></form><p><a href=\"{}\">back to task list</a></p>",
+        htmlutil::escape(&code),
+        routes::DASH_TASKS_LIST
+    ));
     Ok(Html(body))
+}
+
+async fn dash_trigger_task(
+    Path(code): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Redirect, PageError> {
+    let code = code.trim().to_string();
+    if code.is_empty() {
+        return Err(PageError::not_found(
+            "dash.tasks.trigger",
+            "task code is required for manual trigger.",
+            "open /dash/tasks and trigger a concrete task.",
+        ));
+    }
+
+    let task = {
+        let conn = state.db.lock().map_err(|err| {
+            PageError::internal(
+                "dash.tasks.trigger",
+                err,
+                "failed to access sqlite connection for manual task trigger",
+                "restart the worker and retry the request.",
+            )
+        })?;
+        db::get_task_by_code(&conn, &code).map_err(|err| {
+            PageError::internal(
+                "dash.tasks.trigger",
+                err,
+                "failed to query task from sqlite",
+                "check that t_tasks exists in the configured sqlite file.",
+            )
+        })?
+    };
+
+    let Some(task) = task else {
+        return Err(PageError::not_found(
+            "dash.tasks.trigger",
+            format!("task code `{}` does not exist.", code),
+            "open /dash/tasks and choose an existing task before triggering.",
+        ));
+    };
+
+    jobs::trigger_task(state, task.code.as_str())
+        .await
+        .map_err(|err| {
+            PageError::internal(
+                "dash.tasks.trigger",
+                err,
+                format!("failed to trigger task `{}`.", task.code),
+                "check whether the task is registered in the Rust POC job registry.",
+            )
+        })?;
+
+    Ok(Redirect::to(routes::DASH_TASKS_LIST))
 }
 
 #[derive(Serialize)]
@@ -346,6 +407,7 @@ impl IntoResponse for ApiError {
     }
 }
 
+#[derive(Debug)]
 struct PageError {
     status: StatusCode,
     title: String,
@@ -424,6 +486,22 @@ fn render_error_page(title: &str, message: &str, action: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{cache::RuntimeCachePaths, db::TaskDefinition};
+    use rusqlite::Connection;
+
+    fn build_state() -> Arc<AppState> {
+        let conn = Connection::open_in_memory().expect("open in-memory sqlite");
+        conn.execute_batch(include_str!(concat!(env!("OUT_DIR"), "/initial_sql.sql")))
+            .expect("initialize schema");
+        Arc::new(AppState::new(
+            "/tmp/swaves-poc-web-test.sqlite".to_string(),
+            RuntimeCachePaths {
+                root: "/tmp/swaves-poc-web-cache".into(),
+                updater_root: "/tmp/swaves-poc-web-cache/updater".into(),
+            },
+            conn,
+        ))
+    }
 
     #[test]
     fn make_slug_normalizes_basic_text() {
@@ -438,5 +516,37 @@ mod tests {
         assert!(html.contains("bad &lt;title&gt;"));
         assert!(html.contains("oops &amp; retry"));
         assert!(html.contains("click &quot;home&quot;"));
+    }
+
+    #[tokio::test]
+    async fn dash_trigger_task_redirects_after_manual_run() {
+        let state = build_state();
+        {
+            let conn = state.db.lock().expect("lock sqlite");
+            db::ensure_builtin_task(
+                &conn,
+                &TaskDefinition {
+                    code: "clear_notifications",
+                    name: "清理过期通知",
+                    description: "按保留天数清理过期通知",
+                    schedule: "@daily",
+                    enabled: 1,
+                    kind: 0,
+                },
+            )
+            .expect("seed task");
+        }
+
+        let redirect = dash_trigger_task(
+            Path("clear_notifications".to_string()),
+            State(state.clone()),
+        )
+        .await
+        .expect("trigger task should redirect");
+        assert_eq!(redirect.into_response().status(), StatusCode::SEE_OTHER);
+
+        let conn = state.db.lock().expect("lock sqlite");
+        let runs = db::list_task_runs(&conn, "clear_notifications", 10).expect("list task runs");
+        assert_eq!(runs.len(), 1);
     }
 }

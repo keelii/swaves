@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 
 const INITIAL_SQL: &str = include_str!(concat!(env!("OUT_DIR"), "/initial_sql.sql"));
@@ -49,6 +49,17 @@ pub struct TaskRunListItem {
     pub status: String,
     pub message: String,
     pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TaskDetail {
+    pub code: String,
+    pub name: String,
+    pub description: String,
+    pub schedule: String,
+    pub enabled: i64,
+    pub kind: i64,
+    pub last_status: String,
 }
 
 #[derive(Debug, Clone)]
@@ -164,6 +175,29 @@ pub fn list_enabled_task_records(conn: &Connection) -> Result<Vec<TaskRecord>> {
         items.push(row?);
     }
     Ok(items)
+}
+
+pub fn get_task_by_code(conn: &Connection, task_code: &str) -> Result<Option<TaskDetail>> {
+    conn.query_row(
+        "SELECT code, name, COALESCE(description, ''), schedule, enabled, kind, COALESCE(last_status, '')
+         FROM t_tasks
+         WHERE code = ?1 AND deleted_at IS NULL
+         LIMIT 1",
+        [task_code],
+        |row| {
+            Ok(TaskDetail {
+                code: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                schedule: row.get(3)?,
+                enabled: row.get(4)?,
+                kind: row.get(5)?,
+                last_status: row.get(6)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
 }
 
 pub fn ensure_builtin_task(conn: &Connection, task: &TaskDefinition) -> Result<()> {
@@ -324,5 +358,29 @@ mod tests {
             .expect("read task status");
         assert_eq!(row.0, "success");
         assert_eq!(row.1, 123);
+    }
+
+    #[test]
+    fn get_task_by_code_returns_existing_task() {
+        let conn = Connection::open_in_memory().expect("open in-memory sqlite");
+        conn.execute_batch(INITIAL_SQL)
+            .expect("initialize schema from Go InitialSQL");
+        let task = TaskDefinition {
+            code: "clear_notifications",
+            name: "清理过期通知",
+            description: "按保留天数清理过期通知",
+            schedule: "@daily",
+            enabled: 1,
+            kind: 0,
+        };
+        ensure_builtin_task(&conn, &task).expect("insert builtin task");
+
+        let fetched = get_task_by_code(&conn, task.code)
+            .expect("query task by code")
+            .expect("task should exist");
+        assert_eq!(fetched.code, task.code);
+        assert_eq!(fetched.name, task.name);
+        assert_eq!(fetched.schedule, task.schedule);
+        assert_eq!(fetched.enabled, task.enabled);
     }
 }

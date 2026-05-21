@@ -7,6 +7,7 @@ pub const DASH_HOME: &str = "/dash";
 pub const DASH_LOGIN_SHOW: &str = "/dash/login";
 pub const DASH_POSTS_LIST: &str = "/dash/posts";
 pub const DASH_TASKS_LIST: &str = "/dash/tasks";
+pub const DASH_TASKS_TRIGGER: &str = "/dash/tasks/{code}/trigger";
 pub const DASH_TASKS_RUNS: &str = "/dash/tasks/{code}/runs";
 pub const API_HEALTH: &str = "/api/health";
 pub const API_SLUG: &str = "/api/slug";
@@ -22,6 +23,8 @@ const ROUTE_PAIRS: &[(&str, &str)] = &[
     ("dash.login.show", DASH_LOGIN_SHOW),
     ("dash.posts.list", DASH_POSTS_LIST),
     ("dash.tasks.list", DASH_TASKS_LIST),
+    ("dash.tasks.trigger", DASH_TASKS_TRIGGER),
+    ("dash.tasks.runs", DASH_TASKS_RUNS),
     ("api.health", API_HEALTH),
     ("api.slug", API_SLUG),
     ("api.markdown", API_MARKDOWN),

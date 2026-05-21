@@ -12,7 +12,7 @@
 
 - 启动与进程模型：CLI + supervisor/worker + Ctrl+C 优雅退出。
 - Web 与路由：最小 `site + dash + api` 路由。
-- Web 与路由：补到关键 handler 子集（`/api/slug`、`/api/markdown`、`/dash/posts`、`/dash/tasks`）。
+- Web 与路由：补到关键 handler 子集（`/api/slug`、`/api/markdown`、`/dash/posts`、`/dash/tasks`、`/dash/tasks/:code/trigger`、`/dash/tasks/:code/runs`）。
 - 数据层：SQLite 初始化与任务运行状态回写示例。
 - 数据层：直接复用 Go `InitialSQL` 作为 schema 真源。
 - 任务系统：补齐 Go 对齐的内置任务注册、调度生命周期与 `t_task_runs` 状态回写。

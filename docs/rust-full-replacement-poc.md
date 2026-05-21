@@ -12,6 +12,7 @@
 
 - CLI + supervisor/worker + 信号退出。
 - 最小 `site + dash + api` 路由与关键 handler 子集。
+- 已补手动任务触发与 task runs 查看，验证 Go 任务页关键操作闭环。
 - SQLite 接入与任务状态写回。
 - Go `InitialSQL` 复用，避免 Rust 侧重复维护 schema。
 - MiniJinja 渲染探针与 `url_for` helper。
