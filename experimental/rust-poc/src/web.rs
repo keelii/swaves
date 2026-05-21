@@ -105,7 +105,12 @@ async fn site_error(Query(query): Query<ErrorQuery>) -> impl IntoResponse {
 }
 
 async fn dash_home() -> Html<String> {
-    Html("<h1>dash</h1><p>experimental rust poc</p><ul><li><a href=\"/dash/login\">login</a></li><li><a href=\"/dash/posts\">posts</a></li><li><a href=\"/dash/tasks\">tasks</a></li></ul>".to_string())
+    Html(format!(
+        "<h1>dash</h1><p>experimental rust poc</p><ul><li><a href=\"{}\">login</a></li><li><a href=\"{}\">posts</a></li><li><a href=\"{}\">tasks</a></li></ul>",
+        routes::DASH_LOGIN_SHOW,
+        routes::DASH_POSTS_LIST,
+        routes::DASH_TASKS_LIST
+    ))
 }
 
 async fn dash_login() -> Html<String> {
@@ -417,7 +422,7 @@ async fn dash_task_runs(
     }
     body.push_str(&format!(
         "</ul><form method=\"post\" action=\"/dash/tasks/{}/trigger\"><button type=\"submit\">trigger again</button></form><p><a href=\"{}\">back to task list</a></p>",
-        htmlutil::escape(&code),
+        htmlutil::escape(&routes::dash_task_trigger_path(&code)),
         routes::DASH_TASKS_LIST
     ));
     Ok(Html(body))
