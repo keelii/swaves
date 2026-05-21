@@ -183,7 +183,7 @@ async fn dash_tasks(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
             let runs_path = routes::dash_task_runs_path(&task.code);
             let trigger_path = routes::dash_task_trigger_path(&task.code);
             let edit_path = routes::dash_task_edit_path(task.id);
-            let delete_action = if task.kind == TASK_KIND_USER {
+            let delete_action = if task.kind == db::TASK_KIND_USER {
                 format!(
                     "<form method=\"post\" action=\"{}\" style=\"display:inline\"><button type=\"submit\">delete</button></form>",
                     htmlutil::escape(&routes::dash_task_delete_path(task.id))
@@ -352,7 +352,7 @@ async fn dash_delete_task(
             "open /dash/tasks and choose an existing task before deleting.",
         ));
     };
-    if task.kind == TASK_KIND_INTERNAL {
+    if task.kind == db::TASK_KIND_INTERNAL {
         return Err(PageError::bad_request(
             "dash.tasks.delete",
             "internal task cannot be deleted.",
@@ -421,7 +421,7 @@ async fn dash_task_runs(
         ));
     }
     body.push_str(&format!(
-        "</ul><form method=\"post\" action=\"/dash/tasks/{}/trigger\"><button type=\"submit\">trigger again</button></form><p><a href=\"{}\">back to task list</a></p>",
+        "</ul><form method=\"post\" action=\"{}\"><button type=\"submit\">trigger again</button></form><p><a href=\"{}\">back to task list</a></p>",
         htmlutil::escape(&routes::dash_task_trigger_path(&code)),
         routes::DASH_TASKS_LIST
     ));
@@ -689,8 +689,6 @@ fn render_error_page(title: &str, message: &str, action: &str) -> String {
     )
 }
 
-const TASK_KIND_INTERNAL: i64 = 0;
-const TASK_KIND_USER: i64 = 1;
 const TASK_SCHEDULE_OPTIONS: [(&str, &str); 5] = [
     ("@hourly", "每小时"),
     ("@daily", "每天"),
@@ -783,8 +781,8 @@ fn build_task_update_mutation(existing: &db::TaskDetail, form: TaskFormInput) ->
 
 fn task_kind_from_form(value: Option<&str>) -> i64 {
     match value.unwrap_or("0").trim() {
-        "1" => TASK_KIND_USER,
-        _ => TASK_KIND_INTERNAL,
+        "1" => db::TASK_KIND_USER,
+        _ => db::TASK_KIND_INTERNAL,
     }
 }
 
@@ -807,7 +805,7 @@ fn task_schedule_display(schedule: &str) -> &str {
 
 fn task_kind_label(kind: i64) -> &'static str {
     match kind {
-        TASK_KIND_USER => "user",
+        db::TASK_KIND_USER => "user",
         _ => "internal",
     }
 }
@@ -833,12 +831,12 @@ fn render_task_form(
             htmlutil::escape(label)
         ));
     }
-    let internal_selected = if task.kind == TASK_KIND_INTERNAL {
+    let internal_selected = if task.kind == db::TASK_KIND_INTERNAL {
         " selected"
     } else {
         ""
     };
-    let user_selected = if task.kind == TASK_KIND_USER {
+    let user_selected = if task.kind == db::TASK_KIND_USER {
         " selected"
     } else {
         ""
@@ -972,7 +970,7 @@ mod tests {
             .expect("query created task")
             .expect("task exists");
         assert_eq!(task.name, "User Task");
-        assert_eq!(task.kind, TASK_KIND_USER);
+        assert_eq!(task.kind, db::TASK_KIND_USER);
     }
 
     #[tokio::test]
@@ -988,7 +986,7 @@ mod tests {
                     description: "created from test".to_string(),
                     schedule: "@hourly".to_string(),
                     enabled: 1,
-                    kind: TASK_KIND_USER,
+                    kind: db::TASK_KIND_USER,
                 },
             )
             .expect("create task")
@@ -1033,7 +1031,7 @@ mod tests {
                     description: "created from test".to_string(),
                     schedule: "@hourly".to_string(),
                     enabled: 1,
-                    kind: TASK_KIND_USER,
+                    kind: db::TASK_KIND_USER,
                 },
             )
             .expect("create task")
@@ -1063,7 +1061,7 @@ mod tests {
                     description: "created from test".to_string(),
                     schedule: "@hourly".to_string(),
                     enabled: 1,
-                    kind: TASK_KIND_INTERNAL,
+                    kind: db::TASK_KIND_INTERNAL,
                 },
             )
             .expect("create task")

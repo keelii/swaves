@@ -4,6 +4,9 @@ use serde::Serialize;
 
 const INITIAL_SQL: &str = include_str!(concat!(env!("OUT_DIR"), "/initial_sql.sql"));
 
+pub const TASK_KIND_INTERNAL: i64 = 0;
+pub const TASK_KIND_USER: i64 = 1;
+
 pub fn open_and_init(sqlite_file: &str) -> Result<Connection> {
     let conn = Connection::open(sqlite_file)?;
     conn.execute_batch(INITIAL_SQL)?;

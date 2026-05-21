@@ -184,7 +184,7 @@ async fn record_unregistered_task(state: Arc<AppState>, task: &db::TaskDetail) {
             {
                 error!(task_code = %task.code, error = %err, "failed to update unregistered task status");
             }
-            if task.kind == 1 {
+            if task.kind == db::TASK_KIND_USER {
                 if let Err(err) = db::record_task_run(&conn, task.code.as_str(), "error", &message)
                 {
                     error!(task_code = %task.code, error = %err, "failed to record unregistered task run");
@@ -424,7 +424,7 @@ mod tests {
                     description: "created in test".to_string(),
                     schedule: "@hourly".to_string(),
                     enabled: 1,
-                    kind: 1,
+                    kind: db::TASK_KIND_USER,
                 },
             )
             .expect("create user task");
