@@ -17,6 +17,7 @@
 - MiniJinja 渲染探针与 `url_for` helper。
 - 模板 loader + include/path join/filter/function 组合探针。
 - API/页面错误返回已带基础可操作提示，并记录路由上下文日志。
+- Go 对齐的内置任务注册已写入 SQLite，并补了启动/关闭幂等调度生命周期。
 - `.cache` / `updater` 路径约束实现。
 
 ### P1（下一阶段）
