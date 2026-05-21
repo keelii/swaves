@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Json, Router,
+    Form, Json, Router,
 };
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,15 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route(routes::DASH_LOGIN_SHOW, get(dash_login))
         .route(routes::DASH_POSTS_LIST, get(dash_posts))
         .route(routes::DASH_TASKS_LIST, get(dash_tasks))
+        .route(
+            routes::DASH_TASKS_NEW,
+            get(dash_task_new).post(dash_create_task),
+        )
+        .route(
+            routes::DASH_TASKS_EDIT,
+            get(dash_task_edit).post(dash_update_task),
+        )
+        .route(routes::DASH_TASKS_DELETE, post(dash_delete_task))
         .route(routes::DASH_TASKS_TRIGGER, post(dash_trigger_task))
         .route(routes::DASH_TASKS_RUNS, get(dash_task_runs))
         .route(routes::API_HEALTH, get(api_health))
@@ -158,24 +167,202 @@ async fn dash_tasks(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
         )
     })?;
 
-    let mut body = String::from("<h1>dash tasks</h1><ul>");
+    let mut body = format!(
+        "<h1>dash tasks</h1><p><a href=\"{}\">new task</a></p><ul>",
+        routes::DASH_TASKS_NEW
+    );
     if tasks.is_empty() {
         body.push_str("<li>no tasks yet</li>");
     } else {
         for task in tasks {
+            let runs_path = routes::dash_task_runs_path(&task.code);
+            let trigger_path = routes::dash_task_trigger_path(&task.code);
+            let edit_path = routes::dash_task_edit_path(task.id);
+            let delete_action = if task.kind == TASK_KIND_USER {
+                format!(
+                    "<form method=\"post\" action=\"{}\" style=\"display:inline\"><button type=\"submit\">delete</button></form>",
+                    htmlutil::escape(&routes::dash_task_delete_path(task.id))
+                )
+            } else {
+                "<small>internal task</small>".to_string()
+            };
             body.push_str(&format!(
-                "<li><a href=\"/dash/tasks/{}/runs\">{}</a> <small>enabled={} last_status={}</small> \
-                 <form method=\"post\" action=\"/dash/tasks/{}/trigger\" style=\"display:inline\"><button type=\"submit\">trigger</button></form></li>",
-                htmlutil::escape(&task.code),
+                "<li><a href=\"{}\">{}</a> <small>schedule={} enabled={} kind={} last_status={}</small> \
+                 <a href=\"{}\">edit</a> {} \
+                 <form method=\"post\" action=\"{}\" style=\"display:inline\"><button type=\"submit\">trigger</button></form></li>",
+                htmlutil::escape(&runs_path),
                 htmlutil::escape(&task.name),
+                htmlutil::escape(task_schedule_display(&task.schedule)),
                 task.enabled,
+                htmlutil::escape(task_kind_label(task.kind)),
                 htmlutil::escape(&task.last_status),
-                htmlutil::escape(&task.code)
+                htmlutil::escape(&edit_path),
+                delete_action,
+                htmlutil::escape(&trigger_path)
             ));
         }
     }
     body.push_str("</ul>");
     Ok(Html(body))
+}
+
+async fn dash_task_new() -> Html<String> {
+    Html(render_task_form(
+        "new task",
+        routes::DASH_TASKS_NEW,
+        "create task",
+        &TaskFormState::default(),
+        true,
+    ))
+}
+
+async fn dash_create_task(
+    State(state): State<Arc<AppState>>,
+    Form(form): Form<TaskFormInput>,
+) -> Result<Redirect, PageError> {
+    let task = build_task_create_mutation(form).map_err(|(message, action)| {
+        PageError::bad_request("dash.tasks.create", message, action)
+    })?;
+    let conn = state.db.lock().map_err(|err| {
+        PageError::internal(
+            "dash.tasks.create",
+            err,
+            "failed to access sqlite connection for task create",
+            "restart the worker and retry the request.",
+        )
+    })?;
+    db::create_task(&conn, &task).map_err(|err| {
+        PageError::internal(
+            "dash.tasks.create",
+            err,
+            "failed to create task in sqlite",
+            "check whether the task code already exists and the sqlite file is writable.",
+        )
+    })?;
+    Ok(Redirect::to(routes::DASH_TASKS_LIST))
+}
+
+async fn dash_task_edit(
+    Path(task_id): Path<i64>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Html<String>, PageError> {
+    let conn = state.db.lock().map_err(|err| {
+        PageError::internal(
+            "dash.tasks.edit",
+            err,
+            "failed to access sqlite connection for task edit",
+            "restart the worker and retry the request.",
+        )
+    })?;
+    let Some(task) = db::get_task_by_id(&conn, task_id).map_err(|err| {
+        PageError::internal(
+            "dash.tasks.edit",
+            err,
+            "failed to query task from sqlite",
+            "check that t_tasks exists in the configured sqlite file.",
+        )
+    })?
+    else {
+        return Err(PageError::not_found(
+            "dash.tasks.edit",
+            format!("task id `{}` does not exist.", task_id),
+            "open /dash/tasks and choose an existing task before editing.",
+        ));
+    };
+
+    Ok(Html(render_task_form(
+        "edit task",
+        &routes::dash_task_edit_path(task.id),
+        "update task",
+        &TaskFormState::from_task(&task),
+        false,
+    )))
+}
+
+async fn dash_update_task(
+    Path(task_id): Path<i64>,
+    State(state): State<Arc<AppState>>,
+    Form(form): Form<TaskFormInput>,
+) -> Result<Redirect, PageError> {
+    let conn = state.db.lock().map_err(|err| {
+        PageError::internal(
+            "dash.tasks.update",
+            err,
+            "failed to access sqlite connection for task update",
+            "restart the worker and retry the request.",
+        )
+    })?;
+    let Some(existing) = db::get_task_by_id(&conn, task_id).map_err(|err| {
+        PageError::internal(
+            "dash.tasks.update",
+            err,
+            "failed to query task from sqlite",
+            "check that t_tasks exists in the configured sqlite file.",
+        )
+    })?
+    else {
+        return Err(PageError::not_found(
+            "dash.tasks.update",
+            format!("task id `{}` does not exist.", task_id),
+            "open /dash/tasks and choose an existing task before updating.",
+        ));
+    };
+
+    let task = build_task_update_mutation(&existing, form);
+    db::update_task(&conn, task_id, &task).map_err(|err| {
+        PageError::internal(
+            "dash.tasks.update",
+            err,
+            format!("failed to update task `{}`.", existing.code),
+            "check whether the sqlite file is writable and retry the request.",
+        )
+    })?;
+    Ok(Redirect::to(routes::DASH_TASKS_LIST))
+}
+
+async fn dash_delete_task(
+    Path(task_id): Path<i64>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Redirect, PageError> {
+    let conn = state.db.lock().map_err(|err| {
+        PageError::internal(
+            "dash.tasks.delete",
+            err,
+            "failed to access sqlite connection for task delete",
+            "restart the worker and retry the request.",
+        )
+    })?;
+    let Some(task) = db::get_task_by_id(&conn, task_id).map_err(|err| {
+        PageError::internal(
+            "dash.tasks.delete",
+            err,
+            "failed to query task from sqlite",
+            "check that t_tasks exists in the configured sqlite file.",
+        )
+    })?
+    else {
+        return Err(PageError::not_found(
+            "dash.tasks.delete",
+            format!("task id `{}` does not exist.", task_id),
+            "open /dash/tasks and choose an existing task before deleting.",
+        ));
+    };
+    if task.kind == TASK_KIND_INTERNAL {
+        return Err(PageError::bad_request(
+            "dash.tasks.delete",
+            "internal task cannot be deleted.",
+            "create a user task if you need a removable task entry.",
+        ));
+    }
+    db::soft_delete_task(&conn, task_id).map_err(|err| {
+        PageError::internal(
+            "dash.tasks.delete",
+            err,
+            format!("failed to delete task `{}`.", task.code),
+            "check whether the sqlite file is writable and retry the request.",
+        )
+    })?;
+    Ok(Redirect::to(routes::DASH_TASKS_LIST))
 }
 
 async fn dash_task_runs(
@@ -416,6 +603,20 @@ struct PageError {
 }
 
 impl PageError {
+    fn bad_request(
+        route: &'static str,
+        message: impl Into<String>,
+        action: impl Into<String>,
+    ) -> Self {
+        warn!(route, "page request validation failed");
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            title: "bad request".to_string(),
+            message: message.into(),
+            action: action.into(),
+        }
+    }
+
     fn internal(
         route: &'static str,
         err: impl std::fmt::Display,
@@ -480,6 +681,198 @@ fn render_error_page(title: &str, message: &str, action: &str) -> String {
         htmlutil::escape(title),
         htmlutil::escape(message),
         htmlutil::escape(action)
+    )
+}
+
+const TASK_KIND_INTERNAL: i64 = 0;
+const TASK_KIND_USER: i64 = 1;
+const TASK_SCHEDULE_OPTIONS: [(&str, &str); 5] = [
+    ("@hourly", "每小时"),
+    ("@daily", "每天"),
+    ("@weekly", "每周"),
+    ("@monthly", "每月"),
+    ("@yearly", "每年"),
+];
+
+#[derive(Default)]
+struct TaskFormState {
+    code: String,
+    name: String,
+    description: String,
+    schedule: String,
+    enabled: bool,
+    kind: i64,
+}
+
+impl TaskFormState {
+    fn from_task(task: &db::TaskDetail) -> Self {
+        Self {
+            code: task.code.clone(),
+            name: task.name.clone(),
+            description: task.description.clone(),
+            schedule: task.schedule.clone(),
+            enabled: task.enabled == 1,
+            kind: task.kind,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct TaskFormInput {
+    #[serde(default)]
+    code: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    schedule: String,
+    enabled: Option<String>,
+    kind: Option<String>,
+}
+
+fn build_task_create_mutation(
+    form: TaskFormInput,
+) -> Result<db::TaskMutation, (&'static str, &'static str)> {
+    let code = form.code.trim().to_string();
+    let name = form.name.trim().to_string();
+    let schedule = form.schedule.trim().to_string();
+    if code.is_empty() {
+        return Err((
+            "task code is required.",
+            "fill in a stable task code before creating the task.",
+        ));
+    }
+    if name.is_empty() {
+        return Err((
+            "task name is required.",
+            "fill in a visible task name before creating the task.",
+        ));
+    }
+    if schedule.is_empty() {
+        return Err((
+            "task schedule is required.",
+            "choose a preset schedule or enter a cron expression before creating the task.",
+        ));
+    }
+    Ok(db::TaskMutation {
+        code,
+        name,
+        description: form.description.trim().to_string(),
+        schedule,
+        enabled: bool_to_i64(form.enabled.is_some()),
+        kind: task_kind_from_form(form.kind.as_deref()),
+    })
+}
+
+fn build_task_update_mutation(existing: &db::TaskDetail, form: TaskFormInput) -> db::TaskMutation {
+    db::TaskMutation {
+        code: existing.code.clone(),
+        name: form.name.trim().to_string(),
+        description: form.description.trim().to_string(),
+        schedule: form.schedule.trim().to_string(),
+        enabled: bool_to_i64(form.enabled.is_some()),
+        kind: task_kind_from_form(form.kind.as_deref()),
+    }
+}
+
+fn task_kind_from_form(value: Option<&str>) -> i64 {
+    match value.unwrap_or("0").trim() {
+        "1" => TASK_KIND_USER,
+        _ => TASK_KIND_INTERNAL,
+    }
+}
+
+fn bool_to_i64(value: bool) -> i64 {
+    if value {
+        1
+    } else {
+        0
+    }
+}
+
+fn task_schedule_display(schedule: &str) -> &str {
+    for (value, label) in TASK_SCHEDULE_OPTIONS {
+        if value == schedule.trim() {
+            return label;
+        }
+    }
+    schedule
+}
+
+fn task_kind_label(kind: i64) -> &'static str {
+    match kind {
+        TASK_KIND_USER => "user",
+        _ => "internal",
+    }
+}
+
+fn render_task_form(
+    title: &str,
+    action: &str,
+    submit_label: &str,
+    task: &TaskFormState,
+    code_editable: bool,
+) -> String {
+    let mut schedule_options = String::new();
+    for (value, label) in TASK_SCHEDULE_OPTIONS {
+        let selected = if task.schedule == value {
+            " selected"
+        } else {
+            ""
+        };
+        schedule_options.push_str(&format!(
+            "<option value=\"{}\"{}>{}</option>",
+            htmlutil::escape(value),
+            selected,
+            htmlutil::escape(label)
+        ));
+    }
+    let internal_selected = if task.kind == TASK_KIND_INTERNAL {
+        " selected"
+    } else {
+        ""
+    };
+    let user_selected = if task.kind == TASK_KIND_USER {
+        " selected"
+    } else {
+        ""
+    };
+    let checked = if task.enabled { " checked" } else { "" };
+    let code_input = if code_editable {
+        format!(
+            "<input name=\"code\" value=\"{}\" />",
+            htmlutil::escape(&task.code)
+        )
+    } else {
+        format!(
+            "<input name=\"code\" value=\"{}\" readonly /><small> code is immutable in Go too.</small>",
+            htmlutil::escape(&task.code)
+        )
+    };
+
+    format!(
+        "<h1>{}</h1><form method=\"post\" action=\"{}\">\
+         <p><label>code {}</label></p>\
+         <p><label>name <input name=\"name\" value=\"{}\" /></label></p>\
+         <p><label>description <textarea name=\"description\">{}</textarea></label></p>\
+         <p><label>schedule <input name=\"schedule\" value=\"{}\" list=\"task-schedules\" /></label></p>\
+         <datalist id=\"task-schedules\">{}</datalist>\
+         <p><label>enabled <input type=\"checkbox\" name=\"enabled\" value=\"1\"{}/></label></p>\
+         <p><label>kind <select name=\"kind\"><option value=\"0\"{}>internal</option><option value=\"1\"{}>user</option></select></label></p>\
+         <p><button type=\"submit\">{}</button> <a href=\"{}\">cancel</a></p></form>",
+        htmlutil::escape(title),
+        htmlutil::escape(action),
+        code_input,
+        htmlutil::escape(&task.name),
+        htmlutil::escape(&task.description),
+        htmlutil::escape(&task.schedule),
+        schedule_options,
+        checked,
+        internal_selected,
+        user_selected,
+        htmlutil::escape(submit_label),
+        routes::DASH_TASKS_LIST
     )
 }
 
@@ -548,5 +941,137 @@ mod tests {
         let conn = state.db.lock().expect("lock sqlite");
         let runs = db::list_task_runs(&conn, "clear_notifications", 10).expect("list task runs");
         assert_eq!(runs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn dash_create_task_redirects_and_persists_user_task() {
+        let state = build_state();
+
+        let redirect = dash_create_task(
+            State(state.clone()),
+            Form(TaskFormInput {
+                code: "user_task".to_string(),
+                name: "User Task".to_string(),
+                description: "created from test".to_string(),
+                schedule: "@hourly".to_string(),
+                enabled: Some("1".to_string()),
+                kind: Some("1".to_string()),
+            }),
+        )
+        .await
+        .expect("create task should redirect");
+        assert_eq!(redirect.into_response().status(), StatusCode::SEE_OTHER);
+
+        let conn = state.db.lock().expect("lock sqlite");
+        let task = db::get_task_by_code(&conn, "user_task")
+            .expect("query created task")
+            .expect("task exists");
+        assert_eq!(task.name, "User Task");
+        assert_eq!(task.kind, TASK_KIND_USER);
+    }
+
+    #[tokio::test]
+    async fn dash_update_task_keeps_code_and_updates_fields() {
+        let state = build_state();
+        let task_id = {
+            let conn = state.db.lock().expect("lock sqlite");
+            db::create_task(
+                &conn,
+                &db::TaskMutation {
+                    code: "user_task".to_string(),
+                    name: "User Task".to_string(),
+                    description: "created from test".to_string(),
+                    schedule: "@hourly".to_string(),
+                    enabled: 1,
+                    kind: TASK_KIND_USER,
+                },
+            )
+            .expect("create task")
+        };
+
+        let redirect = dash_update_task(
+            Path(task_id),
+            State(state.clone()),
+            Form(TaskFormInput {
+                code: "changed".to_string(),
+                name: "Renamed Task".to_string(),
+                description: "updated".to_string(),
+                schedule: "@daily".to_string(),
+                enabled: None,
+                kind: Some("1".to_string()),
+            }),
+        )
+        .await
+        .expect("update task should redirect");
+        assert_eq!(redirect.into_response().status(), StatusCode::SEE_OTHER);
+
+        let conn = state.db.lock().expect("lock sqlite");
+        let task = db::get_task_by_id(&conn, task_id)
+            .expect("query updated task")
+            .expect("task exists");
+        assert_eq!(task.code, "user_task");
+        assert_eq!(task.name, "Renamed Task");
+        assert_eq!(task.schedule, "@daily");
+        assert_eq!(task.enabled, 0);
+    }
+
+    #[tokio::test]
+    async fn dash_delete_task_soft_deletes_user_task() {
+        let state = build_state();
+        let task_id = {
+            let conn = state.db.lock().expect("lock sqlite");
+            db::create_task(
+                &conn,
+                &db::TaskMutation {
+                    code: "user_task".to_string(),
+                    name: "User Task".to_string(),
+                    description: "created from test".to_string(),
+                    schedule: "@hourly".to_string(),
+                    enabled: 1,
+                    kind: TASK_KIND_USER,
+                },
+            )
+            .expect("create task")
+        };
+
+        let redirect = dash_delete_task(Path(task_id), State(state.clone()))
+            .await
+            .expect("delete task should redirect");
+        assert_eq!(redirect.into_response().status(), StatusCode::SEE_OTHER);
+
+        let conn = state.db.lock().expect("lock sqlite");
+        assert!(db::get_task_by_id(&conn, task_id)
+            .expect("query deleted task")
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn dash_delete_task_rejects_internal_task() {
+        let state = build_state();
+        let task_id = {
+            let conn = state.db.lock().expect("lock sqlite");
+            db::create_task(
+                &conn,
+                &db::TaskMutation {
+                    code: "internal_task".to_string(),
+                    name: "Internal Task".to_string(),
+                    description: "created from test".to_string(),
+                    schedule: "@hourly".to_string(),
+                    enabled: 1,
+                    kind: TASK_KIND_INTERNAL,
+                },
+            )
+            .expect("create task")
+        };
+
+        let err = dash_delete_task(Path(task_id), State(state.clone()))
+            .await
+            .expect_err("internal task delete should fail");
+        assert_eq!(err.into_response().status(), StatusCode::BAD_REQUEST);
+
+        let conn = state.db.lock().expect("lock sqlite");
+        assert!(db::get_task_by_id(&conn, task_id)
+            .expect("query internal task")
+            .is_some());
     }
 }

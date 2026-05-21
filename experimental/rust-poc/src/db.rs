@@ -36,9 +36,12 @@ pub struct PostListItem {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TaskListItem {
+    pub id: i64,
     pub code: String,
     pub name: String,
+    pub schedule: String,
     pub enabled: i64,
+    pub kind: i64,
     pub last_status: String,
 }
 
@@ -53,6 +56,7 @@ pub struct TaskRunListItem {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TaskDetail {
+    pub id: i64,
     pub code: String,
     pub name: String,
     pub description: String,
@@ -76,6 +80,16 @@ pub struct TaskDefinition {
 pub struct TaskRecord {
     pub code: String,
     pub schedule: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskMutation {
+    pub code: String,
+    pub name: String,
+    pub description: String,
+    pub schedule: String,
+    pub enabled: i64,
+    pub kind: i64,
 }
 
 pub fn list_posts(conn: &Connection, limit: usize) -> Result<Vec<PostListItem>> {
@@ -105,7 +119,7 @@ pub fn list_posts(conn: &Connection, limit: usize) -> Result<Vec<PostListItem>> 
 
 pub fn list_tasks(conn: &Connection, limit: usize) -> Result<Vec<TaskListItem>> {
     let mut stmt = conn.prepare(
-        "SELECT code, name, enabled, COALESCE(last_status, '')
+        "SELECT id, code, name, schedule, enabled, kind, COALESCE(last_status, '')
          FROM t_tasks
          WHERE deleted_at IS NULL
          ORDER BY id DESC
@@ -113,10 +127,13 @@ pub fn list_tasks(conn: &Connection, limit: usize) -> Result<Vec<TaskListItem>> 
     )?;
     let rows = stmt.query_map((limit as i64,), |row| {
         Ok(TaskListItem {
-            code: row.get(0)?,
-            name: row.get(1)?,
-            enabled: row.get(2)?,
-            last_status: row.get(3)?,
+            id: row.get(0)?,
+            code: row.get(1)?,
+            name: row.get(2)?,
+            schedule: row.get(3)?,
+            enabled: row.get(4)?,
+            kind: row.get(5)?,
+            last_status: row.get(6)?,
         })
     })?;
 
@@ -179,25 +196,99 @@ pub fn list_enabled_task_records(conn: &Connection) -> Result<Vec<TaskRecord>> {
 
 pub fn get_task_by_code(conn: &Connection, task_code: &str) -> Result<Option<TaskDetail>> {
     conn.query_row(
-        "SELECT code, name, COALESCE(description, ''), schedule, enabled, kind, COALESCE(last_status, '')
+        "SELECT id, code, name, COALESCE(description, ''), schedule, enabled, kind, COALESCE(last_status, '')
          FROM t_tasks
          WHERE code = ?1 AND deleted_at IS NULL
          LIMIT 1",
         [task_code],
         |row| {
             Ok(TaskDetail {
-                code: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                schedule: row.get(3)?,
-                enabled: row.get(4)?,
-                kind: row.get(5)?,
-                last_status: row.get(6)?,
+                id: row.get(0)?,
+                code: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                schedule: row.get(4)?,
+                enabled: row.get(5)?,
+                kind: row.get(6)?,
+                last_status: row.get(7)?,
             })
         },
     )
     .optional()
     .map_err(Into::into)
+}
+
+pub fn get_task_by_id(conn: &Connection, task_id: i64) -> Result<Option<TaskDetail>> {
+    conn.query_row(
+        "SELECT id, code, name, COALESCE(description, ''), schedule, enabled, kind, COALESCE(last_status, '')
+         FROM t_tasks
+         WHERE id = ?1 AND deleted_at IS NULL
+         LIMIT 1",
+        [task_id],
+        |row| {
+            Ok(TaskDetail {
+                id: row.get(0)?,
+                code: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                schedule: row.get(4)?,
+                enabled: row.get(5)?,
+                kind: row.get(6)?,
+                last_status: row.get(7)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
+}
+
+pub fn create_task(conn: &Connection, task: &TaskMutation) -> Result<i64> {
+    let now = unix_now();
+    conn.execute(
+        "INSERT INTO t_tasks(code, name, description, schedule, enabled, kind, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        (
+            task.code.as_str(),
+            task.name.as_str(),
+            task.description.as_str(),
+            task.schedule.as_str(),
+            task.enabled,
+            task.kind,
+            now,
+            now,
+        ),
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn update_task(conn: &Connection, task_id: i64, task: &TaskMutation) -> Result<()> {
+    let now = unix_now();
+    conn.execute(
+        "UPDATE t_tasks
+         SET name = ?2, description = ?3, schedule = ?4, enabled = ?5, kind = ?6, updated_at = ?7
+         WHERE id = ?1 AND deleted_at IS NULL",
+        (
+            task_id,
+            task.name.as_str(),
+            task.description.as_str(),
+            task.schedule.as_str(),
+            task.enabled,
+            task.kind,
+            now,
+        ),
+    )?;
+    Ok(())
+}
+
+pub fn soft_delete_task(conn: &Connection, task_id: i64) -> Result<()> {
+    let now = unix_now();
+    conn.execute(
+        "UPDATE t_tasks
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE id = ?1 AND deleted_at IS NULL",
+        (task_id, now),
+    )?;
+    Ok(())
 }
 
 pub fn ensure_builtin_task(conn: &Connection, task: &TaskDefinition) -> Result<()> {
@@ -382,5 +473,58 @@ mod tests {
         assert_eq!(fetched.name, task.name);
         assert_eq!(fetched.schedule, task.schedule);
         assert_eq!(fetched.enabled, task.enabled);
+    }
+
+    #[test]
+    fn create_update_and_soft_delete_task_follow_expected_semantics() {
+        let conn = Connection::open_in_memory().expect("open in-memory sqlite");
+        conn.execute_batch(INITIAL_SQL)
+            .expect("initialize schema from Go InitialSQL");
+
+        let task_id = create_task(
+            &conn,
+            &TaskMutation {
+                code: "user_task".to_string(),
+                name: "User Task".to_string(),
+                description: "created in rust test".to_string(),
+                schedule: "@hourly".to_string(),
+                enabled: 1,
+                kind: 1,
+            },
+        )
+        .expect("create task");
+
+        let created = get_task_by_id(&conn, task_id)
+            .expect("query task by id")
+            .expect("task should exist");
+        assert_eq!(created.code, "user_task");
+        assert_eq!(created.kind, 1);
+
+        update_task(
+            &conn,
+            task_id,
+            &TaskMutation {
+                code: "ignored".to_string(),
+                name: "Renamed Task".to_string(),
+                description: "updated".to_string(),
+                schedule: "@daily".to_string(),
+                enabled: 0,
+                kind: 1,
+            },
+        )
+        .expect("update task");
+
+        let updated = get_task_by_id(&conn, task_id)
+            .expect("query updated task by id")
+            .expect("task should still exist");
+        assert_eq!(updated.code, "user_task");
+        assert_eq!(updated.name, "Renamed Task");
+        assert_eq!(updated.schedule, "@daily");
+        assert_eq!(updated.enabled, 0);
+
+        soft_delete_task(&conn, task_id).expect("soft delete task");
+        assert!(get_task_by_id(&conn, task_id)
+            .expect("query deleted task by id")
+            .is_none());
     }
 }

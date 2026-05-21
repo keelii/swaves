@@ -162,8 +162,10 @@ pub async fn trigger_task(state: Arc<AppState>, task_code: &str) -> Result<()> {
     };
 
     let task = task.ok_or_else(|| anyhow::anyhow!("task not found: {task_code}"))?;
-    let job_func = registered_job(task.code.as_str())
-        .ok_or_else(|| anyhow::anyhow!("job not registered: {}", task.code))?;
+    let Some(job_func) = registered_job(task.code.as_str()) else {
+        record_unregistered_task(state, &task).await;
+        return Ok(());
+    };
 
     execute_task(state, task.code.as_str(), job_func).await;
     Ok(())
@@ -171,6 +173,29 @@ pub async fn trigger_task(state: Arc<AppState>, task_code: &str) -> Result<()> {
 
 fn scheduler_state() -> &'static Mutex<Option<SchedulerRuntime>> {
     SCHEDULER.get_or_init(|| Mutex::new(None))
+}
+
+async fn record_unregistered_task(state: Arc<AppState>, task: &db::TaskDetail) {
+    let started_at = unix_now();
+    let message = format!("job not registered: {}", task.code);
+    match state.db.lock() {
+        Ok(conn) => {
+            if let Err(err) = db::update_task_status(&conn, task.code.as_str(), "error", started_at)
+            {
+                error!(task_code = %task.code, error = %err, "failed to update unregistered task status");
+            }
+            if task.kind == 1 {
+                if let Err(err) = db::record_task_run(&conn, task.code.as_str(), "error", &message)
+                {
+                    error!(task_code = %task.code, error = %err, "failed to record unregistered task run");
+                }
+            }
+        }
+        Err(err) => {
+            error!(task_code = %task.code, error = %err, "db mutex poisoned");
+        }
+    }
+    warn!(task_code = %task.code, "job not registered");
 }
 
 async fn execute_task(state: Arc<AppState>, task_code: &str, job_func: JobFunc) {
@@ -384,6 +409,41 @@ mod tests {
         drop(conn);
 
         stop().await;
+    }
+
+    #[tokio::test]
+    async fn trigger_task_records_error_for_unregistered_user_task() {
+        let state = build_state();
+        {
+            let conn = state.db.lock().expect("lock sqlite");
+            db::create_task(
+                &conn,
+                &db::TaskMutation {
+                    code: "user_task".to_string(),
+                    name: "User Task".to_string(),
+                    description: "created in test".to_string(),
+                    schedule: "@hourly".to_string(),
+                    enabled: 1,
+                    kind: 1,
+                },
+            )
+            .expect("create user task");
+        }
+
+        trigger_task(state.clone(), "user_task")
+            .await
+            .expect("trigger unregistered user task");
+
+        let conn = state.db.lock().expect("lock sqlite");
+        let task = db::get_task_by_code(&conn, "user_task")
+            .expect("query task")
+            .expect("task exists");
+        assert_eq!(task.last_status, "error");
+
+        let runs = db::list_task_runs(&conn, "user_task", 10).expect("list task runs");
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].status, "error");
+        assert!(runs[0].message.contains("job not registered"));
     }
 
     #[test]
