@@ -292,7 +292,7 @@ function copyTextToClipboard(text) {
     return navigator.clipboard.writeText(input);
   }
   return new Promise(function(resolve, reject) {
-    if (typeof document === "undefined" || typeof document.execCommand !== "function") {
+    if (typeof document === "undefined") {
       reject(new Error("clipboard unavailable"));
       return;
     }
