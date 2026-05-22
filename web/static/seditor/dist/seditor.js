@@ -19138,6 +19138,45 @@ var SEditor = (() => {
 `;
     document.head.appendChild(el);
   }
+  function ensureCodeBlockCopyStyles() {
+    if (typeof document === "undefined") {
+      return;
+    }
+    var id = "seditor-code-block-copy-styles";
+    if (document.getElementById(id)) {
+      return;
+    }
+    var el = document.createElement("style");
+    el.id = id;
+    el.textContent = `
+.seditor-root .ProseMirror .seditor-code-block-wrap {
+  position: relative;
+}
+.seditor-root .ProseMirror .seditor-code-block-wrap > pre {
+  margin: 1.4em 0;
+  padding-top: 36px;
+}
+.seditor-root .ProseMirror .seditor-code-block-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border, #d1d5db);
+  border-radius: 4px;
+  background: var(--app-panel-bg, #fff);
+  color: var(--app-text, #111827);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+`;
+    document.head.appendChild(el);
+  }
   function isMermaidCodeBlock(node) {
     if (!node || !node.type || node.type.name !== "code_block") {
       return false;
@@ -19235,6 +19274,107 @@ var SEditor = (() => {
   function createMermaidPreviewNodeView(node) {
     if (!isMermaidCodeBlock(node)) {
       return null;
+    }
+    function copyTextToClipboard(text2) {
+      var input = String(text2 == null ? "" : text2);
+      if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        return navigator.clipboard.writeText(input);
+      }
+      return new Promise(function(resolve, reject) {
+        if (typeof document === "undefined" || typeof document.execCommand !== "function") {
+          reject(new Error("clipboard unavailable"));
+          return;
+        }
+        var textarea = document.createElement("textarea");
+        textarea.value = input;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          var ok = document.execCommand("copy");
+          document.body.removeChild(textarea);
+          if (!ok) {
+            reject(new Error("copy command failed"));
+            return;
+          }
+          resolve();
+        } catch (error2) {
+          document.body.removeChild(textarea);
+          reject(error2);
+        }
+      });
+    }
+    function createCodeBlockCopyNodeView2(node2, view) {
+      if (!node2 || !node2.type || node2.type.name !== "code_block" || isMermaidCodeBlock(node2)) {
+        return null;
+      }
+      ensureCodeBlockCopyStyles();
+      var dom2 = document.createElement("div");
+      var pre = document.createElement("pre");
+      var code2 = document.createElement("code");
+      var button2 = document.createElement("button");
+      var resetTimer = 0;
+      dom2.className = "seditor-code-block-wrap";
+      button2.type = "button";
+      button2.className = "seditor-code-block-copy";
+      button2.textContent = "\u590D\u5236";
+      button2.setAttribute("aria-label", "\u590D\u5236\u4EE3\u7801\u5230\u526A\u8D34\u677F");
+      button2.setAttribute("title", "\u590D\u5236\u4EE3\u7801\u5230\u526A\u8D34\u677F");
+      button2.setAttribute("contenteditable", "false");
+      pre.appendChild(code2);
+      dom2.appendChild(button2);
+      dom2.appendChild(pre);
+      function setButtonText(label) {
+        button2.textContent = label;
+        if (resetTimer) {
+          window.clearTimeout(resetTimer);
+          resetTimer = 0;
+        }
+        if (label !== "\u590D\u5236") {
+          resetTimer = window.setTimeout(function() {
+            button2.textContent = "\u590D\u5236";
+            resetTimer = 0;
+          }, 1200);
+        }
+      }
+      button2.addEventListener("click", function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        copyTextToClipboard(node2.textContent || "").then(function() {
+          setButtonText("\u5DF2\u590D\u5236");
+          if (view && typeof view.focus === "function") {
+            view.focus();
+          }
+        }).catch(function(error2) {
+          setButtonText("\u590D\u5236\u5931\u8D25");
+          if (window.console && typeof window.console.warn === "function") {
+            window.console.warn("copy code block failed", error2);
+          }
+        });
+      });
+      return {
+        dom: dom2,
+        contentDOM: code2,
+        update: function(nextNode) {
+          if (!nextNode || !nextNode.type || nextNode.type.name !== "code_block" || isMermaidCodeBlock(nextNode)) {
+            return false;
+          }
+          node2 = nextNode;
+          return true;
+        },
+        stopEvent: function(event) {
+          var target = event && event.target;
+          return !!(target && button2.contains(target));
+        },
+        destroy: function() {
+          if (resetTimer) {
+            window.clearTimeout(resetTimer);
+          }
+        }
+      };
     }
     ensureMermaidPreviewStyles();
     var dom = document.createElement("div");
@@ -21110,6 +21250,8 @@ var SEditor = (() => {
         return isMarkActive(state, schema2.marks.strong);
       case "italic":
         return isMarkActive(state, schema2.marks.em);
+      case "inline_code":
+        return isMarkActive(state, schema2.marks.code);
       case "link":
         return isMarkActive(state, schema2.marks.link);
       case "blockquote":
@@ -21132,6 +21274,8 @@ var SEditor = (() => {
         return strong ? toggleMark(strong) : null;
       case "italic":
         return em ? toggleMark(em) : null;
+      case "inline_code":
+        return schema2.marks.code ? toggleMark(schema2.marks.code) : null;
       case "blockquote":
         if (!blockquote2) {
           return null;
@@ -21294,6 +21438,7 @@ var SEditor = (() => {
     var toggleCommands = {
       bold: true,
       italic: true,
+      inline_code: true,
       link: true,
       blockquote: true,
       bullet_list: true,
@@ -21418,7 +21563,12 @@ var SEditor = (() => {
     view = new EditorView(mount, {
       state,
       nodeViews: {
-        code_block: createTrackedMermaidPreviewNodeView
+        code_block: function(node, editorView) {
+          if (isMermaidCodeBlock(node)) {
+            return createTrackedMermaidPreviewNodeView(node);
+          }
+          return createCodeBlockCopyNodeView(node, editorView);
+        }
       },
       dispatchTransaction: function(tr) {
         var nextState = view.state.apply(tr);
