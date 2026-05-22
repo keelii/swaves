@@ -287,7 +287,7 @@ function loadMermaidPreviewRuntime() {
 }
 
 function copyTextToClipboard(text) {
-  var input = String(text == null ? "" : text);
+  var input = text == null ? "" : String(text);
   if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
     return navigator.clipboard.writeText(input);
   }

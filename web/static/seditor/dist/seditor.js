@@ -19272,7 +19272,7 @@ var SEditor = (() => {
     });
   }
   function copyTextToClipboard(text2) {
-    var input = String(text2 == null ? "" : text2);
+    var input = text2 == null ? "" : String(text2);
     if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
       return navigator.clipboard.writeText(input);
     }
