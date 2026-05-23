@@ -69,7 +69,6 @@ function ensureMermaidPreviewStyles() {
   border: 1px solid var(--app-border, #d1d5db);
   background: var(--app-panel-bg, #fff);
   margin: 1.4em 0;
-  padding: var(--app-spacing, 12px);
   overflow: auto;
 }
 .seditor-root .ProseMirror .seditor-mermaid-preview svg {
@@ -160,7 +159,7 @@ function ensureCodeBlockCopyStyles() {
   margin: 1.4em 0;
 }
 .seditor-root .ProseMirror .seditor-code-block-copy svg {
-  height: 16px;
+  height: 14px;
   color: var(--app-text, #111827);
 }
 .seditor-root .ProseMirror .seditor-code-block-copy {
@@ -337,7 +336,6 @@ function createCodeBlockCopyNodeView(node, view) {
   dom.className = "seditor-code-block-wrap";
   button.type = "button";
   button.className = "seditor-code-block-copy";
-  button.textContent = "复制";
   button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-icon lucide-clipboard" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`
   button.setAttribute("aria-label", "复制代码到剪贴板");
   button.setAttribute("title", "复制代码到剪贴板");
@@ -347,33 +345,31 @@ function createCodeBlockCopyNodeView(node, view) {
   dom.appendChild(button);
   dom.appendChild(pre);
 
-  function setButtonText(label) {
-    button.textContent = label;
-    if (resetTimer) {
-      window.clearTimeout(resetTimer);
-      resetTimer = 0;
-    }
-    if (label !== "复制") {
-      resetTimer = window.setTimeout(function() {
-        button.textContent = "复制";
-        resetTimer = 0;
-      }, 1200);
-    }
-  }
+  // function setButtonText(label) {
+  //   button.textContent = label;
+  //   if (resetTimer) {
+  //     window.clearTimeout(resetTimer);
+  //     resetTimer = 0;
+  //   }
+  //   if (label !== "复制") {
+  //     resetTimer = window.setTimeout(function() {
+  //       button.textContent = "复制";
+  //       resetTimer = 0;
+  //     }, 1200);
+  //   }
+  // }
 
   button.addEventListener("click", function(event) {
     event.preventDefault();
     event.stopPropagation();
     copyTextToClipboard(node.textContent || "").then(function() {
-      setButtonText("已复制");
+      // setButtonText("已复制");
       if (view && typeof view.focus === "function") {
         view.focus();
       }
     }).catch(function(error) {
-      setButtonText("复制失败");
-      if (window.console && typeof window.console.warn === "function") {
-        window.console.warn("copy code block failed", error);
-      }
+      // setButtonText("复制失败");
+      console.warn("copy code block failed", error);
     });
   });
 
@@ -2680,9 +2676,7 @@ function commandByName(schema, name, opts) {
               }
               insertImageNode(view, schema, attrs);
             }).catch(function(err) {
-              if (window.console && typeof window.console.warn === "function") {
-                window.console.warn("image insertion failed", err);
-              }
+              console.warn("image insertion failed", err);
             });
           });
 

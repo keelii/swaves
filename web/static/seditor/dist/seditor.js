@@ -19067,7 +19067,6 @@ var SEditor = (() => {
   border: 1px solid var(--app-border, #d1d5db);
   background: var(--app-panel-bg, #fff);
   margin: 1.4em 0;
-  padding: var(--app-spacing, 12px);
   overflow: auto;
 }
 .seditor-root .ProseMirror .seditor-mermaid-preview svg {
@@ -19319,7 +19318,6 @@ var SEditor = (() => {
     dom.className = "seditor-code-block-wrap";
     button.type = "button";
     button.className = "seditor-code-block-copy";
-    button.textContent = "\u590D\u5236";
     button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-icon lucide-clipboard" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`;
     button.setAttribute("aria-label", "\u590D\u5236\u4EE3\u7801\u5230\u526A\u8D34\u677F");
     button.setAttribute("title", "\u590D\u5236\u4EE3\u7801\u5230\u526A\u8D34\u677F");
@@ -19327,32 +19325,15 @@ var SEditor = (() => {
     pre.appendChild(code2);
     dom.appendChild(button);
     dom.appendChild(pre);
-    function setButtonText(label) {
-      button.textContent = label;
-      if (resetTimer) {
-        window.clearTimeout(resetTimer);
-        resetTimer = 0;
-      }
-      if (label !== "\u590D\u5236") {
-        resetTimer = window.setTimeout(function() {
-          button.textContent = "\u590D\u5236";
-          resetTimer = 0;
-        }, 1200);
-      }
-    }
     button.addEventListener("click", function(event) {
       event.preventDefault();
       event.stopPropagation();
       copyTextToClipboard(node.textContent || "").then(function() {
-        setButtonText("\u5DF2\u590D\u5236");
         if (view && typeof view.focus === "function") {
           view.focus();
         }
       }).catch(function(error2) {
-        setButtonText("\u590D\u5236\u5931\u8D25");
-        if (window.console && typeof window.console.warn === "function") {
-          window.console.warn("copy code block failed", error2);
-        }
+        console.warn("copy code block failed", error2);
       });
     });
     return {
@@ -21414,9 +21395,7 @@ var SEditor = (() => {
                 }
                 insertImageNode(view, schema2, attrs2);
               }).catch(function(err) {
-                if (window.console && typeof window.console.warn === "function") {
-                  window.console.warn("image insertion failed", err);
-                }
+                console.warn("image insertion failed", err);
               });
             });
             sequence.then(function() {
