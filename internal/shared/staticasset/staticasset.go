@@ -14,7 +14,7 @@ var vendoredStaticPrefixes = []string{
 	"/static/katex/",
 	"/static/mermaid/",
 	"/static/svg-pan-zoom/",
-	"/static/site/tufte-css/",
+	//"/static/site/tufte-css/",
 }
 
 func IsVendored(pathValue string) bool {
