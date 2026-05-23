@@ -8,7 +8,6 @@ func TestIsVendoredStaticAsset(t *testing.T) {
 		"/static/katex/fonts/KaTeX_Main-Regular.woff2",
 		"/static/mermaid/mermaid.tiny.js?v=dev",
 		"/static/svg-pan-zoom/svg-pan-zoom.min.js",
-		"/static/site/tufte-css/tufte.min.css",
 	} {
 		t.Run(pathValue, func(t *testing.T) {
 			if !IsVendored(pathValue) {

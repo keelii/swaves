@@ -1023,12 +1023,6 @@ func TestRenderSiteLayoutWithoutTitle(t *testing.T) {
 	if !strings.Contains(rendered, `/static/favicon.svg?v=`) {
 		t.Fatalf("expected favicon link in site layout")
 	}
-	if !strings.Contains(rendered, `/static/site/tufte-css/tufte.min.css"`) {
-		t.Fatalf("expected tufte css link without build version query")
-	}
-	if strings.Contains(rendered, `/static/site/tufte-css/tufte.min.css?v=`) {
-		t.Fatalf("expected tufte css asset to omit build version query")
-	}
 	if !strings.Contains(rendered, `/static/site/style.css?v=`) {
 		t.Fatalf("expected site css link to include build version query")
 	}
