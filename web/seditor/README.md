@@ -55,6 +55,7 @@ Any element with `data-seditor-command="..."` will be bound as a button:
 
 - `bold`
 - `italic`
+- `inline_code`
 - `blockquote`
 - `bullet_list`
 - `ordered_list`

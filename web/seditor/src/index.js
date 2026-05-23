@@ -141,6 +141,50 @@ function ensureMermaidPreviewStyles() {
   document.head.appendChild(el);
 }
 
+function ensureCodeBlockCopyStyles() {
+  if (typeof document === "undefined") {
+    return;
+  }
+  var id = "seditor-code-block-copy-styles";
+  if (document.getElementById(id)) {
+    return;
+  }
+
+  var el = document.createElement("style");
+  el.id = id;
+  el.textContent = `
+.seditor-root .ProseMirror .seditor-code-block-wrap {
+  position: relative;
+}
+.seditor-root .ProseMirror .seditor-code-block-wrap > pre {
+  margin: 1.4em 0;
+}
+.seditor-root .ProseMirror .seditor-code-block-copy svg {
+  height: 16px;
+  color: var(--app-text, #111827);
+}
+.seditor-root .ProseMirror .seditor-code-block-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 6px 4px;
+  border: 1px solid var(--app-border, #d1d5db);
+  border-radius: 4px;
+  background: var(--app-panel-bg, #fff);
+  color: var(--app-text, #111827);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+`;
+  document.head.appendChild(el);
+}
+
 function isMermaidCodeBlock(node) {
   if (!node || !node.type || node.type.name !== "code_block") {
     return false;
@@ -243,6 +287,116 @@ function loadMermaidPreviewRuntime() {
       securityLevel: "strict"
     });
   });
+}
+
+function copyTextToClipboard(text) {
+  var input = text == null ? "" : String(text);
+  if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    return navigator.clipboard.writeText(input);
+  }
+  return new Promise(function(resolve, reject) {
+    if (typeof document === "undefined") {
+      reject(new Error("clipboard unavailable"));
+      return;
+    }
+    var textarea = document.createElement("textarea");
+    textarea.value = input;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      var ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (!ok) {
+        reject(new Error("copy command failed"));
+        return;
+      }
+      resolve();
+    } catch (error) {
+      document.body.removeChild(textarea);
+      reject(error);
+    }
+  });
+}
+
+function createCodeBlockCopyNodeView(node, view) {
+  if (!node || !node.type || node.type.name !== "code_block" || isMermaidCodeBlock(node)) {
+    return null;
+  }
+  ensureCodeBlockCopyStyles();
+
+  var dom = document.createElement("div");
+  var pre = document.createElement("pre");
+  var code = document.createElement("code");
+  var button = document.createElement("button");
+  var resetTimer = 0;
+
+  dom.className = "seditor-code-block-wrap";
+  button.type = "button";
+  button.className = "seditor-code-block-copy";
+  button.textContent = "复制";
+  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-icon lucide-clipboard" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`
+  button.setAttribute("aria-label", "复制代码到剪贴板");
+  button.setAttribute("title", "复制代码到剪贴板");
+  button.setAttribute("contenteditable", "false");
+
+  pre.appendChild(code);
+  dom.appendChild(button);
+  dom.appendChild(pre);
+
+  function setButtonText(label) {
+    button.textContent = label;
+    if (resetTimer) {
+      window.clearTimeout(resetTimer);
+      resetTimer = 0;
+    }
+    if (label !== "复制") {
+      resetTimer = window.setTimeout(function() {
+        button.textContent = "复制";
+        resetTimer = 0;
+      }, 1200);
+    }
+  }
+
+  button.addEventListener("click", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    copyTextToClipboard(node.textContent || "").then(function() {
+      setButtonText("已复制");
+      if (view && typeof view.focus === "function") {
+        view.focus();
+      }
+    }).catch(function(error) {
+      setButtonText("复制失败");
+      if (window.console && typeof window.console.warn === "function") {
+        window.console.warn("copy code block failed", error);
+      }
+    });
+  });
+
+  return {
+    dom: dom,
+    contentDOM: code,
+    update: function(nextNode) {
+      if (!nextNode || !nextNode.type || nextNode.type.name !== "code_block" || isMermaidCodeBlock(nextNode)) {
+        return false;
+      }
+      node = nextNode;
+      return true;
+    },
+    stopEvent: function(event) {
+      var target = event && event.target;
+      return !!(target && button.contains(target));
+    },
+    destroy: function() {
+      if (resetTimer) {
+        window.clearTimeout(resetTimer);
+      }
+    }
+  };
 }
 
 function createMermaidPreviewNodeView(node) {
@@ -2361,6 +2515,8 @@ function isCommandActive(schema, name, state) {
       return isMarkActive(state, schema.marks.strong);
     case "italic":
       return isMarkActive(state, schema.marks.em);
+    case "inline_code":
+      return isMarkActive(state, schema.marks.code);
     case "link":
       return isMarkActive(state, schema.marks.link);
     case "blockquote":
@@ -2385,6 +2541,8 @@ function commandByName(schema, name, opts) {
       return strong ? toggleMark(strong) : null;
     case "italic":
       return em ? toggleMark(em) : null;
+    case "inline_code":
+      return schema.marks.code ? toggleMark(schema.marks.code) : null;
     case "blockquote":
       if (!blockquote) {
         return null;
@@ -2553,6 +2711,7 @@ function bindCommandButtons(view, schema, root, opts) {
   var toggleCommands = {
     bold: true,
     italic: true,
+    inline_code: true,
     link: true,
     blockquote: true,
     bullet_list: true,
@@ -2689,7 +2848,12 @@ export function init(options) {
   view = new EditorView(mount, {
     state: state,
     nodeViews: {
-      code_block: createTrackedMermaidPreviewNodeView
+      code_block: function(node, editorView) {
+        if (isMermaidCodeBlock(node)) {
+          return createTrackedMermaidPreviewNodeView(node);
+        }
+        return createCodeBlockCopyNodeView(node, editorView);
+      }
     },
     dispatchTransaction: function(tr) {
       var nextState = view.state.apply(tr);
