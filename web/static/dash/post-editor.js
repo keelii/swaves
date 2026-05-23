@@ -656,6 +656,7 @@
     window.__seditor = window.SEditor.init({
       mount: '[data-role="post-editor-wysiwyg"]',
       textarea: "#post-content",
+      rawBlockPreview: true,
       placeholder: "输入内容",
       onChange: function(markdown) {
         updateWordCount(markdown);

@@ -182,7 +182,8 @@ blockquote footer {
 
 section > p,
 section > footer,
-section > table {
+section > table,
+section > iframe {
     width: 55%;
 }
 

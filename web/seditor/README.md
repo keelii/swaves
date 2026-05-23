@@ -48,6 +48,7 @@ Mount an editor:
 - `placeholder` (optional): placeholder text shown when document is empty.
 - `onChange(markdown)` (optional): change callback.
 - `commandsRoot` (optional): root element for command button binding.
+- `rawBlockPreview` (optional, default `false`): render math/iframe raw blocks as read-only previews.
 
 ## Toolbar bindings
 
@@ -88,6 +89,15 @@ This v1 bundle recognizes these patterns and preserves them as raw blocks:
 
 - display math blocks (`$$ ... $$`)
 - footnote definition blocks (`[^id]: ...`)
+- iframe blocks (`<iframe ...></iframe>`)
 
-They are editable and serialized back to Markdown byte-for-byte **inside the raw
+Raw blocks are still serialized back to Markdown byte-for-byte **inside the raw
 block** (other non-raw parts may be normalized by the Markdown serializer).
+
+When `rawBlockPreview` is enabled:
+
+- display math and iframe raw blocks are rendered as read-only previews in
+  WYSIWYG mode
+- to edit those blocks, switch to source mode and edit Markdown directly
+- footnote raw blocks stay editable in WYSIWYG mode
+

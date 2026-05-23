@@ -140,6 +140,55 @@ function ensureMermaidPreviewStyles() {
   document.head.appendChild(el);
 }
 
+function ensureRawBlockPreviewStyles() {
+  if (typeof document === "undefined") {
+    return;
+  }
+  var id = "seditor-raw-block-preview-styles";
+  if (document.getElementById(id)) {
+    return;
+  }
+
+  var el = document.createElement("style");
+  el.id = id;
+  el.textContent = `
+.seditor-root .ProseMirror .seditor-raw-preview {
+  margin: 1.4em 0;
+  overflow: auto;
+}
+.seditor-root .ProseMirror .seditor-raw-preview-error {
+  color: var(--app-danger, #b91c1c);
+  white-space: pre-wrap;
+}
+.seditor-root .ProseMirror .seditor-raw-math-preview {
+  text-align: center;
+}
+.seditor-root .ProseMirror .seditor-raw-inline-preview {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+}
+.seditor-root .ProseMirror .seditor-raw-inline-preview.seditor-raw-inline-preview-error {
+  color: var(--app-danger, #b91c1c);
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92em;
+}
+.seditor-root .ProseMirror .seditor-raw-iframe-preview {
+  position: relative;
+  width: 100%;
+  min-height: 180px;
+}
+.seditor-root .ProseMirror .seditor-raw-iframe-preview iframe {
+  display: block;
+  width: 100%;
+  min-height: 320px;
+  border: 0;
+  background: #fff;
+}
+`;
+  document.head.appendChild(el);
+}
+
 function ensureCodeBlockCopyStyles() {
   if (typeof document === "undefined") {
     return;
@@ -286,6 +335,29 @@ function loadMermaidPreviewRuntime() {
       securityLevel: "strict"
     });
   });
+}
+
+var katexPreviewRuntimePromise = null;
+
+function loadKatexPreviewRuntime() {
+  if (katexPreviewRuntimePromise) {
+    return katexPreviewRuntimePromise;
+  }
+
+  katexPreviewRuntimePromise = window.loadResources([
+    "/static/katex/katex.min.css",
+    "/static/katex/katex.min.js"
+  ]).then(function() {
+    if (!window.katex || typeof window.katex.render !== "function") {
+      throw new Error("KaTeX runtime unavailable");
+    }
+    return window.katex;
+  }).catch(function(error) {
+    katexPreviewRuntimePromise = null;
+    throw error;
+  });
+
+  return katexPreviewRuntimePromise;
 }
 
 function copyTextToClipboard(text) {
@@ -605,6 +677,330 @@ function createMermaidPreviewNodeView(node) {
   };
 }
 
+function isMathRawBlockText(text) {
+  var lines = normalizeNewlines(text).split("\n");
+  if (lines.length < 2) {
+    return false;
+  }
+  return lines[0].trim() === "$$" && lines[lines.length - 1].trim() === "$$";
+}
+
+function parseMathRawInlineSource(text) {
+  var source = String(text == null ? "" : text).trim();
+  if (!source || source.indexOf("\n") !== -1) {
+    return null;
+  }
+
+  var displayMatch = source.match(/^\$\$([\s\S]+)\$\$$/);
+  if (displayMatch) {
+    return {
+      expression: displayMatch[1],
+      displayMode: true
+    };
+  }
+
+  var inlineMatch = source.match(/^\$(?!\$)([\s\S]+)\$(?!\$)$/);
+  if (inlineMatch) {
+    return {
+      expression: inlineMatch[1],
+      displayMode: false
+    };
+  }
+
+  return null;
+}
+
+function extractMathRawBlockExpression(text) {
+  var lines = normalizeNewlines(text).split("\n");
+  if (lines.length < 2) {
+    return "";
+  }
+  return lines.slice(1, lines.length - 1).join("\n");
+}
+
+function isIframeRawBlockText(text) {
+  var trimmed = normalizeNewlines(text).trim();
+  if (!trimmed) {
+    return false;
+  }
+  return /^<iframe\b/i.test(trimmed) && /<\/iframe>\s*$/i.test(trimmed);
+}
+
+function getRawBlockPreviewKind(text) {
+  if (isMathRawBlockText(text)) {
+    return "math";
+  }
+  if (isIframeRawBlockText(text)) {
+    return "iframe";
+  }
+  return "";
+}
+
+function isIframePreviewURLSafe(url) {
+  var value = String(url == null ? "" : url).trim();
+  if (!value) {
+    return false;
+  }
+  try {
+    var parsed = new URL(value, window.location.origin);
+    var protocol = parsed.protocol.toLowerCase();
+    return protocol === "http:" || protocol === "https:";
+  } catch (error) {
+    return false;
+  }
+}
+
+function parseIframeRawBlockSource(text) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  var source = normalizeNewlines(text).trim();
+  if (!isIframeRawBlockText(source)) {
+    return null;
+  }
+
+  var wrapper = document.createElement("div");
+  wrapper.innerHTML = source;
+  if (wrapper.childElementCount !== 1) {
+    return null;
+  }
+
+  for (var i = 0; i < wrapper.childNodes.length; i += 1) {
+    var child = wrapper.childNodes[i];
+    if (child.nodeType === 3 && String(child.textContent || "").trim()) {
+      return null;
+    }
+  }
+
+  var iframe = wrapper.firstElementChild;
+  if (!iframe || iframe.tagName.toLowerCase() !== "iframe") {
+    return null;
+  }
+
+  var src = String(iframe.getAttribute("src") || "").trim();
+  if (!isIframePreviewURLSafe(src)) {
+    return null;
+  }
+
+  return {
+    src: src,
+    width: String(iframe.getAttribute("width") || "").trim(),
+    height: String(iframe.getAttribute("height") || "").trim(),
+    title: String(iframe.getAttribute("title") || "").trim(),
+    loading: String(iframe.getAttribute("loading") || "").trim(),
+    referrerpolicy: String(iframe.getAttribute("referrerpolicy") || "").trim(),
+    allow: String(iframe.getAttribute("allow") || "").trim(),
+    allowfullscreen: iframe.hasAttribute("allowfullscreen")
+  };
+}
+
+function createRawBlockPreviewNodeView(node) {
+  if (!node || !node.type || node.type.name !== "raw_block") {
+    return null;
+  }
+
+  var source = node.textContent || "";
+  var kind = getRawBlockPreviewKind(source);
+  if (!kind) {
+    return null;
+  }
+
+  ensureRawBlockPreviewStyles();
+
+  var dom = document.createElement("div");
+  var body = document.createElement("div");
+  dom.className = "seditor-raw-preview";
+  dom.setAttribute("contenteditable", "false");
+  body.className = "seditor-raw-preview-body";
+  dom.appendChild(body);
+
+  var renderSeq = 0;
+
+  function renderError(message) {
+    body.className = "seditor-raw-preview-body seditor-raw-preview-error";
+    body.textContent = message;
+  }
+
+  function renderMath(nextSource, seq) {
+    body.className = "seditor-raw-preview-body seditor-raw-math-preview";
+    var expression = extractMathRawBlockExpression(nextSource);
+    loadKatexPreviewRuntime().then(function(katex) {
+      if (seq !== renderSeq) {
+        return;
+      }
+      body.textContent = "";
+      katex.render(expression, body, {
+        displayMode: true,
+        throwOnError: false,
+        strict: "warn",
+        trust: false
+      });
+    }).catch(function(error) {
+      if (seq !== renderSeq) {
+        return;
+      }
+      renderError(error && error.message ? error.message : "KaTeX render failed.");
+    });
+  }
+
+  function renderIframe(nextSource) {
+    var parsed = parseIframeRawBlockSource(nextSource);
+    if (!parsed) {
+      renderError("iframe 预览不可用，请切换源码模式修改。");
+      return;
+    }
+
+    body.className = "seditor-raw-preview-body seditor-raw-iframe-preview";
+    body.textContent = "";
+    var frame = document.createElement("iframe");
+    frame.setAttribute("src", parsed.src);
+    frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation");
+    frame.setAttribute("tabindex", "-1");
+    if (parsed.width) {
+      frame.setAttribute("width", parsed.width);
+    }
+    if (parsed.height) {
+      frame.setAttribute("height", parsed.height);
+    }
+    if (parsed.title) {
+      frame.setAttribute("title", parsed.title);
+    }
+    if (parsed.loading) {
+      frame.setAttribute("loading", parsed.loading);
+    }
+    if (parsed.referrerpolicy) {
+      frame.setAttribute("referrerpolicy", parsed.referrerpolicy);
+    }
+    if (parsed.allow) {
+      frame.setAttribute("allow", parsed.allow);
+    }
+    if (parsed.allowfullscreen) {
+      frame.setAttribute("allowfullscreen", "");
+    }
+    body.appendChild(frame);
+  }
+
+  function render(nextNode) {
+    var nextSource = nextNode.textContent || "";
+    var nextKind = getRawBlockPreviewKind(nextSource);
+    if (!nextKind) {
+      return false;
+    }
+
+    renderSeq += 1;
+    var seq = renderSeq;
+    if (nextKind === "math") {
+      renderMath(nextSource, seq);
+      return true;
+    }
+
+    renderIframe(nextSource);
+    return true;
+  }
+
+  render(node);
+
+  return {
+    dom: dom,
+    update: function(nextNode) {
+      if (!nextNode || !nextNode.type || nextNode.type.name !== "raw_block") {
+        return false;
+      }
+      if (nextNode.textContent !== node.textContent) {
+        if (!render(nextNode)) {
+          return false;
+        }
+      }
+      node = nextNode;
+      return true;
+    },
+    ignoreMutation: function() {
+      return true;
+    },
+    stopEvent: function() {
+      return true;
+    }
+  };
+}
+
+function createRawInlinePreviewNodeView(node) {
+  if (!node || !node.type || node.type.name !== "raw_inline") {
+    return null;
+  }
+
+  var parsed = parseMathRawInlineSource(node.textContent || "");
+  if (!parsed) {
+    return null;
+  }
+
+  ensureRawBlockPreviewStyles();
+
+  var dom = document.createElement("span");
+  dom.className = "seditor-raw-inline-preview";
+  dom.setAttribute("contenteditable", "false");
+  var renderSeq = 0;
+
+  function renderError(sourceText) {
+    dom.className = "seditor-raw-inline-preview seditor-raw-inline-preview-error";
+    dom.textContent = sourceText;
+  }
+
+  function render(nextNode) {
+    var sourceText = nextNode && nextNode.textContent ? nextNode.textContent : "";
+    var nextParsed = parseMathRawInlineSource(sourceText);
+    if (!nextParsed) {
+      return false;
+    }
+
+    renderSeq += 1;
+    var seq = renderSeq;
+    dom.className = "seditor-raw-inline-preview";
+    dom.textContent = "";
+    loadKatexPreviewRuntime().then(function(katex) {
+      if (seq !== renderSeq) {
+        return;
+      }
+      dom.textContent = "";
+      katex.render(nextParsed.expression, dom, {
+        displayMode: nextParsed.displayMode,
+        throwOnError: false,
+        strict: "warn",
+        trust: false
+      });
+    }).catch(function() {
+      if (seq !== renderSeq) {
+        return;
+      }
+      renderError(sourceText);
+    });
+    return true;
+  }
+
+  render(node);
+
+  return {
+    dom: dom,
+    update: function(nextNode) {
+      if (!nextNode || !nextNode.type || nextNode.type.name !== "raw_inline") {
+        return false;
+      }
+      if (nextNode.textContent !== node.textContent) {
+        if (!render(nextNode)) {
+          return false;
+        }
+      }
+      node = nextNode;
+      return true;
+    },
+    ignoreMutation: function() {
+      return true;
+    },
+    stopEvent: function() {
+      return true;
+    }
+  };
+}
+
 function buildSchema() {
   var tableSpec = {
     group: "block",
@@ -898,6 +1294,23 @@ function splitIntoRawBlockSegments(markdown) {
         break;
       }
       segments.push({ kind: "raw_block", text: footnoteLines.join("\n") });
+      continue;
+    }
+
+    if (/^<iframe\b/i.test(trimmed)) {
+      flushMarkdown();
+      var iframeLines = [line];
+      var iframeClosed = /<\/iframe>\s*$/i.test(line);
+      i += 1;
+      for (; i < lines.length && !iframeClosed; i += 1) {
+        iframeLines.push(lines[i]);
+        if (/<\/iframe>\s*$/i.test(lines[i])) {
+          iframeClosed = true;
+          i += 1;
+          break;
+        }
+      }
+      segments.push({ kind: "raw_block", text: iframeLines.join("\n") });
       continue;
     }
 
@@ -2847,6 +3260,18 @@ export function init(options) {
           return createTrackedMermaidPreviewNodeView(node);
         }
         return createCodeBlockCopyNodeView(node, editorView);
+      },
+      raw_inline: function(node) {
+        if (!opts.rawBlockPreview) {
+          return undefined;
+        }
+        return createRawInlinePreviewNodeView(node) || undefined;
+      },
+      raw_block: function(node) {
+        if (!opts.rawBlockPreview) {
+          return undefined;
+        }
+        return createRawBlockPreviewNodeView(node) || undefined;
       }
     },
     dispatchTransaction: function(tr) {
