@@ -158,7 +158,10 @@ function ensureCodeBlockCopyStyles() {
 }
 .seditor-root .ProseMirror .seditor-code-block-wrap > pre {
   margin: 1.4em 0;
-  padding-top: 36px;
+}
+.seditor-root .ProseMirror .seditor-code-block-copy svg {
+  height: 16px;
+  color: var(--app-text, #111827);
 }
 .seditor-root .ProseMirror .seditor-code-block-copy {
   position: absolute;
@@ -169,7 +172,7 @@ function ensureCodeBlockCopyStyles() {
   align-items: center;
   justify-content: center;
   height: 24px;
-  padding: 0 8px;
+  padding: 6px 4px;
   border: 1px solid var(--app-border, #d1d5db);
   border-radius: 4px;
   background: var(--app-panel-bg, #fff);
@@ -335,6 +338,7 @@ function createCodeBlockCopyNodeView(node, view) {
   button.type = "button";
   button.className = "seditor-code-block-copy";
   button.textContent = "复制";
+  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-icon lucide-clipboard" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`
   button.setAttribute("aria-label", "复制代码到剪贴板");
   button.setAttribute("title", "复制代码到剪贴板");
   button.setAttribute("contenteditable", "false");
