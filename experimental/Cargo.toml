@@ -1,0 +1,3 @@
+[workspace]
+members = ["rust-poc"]
+resolver = "3"
