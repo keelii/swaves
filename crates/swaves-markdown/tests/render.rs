@@ -86,7 +86,7 @@ fn render_highlights_unlabeled_code_fences() {
 }
 
 #[test]
-fn render_mermaid_server_side() {
+fn render_mermaid_client_side() {
     let markdown = "```mermaid\nflowchart LR\n    A --> B\n```";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
@@ -95,7 +95,12 @@ fn render_mermaid_server_side() {
         "{}",
         result.html
     );
-    assert!(result.html.contains("<svg"), "{}", result.html);
+    assert!(
+        result.html.contains("<div class=\"mermaid\""),
+        "{}",
+        result.html
+    );
+    assert!(!result.html.contains("<svg"), "{}", result.html);
 }
 
 #[test]
@@ -113,7 +118,8 @@ fn render_math_server_side() {
         "{}",
         result.html
     );
-    assert!(result.html.contains("<svg"), "{}", result.html);
+    assert!(result.html.contains("katex-html"), "{}", result.html);
+    assert!(!result.html.contains("<svg"), "{}", result.html);
 }
 
 #[test]

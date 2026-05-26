@@ -10,8 +10,6 @@ pub enum Error {
     FrontMatterYaml(#[from] serde_yaml::Error),
     #[error("failed to format html output")]
     HtmlFormat(#[from] std::fmt::Error),
-    #[error("failed to render Mermaid diagram: {0}")]
-    Mermaid(String),
     #[error("failed to render math formula: {0}")]
     Math(String),
 }

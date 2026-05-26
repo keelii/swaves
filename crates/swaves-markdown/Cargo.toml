@@ -8,16 +8,12 @@ description = "Pure markdown rendering crate for swaves"
 [features]
 default = ["highlight", "math", "mermaid"]
 highlight = []
-math = ["dep:ratex-layout", "dep:ratex-parser", "dep:ratex-svg", "dep:ratex-types"]
-mermaid = ["dep:mermaid-rs-renderer"]
+math = ["dep:katex"]
+mermaid = []
 
 [dependencies]
 comrak = { version = "0.52.0", default-features = false, features = ["syntect"] }
-mermaid-rs-renderer = { version = "0.2.2", default-features = false, optional = true }
-ratex-layout = { version = "0.1.9", optional = true }
-ratex-parser = { version = "0.1.9", optional = true }
-ratex-svg = { version = "0.1.9", features = ["standalone", "embed-fonts"], optional = true }
-ratex-types = { version = "0.1.9", optional = true }
+katex = { version = "0.4.6", optional = true }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"

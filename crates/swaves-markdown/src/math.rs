@@ -66,34 +66,20 @@ fn fallback_math_html(dollar_math: bool, display_math: bool, literal: &str) -> S
 fn render_math_html(literal: &str, display_math: bool) -> Result<String, String> {
     #[cfg(feature = "math")]
     {
-        use ratex_layout::{LayoutOptions, layout, to_display_list};
-        use ratex_parser::parser::parse;
-        use ratex_svg::{SvgOptions, render_to_svg};
-        use ratex_types::math_style::MathStyle;
+        use katex::Opts;
 
-        let ast = parse(literal).map_err(|error| error.to_string())?;
-        let style = if display_math {
-            MathStyle::Display
-        } else {
-            MathStyle::Text
-        };
-        let options = LayoutOptions::default().with_style(style);
-        let layout_box = layout(&ast, &options);
-        let display_list = to_display_list(&layout_box);
-        let svg = render_to_svg(
-            &display_list,
-            &SvgOptions {
-                embed_glyphs: true,
-                ..SvgOptions::default()
-            },
-        );
+        let opts = Opts::builder()
+            .display_mode(display_math)
+            .build()
+            .map_err(|e| e.to_string())?;
+        let rendered = katex::render_with_opts(literal, &opts).map_err(|e| e.to_string())?;
         let class_name = if display_math {
             "swaves-math swaves-math-display"
         } else {
             "swaves-math swaves-math-inline"
         };
         return Ok(format!(
-            "<span class=\"{class_name}\" data-math=\"{}\">{svg}</span>",
+            "<span class=\"{class_name}\" data-math=\"{}\">{rendered}</span>",
             if display_math { "display" } else { "inline" }
         ));
     }
