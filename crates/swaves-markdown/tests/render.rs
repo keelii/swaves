@@ -131,3 +131,12 @@ fn preserve_source_on_math_error() {
         result.html
     );
 }
+
+#[test]
+fn render_all() {
+    let markdown = include_str!("../benches/fixtures/render.md");
+    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
+    println!("=====");
+    println!("{}", result.html);
+    println!("=====");
+}
