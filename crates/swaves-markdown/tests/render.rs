@@ -44,8 +44,8 @@ fn render_generates_html_toc_and_heading_ids() {
         result.toc_html
     );
     assert!(
-        result.html.contains("<svg"),
-        "mermaid should produce server-side SVG: {}",
+        result.html.contains("<div class=\"mermaid\">") && result.html.contains("<svg"),
+        "mermaid should produce server-side SVG wrapped in .mermaid container: {}",
         result.html
     );
     assert!(
@@ -91,8 +91,8 @@ fn render_mermaid_server_side() {
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
     assert!(
-        result.html.contains("<svg"),
-        "mermaid should produce server-side SVG: {}",
+        result.html.contains("<div class=\"mermaid\">") && result.html.contains("<svg"),
+        "mermaid should produce server-side SVG wrapped in .mermaid container: {}",
         result.html
     );
     assert!(

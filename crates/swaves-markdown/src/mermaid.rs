@@ -21,7 +21,9 @@ impl CodefenceRendererAdapter for MermaidRenderer {
         _sourcepos: Option<comrak::nodes::Sourcepos>,
     ) -> fmt::Result {
         let svg = ariel_rs::render(code.trim(), Theme::Default);
+        output.write_str("<div class=\"mermaid\">")?;
         output.write_str(&svg)?;
+        output.write_str("</div>")?;
         output.write_char('\n')
     }
 }
