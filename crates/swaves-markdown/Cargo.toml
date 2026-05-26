@@ -9,9 +9,10 @@ description = "Pure markdown rendering crate for swaves"
 default = ["highlight", "math", "mermaid"]
 highlight = []
 math = ["dep:katex"]
-mermaid = []
+mermaid = ["dep:ariel-rs"]
 
 [dependencies]
+ariel-rs = { version = "0.4.0", optional = true }
 comrak = { version = "0.52.0", default-features = false, features = ["syntect"] }
 katex = { version = "0.4.6", optional = true }
 serde = { version = "1.0.228", features = ["derive"] }

@@ -1,8 +1,7 @@
 use std::fmt;
 
+use ariel_rs::theme::Theme;
 use comrak::adapters::CodefenceRendererAdapter;
-
-use crate::util::escape_html;
 
 pub struct MermaidRenderer;
 
@@ -21,8 +20,8 @@ impl CodefenceRendererAdapter for MermaidRenderer {
         code: &str,
         _sourcepos: Option<comrak::nodes::Sourcepos>,
     ) -> fmt::Result {
-        output.write_str("<div class=\"mermaid\" data-mermaid=\"true\">")?;
-        output.write_str(&escape_html(code.trim_end()))?;
-        output.write_str("</div>\n")
+        let svg = ariel_rs::render(code.trim(), Theme::Default);
+        output.write_str(&svg)?;
+        output.write_char('\n')
     }
 }

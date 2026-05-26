@@ -44,8 +44,8 @@ fn render_generates_html_toc_and_heading_ids() {
         result.toc_html
     );
     assert!(
-        result.html.contains("data-mermaid=\"true\""),
-        "{}",
+        result.html.contains("<svg"),
+        "mermaid should produce server-side SVG: {}",
         result.html
     );
     assert!(
@@ -86,21 +86,20 @@ fn render_highlights_unlabeled_code_fences() {
 }
 
 #[test]
-fn render_mermaid_client_side() {
+fn render_mermaid_server_side() {
     let markdown = "```mermaid\nflowchart LR\n    A --> B\n```";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
     assert!(
-        result.html.contains("data-mermaid=\"true\""),
-        "{}",
+        result.html.contains("<svg"),
+        "mermaid should produce server-side SVG: {}",
         result.html
     );
     assert!(
-        result.html.contains("<div class=\"mermaid\""),
+        !result.html.contains("data-mermaid=\"true\""),
         "{}",
         result.html
     );
-    assert!(!result.html.contains("<svg"), "{}", result.html);
 }
 
 #[test]
