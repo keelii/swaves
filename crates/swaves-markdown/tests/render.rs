@@ -104,46 +104,66 @@ fn render_mermaid_server_side() {
 
 #[test]
 fn render_mermaid_label_newline() {
-    // ariel-rs computes node boxes with a fixed single-line height, so splitting
-    // a label into multiple lines would cause text to overflow the node border.
-    // Instead, \n in mermaid labels is normalised to a space so the text stays
-    // on one line and fits within the pre-computed box.
+    // ariel-rs emits literal \n (backslash-n) from mermaid label \n syntax.
+    // expand_multiline_nodes should split the tspan into multiple stacked tspans
+    // and expand the node rect height to fit.
     let markdown = "```mermaid\nflowchart TD\n    A[\"main()\\n检查 APP_WORKER_MODE\"] --> B[End]\n```";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
+    // The raw literal \n should be gone from the output.
     assert!(
         !result.html.contains("\\n"),
-        "literal \\n should have been replaced: {}",
-        result.html
-    );
-    // No multi-line stacking — the label must stay single-line inside the box.
-    assert!(
-        !result.html.contains("dy=\"1.2em\""),
-        "label should NOT be split into stacked tspans: {}",
+        "literal \\n should have been processed: {}",
         result.html
     );
     // Both parts of the label must still appear in the output.
     assert!(result.html.contains("main()"), "{}", result.html);
     assert!(result.html.contains("检查 APP_WORKER_MODE"), "{}", result.html);
+    // The second line must be in a continuation tspan with dy="1.1em".
+    assert!(
+        result.html.contains("dy=\"1.1em\"><tspan>检查 APP_WORKER_MODE"),
+        "second line should appear in a continuation tspan: {}",
+        result.html
+    );
+    // The node rect must have been expanded beyond the default single-line height.
+    // Default RECT_H = 47.6; a two-line node should have height ≥ 65.
+    let height_expanded = result
+        .html
+        .find("class=\"basic label-container\"")
+        .and_then(|pos| {
+            let substr = &result.html[pos..];
+            let h_start = substr.find("height=\"")? + 8; // 8 = len(`height="`)
+            let h_end = substr[h_start..].find('"')?;
+            substr[h_start..h_start + h_end].parse::<f64>().ok()
+        })
+        .unwrap_or(0.0);
+    assert!(
+        height_expanded > 60.0,
+        "node rect height should be > 60 for a 2-line label, got {height_expanded}: {}",
+        result.html
+    );
 }
 
 #[test]
 fn render_mermaid_label_br_tag() {
-    // Same as the \n case: <br/> is normalised to a space rather than expanding
-    // into stacked tspan elements that would overflow the fixed-height node box.
+    // <br/> in mermaid labels (HTML-escaped by ariel-rs to &lt;br/&gt;) should
+    // be treated identically to \n: split into stacked tspans with expanded rect.
     let markdown = "```mermaid\nflowchart TD\n    A[\"line1<br/>line2\"] --> B[End]\n```";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
     assert!(
         !result.html.contains("&lt;br"),
-        "HTML-encoded <br> should have been replaced: {}",
+        "HTML-encoded <br> should have been processed: {}",
         result.html
     );
+    // The second line must appear in a continuation tspan.
     assert!(
-        !result.html.contains("dy=\"1.2em\""),
-        "label should NOT be split into stacked tspans: {}",
+        result.html.contains("dy=\"1.1em\"><tspan>line2"),
+        "second line should appear in a continuation tspan: {}",
         result.html
     );
+    // First line must still be present.
+    assert!(result.html.contains("line1"), "{}", result.html);
 }
 
 #[test]
