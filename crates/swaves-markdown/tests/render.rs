@@ -142,6 +142,80 @@ fn render_mermaid_label_br_tag() {
 }
 
 #[test]
+fn render_mermaid_unique_ids_across_diagrams() {
+    // When a page contains multiple mermaid diagrams, ariel-rs would normally
+    // emit the same hard-coded "mermaid-svg" ID prefix for every diagram.
+    // We post-process the SVG output to replace that prefix with a per-diagram
+    // unique prefix so that marker/filter ids and url(#...) references from
+    // different diagrams don't collide with one another.
+    //
+    // Note: ariel-rs itself generates some duplicate ids *within* a single
+    // diagram (e.g. the edge path id appears twice). We only verify that ids
+    // from *different* diagrams are distinct — intra-diagram ariel-rs quirks
+    // are out of scope here.
+    let markdown = "```mermaid\nflowchart LR\n    A --> B\n```\n\n```mermaid\nflowchart LR\n    C --> D\n```";
+    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
+
+    // The hard-coded ariel-rs root id must not appear at all.
+    assert!(
+        !result.html.contains("id=\"mermaid-svg\""),
+        "hard-coded id=\"mermaid-svg\" must be replaced with a unique prefix"
+    );
+
+    // Extract the per-diagram prefix from each SVG root element id.
+    // ariel-rs emits  <svg id="mermaid-svg" …>; after replacement it becomes
+    // <svg id="ms-{n}" …>.  A pure numeric suffix after "ms-" identifies the
+    // SVG root (as opposed to ids like "ms-1_flowchart-v2-pointEnd").
+    let root_prefixes: Vec<&str> = result
+        .html
+        .split("id=\"ms-")
+        .skip(1)
+        .filter_map(|s| {
+            let suffix = s.split('"').next()?;
+            // Root ids are purely numeric ("1", "2", …); internal ids start
+            // with "_" or "-" so they won't match here.
+            if suffix.chars().all(|c| c.is_ascii_digit()) {
+                Some(suffix)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    assert_eq!(
+        root_prefixes.len(),
+        2,
+        "expected exactly two SVG root ids, got {:?}",
+        root_prefixes
+    );
+    assert_ne!(
+        root_prefixes[0], root_prefixes[1],
+        "the two mermaid diagrams must receive different id prefixes"
+    );
+
+    // Confirm cross-diagram uniqueness: no id from diagram 1 appears in the
+    // SVG text of diagram 2 and vice versa.
+    let divs: Vec<&str> = result
+        .html
+        .split("<div class=\"mermaid\">")
+        .skip(1)
+        .collect();
+    assert_eq!(divs.len(), 2, "expected two .mermaid divs");
+    let prefix1 = format!("ms-{}", root_prefixes[0]);
+    let prefix2 = format!("ms-{}", root_prefixes[1]);
+    assert!(
+        !divs[1].contains(&prefix1),
+        "diagram 2 must not reference diagram 1's prefix \"{}\"",
+        prefix1
+    );
+    assert!(
+        !divs[0].contains(&prefix2),
+        "diagram 1 must not reference diagram 2's prefix \"{}\"",
+        prefix2
+    );
+}
+
+#[test]
 fn render_math_server_side() {
     let markdown = "$a^2 + b^2 = c^2$\n\n$$\\frac{1}{2}$$";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");

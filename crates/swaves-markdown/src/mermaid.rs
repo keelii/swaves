@@ -1,7 +1,13 @@
 use std::fmt;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ariel_rs::theme::Theme;
 use comrak::adapters::CodefenceRendererAdapter;
+
+/// Module-level counter so every mermaid diagram rendered in a process gets a
+/// unique numeric suffix, even when multiple `MermaidRenderer` instances are
+/// used (e.g. one per request).
+static DIAGRAM_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 pub struct MermaidRenderer;
 
@@ -20,7 +26,14 @@ impl CodefenceRendererAdapter for MermaidRenderer {
         code: &str,
         _sourcepos: Option<comrak::nodes::Sourcepos>,
     ) -> fmt::Result {
+        let n = DIAGRAM_COUNTER.fetch_add(1, Ordering::Relaxed);
         let svg = ariel_rs::render(code.trim(), Theme::Default);
+        // ariel-rs hard-codes "mermaid-svg" as the ID prefix for every element
+        // (root SVG id, markers, filters, nodes, edges). Replace it with a
+        // per-diagram unique prefix so multiple diagrams on the same HTML page
+        // don't collide on id attributes or url(#...) marker references.
+        let unique_prefix = format!("ms-{n}");
+        let svg = svg.replace("mermaid-svg", &unique_prefix);
         let svg = fix_tspan_newlines(&svg);
         output.write_str("<div class=\"mermaid\">")?;
         output.write_str(&svg)?;
