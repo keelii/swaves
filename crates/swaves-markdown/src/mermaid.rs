@@ -34,7 +34,7 @@ impl CodefenceRendererAdapter for MermaidRenderer {
         // don't collide on id attributes or url(#...) marker references.
         let unique_prefix = format!("ms-{n}");
         let svg = svg.replace("mermaid-svg", &unique_prefix);
-        let svg = fix_tspan_newlines(&svg);
+        let svg = normalize_tspan_breaks(&svg);
         output.write_str("<div class=\"mermaid\">")?;
         output.write_str(&svg)?;
         output.write_str("</div>")?;
@@ -42,19 +42,22 @@ impl CodefenceRendererAdapter for MermaidRenderer {
     }
 }
 
-/// ariel-rs does not handle line breaks inside node labels. It renders `\n`
-/// (literal backslash-n from mermaid syntax) as verbatim text, and it
-/// HTML-escapes `<br>` / `<br/>` so they appear as literal text too.
+/// ariel-rs computes node bounding boxes using a fixed single-line height
+/// (`RECT_H ≈ 47.6 px`) regardless of how many lines the label contains.
+/// Splitting a `<tspan>` into multiple stacked lines would cause the text to
+/// overflow the pre-computed node border.
 ///
-/// This function post-processes the SVG output: any `<tspan>` whose text
-/// contains these patterns is split into multiple `<tspan>` elements with
-/// `dy="1.2em"` offsets so the lines are stacked correctly.
-fn fix_tspan_newlines(svg: &str) -> String {
+/// Instead this function replaces break patterns inside `<tspan>` text with a
+/// space so the label stays on one line and always fits within its box.
+///
+/// Patterns normalised to a space:
+/// - `\n`           — literal backslash-n emitted by ariel-rs from mermaid `\n` syntax
+/// - `&lt;br/&gt;`  — ariel-rs HTML-escapes `<br/>` tags
+/// - `&lt;br&gt;`   — same for `<br>`
+fn normalize_tspan_breaks(svg: &str) -> String {
     const OPEN: &str = "<tspan>";
     const CLOSE: &str = "</tspan>";
-    // Patterns to treat as line-break separators inside tspan text.
-    // ariel-rs HTML-escapes angle brackets, so <br> becomes &lt;br&gt;.
-    const SPLIT_PATTERNS: &[&str] = &[
+    const BREAK_PATTERNS: &[&str] = &[
         "\\n",
         "&lt;br/&gt;",
         "&lt;br&gt;",
@@ -71,29 +74,13 @@ fn fix_tspan_newlines(svg: &str) -> String {
 
         if let Some(close_pos) = remaining.find(CLOSE) {
             let text = &remaining[..close_pos];
-            // Normalise all break patterns to a single sentinel, then split.
-            const SENTINEL: &str = "\x00";
-            let normalized = SPLIT_PATTERNS
+            let normalized = BREAK_PATTERNS
                 .iter()
-                .fold(text.to_owned(), |acc, pat| acc.replace(pat, SENTINEL));
+                .fold(text.to_owned(), |acc, pat| acc.replace(pat, " "));
 
-            if normalized.contains(SENTINEL) {
-                for (i, line) in normalized.split(SENTINEL).enumerate() {
-                    if i == 0 {
-                        result.push_str(OPEN);
-                        result.push_str(line);
-                        result.push_str(CLOSE);
-                    } else {
-                        result.push_str("<tspan x=\"0\" dy=\"1.2em\">");
-                        result.push_str(line);
-                        result.push_str(CLOSE);
-                    }
-                }
-            } else {
-                result.push_str(OPEN);
-                result.push_str(text);
-                result.push_str(CLOSE);
-            }
+            result.push_str(OPEN);
+            result.push_str(&normalized);
+            result.push_str(CLOSE);
             remaining = &remaining[close_pos + CLOSE.len()..];
         } else {
             // No closing tag — pass through unchanged.
@@ -103,3 +90,4 @@ fn fix_tspan_newlines(svg: &str) -> String {
     result.push_str(remaining);
     result
 }
+

@@ -104,39 +104,44 @@ fn render_mermaid_server_side() {
 
 #[test]
 fn render_mermaid_label_newline() {
-    // \n in a quoted mermaid label should produce multi-line tspan output, not literal \n text.
+    // ariel-rs computes node boxes with a fixed single-line height, so splitting
+    // a label into multiple lines would cause text to overflow the node border.
+    // Instead, \n in mermaid labels is normalised to a space so the text stays
+    // on one line and fits within the pre-computed box.
     let markdown = "```mermaid\nflowchart TD\n    A[\"main()\\n检查 APP_WORKER_MODE\"] --> B[End]\n```";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
     assert!(
         !result.html.contains("\\n"),
-        "literal \\n should have been replaced with tspan line-break: {}",
+        "literal \\n should have been replaced: {}",
         result.html
     );
+    // No multi-line stacking — the label must stay single-line inside the box.
     assert!(
-        result.html.contains("dy=\"1.2em\""),
-        "multi-line label should produce dy tspan offset: {}",
+        !result.html.contains("dy=\"1.2em\""),
+        "label should NOT be split into stacked tspans: {}",
         result.html
     );
-    // Both parts of the label must appear in the output.
+    // Both parts of the label must still appear in the output.
     assert!(result.html.contains("main()"), "{}", result.html);
     assert!(result.html.contains("检查 APP_WORKER_MODE"), "{}", result.html);
 }
 
 #[test]
 fn render_mermaid_label_br_tag() {
-    // <br/> in a quoted mermaid label should also produce multi-line tspan output.
+    // Same as the \n case: <br/> is normalised to a space rather than expanding
+    // into stacked tspan elements that would overflow the fixed-height node box.
     let markdown = "```mermaid\nflowchart TD\n    A[\"line1<br/>line2\"] --> B[End]\n```";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
     assert!(
         !result.html.contains("&lt;br"),
-        "HTML-encoded <br> should have been replaced with tspan line-break: {}",
+        "HTML-encoded <br> should have been replaced: {}",
         result.html
     );
     assert!(
-        result.html.contains("dy=\"1.2em\""),
-        "multi-line label should produce dy tspan offset: {}",
+        !result.html.contains("dy=\"1.2em\""),
+        "label should NOT be split into stacked tspans: {}",
         result.html
     );
 }
