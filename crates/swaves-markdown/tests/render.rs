@@ -103,6 +103,45 @@ fn render_mermaid_server_side() {
 }
 
 #[test]
+fn render_mermaid_label_newline() {
+    // \n in a quoted mermaid label should produce multi-line tspan output, not literal \n text.
+    let markdown = "```mermaid\nflowchart TD\n    A[\"main()\\n检查 APP_WORKER_MODE\"] --> B[End]\n```";
+    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
+
+    assert!(
+        !result.html.contains("\\n"),
+        "literal \\n should have been replaced with tspan line-break: {}",
+        result.html
+    );
+    assert!(
+        result.html.contains("dy=\"1.2em\""),
+        "multi-line label should produce dy tspan offset: {}",
+        result.html
+    );
+    // Both parts of the label must appear in the output.
+    assert!(result.html.contains("main()"), "{}", result.html);
+    assert!(result.html.contains("检查 APP_WORKER_MODE"), "{}", result.html);
+}
+
+#[test]
+fn render_mermaid_label_br_tag() {
+    // <br/> in a quoted mermaid label should also produce multi-line tspan output.
+    let markdown = "```mermaid\nflowchart TD\n    A[\"line1<br/>line2\"] --> B[End]\n```";
+    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
+
+    assert!(
+        !result.html.contains("&lt;br"),
+        "HTML-encoded <br> should have been replaced with tspan line-break: {}",
+        result.html
+    );
+    assert!(
+        result.html.contains("dy=\"1.2em\""),
+        "multi-line label should produce dy tspan offset: {}",
+        result.html
+    );
+}
+
+#[test]
 fn render_math_server_side() {
     let markdown = "$a^2 + b^2 = c^2$\n\n$$\\frac{1}{2}$$";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
