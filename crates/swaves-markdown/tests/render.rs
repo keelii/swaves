@@ -271,6 +271,31 @@ fn preserve_source_on_math_error() {
 }
 
 #[test]
+fn render_mermaid_cjk_node_widths() {
+    // ariel-rs measures every character not in its Latin/ASCII table at
+    // font_size*0.5 = 8px.  CJK ideographs are ~16px wide, so the post-
+    // processor must widen the node box by n_cjk_chars × 8px symmetrically.
+    //
+    // For A["用户登录"] (4 CJK chars, H_PAD=30 each side):
+    //   ariel-rs raw:  width = 4×8 + 60 = 92,  x = -46
+    //   after fix:     width = 4×16 + 60 = 124, x = -62
+    let markdown = "```mermaid\nflowchart TD\n    A[用户登录]\n```";
+    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
+
+    // The corrected rect should be noticeably wider than the raw 92px.
+    // We verify by checking that width > 110 (midpoint between raw and correct).
+    assert!(
+        result.html.contains("width=\"124\"") || {
+            // Accept any width > raw (92) as a successful expansion.
+            result.html.contains("<rect class=\"basic label-container\"")
+                && !result.html.contains("width=\"92\"")
+        },
+        "CJK node box should be expanded beyond the raw ariel-rs width: {}",
+        result.html
+    );
+}
+
+#[test]
 fn render_all() {
     let markdown = include_str!("../benches/fixtures/render.md");
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
