@@ -113,6 +113,13 @@ fn fix_cjk_node_widths(svg: &str) -> String {
     const EDGE_TRIM: f64 = 4.0;
     /// Coordinate-matching tolerance (px) for edge-endpoint detection.
     const EPSILON: f64 = 1.5;
+    /// Tolerance for matching a node's centre/half-width during the rebuild pass.
+    const COORD_MATCH_TOLERANCE: f64 = 0.5;
+    /// Byte length of the `d="` prefix in `d="M...`. Used when splitting the
+    /// path attribute into the opening quote and the path-data string.
+    const D_ATTR_PREFIX_LEN: usize = 3; // d="
+    /// Byte length of `d="M` used when skipping non-numeric (marker) paths.
+    const D_ATTR_WITH_M_LEN: usize = 4; // d="M
 
     // ── Phase 1: collect geometry for every node that contains CJK text ──────
 
@@ -127,7 +134,10 @@ fn fix_cjk_node_widths(svg: &str) -> String {
             let opening_tag = &scan[..tag_end + 1];
 
             if let Some(cx) = extract_translate_x(opening_tag) {
-                // 2000-char window is generous enough for any single node block.
+                // A typical ariel-rs node block (opening tag + rect + label group)
+                // is well under 500 bytes; 2000 bytes provides ample headroom for
+                // deeply-nested or heavily-styled nodes while staying far below the
+                // next sibling's opening tag.
                 let win = (tag_end + 1 + 2000).min(scan.len());
                 let block = &scan[..win];
                 if let Some((rx, _)) = extract_basic_rect_xw(block) {
@@ -169,7 +179,10 @@ fn fix_cjk_node_widths(svg: &str) -> String {
                         let hw = -rx;
                         node_info
                             .iter()
-                            .find(|&&(ncx, nhw, _)| (ncx - cx).abs() < 0.5 && (nhw - hw).abs() < 0.5)
+                            .find(|&&(ncx, nhw, _)| {
+                                (ncx - cx).abs() < COORD_MATCH_TOLERANCE
+                                    && (nhw - hw).abs() < COORD_MATCH_TOLERANCE
+                            })
                             .map(|&(_, _, d)| d)
                     })
                 })
@@ -202,6 +215,8 @@ fn fix_cjk_node_widths(svg: &str) -> String {
     // For TD flowcharts edges are vertical; their x values equal node centres
     // (not boundaries), so they won't match any entry here and pass unchanged.
 
+    // right_bounds: (old_right_boundary_x, positive_shift)  — arrows pushed outward
+    // left_bounds:  (old_left_boundary_x,  negative_shift)  — arrows pulled inward
     let right_bounds: Vec<(f64, f64)> = node_info.iter().map(|&(cx, hw, d)| (cx + hw, d / 2.0)).collect();
     let left_bounds: Vec<(f64, f64)> = node_info.iter().map(|&(cx, hw, d)| (cx - hw - EDGE_TRIM, -(d / 2.0))).collect();
 
@@ -212,16 +227,16 @@ fn fix_cjk_node_widths(svg: &str) -> String {
     while let Some(pos) = remaining.find("d=\"M") {
         // Only process numeric paths (edge paths start with `M{digit}` or `M-{digit}`),
         // not marker paths which use `M 0 0 ...` with spaces.
-        let after_m = pos + 4;
+        let after_m = pos + D_ATTR_WITH_M_LEN;
         let first_data_char = remaining[after_m..].chars().next().unwrap_or(' ');
         if !first_data_char.is_ascii_digit() && first_data_char != '-' {
-            out.push_str(&remaining[..pos + 4]);
-            remaining = &remaining[pos + 4..];
+            out.push_str(&remaining[..pos + D_ATTR_WITH_M_LEN]);
+            remaining = &remaining[pos + D_ATTR_WITH_M_LEN..];
             continue;
         }
 
-        out.push_str(&remaining[..pos + 3]); // include 'd="'
-        remaining = &remaining[pos + 3..]; // now starts with 'M...'
+        out.push_str(&remaining[..pos + D_ATTR_PREFIX_LEN]); // include 'd="'
+        remaining = &remaining[pos + D_ATTR_PREFIX_LEN..]; // now starts with 'M...'
 
         let quote_end = remaining.find('"').unwrap_or(remaining.len());
         let d_val = &remaining[..quote_end];
@@ -300,6 +315,8 @@ fn replace_f64_attr(tag: &str, attr: &str, new_val: f64) -> String {
         return tag.to_string();
     };
     let val_end = val_start + len;
+    // Count digits after the decimal point: total_length - dot_position - 1.
+    // Falls back to 0 (integer) when there is no decimal point.
     let prec = tag[val_start..val_end]
         .find('.')
         .map(|dot| (val_end - val_start) - dot - 1)

@@ -276,21 +276,29 @@ fn render_mermaid_cjk_node_widths() {
     // font_size*0.5 = 8px.  CJK ideographs are ~16px wide, so the post-
     // processor must widen the node box by n_cjk_chars × 8px symmetrically.
     //
-    // For A["用户登录"] (4 CJK chars, H_PAD=30 each side):
-    //   ariel-rs raw:  width = 4×8 + 60 = 92,  x = -46
-    //   after fix:     width = 4×16 + 60 = 124, x = -62
+    // This test covers the rect-expansion path (works for both TD and LR).
+    //
+    // For A["用户登录"] (4 CJK chars, H_PAD=30 each side, FONT_SIZE=16):
+    //   ariel-rs raw:  x="-46"  width="92"
+    //   after fix:     x="-62"  width="124"
     let markdown = "```mermaid\nflowchart TD\n    A[用户登录]\n```";
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
-    // The corrected rect should be noticeably wider than the raw 92px.
-    // We verify by checking that width > 110 (midpoint between raw and correct).
+    // Verify the rect has been expanded: raw width "92" must not appear and
+    // corrected width "124" must be present.
     assert!(
-        result.html.contains("width=\"124\"") || {
-            // Accept any width > raw (92) as a successful expansion.
-            result.html.contains("<rect class=\"basic label-container\"")
-                && !result.html.contains("width=\"92\"")
-        },
-        "CJK node box should be expanded beyond the raw ariel-rs width: {}",
+        result.html.contains("<rect class=\"basic label-container\""),
+        "basic label-container rect must be present: {}",
+        result.html
+    );
+    assert!(
+        !result.html.contains("width=\"92\""),
+        "raw ariel-rs width should have been corrected: {}",
+        result.html
+    );
+    assert!(
+        result.html.contains("width=\"124\""),
+        "corrected width=124 should be present for 4 CJK chars: {}",
         result.html
     );
 }
