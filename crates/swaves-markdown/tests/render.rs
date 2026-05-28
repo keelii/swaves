@@ -21,7 +21,8 @@ fn split_extracts_front_matter_and_body() {
 
 #[test]
 fn render_generates_html_toc_and_heading_ids() {
-    let result = render(MARKDOWN_FIXTURE, &RenderOptions::default()).expect("render should succeed");
+    let result =
+        render(MARKDOWN_FIXTURE, &RenderOptions::default()).expect("render should succeed");
 
     assert!(
         result.html.contains("<h1 id=\"标题一\">标题一</h1>"),
@@ -49,7 +50,9 @@ fn render_generates_html_toc_and_heading_ids() {
         result.html
     );
     assert!(
-        result.html.contains("<iframe src=\"//www.slideshare.net/slideshow/embed_code/key/mchiGHfKcsWLRG\""),
+        result.html.contains(
+            "<iframe src=\"//www.slideshare.net/slideshow/embed_code/key/mchiGHfKcsWLRG\""
+        ),
         "{}",
         result.html
     );
@@ -120,7 +123,11 @@ fn render_math_server_side() {
 fn render_toc_returns_only_toc_html() {
     let toc = render_toc(MARKDOWN_FIXTURE).expect("toc render should succeed");
     assert!(toc.toc_html.contains("class=\"toc\""), "{}", toc.toc_html);
-    assert!(toc.toc_html.contains("href=\"#标题一\""), "{}", toc.toc_html);
+    assert!(
+        toc.toc_html.contains("href=\"#标题一\""),
+        "{}",
+        toc.toc_html
+    );
     assert!(
         !toc.toc_html.contains("<h1 id=\"标题一\">"),
         "{}",

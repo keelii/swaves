@@ -2,5 +2,12 @@
 name = "swaves-updater"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Updater planning APIs built on top of swaves supervisor runtime protocol"
 
 [dependencies]
+swaves-supervisor = { path = "../swaves-supervisor" }
+thiserror = "2.0.18"
+
+[dev-dependencies]
+tempfile = "3.20.0"
