@@ -1,5 +1,5 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/swaves-markdown",
+  "crates/swaves-markdown", "crates/swaves-supervisor", "crates/swaves-updater",
 ]
