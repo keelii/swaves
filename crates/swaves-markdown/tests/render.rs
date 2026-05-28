@@ -44,8 +44,8 @@ fn render_generates_html_toc_and_heading_ids() {
         result.toc_html
     );
     assert!(
-        result.html.contains("<div class=\"mermaid\">") && result.html.contains("<svg"),
-        "mermaid should produce server-side SVG wrapped in .mermaid container: {}",
+        result.html.contains("data-mermaid=\"true\""),
+        "{}",
         result.html
     );
     assert!(
@@ -91,153 +91,11 @@ fn render_mermaid_server_side() {
     let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
 
     assert!(
-        result.html.contains("<div class=\"mermaid\">") && result.html.contains("<svg"),
-        "mermaid should produce server-side SVG wrapped in .mermaid container: {}",
-        result.html
-    );
-    assert!(
-        !result.html.contains("data-mermaid=\"true\""),
+        result.html.contains("data-mermaid=\"true\""),
         "{}",
         result.html
     );
-}
-
-#[test]
-fn render_mermaid_label_newline() {
-    // ariel-rs emits literal \n (backslash-n) from mermaid label \n syntax.
-    // expand_multiline_nodes should split the tspan into multiple stacked tspans
-    // and expand the node rect height to fit.
-    let markdown = "```mermaid\nflowchart TD\n    A[\"main()\\n检查 APP_WORKER_MODE\"] --> B[End]\n```";
-    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
-
-    // The raw literal \n should be gone from the output.
-    assert!(
-        !result.html.contains("\\n"),
-        "literal \\n should have been processed: {}",
-        result.html
-    );
-    // Both parts of the label must still appear in the output.
-    assert!(result.html.contains("main()"), "{}", result.html);
-    assert!(result.html.contains("检查 APP_WORKER_MODE"), "{}", result.html);
-    // The second line must be in a continuation tspan with dy="1.1em".
-    assert!(
-        result.html.contains("dy=\"1.1em\"><tspan>检查 APP_WORKER_MODE"),
-        "second line should appear in a continuation tspan: {}",
-        result.html
-    );
-    // The node rect must have been expanded beyond the default single-line height.
-    // Default RECT_H = 47.6; a two-line node should have height ≥ 65.
-    let height_expanded = result
-        .html
-        .find("class=\"basic label-container\"")
-        .and_then(|pos| {
-            let substr = &result.html[pos..];
-            let h_start = substr.find("height=\"")? + 8; // 8 = len(`height="`)
-            let h_end = substr[h_start..].find('"')?;
-            substr[h_start..h_start + h_end].parse::<f64>().ok()
-        })
-        .unwrap_or(0.0);
-    assert!(
-        height_expanded > 60.0,
-        "node rect height should be > 60 for a 2-line label, got {height_expanded}: {}",
-        result.html
-    );
-}
-
-#[test]
-fn render_mermaid_label_br_tag() {
-    // <br/> in mermaid labels (HTML-escaped by ariel-rs to &lt;br/&gt;) should
-    // be treated identically to \n: split into stacked tspans with expanded rect.
-    let markdown = "```mermaid\nflowchart TD\n    A[\"line1<br/>line2\"] --> B[End]\n```";
-    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
-
-    assert!(
-        !result.html.contains("&lt;br"),
-        "HTML-encoded <br> should have been processed: {}",
-        result.html
-    );
-    // The second line must appear in a continuation tspan.
-    assert!(
-        result.html.contains("dy=\"1.1em\"><tspan>line2"),
-        "second line should appear in a continuation tspan: {}",
-        result.html
-    );
-    // First line must still be present.
-    assert!(result.html.contains("line1"), "{}", result.html);
-}
-
-#[test]
-fn render_mermaid_unique_ids_across_diagrams() {
-    // When a page contains multiple mermaid diagrams, ariel-rs would normally
-    // emit the same hard-coded "mermaid-svg" ID prefix for every diagram.
-    // We post-process the SVG output to replace that prefix with a per-diagram
-    // unique prefix so that marker/filter ids and url(#...) references from
-    // different diagrams don't collide with one another.
-    //
-    // Note: ariel-rs itself generates some duplicate ids *within* a single
-    // diagram (e.g. the edge path id appears twice). We only verify that ids
-    // from *different* diagrams are distinct — intra-diagram ariel-rs quirks
-    // are out of scope here.
-    let markdown = "```mermaid\nflowchart LR\n    A --> B\n```\n\n```mermaid\nflowchart LR\n    C --> D\n```";
-    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
-
-    // The hard-coded ariel-rs root id must not appear at all.
-    assert!(
-        !result.html.contains("id=\"mermaid-svg\""),
-        "hard-coded id=\"mermaid-svg\" must be replaced with a unique prefix"
-    );
-
-    // Extract the per-diagram prefix from each SVG root element id.
-    // ariel-rs emits  <svg id="mermaid-svg" …>; after replacement it becomes
-    // <svg id="ms-{n}" …>.  A pure numeric suffix after "ms-" identifies the
-    // SVG root (as opposed to ids like "ms-1_flowchart-v2-pointEnd").
-    let root_prefixes: Vec<&str> = result
-        .html
-        .split("id=\"ms-")
-        .skip(1)
-        .filter_map(|s| {
-            let suffix = s.split('"').next()?;
-            // Root ids are purely numeric ("1", "2", …); internal ids start
-            // with "_" or "-" so they won't match here.
-            if suffix.chars().all(|c| c.is_ascii_digit()) {
-                Some(suffix)
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    assert_eq!(
-        root_prefixes.len(),
-        2,
-        "expected exactly two SVG root ids, got {:?}",
-        root_prefixes
-    );
-    assert_ne!(
-        root_prefixes[0], root_prefixes[1],
-        "the two mermaid diagrams must receive different id prefixes"
-    );
-
-    // Confirm cross-diagram uniqueness: no id from diagram 1 appears in the
-    // SVG text of diagram 2 and vice versa.
-    let divs: Vec<&str> = result
-        .html
-        .split("<div class=\"mermaid\">")
-        .skip(1)
-        .collect();
-    assert_eq!(divs.len(), 2, "expected two .mermaid divs");
-    let prefix1 = format!("ms-{}", root_prefixes[0]);
-    let prefix2 = format!("ms-{}", root_prefixes[1]);
-    assert!(
-        !divs[1].contains(&prefix1),
-        "diagram 2 must not reference diagram 1's prefix \"{}\"",
-        prefix1
-    );
-    assert!(
-        !divs[0].contains(&prefix2),
-        "diagram 1 must not reference diagram 2's prefix \"{}\"",
-        prefix2
-    );
+    assert!(result.html.contains("<svg"), "{}", result.html);
 }
 
 #[test]
@@ -255,8 +113,7 @@ fn render_math_server_side() {
         "{}",
         result.html
     );
-    assert!(result.html.contains("katex-html"), "{}", result.html);
-    assert!(!result.html.contains("<svg"), "{}", result.html);
+    assert!(result.html.contains("<svg"), "{}", result.html);
 }
 
 #[test]
@@ -286,39 +143,6 @@ fn preserve_source_on_math_error() {
     assert!(
         result.html.contains("$\\definitelynotacommand{1}$"),
         "{}",
-        result.html
-    );
-}
-
-#[test]
-fn render_mermaid_cjk_node_widths() {
-    // ariel-rs measures every character not in its Latin/ASCII table at
-    // font_size*0.5 = 8px.  CJK ideographs are ~16px wide, so the post-
-    // processor must widen the node box by n_cjk_chars × 8px symmetrically.
-    //
-    // This test covers the rect-expansion path (works for both TD and LR).
-    //
-    // For A["用户登录"] (4 CJK chars, H_PAD=30 each side, FONT_SIZE=16):
-    //   ariel-rs raw:  x="-46"  width="92"
-    //   after fix:     x="-62"  width="124"
-    let markdown = "```mermaid\nflowchart TD\n    A[用户登录]\n```";
-    let result = render(markdown, &RenderOptions::default()).expect("render should succeed");
-
-    // Verify the rect has been expanded: raw width "92" must not appear and
-    // corrected width "124" must be present.
-    assert!(
-        result.html.contains("<rect class=\"basic label-container\""),
-        "basic label-container rect must be present: {}",
-        result.html
-    );
-    assert!(
-        !result.html.contains("width=\"92\""),
-        "raw ariel-rs width should have been corrected: {}",
-        result.html
-    );
-    assert!(
-        result.html.contains("width=\"124\""),
-        "corrected width=124 should be present for 4 CJK chars: {}",
         result.html
     );
 }

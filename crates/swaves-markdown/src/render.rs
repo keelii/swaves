@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 
 use comrak::adapters::HeadingAdapter;
 use comrak::html::format_document_with_formatter;
@@ -68,7 +69,9 @@ fn render_document(markdown: &str, options: &RenderOptions) -> Result<DocumentRe
     };
 
     let heading_adapter = PrecomputedHeadingAdapter::new(headings);
-    let mermaid_renderer = MermaidRenderer::new();
+    let mermaid_errors = Arc::new(Mutex::new(None));
+    let mermaid_renderer =
+        MermaidRenderer::new(options.render_failure_mode, mermaid_errors.clone());
     let highlighter = highlight::adapter();
 
     let mut plugins = Plugins::default();
@@ -93,6 +96,16 @@ fn render_document(markdown: &str, options: &RenderOptions) -> Result<DocumentRe
     if let Some(message) = math_state.error {
         if matches!(options.render_failure_mode, RenderFailureMode::Error) {
             return Err(Error::Math(message));
+        }
+    }
+
+    if let Some(message) = mermaid_errors
+        .lock()
+        .expect("mermaid error lock poisoned")
+        .clone()
+    {
+        if matches!(options.render_failure_mode, RenderFailureMode::Error) {
+            return Err(Error::Mermaid(message));
         }
     }
 

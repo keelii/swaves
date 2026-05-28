@@ -130,7 +130,26 @@
 
     function initializeMermaid() {
       installMermaidEvents();
-      enableMermaidPanZoomAll();
+
+      if (!window.mermaid || typeof window.mermaid.initialize !== "function") {
+        console.warn("mermaid runtime is unavailable");
+        return;
+      }
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "strict"
+      });
+      if (typeof window.mermaid.run === "function") {
+        window.mermaid.run({
+          querySelector: ".mermaid",
+          suppressErrors: true
+        }).then(function() {
+          enableMermaidPanZoomAll();
+        }).catch(function(error) {
+          console.warn("mermaid render failed", error);
+          enableMermaidPanZoomAll();
+        });
+      }
     }
 
     window.initMermaid = initializeMermaid;
