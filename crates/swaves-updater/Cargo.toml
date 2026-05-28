@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 description = "Updater planning APIs built on top of swaves supervisor runtime protocol"
+readme = "README.md"
 
 [dependencies]
 swaves-supervisor = { path = "../swaves-supervisor" }
