@@ -841,11 +841,7 @@ func (h Handler) PostComment(c fiber.Ctx) error {
 	}
 	rememberMe := isCommentRememberMeEnabled(c.FormValue("remember_me"))
 
-	isLogin := fiber.Locals[bool](c, "IsLogin")
-	status := db.CommentStatusPending
-	if isLogin {
-		status = db.CommentStatusApproved
-	}
+	status := db.CommentStatusApproved
 
 	comment := &db.Comment{
 		PostID:      postID,

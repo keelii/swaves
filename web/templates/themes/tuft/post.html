@@ -73,7 +73,7 @@
     <div id="comments" class="comment-block">
       <h2 class="comment-title">评论 ({{ CommentCount }})</h2>
       {% if CommentFeedback == "approved" %}
-{#        <p class="comment-feedback"><small>评论已发布。</small></p>#}
+        <p class="comment-feedback"><small>评论已发布。</small></p>
       {% elif CommentFeedback == "pending" %}
         <p class="comment-feedback"><small>评论已提交，等待审核。</small></p>
       {% elif CommentFeedback == "captcha_required" %}
