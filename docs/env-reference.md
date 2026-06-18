@@ -12,6 +12,7 @@
 | `SWAVES_ENABLE_SQL_LOG`          | 由 `SWAVES_ENV` 推导 | 是否打开 SQL 日志；支持 Go `strconv.ParseBool` 可识别的布尔格式          |
 | `SWAVES_DAEMON_MODE`             | `1`               | 运行模式；只接受 `0` 或 `1`                                      |
 | `SWAVES_ENSURE_DEFAULT_SETTINGS` | `false`           | 仅在 `SWAVES_ENV=dev` 时生效；开启后允许执行 `EnsureDefaultSettings` |
+| `SWAVES_ENCRYPTED_POST_KEY`      | 空                 | 加密文章内容加密密钥（AES-256-GCM）；为空时加密文章功能不可用，创建/编辑会返回提示         |
 
 ## 2. 第三方服务与默认设置环境变量
 

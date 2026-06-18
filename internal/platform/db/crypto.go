@@ -8,25 +8,25 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"strings"
+	"swaves/internal/platform/config"
 )
 
-const (
-	// 系统加密密钥（用于 EncryptedPost 的内容加密）
-	// 这是固定密钥，确保所有 EncryptedPost 使用相同的密钥加密
-	// 未来可以从 settings 表中读取或使用环境变量
-	DefaultEncryptedPostKey = "swaves-encrypted-post-key-2024"
-)
+// ErrEncryptionKeyNotSet 表示未配置 SWAVES_ENCRYPTED_POST_KEY，加密文章功能不可用。
+// 返回该错误而非静默使用空密钥，避免给用户造成"已加密"的虚假安全感。
+var ErrEncryptionKeyNotSet = errors.New("encrypted post key not set (configure SWAVES_ENCRYPTED_POST_KEY to enable)")
 
-// getEncryptionKey 获取系统加密密钥
-// 返回: 32 字节的 AES-256 密钥
-func getEncryptionKey() [32]byte {
-	// 使用系统密钥生成 32 字节的 AES-256 密钥
-	// 可以从 settings 表中读取 dash_password 的哈希值作为密钥的一部分
-	// 这里使用固定密钥，确保所有 EncryptedPost 使用相同的密钥
-	return sha256.Sum256([]byte(DefaultEncryptedPostKey))
+// encryptionKey 从配置读取加密密钥并派生为 32 字节的 AES-256 密钥。
+// 未配置时返回 ok=false。
+func encryptionKey() ([32]byte, bool) {
+	raw := strings.TrimSpace(config.EncryptedPostKey)
+	if raw == "" {
+		return [32]byte{}, false
+	}
+	return sha256.Sum256([]byte(raw)), true
 }
 
-// EncryptContent 使用 AES-256-GCM 加密内容
+// EncryptContent 使用 AES-256-GCM 加密内容。
 // plaintext: 要加密的明文内容
 // 返回: base64 编码的加密数据（格式：nonce|encrypted_data|tag）
 func EncryptContent(plaintext string) (string, error) {
@@ -34,8 +34,10 @@ func EncryptContent(plaintext string) (string, error) {
 		return "", nil
 	}
 
-	// 获取系统加密密钥
-	key := getEncryptionKey()
+	key, ok := encryptionKey()
+	if !ok {
+		return "", ErrEncryptionKeyNotSet
+	}
 
 	// 创建 AES cipher
 	block, err := aes.NewCipher(key[:])
@@ -62,7 +64,7 @@ func EncryptContent(plaintext string) (string, error) {
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-// DecryptContent 使用 AES-256-GCM 解密内容
+// DecryptContent 使用 AES-256-GCM 解密内容。
 // ciphertext: base64 编码的加密数据
 // 返回: 解密后的明文
 func DecryptContent(ciphertext string) (string, error) {
@@ -78,13 +80,11 @@ func DecryptContent(ciphertext string) (string, error) {
 		return "", errors.New("invalid encrypted content format")
 	}
 
-	// 检查数据长度
-	if len(data) < 0 {
-		return "", errors.New("encrypted content too short")
-	}
-
 	// 获取系统加密密钥
-	key := getEncryptionKey()
+	key, ok := encryptionKey()
+	if !ok {
+		return "", ErrEncryptionKeyNotSet
+	}
 
 	// 创建 AES cipher
 	block, err := aes.NewCipher(key[:])

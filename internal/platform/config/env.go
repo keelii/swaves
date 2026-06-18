@@ -21,6 +21,7 @@ var (
 	S3Endpoint         = os.Getenv("SWAVES_S3_ENDPOINT")
 	S3AccessKeyID      = os.Getenv("SWAVES_S3_ACCESS_KEY_ID")
 	S3SecretAccessKey  = os.Getenv("SWAVES_S3_SECRET_ACCESS_KEY")
+	EncryptedPostKey   = os.Getenv("SWAVES_ENCRYPTED_POST_KEY")
 )
 
 var (
@@ -38,6 +39,8 @@ var (
 	HTTPBodyLimit         = readPositiveEnvInt("SWAVES_BODY_LIMIT", DefaultHTTPBodyLimit)
 	SessionCookieSecure   = EnvIs(envProd)
 	SessionCookieSameSite = "Lax"
+
+	EncryptedPostEnabled = strings.TrimSpace(EncryptedPostKey) != ""
 )
 
 func CondProduction[T any](a T, b T) T {

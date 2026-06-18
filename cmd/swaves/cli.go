@@ -617,6 +617,7 @@ Environment:
   SWAVES_ENABLE_SQL_LOG
   SWAVES_DAEMON_MODE
   SWAVES_ENSURE_DEFAULT_SETTINGS
+  SWAVES_ENCRYPTED_POST_KEY
 
 Priority:
   command line > environment variables > defaults

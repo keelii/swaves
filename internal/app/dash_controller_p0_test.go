@@ -30,6 +30,7 @@ var postEditPathPattern = regexp.MustCompile(`/dash/posts/([0-9]+)/edit`)
 
 func newControllerP0TestApp(t *testing.T) SwavesApp {
 	t.Helper()
+	withTestEncryptionKey(t)
 
 	dbPath := filepath.Join(t.TempDir(), "controller-p0.sqlite")
 	prepareInstalledAppDB(t, dbPath)
@@ -38,6 +39,21 @@ func newControllerP0TestApp(t *testing.T) SwavesApp {
 		SqliteFile: dbPath,
 		ListenAddr: ":0",
 		AppName:    "swaves-test",
+	})
+}
+
+// withTestEncryptionKey 为依赖 EncryptedPost 加密的测试注入密钥。
+// config 包级变量仅在 init 时读取一次环境，t.Setenv 不会自动刷新，故显式重置。
+func withTestEncryptionKey(t *testing.T) {
+	t.Helper()
+	prevKey := config.EncryptedPostKey
+	prevEnabled := config.EncryptedPostEnabled
+	t.Setenv("SWAVES_ENCRYPTED_POST_KEY", "test-encrypted-post-key")
+	config.EncryptedPostKey = "test-encrypted-post-key"
+	config.EncryptedPostEnabled = true
+	t.Cleanup(func() {
+		config.EncryptedPostKey = prevKey
+		config.EncryptedPostEnabled = prevEnabled
 	})
 }
 

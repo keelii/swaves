@@ -8,12 +8,29 @@ import (
 	"path/filepath"
 	"testing"
 
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 
 	"github.com/gofiber/fiber/v3"
 )
 
+// withTestEncryptionKey 为依赖 EncryptedPost 加密的测试注入密钥。
+// config 包级变量仅在 init 时读取一次环境，t.Setenv 不会自动刷新，故显式重置。
+func withTestEncryptionKey(t *testing.T) {
+	t.Helper()
+	prevKey := config.EncryptedPostKey
+	prevEnabled := config.EncryptedPostEnabled
+	t.Setenv("SWAVES_ENCRYPTED_POST_KEY", "test-encrypted-post-key")
+	config.EncryptedPostKey = "test-encrypted-post-key"
+	config.EncryptedPostEnabled = true
+	t.Cleanup(func() {
+		config.EncryptedPostKey = prevKey
+		config.EncryptedPostEnabled = prevEnabled
+	})
+}
+
 func TestGetTrashTabCounts(t *testing.T) {
+	withTestEncryptionKey(t)
 	dbx := db.Open(db.Options{DSN: filepath.Join(t.TempDir(), "trash.sqlite")})
 	if err := db.EnsureDefaultSettings(dbx); err != nil {
 		t.Fatalf("EnsureDefaultSettings failed: %v", err)
@@ -145,10 +162,10 @@ func TestPostTrashBatchRestoreAPIHandler(t *testing.T) {
 	}
 
 	var body struct {
-		OK           bool    `json:"ok"`
-		RestoredCount int    `json:"restored_count"`
-		FailedCount  int     `json:"failed_count"`
-		RestoredIDs  []int64 `json:"restored_ids"`
+		OK            bool    `json:"ok"`
+		RestoredCount int     `json:"restored_count"`
+		FailedCount   int     `json:"failed_count"`
+		RestoredIDs   []int64 `json:"restored_ids"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode response failed: %v", err)

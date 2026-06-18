@@ -1,8 +1,10 @@
 package dash
 
 import (
+	"errors"
 	"strconv"
 	"strings"
+	"swaves/internal/platform/config"
 	"swaves/internal/platform/db"
 	"swaves/internal/platform/middleware"
 	"swaves/internal/shared/md"
@@ -10,6 +12,8 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 )
+
+const encryptedPostDisabledMessage = "加密文章功能未启用：请在服务端配置环境变量 SWAVES_ENCRYPTED_POST_KEY 后重启服务。"
 
 func parseExpiresAtFromOption(option, customValue string) string {
 	option = strings.TrimSpace(option)
@@ -156,6 +160,14 @@ func (h *Handler) renderEncryptedPostEditWithError(c fiber.Ctx, id int64, err er
 }
 
 func (h *Handler) PostCreateEncryptedPostHandler(c fiber.Ctx) error {
+	if !config.EncryptedPostEnabled {
+		return h.renderEncryptedPostNewWithError(c, errors.New(encryptedPostDisabledMessage), fiber.Map{
+			"DraftTitle":    c.FormValue("title"),
+			"DraftContent":  c.FormValue("content"),
+			"DraftPassword": c.FormValue("password"),
+		})
+	}
+
 	expiresAtStr := parseExpiresAtFromOption(c.FormValue("expires_at_option"), c.FormValue("expires_at_custom"))
 
 	in := CreateEncryptedPostInput{
@@ -191,6 +203,12 @@ func (h *Handler) PostUpdateEncryptedPostHandler(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return fiber.ErrBadRequest
+	}
+
+	if !config.EncryptedPostEnabled {
+		return h.renderEncryptedPostEditWithError(c, id, errors.New(encryptedPostDisabledMessage), fiber.Map{
+			"DraftPassword": c.FormValue("password"),
+		})
 	}
 
 	expiresAtStr := parseExpiresAtFromOption(c.FormValue("expires_at_option"), c.FormValue("expires_at_custom"))

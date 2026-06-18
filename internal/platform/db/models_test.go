@@ -13,15 +13,32 @@ import (
 	"testing"
 	"time"
 
+	"swaves/internal/platform/config"
 	"swaves/internal/shared/types"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
+// withTestEncryptionKey 为测试注入加密密钥，使依赖 EncryptedPost 的测试可用。
+// config 包级变量仅在 init 时从环境读取一次，t.Setenv 不会自动刷新，
+// 因此这里显式重置并在 cleanup 中恢复原值。
+func withTestEncryptionKey(t *testing.T) {
+	t.Helper()
+	prevKey := config.EncryptedPostKey
+	prevEnabled := config.EncryptedPostEnabled
+	t.Setenv("SWAVES_ENCRYPTED_POST_KEY", "test-encrypted-post-key")
+	config.EncryptedPostKey = "test-encrypted-post-key"
+	config.EncryptedPostEnabled = true
+	t.Cleanup(func() {
+		config.EncryptedPostKey = prevKey
+		config.EncryptedPostEnabled = prevEnabled
+	})
+}
+
 func openTestDB(t *testing.T) *DB {
 	t.Helper()
-
+	withTestEncryptionKey(t)
 	dsn := filepath.Join(t.TempDir(), "data.sqlite")
 	db := Open(Options{DSN: dsn})
 	if err := EnsureDefaultSettings(db); err != nil {
@@ -33,6 +50,7 @@ func openTestDB(t *testing.T) *DB {
 
 func openEmptyTestDB(t *testing.T) *DB {
 	t.Helper()
+	withTestEncryptionKey(t)
 
 	dsn := filepath.Join(t.TempDir(), "empty.sqlite")
 	db := Open(Options{DSN: dsn})
