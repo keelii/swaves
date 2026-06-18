@@ -276,7 +276,7 @@ func TestSiteControllerP0_LikeActionJSONToggle(t *testing.T) {
 	}
 }
 
-func TestSiteControllerP0_CommentActionCreatesPending(t *testing.T) {
+func TestSiteControllerP0_CommentActionCreatesApproved(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()
 
@@ -302,8 +302,8 @@ func TestSiteControllerP0_CommentActionCreatesPending(t *testing.T) {
 		t.Fatalf("expected comment redirect, got %d", commentResp.StatusCode)
 	}
 	location := strings.TrimSpace(commentResp.Header.Get("Location"))
-	if !strings.Contains(location, "comment_status=pending") {
-		t.Fatalf("comment redirect should include pending status, got location=%q", location)
+	if !strings.Contains(location, "comment_status=approved") {
+		t.Fatalf("comment redirect should include approved status, got location=%q", location)
 	}
 	if !strings.Contains(location, "#comments") {
 		t.Fatalf("comment redirect should include comments anchor, got location=%q", location)
@@ -322,27 +322,27 @@ func TestSiteControllerP0_CommentActionCreatesPending(t *testing.T) {
 		t,
 		feedbackResp,
 		fiber.StatusOK,
-		"评论已提交，等待审核。",
+		"评论已发布。",
 		`id="comment-form"`,
 		`value="site-p0-user"`,
 		`value="site-p0@example.com"`,
 	)
 
-	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	approvedComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusApproved)
 	if err != nil {
-		t.Fatalf("list pending comments failed: %v", err)
+		t.Fatalf("list approved comments failed: %v", err)
 	}
-	if len(pendingComments) != 1 {
-		t.Fatalf("unexpected pending comment count: got=%d want=1", len(pendingComments))
+	if len(approvedComments) != 1 {
+		t.Fatalf("unexpected approved comment count: got=%d want=1", len(approvedComments))
 	}
-	comment := pendingComments[0]
+	comment := approvedComments[0]
 	if comment.Author != "site-p0-user" {
 		t.Fatalf("unexpected comment author: %q", comment.Author)
 	}
 	if comment.Content != "site controller comment content" {
 		t.Fatalf("unexpected comment content: %q", comment.Content)
 	}
-	if comment.Status != db.CommentStatusPending {
+	if comment.Status != db.CommentStatusApproved {
 		t.Fatalf("unexpected comment status: %q", comment.Status)
 	}
 }
@@ -431,8 +431,8 @@ func TestSiteControllerP0_CommentRateLimitRequiresCaptchaThenShowsCaptchaFailed(
 		t.Fatalf("expected first comment redirect, got %d", firstResp.StatusCode)
 	}
 	firstLocation := strings.TrimSpace(firstResp.Header.Get("Location"))
-	if !strings.Contains(firstLocation, "comment_status=pending") {
-		t.Fatalf("first comment redirect should include pending status, got location=%q", firstLocation)
+	if !strings.Contains(firstLocation, "comment_status=approved") {
+		t.Fatalf("first comment redirect should include approved status, got location=%q", firstLocation)
 	}
 
 	secondResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
@@ -489,12 +489,12 @@ func TestSiteControllerP0_CommentRateLimitRequiresCaptchaThenShowsCaptchaFailed(
 		"site controller captcha flow content",
 	)
 
-	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	approvedComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusApproved)
 	if err != nil {
-		t.Fatalf("list pending comments failed: %v", err)
+		t.Fatalf("list approved comments failed: %v", err)
 	}
-	if len(pendingComments) != 1 {
-		t.Fatalf("unexpected pending comment count after captcha flow: got=%d want=1", len(pendingComments))
+	if len(approvedComments) != 1 {
+		t.Fatalf("unexpected approved comment count after captcha flow: got=%d want=1", len(approvedComments))
 	}
 }
 
@@ -527,8 +527,8 @@ func TestSiteControllerP0_CommentRateLimitCaptchaPassesAndCreatesSecondComment(t
 		t.Fatalf("expected first comment redirect, got %d", firstResp.StatusCode)
 	}
 	firstLocation := strings.TrimSpace(firstResp.Header.Get("Location"))
-	if !strings.Contains(firstLocation, "comment_status=pending") {
-		t.Fatalf("first comment redirect should include pending status, got location=%q", firstLocation)
+	if !strings.Contains(firstLocation, "comment_status=approved") {
+		t.Fatalf("first comment redirect should include approved status, got location=%q", firstLocation)
 	}
 
 	secondResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
@@ -563,19 +563,19 @@ func TestSiteControllerP0_CommentRateLimitCaptchaPassesAndCreatesSecondComment(t
 		t.Fatalf("expected third comment redirect, got %d", thirdResp.StatusCode)
 	}
 	thirdLocation := strings.TrimSpace(thirdResp.Header.Get("Location"))
-	if !strings.Contains(thirdLocation, "comment_status=pending") {
-		t.Fatalf("third comment redirect should include pending status after captcha pass, got location=%q", thirdLocation)
+	if !strings.Contains(thirdLocation, "comment_status=approved") {
+		t.Fatalf("third comment redirect should include approved status after captcha pass, got location=%q", thirdLocation)
 	}
 	if !strings.Contains(thirdLocation, "#comments") {
 		t.Fatalf("third comment redirect should include comments anchor, got location=%q", thirdLocation)
 	}
 
-	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	approvedComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusApproved)
 	if err != nil {
-		t.Fatalf("list pending comments failed: %v", err)
+		t.Fatalf("list approved comments failed: %v", err)
 	}
-	if len(pendingComments) != 2 {
-		t.Fatalf("unexpected pending comment count after captcha pass flow: got=%d want=2", len(pendingComments))
+	if len(approvedComments) != 2 {
+		t.Fatalf("unexpected approved comment count after captcha pass flow: got=%d want=2", len(approvedComments))
 	}
 }
 
@@ -608,8 +608,8 @@ func TestSiteControllerP0_CommentCaptchaTokenReplayIsRejected(t *testing.T) {
 		t.Fatalf("expected first comment redirect, got %d", firstResp.StatusCode)
 	}
 	firstLocation := strings.TrimSpace(firstResp.Header.Get("Location"))
-	if !strings.Contains(firstLocation, "comment_status=pending") {
-		t.Fatalf("first comment redirect should include pending status, got location=%q", firstLocation)
+	if !strings.Contains(firstLocation, "comment_status=approved") {
+		t.Fatalf("first comment redirect should include approved status, got location=%q", firstLocation)
 	}
 
 	secondResp := requestControllerP0(t, swv, fiber.MethodPost, actionPath, form, visitorCookie, nil)
@@ -643,8 +643,8 @@ func TestSiteControllerP0_CommentCaptchaTokenReplayIsRejected(t *testing.T) {
 		t.Fatalf("expected third comment redirect, got %d", thirdResp.StatusCode)
 	}
 	thirdLocation := strings.TrimSpace(thirdResp.Header.Get("Location"))
-	if !strings.Contains(thirdLocation, "comment_status=pending") {
-		t.Fatalf("third comment redirect should include pending status after captcha pass, got location=%q", thirdLocation)
+	if !strings.Contains(thirdLocation, "comment_status=approved") {
+		t.Fatalf("third comment redirect should include approved status after captcha pass, got location=%q", thirdLocation)
 	}
 
 	form.Set("content", "site controller captcha replay third content")
@@ -676,16 +676,16 @@ func TestSiteControllerP0_CommentCaptchaTokenReplayIsRejected(t *testing.T) {
 		"site controller captcha replay third content",
 	)
 
-	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	approvedComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusApproved)
 	if err != nil {
-		t.Fatalf("list pending comments failed: %v", err)
+		t.Fatalf("list approved comments failed: %v", err)
 	}
-	if len(pendingComments) != 2 {
-		t.Fatalf("unexpected pending comment count after captcha replay flow: got=%d want=2", len(pendingComments))
+	if len(approvedComments) != 2 {
+		t.Fatalf("unexpected approved comment count after captcha replay flow: got=%d want=2", len(approvedComments))
 	}
 }
 
-func TestSiteControllerP0_CommentReplyCreatesPendingChild(t *testing.T) {
+func TestSiteControllerP0_CommentReplyCreatesApprovedChild(t *testing.T) {
 	swv := newControllerP0TestApp(t)
 	defer swv.Shutdown()
 
@@ -717,21 +717,21 @@ func TestSiteControllerP0_CommentReplyCreatesPendingChild(t *testing.T) {
 		t.Fatalf("expected reply comment redirect, got %d", resp.StatusCode)
 	}
 	location := strings.TrimSpace(resp.Header.Get("Location"))
-	if !strings.Contains(location, "comment_status=pending") {
-		t.Fatalf("reply redirect should include pending status, got location=%q", location)
+	if !strings.Contains(location, "comment_status=approved") {
+		t.Fatalf("reply redirect should include approved status, got location=%q", location)
 	}
 	if !strings.Contains(location, "#comments") {
 		t.Fatalf("reply redirect should include comments anchor, got location=%q", location)
 	}
 
-	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	approvedComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusApproved)
 	if err != nil {
-		t.Fatalf("list pending comments failed: %v", err)
+		t.Fatalf("list approved comments failed: %v", err)
 	}
-	if len(pendingComments) != 1 {
-		t.Fatalf("unexpected pending reply count: got=%d want=1", len(pendingComments))
+	if len(approvedComments) != 2 {
+		t.Fatalf("unexpected approved comment count: got=%d want=2", len(approvedComments))
 	}
-	reply := pendingComments[0]
+	reply := approvedComments[1]
 	if reply.ParentID != parentID {
 		t.Fatalf("reply parent_id = %d, want %d", reply.ParentID, parentID)
 	}
@@ -777,12 +777,12 @@ func TestSiteControllerP0_CommentReplyRejectsParentFromAnotherPost(t *testing.T)
 		t.Fatalf("invalid reply should redirect to error page, got location=%q", location)
 	}
 
-	pendingComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusPending)
+	approvedComments, err := db.ListPostComments(swv.Store.Model, post.ID, db.CommentStatusApproved)
 	if err != nil {
-		t.Fatalf("list pending comments failed: %v", err)
+		t.Fatalf("list approved comments failed: %v", err)
 	}
-	if len(pendingComments) != 0 {
-		t.Fatalf("invalid reply should not create pending comments, got=%d", len(pendingComments))
+	if len(approvedComments) != 0 {
+		t.Fatalf("invalid reply should not create approved comments, got=%d", len(approvedComments))
 	}
 }
 
