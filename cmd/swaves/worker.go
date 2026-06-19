@@ -1,15 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"swaves/internal/app"
 	"swaves/internal/platform/logger"
 	"swaves/internal/platform/middleware"
+	"swaves/internal/platform/supervisor"
 	"swaves/internal/shared/types"
 	"syscall"
 	"time"
@@ -27,7 +25,7 @@ func runSwavesWorker(appCfg types.AppConfig) error {
 	installAppShutdownHook(swv.App, swv.Tracker, swv.PauseJobs, &shutdownOnce)
 
 	pid := os.Getpid()
-	listener, err := inheritedListenerFromEnv()
+	listener, err := supervisor.InheritedListener()
 	if err != nil {
 		return err
 	}
@@ -160,55 +158,8 @@ func installWorkerReadyHook(appInstance *fiber.App) {
 		return
 	}
 	appInstance.Hooks().OnListen(func(_ fiber.ListenData) error {
-		return signalWorkerReady()
+		return supervisor.SignalReady()
 	})
 }
 
-func inheritedListenerFromEnv() (net.Listener, error) {
-	fd, ok, err := envFD(workerListenerFDEnv)
-	if err != nil || !ok {
-		return nil, err
-	}
 
-	file := os.NewFile(uintptr(fd), "swaves-listener")
-	if file == nil {
-		return nil, fmt.Errorf("restore listener file failed")
-	}
-	defer func() { _ = file.Close() }()
-
-	listener, err := net.FileListener(file)
-	if err != nil {
-		return nil, fmt.Errorf("restore listener failed: %w", err)
-	}
-	return listener, nil
-}
-
-func signalWorkerReady() error {
-	fd, ok, err := envFD(workerReadyFDEnv)
-	if err != nil || !ok {
-		return err
-	}
-
-	file := os.NewFile(uintptr(fd), "swaves-ready")
-	if file == nil {
-		return fmt.Errorf("restore ready pipe failed")
-	}
-	defer func() { _ = file.Close() }()
-
-	if _, err := file.WriteString(workerReadyMessage + "\n"); err != nil {
-		return fmt.Errorf("signal worker ready failed: %w", err)
-	}
-	return nil
-}
-
-func envFD(name string) (int, bool, error) {
-	raw, ok := os.LookupEnv(name)
-	if !ok || raw == "" {
-		return 0, false, nil
-	}
-	fd, err := strconv.Atoi(raw)
-	if err != nil || fd < 0 {
-		return 0, false, fmt.Errorf("invalid %s: %q", name, raw)
-	}
-	return fd, true, nil
-}

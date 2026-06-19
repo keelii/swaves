@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -100,56 +99,10 @@ func TestResolveSupervisorExecutablePathFallsBackToCurrentExecutable(t *testing.
 	}
 }
 
-func TestReadWorkerReadyReturnsUnexpectedMessage(t *testing.T) {
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe failed: %v", err)
-	}
-
-	go func() {
-		_, _ = writer.WriteString("NOPE\n")
-		_ = writer.Close()
-	}()
-
-	err = readWorkerReady(reader)
-	if err == nil || err.Error() != `unexpected worker ready message: "NOPE"` {
-		t.Fatalf("unexpected err=%v", err)
-	}
-}
-
-func TestEnvFD(t *testing.T) {
-	t.Setenv("TEST_FD", "7")
-	fd, ok, err := envFD("TEST_FD")
-	if err != nil || !ok || fd != 7 {
-		t.Fatalf("unexpected result fd=%d ok=%v err=%v", fd, ok, err)
-	}
-}
-
-func TestEnvFDRejectsInvalidValue(t *testing.T) {
-	t.Setenv("TEST_FD", "nope")
-	_, _, err := envFD("TEST_FD")
-	if err == nil {
-		t.Fatal("expected invalid fd error")
-	}
-}
-
-func TestEnvFDMissingValue(t *testing.T) {
-	fd, ok, err := envFD("TEST_FD_MISSING")
-	if err != nil || ok || fd != 0 {
-		t.Fatalf("unexpected result fd=%d ok=%v err=%v", fd, ok, err)
-	}
-}
-
-func TestWorkerEnvForSupervisorIncludesRuntimeMasterInfo(t *testing.T) {
-	cfg := supervisorConfig{
-		ExecutablePath: "/tmp/swaves",
-		SqliteFile:     "/tmp/data.sqlite",
-	}
-
-	env := workerEnvForSupervisor(cfg)
+func TestWorkerExtraEnvIncludesRuntimeMasterInfo(t *testing.T) {
+	env := workerExtraEnv("/tmp/swaves")
 
 	for _, want := range []string{
-		workerModeEnv + "=1",
 		updater.RuntimeMasterPIDEnv + "=",
 		updater.RuntimeMasterExecutableEnv + "=/tmp/swaves",
 	} {
@@ -190,19 +143,6 @@ func TestWorkerArgsDoesNotDuplicateInternalWorkerFlag(t *testing.T) {
 	}
 }
 
-func TestListenerFileRejectsUnsupportedListener(t *testing.T) {
-	_, err := listenerFile(fakeListener{})
-	if err == nil {
-		t.Fatal("expected unsupported listener error")
-	}
-}
-
-type fakeListener struct{}
-
-func (fakeListener) Accept() (net.Conn, error) { return nil, errors.New("not implemented") }
-func (fakeListener) Close() error              { return nil }
-func (fakeListener) Addr() net.Addr            { return &net.TCPAddr{} }
-
 func envHasPrefix(env []string, prefix string) bool {
 	for _, value := range env {
 		if strings.HasPrefix(value, prefix) {
@@ -211,6 +151,7 @@ func envHasPrefix(env []string, prefix string) bool {
 	}
 	return false
 }
+
 
 func TestReplaceSQLiteDatabaseReplacesTargetAndCleansRuntimeFiles(t *testing.T) {
 	tmpDir := t.TempDir()
