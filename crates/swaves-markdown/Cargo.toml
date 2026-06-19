@@ -1,0 +1,32 @@
+[package]
+name = "swaves-markdown"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Pure markdown rendering crate for swaves"
+readme = "README.md"
+
+[features]
+default = ["highlight", "math", "mermaid"]
+highlight = []
+math = ["dep:ratex-layout", "dep:ratex-parser", "dep:ratex-svg", "dep:ratex-types"]
+mermaid = ["dep:mermaid-rs-renderer"]
+
+[dependencies]
+comrak = { version = "0.52.0", default-features = false, features = ["syntect"] }
+mermaid-rs-renderer = { version = "0.2.2", default-features = false, optional = true }
+ratex-layout = { version = "0.1.9", optional = true }
+ratex-parser = { version = "0.1.9", optional = true }
+ratex-svg = { version = "0.1.9", features = ["standalone", "embed-fonts"], optional = true }
+ratex-types = { version = "0.1.9", optional = true }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+serde_yaml = "0.9.34"
+thiserror = "2.0.18"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "render"
+harness = false

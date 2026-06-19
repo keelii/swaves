@@ -7,3 +7,4 @@ data.*
 backups
 .gocache
 .DS_Store
+target/
