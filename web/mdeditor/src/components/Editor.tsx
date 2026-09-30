@@ -1,9 +1,9 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useEffect, useRef, useImperativeHandle, forwardRef, type RefObject } from 'react'
 
 interface EditorProps {
   initialMarkdown?: string
   placeholder?: string
-  commandsRoot?: HTMLElement | null
+  commandsRoot?: HTMLElement | RefObject<HTMLElement | null> | null
   onChange?: (markdown: string) => void
 }
 
@@ -20,19 +20,25 @@ const Editor = forwardRef<SEditorInstance | null, EditorProps>(function Editor(
     const el = mountRef.current
     if (!el) return
 
-    let instance: SEditorInstance | null = null
+    // Resolve commandsRoot: supports both direct element and RefObject
+    const root: HTMLElement | Document =
+      commandsRoot == null
+        ? document
+        : commandsRoot instanceof HTMLElement
+          ? commandsRoot
+          : (commandsRoot as RefObject<HTMLElement | null>).current ?? document
 
-    instance = window.SEditor.init({
+    const instance = window.SEditor.init({
       mount: el,
       initialMarkdown: initialMarkdown ?? '',
       placeholder: placeholder ?? '开始输入 Markdown…',
-      commandsRoot: commandsRoot ?? document,
+      commandsRoot: root,
       onChange,
     })
     instanceRef.current = instance
 
     return () => {
-      instance?.destroy()
+      instance.destroy()
       instanceRef.current = null
     }
     // Only run on mount/unmount — content changes go through setMarkdown

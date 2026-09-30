@@ -2,15 +2,16 @@
 
 **mdeditor** 是一个基于 [TinyJS](https://github.com/tarwin/tinyjsapp) 的本地桌面端 Markdown 所见即所得编辑器，独立于 swaves 主工程。
 
+编辑器内核复用 `web/seditor`（ProseMirror），以 IIFE bundle 形式加载（`window.SEditor`），无需额外依赖。
+
 ## 技术栈
 
 | 层 | 技术 |
 |---|---|
 | 框架 | [TinyJS](https://github.com/tarwin/tinyjsapp)（txiki.js 后端 + 原生 WebView） |
 | 前端 | React 19 + TypeScript + Vite |
-| WYSIWYG 编辑器 | [TipTap](https://tiptap.dev/)（基于 ProseMirror） |
-| Markdown 序列化 | [remark](https://github.com/remarkjs/remark)（remark-parse + remark-stringify） |
-| 与 Go 后端兼容 | 两者均基于 **CommonMark** 规范（goldmark + micromark） |
+| WYSIWYG 编辑器 | `web/seditor`（ProseMirror） |
+| Markdown 序列化 | seditor 内置序列化（CommonMark 兼容，与 Go 端 goldmark 一致） |
 
 ## 目录结构
 
@@ -19,13 +20,15 @@ web/mdeditor/
 ├── backend/
 │   ├── main.ts          # TinyJS 后端：文件读写
 │   └── tiny.d.ts        # TinyJS 类型定义
+├── public/
+│   └── seditor.js       # 构建产物（由 npm run build:seditor 生成，不提交）
 ├── src/
 │   ├── components/
-│   │   ├── Editor.tsx   # TipTap WYSIWYG 编辑器组件
-│   │   └── Toolbar.tsx  # 格式化工具栏
+│   │   ├── Editor.tsx   # 封装 window.SEditor 的 React 组件
+│   │   └── Toolbar.tsx  # 格式化工具栏（data-seditor-command 按钮）
 │   ├── lib/
-│   │   ├── markdown.ts  # remark 双向转换（CommonMark ↔ TipTap JSON）
 │   │   └── tinyapi.ts   # window.tiny API 封装
+│   ├── declarations.d.ts  # window.SEditor / SEditorInstance 全局类型声明
 │   ├── App.tsx
 │   ├── app.css
 │   └── main.tsx
@@ -49,6 +52,14 @@ cd web/mdeditor
 npm install
 ```
 
+### 构建 seditor bundle（首次或 seditor 更新后）
+
+```sh
+cd web/seditor && npm install   # 仅首次需要
+cd web/mdeditor
+npm run build:seditor           # 输出 public/seditor.js
+```
+
 ### 开发模式（浏览器，无文件读写）
 
 ```sh
@@ -67,6 +78,7 @@ tinyjs dev
 ### 打包为桌面应用
 
 ```sh
+npm run build      # 会自动先重新构建 seditor.js
 tinyjs build
 # 输出: dist/mdeditor.app (macOS)
 ```
@@ -75,27 +87,23 @@ tinyjs build
 
 ### 支持的格式
 
-- **加粗** / *斜体* / ~~删除线~~ / `行内代码`
+- **加粗** / *斜体* / `行内代码`
 - # 标题（H1–H6）
 - 无序列表 / 有序列表
 - > 引用
 - 代码块（带语言标注）
-- 分割线
 - 链接 / 图片
 
 ### 输入规则（Input Rules）
 
-TipTap StarterKit 内置：
+seditor（ProseMirror）内置：
 
 | 输入 | 效果 |
 |-----|------|
-| `# ` + 空格 | H1 标题 |
-| `## ` | H2 标题 |
-| `### ` | H3 标题 |
-| `* ` 或 `- ` | 无序列表 |
+| `# ` 到 `###### ` | H1–H6 标题 |
+| `* ` | 无序列表 |
 | `1. ` | 有序列表 |
 | `> ` | 引用块 |
-| ` ``` ` | 代码块 |
 
 ### 快捷键
 
@@ -112,11 +120,5 @@ TipTap StarterKit 内置：
 
 ## Markdown 兼容性
 
-序列化层（`src/lib/markdown.ts`）使用 `remark-parse`（基于 micromark）解析 Markdown，使用 `remark-stringify` 输出。两者均严格遵循 **CommonMark** 规范，与 swaves Go 端的 `yuin/goldmark` 完全兼容。
+序列化由 `web/seditor` 内部完成，基于 `prosemirror-markdown`，输出符合 **CommonMark** 规范的 Markdown。与 swaves Go 端的 `yuin/goldmark` 完全兼容。
 
-输出约定（`remark-stringify` 配置）：
-
-- 无序列表标记：`-`
-- 强调标记：`_`
-- 加粗标记：`*`
-- 代码块围栏：`` ` ``

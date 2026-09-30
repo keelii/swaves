@@ -146,7 +146,7 @@ export default function App() {
         <Editor
           ref={editorRef}
           initialMarkdown={initialMarkdown}
-          commandsRoot={toolbarRef.current}
+          commandsRoot={toolbarRef}
           onChange={handleChange}
           placeholder="开始输入 Markdown…（支持 CommonMark 格式）"
         />
