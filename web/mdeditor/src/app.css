@@ -133,7 +133,7 @@ html, body, #root {
   flex-shrink: 0;
 }
 
-/* ── ProseMirror / TipTap editor ─────────────────────────────────────────── */
+/* ── ProseMirror / SEditor editor content ────────────────────────────────── */
 .editor-wrapper {
   flex: 1;
   overflow-y: auto;
@@ -144,7 +144,8 @@ html, body, #root {
   height: 100%;
 }
 
-.editor-content .ProseMirror {
+/* seditor mounts directly onto .editor-content and adds .seditor-root */
+.editor-content.seditor-root .ProseMirror {
   min-height: 100%;
   padding: 24px 48px;
   outline: none;
@@ -155,13 +156,9 @@ html, body, #root {
   margin: 0 auto;
 }
 
-/* Placeholder */
-.editor-content .ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
+/* Placeholder (injected by seditor) */
+.editor-content .ProseMirror .seditor-placeholder-block::before {
   color: var(--color-text-soft);
-  pointer-events: none;
-  float: left;
-  height: 0;
 }
 
 /* Headings */
@@ -243,4 +240,11 @@ html, body, #root {
 .editor-content .ProseMirror a {
   color: var(--color-accent);
   text-decoration: underline;
+}
+
+/* Toolbar button active state set by seditor via class "selected" */
+.toolbar-btn.selected {
+  background: var(--color-active-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }

@@ -1,53 +1,47 @@
-import { useEffect, useImperativeHandle, forwardRef } from 'react'
-import { EditorContent, useEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import type { Editor as TipTapEditor } from '@tiptap/core'
-import type { TipTapDoc } from '../lib/markdown'
-
-export type EditorRef = TipTapEditor | null
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
 
 interface EditorProps {
-  initialDoc?: TipTapDoc | null
+  initialMarkdown?: string
   placeholder?: string
-  onChange?: (doc: TipTapDoc) => void
+  commandsRoot?: HTMLElement | null
+  onChange?: (markdown: string) => void
 }
 
-const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
-  { initialDoc, placeholder = '开始输入 Markdown…', onChange },
+const Editor = forwardRef<SEditorInstance | null, EditorProps>(function Editor(
+  { initialMarkdown, placeholder, commandsRoot, onChange },
   ref,
 ) {
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
-      }),
-      Placeholder.configure({ placeholder }),
-    ],
-    content: initialDoc ?? { type: 'doc', content: [{ type: 'paragraph' }] },
-    autofocus: true,
-    onUpdate({ editor: e }) {
-      if (onChange) {
-        onChange(e.getJSON() as TipTapDoc)
-      }
-    },
-  })
+  const mountRef = useRef<HTMLDivElement>(null)
+  const instanceRef = useRef<SEditorInstance | null>(null)
 
-  useImperativeHandle(ref, () => editor, [editor])
+  useImperativeHandle(ref, () => instanceRef.current as SEditorInstance, [])
 
-  // Reload content when initialDoc changes (e.g. opening a new file)
   useEffect(() => {
-    if (!editor || !initialDoc) return
-    const current = JSON.stringify(editor.getJSON())
-    const next = JSON.stringify(initialDoc)
-    if (current !== next) {
-      editor.commands.setContent(initialDoc, { emitUpdate: false })
+    const el = mountRef.current
+    if (!el) return
+
+    let instance: SEditorInstance | null = null
+
+    instance = window.SEditor.init({
+      mount: el,
+      initialMarkdown: initialMarkdown ?? '',
+      placeholder: placeholder ?? '开始输入 Markdown…',
+      commandsRoot: commandsRoot ?? document,
+      onChange,
+    })
+    instanceRef.current = instance
+
+    return () => {
+      instance?.destroy()
+      instanceRef.current = null
     }
-  }, [editor, initialDoc])
+    // Only run on mount/unmount — content changes go through setMarkdown
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="editor-wrapper">
-      <EditorContent editor={editor} className="editor-content" />
+      <div ref={mountRef} className="editor-content" />
     </div>
   )
 })

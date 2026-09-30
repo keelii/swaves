@@ -1,9 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import type { Editor as TipTapEditor } from '@tiptap/core'
 import Editor from './components/Editor'
 import Toolbar from './components/Toolbar'
-import { fromMarkdown, toMarkdown } from './lib/markdown'
-import type { TipTapDoc } from './lib/markdown'
 import {
   isTinyApp,
   tinyOpenFileDialog,
@@ -13,42 +10,42 @@ import {
 } from './lib/tinyapi'
 
 export default function App() {
-  const editorRef = useRef<TipTapEditor | null>(null)
-  const [doc, setDoc] = useState<TipTapDoc | null>(null)
+  const editorRef = useRef<SEditorInstance | null>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
   const [filePath, setFilePath] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [wordCount, setWordCount] = useState(0)
   const [dirty, setDirty] = useState(false)
-  const currentMarkdownRef = useRef('')
+  const [initialMarkdown, setInitialMarkdown] = useState('')
 
-  // Keep markdown in sync for save operations
-  const handleChange = useCallback((nextDoc: TipTapDoc) => {
-    const md = toMarkdown(nextDoc)
-    currentMarkdownRef.current = md
-    setWordCount(md.replace(/\s+/g, '').length)
+  const handleChange = useCallback((markdown: string) => {
+    setWordCount(markdown.replace(/\s+/g, '').length)
     setDirty(true)
   }, [])
 
-  // Open file
   const handleOpen = useCallback(async () => {
     try {
       const path = await tinyOpenFileDialog()
       if (!path) return
       const result = await backendReadFile(path)
-      const nextDoc = fromMarkdown(result.content)
-      setDoc(nextDoc)
+      if (editorRef.current) {
+        editorRef.current.setMarkdown(result.content)
+      } else {
+        setInitialMarkdown(result.content)
+      }
       setFilePath(result.path)
       setTitle(result.path.split('/').pop()?.replace(/\.md$/, '') ?? '')
-      currentMarkdownRef.current = result.content
+      setWordCount(result.content.replace(/\s+/g, '').length)
       setDirty(false)
     } catch (err) {
       console.warn('open file failed', err)
     }
   }, [])
 
-  // Save to current path, or prompt if none
   const handleSave = useCallback(
     async (saveAs = false) => {
+      const instance = editorRef.current
+      if (!instance) return
       try {
         let path = filePath
         if (!path || saveAs) {
@@ -56,7 +53,7 @@ export default function App() {
           if (!path) return
           if (!path.endsWith('.md')) path += '.md'
         }
-        await backendWriteFile(path, currentMarkdownRef.current)
+        await backendWriteFile(path, instance.getMarkdown())
         setFilePath(path)
         setTitle(path.split('/').pop()?.replace(/\.md$/, '') ?? '')
         setDirty(false)
@@ -67,17 +64,18 @@ export default function App() {
     [filePath],
   )
 
-  // New file
   const handleNew = useCallback(() => {
-    const blank: TipTapDoc = { type: 'doc', content: [{ type: 'paragraph' }] }
-    setDoc(blank)
+    if (editorRef.current) {
+      editorRef.current.setMarkdown('')
+    } else {
+      setInitialMarkdown('')
+    }
     setFilePath(null)
     setTitle('')
-    currentMarkdownRef.current = ''
+    setWordCount(0)
     setDirty(false)
   }, [])
 
-  // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey
@@ -142,10 +140,13 @@ export default function App() {
       </header>
 
       <div className="editor-area">
-        <Toolbar editor={editorRef.current} />
+        <div ref={toolbarRef}>
+          <Toolbar />
+        </div>
         <Editor
           ref={editorRef}
-          initialDoc={doc}
+          initialMarkdown={initialMarkdown}
+          commandsRoot={toolbarRef.current}
           onChange={handleChange}
           placeholder="开始输入 Markdown…（支持 CommonMark 格式）"
         />
