@@ -70,9 +70,16 @@ npm run dev
 
 ### 桌面模式（TinyJS）
 
+先在一个终端启动 Vite 开发服务器，再在另一个终端启动 TinyJS：
+
 ```sh
+# 终端 1
 cd web/mdeditor
-tinyjs dev
+npm run dev          # 启动 Vite dev server on http://localhost:5173
+
+# 终端 2
+cd web/mdeditor
+tinyjs dev           # 打开原生窗口，加载 Vite dev server（HMR 生效）
 ```
 
 ### 打包为桌面应用

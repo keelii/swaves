@@ -2,5 +2,11 @@
   "name": "mdeditor",
   "id": "app.swaves.mdeditor",
   "size": "1200x800",
-  "minSize": "800x600"
+  "minSize": "800x600",
+  "backend": "backend/main.ts",
+  "frontend": {
+    "devUrl": "http://localhost:5173",
+    "build": "npm run build",
+    "dist": "dist"
+  }
 }
