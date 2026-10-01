@@ -28,6 +28,13 @@ const Editor = forwardRef<SEditorInstance | null, EditorProps>(function Editor(
           ? commandsRoot
           : (commandsRoot as RefObject<HTMLElement | null>).current ?? document
 
+    if (!window.SEditor) {
+      console.error(
+        '[mdeditor] window.SEditor not found. Run `npm run build:seditor` first, then restart the dev server.'
+      )
+      return
+    }
+
     const instance = window.SEditor.init({
       mount: el,
       initialMarkdown: initialMarkdown ?? '',

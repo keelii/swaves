@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build:seditor && vite",
     "build": "npm run build:seditor && tsc -b && vite build",
-    "build:seditor": "cd ../seditor && npm exec -- esbuild src/index.js --bundle --format=iife --global-name=SEditor --outfile=../mdeditor/public/seditor.js --target=es2018",
+    "build:seditor": "cd ../seditor && npm install --silent && npm exec -- esbuild src/index.js --bundle --format=iife --global-name=SEditor --outfile=../mdeditor/public/seditor.js --target=es2018",
     "preview": "vite preview"
   },
   "dependencies": {
